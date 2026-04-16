@@ -33,17 +33,31 @@ Every time you ask an AI assistant (Claude, GPT-4, Cursor, Copilot) about your c
 | **Manual Selection** | Pick a few files | 2,000-5,000 | ❌ Miss important dependencies & context |
 | **No Context** | Just ask | 0 | ❌ AI guesses, hallucinates, gives wrong answers |
 
-### Real Cost Impact
+### Real Cost Impact (2025 LLM Pricing)
 
-```
-With Claude 3.5 Sonnet (2024 pricing):
-- Full codebase context: ~$0.15 per query
-- 100 queries/day = $15/day = $450/month
+**Token costs from major providers** ([OpenRouter pricing](https://openrouter.ai/models)):
 
-With NeuralMind:
-- Smart context: ~$0.003 per query (50x less)
-- 100 queries/day = $0.30/day = $9/month
-```
+| Model | Input Cost (per 1M tokens) | 50K tokens/query | With NeuralMind (800 tokens) |
+|-------|---------------------------|------------------|-----------------------------|
+| **Claude 3.5 Sonnet** | $3.00 | $0.15/query | $0.0024/query |
+| **GPT-4o** | $5.00 | $0.25/query | $0.004/query |
+| **GPT-4.5** | $75.00 | $3.75/query | $0.06/query |
+| **Gemini 2.5 Pro** | $1.25-$2.50 | $0.125/query | $0.002/query |
+| **Claude Opus 4** | $15.00 | $0.75/query | $0.012/query |
+
+*Sources: [OpenRouter](https://openrouter.ai/models), [Anthropic](https://www.anthropic.com/pricing), [OpenAI](https://openai.com/pricing)*
+
+### Monthly Cost Comparison (100 queries/day)
+
+| Model | Without NeuralMind | With NeuralMind | **Monthly Savings** |
+|-------|-------------------|-----------------|--------------------|
+| Claude 3.5 Sonnet | $450/month | $7.20/month | **$442.80** |
+| GPT-4o | $750/month | $12/month | **$738** |
+| GPT-4.5 (Premium) | $11,250/month | $180/month | **$11,070** |
+| Gemini 2.5 Pro | $375/month | $6/month | **$369** |
+| Claude Opus 4 | $2,250/month | $36/month | **$2,214** |
+
+**Bottom line: NeuralMind pays for itself in the first hour of use.**
 
 ---
 
