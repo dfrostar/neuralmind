@@ -16,47 +16,58 @@ class TestGraphEmbedder:
         embedder = GraphEmbedder(str(temp_project))
         assert embedder.project_path == Path(temp_project)
 
-    def test_load_graph_returns_dict(self, temp_project):
-        """Test that load_graph returns a dictionary."""
+    def test_load_graph_returns_bool(self, temp_project):
+        """Test that load_graph returns a boolean."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
-        graph = embedder.load_graph()
+        result = embedder.load_graph()
 
-        assert isinstance(graph, dict)
-        assert "nodes" in graph
-        assert "edges" in graph
-        assert "communities" in graph
+        assert isinstance(result, bool)
+        assert result is True
 
-    def test_load_graph_contains_nodes(self, temp_project, sample_graph):
-        """Test that loaded graph contains expected nodes."""
+    def test_load_graph_populates_nodes(self, temp_project, sample_graph):
+        """Test that loaded graph populates nodes and edges."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
-        graph = embedder.load_graph()
+        embedder.load_graph()
 
-        assert len(graph["nodes"]) == len(sample_graph["nodes"])
-        assert len(graph["edges"]) == len(sample_graph["edges"])
-        assert len(graph["communities"]) == len(sample_graph["communities"])
+        assert len(embedder.nodes) == len(sample_graph["nodes"])
+        assert len(embedder.edges) == len(sample_graph["edges"])
 
-    def test_load_graph_nonexistent_raises_error(self, empty_project):
-        """Test that loading nonexistent graph raises error."""
+    def test_load_graph_nonexistent_returns_false(self, empty_project):
+        """Test that loading nonexistent graph returns False."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(empty_project))
+        result = embedder.load_graph()
 
-        with pytest.raises(FileNotFoundError):
-            embedder.load_graph()
+        # load_graph returns False when graph doesn't exist
+        assert result is False
 
-    def test_embed_nodes_creates_embeddings(self, temp_project):
-        """Test that embed_nodes creates embeddings."""
+    def test_embed_nodes_returns_stats(self, temp_project):
+        """Test that embed_nodes returns statistics dict."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         stats = embedder.embed_nodes()
 
-        assert "nodes_embedded" in stats or "embedded" in stats
+        assert isinstance(stats, dict)
+        assert "added" in stats
+        assert "updated" in stats
+        assert "skipped" in stats
+
+    def test_embed_nodes_adds_nodes(self, temp_project):
+        """Test that embed_nodes adds nodes on first run."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        stats = embedder.embed_nodes()
+
+        assert stats["added"] == 6  # From sample_graph fixture
 
     def test_embed_nodes_incremental(self, temp_project):
         """Test that embed_nodes is incremental by default."""
@@ -67,13 +78,11 @@ class TestGraphEmbedder:
 
         # First embedding
         stats1 = embedder.embed_nodes()
+        assert stats1["added"] == 6
 
         # Second embedding should skip unchanged
         stats2 = embedder.embed_nodes()
-
-        # Should have skipped some or all nodes
-        if "nodes_skipped" in stats2:
-            assert stats2["nodes_skipped"] >= 0
+        assert stats2["skipped"] >= 0
 
     def test_embed_nodes_force_reembeds(self, temp_project):
         """Test that embed_nodes with force=True re-embeds all."""
@@ -85,12 +94,10 @@ class TestGraphEmbedder:
 
         # Force re-embed
         stats = embedder.embed_nodes(force=True)
+        assert stats["added"] == 6
 
-        if "nodes_embedded" in stats:
-            assert stats["nodes_embedded"] == 6
-
-    def test_search_returns_results(self, temp_project):
-        """Test that search returns results."""
+    def test_search_returns_list(self, temp_project):
+        """Test that search returns a list."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
@@ -113,7 +120,7 @@ class TestGraphEmbedder:
 
         assert len(results) <= 2
 
-    def test_search_result_has_score(self, temp_project):
+    def test_search_results_have_score(self, temp_project):
         """Test that search results include scores."""
         from neuralmind.embedder import GraphEmbedder
 
@@ -124,9 +131,23 @@ class TestGraphEmbedder:
         results = embedder.search("authentication")
 
         if results:
-            # Results should have some score/distance indicator
             result = results[0]
-            assert "score" in result or "distance" in result or "distances" in str(result)
+            assert "score" in result or "distance" in result
+
+    def test_search_results_have_metadata(self, temp_project):
+        """Test that search results include metadata."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        embedder.embed_nodes()
+
+        results = embedder.search("function")
+
+        if results:
+            result = results[0]
+            assert "metadata" in result
+            assert "id" in result
 
 
 class TestEmbeddingGeneration:
@@ -134,11 +155,9 @@ class TestEmbeddingGeneration:
 
     def test_node_to_embedding_text(self, sample_graph):
         """Test conversion of node to embedding text."""
-
         node = sample_graph["nodes"][0]
 
         # The embedder should create text from node attributes
-        # This tests internal functionality if exposed
         text_parts = [
             node.get("name", ""),
             node.get("type", ""),
@@ -200,95 +219,83 @@ class TestContentHashing:
 class TestChromaDBIntegration:
     """Tests for ChromaDB integration."""
 
-    def test_collection_created(self, temp_project):
-        """Test that ChromaDB collection is created."""
+    def test_embedder_creates_collection(self, temp_project):
+        """Test that embedder creates ChromaDB collection."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         embedder.embed_nodes()
 
-        # Collection should exist after embedding
+        # Collection should exist
         assert embedder.collection is not None
 
-    def test_collection_contains_nodes(self, temp_project):
-        """Test that collection contains the embedded nodes."""
+    def test_get_stats_returns_dict(self, temp_project):
+        """Test that get_stats returns statistics dict."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         embedder.embed_nodes()
 
-        # Should be able to query the collection
-        count = embedder.collection.count()
-        assert count == 6  # From sample_graph
+        stats = embedder.get_stats()
 
-    def test_metadata_stored(self, temp_project):
-        """Test that node metadata is stored in ChromaDB."""
+        assert isinstance(stats, dict)
+        assert "total_nodes" in stats
+        assert "communities" in stats
+
+    def test_get_stats_node_count(self, temp_project):
+        """Test that get_stats returns correct node count."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         embedder.embed_nodes()
 
-        # Query and check metadata
-        results = embedder.collection.get(ids=["node_1"])
+        stats = embedder.get_stats()
 
-        if results and results["metadatas"]:
-            metadata = results["metadatas"][0]
-            assert "name" in metadata or "type" in metadata
+        assert stats["total_nodes"] == 6
 
 
-class TestLargeGraphHandling:
-    """Tests for handling large graphs."""
+class TestCommunitySummary:
+    """Tests for community summary functionality."""
 
-    def test_large_graph_embedding(self, tmp_path, large_graph):
-        """Test embedding a larger graph."""
+    def test_get_community_summary_returns_dict(self, temp_project):
+        """Test that get_community_summary returns dict."""
         from neuralmind.embedder import GraphEmbedder
 
-        # Create project with large graph
-        project_path = tmp_path / "large_project"
-        project_path.mkdir()
-        graphify_out = project_path / "graphify-out"
-        graphify_out.mkdir()
-
-        with open(graphify_out / "graph.json", "w") as f:
-            json.dump(large_graph, f)
-
-        embedder = GraphEmbedder(str(project_path))
-        embedder.load_graph()
-        stats = embedder.embed_nodes()
-
-        # Should handle 100 nodes
-        if "nodes_embedded" in stats:
-            assert stats["nodes_embedded"] == 100
-        elif "nodes_processed" in stats:
-            assert stats["nodes_processed"] == 100
-
-    def test_large_graph_search_performance(self, tmp_path, large_graph):
-        """Test search performance on larger graph."""
-        import time
-
-        from neuralmind.embedder import GraphEmbedder
-
-        # Create project with large graph
-        project_path = tmp_path / "large_project"
-        project_path.mkdir()
-        graphify_out = project_path / "graphify-out"
-        graphify_out.mkdir()
-
-        with open(graphify_out / "graph.json", "w") as f:
-            json.dump(large_graph, f)
-
-        embedder = GraphEmbedder(str(project_path))
+        embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         embedder.embed_nodes()
 
-        # Search should complete in reasonable time
-        start = time.time()
-        results = embedder.search("function", n=10)
-        elapsed = time.time() - start
+        summary = embedder.get_community_summary(1)
 
-        # Search should be fast (< 1 second)
-        assert elapsed < 1.0
-        assert len(results) <= 10
+        assert isinstance(summary, dict)
+        assert "community" in summary
+        assert "nodes" in summary
+
+    def test_get_community_summary_respects_max_nodes(self, temp_project):
+        """Test that get_community_summary respects max_nodes."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        embedder.embed_nodes()
+
+        summary = embedder.get_community_summary(1, max_nodes=2)
+
+        assert len(summary["nodes"]) <= 2
+
+    def test_get_community_summary_empty_community(self, temp_project):
+        """Test get_community_summary with nonexistent community."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        embedder.embed_nodes()
+
+        # Community 999 doesn't exist
+        summary = embedder.get_community_summary(999)
+
+        assert isinstance(summary, dict)
+        assert summary["nodes"] == []

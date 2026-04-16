@@ -5,6 +5,7 @@ import tempfile
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -17,48 +18,66 @@ def sample_graph() -> dict[str, Any]:
             {
                 "id": "node_1",
                 "name": "authenticate_user",
+                "label": "authenticate_user",
                 "type": "function",
+                "file_type": "function",
                 "file_path": "auth/handlers.py",
+                "source_file": "auth/handlers.py",
                 "description": "Validates user credentials and returns auth token",
                 "community": 1,
             },
             {
                 "id": "node_2",
                 "name": "hash_password",
+                "label": "hash_password",
                 "type": "function",
+                "file_type": "function",
                 "file_path": "auth/crypto.py",
+                "source_file": "auth/crypto.py",
                 "description": "Securely hashes passwords using bcrypt",
                 "community": 1,
             },
             {
                 "id": "node_3",
                 "name": "User",
+                "label": "User",
                 "type": "class",
+                "file_type": "class",
                 "file_path": "models/user.py",
+                "source_file": "models/user.py",
                 "description": "User model with authentication fields",
                 "community": 1,
             },
             {
                 "id": "node_4",
                 "name": "create_task",
+                "label": "create_task",
                 "type": "function",
+                "file_type": "function",
                 "file_path": "tasks/handlers.py",
+                "source_file": "tasks/handlers.py",
                 "description": "Creates a new task in the database",
                 "community": 2,
             },
             {
                 "id": "node_5",
                 "name": "Task",
+                "label": "Task",
                 "type": "class",
+                "file_type": "class",
                 "file_path": "models/task.py",
+                "source_file": "models/task.py",
                 "description": "Task model with status and assignment",
                 "community": 2,
             },
             {
                 "id": "node_6",
                 "name": "api_router",
+                "label": "api_router",
                 "type": "function",
+                "file_type": "function",
                 "file_path": "api/routes.py",
+                "source_file": "api/routes.py",
                 "description": "Main API router with all endpoints",
                 "community": 3,
             },
@@ -186,6 +205,77 @@ def mock_chromadb(mocker):
 
 
 @pytest.fixture
+def mock_embedder(temp_project, sample_graph):
+    """Create a mock embedder with all required attributes and methods."""
+    mock = MagicMock()
+    mock.project_path = temp_project
+    mock.graph_path = temp_project / "graphify-out" / "graph.json"
+    mock.nodes = sample_graph["nodes"]
+    mock.edges = sample_graph["edges"]
+    mock.graph = sample_graph
+
+    # Mock get_stats
+    mock.get_stats.return_value = {
+        "total_nodes": 6,
+        "communities": 3,
+        "community_distribution": {1: 3, 2: 2, 3: 1},
+        "db_path": str(temp_project / "graphify-out" / "neuralmind_db"),
+    }
+
+    # Mock search results
+    mock.search.return_value = [
+        {
+            "id": "node_1",
+            "document": "authenticate_user function",
+            "metadata": {
+                "label": "authenticate_user",
+                "file_type": "function",
+                "source_file": "auth/handlers.py",
+                "community": 1,
+            },
+            "distance": 0.1,
+            "score": 0.9,
+        },
+        {
+            "id": "node_2",
+            "document": "hash_password function",
+            "metadata": {
+                "label": "hash_password",
+                "file_type": "function",
+                "source_file": "auth/crypto.py",
+                "community": 1,
+            },
+            "distance": 0.2,
+            "score": 0.8,
+        },
+    ]
+
+    # Mock get_community_summary
+    def get_community_summary(community_id, max_nodes=20):
+        nodes_in_community = [
+            n for n in sample_graph["nodes"] if n.get("community") == community_id
+        ]
+        return {
+            "community": community_id,
+            "node_count": len(nodes_in_community),
+            "type_summary": "functions, classes",
+            "nodes": [
+                {
+                    "id": n["id"],
+                    "label": n.get("label", n.get("name", "unknown")),
+                    "file_type": n.get("file_type", "unknown"),
+                    "source_file": n.get("source_file", ""),
+                }
+                for n in nodes_in_community[:max_nodes]
+            ],
+        }
+
+    mock.get_community_summary.side_effect = get_community_summary
+
+    return mock
+
+
+@pytest.fixture
 def large_graph() -> dict[str, Any]:
     """Create a larger graph for performance testing."""
     nodes = []
@@ -208,8 +298,11 @@ def large_graph() -> dict[str, Any]:
                 {
                     "id": node_id,
                     "name": f"function_{community_id}_{i}",
+                    "label": f"function_{community_id}_{i}",
                     "type": "function",
+                    "file_type": "function",
                     "file_path": f"module_{community_id}/file_{i}.py",
+                    "source_file": f"module_{community_id}/file_{i}.py",
                     "description": f"Function {i} in module {community_id}",
                     "community": community_id,
                 }
