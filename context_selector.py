@@ -92,7 +92,13 @@ class ContextSelector:
             project_path: Path to project root (for reading metadata files)
         """
         self.embedder = embedder
-        self.project_path = Path(project_path) if project_path else embedder.project_path
+        # Handle project_path - can be string, Path, or get from embedder
+        if project_path and project_path is not True:
+            self.project_path = Path(project_path) if isinstance(project_path, str) else project_path
+        elif hasattr(embedder, 'project_path') and embedder.project_path:
+            self.project_path = Path(embedder.project_path) if isinstance(embedder.project_path, str) else embedder.project_path
+        else:
+            self.project_path = Path.cwd()
         
         # Cache for layer content
         self._l0_cache: Optional[str] = None
