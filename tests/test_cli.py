@@ -3,10 +3,6 @@
 import json
 import subprocess
 import sys
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 
 class TestCLIHelp:
@@ -82,7 +78,14 @@ class TestCLIBuild:
 
         # Force rebuild
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "build", str(temp_project), "--force"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "build",
+                str(temp_project),
+                "--force",
+            ],
             capture_output=True,
             text=True,
         )
@@ -100,7 +103,11 @@ class TestCLIBuild:
         )
 
         # Should fail with error
-        assert result.returncode != 0 or "error" in result.stderr.lower() or "not found" in result.stderr.lower()
+        assert (
+            result.returncode != 0
+            or "error" in result.stderr.lower()
+            or "not found" in result.stderr.lower()
+        )
 
 
 class TestCLIQuery:
@@ -117,7 +124,14 @@ class TestCLIQuery:
 
         # Query
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "query", str(temp_project), "How does authentication work?"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "query",
+                str(temp_project),
+                "How does authentication work?",
+            ],
             capture_output=True,
             text=True,
         )
@@ -136,7 +150,14 @@ class TestCLIQuery:
 
         # Query
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "query", str(temp_project), "authentication"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "query",
+                str(temp_project),
+                "authentication",
+            ],
             capture_output=True,
             text=True,
         )
@@ -151,16 +172,28 @@ class TestCLIQuery:
         db_path = temp_project / "graphify-out" / "neuralmind_db"
         if db_path.exists():
             import shutil
+
             shutil.rmtree(db_path)
 
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "query", str(temp_project), "test"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "query",
+                str(temp_project),
+                "test",
+            ],
             capture_output=True,
             text=True,
         )
 
         # Should fail or show error
-        assert result.returncode != 0 or "build" in result.stderr.lower() or "error" in result.stderr.lower()
+        assert (
+            result.returncode != 0
+            or "build" in result.stderr.lower()
+            or "error" in result.stderr.lower()
+        )
 
 
 class TestCLIWakeup:
@@ -219,7 +252,14 @@ class TestCLISearch:
 
         # Search
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "search", str(temp_project), "authentication"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "search",
+                str(temp_project),
+                "authentication",
+            ],
             capture_output=True,
             text=True,
         )
@@ -237,7 +277,16 @@ class TestCLISearch:
 
         # Search with limit
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "search", str(temp_project), "function", "--limit", "2"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "search",
+                str(temp_project),
+                "function",
+                "--limit",
+                "2",
+            ],
             capture_output=True,
             text=True,
         )
@@ -331,7 +380,12 @@ class TestCLIBenchmark:
         if result.returncode == 0:
             # Should show some metrics
             output = result.stdout.lower()
-            assert "token" in output or "reduction" in output or "x" in output or len(output) > 0
+            assert (
+                "token" in output
+                or "reduction" in output
+                or "x" in output
+                or len(output) > 0
+            )
 
 
 class TestCLIExitCodes:
@@ -427,7 +481,14 @@ class TestCLIOutput:
         )
 
         result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "stats", str(temp_project), "--json"],
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "stats",
+                str(temp_project),
+                "--json",
+            ],
             capture_output=True,
             text=True,
         )

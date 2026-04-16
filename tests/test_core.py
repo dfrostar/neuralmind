@@ -1,8 +1,6 @@
 """Tests for NeuralMind core functionality."""
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -104,7 +102,7 @@ class TestNeuralMindWakeup:
 
     def test_wakeup_returns_context_result(self, temp_project):
         """Test that wakeup returns a ContextResult."""
-        from neuralmind import NeuralMind, ContextResult
+        from neuralmind import ContextResult, NeuralMind
 
         mind = NeuralMind(str(temp_project))
         mind.build()
@@ -158,7 +156,7 @@ class TestNeuralMindQuery:
 
     def test_query_returns_context_result(self, temp_project):
         """Test that query returns a ContextResult."""
-        from neuralmind import NeuralMind, ContextResult
+        from neuralmind import ContextResult, NeuralMind
 
         mind = NeuralMind(str(temp_project))
         mind.build()
@@ -192,7 +190,9 @@ class TestNeuralMindQuery:
         result = mind.query("How does authentication work?")
 
         # Should include auth-related content
-        assert "authenticat" in result.context.lower() or "auth" in result.context.lower()
+        assert (
+            "authenticat" in result.context.lower() or "auth" in result.context.lower()
+        )
 
     def test_query_calculates_reduction_ratio(self, temp_project):
         """Test that query calculates reduction ratio."""

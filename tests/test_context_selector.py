@@ -1,10 +1,6 @@
 """Tests for NeuralMind context selector functionality."""
 
-import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-import pytest
 
 
 class TestContextSelector:
@@ -12,8 +8,8 @@ class TestContextSelector:
 
     def test_init_with_embedder_and_graph(self, temp_project):
         """Test context selector initialization."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -28,8 +24,8 @@ class TestLayer0Identity:
 
     def test_l0_returns_identity(self, temp_project):
         """Test that L0 returns project identity."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -44,8 +40,8 @@ class TestLayer0Identity:
 
     def test_l0_loads_from_readme(self, temp_project):
         """Test that L0 loads from README.md."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -59,8 +55,8 @@ class TestLayer0Identity:
 
     def test_l0_loads_from_mempalace_yaml(self, temp_project_with_config):
         """Test that L0 prefers mempalace.yaml over README."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project_with_config))
         graph_data = embedder.load_graph()
@@ -74,8 +70,8 @@ class TestLayer0Identity:
 
     def test_l0_loads_from_claude_md(self, temp_project_with_claude_md):
         """Test that L0 loads from CLAUDE.md."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project_with_claude_md))
         graph_data = embedder.load_graph()
@@ -85,12 +81,14 @@ class TestLayer0Identity:
         text, _ = selector.get_l0_identity()
 
         # Should contain content from CLAUDE.md
-        assert "TestApp" in text or "AI coding" in text.lower() or "test" in text.lower()
+        assert (
+            "TestApp" in text or "AI coding" in text.lower() or "test" in text.lower()
+        )
 
     def test_l0_within_token_budget(self, temp_project):
         """Test that L0 stays within token budget (~100)."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -108,8 +106,8 @@ class TestLayer1Summary:
 
     def test_l1_returns_summary(self, temp_project):
         """Test that L1 returns architecture summary."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -124,8 +122,8 @@ class TestLayer1Summary:
 
     def test_l1_includes_communities(self, temp_project):
         """Test that L1 includes community summaries."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -136,18 +134,20 @@ class TestLayer1Summary:
 
         # Should mention communities or modules
         text_lower = text.lower()
-        assert any([
-            "authentication" in text_lower,
-            "task" in text_lower,
-            "api" in text_lower,
-            "module" in text_lower,
-            "component" in text_lower,
-        ])
+        assert any(
+            [
+                "authentication" in text_lower,
+                "task" in text_lower,
+                "api" in text_lower,
+                "module" in text_lower,
+                "component" in text_lower,
+            ]
+        )
 
     def test_l1_within_token_budget(self, temp_project):
         """Test that L1 stays within token budget (~500)."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -165,8 +165,8 @@ class TestLayer2OnDemand:
 
     def test_l2_returns_query_context(self, temp_project):
         """Test that L2 returns query-relevant context."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -181,8 +181,8 @@ class TestLayer2OnDemand:
 
     def test_l2_loads_relevant_communities(self, temp_project):
         """Test that L2 loads communities relevant to query."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -197,8 +197,8 @@ class TestLayer2OnDemand:
 
     def test_l2_content_relevant_to_query(self, temp_project):
         """Test that L2 content is relevant to the query."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -210,12 +210,14 @@ class TestLayer2OnDemand:
         if text:  # May be empty for some queries
             text_lower = text.lower()
             # Should contain auth-related content
-            assert "auth" in text_lower or "user" in text_lower or "function" in text_lower
+            assert (
+                "auth" in text_lower or "user" in text_lower or "function" in text_lower
+            )
 
     def test_l2_within_token_budget(self, temp_project):
         """Test that L2 stays within token budget (~200-500)."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -233,8 +235,8 @@ class TestLayer3Search:
 
     def test_l3_returns_search_results(self, temp_project):
         """Test that L3 returns search results."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -249,8 +251,8 @@ class TestLayer3Search:
 
     def test_l3_includes_search_hits(self, temp_project):
         """Test that L3 includes semantic search hits."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -264,8 +266,8 @@ class TestLayer3Search:
 
     def test_l3_respects_n_parameter(self, temp_project):
         """Test that L3 respects the n (limit) parameter."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -278,8 +280,8 @@ class TestLayer3Search:
 
     def test_l3_within_token_budget(self, temp_project):
         """Test that L3 stays within token budget (~200-500)."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -297,8 +299,8 @@ class TestWakeupContext:
 
     def test_wakeup_uses_l0_l1_only(self, temp_project):
         """Test that wake-up context uses only L0 and L1."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -314,8 +316,8 @@ class TestWakeupContext:
 
     def test_wakeup_token_budget(self, temp_project):
         """Test that wake-up stays within ~600 token budget."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -335,8 +337,8 @@ class TestQueryContext:
 
     def test_query_uses_all_layers(self, temp_project):
         """Test that query context can use all layers."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -351,8 +353,8 @@ class TestQueryContext:
 
     def test_query_includes_relevant_content(self, temp_project):
         """Test that query context includes relevant content."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -363,12 +365,16 @@ class TestQueryContext:
 
         # Should include auth-related content
         context_lower = result.context.lower()
-        assert "auth" in context_lower or "user" in context_lower or len(result.context) > 0
+        assert (
+            "auth" in context_lower
+            or "user" in context_lower
+            or len(result.context) > 0
+        )
 
     def test_query_calculates_reduction_ratio(self, temp_project):
         """Test that query context calculates reduction ratio."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -387,7 +393,6 @@ class TestTokenEstimation:
 
     def test_token_estimation_reasonable(self, temp_project):
         """Test that token estimation is reasonable."""
-        from neuralmind.context_selector import ContextSelector
 
         # Rough estimate: 4 chars per token
         test_text = "This is a test string with about forty characters."
@@ -408,8 +413,8 @@ class TestContextResult:
 
     def test_context_result_has_all_fields(self, temp_project):
         """Test that ContextResult has all required fields."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -431,8 +436,8 @@ class TestTokenBudget:
 
     def test_token_budget_has_all_layers(self, temp_project):
         """Test that TokenBudget tracks all layers."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()
@@ -450,8 +455,8 @@ class TestTokenBudget:
 
     def test_token_budget_total_is_sum(self, temp_project):
         """Test that budget total is sum of layers."""
-        from neuralmind.embedder import GraphEmbedder
         from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         graph_data = embedder.load_graph()

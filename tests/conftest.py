@@ -1,16 +1,16 @@
 """Pytest fixtures for NeuralMind tests."""
 
 import json
-import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Dict, Any, Generator
+from typing import Any
 
 import pytest
 
 
 @pytest.fixture
-def sample_graph() -> Dict[str, Any]:
+def sample_graph() -> dict[str, Any]:
     """Create a sample knowledge graph for testing."""
     return {
         "nodes": [
@@ -91,27 +91,26 @@ def sample_graph() -> Dict[str, Any]:
 
 
 @pytest.fixture
-def temp_project(sample_graph: Dict[str, Any]) -> Generator[Path, None, None]:
+def temp_project(sample_graph: dict[str, Any]) -> Generator[Path, None, None]:
     """Create a temporary project directory with graph.json."""
     with tempfile.TemporaryDirectory() as tmpdir:
         project_path = Path(tmpdir)
-        
+
         # Create graphify-out directory
         graphify_out = project_path / "graphify-out"
         graphify_out.mkdir(parents=True)
-        
+
         # Write graph.json
         graph_path = graphify_out / "graph.json"
         with open(graph_path, "w") as f:
             json.dump(sample_graph, f, indent=2)
-        
+
         # Create README.md
         readme_path = project_path / "README.md"
         readme_path.write_text(
-            "# Test Project\n\n"
-            "A test project for NeuralMind unit tests.\n"
+            "# Test Project\n\nA test project for NeuralMind unit tests.\n"
         )
-        
+
         yield project_path
 
 
@@ -125,12 +124,13 @@ def temp_project_with_config(temp_project: Path) -> Path:
             "wing": "test-app",
         }
     }
-    
+
     config_path = temp_project / "mempalace.yaml"
     import yaml
+
     with open(config_path, "w") as f:
         yaml.dump(config, f)
-    
+
     return temp_project
 
 
@@ -146,7 +146,7 @@ def temp_project_with_claude_md(temp_project: Path) -> Path:
         "- Task management\n"
         "- REST API\n"
     )
-    
+
     return temp_project
 
 
@@ -163,7 +163,7 @@ def mock_chromadb(mocker):
     mock_client = mocker.MagicMock()
     mock_collection = mocker.MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection
-    
+
     # Mock query results
     mock_collection.query.return_value = {
         "ids": [["node_1", "node_2"]],
@@ -181,46 +181,52 @@ def mock_chromadb(mocker):
             ]
         ],
     }
-    
+
     mocker.patch("chromadb.PersistentClient", return_value=mock_client)
-    
+
     return mock_client, mock_collection
 
 
 @pytest.fixture
-def large_graph() -> Dict[str, Any]:
+def large_graph() -> dict[str, Any]:
     """Create a larger graph for performance testing."""
     nodes = []
     edges = []
     communities = []
-    
+
     # Create 100 nodes across 10 communities
     for community_id in range(1, 11):
-        communities.append({
-            "id": community_id,
-            "name": f"Module_{community_id}",
-            "description": f"Module {community_id} description",
-        })
-        
+        communities.append(
+            {
+                "id": community_id,
+                "name": f"Module_{community_id}",
+                "description": f"Module {community_id} description",
+            }
+        )
+
         for i in range(10):
             node_id = f"node_{community_id}_{i}"
-            nodes.append({
-                "id": node_id,
-                "name": f"function_{community_id}_{i}",
-                "type": "function",
-                "file_path": f"module_{community_id}/file_{i}.py",
-                "description": f"Function {i} in module {community_id}",
-                "community": community_id,
-            })
-            
+            nodes.append(
+                {
+                    "id": node_id,
+                    "name": f"function_{community_id}_{i}",
+                    "type": "function",
+                    "file_path": f"module_{community_id}/file_{i}.py",
+                    "description": f"Function {i} in module {community_id}",
+                    "community": community_id,
+                }
+            )
+
             # Add some edges
             if i > 0:
-                edges.append({
-                    "source": f"node_{community_id}_{i-1}",
-                    "target": node_id,
-                    "type": "calls",
-                })
-    
+                edges.append(
+                    {
+                        "source": f"node_{community_id}_{i-1}",
+                        "target": node_id,
+                        "type": "calls",
+                    }
+                )
+
     return {
         "nodes": nodes,
         "edges": edges,

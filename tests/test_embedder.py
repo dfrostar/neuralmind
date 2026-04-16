@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -127,7 +126,9 @@ class TestGraphEmbedder:
         if results:
             # Results should have some score/distance indicator
             result = results[0]
-            assert "score" in result or "distance" in result or "distances" in str(result)
+            assert (
+                "score" in result or "distance" in result or "distances" in str(result)
+            )
 
 
 class TestEmbeddingGeneration:
@@ -135,7 +136,6 @@ class TestEmbeddingGeneration:
 
     def test_node_to_embedding_text(self, sample_graph):
         """Test conversion of node to embedding text."""
-        from neuralmind.embedder import GraphEmbedder
 
         node = sample_graph["nodes"][0]
 
@@ -270,6 +270,7 @@ class TestLargeGraphHandling:
     def test_large_graph_search_performance(self, tmp_path, large_graph):
         """Test search performance on larger graph."""
         import time
+
         from neuralmind.embedder import GraphEmbedder
 
         # Create project with large graph

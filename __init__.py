@@ -23,9 +23,9 @@ Token Budget:
 - Leaves 95%+ context free for actual work
 """
 
+from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder
-from .context_selector import ContextSelector
 
 __version__ = "0.1.0"
 __all__ = ["NeuralMind", "GraphEmbedder", "ContextSelector"]
