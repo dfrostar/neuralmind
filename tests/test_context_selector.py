@@ -1,8 +1,6 @@
 """Tests for NeuralMind context selector functionality."""
 
 
-
-
 class TestContextSelector:
     """Tests for ContextSelector class."""
 
@@ -81,9 +79,7 @@ class TestLayer0Identity:
         text, _ = selector.get_l0_identity()
 
         # Should contain content from CLAUDE.md
-        assert (
-            "TestApp" in text or "AI coding" in text.lower() or "test" in text.lower()
-        )
+        assert "TestApp" in text or "AI coding" in text.lower() or "test" in text.lower()
 
     def test_l0_within_token_budget(self, temp_project):
         """Test that L0 stays within token budget (~100)."""
@@ -210,9 +206,7 @@ class TestLayer2OnDemand:
         if text:  # May be empty for some queries
             text_lower = text.lower()
             # Should contain auth-related content
-            assert (
-                "auth" in text_lower or "user" in text_lower or "function" in text_lower
-            )
+            assert "auth" in text_lower or "user" in text_lower or "function" in text_lower
 
     def test_l2_within_token_budget(self, temp_project):
         """Test that L2 stays within token budget (~200-500)."""
@@ -365,11 +359,7 @@ class TestQueryContext:
 
         # Should include auth-related content
         context_lower = result.context.lower()
-        assert (
-            "auth" in context_lower
-            or "user" in context_lower
-            or len(result.context) > 0
-        )
+        assert "auth" in context_lower or "user" in context_lower or len(result.context) > 0
 
     def test_query_calculates_reduction_ratio(self, temp_project):
         """Test that query context calculates reduction ratio."""

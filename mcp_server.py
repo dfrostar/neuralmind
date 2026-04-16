@@ -35,9 +35,7 @@ try:
     MCP_AVAILABLE = True
 except ImportError:
     MCP_AVAILABLE = False
-    print(
-        "Warning: MCP SDK not installed. Install with: pip install mcp", file=sys.stderr
-    )
+    print("Warning: MCP SDK not installed. Install with: pip install mcp", file=sys.stderr)
 
 # Add parent to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -239,15 +237,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a tool call and return the result as JSON string."""
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
-        "neuralmind_query": lambda args: tool_query(
-            args["project_path"], args["question"]
-        ),
+        "neuralmind_query": lambda args: tool_query(args["project_path"], args["question"]),
         "neuralmind_search": lambda args: tool_search(
             args["project_path"], args["query"], args.get("n", 10)
         ),
-        "neuralmind_build": lambda args: tool_build(
-            args["project_path"], args.get("force", False)
-        ),
+        "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
     }
@@ -283,9 +277,7 @@ async def run_mcp_server():
         return [TextContent(type="text", text=result)]
 
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(
-            read_stream, write_stream, server.create_initialization_options()
-        )
+        await server.run(read_stream, write_stream, server.create_initialization_options())
 
 
 def main():

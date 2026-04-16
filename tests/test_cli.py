@@ -380,12 +380,7 @@ class TestCLIBenchmark:
         if result.returncode == 0:
             # Should show some metrics
             output = result.stdout.lower()
-            assert (
-                "token" in output
-                or "reduction" in output
-                or "x" in output
-                or len(output) > 0
-            )
+            assert "token" in output or "reduction" in output or "x" in output or len(output) > 0
 
 
 class TestCLIExitCodes:

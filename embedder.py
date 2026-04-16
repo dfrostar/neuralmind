@@ -204,16 +204,12 @@ class GraphEmbedder:
 
             # Process in batches of 100
             if len(batch_ids) >= 100:
-                self.collection.upsert(
-                    ids=batch_ids, documents=batch_docs, metadatas=batch_metas
-                )
+                self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
                 batch_ids, batch_docs, batch_metas = [], [], []
 
         # Final batch
         if batch_ids:
-            self.collection.upsert(
-                ids=batch_ids, documents=batch_docs, metadatas=batch_metas
-            )
+            self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
 
         print(f"Embedding complete: {stats}")
         return stats
@@ -260,15 +256,9 @@ class GraphEmbedder:
                 formatted.append(
                     {
                         "id": node_id,
-                        "document": (
-                            results["documents"][0][i] if results["documents"] else ""
-                        ),
-                        "metadata": (
-                            results["metadatas"][0][i] if results["metadatas"] else {}
-                        ),
-                        "distance": (
-                            results["distances"][0][i] if results["distances"] else 0
-                        ),
+                        "document": (results["documents"][0][i] if results["documents"] else ""),
+                        "metadata": (results["metadatas"][0][i] if results["metadatas"] else {}),
+                        "distance": (results["distances"][0][i] if results["distances"] else 0),
                         "score": 1
                         - (
                             results["distances"][0][i] if results["distances"] else 0

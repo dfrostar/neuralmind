@@ -107,9 +107,7 @@ def temp_project(sample_graph: dict[str, Any]) -> Generator[Path, None, None]:
 
         # Create README.md
         readme_path = project_path / "README.md"
-        readme_path.write_text(
-            "# Test Project\n\nA test project for NeuralMind unit tests.\n"
-        )
+        readme_path.write_text("# Test Project\n\nA test project for NeuralMind unit tests.\n")
 
         yield project_path
 

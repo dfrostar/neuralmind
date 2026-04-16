@@ -126,9 +126,7 @@ class TestGraphEmbedder:
         if results:
             # Results should have some score/distance indicator
             result = results[0]
-            assert (
-                "score" in result or "distance" in result or "distances" in str(result)
-            )
+            assert "score" in result or "distance" in result or "distances" in str(result)
 
 
 class TestEmbeddingGeneration:

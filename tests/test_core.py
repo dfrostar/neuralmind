@@ -190,9 +190,7 @@ class TestNeuralMindQuery:
         result = mind.query("How does authentication work?")
 
         # Should include auth-related content
-        assert (
-            "authenticat" in result.context.lower() or "auth" in result.context.lower()
-        )
+        assert "authenticat" in result.context.lower() or "auth" in result.context.lower()
 
     def test_query_calculates_reduction_ratio(self, temp_project):
         """Test that query calculates reduction ratio."""

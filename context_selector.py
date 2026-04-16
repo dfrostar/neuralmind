@@ -146,9 +146,7 @@ class ContextSelector:
                 with open(mempalace_yaml) as f:
                     data = yaml.safe_load(f)
                     if data:
-                        name = data.get(
-                            "wing", data.get("project", {}).get("name", name)
-                        )
+                        name = data.get("wing", data.get("project", {}).get("name", name))
                         description = data.get("description", "")
             except Exception:
                 pass
@@ -229,21 +227,17 @@ class ContextSelector:
         if community_dist:
             parts.append("### Code Clusters")
             # Sort by size, show top 10
-            sorted_communities = sorted(
-                community_dist.items(), key=lambda x: x[1], reverse=True
-            )[:10]
+            sorted_communities = sorted(community_dist.items(), key=lambda x: x[1], reverse=True)[
+                :10
+            ]
 
             for comm_id, count in sorted_communities:
                 # Get sample nodes from this community
-                comm_summary = self.embedder.get_community_summary(
-                    int(comm_id), max_nodes=5
-                )
+                comm_summary = self.embedder.get_community_summary(int(comm_id), max_nodes=5)
                 type_info = comm_summary.get("type_summary", "mixed")
                 sample_labels = [n["label"] for n in comm_summary.get("nodes", [])[:3]]
                 samples = ", ".join(sample_labels) if sample_labels else "various"
-                parts.append(
-                    f"- Cluster {comm_id} ({count} entities): {type_info} — {samples}"
-                )
+                parts.append(f"- Cluster {comm_id} ({count} entities): {type_info} — {samples}")
 
             parts.append("")
 
@@ -268,9 +262,7 @@ class ContextSelector:
         self._l1_cache = self._truncate_to_tokens("\n".join(parts), self.L1_MAX_TOKENS)
         return self._l1_cache
 
-    def get_l2_context(
-        self, query: str, max_communities: int = 3
-    ) -> tuple[str, list[int]]:
+    def get_l2_context(self, query: str, max_communities: int = 3) -> tuple[str, list[int]]:
         """
         Layer 2: On-demand context based on query.
         Load relevant communities/modules.
@@ -293,9 +285,9 @@ class ContextSelector:
                 community_scores[comm] = community_scores.get(comm, 0) + score
 
         # Get top communities
-        top_communities = sorted(
-            community_scores.items(), key=lambda x: x[1], reverse=True
-        )[:max_communities]
+        top_communities = sorted(community_scores.items(), key=lambda x: x[1], reverse=True)[
+            :max_communities
+        ]
 
         if not top_communities:
             return "", []
@@ -308,9 +300,7 @@ class ContextSelector:
             loaded_communities.append(comm_id)
 
             parts.append(f"### Cluster {comm_id} (relevance: {score:.2f})")
-            parts.append(
-                f"Contains: {comm_summary.get('type_summary', 'mixed entities')}"
-            )
+            parts.append(f"Contains: {comm_summary.get('type_summary', 'mixed entities')}")
             parts.append("")
 
             # List key entities
@@ -345,9 +335,7 @@ class ContextSelector:
             meta = result.get("metadata", {})
             score = result.get("score", 0)
 
-            parts.append(
-                f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f})"
-            )
+            parts.append(f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f})")
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
             parts.append("")

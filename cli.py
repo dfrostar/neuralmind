@@ -46,9 +46,7 @@ def cmd_query(args):
         print(json.dumps(output, indent=2))
     else:
         print(f"Query: {args.question}")
-        print(
-            f"Tokens: {result.budget.total} ({result.reduction_ratio:.1f}x reduction)"
-        )
+        print(f"Tokens: {result.budget.total} ({result.reduction_ratio:.1f}x reduction)")
         print("=" * 60)
         print(result.context)
         print("=" * 60)
@@ -94,9 +92,7 @@ def cmd_search(args):
         print(f"Search: {args.query}")
         for i, r in enumerate(results, 1):
             meta = r.get("metadata", {})
-            print(
-                f"{i}. {meta.get('label', 'unknown')} (score: {r.get('score', 0):.2f})"
-            )
+            print(f"{i}. {meta.get('label', 'unknown')} (score: {r.get('score', 0):.2f})")
             print(f"   File: {meta.get('source_file', 'unknown')}")
 
 
@@ -122,9 +118,7 @@ def cmd_stats(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="NeuralMind - Adaptive Neural Knowledge System"
-    )
+    parser = argparse.ArgumentParser(description="NeuralMind - Adaptive Neural Knowledge System")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
