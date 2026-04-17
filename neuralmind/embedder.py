@@ -268,6 +268,68 @@ class GraphEmbedder:
 
         return formatted
 
+    def get_file_nodes(self, source_file: str) -> list[dict]:
+        """Return all graph nodes whose source_file matches the given path.
+
+        Path matching is flexible: we try exact match, then a normalized
+        match that handles windows/posix slashes and the repo-relative
+        vs absolute variance that ships across graph builders.
+
+        Args:
+            source_file: File path (absolute or relative to project root)
+
+        Returns:
+            List of node dicts (empty if graph not loaded or no matches)
+        """
+        if not self.nodes:
+            if not self.load_graph():
+                return []
+
+        # Build multiple candidate keys to match against node.source_file
+        p = str(source_file).replace("\\", "/").lstrip("./")
+        candidates = {p, p.replace("/", "\\")}
+        # If it's under project_path, also try the relative form
+        try:
+            rel = str(Path(source_file).resolve().relative_to(self.project_path.resolve()))
+            candidates.add(rel)
+            candidates.add(rel.replace("\\", "/"))
+            candidates.add(rel.replace("/", "\\"))
+        except Exception:
+            pass
+
+        matched = [
+            n for n in self.nodes
+            if any(c == n.get("source_file", "") for c in candidates)
+        ]
+        return matched
+
+    def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
+        """Return edges where either endpoint belongs to the given file.
+
+        Args:
+            source_file: File path to filter by
+            node_ids: Optional pre-computed set of node ids for this file
+                      (pass in from get_file_nodes to avoid recomputation)
+
+        Returns:
+            List of edge dicts
+        """
+        if not self.edges:
+            if not self.load_graph():
+                return []
+
+        if node_ids is None:
+            node_ids = {n["id"] for n in self.get_file_nodes(source_file)}
+
+        if not node_ids:
+            return []
+
+        return [
+            e for e in self.edges
+            if (e.get("_src") in node_ids or e.get("_tgt") in node_ids
+                or e.get("source") in node_ids or e.get("target") in node_ids)
+        ]
+
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict:
         """
         Get a summary of nodes in a community for context injection.

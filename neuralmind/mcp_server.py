@@ -129,6 +129,18 @@ def tool_benchmark(project_path: str) -> dict[str, Any]:
     return mind.benchmark()
 
 
+def tool_skeleton(project_path: str, file_path: str) -> dict[str, Any]:
+    """Return a graph-backed skeleton of a file (functions + rationales + call graph)."""
+    mind = get_mind(project_path)
+    skeleton = mind.skeleton(file_path)
+    return {
+        "file": file_path,
+        "skeleton": skeleton,
+        "chars": len(skeleton),
+        "indexed": bool(skeleton),
+    }
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -230,6 +242,28 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_skeleton",
+        "description": (
+            "Return a compact graph-backed view of a file (functions, rationales, "
+            "call graph, cross-file edges). Use INSTEAD of Read when exploring "
+            "how a file is structured — typically 5-15x cheaper than the raw source."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": "File path (absolute or project-relative) to skeleton",
+                },
+            },
+            "required": ["project_path", "file_path"],
+        },
+    },
 ]
 
 
@@ -244,6 +278,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
+        "neuralmind_skeleton": lambda args: tool_skeleton(args["project_path"], args["file_path"]),
     }
 
     if name not in handlers:
