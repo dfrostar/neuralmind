@@ -1,17 +1,44 @@
+import logging
 import os
 import warnings
-import logging
 
-# Mute ChromaDB telemetry and Pydantic warnings
+# Mute ChromaDB telemetry and Pydantic warnings.
+#
+# ChromaDB 0.6.x has a posthog signature mismatch that spams stderr with
+# "Failed to send telemetry event ...: capture() takes 1 positional argument
+# but 3 were given" on every operation, even when telemetry is disabled via
+# Settings(anonymized_telemetry=False). The messages come through logger.error()
+# calls, so the loggers must be set to CRITICAL (not ERROR) to suppress them.
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY_DISABLED"] = "1"
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", module="chromadb")
 warnings.filterwarnings("ignore", module="posthog")
 
-# Suppress posthog logging errors if it still tries to ping
-logging.getLogger("posthog").setLevel(logging.ERROR)
-logging.getLogger("chromadb.telemetry").setLevel(logging.ERROR)
+# Suppress posthog/chromadb telemetry noise. Must be CRITICAL because the
+# "Failed to send telemetry event" messages are emitted as logger.error(),
+# and ERROR-level filter lets ERROR messages through.
+for _logger_name in (
+    "posthog",
+    "chromadb.telemetry",
+    "chromadb.telemetry.product",
+    "chromadb.telemetry.product.posthog",
+):
+    logging.getLogger(_logger_name).setLevel(logging.CRITICAL)
+
+# Belt-and-suspenders: monkey-patch chromadb's Posthog client capture() to be
+# a silent no-op. This defends against any chromadb version where the logger
+# hierarchy doesn't propagate as expected.
+try:
+    from chromadb.telemetry.product.posthog import Posthog as _ChromaPosthog
+
+    def _noop_capture(self, *args, **kwargs):  # pragma: no cover
+        return None
+
+    _ChromaPosthog.capture = _noop_capture
+except Exception:  # pragma: no cover
+    pass
 
 """
 NeuralMind - Adaptive Neural Knowledge System
