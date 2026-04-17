@@ -1,0 +1,67 @@
+name: Issue Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Label issues by keywords
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue || context.payload.pull_request;
+            const title = (issue.title || '').toLowerCase();
+            const body = (issue.body || '').toLowerCase();
+            const text = title + ' ' + body;
+            
+            const labels = [];
+            
+            // Bug detection
+            if (/bug|error|fail|crash|broken|not working|doesn't work/.test(text)) {
+              labels.push('bug');
+            }
+            
+            // Feature detection
+            if (/feature|enhance|improve|add|request|would be nice/.test(text)) {
+              labels.push('enhancement');
+            }
+            
+            // Documentation detection
+            if (/doc|readme|wiki|typo|spelling/.test(text)) {
+              labels.push('documentation');
+            }
+            
+            // Question detection
+            if (/how|what|why|question|help|confused/.test(text)) {
+              labels.push('question');
+            }
+            
+            // Performance detection
+            if (/slow|performance|speed|memory|optimize/.test(text)) {
+              labels.push('performance');
+            }
+            
+            // Security detection
+            if (/security|vulnerability|cve|exploit/.test(text)) {
+              labels.push('security');
+              labels.push('priority: high');
+            }
+            
+            if (labels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                labels: labels
+              });
+              console.log(`Added labels: ${labels.join(', ')}`);
+            }

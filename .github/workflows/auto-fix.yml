@@ -1,0 +1,63 @@
+name: Auto Fix
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  auto-fix:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools
+        run: |
+          pip install black ruff
+
+      - name: Run Black
+        run: black . --line-length 100
+
+      - name: Run Ruff fix
+        run: ruff check . --fix || true
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "style: auto-fix formatting with Black and Ruff"
+          title: "🔧 Auto-fix: Code formatting"
+          body: |
+            This PR was automatically created by the auto-fix workflow.
+            
+            Changes:
+            - Applied Black formatting (line-length 100)
+            - Applied Ruff auto-fixes
+            
+            Please review and merge if the changes look good.
+          branch: auto-fix/formatting
+          delete-branch: true
+          labels: |
+            automated
+            priority: low
