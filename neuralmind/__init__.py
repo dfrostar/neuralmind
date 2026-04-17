@@ -1,3 +1,18 @@
+import os
+import warnings
+import logging
+
+# Mute ChromaDB telemetry and Pydantic warnings
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", module="chromadb")
+warnings.filterwarnings("ignore", module="posthog")
+
+# Suppress posthog logging errors if it still tries to ping
+logging.getLogger("posthog").setLevel(logging.ERROR)
+logging.getLogger("chromadb.telemetry").setLevel(logging.ERROR)
+
 """
 NeuralMind - Adaptive Neural Knowledge System
 =============================================
