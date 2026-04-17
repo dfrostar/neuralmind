@@ -45,7 +45,7 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           commit-message: "style: auto-fix formatting with Black and Ruff"
           title: "🔧 Auto-fix: Code formatting"
           body: |
