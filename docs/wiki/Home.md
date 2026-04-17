@@ -1,86 +1,66 @@
-# Welcome to NeuralMind Wiki
+# 🧠 NeuralMind Wiki
 
-<div align="center">
-
-🧠 **Adaptive Neural Knowledge System for AI Code Understanding**
-
-*Achieve 40-70x token reduction when working with AI coding assistants*
-
-</div>
-
----
-
-## What is NeuralMind?
-
-NeuralMind is a Python library that creates intelligent, query-aware context from your codebase knowledge graphs. When working with AI coding assistants like Claude, GPT-4, or Cursor, context window limits are a fundamental challenge. Loading an entire codebase consumes 50,000+ tokens, leaving little room for meaningful conversation.
-
-NeuralMind solves this by implementing a **4-layer progressive disclosure architecture** that loads only what's relevant to your query—achieving massive token savings while maintaining deep understanding of your code.
+Welcome to the NeuralMind documentation!
 
 ## Quick Links
 
 | Page | Description |
 |------|-------------|
-| [Installation](Installation.md) | Detailed setup instructions for all platforms |
-| [CLI Reference](CLI-Reference.md) | Complete command-line interface documentation |
-| [API Reference](API-Reference.md) | Python API documentation with examples |
-| [Architecture](Architecture.md) | Deep dive into the 4-layer system |
-| [Integration Guide](Integration-Guide.md) | MCP, graphify, and tool integrations |
-| [Troubleshooting](Troubleshooting.md) | Common issues and solutions |
+| [Installation](Installation) | How to install NeuralMind |
+| [Usage Guide](Usage-Guide) | Complete usage guide with examples |
+| [CLI Reference](CLI-Reference) | All CLI commands |
+| [API Reference](API-Reference) | Python API documentation |
+| [Architecture](Architecture) | How the 4-layer system works |
+| [Integration Guide](Integration-Guide) | MCP, CI/CD, IDE setup |
+| [Troubleshooting](Troubleshooting) | Common issues and fixes |
 
-## Key Features
+## What is NeuralMind?
 
-### 🚀 Massive Token Reduction
-40-70x fewer tokens than loading full codebases. Turn 50,000+ token contexts into ~1,000 tokens.
+NeuralMind is an intelligent context system that dramatically reduces the tokens needed when working with AI coding assistants like Claude, GPT-4, and Cursor.
 
-### 📊 4-Layer Progressive Disclosure
-Intelligent layering system that loads context progressively:
-- **L0: Identity** (~100 tokens) - Project name, description
-- **L1: Summary** (~500 tokens) - Architecture overview
-- **L2: On-Demand** (~200-500 tokens) - Query-relevant modules
-- **L3: Search** (~200-500 tokens) - Semantic search results
+### The Core Problem
 
-### 🔍 Semantic Search
-Find code entities by meaning, not just keywords. Powered by ChromaDB embeddings.
+```
+You: "How does authentication work in my codebase?"
 
-### 🏘️ Community Awareness
-Understands logical code clusters and their relationships through graph-based analysis.
+❌ Traditional: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
+✅ NeuralMind: Smart context → 766 tokens → $0.002-$0.06/query
+```
 
-### 🔌 MCP Integration
-Model Context Protocol server for seamless integration with Claude Desktop, Cursor, and other MCP-compatible tools.
+### Key Benefits
 
-### ⚡ Incremental Updates
-Only re-embed changed nodes for fast rebuilds when your code changes.
+- **40-70x token reduction** — Only loads relevant context
+- **98% cost savings** — $450/month → $7/month
+- **Query-aware** — Different questions get different context
+- **Easy to use** — Simple CLI commands
 
 ## Quick Start
 
 ```bash
-# Install NeuralMind
-pip install neuralmind
+# Install
+pip install neuralmind graphifyy
 
-# Generate knowledge graph (requires graphify)
-pip install graphifyy
-graphify update /path/to/project
+# Setup
+cd your-project
+graphify update .
+neuralmind build .
 
-# Build neural index
-neuralmind build /path/to/project
-
-# Query your codebase
-neuralmind query /path/to/project "How does authentication work?"
+# Use
+neuralmind query . "How does authentication work?"
 ```
 
-## Benchmarks
+## Use Cases
 
-| Project | Nodes | Communities | Avg Tokens | Reduction |
-|---------|-------|-------------|------------|------------|
-| cmmc20 | 241 | 93 | 765 | **65.6x** |
-| mempalace | 1,626 | 34 | 1,089 | **46.0x** |
+1. **Daily Development** — Get context for AI coding questions
+2. **Onboarding** — Generate project overviews for new team members
+3. **Code Review** — Understand related code quickly
+4. **Documentation** — AI-assisted docs from actual code
+5. **CI/CD** — Auto-update context files
+6. **IDE Integration** — MCP server for Claude/Cursor
 
-## Getting Help
+👉 **[See full use cases in Usage Guide](Usage-Guide)**
 
-- **GitHub Issues**: [Report bugs or request features](https://github.com/dfrostar/neuralmind/issues)
-- **Discussions**: [Ask questions and share ideas](https://github.com/dfrostar/neuralmind/discussions)
-- **Contributing**: See our [Contributing Guide](https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md)
+## Support
 
-## License
-
-NeuralMind is released under the MIT License. See [LICENSE](https://github.com/dfrostar/neuralmind/blob/main/LICENSE) for details.
+- **[GitHub Issues](https://github.com/dfrostar/neuralmind/issues)** — Bug reports
+- **[GitHub Discussions](https://github.com/dfrostar/neuralmind/discussions)** — Questions & ideas

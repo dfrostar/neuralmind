@@ -1,380 +1,155 @@
-<div align="center">
-
 # 🧠 NeuralMind
 
-### **Stop Wasting Tokens. Start Understanding Code.**
-
-[![CI](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml/badge.svg)](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/neuralmind.svg)](https://pypi.org/project/neuralmind/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-**NeuralMind gives AI assistants 40-70x more efficient access to your codebase.**
+**Adaptive Neural Knowledge System — 40-70x token reduction for AI code understanding**
 
-[Why NeuralMind?](#-the-problem-youre-facing) •
-[How It Works](#-how-neuralmind-solves-this) •
-[Installation](#-installation) •
-[Quick Start](#-quick-start) •
-[Use Cases](#-use-cases) •
-[Wiki](https://github.com/dfrostar/neuralmind/wiki)
+> Stop paying $450/month for AI coding queries. NeuralMind reduces it to $7/month.
 
-</div>
+## 🎯 The Problem
 
----
+```
+You: "How does authentication work in my codebase?"
 
-## 🎯 The Problem You're Facing
+❌ Traditional: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
+✅ NeuralMind: Smart context → 766 tokens → $0.002-$0.06/query
+```
 
-Every time you ask an AI assistant (Claude, GPT-4, Cursor, Copilot) about your codebase, you face a fundamental trade-off:
+## 💰 Real Savings
 
-### The Context Window Dilemma
-
-| Approach | What You Do | Tokens Used | The Problem |
-|----------|------------|-------------|-------------|
-| **Full Codebase** | Load everything | 50,000+ | ❌ Hits context limits, costs $$$, slow |
-| **Manual Selection** | Pick a few files | 2,000-5,000 | ❌ Miss important dependencies & context |
-| **No Context** | Just ask | 0 | ❌ AI guesses, hallucinates, gives wrong answers |
-
-### Real Cost Impact (2025 LLM Pricing)
-
-**Token costs from major providers** ([OpenRouter pricing](https://openrouter.ai/models)):
-
-| Model | Input Cost (per 1M tokens) | 50K tokens/query | With NeuralMind (800 tokens) |
-|-------|---------------------------|------------------|-----------------------------|
-| **Claude 3.5 Sonnet** | $3.00 | $0.15/query | $0.0024/query |
-| **GPT-4o** | $5.00 | $0.25/query | $0.004/query |
-| **GPT-4.5** | $75.00 | $3.75/query | $0.06/query |
-| **Gemini 2.5 Pro** | $1.25-$2.50 | $0.125/query | $0.002/query |
-| **Claude Opus 4** | $15.00 | $0.75/query | $0.012/query |
-
-*Sources: [OpenRouter](https://openrouter.ai/models), [Anthropic](https://www.anthropic.com/pricing), [OpenAI](https://openai.com/pricing)*
-
-### Monthly Cost Comparison (100 queries/day)
-
-| Model | Without NeuralMind | With NeuralMind | **Monthly Savings** |
-|-------|-------------------|-----------------|--------------------|
-| Claude 3.5 Sonnet | $450/month | $7.20/month | **$442.80** |
+| Model | Without NeuralMind | With NeuralMind | Monthly Savings |
+|-------|-------------------|-----------------|----------------|
+| Claude 3.5 Sonnet | $450/month | $7/month | **$443** |
 | GPT-4o | $750/month | $12/month | **$738** |
-| GPT-4.5 (Premium) | $11,250/month | $180/month | **$11,070** |
-| Gemini 2.5 Pro | $375/month | $6/month | **$369** |
-| Claude Opus 4 | $2,250/month | $36/month | **$2,214** |
+| GPT-4.5 | $11,250/month | $180/month | **$11,070** |
+| Claude Opus | $2,250/month | $36/month | **$2,214** |
 
-**Bottom line: NeuralMind pays for itself in the first hour of use.**
-
----
-
-## 💡 How NeuralMind Solves This
-
-NeuralMind creates an **intelligent, query-aware context system** that loads only what's relevant:
-
-### The 4-Layer Progressive Disclosure System
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  L0: IDENTITY (~100 tokens)                                     │
-│  • Project name, purpose, tech stack                            │
-│  • "This is a React/Node.js e-commerce platform"                │
-│  └── Always loaded - tells AI what it's working with            │
-├─────────────────────────────────────────────────────────────────┤
-│  L1: ARCHITECTURE (~300 tokens)                                 │
-│  • Code clusters: auth, api, database, frontend                 │
-│  • Main modules and their relationships                         │
-│  └── Always loaded - gives AI the big picture                   │
-├─────────────────────────────────────────────────────────────────┤
-│  L2: RELEVANT MODULES (~200-400 tokens)                         │
-│  • Specific code areas related to your query                    │
-│  • "auth" cluster when asking about login                       │
-│  └── Query-specific - loaded based on your question             │
-├─────────────────────────────────────────────────────────────────┤
-│  L3: SEMANTIC SEARCH (~200-400 tokens)                          │
-│  • Exact code entities matching your query                      │
-│  • Function names, classes, files                               │
-│  └── Query-specific - precise semantic matching                 │
-└─────────────────────────────────────────────────────────────────┘
-
-                    Total: ~800-1,100 tokens
-                    vs. 50,000+ tokens for full codebase
-                    = 40-70x REDUCTION
-```
-
-### Proven Benchmarks
-
-| Project | Type | Code Entities | Full Context | NeuralMind | Reduction |
-|---------|------|---------------|--------------|------------|----------|
-| **cmmc20** | Full-stack React/Node | 241 | ~50,000 | 765 avg | **65.6x** |
-| **mempalace** | Python library | 1,626 | ~200,000+ | 1,089 avg | **46.0x** |
-
----
-
-## 🚀 Use Cases
-
-### 1. Daily Development with AI Assistants
-
-**Before NeuralMind:**
-```
-You: "How does authentication work in this project?"
-AI: "I don't have enough context. Can you share the relevant files?"
-*You manually search for and paste 5-10 files*
-*Hits context limit, loses conversation history*
-```
-
-**With NeuralMind:**
-```bash
-$ neuralmind query . "How does authentication work?"
-# Outputs 739 tokens of precisely relevant context
-# Paste into AI conversation - instant, accurate answers
-```
-
-### 2. Onboarding New Team Members
-
-```bash
-# Generate a project overview for new developers
-$ neuralmind wakeup .
-# ~400 tokens covering project structure, main modules, tech stack
-# Perfect for "start of conversation" context
-```
-
-### 3. Code Review Context
-
-```bash
-# Get context for reviewing a specific feature
-$ neuralmind query . "What are all the database migrations and schema?"
-# Returns relevant entities: models, migrations, schemas
-```
-
-### 4. Documentation Generation
-
-```bash
-# Export context for documentation
-$ neuralmind query . "What are the main API endpoints?" --json
-# Structured output perfect for docs generation
-```
-
-### 5. CI/CD Integration
-
-```yaml
-# In your GitHub Actions workflow
-- name: Generate AI Context
-  run: |
-    neuralmind build .
-    neuralmind query . "What changed in this PR?" > ai_context.md
-```
-
-### 6. MCP Server for IDE Integration
-
-```bash
-# Run as MCP server for Claude Desktop, Cursor, etc.
-$ neuralmind-mcp
-# Your AI assistant automatically gets smart context
-```
-
----
-
-## 📦 Installation
-
-### Step 1: Install NeuralMind
-
-```bash
-# From GitHub (available now)
-pip install git+https://github.com/dfrostar/neuralmind.git
-
-# From PyPI (after release)
-pip install neuralmind
-```
-
-### Step 2: Install Graphify (creates the knowledge graph)
-
-```bash
-pip install graphifyy
-```
-
-### Step 3: Verify Installation
-
-```bash
-neuralmind --help
-graphify --help
-```
-
-**That's it!** You're ready to use NeuralMind.
-
----
+*Based on 100 queries/day. [Pricing sources](https://openrouter.ai/models)*
 
 ## 🚀 Quick Start
 
-### 1. Generate Knowledge Graph (one-time per project)
-
 ```bash
-cd /path/to/your/project
+# Install
+pip install neuralmind graphifyy
+
+# Generate knowledge graph
+cd your-project
 graphify update .
-```
 
-This creates `graphify-out/graph.json` with your codebase structure.
-
-### 2. Build Neural Index
-
-```bash
+# Build neural index
 neuralmind build .
-```
 
-**Output:**
-```
-Building NeuralMind index for: .
-Build successful!
-   Project: my-project
-   Nodes: 241
-   Communities: 93
-   Duration: 16.65s
-```
-
-### 3. Query Your Codebase
-
-```bash
-# Get compact context for any question
+# Query your codebase
 neuralmind query . "How does authentication work?"
 ```
 
-**Output:**
+## ✨ Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **4-Layer Context** | Progressive disclosure — only loads what's relevant |
+| **Semantic Search** | Finds code by meaning, not just keywords |
+| **Query-Aware** | Different questions get different context |
+| **CLI Tool** | Simple commands: `build`, `query`, `wakeup`, `search` |
+| **MCP Server** | Direct integration with Claude Desktop & Cursor |
+| **Auto-Updates** | Git hooks and scheduled maintenance |
+
+## 📊 Benchmarks
+
+| Project | Nodes | Avg Token Reduction |
+|---------|-------|--------------------|
+| cmmc20 (React/Node) | 241 | **65.6x** |
+| mempalace (Python) | 1,626 | **46.0x** |
+
+## 🔧 How It Works
+
 ```
-Query: How does authentication work?
-Tokens: 739 (67.7x reduction)
-============================================================
-## Project: my-project
-Knowledge Graph: 241 entities, 93 clusters
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 0: Project Identity (~100 tokens) - ALWAYS LOADED     │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 1: Architecture Summary (~300 tokens) - ALWAYS LOADED │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: Relevant Modules (~300 tokens) - QUERY-SPECIFIC    │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: Semantic Search (~300 tokens) - QUERY-SPECIFIC     │
+└─────────────────────────────────────────────────────────────┘
 
-## Relevant Code Areas
-### Cluster: Authentication (relevance: 2.45)
-Contains: 5 entities
-- AuthService (class) — src/services/authService.ts
-- hashPassword (function) — src/services/authService.ts
-- verifyToken (function) — src/middleware/auth.ts
-- User (model) — src/models/User.ts
-- login (endpoint) — src/routes/auth.ts
-...
-============================================================
+Total: ~800-1,100 tokens vs 50,000+ for full codebase
 ```
 
-### 4. Use with AI Assistants
+## 📋 Use Cases
 
-Copy the output and paste it into your AI conversation for instant, relevant context!
+1. **Daily Development** — Get context for AI coding questions
+2. **New Developer Onboarding** — Generate project overviews
+3. **Code Review** — Understand related code quickly
+4. **Documentation** — AI-assisted docs from actual code
+5. **CI/CD Integration** — Auto-update context files
+6. **IDE Integration** — MCP server for Claude/Cursor
 
----
+👉 **[See full use cases and examples in USAGE.md](USAGE.md)**
 
-## 📖 All Commands
+## 🖥️ CLI Commands
 
-| Command | What It Does | Example |
-|---------|--------------|--------|
-| `build` | Create neural index from graph.json | `neuralmind build .` |
-| `query` | Get context for a question | `neuralmind query . "How does X work?"` |
-| `wakeup` | Get minimal startup context | `neuralmind wakeup .` |
-| `search` | Semantic search for code | `neuralmind search . "authentication"` |
-| `benchmark` | Measure token reduction | `neuralmind benchmark .` |
-| `stats` | Show index statistics | `neuralmind stats .` |
+| Command | Purpose |
+|---------|--------|
+| `neuralmind build .` | Build/rebuild neural index |
+| `neuralmind query . "..."` | Query with natural language |
+| `neuralmind wakeup .` | Get project overview |
+| `neuralmind search . "..."` | Direct semantic search |
+| `neuralmind benchmark .` | Measure token reduction |
+| `neuralmind stats .` | Show index statistics |
 
-### JSON Output (for automation)
+## ⏰ Scheduling Updates
 
+### Git Hook (Recommended)
 ```bash
-neuralmind query . "How does auth work?" --json
+# .git/hooks/post-commit
+#!/bin/bash
+graphify update . --quiet
+neuralmind build . --quiet
 ```
 
----
-
-## 📊 Token Reduction Comparison
-
-### Why This Matters
-
-| Scenario | Without NeuralMind | With NeuralMind | Savings |
-|----------|-------------------|-----------------|--------|
-| Single query | 50,000 tokens | 800 tokens | **98.4%** |
-| 10 queries/day | 500,000 tokens | 8,000 tokens | $14.70/day saved |
-| 100 queries/day | 5,000,000 tokens | 80,000 tokens | $147/day saved |
-| Monthly (100/day) | 150M tokens | 2.4M tokens | **$4,410/month saved** |
-
-*Based on Claude 3.5 Sonnet pricing: $3/1M input tokens*
-
-### Quality Comparison
-
-| Metric | Full Context | Manual Selection | NeuralMind |
-|--------|-------------|------------------|------------|
-| Token Usage | ❌ Very High | ⚠️ Medium | ✅ Low |
-| Relevance | ⚠️ Includes noise | ⚠️ May miss deps | ✅ Query-aware |
-| Consistency | ✅ Complete | ❌ Human error | ✅ Automated |
-| Speed | ❌ Slow to load | ❌ Slow to select | ✅ Instant |
-| Conversation Length | ❌ Limited | ⚠️ Limited | ✅ Extended |
-
----
-
-## 🔌 MCP Integration (Claude Desktop, Cursor)
-
-NeuralMind includes an MCP server for direct integration:
-
+### Cron Job
 ```bash
-# Install with MCP support
-pip install "neuralmind[mcp]"
-
-# Run the server
-neuralmind-mcp
+# Daily at 6 AM
+0 6 * * * cd /project && graphify update . && neuralmind build .
 ```
 
-Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`):
+### CI/CD
+```yaml
+- run: pip install neuralmind graphifyy
+- run: graphify update . && neuralmind build .
+- run: neuralmind wakeup . > AI_CONTEXT.md
+```
+
+👉 **[See full scheduling guide in USAGE.md](USAGE.md#scheduling-routines)**
+
+## 🔌 MCP Server Integration
+
+For Claude Desktop or Cursor:
 
 ```json
 {
   "mcpServers": {
     "neuralmind": {
-      "command": "neuralmind-mcp"
+      "command": "neuralmind-mcp",
+      "args": ["/path/to/project"]
     }
   }
 }
 ```
 
----
-
-## 🐍 Python API
-
-```python
-from neuralmind import NeuralMind
-
-# Initialize for your project
-mind = NeuralMind('/path/to/project')
-mind.build()
-
-# Get wake-up context (for starting conversations)
-wakeup = mind.wakeup()
-print(f"Tokens: {wakeup.budget.total}")  # ~400
-
-# Get query context (for specific questions)
-result = mind.query("How does authentication work?")
-print(f"Tokens: {result.budget.total}")  # ~800
-print(f"Reduction: {result.reduction_ratio:.1f}x")  # ~65x
-print(result.context)  # The actual context to use
-```
-
----
-
 ## 📚 Documentation
 
-- **[Wiki Home](https://github.com/dfrostar/neuralmind/wiki)** — Full documentation
-- **[Installation Guide](https://github.com/dfrostar/neuralmind/wiki/Installation)** — Detailed setup
-- **[CLI Reference](https://github.com/dfrostar/neuralmind/wiki/CLI-Reference)** — All commands
-- **[API Reference](https://github.com/dfrostar/neuralmind/wiki/API-Reference)** — Python API
-- **[Architecture](https://github.com/dfrostar/neuralmind/wiki/Architecture)** — How it works
-- **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** — Common issues
-
----
+- **[USAGE.md](USAGE.md)** — Complete usage guide with examples
+- **[Wiki](https://github.com/dfrostar/neuralmind/wiki)** — Full documentation
+- **[API Reference](https://github.com/dfrostar/neuralmind/wiki/API-Reference)** — Python API docs
 
 ## 🤝 Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-```bash
-# Clone and install for development
-git clone https://github.com/dfrostar/neuralmind.git
-cd neuralmind
-pip install -e ".[dev]"
-
-# Run tests
-pytest
-```
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
@@ -382,20 +157,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## 🙏 Acknowledgments
-
-- **[ChromaDB](https://www.trychroma.com/)** — Vector storage
-- **[Graphify](https://github.com/safishamsi/graphify)** — Knowledge graph generation
-- **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — Inspiration
-
----
-
-<div align="center">
-
-**Made with 🧠 by [Agent Zero](https://github.com/frdel/agent-zero)**
-
-*Stop wasting tokens. Start understanding code.*
-
-⭐ **Star this repo if NeuralMind helps you save tokens!** ⭐
-
-</div>
+<p align="center">
+  <b>⭐ Star this repo if NeuralMind saves you money!</b>
+</p>
