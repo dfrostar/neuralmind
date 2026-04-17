@@ -5,8 +5,10 @@ Direct function tests are used instead.
 """
 
 import json
+import os
 import subprocess
 import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -324,3 +326,80 @@ class TestCLIMain:
 
         captured = capsys.readouterr()
         assert "Build" in captured.out
+
+
+class TestCLIInitHook:
+    """Tests for init-hook command."""
+
+    def test_cmd_init_hook_installs_post_commit_hook(self, tmp_path):
+        """init-hook should create an executable post-commit hook file."""
+        from neuralmind.cli import cmd_init_hook
+
+        repo = tmp_path / "repo"
+        hooks_dir = repo / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        cmd_init_hook(SimpleNamespace(project_path=str(repo)))
+
+        hook_path = hooks_dir / "post-commit"
+        assert hook_path.exists()
+        assert "neuralmind build . --quiet" in hook_path.read_text()
+        assert os.access(hook_path, os.X_OK)
+
+    def test_cmd_init_hook_fails_without_git_hooks(self, tmp_path):
+        """init-hook should exit when .git/hooks is missing."""
+        from neuralmind.cli import cmd_init_hook
+
+        with pytest.raises(SystemExit):
+            cmd_init_hook(SimpleNamespace(project_path=str(tmp_path / "not-a-repo")))
+
+
+class TestCLIJsonAndErrorBranches:
+    """Tests for JSON outputs and error branches."""
+
+    def test_cmd_wakeup_json_output(self, capsys, monkeypatch):
+        """cmd_wakeup should emit valid JSON when --json is enabled."""
+        from neuralmind.cli import cmd_wakeup
+
+        fake_result = SimpleNamespace(
+            context="Wakeup text",
+            budget=SimpleNamespace(total=321),
+            reduction_ratio=12.3,
+        )
+        fake_mind = SimpleNamespace(wakeup=lambda: fake_result)
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *_args, **_kwargs: fake_mind)
+
+        cmd_wakeup(SimpleNamespace(project_path="/tmp/project", json=True))
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["type"] == "wakeup"
+        assert payload["tokens"] == 321
+
+    def test_cmd_search_json_output(self, capsys, monkeypatch):
+        """cmd_search should emit valid JSON list when --json is enabled."""
+        from neuralmind.cli import cmd_search
+
+        fake_results = [{"id": "n1", "metadata": {"label": "authenticate_user"}, "score": 0.99}]
+        fake_mind = SimpleNamespace(search=lambda *_args, **_kwargs: fake_results)
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *_args, **_kwargs: fake_mind)
+
+        cmd_search(SimpleNamespace(project_path="/tmp/project", query="auth", n=5, json=True))
+        payload = json.loads(capsys.readouterr().out)
+        assert isinstance(payload, list)
+        assert payload[0]["id"] == "n1"
+
+    def test_cmd_stats_json_error_branch(self, capsys, monkeypatch):
+        """cmd_stats should include error details when stats retrieval fails."""
+        from neuralmind.cli import cmd_stats
+
+        class FailingMind:
+            def __init__(self, _project_path):
+                self.embedder = SimpleNamespace(
+                    get_stats=lambda: (_ for _ in ()).throw(RuntimeError("boom"))
+                )
+
+        monkeypatch.setattr("neuralmind.cli.NeuralMind", FailingMind)
+        cmd_stats(SimpleNamespace(project_path="/tmp/project", json=True))
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["built"] is False
+        assert payload["error"] == "boom"

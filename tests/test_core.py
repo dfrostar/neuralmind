@@ -360,3 +360,105 @@ class TestNeuralMindBenchmark:
 
         assert mind._built is True
         assert isinstance(results, dict)
+
+
+class TestNeuralMindExportContext:
+    """Tests for context export functionality."""
+
+    def test_export_context_default_path_uses_wakeup(self, temp_project, monkeypatch):
+        """Export without query should write wakeup context to default path."""
+        from neuralmind import NeuralMind
+        from neuralmind.context_selector import ContextResult, TokenBudget
+
+        mind = NeuralMind(str(temp_project))
+        monkeypatch.setattr(mind, "_ensure_built", lambda: None)
+
+        fake_result = ContextResult(
+            context="Wakeup context body",
+            budget=TokenBudget(l0_identity=100, l1_summary=200),
+            layers_used=["L0:Identity", "L1:Summary"],
+            reduction_ratio=25.0,
+        )
+        monkeypatch.setattr(mind, "wakeup", lambda: fake_result)
+
+        output_path = mind.export_context()
+        assert output_path == str(temp_project / "neuralmind_context.md")
+        content = Path(output_path).read_text()
+        assert "**Type:** wakeup" in content
+        assert "Wakeup context body" in content
+
+    def test_export_context_query_writes_query_metadata(self, temp_project, monkeypatch):
+        """Export with query should include query metadata and query context."""
+        from neuralmind import NeuralMind
+        from neuralmind.context_selector import ContextResult, TokenBudget
+
+        mind = NeuralMind(str(temp_project))
+        monkeypatch.setattr(mind, "_ensure_built", lambda: None)
+
+        captured = {"query": None}
+
+        def fake_query(q):
+            captured["query"] = q
+            return ContextResult(
+                context="Query context body",
+                budget=TokenBudget(l0_identity=50, l1_summary=100, l2_ondemand=150, l3_search=80),
+                layers_used=[
+                    "L0:Identity",
+                    "L1:Summary",
+                    "L2:OnDemand(1 clusters)",
+                    "L3:Search(2 results)",
+                ],
+                reduction_ratio=31.2,
+            )
+
+        monkeypatch.setattr(mind, "query", fake_query)
+
+        custom_output = temp_project / "custom_context.md"
+        output_path = mind.export_context(
+            query="How does authentication work?", output_path=str(custom_output)
+        )
+
+        assert captured["query"] == "How does authentication work?"
+        assert output_path == str(custom_output)
+        content = custom_output.read_text()
+        assert "**Type:** query" in content
+        assert "**Query:** How does authentication work?" in content
+        assert "Query context body" in content
+
+
+class TestCreateMindHelper:
+    """Tests for create_mind helper function."""
+
+    def test_create_mind_auto_build_true_calls_build(self, monkeypatch):
+        """create_mind should call build when auto_build=True."""
+        from neuralmind.core import create_mind
+
+        class DummyMind:
+            def __init__(self, project_path):
+                self.project_path = project_path
+                self.build_calls = 0
+
+            def build(self):
+                self.build_calls += 1
+
+        monkeypatch.setattr("neuralmind.core.NeuralMind", DummyMind)
+        mind = create_mind("/tmp/project", auto_build=True)
+        assert isinstance(mind, DummyMind)
+        assert mind.build_calls == 1
+
+    def test_create_mind_auto_build_false_skips_build(self, monkeypatch):
+        """create_mind should not call build when auto_build=False."""
+        from neuralmind.core import create_mind
+
+        class DummyMind:
+            def __init__(self, project_path):
+                self.project_path = project_path
+                self.build_calls = 0
+
+            def build(self):
+                self.build_calls += 1
+
+        monkeypatch.setattr("neuralmind.core.NeuralMind", DummyMind)
+        mind = create_mind("/tmp/project", auto_build=False)
+        assert isinstance(mind, DummyMind)
+        assert mind.build_calls == 0
