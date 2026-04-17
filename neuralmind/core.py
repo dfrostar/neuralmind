@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .context_selector import ContextResult, ContextSelector
+from .config import CONFIG
 from .embedder import GraphEmbedder
 
 
