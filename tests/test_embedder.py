@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 
 class TestGraphEmbedder:
     """Tests for GraphEmbedder class."""

@@ -7,7 +7,6 @@ Direct function tests are used instead.
 import json
 import subprocess
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,12 +32,10 @@ class TestCLIHelp:
     @pytest.mark.skip(reason="Requires package installation")
     def test_build_help(self):
         """Test that build --help shows build options."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_query_help(self):
         """Test that query --help shows query options."""
-        pass
 
 
 class TestCLIBuild:
@@ -47,22 +44,18 @@ class TestCLIBuild:
     @pytest.mark.skip(reason="Requires package installation")
     def test_build_command(self, temp_project):
         """Test that build command works."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_build_creates_index(self, temp_project):
         """Test that build creates the neural index."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_build_force_flag(self, temp_project):
         """Test that build --force re-embeds all nodes."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_build_nonexistent_path(self, tmp_path):
         """Test that build with nonexistent path fails gracefully."""
-        pass
 
 
 class TestCLIQuery:
@@ -71,17 +64,14 @@ class TestCLIQuery:
     @pytest.mark.skip(reason="Requires package installation")
     def test_query_command(self, temp_project):
         """Test that query command works after build."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_query_outputs_context(self, temp_project):
         """Test that query outputs context text."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_query_without_build_fails(self, temp_project):
         """Test that query without build shows error."""
-        pass
 
 
 class TestCLIWakeup:
@@ -90,12 +80,10 @@ class TestCLIWakeup:
     @pytest.mark.skip(reason="Requires package installation")
     def test_wakeup_command(self, temp_project):
         """Test that wakeup command works."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_wakeup_outputs_context(self, temp_project):
         """Test that wakeup outputs context text."""
-        pass
 
 
 class TestCLISearch:
@@ -104,12 +92,10 @@ class TestCLISearch:
     @pytest.mark.skip(reason="Requires package installation")
     def test_search_command(self, temp_project):
         """Test that search command works."""
-        pass
 
     @pytest.mark.skip(reason="Requires package installation")
     def test_search_outputs_results(self, temp_project):
         """Test that search outputs results."""
-        pass
 
 
 class TestCLIStats:
@@ -118,7 +104,6 @@ class TestCLIStats:
     @pytest.mark.skip(reason="Requires package installation")
     def test_stats_command(self, temp_project):
         """Test that stats command works."""
-        pass
 
 
 class TestCLIBenchmark:
@@ -127,7 +112,6 @@ class TestCLIBenchmark:
     @pytest.mark.skip(reason="Requires package installation")
     def test_benchmark_command(self, temp_project):
         """Test that benchmark command works."""
-        pass
 
 
 # Direct function tests using imports instead of subprocess

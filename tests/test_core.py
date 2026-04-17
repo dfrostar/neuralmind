@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 
 class TestNeuralMindInit:
     """Tests for NeuralMind initialization."""

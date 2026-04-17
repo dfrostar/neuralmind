@@ -1,6 +1,5 @@
 """Tests for NeuralMind context selector functionality."""
 
-import pytest
 
 
 class TestContextSelector:
