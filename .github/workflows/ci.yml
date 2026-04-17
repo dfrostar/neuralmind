@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload coverage (Python 3.11 only)
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           fail_ci_if_error: false
         continue-on-error: true
