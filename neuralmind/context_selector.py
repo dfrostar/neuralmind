@@ -271,7 +271,7 @@ class ContextSelector:
             Tuple of (context_text, list of community IDs loaded)
         """
         # First, search to find which communities are relevant
-        search_results = self.embedder.search(query, n=20)
+        search_results = self.embedder.search(query, n=5)
 
         if not search_results:
             return "", []
@@ -317,7 +317,7 @@ class ContextSelector:
         context = self._truncate_to_tokens("\n".join(parts), self.L2_MAX_TOKENS)
         return context, loaded_communities
 
-    def get_l3_search(self, query: str, n: int = 10) -> tuple[str, int]:
+    def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
 
