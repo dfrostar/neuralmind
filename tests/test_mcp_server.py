@@ -1,6 +1,5 @@
 """Tests for NeuralMind MCP server helpers and dispatch."""
 
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -250,10 +249,10 @@ async def test_run_mcp_server_runs_with_fake_sdk(monkeypatch):
             return False
 
     monkeypatch.setattr(mcp_server, "MCP_AVAILABLE", True)
-    monkeypatch.setattr(mcp_server, "Server", FakeServer)
-    monkeypatch.setattr(mcp_server, "Tool", lambda **kwargs: kwargs)
-    monkeypatch.setattr(mcp_server, "TextContent", lambda **kwargs: kwargs)
-    monkeypatch.setattr(mcp_server, "stdio_server", lambda: FakeStdioContext())
+    monkeypatch.setattr(mcp_server, "Server", FakeServer, raising=False)
+    monkeypatch.setattr(mcp_server, "Tool", lambda **kwargs: kwargs, raising=False)
+    monkeypatch.setattr(mcp_server, "TextContent", lambda **kwargs: kwargs, raising=False)
+    monkeypatch.setattr(mcp_server, "stdio_server", lambda: FakeStdioContext(), raising=False)
 
     await mcp_server.run_mcp_server()
 
@@ -263,7 +262,12 @@ async def test_run_mcp_server_runs_with_fake_sdk(monkeypatch):
 
 
 def test_main_uses_asyncio_run(monkeypatch):
-    run_spy = MagicMock()
-    monkeypatch.setattr("asyncio.run", run_spy)
+    calls = {"count": 0}
+
+    def fake_run(coro):
+        calls["count"] += 1
+        coro.close()
+
+    monkeypatch.setattr("asyncio.run", fake_run)
     mcp_server.main()
-    run_spy.assert_called_once()
+    assert calls["count"] == 1
