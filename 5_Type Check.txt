@@ -1,0 +1,556 @@
+﻿2026-04-17T03:47:55.0918256Z Current runner version: '2.333.1'
+2026-04-17T03:47:55.0951836Z ##[group]Runner Image Provisioner
+2026-04-17T03:47:55.0953043Z Hosted Compute Agent
+2026-04-17T03:47:55.0954313Z Version: 20260213.493
+2026-04-17T03:47:55.0955307Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-04-17T03:47:55.0956540Z Build Date: 2026-02-13T00:28:41Z
+2026-04-17T03:47:55.0957604Z Worker ID: {516c2e5f-6966-4769-9b5c-7f4e03b9c7fa}
+2026-04-17T03:47:55.0958970Z Azure Region: eastus2
+2026-04-17T03:47:55.0959935Z ##[endgroup]
+2026-04-17T03:47:55.0962574Z ##[group]Operating System
+2026-04-17T03:47:55.0964018Z Ubuntu
+2026-04-17T03:47:55.0964798Z 24.04.4
+2026-04-17T03:47:55.0965536Z LTS
+2026-04-17T03:47:55.0966393Z ##[endgroup]
+2026-04-17T03:47:55.0967349Z ##[group]Runner Image
+2026-04-17T03:47:55.0968267Z Image: ubuntu-24.04
+2026-04-17T03:47:55.0969272Z Version: 20260413.86.1
+2026-04-17T03:47:55.0971206Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260413.86/images/ubuntu/Ubuntu2404-Readme.md
+2026-04-17T03:47:55.0974202Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260413.86
+2026-04-17T03:47:55.0975884Z ##[endgroup]
+2026-04-17T03:47:55.0977923Z ##[group]GITHUB_TOKEN Permissions
+2026-04-17T03:47:55.0980747Z Contents: read
+2026-04-17T03:47:55.0981618Z Metadata: read
+2026-04-17T03:47:55.0982495Z Packages: read
+2026-04-17T03:47:55.0983401Z ##[endgroup]
+2026-04-17T03:47:55.0986324Z Secret source: Actions
+2026-04-17T03:47:55.0988043Z Prepare workflow directory
+2026-04-17T03:47:55.1445845Z Prepare all required actions
+2026-04-17T03:47:55.1500336Z Getting action download info
+2026-04-17T03:47:55.4399187Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-04-17T03:47:55.5879094Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-04-17T03:47:55.8024635Z Complete job name: Type Check
+2026-04-17T03:47:55.8710169Z ##[group]Run actions/checkout@v4
+2026-04-17T03:47:55.8711013Z with:
+2026-04-17T03:47:55.8711434Z   repository: dfrostar/neuralmind
+2026-04-17T03:47:55.8712091Z   token: ***
+2026-04-17T03:47:55.8712511Z   ssh-strict: true
+2026-04-17T03:47:55.8712927Z   ssh-user: git
+2026-04-17T03:47:55.8713336Z   persist-credentials: true
+2026-04-17T03:47:55.8714037Z   clean: true
+2026-04-17T03:47:55.8714446Z   sparse-checkout-cone-mode: true
+2026-04-17T03:47:55.8714923Z   fetch-depth: 1
+2026-04-17T03:47:55.8715313Z   fetch-tags: false
+2026-04-17T03:47:55.8715717Z   show-progress: true
+2026-04-17T03:47:55.8716121Z   lfs: false
+2026-04-17T03:47:55.8716490Z   submodules: false
+2026-04-17T03:47:55.8716902Z   set-safe-directory: true
+2026-04-17T03:47:55.8717608Z ##[endgroup]
+2026-04-17T03:47:55.9778446Z Syncing repository: dfrostar/neuralmind
+2026-04-17T03:47:55.9780188Z ##[group]Getting Git version info
+2026-04-17T03:47:55.9780908Z Working directory is '/home/runner/work/neuralmind/neuralmind'
+2026-04-17T03:47:55.9781918Z [command]/usr/bin/git version
+2026-04-17T03:47:55.9824773Z git version 2.53.0
+2026-04-17T03:47:55.9851197Z ##[endgroup]
+2026-04-17T03:47:55.9863801Z Temporarily overriding HOME='/home/runner/work/_temp/afbd38d8-7fec-4841-9e41-37c918649482' before making global git config changes
+2026-04-17T03:47:55.9868668Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-17T03:47:55.9869774Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:47:55.9900301Z Deleting the contents of '/home/runner/work/neuralmind/neuralmind'
+2026-04-17T03:47:55.9903194Z ##[group]Initializing the repository
+2026-04-17T03:47:55.9907437Z [command]/usr/bin/git init /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:47:56.0015065Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-17T03:47:56.0016793Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-17T03:47:56.0018493Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-17T03:47:56.0020269Z hint: call:
+2026-04-17T03:47:56.0020941Z hint:
+2026-04-17T03:47:56.0021965Z hint: 	git config --global init.defaultBranch <name>
+2026-04-17T03:47:56.0023032Z hint:
+2026-04-17T03:47:56.0024304Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-17T03:47:56.0025860Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-17T03:47:56.0027053Z hint:
+2026-04-17T03:47:56.0027749Z hint: 	git branch -m <name>
+2026-04-17T03:47:56.0028537Z hint:
+2026-04-17T03:47:56.0029586Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-17T03:47:56.0031449Z Initialized empty Git repository in /home/runner/work/neuralmind/neuralmind/.git/
+2026-04-17T03:47:56.0034383Z [command]/usr/bin/git remote add origin https://github.com/dfrostar/neuralmind
+2026-04-17T03:47:56.0061688Z ##[endgroup]
+2026-04-17T03:47:56.0062924Z ##[group]Disabling automatic garbage collection
+2026-04-17T03:47:56.0066849Z [command]/usr/bin/git config --local gc.auto 0
+2026-04-17T03:47:56.0095899Z ##[endgroup]
+2026-04-17T03:47:56.0097099Z ##[group]Setting up auth
+2026-04-17T03:47:56.0103314Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-17T03:47:56.0134343Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-17T03:47:56.0420598Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-17T03:47:56.0450161Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-17T03:47:56.0667195Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-17T03:47:56.0706487Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-17T03:47:56.0934646Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-17T03:47:56.0970150Z ##[endgroup]
+2026-04-17T03:47:56.0970870Z ##[group]Fetching the repository
+2026-04-17T03:47:56.0983237Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8:refs/remotes/origin/main
+2026-04-17T03:47:56.2936386Z From https://github.com/dfrostar/neuralmind
+2026-04-17T03:47:56.2939323Z  * [new ref]         8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8 -> origin/main
+2026-04-17T03:47:56.2942201Z ##[endgroup]
+2026-04-17T03:47:56.2944122Z ##[group]Determining the checkout info
+2026-04-17T03:47:56.2945363Z ##[endgroup]
+2026-04-17T03:47:56.2945907Z [command]/usr/bin/git sparse-checkout disable
+2026-04-17T03:47:56.2947397Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-17T03:47:56.2978182Z ##[group]Checking out the ref
+2026-04-17T03:47:56.2982297Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-04-17T03:47:56.3054825Z Switched to a new branch 'main'
+2026-04-17T03:47:56.3057744Z branch 'main' set up to track 'origin/main'.
+2026-04-17T03:47:56.3064694Z ##[endgroup]
+2026-04-17T03:47:56.3097074Z [command]/usr/bin/git log -1 --format=%H
+2026-04-17T03:47:56.3118618Z 8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8
+2026-04-17T03:47:56.3390255Z ##[group]Run actions/setup-python@v5
+2026-04-17T03:47:56.3391108Z with:
+2026-04-17T03:47:56.3391752Z   python-version: 3.11
+2026-04-17T03:47:56.3392452Z   check-latest: false
+2026-04-17T03:47:56.3393316Z   token: ***
+2026-04-17T03:47:56.3394621Z   update-environment: true
+2026-04-17T03:47:56.3395398Z   allow-prereleases: false
+2026-04-17T03:47:56.3396120Z   freethreaded: false
+2026-04-17T03:47:56.3396790Z ##[endgroup]
+2026-04-17T03:47:56.5037592Z ##[group]Installed versions
+2026-04-17T03:47:56.5777385Z Successfully set up CPython (3.11.15)
+2026-04-17T03:47:56.5778828Z ##[endgroup]
+2026-04-17T03:47:56.5911706Z ##[group]Run python -m pip install --upgrade pip
+2026-04-17T03:47:56.5912973Z [36;1mpython -m pip install --upgrade pip[0m
+2026-04-17T03:47:56.5914297Z [36;1mpip install -e ".[dev]"[0m
+2026-04-17T03:47:56.5915104Z [36;1mpip install mypy[0m
+2026-04-17T03:47:56.5991715Z shell: /usr/bin/bash -e {0}
+2026-04-17T03:47:56.5992452Z env:
+2026-04-17T03:47:56.5993174Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:56.5995035Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-17T03:47:56.5996615Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:56.5997987Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:56.5999355Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:56.6000717Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-17T03:47:56.6001835Z ##[endgroup]
+2026-04-17T03:47:58.7620574Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (26.0.1)
+2026-04-17T03:47:59.3020032Z Obtaining file:///home/runner/work/neuralmind/neuralmind
+2026-04-17T03:47:59.3043831Z   Installing build dependencies: started
+2026-04-17T03:48:00.0540195Z   Installing build dependencies: finished with status 'done'
+2026-04-17T03:48:00.0547822Z   Checking if build backend supports build_editable: started
+2026-04-17T03:48:00.1064341Z   Checking if build backend supports build_editable: finished with status 'done'
+2026-04-17T03:48:00.1071705Z   Getting requirements to build editable: started
+2026-04-17T03:48:00.2398160Z   Getting requirements to build editable: finished with status 'done'
+2026-04-17T03:48:00.2413140Z   Installing backend dependencies: started
+2026-04-17T03:48:00.7210253Z   Installing backend dependencies: finished with status 'done'
+2026-04-17T03:48:00.7217579Z   Preparing editable metadata (pyproject.toml): started
+2026-04-17T03:48:00.9144441Z   Preparing editable metadata (pyproject.toml): finished with status 'done'
+2026-04-17T03:48:01.0263328Z Collecting chromadb>=0.4.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.0912820Z   Downloading chromadb-1.5.8-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.0 kB)
+2026-04-17T03:48:01.1368925Z Collecting pyyaml>=6.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.1444541Z   Downloading pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-04-17T03:48:01.2128317Z Collecting black>=23.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.2204899Z   Downloading black-26.3.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (91 kB)
+2026-04-17T03:48:01.3514763Z Collecting mypy>=1.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.3588465Z   Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.3 kB)
+2026-04-17T03:48:01.3909257Z Collecting pre-commit>=3.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.3982979Z   Downloading pre_commit-4.5.1-py2.py3-none-any.whl.metadata (1.2 kB)
+2026-04-17T03:48:01.4204959Z Collecting pytest-asyncio>=0.21.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.4276459Z   Downloading pytest_asyncio-1.3.0-py3-none-any.whl.metadata (4.1 kB)
+2026-04-17T03:48:01.4452418Z Collecting pytest-cov>=4.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.4541146Z   Downloading pytest_cov-7.1.0-py3-none-any.whl.metadata (32 kB)
+2026-04-17T03:48:01.4766105Z Collecting pytest-mock>=3.10 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.4837900Z   Downloading pytest_mock-3.15.1-py3-none-any.whl.metadata (3.9 kB)
+2026-04-17T03:48:01.5150853Z Collecting pytest>=7.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.5225007Z   Downloading pytest-9.0.3-py3-none-any.whl.metadata (7.6 kB)
+2026-04-17T03:48:01.8880966Z Collecting ruff>=0.1.0 (from neuralmind==0.1.0)
+2026-04-17T03:48:01.8958004Z   Downloading ruff-0.15.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (26 kB)
+2026-04-17T03:48:01.9171839Z Collecting click>=8.0.0 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:01.9242362Z   Downloading click-8.3.2-py3-none-any.whl.metadata (2.6 kB)
+2026-04-17T03:48:01.9378094Z Collecting mypy-extensions>=0.4.3 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:01.9450306Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-04-17T03:48:01.9627490Z Collecting packaging>=22.0 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:01.9640579Z   Using cached packaging-26.1-py3-none-any.whl.metadata (3.5 kB)
+2026-04-17T03:48:01.9769015Z Collecting pathspec>=1.0.0 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:01.9781946Z   Using cached pathspec-1.0.4-py3-none-any.whl.metadata (13 kB)
+2026-04-17T03:48:01.9977382Z Collecting platformdirs>=2 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.0048726Z   Downloading platformdirs-4.9.6-py3-none-any.whl.metadata (4.7 kB)
+2026-04-17T03:48:02.0230230Z Collecting pytokens~=0.4.0 (from black>=23.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.0353948Z   Downloading pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-04-17T03:48:02.0528178Z Collecting build>=1.0.3 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.0605178Z   Downloading build-1.4.3-py3-none-any.whl.metadata (5.8 kB)
+2026-04-17T03:48:02.1685496Z Collecting pydantic>=2.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.1758908Z   Downloading pydantic-2.13.1-py3-none-any.whl.metadata (108 kB)
+2026-04-17T03:48:02.2047346Z Collecting pydantic-settings>=2.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.2121155Z   Downloading pydantic_settings-2.13.1-py3-none-any.whl.metadata (3.4 kB)
+2026-04-17T03:48:02.3026367Z Collecting pybase64>=1.4.1 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.3104169Z   Downloading pybase64-1.4.3-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (8.7 kB)
+2026-04-17T03:48:02.3368509Z Collecting uvicorn>=0.18.3 (from uvicorn[standard]>=0.18.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.3439835Z   Downloading uvicorn-0.44.0-py3-none-any.whl.metadata (6.7 kB)
+2026-04-17T03:48:02.5588149Z Collecting numpy>=1.22.5 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.5664695Z   Downloading numpy-2.4.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+2026-04-17T03:48:02.5854868Z Collecting typing-extensions>=4.5.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.5925199Z   Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+2026-04-17T03:48:02.6506624Z Collecting onnxruntime>=1.14.1 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.6579495Z   Downloading onnxruntime-1.24.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (5.2 kB)
+2026-04-17T03:48:02.6803222Z Collecting opentelemetry-api>=1.2.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.6877315Z   Downloading opentelemetry_api-1.41.0-py3-none-any.whl.metadata (1.5 kB)
+2026-04-17T03:48:02.7083097Z Collecting opentelemetry-exporter-otlp-proto-grpc>=1.2.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.7153819Z   Downloading opentelemetry_exporter_otlp_proto_grpc-1.41.0-py3-none-any.whl.metadata (2.6 kB)
+2026-04-17T03:48:02.7372950Z Collecting opentelemetry-sdk>=1.2.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.7443097Z   Downloading opentelemetry_sdk-1.41.0-py3-none-any.whl.metadata (1.7 kB)
+2026-04-17T03:48:02.8802116Z Collecting tokenizers>=0.13.2 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.8878060Z   Downloading tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (7.3 kB)
+2026-04-17T03:48:02.9095033Z Collecting pypika>=0.48.9 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.9166925Z   Downloading pypika-0.51.1-py2.py3-none-any.whl.metadata (51 kB)
+2026-04-17T03:48:02.9482066Z Collecting tqdm>=4.65.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.9552898Z   Downloading tqdm-4.67.3-py3-none-any.whl.metadata (57 kB)
+2026-04-17T03:48:02.9778927Z Collecting overrides>=7.3.1 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:02.9850343Z   Downloading overrides-7.7.0-py3-none-any.whl.metadata (5.8 kB)
+2026-04-17T03:48:03.0087200Z Collecting importlib-resources (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.0251751Z   Downloading importlib_resources-7.1.0-py3-none-any.whl.metadata (4.0 kB)
+2026-04-17T03:48:03.5580342Z Collecting grpcio>=1.58.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.5683445Z   Downloading grpcio-1.80.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (3.8 kB)
+2026-04-17T03:48:03.6098253Z Collecting bcrypt>=4.0.1 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.6170997Z   Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl.metadata (10 kB)
+2026-04-17T03:48:03.6390134Z Collecting typer>=0.9.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.6462992Z   Downloading typer-0.24.1-py3-none-any.whl.metadata (16 kB)
+2026-04-17T03:48:03.6706126Z Collecting kubernetes>=28.1.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.6777948Z   Downloading kubernetes-35.0.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-04-17T03:48:03.6954977Z Collecting tenacity>=8.2.3 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.7026237Z   Downloading tenacity-9.1.4-py3-none-any.whl.metadata (1.2 kB)
+2026-04-17T03:48:03.7480223Z Collecting mmh3>=4.0.1 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.7551488Z   Downloading mmh3-5.2.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (14 kB)
+2026-04-17T03:48:03.9806675Z Collecting orjson>=3.9.12 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:03.9882130Z   Downloading orjson-3.11.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (41 kB)
+2026-04-17T03:48:04.0105596Z Collecting httpx>=0.27.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.0256712Z   Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+2026-04-17T03:48:04.0592746Z Collecting rich>=10.11.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.0665451Z   Downloading rich-15.0.0-py3-none-any.whl.metadata (18 kB)
+2026-04-17T03:48:04.0902200Z Collecting jsonschema>=4.19.0 (from chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.0977322Z   Downloading jsonschema-4.26.0-py3-none-any.whl.metadata (7.6 kB)
+2026-04-17T03:48:04.1177738Z Collecting pyproject_hooks (from build>=1.0.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.1248719Z   Downloading pyproject_hooks-1.2.0-py3-none-any.whl.metadata (1.3 kB)
+2026-04-17T03:48:04.1491792Z Collecting anyio (from httpx>=0.27.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.1563304Z   Downloading anyio-4.13.0-py3-none-any.whl.metadata (4.5 kB)
+2026-04-17T03:48:04.2410959Z Collecting certifi (from httpx>=0.27.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.2486274Z   Downloading certifi-2026.2.25-py3-none-any.whl.metadata (2.5 kB)
+2026-04-17T03:48:04.2681656Z Collecting httpcore==1.* (from httpx>=0.27.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.2753867Z   Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+2026-04-17T03:48:04.2934084Z Collecting idna (from httpx>=0.27.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.3004279Z   Downloading idna-3.11-py3-none-any.whl.metadata (8.4 kB)
+2026-04-17T03:48:04.3153218Z Collecting h11>=0.16 (from httpcore==1.*->httpx>=0.27.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.3222910Z   Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+2026-04-17T03:48:04.3405542Z Collecting attrs>=22.2.0 (from jsonschema>=4.19.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.3477809Z   Downloading attrs-26.1.0-py3-none-any.whl.metadata (8.8 kB)
+2026-04-17T03:48:04.3638354Z Collecting jsonschema-specifications>=2023.03.6 (from jsonschema>=4.19.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.3709205Z   Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl.metadata (2.9 kB)
+2026-04-17T03:48:04.3942182Z Collecting referencing>=0.28.4 (from jsonschema>=4.19.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.4012134Z   Downloading referencing-0.37.0-py3-none-any.whl.metadata (2.8 kB)
+2026-04-17T03:48:04.6340011Z Collecting rpds-py>=0.25.0 (from jsonschema>=4.19.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.6414959Z   Downloading rpds_py-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.1 kB)
+2026-04-17T03:48:04.6641669Z Collecting six>=1.9.0 (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.6713208Z   Downloading six-1.17.0-py2.py3-none-any.whl.metadata (1.7 kB)
+2026-04-17T03:48:04.6870246Z Collecting python-dateutil>=2.5.3 (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.6940421Z   Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl.metadata (8.4 kB)
+2026-04-17T03:48:04.7182253Z Collecting websocket-client!=0.40.0,!=0.41.*,!=0.42.*,>=0.32.0 (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.7255890Z   Downloading websocket_client-1.9.0-py3-none-any.whl.metadata (8.3 kB)
+2026-04-17T03:48:04.7525884Z Collecting requests (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.7599215Z   Downloading requests-2.33.1-py3-none-any.whl.metadata (4.8 kB)
+2026-04-17T03:48:04.7759761Z Collecting requests-oauthlib (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.7830731Z   Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+2026-04-17T03:48:04.8085590Z Collecting urllib3!=2.6.0,>=1.24.2 (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.8159811Z   Downloading urllib3-2.6.3-py3-none-any.whl.metadata (6.9 kB)
+2026-04-17T03:48:04.8309406Z Collecting durationpy>=0.7 (from kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.8380280Z   Downloading durationpy-0.10-py3-none-any.whl.metadata (340 bytes)
+2026-04-17T03:48:04.9375908Z Collecting librt>=0.8.0 (from mypy>=1.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.9452912Z   Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-04-17T03:48:04.9662903Z Collecting flatbuffers (from onnxruntime>=1.14.1->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:04.9742578Z   Downloading flatbuffers-25.12.19-py2.py3-none-any.whl.metadata (1.0 kB)
+2026-04-17T03:48:05.1193579Z Collecting protobuf (from onnxruntime>=1.14.1->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.1269967Z   Downloading protobuf-7.34.1-cp310-abi3-manylinux2014_x86_64.whl.metadata (595 bytes)
+2026-04-17T03:48:05.2294095Z Collecting sympy (from onnxruntime>=1.14.1->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.2379320Z   Downloading sympy-1.14.0-py3-none-any.whl.metadata (12 kB)
+2026-04-17T03:48:05.2664749Z Collecting importlib-metadata<8.8.0,>=6.0 (from opentelemetry-api>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.2739435Z   Downloading importlib_metadata-8.7.1-py3-none-any.whl.metadata (4.7 kB)
+2026-04-17T03:48:05.2941227Z Collecting zipp>=3.20 (from importlib-metadata<8.8.0,>=6.0->opentelemetry-api>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.3013100Z   Downloading zipp-3.23.1-py3-none-any.whl.metadata (3.6 kB)
+2026-04-17T03:48:05.3237691Z Collecting googleapis-common-protos~=1.57 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.3310501Z   Downloading googleapis_common_protos-1.74.0-py3-none-any.whl.metadata (9.2 kB)
+2026-04-17T03:48:05.3559296Z Collecting opentelemetry-exporter-otlp-proto-common==1.41.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.3630627Z   Downloading opentelemetry_exporter_otlp_proto_common-1.41.0-py3-none-any.whl.metadata (1.9 kB)
+2026-04-17T03:48:05.3815693Z Collecting opentelemetry-proto==1.41.0 (from opentelemetry-exporter-otlp-proto-grpc>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.3891751Z   Downloading opentelemetry_proto-1.41.0-py3-none-any.whl.metadata (2.4 kB)
+2026-04-17T03:48:05.4006213Z Collecting protobuf (from onnxruntime>=1.14.1->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.4091170Z   Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl.metadata (593 bytes)
+2026-04-17T03:48:05.4376859Z Collecting opentelemetry-semantic-conventions==0.62b0 (from opentelemetry-sdk>=1.2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.4449973Z   Downloading opentelemetry_semantic_conventions-0.62b0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-17T03:48:05.4652338Z Collecting cfgv>=2.0.0 (from pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.4723056Z   Downloading cfgv-3.5.0-py2.py3-none-any.whl.metadata (8.9 kB)
+2026-04-17T03:48:05.5098893Z Collecting identify>=1.0.0 (from pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.5172129Z   Downloading identify-2.6.18-py2.py3-none-any.whl.metadata (4.4 kB)
+2026-04-17T03:48:05.5341388Z Collecting nodeenv>=0.11.1 (from pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.5412545Z   Downloading nodeenv-1.10.0-py2.py3-none-any.whl.metadata (24 kB)
+2026-04-17T03:48:05.5801839Z Collecting virtualenv>=20.10.0 (from pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.5873649Z   Downloading virtualenv-21.2.4-py3-none-any.whl.metadata (3.5 kB)
+2026-04-17T03:48:05.6052704Z Collecting annotated-types>=0.6.0 (from pydantic>=2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:05.6133567Z   Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+2026-04-17T03:48:06.2994442Z Collecting pydantic-core==2.46.1 (from pydantic>=2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.3070105Z   Downloading pydantic_core-2.46.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+2026-04-17T03:48:06.3220637Z Collecting typing-inspection>=0.4.2 (from pydantic>=2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.3291481Z   Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+2026-04-17T03:48:06.3526633Z Collecting python-dotenv>=0.21.0 (from pydantic-settings>=2.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.3599601Z   Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+2026-04-17T03:48:06.3794011Z Collecting iniconfig>=1.0.1 (from pytest>=7.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.3864459Z   Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-17T03:48:06.4005811Z Collecting pluggy<2,>=1.5 (from pytest>=7.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.4019261Z   Using cached pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+2026-04-17T03:48:06.4210192Z Collecting pygments>=2.7.2 (from pytest>=7.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.4283218Z   Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+2026-04-17T03:48:06.7570803Z Collecting coverage>=7.10.6 (from coverage[toml]>=7.10.6->pytest-cov>=4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.7647974Z   Downloading coverage-7.13.5-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.5 kB)
+2026-04-17T03:48:06.7952176Z Collecting markdown-it-py>=2.2.0 (from rich>=10.11.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.8022345Z   Downloading markdown_it_py-4.0.0-py3-none-any.whl.metadata (7.3 kB)
+2026-04-17T03:48:06.8208333Z Collecting mdurl~=0.1 (from markdown-it-py>=2.2.0->rich>=10.11.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.8279956Z   Downloading mdurl-0.1.2-py3-none-any.whl.metadata (1.6 kB)
+2026-04-17T03:48:06.8746192Z Collecting huggingface-hub<2.0,>=0.16.4 (from tokenizers>=0.13.2->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.8817180Z   Downloading huggingface_hub-1.11.0-py3-none-any.whl.metadata (14 kB)
+2026-04-17T03:48:06.9138155Z Collecting filelock>=3.10.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers>=0.13.2->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.9207437Z   Downloading filelock-3.28.0-py3-none-any.whl.metadata (2.0 kB)
+2026-04-17T03:48:06.9419984Z Collecting fsspec>=2023.5.0 (from huggingface-hub<2.0,>=0.16.4->tokenizers>=0.13.2->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:06.9490988Z   Downloading fsspec-2026.3.0-py3-none-any.whl.metadata (10 kB)
+2026-04-17T03:48:07.0171994Z Collecting hf-xet<2.0.0,>=1.4.3 (from huggingface-hub<2.0,>=0.16.4->tokenizers>=0.13.2->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.0244756Z   Downloading hf_xet-1.4.3-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (4.9 kB)
+2026-04-17T03:48:07.0513229Z Collecting shellingham>=1.3.0 (from typer>=0.9.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.0583468Z   Downloading shellingham-1.5.4-py2.py3-none-any.whl.metadata (3.5 kB)
+2026-04-17T03:48:07.0753142Z Collecting annotated-doc>=0.0.2 (from typer>=0.9.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.0823345Z   Downloading annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+2026-04-17T03:48:07.1293738Z Collecting httptools>=0.6.3 (from uvicorn[standard]>=0.18.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.1365517Z   Downloading httptools-0.7.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+2026-04-17T03:48:07.1759749Z Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.18.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.1838059Z   Downloading uvloop-0.22.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.9 kB)
+2026-04-17T03:48:07.2532450Z Collecting watchfiles>=0.20 (from uvicorn[standard]>=0.18.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.2604672Z   Downloading watchfiles-1.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+2026-04-17T03:48:07.3410229Z Collecting websockets>=10.4 (from uvicorn[standard]>=0.18.3->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.3481604Z   Downloading websockets-16.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.8 kB)
+2026-04-17T03:48:07.3657185Z Collecting distlib<1,>=0.3.7 (from virtualenv>=20.10.0->pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.3727930Z   Downloading distlib-0.4.0-py2.py3-none-any.whl.metadata (5.2 kB)
+2026-04-17T03:48:07.3899698Z Collecting python-discovery>=1.2.2 (from virtualenv>=20.10.0->pre-commit>=3.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.3970038Z   Downloading python_discovery-1.2.2-py3-none-any.whl.metadata (5.4 kB)
+2026-04-17T03:48:07.6303098Z Collecting charset_normalizer<4,>=2 (from requests->kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.6379833Z   Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (40 kB)
+2026-04-17T03:48:07.6657525Z Collecting oauthlib>=3.0.0 (from requests-oauthlib->kubernetes>=28.1.0->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.6730149Z   Downloading oauthlib-3.3.1-py3-none-any.whl.metadata (7.9 kB)
+2026-04-17T03:48:07.6958200Z Collecting mpmath<1.4,>=1.1.0 (from sympy->onnxruntime>=1.14.1->chromadb>=0.4.0->neuralmind==0.1.0)
+2026-04-17T03:48:07.7028156Z   Downloading mpmath-1.3.0-py3-none-any.whl.metadata (8.6 kB)
+2026-04-17T03:48:07.7163802Z Downloading black-26.3.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.8 MB)
+2026-04-17T03:48:07.8187889Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 18.7 MB/s  0:00:00
+2026-04-17T03:48:07.8259737Z Downloading pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (260 kB)
+2026-04-17T03:48:07.8430741Z Downloading chromadb-1.5.8-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (23.2 MB)
+2026-04-17T03:48:08.1220562Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 23.2/23.2 MB 85.2 MB/s  0:00:00
+2026-04-17T03:48:08.1297492Z Downloading bcrypt-5.0.0-cp39-abi3-manylinux_2_34_x86_64.whl (278 kB)
+2026-04-17T03:48:08.1395546Z Downloading build-1.4.3-py3-none-any.whl (26 kB)
+2026-04-17T03:48:08.1489565Z Downloading click-8.3.2-py3-none-any.whl (108 kB)
+2026-04-17T03:48:08.1588907Z Downloading grpcio-1.80.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (6.8 MB)
+2026-04-17T03:48:08.1954483Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.8/6.8 MB 193.7 MB/s  0:00:00
+2026-04-17T03:48:08.2025934Z Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+2026-04-17T03:48:08.2118951Z Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+2026-04-17T03:48:08.2213888Z Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+2026-04-17T03:48:08.2306198Z Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+2026-04-17T03:48:08.2400266Z Downloading jsonschema-4.26.0-py3-none-any.whl (90 kB)
+2026-04-17T03:48:08.2494261Z Downloading attrs-26.1.0-py3-none-any.whl (67 kB)
+2026-04-17T03:48:08.2585980Z Downloading jsonschema_specifications-2025.9.1-py3-none-any.whl (18 kB)
+2026-04-17T03:48:08.2677958Z Downloading kubernetes-35.0.0-py2.py3-none-any.whl (2.0 MB)
+2026-04-17T03:48:08.2792511Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 189.5 MB/s  0:00:00
+2026-04-17T03:48:08.2865952Z Downloading certifi-2026.2.25-py3-none-any.whl (153 kB)
+2026-04-17T03:48:08.2962882Z Downloading durationpy-0.10-py3-none-any.whl (3.9 kB)
+2026-04-17T03:48:08.3056294Z Downloading mmh3-5.2.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (103 kB)
+2026-04-17T03:48:08.3149808Z Downloading mypy-1.20.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (14.5 MB)
+2026-04-17T03:48:08.4149510Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 14.5/14.5 MB 147.3 MB/s  0:00:00
+2026-04-17T03:48:08.4223912Z Downloading librt-0.9.0-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (224 kB)
+2026-04-17T03:48:08.4326713Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-04-17T03:48:08.4420158Z Downloading numpy-2.4.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (16.9 MB)
+2026-04-17T03:48:08.5015398Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 16.9/16.9 MB 291.2 MB/s  0:00:00
+2026-04-17T03:48:08.5090036Z Downloading onnxruntime-1.24.4-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (17.2 MB)
+2026-04-17T03:48:08.6179078Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.2/17.2 MB 160.9 MB/s  0:00:00
+2026-04-17T03:48:08.6252527Z Downloading opentelemetry_api-1.41.0-py3-none-any.whl (69 kB)
+2026-04-17T03:48:08.6349900Z Downloading importlib_metadata-8.7.1-py3-none-any.whl (27 kB)
+2026-04-17T03:48:08.6442981Z Downloading opentelemetry_exporter_otlp_proto_grpc-1.41.0-py3-none-any.whl (20 kB)
+2026-04-17T03:48:08.6539870Z Downloading opentelemetry_exporter_otlp_proto_common-1.41.0-py3-none-any.whl (18 kB)
+2026-04-17T03:48:08.6639128Z Downloading opentelemetry_proto-1.41.0-py3-none-any.whl (72 kB)
+2026-04-17T03:48:08.6743615Z Downloading googleapis_common_protos-1.74.0-py3-none-any.whl (300 kB)
+2026-04-17T03:48:08.6847597Z Downloading opentelemetry_sdk-1.41.0-py3-none-any.whl (180 kB)
+2026-04-17T03:48:08.6948848Z Downloading opentelemetry_semantic_conventions-0.62b0-py3-none-any.whl (231 kB)
+2026-04-17T03:48:08.7045209Z Downloading protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl (323 kB)
+2026-04-17T03:48:08.7143319Z Downloading orjson-3.11.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (133 kB)
+2026-04-17T03:48:08.7235634Z Downloading overrides-7.7.0-py3-none-any.whl (17 kB)
+2026-04-17T03:48:08.7268872Z Using cached packaging-26.1-py3-none-any.whl (95 kB)
+2026-04-17T03:48:08.7282092Z Using cached pathspec-1.0.4-py3-none-any.whl (55 kB)
+2026-04-17T03:48:08.7352690Z Downloading platformdirs-4.9.6-py3-none-any.whl (21 kB)
+2026-04-17T03:48:08.7443539Z Downloading pre_commit-4.5.1-py2.py3-none-any.whl (226 kB)
+2026-04-17T03:48:08.7541278Z Downloading cfgv-3.5.0-py2.py3-none-any.whl (7.4 kB)
+2026-04-17T03:48:08.7630733Z Downloading identify-2.6.18-py2.py3-none-any.whl (99 kB)
+2026-04-17T03:48:08.7723764Z Downloading nodeenv-1.10.0-py2.py3-none-any.whl (23 kB)
+2026-04-17T03:48:08.7816460Z Downloading pybase64-1.4.3-cp311-cp311-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (71 kB)
+2026-04-17T03:48:08.7909520Z Downloading pydantic-2.13.1-py3-none-any.whl (471 kB)
+2026-04-17T03:48:08.8011617Z Downloading pydantic_core-2.46.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+2026-04-17T03:48:08.8098013Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 285.6 MB/s  0:00:00
+2026-04-17T03:48:08.8169251Z Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+2026-04-17T03:48:08.8262153Z Downloading pydantic_settings-2.13.1-py3-none-any.whl (58 kB)
+2026-04-17T03:48:08.8356798Z Downloading pypika-0.51.1-py2.py3-none-any.whl (60 kB)
+2026-04-17T03:48:08.8450454Z Downloading pytest-9.0.3-py3-none-any.whl (375 kB)
+2026-04-17T03:48:08.8491590Z Using cached pluggy-1.6.0-py3-none-any.whl (20 kB)
+2026-04-17T03:48:08.8564169Z Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+2026-04-17T03:48:08.8654478Z Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+2026-04-17T03:48:08.8719482Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 215.4 MB/s  0:00:00
+2026-04-17T03:48:08.8790752Z Downloading pytest_asyncio-1.3.0-py3-none-any.whl (15 kB)
+2026-04-17T03:48:08.8882435Z Downloading pytest_cov-7.1.0-py3-none-any.whl (22 kB)
+2026-04-17T03:48:08.8974503Z Downloading coverage-7.13.5-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (252 kB)
+2026-04-17T03:48:08.9073084Z Downloading pytest_mock-3.15.1-py3-none-any.whl (10 kB)
+2026-04-17T03:48:08.9167581Z Downloading python_dateutil-2.9.0.post0-py2.py3-none-any.whl (229 kB)
+2026-04-17T03:48:08.9268868Z Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+2026-04-17T03:48:08.9363547Z Downloading pyyaml-6.0.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (806 kB)
+2026-04-17T03:48:08.9417236Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 806.6/806.6 kB 160.8 MB/s  0:00:00
+2026-04-17T03:48:08.9486657Z Downloading referencing-0.37.0-py3-none-any.whl (26 kB)
+2026-04-17T03:48:08.9577896Z Downloading rich-15.0.0-py3-none-any.whl (310 kB)
+2026-04-17T03:48:08.9674045Z Downloading markdown_it_py-4.0.0-py3-none-any.whl (87 kB)
+2026-04-17T03:48:08.9768965Z Downloading mdurl-0.1.2-py3-none-any.whl (10.0 kB)
+2026-04-17T03:48:08.9864243Z Downloading rpds_py-0.30.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (390 kB)
+2026-04-17T03:48:09.0108036Z Downloading ruff-0.15.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.3 MB)
+2026-04-17T03:48:09.0466614Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 329.0 MB/s  0:00:00
+2026-04-17T03:48:09.0539814Z Downloading six-1.17.0-py2.py3-none-any.whl (11 kB)
+2026-04-17T03:48:09.0637103Z Downloading tenacity-9.1.4-py3-none-any.whl (28 kB)
+2026-04-17T03:48:09.0747882Z Downloading tokenizers-0.22.2-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (3.3 MB)
+2026-04-17T03:48:09.0889156Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.3/3.3 MB 272.8 MB/s  0:00:00
+2026-04-17T03:48:09.0966924Z Downloading huggingface_hub-1.11.0-py3-none-any.whl (645 kB)
+2026-04-17T03:48:09.1034603Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 645.5/645.5 kB 100.2 MB/s  0:00:00
+2026-04-17T03:48:09.1115062Z Downloading hf_xet-1.4.3-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (4.2 MB)
+2026-04-17T03:48:09.1250931Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.2/4.2 MB 345.6 MB/s  0:00:00
+2026-04-17T03:48:09.1326262Z Downloading filelock-3.28.0-py3-none-any.whl (39 kB)
+2026-04-17T03:48:09.1420378Z Downloading fsspec-2026.3.0-py3-none-any.whl (202 kB)
+2026-04-17T03:48:09.1549198Z Downloading tqdm-4.67.3-py3-none-any.whl (78 kB)
+2026-04-17T03:48:09.1649349Z Downloading typer-0.24.1-py3-none-any.whl (56 kB)
+2026-04-17T03:48:09.1745564Z Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+2026-04-17T03:48:09.1837886Z Downloading shellingham-1.5.4-py2.py3-none-any.whl (9.8 kB)
+2026-04-17T03:48:09.1930846Z Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+2026-04-17T03:48:09.2024334Z Downloading urllib3-2.6.3-py3-none-any.whl (131 kB)
+2026-04-17T03:48:09.2122956Z Downloading uvicorn-0.44.0-py3-none-any.whl (69 kB)
+2026-04-17T03:48:09.2230333Z Downloading httptools-0.7.1-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (456 kB)
+2026-04-17T03:48:09.2335892Z Downloading uvloop-0.22.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.8 MB)
+2026-04-17T03:48:09.2654725Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.8/3.8 MB 123.8 MB/s  0:00:00
+2026-04-17T03:48:09.2733908Z Downloading virtualenv-21.2.4-py3-none-any.whl (5.8 MB)
+2026-04-17T03:48:09.2912625Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.8/5.8 MB 357.0 MB/s  0:00:00
+2026-04-17T03:48:09.2988030Z Downloading distlib-0.4.0-py2.py3-none-any.whl (469 kB)
+2026-04-17T03:48:09.3091288Z Downloading python_discovery-1.2.2-py3-none-any.whl (31 kB)
+2026-04-17T03:48:09.3184152Z Downloading watchfiles-1.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+2026-04-17T03:48:09.3363469Z Downloading anyio-4.13.0-py3-none-any.whl (114 kB)
+2026-04-17T03:48:09.3455483Z Downloading idna-3.11-py3-none-any.whl (71 kB)
+2026-04-17T03:48:09.3544922Z Downloading websocket_client-1.9.0-py3-none-any.whl (82 kB)
+2026-04-17T03:48:09.3636273Z Downloading websockets-16.0-cp311-cp311-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (184 kB)
+2026-04-17T03:48:09.3742343Z Downloading zipp-3.23.1-py3-none-any.whl (10 kB)
+2026-04-17T03:48:09.3829251Z Downloading flatbuffers-25.12.19-py2.py3-none-any.whl (26 kB)
+2026-04-17T03:48:09.3917984Z Downloading importlib_resources-7.1.0-py3-none-any.whl (37 kB)
+2026-04-17T03:48:09.4007034Z Downloading pyproject_hooks-1.2.0-py3-none-any.whl (10 kB)
+2026-04-17T03:48:09.4094943Z Downloading requests-2.33.1-py3-none-any.whl (64 kB)
+2026-04-17T03:48:09.4185417Z Downloading charset_normalizer-3.4.7-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (214 kB)
+2026-04-17T03:48:09.4281310Z Downloading requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
+2026-04-17T03:48:09.4370284Z Downloading oauthlib-3.3.1-py3-none-any.whl (160 kB)
+2026-04-17T03:48:09.4466904Z Downloading sympy-1.14.0-py3-none-any.whl (6.3 MB)
+2026-04-17T03:48:09.4657587Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.3/6.3 MB 368.6 MB/s  0:00:00
+2026-04-17T03:48:09.4732825Z Downloading mpmath-1.3.0-py3-none-any.whl (536 kB)
+2026-04-17T03:48:09.4777807Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 536.2/536.2 kB 106.3 MB/s  0:00:00
+2026-04-17T03:48:09.6543137Z Building wheels for collected packages: neuralmind
+2026-04-17T03:48:09.6551626Z   Building editable for neuralmind (pyproject.toml): started
+2026-04-17T03:48:09.6874038Z   Building editable for neuralmind (pyproject.toml): finished with status 'done'
+2026-04-17T03:48:09.6880535Z   Created wheel for neuralmind: filename=neuralmind-0.1.0-py3-none-any.whl size=4809 sha256=9ae44fe2dd0750c5b4d56ffda712d616323d42773ba9d318ac15e21b8a484336
+2026-04-17T03:48:09.6882528Z   Stored in directory: /tmp/pip-ephem-wheel-cache-c2bm50hw/wheels/2c/38/74/9221649bab6ee8301e00aec0e542f79c92dec93cb6b153b481
+2026-04-17T03:48:09.6899788Z Successfully built neuralmind
+2026-04-17T03:48:09.8447100Z Installing collected packages: pypika, mpmath, flatbuffers, durationpy, distlib, zipp, websockets, websocket-client, uvloop, urllib3, typing-extensions, tqdm, tenacity, sympy, six, shellingham, ruff, rpds-py, pyyaml, pytokens, python-dotenv, pyproject_hooks, pygments, pybase64, protobuf, pluggy, platformdirs, pathspec, packaging, overrides, orjson, oauthlib, numpy, nodeenv, mypy-extensions, mmh3, mdurl, librt, iniconfig, importlib-resources, idna, identify, httptools, hf-xet, h11, fsspec, filelock, coverage, click, charset_normalizer, cfgv, certifi, bcrypt, attrs, annotated-types, annotated-doc, uvicorn, typing-inspection, requests, referencing, python-discovery, python-dateutil, pytest, pydantic-core, opentelemetry-proto, onnxruntime, mypy, markdown-it-py, importlib-metadata, httpcore, grpcio, googleapis-common-protos, build, black, anyio, watchfiles, virtualenv, rich, requests-oauthlib, pytest-mock, pytest-cov, pytest-asyncio, pydantic, opentelemetry-exporter-otlp-proto-common, opentelemetry-api, jsonschema-specifications, httpx, typer, pydantic-settings, pre-commit, opentelemetry-semantic-conventions, kubernetes, jsonschema, opentelemetry-sdk, huggingface-hub, tokenizers, opentelemetry-exporter-otlp-proto-grpc, chromadb, neuralmind
+2026-04-17T03:48:25.9416637Z 
+2026-04-17T03:48:25.9461436Z Successfully installed annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.13.0 attrs-26.1.0 bcrypt-5.0.0 black-26.3.1 build-1.4.3 certifi-2026.2.25 cfgv-3.5.0 charset_normalizer-3.4.7 chromadb-1.5.8 click-8.3.2 coverage-7.13.5 distlib-0.4.0 durationpy-0.10 filelock-3.28.0 flatbuffers-25.12.19 fsspec-2026.3.0 googleapis-common-protos-1.74.0 grpcio-1.80.0 h11-0.16.0 hf-xet-1.4.3 httpcore-1.0.9 httptools-0.7.1 httpx-0.28.1 huggingface-hub-1.11.0 identify-2.6.18 idna-3.11 importlib-metadata-8.7.1 importlib-resources-7.1.0 iniconfig-2.3.0 jsonschema-4.26.0 jsonschema-specifications-2025.9.1 kubernetes-35.0.0 librt-0.9.0 markdown-it-py-4.0.0 mdurl-0.1.2 mmh3-5.2.1 mpmath-1.3.0 mypy-1.20.1 mypy-extensions-1.1.0 neuralmind-0.1.0 nodeenv-1.10.0 numpy-2.4.4 oauthlib-3.3.1 onnxruntime-1.24.4 opentelemetry-api-1.41.0 opentelemetry-exporter-otlp-proto-common-1.41.0 opentelemetry-exporter-otlp-proto-grpc-1.41.0 opentelemetry-proto-1.41.0 opentelemetry-sdk-1.41.0 opentelemetry-semantic-conventions-0.62b0 orjson-3.11.8 overrides-7.7.0 packaging-26.1 pathspec-1.0.4 platformdirs-4.9.6 pluggy-1.6.0 pre-commit-4.5.1 protobuf-6.33.6 pybase64-1.4.3 pydantic-2.13.1 pydantic-core-2.46.1 pydantic-settings-2.13.1 pygments-2.20.0 pypika-0.51.1 pyproject_hooks-1.2.0 pytest-9.0.3 pytest-asyncio-1.3.0 pytest-cov-7.1.0 pytest-mock-3.15.1 python-dateutil-2.9.0.post0 python-discovery-1.2.2 python-dotenv-1.2.2 pytokens-0.4.1 pyyaml-6.0.3 referencing-0.37.0 requests-2.33.1 requests-oauthlib-2.0.0 rich-15.0.0 rpds-py-0.30.0 ruff-0.15.11 shellingham-1.5.4 six-1.17.0 sympy-1.14.0 tenacity-9.1.4 tokenizers-0.22.2 tqdm-4.67.3 typer-0.24.1 typing-extensions-4.15.0 typing-inspection-0.4.2 urllib3-2.6.3 uvicorn-0.44.0 uvloop-0.22.1 virtualenv-21.2.4 watchfiles-1.1.1 websocket-client-1.9.0 websockets-16.0 zipp-3.23.1
+2026-04-17T03:48:27.0780680Z Requirement already satisfied: mypy in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (1.20.1)
+2026-04-17T03:48:27.0789526Z Requirement already satisfied: typing_extensions>=4.6.0 in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (from mypy) (4.15.0)
+2026-04-17T03:48:27.0794825Z Requirement already satisfied: mypy_extensions>=1.0.0 in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (from mypy) (1.1.0)
+2026-04-17T03:48:27.0799720Z Requirement already satisfied: pathspec>=1.0.0 in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (from mypy) (1.0.4)
+2026-04-17T03:48:27.0807953Z Requirement already satisfied: librt>=0.8.0 in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (from mypy) (0.9.0)
+2026-04-17T03:48:27.2095594Z ##[group]Run mypy neuralmind --ignore-missing-imports
+2026-04-17T03:48:27.2096006Z [36;1mmypy neuralmind --ignore-missing-imports[0m
+2026-04-17T03:48:27.2118616Z shell: /usr/bin/bash -e {0}
+2026-04-17T03:48:27.2118843Z env:
+2026-04-17T03:48:27.2119089Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:27.2119526Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-17T03:48:27.2119940Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:27.2120310Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:27.2120676Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:27.2121031Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-17T03:48:27.2121327Z ##[endgroup]
+2026-04-17T03:48:30.6214864Z neuralmind/context_selector.py:85: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+2026-04-17T03:48:30.6216959Z neuralmind/context_selector.py:85: error: Incompatible default for parameter "project_path" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:30.6218816Z neuralmind/context_selector.py:85: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:30.6220656Z neuralmind/context_selector.py:85: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:30.6222110Z neuralmind/context_selector.py:144: error: Library stubs not installed for "yaml"  [import-untyped]
+2026-04-17T03:48:30.6223234Z neuralmind/context_selector.py:144: note: Hint: "python3 -m pip install types-PyYAML"
+2026-04-17T03:48:30.6224727Z neuralmind/context_selector.py:144: note: (or run "mypy --install-types" to install all missing stub packages)
+2026-04-17T03:48:30.6226147Z neuralmind/context_selector.py:144: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+2026-04-17T03:48:30.6227776Z neuralmind/context_selector.py:348: error: Incompatible default for parameter "query" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:30.6229592Z neuralmind/context_selector.py:348: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:30.6231378Z neuralmind/context_selector.py:348: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:30.6233317Z neuralmind/context_selector.py:428: error: Argument "query" to "get_context" of "ContextSelector" has incompatible type "None"; expected "str"  [arg-type]
+2026-04-17T03:48:33.9641673Z neuralmind/embedder.py:38: error: Incompatible default for parameter "db_path" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:33.9643843Z neuralmind/embedder.py:38: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:33.9645610Z neuralmind/embedder.py:38: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:33.9647006Z neuralmind/embedder.py:66: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9648439Z neuralmind/embedder.py:69: error: Incompatible types in assignment (expression has type "Collection", variable has type "None")  [assignment]
+2026-04-17T03:48:33.9649981Z neuralmind/embedder.py:164: error: Dict entry 3 has incompatible type "str": "str"; expected "str": "int"  [dict-item]
+2026-04-17T03:48:33.9651561Z neuralmind/embedder.py:218: error: Incompatible default for parameter "file_type" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:33.9653884Z neuralmind/embedder.py:218: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:33.9655871Z neuralmind/embedder.py:218: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:33.9657603Z neuralmind/embedder.py:218: error: Incompatible default for parameter "community" (default has type "None", parameter has type "int")  [assignment]
+2026-04-17T03:48:33.9659197Z neuralmind/embedder.py:238: error: Dict entry 0 has incompatible type "str": "int"; expected "str": "str"  [dict-item]
+2026-04-17T03:48:33.9660699Z neuralmind/embedder.py:243: error: Dict entry 0 has incompatible type "str": "list[dict[str, str]]"; expected "str": "str"  [dict-item]
+2026-04-17T03:48:33.9662264Z neuralmind/embedder.py:307: error: Need type annotation for "file_types" (hint: "file_types: dict[<type>, <type>] = ...")  [var-annotated]
+2026-04-17T03:48:33.9664148Z neuralmind/embedder.py:328: error: Need type annotation for "communities" (hint: "communities: dict[<type>, <type>] = ...")  [var-annotated]
+2026-04-17T03:48:33.9748539Z neuralmind/core.py:40: error: Incompatible default for parameter "db_path" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:33.9750243Z neuralmind/core.py:40: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:33.9751816Z neuralmind/core.py:40: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:33.9753144Z neuralmind/core.py:108: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9754472Z neuralmind/core.py:108: note: Use "-> None" if function does not return a value
+2026-04-17T03:48:33.9755703Z neuralmind/core.py:124: error: Item "None" of "ContextSelector | None" has no attribute "get_wakeup_context"  [union-attr]
+2026-04-17T03:48:33.9757108Z neuralmind/core.py:140: error: Item "None" of "ContextSelector | None" has no attribute "get_query_context"  [union-attr]
+2026-04-17T03:48:33.9758472Z neuralmind/core.py:142: error: Function is missing a type annotation for one or more parameters  [no-untyped-def]
+2026-04-17T03:48:33.9760078Z neuralmind/core.py:177: error: Incompatible default for parameter "sample_queries" (default has type "None", parameter has type "list[str]")  [assignment]
+2026-04-17T03:48:33.9761809Z neuralmind/core.py:177: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:33.9763398Z neuralmind/core.py:177: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:33.9765188Z neuralmind/core.py:221: error: Dict entry 4 has incompatible type "str": "list[str]"; expected "str": "float | int | str | None"  [dict-item]
+2026-04-17T03:48:33.9766690Z neuralmind/core.py:227: error: Generator has incompatible item type "float | int | str | None"; expected "bool"  [misc]
+2026-04-17T03:48:33.9768114Z neuralmind/core.py:228: error: Generator has incompatible item type "float | int | str | None"; expected "bool"  [misc]
+2026-04-17T03:48:33.9769647Z neuralmind/core.py:240: error: Incompatible default for parameter "query" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:33.9771323Z neuralmind/core.py:240: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+2026-04-17T03:48:33.9772922Z neuralmind/core.py:240: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+2026-04-17T03:48:33.9774812Z neuralmind/core.py:240: error: Incompatible default for parameter "output_path" (default has type "None", parameter has type "str")  [assignment]
+2026-04-17T03:48:33.9860550Z neuralmind/mcp_server.py:259: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9862027Z neuralmind/mcp_server.py:271: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9863427Z neuralmind/mcp_server.py:275: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9864967Z neuralmind/mcp_server.py:283: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9866041Z neuralmind/mcp_server.py:283: note: Use "-> None" if function does not return a value
+2026-04-17T03:48:33.9968921Z neuralmind/cli.py:16: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9969923Z neuralmind/cli.py:35: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9971038Z neuralmind/cli.py:55: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9972016Z neuralmind/cli.py:72: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9972964Z neuralmind/cli.py:86: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9974278Z neuralmind/cli.py:99: error: Function is missing a type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9975368Z neuralmind/cli.py:120: error: Function is missing a return type annotation  [no-untyped-def]
+2026-04-17T03:48:33.9976191Z neuralmind/cli.py:120: note: Use "-> None" if function does not return a value
+2026-04-17T03:48:34.0004202Z Found 37 errors in 5 files (checked 6 source files)
+2026-04-17T03:48:34.0205524Z ##[error]Process completed with exit code 1.
+2026-04-17T03:48:34.0289283Z Post job cleanup.
+2026-04-17T03:48:34.1890724Z Post job cleanup.
+2026-04-17T03:48:34.2819768Z [command]/usr/bin/git version
+2026-04-17T03:48:34.2854896Z git version 2.53.0
+2026-04-17T03:48:34.2897572Z Temporarily overriding HOME='/home/runner/work/_temp/b3f8a8c6-ad87-4c69-9f0e-242aa4d818a4' before making global git config changes
+2026-04-17T03:48:34.2898765Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-17T03:48:34.2910747Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:48:34.2943702Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-17T03:48:34.2974754Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-17T03:48:34.3192968Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-17T03:48:34.3212651Z http.https://github.com/.extraheader
+2026-04-17T03:48:34.3224465Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-04-17T03:48:34.3253968Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-17T03:48:34.3467569Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-17T03:48:34.3497555Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-17T03:48:34.3819290Z Cleaning up orphan processes
+2026-04-17T03:48:34.4098229Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v5. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

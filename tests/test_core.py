@@ -23,7 +23,7 @@ class TestNeuralMindInit:
 
         nonexistent = tmp_path / "nonexistent"
         nonexistent.mkdir()  # Create the directory
-        
+
         # NeuralMind doesn't validate graph existence at init
         mind = NeuralMind(str(nonexistent))
         assert mind.project_path == nonexistent
@@ -107,7 +107,7 @@ class TestNeuralMindBuild:
 
         mind = NeuralMind(str(empty_project))
         stats = mind.build()
-        
+
         # build() returns failure dict, not raises exception
         assert stats["success"] is False
         assert "error" in stats
@@ -118,7 +118,7 @@ class TestNeuralMindBuild:
 
         mind = NeuralMind(str(temp_project))
         assert mind._built is False
-        
+
         mind.build()
         assert mind._built is True
 
@@ -129,7 +129,7 @@ class TestNeuralMindBuild:
 
         mind = NeuralMind(str(temp_project))
         assert mind.selector is None
-        
+
         mind.build()
         assert isinstance(mind.selector, ContextSelector)
 
@@ -188,7 +188,7 @@ class TestNeuralMindWakeup:
 
         # wakeup() should auto-build via _ensure_built()
         result = mind.wakeup()
-        
+
         assert mind._built is True
         assert result.context is not None
 
@@ -244,7 +244,7 @@ class TestNeuralMindQuery:
 
         # query() should auto-build via _ensure_built()
         result = mind.query("test")
-        
+
         assert mind._built is True
         assert result.context is not None
 
@@ -294,7 +294,7 @@ class TestNeuralMindSearch:
         assert mind._built is False
 
         results = mind.search("test")
-        
+
         assert mind._built is True
         assert isinstance(results, list)
 
@@ -359,6 +359,6 @@ class TestNeuralMindBenchmark:
         assert mind._built is False
 
         results = mind.benchmark()
-        
+
         assert mind._built is True
         assert isinstance(results, dict)

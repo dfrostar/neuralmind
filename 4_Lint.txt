@@ -1,0 +1,542 @@
+﻿2026-04-17T03:47:55.7149623Z Current runner version: '2.333.1'
+2026-04-17T03:47:55.7173921Z ##[group]Runner Image Provisioner
+2026-04-17T03:47:55.7174693Z Hosted Compute Agent
+2026-04-17T03:47:55.7175298Z Version: 20260213.493
+2026-04-17T03:47:55.7175939Z Commit: 5c115507f6dd24b8de37d8bbe0bb4509d0cc0fa3
+2026-04-17T03:47:55.7176657Z Build Date: 2026-02-13T00:28:41Z
+2026-04-17T03:47:55.7177263Z Worker ID: {0bc7c34e-a333-4da0-82e5-08236563e585}
+2026-04-17T03:47:55.7178272Z Azure Region: westus3
+2026-04-17T03:47:55.7178834Z ##[endgroup]
+2026-04-17T03:47:55.7180190Z ##[group]Operating System
+2026-04-17T03:47:55.7180943Z Ubuntu
+2026-04-17T03:47:55.7181382Z 24.04.4
+2026-04-17T03:47:55.7181823Z LTS
+2026-04-17T03:47:55.7182301Z ##[endgroup]
+2026-04-17T03:47:55.7182795Z ##[group]Runner Image
+2026-04-17T03:47:55.7183310Z Image: ubuntu-24.04
+2026-04-17T03:47:55.7183907Z Version: 20260406.80.1
+2026-04-17T03:47:55.7185086Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260406.80/images/ubuntu/Ubuntu2404-Readme.md
+2026-04-17T03:47:55.7186687Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260406.80
+2026-04-17T03:47:55.7187593Z ##[endgroup]
+2026-04-17T03:47:55.7189056Z ##[group]GITHUB_TOKEN Permissions
+2026-04-17T03:47:55.7190902Z Contents: read
+2026-04-17T03:47:55.7191462Z Metadata: read
+2026-04-17T03:47:55.7192019Z Packages: read
+2026-04-17T03:47:55.7192544Z ##[endgroup]
+2026-04-17T03:47:55.7194920Z Secret source: Actions
+2026-04-17T03:47:55.7195738Z Prepare workflow directory
+2026-04-17T03:47:55.7586462Z Prepare all required actions
+2026-04-17T03:47:55.7631651Z Getting action download info
+2026-04-17T03:47:56.1710356Z Download action repository 'actions/checkout@v4' (SHA:34e114876b0b11c390a56381ad16ebd13914f8d5)
+2026-04-17T03:47:56.3250365Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-04-17T03:47:56.5029375Z Complete job name: Lint
+2026-04-17T03:47:56.5743813Z ##[group]Run actions/checkout@v4
+2026-04-17T03:47:56.5744755Z with:
+2026-04-17T03:47:56.5745184Z   repository: dfrostar/neuralmind
+2026-04-17T03:47:56.5745835Z   token: ***
+2026-04-17T03:47:56.5746219Z   ssh-strict: true
+2026-04-17T03:47:56.5746594Z   ssh-user: git
+2026-04-17T03:47:56.5746992Z   persist-credentials: true
+2026-04-17T03:47:56.5747442Z   clean: true
+2026-04-17T03:47:56.5747829Z   sparse-checkout-cone-mode: true
+2026-04-17T03:47:56.5748509Z   fetch-depth: 1
+2026-04-17T03:47:56.5748887Z   fetch-tags: false
+2026-04-17T03:47:56.5749309Z   show-progress: true
+2026-04-17T03:47:56.5749696Z   lfs: false
+2026-04-17T03:47:56.5750050Z   submodules: false
+2026-04-17T03:47:56.5750437Z   set-safe-directory: true
+2026-04-17T03:47:56.5751140Z ##[endgroup]
+2026-04-17T03:47:56.6823870Z Syncing repository: dfrostar/neuralmind
+2026-04-17T03:47:56.6825607Z ##[group]Getting Git version info
+2026-04-17T03:47:56.6826322Z Working directory is '/home/runner/work/neuralmind/neuralmind'
+2026-04-17T03:47:56.6827334Z [command]/usr/bin/git version
+2026-04-17T03:47:56.6869542Z git version 2.53.0
+2026-04-17T03:47:56.6896672Z ##[endgroup]
+2026-04-17T03:47:56.6922194Z Temporarily overriding HOME='/home/runner/work/_temp/b3aa3ec5-4af0-47f8-9871-d21efc91f636' before making global git config changes
+2026-04-17T03:47:56.6923766Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-17T03:47:56.6930201Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:47:56.6968544Z Deleting the contents of '/home/runner/work/neuralmind/neuralmind'
+2026-04-17T03:47:56.6973627Z ##[group]Initializing the repository
+2026-04-17T03:47:56.6980261Z [command]/usr/bin/git init /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:47:56.7071680Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-04-17T03:47:56.7073402Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-04-17T03:47:56.7075102Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-04-17T03:47:56.7076782Z hint: call:
+2026-04-17T03:47:56.7077438Z hint:
+2026-04-17T03:47:56.7078730Z hint: 	git config --global init.defaultBranch <name>
+2026-04-17T03:47:56.7079809Z hint:
+2026-04-17T03:47:56.7080736Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-04-17T03:47:56.7082257Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-04-17T03:47:56.7083520Z hint:
+2026-04-17T03:47:56.7084201Z hint: 	git branch -m <name>
+2026-04-17T03:47:56.7084984Z hint:
+2026-04-17T03:47:56.7086081Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-04-17T03:47:56.7087906Z Initialized empty Git repository in /home/runner/work/neuralmind/neuralmind/.git/
+2026-04-17T03:47:56.7090787Z [command]/usr/bin/git remote add origin https://github.com/dfrostar/neuralmind
+2026-04-17T03:47:56.7124908Z ##[endgroup]
+2026-04-17T03:47:56.7126037Z ##[group]Disabling automatic garbage collection
+2026-04-17T03:47:56.7129326Z [command]/usr/bin/git config --local gc.auto 0
+2026-04-17T03:47:56.7157210Z ##[endgroup]
+2026-04-17T03:47:56.7158560Z ##[group]Setting up auth
+2026-04-17T03:47:56.7164318Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-17T03:47:56.7193930Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-17T03:47:56.7477612Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-17T03:47:56.7506427Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-17T03:47:56.7736286Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-17T03:47:56.7773852Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-17T03:47:56.8021441Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-04-17T03:47:56.8060068Z ##[endgroup]
+2026-04-17T03:47:56.8061661Z ##[group]Fetching the repository
+2026-04-17T03:47:56.8071798Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8:refs/remotes/origin/main
+2026-04-17T03:47:57.2792598Z From https://github.com/dfrostar/neuralmind
+2026-04-17T03:47:57.2793528Z  * [new ref]         8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8 -> origin/main
+2026-04-17T03:47:57.2820233Z ##[endgroup]
+2026-04-17T03:47:57.2820945Z ##[group]Determining the checkout info
+2026-04-17T03:47:57.2821997Z ##[endgroup]
+2026-04-17T03:47:57.2827066Z [command]/usr/bin/git sparse-checkout disable
+2026-04-17T03:47:57.2863891Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-04-17T03:47:57.2888941Z ##[group]Checking out the ref
+2026-04-17T03:47:57.2893489Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-04-17T03:47:57.2963090Z Switched to a new branch 'main'
+2026-04-17T03:47:57.2965614Z branch 'main' set up to track 'origin/main'.
+2026-04-17T03:47:57.2971871Z ##[endgroup]
+2026-04-17T03:47:57.3004886Z [command]/usr/bin/git log -1 --format=%H
+2026-04-17T03:47:57.3109147Z 8b5cc3e43d46c21963ca5cc92da56f66cb4e8ed8
+2026-04-17T03:47:57.3317271Z ##[group]Run actions/setup-python@v5
+2026-04-17T03:47:57.3318206Z with:
+2026-04-17T03:47:57.3318716Z   python-version: 3.11
+2026-04-17T03:47:57.3319247Z   check-latest: false
+2026-04-17T03:47:57.3319920Z   token: ***
+2026-04-17T03:47:57.3320398Z   update-environment: true
+2026-04-17T03:47:57.3320947Z   allow-prereleases: false
+2026-04-17T03:47:57.3321469Z   freethreaded: false
+2026-04-17T03:47:57.3321958Z ##[endgroup]
+2026-04-17T03:47:57.4993182Z ##[group]Installed versions
+2026-04-17T03:47:57.5092296Z Successfully set up CPython (3.11.15)
+2026-04-17T03:47:57.5094397Z ##[endgroup]
+2026-04-17T03:47:57.5221014Z ##[group]Run python -m pip install --upgrade pip
+2026-04-17T03:47:57.5221843Z [36;1mpython -m pip install --upgrade pip[0m
+2026-04-17T03:47:57.5222486Z [36;1mpip install ruff black[0m
+2026-04-17T03:47:57.5302685Z shell: /usr/bin/bash -e {0}
+2026-04-17T03:47:57.5303237Z env:
+2026-04-17T03:47:57.5303796Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:57.5304650Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-17T03:47:57.5305477Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:57.5306245Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:57.5307032Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:47:57.5307819Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-17T03:47:57.5308837Z ##[endgroup]
+2026-04-17T03:47:59.7833875Z Requirement already satisfied: pip in /opt/hostedtoolcache/Python/3.11.15/x64/lib/python3.11/site-packages (26.0.1)
+2026-04-17T03:48:00.8592259Z Collecting ruff
+2026-04-17T03:48:00.9392668Z   Downloading ruff-0.15.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (26 kB)
+2026-04-17T03:48:01.0098549Z Collecting black
+2026-04-17T03:48:01.0218571Z   Downloading black-26.3.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (91 kB)
+2026-04-17T03:48:01.0711960Z Collecting click>=8.0.0 (from black)
+2026-04-17T03:48:01.0829479Z   Downloading click-8.3.2-py3-none-any.whl.metadata (2.6 kB)
+2026-04-17T03:48:01.1027548Z Collecting mypy-extensions>=0.4.3 (from black)
+2026-04-17T03:48:01.1142901Z   Downloading mypy_extensions-1.1.0-py3-none-any.whl.metadata (1.1 kB)
+2026-04-17T03:48:01.1377129Z Collecting packaging>=22.0 (from black)
+2026-04-17T03:48:01.1495042Z   Downloading packaging-26.1-py3-none-any.whl.metadata (3.5 kB)
+2026-04-17T03:48:01.1739258Z Collecting pathspec>=1.0.0 (from black)
+2026-04-17T03:48:01.1852805Z   Downloading pathspec-1.0.4-py3-none-any.whl.metadata (13 kB)
+2026-04-17T03:48:01.2164191Z Collecting platformdirs>=2 (from black)
+2026-04-17T03:48:01.2278744Z   Downloading platformdirs-4.9.6-py3-none-any.whl.metadata (4.7 kB)
+2026-04-17T03:48:01.2516032Z Collecting pytokens~=0.4.0 (from black)
+2026-04-17T03:48:01.2629117Z   Downloading pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+2026-04-17T03:48:01.2799401Z Downloading ruff-0.15.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (11.3 MB)
+2026-04-17T03:48:01.6429022Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 11.3/11.3 MB 32.4 MB/s  0:00:00
+2026-04-17T03:48:01.6553624Z Downloading black-26.3.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (1.8 MB)
+2026-04-17T03:48:01.6840509Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.8/1.8 MB 60.7 MB/s  0:00:00
+2026-04-17T03:48:01.6958996Z Downloading pytokens-0.4.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (260 kB)
+2026-04-17T03:48:01.7138284Z Downloading click-8.3.2-py3-none-any.whl (108 kB)
+2026-04-17T03:48:01.7293677Z Downloading mypy_extensions-1.1.0-py3-none-any.whl (5.0 kB)
+2026-04-17T03:48:01.7438917Z Downloading packaging-26.1-py3-none-any.whl (95 kB)
+2026-04-17T03:48:01.7589143Z Downloading pathspec-1.0.4-py3-none-any.whl (55 kB)
+2026-04-17T03:48:01.7737740Z Downloading platformdirs-4.9.6-py3-none-any.whl (21 kB)
+2026-04-17T03:48:01.8183386Z Installing collected packages: ruff, pytokens, platformdirs, pathspec, packaging, mypy-extensions, click, black
+2026-04-17T03:48:02.2406688Z 
+2026-04-17T03:48:02.2418718Z Successfully installed black-26.3.1 click-8.3.2 mypy-extensions-1.1.0 packaging-26.1 pathspec-1.0.4 platformdirs-4.9.6 pytokens-0.4.1 ruff-0.15.11
+2026-04-17T03:48:02.3305830Z ##[group]Run black --check --diff .
+2026-04-17T03:48:02.3306167Z [36;1mblack --check --diff .[0m
+2026-04-17T03:48:02.3329204Z shell: /usr/bin/bash -e {0}
+2026-04-17T03:48:02.3329632Z env:
+2026-04-17T03:48:02.3329893Z   pythonLocation: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:02.3330336Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib/pkgconfig
+2026-04-17T03:48:02.3330788Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:02.3331143Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:02.3331505Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.11.15/x64
+2026-04-17T03:48:02.3331877Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.11.15/x64/lib
+2026-04-17T03:48:02.3332173Z ##[endgroup]
+2026-04-17T03:48:02.4881365Z Warning: Python 3.11 cannot parse code formatted for Python 3.12. To fix this: run Black with Python 3.12, set --target-version to py311, or use --fast to skip the safety check. Black's safety check verifies equivalence by parsing the AST, which fails when the running Python is older than the target version.
+2026-04-17T03:48:03.1321299Z --- /home/runner/work/neuralmind/neuralmind/tests/test_cli.py	2026-04-17 03:47:57.294420+00:00
+2026-04-17T03:48:03.1323500Z +++ /home/runner/work/neuralmind/neuralmind/tests/test_cli.py	2026-04-17 03:48:03.129166+00:00
+2026-04-17T03:48:03.1324972Z @@ -130,47 +130,48 @@
+2026-04-17T03:48:03.1325657Z          pass
+2026-04-17T03:48:03.1326195Z  
+2026-04-17T03:48:03.1326692Z  
+2026-04-17T03:48:03.1327457Z  # Direct function tests using imports instead of subprocess
+2026-04-17T03:48:03.1328608Z  
+2026-04-17T03:48:03.1329114Z +
+2026-04-17T03:48:03.1329656Z  class TestCLIDirectBuild:
+2026-04-17T03:48:03.1330373Z      """Direct tests for CLI build function."""
+2026-04-17T03:48:03.1331130Z  
+2026-04-17T03:48:03.1331924Z      def test_cmd_build_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1332821Z          """Test cmd_build function directly."""
+2026-04-17T03:48:03.1333283Z          from neuralmind.cli import cmd_build
+2026-04-17T03:48:03.1333670Z -        
+2026-04-17T03:48:03.1333951Z +
+2026-04-17T03:48:03.1334313Z          # Create mock args with correct attribute names from cli.py
+2026-04-17T03:48:03.1334785Z          args = MagicMock()
+2026-04-17T03:48:03.1335205Z          args.project_path = str(temp_project)  # CLI uses project_path
+2026-04-17T03:48:03.1335655Z          args.force = False
+2026-04-17T03:48:03.1335962Z -        
+2026-04-17T03:48:03.1336275Z +
+2026-04-17T03:48:03.1336626Z          # cmd_build may call sys.exit on success, so we catch that
+2026-04-17T03:48:03.1337066Z          try:
+2026-04-17T03:48:03.1337367Z              cmd_build(args)
+2026-04-17T03:48:03.1337701Z          except SystemExit as e:
+2026-04-17T03:48:03.1338513Z              # Exit code 0 is success, anything else is failure
+2026-04-17T03:48:03.1339000Z would reformat /home/runner/work/neuralmind/neuralmind/tests/test_cli.py
+2026-04-17T03:48:03.1339592Z              # cmd_build prints but doesn't return a value
+2026-04-17T03:48:03.1340004Z              pass
+2026-04-17T03:48:03.1340295Z -        
+2026-04-17T03:48:03.1340583Z +
+2026-04-17T03:48:03.1340885Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1341283Z          # Should have printed something
+2026-04-17T03:48:03.1341730Z          assert "Building" in captured.out or "Build" in captured.out
+2026-04-17T03:48:03.1342153Z  
+2026-04-17T03:48:03.1342515Z      def test_cmd_build_creates_index(self, temp_project, capsys):
+2026-04-17T03:48:03.1342971Z          """Test cmd_build creates the index."""
+2026-04-17T03:48:03.1343374Z          from neuralmind.cli import cmd_build
+2026-04-17T03:48:03.1343745Z -        
+2026-04-17T03:48:03.1344010Z +
+2026-04-17T03:48:03.1344348Z          args = MagicMock()
+2026-04-17T03:48:03.1344704Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1345084Z          args.force = False
+2026-04-17T03:48:03.1345390Z -        
+2026-04-17T03:48:03.1345666Z +
+2026-04-17T03:48:03.1346334Z          try:
+2026-04-17T03:48:03.1346672Z              cmd_build(args)
+2026-04-17T03:48:03.1347012Z          except SystemExit:
+2026-04-17T03:48:03.1347327Z              pass
+2026-04-17T03:48:03.1347800Z -        
+2026-04-17T03:48:03.1348398Z +
+2026-04-17T03:48:03.1348740Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1349177Z          # Should have built successfully with our sample graph
+2026-04-17T03:48:03.1349608Z          assert "Build" in captured.out
+2026-04-17T03:48:03.1349953Z  
+2026-04-17T03:48:03.1350207Z  
+2026-04-17T03:48:03.1350473Z @@ -178,70 +179,70 @@
+2026-04-17T03:48:03.1350806Z      """Direct tests for CLI query function."""
+2026-04-17T03:48:03.1351174Z  
+2026-04-17T03:48:03.1351539Z      def test_cmd_query_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1352008Z          """Test cmd_query function directly."""
+2026-04-17T03:48:03.1352403Z          from neuralmind.cli import cmd_query
+2026-04-17T03:48:03.1352758Z -        
+2026-04-17T03:48:03.1353058Z +
+2026-04-17T03:48:03.1353399Z          args = MagicMock()
+2026-04-17T03:48:03.1353747Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1354183Z          args.question = "How does authentication work?"
+2026-04-17T03:48:03.1354608Z          args.json = False  # CLI uses --json flag
+2026-04-17T03:48:03.1354967Z -        
+2026-04-17T03:48:03.1355234Z +
+2026-04-17T03:48:03.1355490Z          try:
+2026-04-17T03:48:03.1355777Z              cmd_query(args)
+2026-04-17T03:48:03.1356106Z          except SystemExit:
+2026-04-17T03:48:03.1356417Z              pass
+2026-04-17T03:48:03.1356704Z -        
+2026-04-17T03:48:03.1356968Z +
+2026-04-17T03:48:03.1357265Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1357639Z          # Should produce some output
+2026-04-17T03:48:03.1358323Z          assert len(captured.out) > 0
+2026-04-17T03:48:03.1358913Z  
+2026-04-17T03:48:03.1359418Z      def test_cmd_query_with_json_output(self, temp_project, capsys):
+2026-04-17T03:48:03.1360052Z          """Test cmd_query with JSON output."""
+2026-04-17T03:48:03.1360524Z          from neuralmind.cli import cmd_query
+2026-04-17T03:48:03.1360944Z -        
+2026-04-17T03:48:03.1361200Z +
+2026-04-17T03:48:03.1361470Z          args = MagicMock()
+2026-04-17T03:48:03.1361862Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1362329Z          args.question = "authentication"
+2026-04-17T03:48:03.1362750Z          args.json = True
+2026-04-17T03:48:03.1363078Z -        
+2026-04-17T03:48:03.1363349Z +
+2026-04-17T03:48:03.1363591Z          try:
+2026-04-17T03:48:03.1363882Z              cmd_query(args)
+2026-04-17T03:48:03.1364257Z          except SystemExit:
+2026-04-17T03:48:03.1364523Z              pass
+2026-04-17T03:48:03.1364695Z -        
+2026-04-17T03:48:03.1364847Z +
+2026-04-17T03:48:03.1365013Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1365274Z          if captured.out.strip():
+2026-04-17T03:48:03.1365510Z              # Find JSON portion of output
+2026-04-17T03:48:03.1365797Z -            lines = captured.out.strip().split('\n')
+2026-04-17T03:48:03.1366103Z +            lines = captured.out.strip().split("\n")
+2026-04-17T03:48:03.1366366Z              json_start = None
+2026-04-17T03:48:03.1366601Z              for i, line in enumerate(lines):
+2026-04-17T03:48:03.1366867Z -                if line.strip().startswith('{'):
+2026-04-17T03:48:03.1367282Z +                if line.strip().startswith("{"):
+2026-04-17T03:48:03.1367537Z                      json_start = i
+2026-04-17T03:48:03.1367751Z                      break
+2026-04-17T03:48:03.1368314Z              if json_start is not None:
+2026-04-17T03:48:03.1368618Z -                json_text = '\n'.join(lines[json_start:])
+2026-04-17T03:48:03.1368910Z +                json_text = "\n".join(lines[json_start:])
+2026-04-17T03:48:03.1369195Z                  data = json.loads(json_text)
+2026-04-17T03:48:03.1369453Z                  assert isinstance(data, dict)
+2026-04-17T03:48:03.1369690Z  
+2026-04-17T03:48:03.1369830Z  
+2026-04-17T03:48:03.1370193Z  class TestCLIDirectWakeup:
+2026-04-17T03:48:03.1370463Z      """Direct tests for CLI wakeup function."""
+2026-04-17T03:48:03.1370718Z  
+2026-04-17T03:48:03.1371105Z      def test_cmd_wakeup_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1371468Z          """Test cmd_wakeup function directly."""
+2026-04-17T03:48:03.1371754Z          from neuralmind.cli import cmd_wakeup
+2026-04-17T03:48:03.1371994Z -        
+2026-04-17T03:48:03.1372149Z +
+2026-04-17T03:48:03.1372303Z          args = MagicMock()
+2026-04-17T03:48:03.1372538Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1372789Z          args.json = False
+2026-04-17T03:48:03.1372981Z -        
+2026-04-17T03:48:03.1373124Z +
+2026-04-17T03:48:03.1373268Z          try:
+2026-04-17T03:48:03.1373441Z              cmd_wakeup(args)
+2026-04-17T03:48:03.1373651Z          except SystemExit:
+2026-04-17T03:48:03.1373854Z              pass
+2026-04-17T03:48:03.1374018Z -        
+2026-04-17T03:48:03.1374173Z +
+2026-04-17T03:48:03.1374347Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1374602Z          # Should produce some output
+2026-04-17T03:48:03.1374844Z          assert len(captured.out) >= 0
+2026-04-17T03:48:03.1375074Z  
+2026-04-17T03:48:03.1375212Z  
+2026-04-17T03:48:03.1375364Z @@ -249,22 +250,22 @@
+2026-04-17T03:48:03.1375579Z      """Direct tests for CLI search function."""
+2026-04-17T03:48:03.1375828Z  
+2026-04-17T03:48:03.1376078Z      def test_cmd_search_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1376433Z          """Test cmd_search function directly."""
+2026-04-17T03:48:03.1376714Z          from neuralmind.cli import cmd_search
+2026-04-17T03:48:03.1376946Z -        
+2026-04-17T03:48:03.1377096Z +
+2026-04-17T03:48:03.1377244Z          args = MagicMock()
+2026-04-17T03:48:03.1377471Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1377724Z          args.query = "function"
+2026-04-17T03:48:03.1377936Z          args.n = 5
+2026-04-17T03:48:03.1378284Z          args.json = False
+2026-04-17T03:48:03.1378470Z -        
+2026-04-17T03:48:03.1378621Z +
+2026-04-17T03:48:03.1378759Z          try:
+2026-04-17T03:48:03.1378929Z              cmd_search(args)
+2026-04-17T03:48:03.1379140Z          except SystemExit:
+2026-04-17T03:48:03.1379336Z              pass
+2026-04-17T03:48:03.1379492Z -        
+2026-04-17T03:48:03.1379640Z +
+2026-04-17T03:48:03.1379800Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1380050Z          # Should produce some output
+2026-04-17T03:48:03.1380288Z          assert len(captured.out) >= 0
+2026-04-17T03:48:03.1380509Z  
+2026-04-17T03:48:03.1380645Z  
+2026-04-17T03:48:03.1380785Z @@ -272,20 +273,20 @@
+2026-04-17T03:48:03.1380994Z      """Direct tests for CLI stats function."""
+2026-04-17T03:48:03.1381230Z  
+2026-04-17T03:48:03.1381468Z      def test_cmd_stats_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1381822Z          """Test cmd_stats function directly."""
+2026-04-17T03:48:03.1382109Z          from neuralmind.cli import cmd_stats
+2026-04-17T03:48:03.1382343Z -        
+2026-04-17T03:48:03.1382489Z +
+2026-04-17T03:48:03.1382642Z          args = MagicMock()
+2026-04-17T03:48:03.1382863Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1383109Z          args.json = False
+2026-04-17T03:48:03.1383291Z -        
+2026-04-17T03:48:03.1383436Z +
+2026-04-17T03:48:03.1383573Z          try:
+2026-04-17T03:48:03.1383741Z              cmd_stats(args)
+2026-04-17T03:48:03.1383940Z          except SystemExit:
+2026-04-17T03:48:03.1384133Z              pass
+2026-04-17T03:48:03.1384291Z -        
+2026-04-17T03:48:03.1384436Z +
+2026-04-17T03:48:03.1384594Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1384837Z          # Should produce some output
+2026-04-17T03:48:03.1385076Z          assert len(captured.out) >= 0
+2026-04-17T03:48:03.1385286Z  
+2026-04-17T03:48:03.1385425Z  
+2026-04-17T03:48:03.1385562Z @@ -293,20 +294,20 @@
+2026-04-17T03:48:03.1385779Z      """Direct tests for CLI benchmark function."""
+2026-04-17T03:48:03.1386174Z  
+2026-04-17T03:48:03.1386434Z      def test_cmd_benchmark_with_valid_project(self, temp_project, capsys):
+2026-04-17T03:48:03.1387124Z          """Test cmd_benchmark function directly."""
+2026-04-17T03:48:03.1387585Z          from neuralmind.cli import cmd_benchmark
+2026-04-17T03:48:03.1387846Z -        
+2026-04-17T03:48:03.1388143Z +
+2026-04-17T03:48:03.1388297Z          args = MagicMock()
+2026-04-17T03:48:03.1388531Z          args.project_path = str(temp_project)
+2026-04-17T03:48:03.1388783Z          args.json = False
+2026-04-17T03:48:03.1388973Z -        
+2026-04-17T03:48:03.1389116Z +
+2026-04-17T03:48:03.1389260Z          try:
+2026-04-17T03:48:03.1389430Z              cmd_benchmark(args)
+2026-04-17T03:48:03.1389651Z          except SystemExit:
+2026-04-17T03:48:03.1389843Z              pass
+2026-04-17T03:48:03.1390008Z -        
+2026-04-17T03:48:03.1390155Z +
+2026-04-17T03:48:03.1390317Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1390597Z          # Should produce some output about benchmark
+2026-04-17T03:48:03.1390874Z          assert len(captured.out) >= 0
+2026-04-17T03:48:03.1391097Z  
+2026-04-17T03:48:03.1391229Z  
+2026-04-17T03:48:03.1391388Z @@ -314,28 +315,28 @@
+2026-04-17T03:48:03.1391578Z      """Tests for CLI main function."""
+2026-04-17T03:48:03.1391799Z  
+2026-04-17T03:48:03.1392007Z      def test_main_without_command_shows_help(self, capsys):
+2026-04-17T03:48:03.1392347Z          """Test that main without command shows help."""
+2026-04-17T03:48:03.1392637Z          from neuralmind.cli import main
+2026-04-17T03:48:03.1392863Z -        
+2026-04-17T03:48:03.1393061Z -        with patch('sys.argv', ['neuralmind']):
+2026-04-17T03:48:03.1393298Z +
+2026-04-17T03:48:03.1393472Z +        with patch("sys.argv", ["neuralmind"]):
+2026-04-17T03:48:03.1393709Z              try:
+2026-04-17T03:48:03.1393879Z                  main()
+2026-04-17T03:48:03.1394069Z              except SystemExit:
+2026-04-17T03:48:03.1394278Z                  pass
+2026-04-17T03:48:03.1394447Z -        
+2026-04-17T03:48:03.1394598Z +
+2026-04-17T03:48:03.1394762Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1395034Z          # Should show help or usage
+2026-04-17T03:48:03.1395336Z          assert len(captured.out) >= 0 or len(captured.err) >= 0
+2026-04-17T03:48:03.1395617Z  
+2026-04-17T03:48:03.1395845Z      def test_main_with_build_command(self, temp_project, capsys):
+2026-04-17T03:48:03.1396165Z          """Test main with build command."""
+2026-04-17T03:48:03.1396423Z          from neuralmind.cli import main
+2026-04-17T03:48:03.1396645Z -        
+2026-04-17T03:48:03.1396895Z -        with patch('sys.argv', ['neuralmind', 'build', str(temp_project)]):
+2026-04-17T03:48:03.1397215Z +
+2026-04-17T03:48:03.1397441Z +        with patch("sys.argv", ["neuralmind", "build", str(temp_project)]):
+2026-04-17T03:48:03.1397754Z              try:
+2026-04-17T03:48:03.1398056Z                  main()
+2026-04-17T03:48:03.1398268Z              except SystemExit:
+2026-04-17T03:48:03.1398502Z                  pass
+2026-04-17T03:48:03.1398691Z -        
+2026-04-17T03:48:03.1398849Z +
+2026-04-17T03:48:03.1399058Z          captured = capsys.readouterr()
+2026-04-17T03:48:03.1399324Z          assert "Build" in captured.out
+2026-04-17T03:48:03.2054107Z --- /home/runner/work/neuralmind/neuralmind/tests/test_core.py	2026-04-17 03:47:57.294420+00:00
+2026-04-17T03:48:03.2055290Z +++ /home/runner/work/neuralmind/neuralmind/tests/test_core.py	2026-04-17 03:48:03.202979+00:00
+2026-04-17T03:48:03.2056055Z @@ -21,11 +21,11 @@
+2026-04-17T03:48:03.2056586Z          """Test initialization with non-existent path (doesn't raise at init)."""
+2026-04-17T03:48:03.2057307Z          from neuralmind import NeuralMind
+2026-04-17T03:48:03.2057837Z  
+2026-04-17T03:48:03.2058478Z          nonexistent = tmp_path / "nonexistent"
+2026-04-17T03:48:03.2059025Z          nonexistent.mkdir()  # Create the directory
+2026-04-17T03:48:03.2059510Z -        
+2026-04-17T03:48:03.2059781Z +
+2026-04-17T03:48:03.2060555Z          # NeuralMind doesn't validate graph existence at init
+2026-04-17T03:48:03.2061152Z          mind = NeuralMind(str(nonexistent))
+2026-04-17T03:48:03.2061672Z          assert mind.project_path == nonexistent
+2026-04-17T03:48:03.2062405Z  
+2026-04-17T03:48:03.2062823Z      def test_init_custom_db_path(self, temp_project, tmp_path):
+2026-04-17T03:48:03.2063474Z @@ -105,33 +105,33 @@
+2026-04-17T03:48:03.2063904Z          # Create graphify-out directory but no graph.json
+2026-04-17T03:48:03.2064549Z          (empty_project / "graphify-out").mkdir()
+2026-04-17T03:48:03.2065062Z  
+2026-04-17T03:48:03.2065464Z          mind = NeuralMind(str(empty_project))
+2026-04-17T03:48:03.2066010Z          stats = mind.build()
+2026-04-17T03:48:03.2066424Z -        
+2026-04-17T03:48:03.2066759Z +
+2026-04-17T03:48:03.2067207Z          # build() returns failure dict, not raises exception
+2026-04-17T03:48:03.2068681Z would reformat /home/runner/work/neuralmind/neuralmind/tests/test_core.py
+2026-04-17T03:48:03.2069404Z          assert stats["success"] is False
+2026-04-17T03:48:03.2069714Z          assert "error" in stats
+2026-04-17T03:48:03.2069977Z  
+2026-04-17T03:48:03.2070281Z      def test_build_sets_built_flag(self, temp_project):
+2026-04-17T03:48:03.2070637Z          """Test that build sets the _built flag."""
+2026-04-17T03:48:03.2070961Z          from neuralmind import NeuralMind
+2026-04-17T03:48:03.2071195Z  
+2026-04-17T03:48:03.2071364Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2071623Z          assert mind._built is False
+2026-04-17T03:48:03.2071851Z -        
+2026-04-17T03:48:03.2072005Z +
+2026-04-17T03:48:03.2072153Z          mind.build()
+2026-04-17T03:48:03.2072350Z          assert mind._built is True
+2026-04-17T03:48:03.2072559Z  
+2026-04-17T03:48:03.2072763Z      def test_build_creates_selector(self, temp_project):
+2026-04-17T03:48:03.2073102Z          """Test that build creates the context selector."""
+2026-04-17T03:48:03.2073392Z          from neuralmind import NeuralMind
+2026-04-17T03:48:03.2073718Z          from neuralmind.context_selector import ContextSelector
+2026-04-17T03:48:03.2074007Z  
+2026-04-17T03:48:03.2074185Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2074447Z          assert mind.selector is None
+2026-04-17T03:48:03.2074673Z -        
+2026-04-17T03:48:03.2074820Z +
+2026-04-17T03:48:03.2074972Z          mind.build()
+2026-04-17T03:48:03.2075215Z          assert isinstance(mind.selector, ContextSelector)
+2026-04-17T03:48:03.2075482Z  
+2026-04-17T03:48:03.2075622Z  
+2026-04-17T03:48:03.2075783Z  class TestNeuralMindWakeup:
+2026-04-17T03:48:03.2075996Z @@ -186,11 +186,11 @@
+2026-04-17T03:48:03.2076201Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2076465Z          assert mind._built is False
+2026-04-17T03:48:03.2076677Z  
+2026-04-17T03:48:03.2076878Z          # wakeup() should auto-build via _ensure_built()
+2026-04-17T03:48:03.2077157Z          result = mind.wakeup()
+2026-04-17T03:48:03.2077363Z -        
+2026-04-17T03:48:03.2077514Z +
+2026-04-17T03:48:03.2077670Z          assert mind._built is True
+2026-04-17T03:48:03.2077915Z          assert result.context is not None
+2026-04-17T03:48:03.2078438Z  
+2026-04-17T03:48:03.2078593Z  
+2026-04-17T03:48:03.2078757Z  class TestNeuralMindQuery:
+2026-04-17T03:48:03.2078969Z @@ -242,11 +242,11 @@
+2026-04-17T03:48:03.2079175Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2079432Z          assert mind._built is False
+2026-04-17T03:48:03.2079809Z  
+2026-04-17T03:48:03.2080115Z          # query() should auto-build via _ensure_built()
+2026-04-17T03:48:03.2080599Z          result = mind.query("test")
+2026-04-17T03:48:03.2080972Z -        
+2026-04-17T03:48:03.2081172Z +
+2026-04-17T03:48:03.2081333Z          assert mind._built is True
+2026-04-17T03:48:03.2081589Z          assert result.context is not None
+2026-04-17T03:48:03.2081817Z  
+2026-04-17T03:48:03.2081960Z  
+2026-04-17T03:48:03.2082121Z  class TestNeuralMindSearch:
+2026-04-17T03:48:03.2082334Z @@ -292,11 +292,11 @@
+2026-04-17T03:48:03.2082504Z  
+2026-04-17T03:48:03.2082901Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2083199Z          assert mind._built is False
+2026-04-17T03:48:03.2083430Z  
+2026-04-17T03:48:03.2083746Z          results = mind.search("test")
+2026-04-17T03:48:03.2083980Z -        
+2026-04-17T03:48:03.2084134Z +
+2026-04-17T03:48:03.2084293Z          assert mind._built is True
+2026-04-17T03:48:03.2084536Z          assert isinstance(results, list)
+2026-04-17T03:48:03.2084762Z  
+2026-04-17T03:48:03.2084903Z  
+2026-04-17T03:48:03.2085066Z  class TestNeuralMindStats:
+2026-04-17T03:48:03.2085281Z @@ -357,8 +357,8 @@
+2026-04-17T03:48:03.2085444Z  
+2026-04-17T03:48:03.2085626Z          mind = NeuralMind(str(temp_project))
+2026-04-17T03:48:03.2085896Z          assert mind._built is False
+2026-04-17T03:48:03.2086109Z  
+2026-04-17T03:48:03.2086269Z          results = mind.benchmark()
+2026-04-17T03:48:03.2086479Z -        
+2026-04-17T03:48:03.2086631Z +
+2026-04-17T03:48:03.2086782Z          assert mind._built is True
+2026-04-17T03:48:03.2087240Z          assert isinstance(results, dict)
+2026-04-17T03:48:03.2136476Z 
+2026-04-17T03:48:03.2137076Z Oh no! 💥 💔 💥
+2026-04-17T03:48:03.2137398Z 2 files would be reformatted, 9 files would be left unchanged.
+2026-04-17T03:48:03.2397484Z ##[error]Process completed with exit code 1.
+2026-04-17T03:48:03.2518247Z Post job cleanup.
+2026-04-17T03:48:03.3476632Z [command]/usr/bin/git version
+2026-04-17T03:48:03.3514915Z git version 2.53.0
+2026-04-17T03:48:03.3562196Z Temporarily overriding HOME='/home/runner/work/_temp/3ea0ae3e-89a2-4cf0-b869-00f53b933a6f' before making global git config changes
+2026-04-17T03:48:03.3563636Z Adding repository directory to the temporary git global config as a safe directory
+2026-04-17T03:48:03.3576608Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/neuralmind/neuralmind
+2026-04-17T03:48:03.3614963Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-04-17T03:48:03.3649310Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-04-17T03:48:03.3881969Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-04-17T03:48:03.3905262Z http.https://github.com/.extraheader
+2026-04-17T03:48:03.3918958Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-04-17T03:48:03.3950923Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-04-17T03:48:03.4199024Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-04-17T03:48:03.4241439Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-04-17T03:48:03.4647141Z Cleaning up orphan processes
+2026-04-17T03:48:03.4919296Z ##[warning]Node.js 20 actions are deprecated. The following actions are running on Node.js 20 and may not work as expected: actions/checkout@v4, actions/setup-python@v5. Actions will be forced to run with Node.js 24 by default starting June 2nd, 2026. Node.js 20 will be removed from the runner on September 16th, 2026. Please check if updated versions of these actions are available that support Node.js 24. To opt into Node.js 24 now, set the FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true environment variable on the runner or in your workflow file. Once Node.js 24 becomes the default, you can temporarily opt out by setting ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

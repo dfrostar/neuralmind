@@ -132,18 +132,19 @@ class TestCLIBenchmark:
 
 # Direct function tests using imports instead of subprocess
 
+
 class TestCLIDirectBuild:
     """Direct tests for CLI build function."""
 
     def test_cmd_build_with_valid_project(self, temp_project, capsys):
         """Test cmd_build function directly."""
         from neuralmind.cli import cmd_build
-        
+
         # Create mock args with correct attribute names from cli.py
         args = MagicMock()
         args.project_path = str(temp_project)  # CLI uses project_path
         args.force = False
-        
+
         # cmd_build may call sys.exit on success, so we catch that
         try:
             cmd_build(args)
@@ -151,7 +152,7 @@ class TestCLIDirectBuild:
             # Exit code 0 is success, anything else is failure
             # cmd_build prints but doesn't return a value
             pass
-        
+
         captured = capsys.readouterr()
         # Should have printed something
         assert "Building" in captured.out or "Build" in captured.out
@@ -159,16 +160,16 @@ class TestCLIDirectBuild:
     def test_cmd_build_creates_index(self, temp_project, capsys):
         """Test cmd_build creates the index."""
         from neuralmind.cli import cmd_build
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.force = False
-        
+
         try:
             cmd_build(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should have built successfully with our sample graph
         assert "Build" in captured.out
@@ -180,17 +181,17 @@ class TestCLIDirectQuery:
     def test_cmd_query_with_valid_project(self, temp_project, capsys):
         """Test cmd_query function directly."""
         from neuralmind.cli import cmd_query
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.question = "How does authentication work?"
         args.json = False  # CLI uses --json flag
-        
+
         try:
             cmd_query(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should produce some output
         assert len(captured.out) > 0
@@ -198,28 +199,28 @@ class TestCLIDirectQuery:
     def test_cmd_query_with_json_output(self, temp_project, capsys):
         """Test cmd_query with JSON output."""
         from neuralmind.cli import cmd_query
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.question = "authentication"
         args.json = True
-        
+
         try:
             cmd_query(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         if captured.out.strip():
             # Find JSON portion of output
-            lines = captured.out.strip().split('\n')
+            lines = captured.out.strip().split("\n")
             json_start = None
             for i, line in enumerate(lines):
-                if line.strip().startswith('{'):
+                if line.strip().startswith("{"):
                     json_start = i
                     break
             if json_start is not None:
-                json_text = '\n'.join(lines[json_start:])
+                json_text = "\n".join(lines[json_start:])
                 data = json.loads(json_text)
                 assert isinstance(data, dict)
 
@@ -230,16 +231,16 @@ class TestCLIDirectWakeup:
     def test_cmd_wakeup_with_valid_project(self, temp_project, capsys):
         """Test cmd_wakeup function directly."""
         from neuralmind.cli import cmd_wakeup
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
-        
+
         try:
             cmd_wakeup(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should produce some output
         assert len(captured.out) >= 0
@@ -251,18 +252,18 @@ class TestCLIDirectSearch:
     def test_cmd_search_with_valid_project(self, temp_project, capsys):
         """Test cmd_search function directly."""
         from neuralmind.cli import cmd_search
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.query = "function"
         args.n = 5
         args.json = False
-        
+
         try:
             cmd_search(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should produce some output
         assert len(captured.out) >= 0
@@ -274,16 +275,16 @@ class TestCLIDirectStats:
     def test_cmd_stats_with_valid_project(self, temp_project, capsys):
         """Test cmd_stats function directly."""
         from neuralmind.cli import cmd_stats
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
-        
+
         try:
             cmd_stats(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should produce some output
         assert len(captured.out) >= 0
@@ -295,16 +296,16 @@ class TestCLIDirectBenchmark:
     def test_cmd_benchmark_with_valid_project(self, temp_project, capsys):
         """Test cmd_benchmark function directly."""
         from neuralmind.cli import cmd_benchmark
-        
+
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
-        
+
         try:
             cmd_benchmark(args)
         except SystemExit:
             pass
-        
+
         captured = capsys.readouterr()
         # Should produce some output about benchmark
         assert len(captured.out) >= 0
@@ -316,13 +317,13 @@ class TestCLIMain:
     def test_main_without_command_shows_help(self, capsys):
         """Test that main without command shows help."""
         from neuralmind.cli import main
-        
-        with patch('sys.argv', ['neuralmind']):
+
+        with patch("sys.argv", ["neuralmind"]):
             try:
                 main()
             except SystemExit:
                 pass
-        
+
         captured = capsys.readouterr()
         # Should show help or usage
         assert len(captured.out) >= 0 or len(captured.err) >= 0
@@ -330,12 +331,12 @@ class TestCLIMain:
     def test_main_with_build_command(self, temp_project, capsys):
         """Test main with build command."""
         from neuralmind.cli import main
-        
-        with patch('sys.argv', ['neuralmind', 'build', str(temp_project)]):
+
+        with patch("sys.argv", ["neuralmind", "build", str(temp_project)]):
             try:
                 main()
             except SystemExit:
                 pass
-        
+
         captured = capsys.readouterr()
         assert "Build" in captured.out
