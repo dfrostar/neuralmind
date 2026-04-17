@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.1.0"
-description = "Adaptive Neural Knowledge System - Achieve 40-70x token reduction for AI code understanding"
+version = "0.2.0"
+description = "Adaptive Neural Knowledge System + PostToolUse compression hooks. Two-phase token optimization (retrieval + consumption) for Claude Code."
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -25,7 +25,11 @@ keywords = [
     "chromadb",
     "embeddings",
     "context-window",
-    "ai-coding-assistant"
+    "ai-coding-assistant",
+    "claude-code",
+    "posttooluse-hook",
+    "skeleton-view",
+    "output-compression"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -68,6 +68,23 @@ Token Budget:
 from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder
+from .compressors import (
+    compress_bash,
+    compress_read,
+    cap_search_results,
+    offload_if_large,
+)
+from .hooks import install_hooks
 
-__version__ = "0.1.0"
-__all__ = ["NeuralMind", "GraphEmbedder", "ContextSelector"]
+__version__ = "0.2.0"
+__all__ = [
+    "NeuralMind",
+    "GraphEmbedder",
+    "ContextSelector",
+    # Output compression (v0.2.0)
+    "compress_bash",
+    "compress_read",
+    "cap_search_results",
+    "offload_if_large",
+    "install_hooks",
+]
