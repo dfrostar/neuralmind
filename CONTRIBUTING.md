@@ -8,6 +8,7 @@ First off, thank you for considering contributing to NeuralMind! It's people lik
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Making Changes](#making-changes)
+- [Releases](#releases)
 - [Pull Request Process](#pull-request-process)
 - [Style Guidelines](#style-guidelines)
 - [Testing](#testing)
@@ -166,6 +167,29 @@ fix(embedder): handle empty graph.json gracefully
 docs(readme): update installation instructions
 test(core): add tests for wakeup method
 ```
+
+## Releases
+
+Releases are automated with `release-please` and Conventional Commits.
+
+- `pyproject.toml` version, git tag, and `CHANGELOG.md` are updated together in a release PR.
+- Merging the release PR creates the release tag and notes.
+- The `.github/workflows/release.yml` workflow then publishes to PyPI/TestPyPI from that release.
+
+### Dry-run a release bump (single command)
+
+Use this command to preview the next release PR changes (including `pyproject.toml` and `CHANGELOG.md`):
+
+```bash
+npx release-please release-pr \
+  --dry-run \
+  --repo-url=OWNER/REPO \
+  --target-branch=main \
+  --config-file=.release-please-config.json \
+  --manifest-file=.release-please-manifest.json
+```
+
+Replace `OWNER/REPO` with your repository (for example, `dfrostar/neuralmind`).
 
 ## Pull Request Process
 

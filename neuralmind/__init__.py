@@ -1,6 +1,7 @@
 import logging
 import os
 import warnings
+from importlib.metadata import PackageNotFoundError, version
 
 # Mute ChromaDB telemetry and Pydantic warnings.
 #
@@ -76,7 +77,10 @@ from .compressors import (
 )
 from .hooks import install_hooks
 
-__version__ = "0.2.0"
+try:
+    __version__ = version("neuralmind")
+except PackageNotFoundError:  # pragma: no cover
+    __version__ = "0.0.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",

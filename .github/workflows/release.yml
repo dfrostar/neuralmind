@@ -2,15 +2,39 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
+  release-please:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
   test:
     name: Run Tests
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -27,10 +51,13 @@ jobs:
 
   build:
     name: Build Package
-    needs: test
+    needs: [release-please, test]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -53,7 +80,8 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: build
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -73,7 +101,8 @@ jobs:
 
   smoke-test-pypi:
     name: Smoke Test PyPI Package
-    needs: publish-pypi
+    needs: [release-please, publish-pypi]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,7 +115,7 @@ jobs:
       - name: Smoke test published package from PyPI
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="${{ needs.release-please.outputs.version }}"
           echo "Testing neuralmind==${VERSION}"
           sleep 30
           python -m venv .venv
@@ -111,7 +140,8 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    needs: build
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: testpypi
@@ -130,48 +160,3 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
         continue-on-error: true  # Don't fail if version already exists
-
-  github-release:
-    name: Create GitHub Release
-    needs: [build, publish-pypi, smoke-test-pypi]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: NeuralMind v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## NeuralMind v${{ steps.get_version.outputs.VERSION }}
-
-            ### Installation
-
-            ```bash
-            pip install neuralmind==${{ steps.get_version.outputs.VERSION }}
-            ```
-
-            ### What's Changed
-
-            See [CHANGELOG.md](CHANGELOG.md) for details.
-
-            ### Links
-
-            - [PyPI](https://pypi.org/project/neuralmind/${{ steps.get_version.outputs.VERSION }}/)
-            - [Documentation](https://github.com/dfrostar/neuralmind#readme)
-          files: |
-            dist/*
-          draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
