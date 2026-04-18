@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.2.0"
+version = "0.2.1"
 description = "Adaptive Neural Knowledge System + PostToolUse compression hooks. Two-phase token optimization (retrieval + consumption) for Claude Code."
 readme = "README.md"
 license = "MIT"
@@ -47,8 +47,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "chromadb>=0.4.0",
-    "pyyaml>=6.0",
-    "toml>=0.10.2"
+    "pyyaml>=6.0"
 ]
 
 [project.optional-dependencies]

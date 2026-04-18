@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neuralmind.core import NeuralMind
+from neuralmind.core import NeuralMind, create_mind
 
 
 def cmd_build(args):
@@ -33,7 +33,7 @@ def cmd_build(args):
 
 
 def cmd_query(args):
-    mind = NeuralMind(args.project_path)
+    mind = create_mind(args.project_path, auto_build=True)
     result = mind.query(args.question)
     if args.json:
         output = {
@@ -53,7 +53,7 @@ def cmd_query(args):
 
 
 def cmd_wakeup(args):
-    mind = NeuralMind(args.project_path)
+    mind = create_mind(args.project_path, auto_build=True)
     result = mind.wakeup()
     if args.json:
         output = {
@@ -71,7 +71,7 @@ def cmd_wakeup(args):
 
 def cmd_benchmark(args):
     print(f"Running benchmark for: {args.project_path}")
-    mind = NeuralMind(args.project_path)
+    mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
     if args.json:
         print(json.dumps(result, indent=2))
@@ -84,7 +84,7 @@ def cmd_benchmark(args):
 
 
 def cmd_search(args):
-    mind = NeuralMind(args.project_path)
+    mind = create_mind(args.project_path, auto_build=True)
     results = mind.search(args.query, n=args.n)
     if args.json:
         print(json.dumps(results, indent=2))
@@ -120,7 +120,8 @@ def cmd_stats(args):
 
 def cmd_skeleton(args):
     """Return a graph-backed compact view of a file."""
-    mind = NeuralMind(args.project_path)
+    from .core import create_mind
+    mind = create_mind(args.project_path, auto_build=True)
     skeleton = mind.skeleton(args.file_path)
     if not skeleton:
         if args.json:
