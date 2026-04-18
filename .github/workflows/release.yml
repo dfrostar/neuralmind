@@ -75,6 +75,8 @@ jobs:
     name: Smoke Test PyPI Package
     needs: publish-pypi
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -90,7 +92,16 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install "neuralmind==${VERSION}"
+          for attempt in 1 2 3 4 5; do
+            if pip install "neuralmind==${VERSION}"; then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Failed to install neuralmind==${VERSION} from PyPI after retries."
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
           INSTALLED_VERSION="$(python -c "import neuralmind; print(neuralmind.__version__)")"
           test "${INSTALLED_VERSION}" = "${VERSION}"
           neuralmind --help
