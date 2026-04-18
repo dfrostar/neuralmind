@@ -71,6 +71,44 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         # No password needed - uses trusted publishing via OIDC
 
+  smoke-test-pypi:
+    name: Smoke Test PyPI Package
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Smoke test published package from PyPI
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Testing neuralmind==${VERSION}"
+          sleep 30
+          python -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --upgrade pip
+          for attempt in 1 2 3 4 5; do
+            if pip install "neuralmind==${VERSION}"; then
+              break
+            fi
+            if [ "${attempt}" -eq 5 ]; then
+              echo "Failed to install neuralmind==${VERSION} from PyPI after retries."
+              exit 1
+            fi
+            sleep $((attempt * 15))
+          done
+          INSTALLED_VERSION="$(python -c "import neuralmind; print(neuralmind.__version__)")"
+          if [ "${INSTALLED_VERSION}" != "${VERSION}" ]; then
+            echo "Error: Version mismatch. Expected ${VERSION}, got ${INSTALLED_VERSION}."
+            exit 1
+          fi
+          neuralmind --help
+
   publish-testpypi:
     name: Publish to TestPyPI
     needs: build
@@ -95,7 +133,7 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: [build, publish-pypi]
+    needs: [build, publish-pypi, smoke-test-pypi]
     runs-on: ubuntu-latest
     permissions:
       contents: write
