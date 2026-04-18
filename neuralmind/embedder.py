@@ -297,6 +297,14 @@ class GraphEmbedder:
         except Exception:
             pass
 
+        # Also try absolute forms — graphify stores absolute paths in
+        # source_file, so relative inputs never match without these.
+        try:
+            candidates.add(str(Path(source_file).resolve()))
+            candidates.add(str((self.project_path / p).resolve()))
+        except Exception:
+            pass
+
         matched = [
             n for n in self.nodes
             if any(c == n.get("source_file", "") for c in candidates)
