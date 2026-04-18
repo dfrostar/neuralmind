@@ -199,6 +199,19 @@ def mock_chromadb(mocker):
         ],
     }
 
+    # Mock count and get for get_stats()
+    mock_collection.count.return_value = 6
+    mock_collection.get.return_value = {
+        "ids": ["node_1", "node_2"],
+        "metadatas": [
+            {"community": 1, "label": "authenticate_user"},
+            {"community": 1, "label": "hash_password"},
+        ],
+    }
+
+    # Mock upsert (no-op)
+    mock_collection.upsert.return_value = None
+
     mocker.patch("chromadb.PersistentClient", return_value=mock_client)
 
     return mock_client, mock_collection

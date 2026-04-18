@@ -542,3 +542,169 @@ class TestCLIMain:
 
         captured = capsys.readouterr()
         assert "Project:" in captured.out
+
+
+class TestCLIInstallHooks:
+    """Tests for CLI install-hooks command."""
+
+    def test_cmd_install_hooks_project_scope(self, tmp_path, capsys):
+        """Test cmd_install_hooks installs hooks for project scope."""
+        from neuralmind.cli import cmd_install_hooks
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.uninstall = False
+
+        cmd_install_hooks(args)
+
+        captured = capsys.readouterr()
+        assert "✓" in captured.out or "NeuralMind hooks" in captured.out
+        assert "installed" in captured.out
+
+    def test_cmd_install_hooks_uninstall(self, tmp_path, capsys):
+        """Test cmd_install_hooks --uninstall."""
+        from neuralmind.cli import cmd_install_hooks
+
+        # First install
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.uninstall = False
+        cmd_install_hooks(args)
+        capsys.readouterr()
+
+        # Then uninstall
+        args.uninstall = True
+        cmd_install_hooks(args)
+
+        captured = capsys.readouterr()
+        assert "uninstalled" in captured.out
+
+    def test_cmd_install_hooks_global_scope(self, tmp_path, monkeypatch, capsys):
+        """Test cmd_install_hooks --global."""
+        from neuralmind.cli import cmd_install_hooks
+
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = True
+        args.uninstall = False
+
+        cmd_install_hooks(args)
+
+        captured = capsys.readouterr()
+        assert "installed" in captured.out
+
+
+class TestCLIHook:
+    """Tests for CLI _hook command (internal runtime)."""
+
+    def test_cmd_hook_calls_run_hook(self, monkeypatch):
+        """Test cmd_hook delegates to hooks.run_hook."""
+        from neuralmind.cli import cmd_hook
+
+        args = MagicMock()
+        args.action = "compress-bash"
+
+        with patch("neuralmind.hooks.run_hook", return_value=0) as mock_run:
+            with pytest.raises(SystemExit) as exc_info:
+                cmd_hook(args)
+            assert exc_info.value.code == 0
+            mock_run.assert_called_once_with("compress-bash")
+
+
+class TestCLIInitHook:
+    """Tests for CLI init-hook command."""
+
+    def test_cmd_init_hook_creates_hook(self, tmp_path, capsys):
+        """Test cmd_init_hook creates a post-commit hook."""
+        from neuralmind.cli import cmd_init_hook
+
+        # Create .git/hooks directory
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+
+        cmd_init_hook(args)
+
+        captured = capsys.readouterr()
+        assert "✓" in captured.out or "post-commit hook" in captured.out
+
+        hook_path = hooks_dir / "post-commit"
+        assert hook_path.exists()
+        content = hook_path.read_text()
+        assert "neuralmind-hook-start" in content
+        assert "neuralmind build" in content
+
+    def test_cmd_init_hook_idempotent(self, tmp_path, capsys):
+        """Running init-hook twice updates the block without duplicating."""
+        from neuralmind.cli import cmd_init_hook
+
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+
+        cmd_init_hook(args)
+        capsys.readouterr()
+        cmd_init_hook(args)
+
+        hook_path = hooks_dir / "post-commit"
+        content = hook_path.read_text()
+        # Should only have one copy of the block
+        assert content.count("neuralmind-hook-start") == 1
+        assert content.count("neuralmind-hook-end") == 1
+
+    def test_cmd_init_hook_preserves_existing(self, tmp_path, capsys):
+        """init-hook appends to an existing post-commit hook."""
+        from neuralmind.cli import cmd_init_hook
+
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        hook_path = hooks_dir / "post-commit"
+        hook_path.write_text("#!/bin/sh\necho 'existing hook'\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+
+        cmd_init_hook(args)
+
+        content = hook_path.read_text()
+        assert "existing hook" in content
+        assert "neuralmind-hook-start" in content
+
+    def test_cmd_init_hook_no_git_dir(self, tmp_path, capsys):
+        """init-hook exits 1 when no .git/hooks directory."""
+        from neuralmind.cli import cmd_init_hook
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_init_hook(args)
+        assert exc_info.value.code == 1
+
+    def test_cmd_init_hook_makes_executable(self, tmp_path):
+        """init-hook makes the hook file executable."""
+        import os
+        import stat
+
+        from neuralmind.cli import cmd_init_hook
+
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+
+        cmd_init_hook(args)
+
+        hook_path = hooks_dir / "post-commit"
+        mode = os.stat(hook_path).st_mode
+        assert mode & stat.S_IXUSR  # User execute bit set

@@ -139,3 +139,81 @@ class TestCompressReadBasic:
         tiny = "x = 1\n"
         result = compress_read("/nonexistent/foo.py", tiny)
         assert result == tiny
+
+    def test_bypass_env_passes_through(self, monkeypatch, tmp_path):
+        """NEURALMIND_BYPASS=1 returns raw content unchanged."""
+        from neuralmind.compressors import compress_read
+
+        monkeypatch.setenv("NEURALMIND_BYPASS", "1")
+        content = "x = 1\n" * 500
+        result = compress_read("/some/file.py", content)
+        assert result == content
+
+
+class TestCompressReadWithSkeleton:
+    """Test compress_read with a skeleton-generating NeuralMind instance."""
+
+    def test_skeleton_compression(self, tmp_path):
+        """compress_read returns compressed output when a skeleton is available."""
+        from unittest.mock import MagicMock, patch
+
+        from neuralmind.compressors import compress_read
+
+        # Create a large file content (above 1500 char threshold)
+        content = "def foo():\n    pass\n" * 200
+
+        # Create graphify-out/graph.json in the test project
+        graphify_dir = tmp_path / "graphify-out"
+        graphify_dir.mkdir()
+        (graphify_dir / "graph.json").write_text('{"nodes": [], "edges": []}')
+
+        file_path = str(tmp_path / "src" / "big_file.py")
+
+        # Mock NeuralMind to return a skeleton
+        mock_mind = MagicMock()
+        mock_mind.skeleton.return_value = "# big_file.py (compact)"
+
+        with patch("neuralmind.core.NeuralMind", return_value=mock_mind):
+            result = compress_read(file_path, content)
+
+        assert "compact" in result or "neuralmind:" in result.lower()
+        assert len(result) < len(content)
+
+    def test_skeleton_empty_falls_back(self, tmp_path):
+        """compress_read returns raw content when skeleton is empty."""
+        from unittest.mock import MagicMock, patch
+
+        from neuralmind.compressors import compress_read
+
+        content = "def foo():\n    pass\n" * 200
+        graphify_dir = tmp_path / "graphify-out"
+        graphify_dir.mkdir()
+        (graphify_dir / "graph.json").write_text('{"nodes": [], "edges": []}')
+
+        file_path = str(tmp_path / "src" / "big_file.py")
+
+        mock_mind = MagicMock()
+        mock_mind.skeleton.return_value = ""
+
+        with patch("neuralmind.core.NeuralMind", return_value=mock_mind):
+            result = compress_read(file_path, content)
+
+        assert result == content
+
+    def test_exception_falls_open(self, tmp_path):
+        """compress_read returns raw content when an exception occurs."""
+        from unittest.mock import patch
+
+        from neuralmind.compressors import compress_read
+
+        content = "def foo():\n    pass\n" * 200
+        graphify_dir = tmp_path / "graphify-out"
+        graphify_dir.mkdir()
+        (graphify_dir / "graph.json").write_text('{"nodes": [], "edges": []}')
+
+        file_path = str(tmp_path / "src" / "big_file.py")
+
+        with patch("neuralmind.core.NeuralMind", side_effect=RuntimeError("boom")):
+            result = compress_read(file_path, content)
+
+        assert result == content
