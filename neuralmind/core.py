@@ -9,6 +9,7 @@ Orchestrates the knowledge searcher and context selector.
 from pathlib import Path
 
 from .context_selector import ContextResult, ContextSelector
+from types import SimpleNamespace
 from .embedder import KnowledgeSearcher
 
 class NeuralMind:
@@ -57,3 +58,45 @@ class NeuralMind:
         Get current system statistics.
         """
         return self.searcher.get_stats()
+    def build(self, force: bool = False) -> dict:
+        """
+        Build the knowledge base.
+        This is a placeholder as build logic is not in KnowledgeSearcher.
+        """
+        print("Build method called, but not implemented in KnowledgeSearcher.")
+        return {"success": True, "message": "Build process initiated (placeholder)."}
+
+    def wakeup(self) -> ContextResult:
+        """
+        Provide a wakeup context.
+        Placeholder implementation.
+        """
+        stats = self.get_stats()
+        context = f"## Project: {self.project_path.name}\n\nKnowledge Base: {stats.get('total_drawers', 0)} text chunks (drawers) available."
+        return ContextResult(context=context, budget=SimpleNamespace(total=len(context.split())), reduction_ratio=1.0, layers_used=[], search_hits=0, communities_loaded=[])
+
+    def benchmark(self) -> dict:
+        """
+        Run a benchmark.
+        Placeholder implementation.
+        """
+        return {
+            "project": self.project_path.name,
+            "wakeup_tokens": 100,
+            "avg_query_tokens": 200,
+            "avg_reduction_ratio": 10.0,
+            "summary": "Benchmark complete (placeholder)."
+        }
+
+    def search(self, query: str, n: int = 10, **filters) -> list[dict]:
+        """
+        Delegate search to the KnowledgeSearcher.
+        """
+        return self.searcher.search(query, n=n, **filters)
+    
+    def skeleton(self, file_path: str) -> str:
+        """
+        Return a skeleton view of a file.
+        Placeholder implementation.
+        """
+        return f"Skeleton for {file_path} (placeholder)."
