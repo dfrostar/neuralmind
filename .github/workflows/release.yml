@@ -79,7 +79,7 @@ jobs:
       contents: read
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -103,7 +103,10 @@ jobs:
             sleep $((attempt * 15))
           done
           INSTALLED_VERSION="$(python -c "import neuralmind; print(neuralmind.__version__)")"
-          test "${INSTALLED_VERSION}" = "${VERSION}"
+          if [ "${INSTALLED_VERSION}" != "${VERSION}" ]; then
+            echo "Error: Version mismatch. Expected ${VERSION}, got ${INSTALLED_VERSION}."
+            exit 1
+          fi
           neuralmind --help
 
   publish-testpypi:
