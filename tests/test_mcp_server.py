@@ -203,4 +203,3 @@ def test_tool_wakeup_and_query_return_expected_projection(monkeypatch):
         "communities_loaded": [1, 2],
         "search_hits": 4,
     }
-

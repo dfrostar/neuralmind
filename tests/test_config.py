@@ -63,4 +63,3 @@ def test_load_config_returns_default_and_warns_on_parse_error(monkeypatch, capsy
 
     assert loaded is config.DEFAULT_CONFIG
     assert "Could not load config file" in captured.out
-

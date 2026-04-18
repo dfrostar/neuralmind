@@ -60,7 +60,13 @@ def test_query_returns_default_when_response_key_missing(monkeypatch):
     monkeypatch.setattr(
         local_client,
         "CONFIG",
-        {"local_models": {"enabled": True, "endpoint": "http://localhost:11434", "model": "llama3.1"}},
+        {
+            "local_models": {
+                "enabled": True,
+                "endpoint": "http://localhost:11434",
+                "model": "llama3.1",
+            }
+        },
     )
 
     response = MagicMock()
@@ -86,7 +92,13 @@ def test_query_handles_httpx_request_error(monkeypatch):
     monkeypatch.setattr(
         local_client,
         "CONFIG",
-        {"local_models": {"enabled": True, "endpoint": "http://localhost:11434", "model": "llama3.1"}},
+        {
+            "local_models": {
+                "enabled": True,
+                "endpoint": "http://localhost:11434",
+                "model": "llama3.1",
+            }
+        },
     )
 
     request = httpx.Request("POST", "http://localhost:11434/api/generate")
@@ -112,7 +124,13 @@ def test_query_handles_unexpected_exception(monkeypatch):
     monkeypatch.setattr(
         local_client,
         "CONFIG",
-        {"local_models": {"enabled": True, "endpoint": "http://localhost:11434", "model": "llama3.1"}},
+        {
+            "local_models": {
+                "enabled": True,
+                "endpoint": "http://localhost:11434",
+                "model": "llama3.1",
+            }
+        },
     )
 
     response = MagicMock()
@@ -130,4 +148,3 @@ def test_query_handles_unexpected_exception(monkeypatch):
     result = client.query("hello")
 
     assert "An unexpected error occurred: boom" == result
-
