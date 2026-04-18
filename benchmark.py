@@ -1,62 +1,54 @@
-import os
-import sys
 import time
+import os
 import psutil
-from pathlib import Path
+import sys
 
-# Ensure the neuralmind package is in the Python path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Ensure the project root is in the Python path
+sys.path.insert(0, '/a0/usr/workdir/neuralmind')
 
 from neuralmind.core import NeuralMind
 
 def get_memory_usage():
-    """Get the peak memory usage of child processes."""
+    """Gets the peak memory usage of the current process and its children."""
     process = psutil.Process(os.getpid())
-    children = process.children(recursive=True)
-    peak_mem = 0
-    for child in children:
+    peak_mem = process.memory_info().rss
+    for child in process.children(recursive=True):
         try:
-            mem_info = child.memory_info()
-            peak_mem += mem_info.rss  # Resident Set Size
+            peak_mem += child.memory_info().rss
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return peak_mem / (1024 * 1024)  # Convert to MB
 
 def run_benchmark():
-    """Runs a standardized benchmark for NeuralMind performance."""
+    """Runs a standardized benchmark and returns a dictionary of metrics."""
     print("--- Running Benchmark ---")
     
     PROJECT_PATH = "/a0/usr/workdir/neuralmind"
     TEST_QUERY = "Trace the 'run_experiment' function in 'experiment.py' and explain how it modifies the 'CONTEXT_SELECTOR_PATH' file."
 
-    if not os.path.isdir(PROJECT_PATH):
-        print(f"Error: Project path not found at {PROJECT_PATH}")
-        return
-
-    mind = NeuralMind(PROJECT_PATH)
-    
-    print(f"Project: {PROJECT_PATH}")
-    print(f"Query: '{TEST_QUERY}'\n")
-
     start_time = time.time()
     
-    # The query method now returns a simple string
-    context_string = mind.query(TEST_QUERY)
+    # Initialize NeuralMind and run the query
+    nm = NeuralMind(PROJECT_PATH)
+    output = nm.query(TEST_QUERY)
     
-    end_time = time.time()
-    peak_memory_mb = get_memory_usage()
-    execution_time = end_time - start_time
-    
-    print("--- Results ---")
-    print(f"Execution Time: {execution_time:.2f} seconds")
-    print(f"Peak Memory (Children): {peak_memory_mb:.2f} MB")
-    
-    # Estimate token count from the final string
-    output_tokens = len(context_string.split())
-    print(f"Approx. Output Tokens: {output_tokens}")
-    
-    print("\n--- Output Snippet ---")
-    print(context_string[:500] + '...' if len(context_string) > 500 else context_string)
+    elapsed_time = time.time() - start_time
+    peak_mem = get_memory_usage()
+    token_count = len(output.split())  # Approximate token count
 
-if __name__ == "__main__":
-    run_benchmark()
+    # Package results into a dictionary
+    results = {
+        'time_sec': round(elapsed_time, 2),
+        'memory_mb': round(peak_mem, 2),
+        'tokens': token_count
+    }
+
+    return results
+
+if __name__ == '__main__':
+    # Allow the script to be run directly for testing
+    metrics = run_benchmark()
+    print("\n--- Benchmark Results ---")
+    print(f"Execution Time: {metrics['time_sec']} seconds")
+    print(f"Peak Memory: {metrics['memory_mb']} MB")
+    print(f"Approx. Output Tokens: {metrics['tokens']}")

@@ -20,7 +20,7 @@ class KnowledgeSearcher:
         results = searcher.search("authentication logic", n=5)
     """
 
-    COLLECTION_NAME = "neuralmind_nodes"
+    COLLECTION_NAME = "mempalace_drawers"  # THIS IS THE CORRECTED NAME
 
     def __init__(self, project_path: str, db_path: str = None):
         """
@@ -32,7 +32,6 @@ class KnowledgeSearcher:
         """
         self.project_path = Path(project_path)
 
-        # Default DB path in project's graphify-out
         if db_path is None:
             db_path = str(Path.home() / ".mempalace" / "palace")
 
@@ -57,14 +56,6 @@ class KnowledgeSearcher:
     def search(self, query: str, n: int = 10, **filters) -> list[dict]:
         """
         Perform semantic search on the knowledge base.
-
-        Args:
-            query: Search query
-            n: Number of results
-            **filters: Optional metadata filters (e.g., source_file)
-
-        Returns:
-            List of matching documents with scores
         """
         results = self.collection.query(
             query_texts=[query],
@@ -72,7 +63,6 @@ class KnowledgeSearcher:
             where=filters if filters else None,
             include=["metadatas", "documents", "distances"],
         )
-        # Format results to be more user-friendly
         formatted_results = []
         ids = results.get("ids", [[]])[0]
         documents = results.get("documents", [[]])[0]

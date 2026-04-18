@@ -4,9 +4,29 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-**Adaptive Neural Knowledge System — 40-70x token reduction for AI code understanding**
+**Two-phase token optimization for Claude Code — smart retrieval + tool-output compression in one package.**
 
-> Stop paying $450/month for AI coding queries. NeuralMind reduces it to $7/month.
+> Most tools save tokens on what you *fetch* OR on what Claude *sees back* — never both.
+> NeuralMind v0.2.0 does both in one `pip install`.
+
+## ⚡ Two-phase optimization
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Phase 1: Retrieval — what to fetch                          │
+│   neuralmind wakeup .    →  ~365 tokens (vs 50K raw)        │
+│   neuralmind query "?"   →  ~800 tokens (vs 2,700 raw)      │
+│   mcp: neuralmind_skeleton  →  graph-backed file view       │
+├─────────────────────────────────────────────────────────────┤
+│ Phase 2: Consumption — what Claude actually sees            │
+│   PostToolUse hooks compress Read/Bash/Grep output          │
+│   File reads → graph skeleton (~88% reduction)              │
+│   Bash output → errors + summary (~91% reduction)           │
+│   Search results → capped at 25 matches                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Combined effect: 5-10× total reduction vs baseline Claude Code.**
 
 ## 🎯 The Problem
 
@@ -41,8 +61,14 @@ graphify update .
 # Build neural index
 neuralmind build .
 
+# (v0.2.0) Install PostToolUse hooks — compresses Read/Bash/Grep
+neuralmind install-hooks .
+
 # Query your codebase
 neuralmind query . "How does authentication work?"
+
+# (v0.2.0) Skeleton view of a file without loading source
+neuralmind skeleton tools/voiceover.py
 ```
 
 ## ✨ Key Features
@@ -100,6 +126,55 @@ Total: ~800-1,100 tokens vs 50,000+ for full codebase
 | `neuralmind search . "..."` | Direct semantic search |
 | `neuralmind benchmark .` | Measure token reduction |
 | `neuralmind stats .` | Show index statistics |
+| `neuralmind skeleton <file>` | **v0.2.0** Compact graph-backed file view |
+| `neuralmind install-hooks .` | **v0.2.0** Install PostToolUse compression hooks (project) |
+| `neuralmind install-hooks --global` | **v0.2.0** Install hooks globally for all projects |
+| `neuralmind install-hooks --uninstall` | **v0.2.0** Remove hooks (preserves other tools' hooks) |
+| `neuralmind init-hook .` | Install git post-commit hook (auto-rebuild on commit) |
+
+## 🪝 PostToolUse Compression (v0.2.0)
+
+NeuralMind ships with Claude Code hooks that compress tool outputs **before** the model sees them:
+
+| Tool | Compression | Typical savings |
+|------|-------------|----------------|
+| **Read** | Replaces raw source with graph skeleton (functions, rationales, call graph) | ~88% |
+| **Bash** | Keeps errors + last 3 lines + summary; drops routine output | ~91% |
+| **Grep** | Caps at 25 matches + "N more hidden" pointer | varies |
+
+**Install per-project (recommended):**
+```bash
+cd my-project
+neuralmind install-hooks .    # writes .claude/settings.json
+```
+
+**Install globally (all projects):**
+```bash
+neuralmind install-hooks --global    # writes ~/.claude/settings.json
+```
+
+**Bypass temporarily** (for debugging):
+```bash
+NEURALMIND_BYPASS=1 claude-code ...
+```
+
+**Uninstall cleanly** (preserves other hooks):
+```bash
+neuralmind install-hooks --uninstall    # project
+neuralmind install-hooks --uninstall --global    # global
+```
+
+The hook installer is **idempotent** and **non-destructive** — existing hooks from other tools (Prettier, Black, etc.) are preserved.
+
+### Coming from Pith?
+
+NeuralMind v0.2.0 provides full Pith-parity compression plus graph-backed retrieval — both in one package. Migration:
+```bash
+# Remove Pith global hooks, then:
+pip install neuralmind
+neuralmind install-hooks --global
+```
+Unlike Pith's regex-based skeletonization, NeuralMind uses the semantic graph you've already built, so skeletons include rationales, call graphs, and cross-file edges that regex can't extract.
 
 ## ⏰ Scheduling Updates
 
@@ -136,6 +211,31 @@ For Claude Desktop or Cursor:
     "neuralmind": {
       "command": "neuralmind-mcp",
       "args": ["/path/to/project"]
+    }
+  }
+}
+```
+
+**Exposed MCP tools (v0.2.0):**
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__neuralmind__wakeup` | Minimal project overview (~365 tokens) |
+| `mcp__neuralmind__query` | Natural language code query (~800 tokens) |
+| `mcp__neuralmind__search` | Direct semantic search with scores |
+| `mcp__neuralmind__skeleton` | **v0.2.0** Compact file view (functions, rationales, calls) |
+| `mcp__neuralmind__stats` | Index health |
+| `mcp__neuralmind__benchmark` | Measure token reduction |
+| `mcp__neuralmind__build` | Rebuild index |
+
+**Project-scoped auto-registration**: drop a `.mcp.json` at your project root and Claude Code loads it on open:
+
+```json
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": ["."]
     }
   }
 }
