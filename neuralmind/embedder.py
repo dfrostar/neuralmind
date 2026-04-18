@@ -305,8 +305,7 @@ class GraphEmbedder:
         except Exception:
             pass
 
-        matched = [n for n in self.nodes if any(c == n.get("source_file", "") for c in candidates)]
-        return matched
+        return [n for n in self.nodes if any(c == n.get("source_file", "") for c in candidates)]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         """Return edges where either endpoint belongs to the given file.

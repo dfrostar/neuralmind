@@ -25,7 +25,6 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 # Size thresholds (tunable via env vars for tests and power users)
 BASH_TAIL_LINES = int(os.environ.get("NEURALMIND_BASH_TAIL", "3"))
@@ -150,7 +149,10 @@ def compress_read(file_path: str, raw_content: str, mind=None) -> str:
 
         skeleton = mind.skeleton(file_path)
         if skeleton and skeleton != "":
-            return skeleton + f"\n\n[neuralmind: compressed from {len(raw_content)} chars. Full source: set NEURALMIND_BYPASS=1]"
+            return (
+                skeleton
+                + f"\n\n[neuralmind: compressed from {len(raw_content)} chars. Full source: set NEURALMIND_BYPASS=1]"
+            )
         return raw_content
     except Exception:
         # Fail open — never break a Read just because compression failed
@@ -180,7 +182,7 @@ def cap_search_results(output: str, max_matches: int | None = None) -> str:
 
 def offload_if_large(
     content: str, threshold: int | None = None, prefix: str = "nm_offload_"
-) -> tuple[str, Optional[Path]]:
+) -> tuple[str, Path | None]:
     """Offload oversize content to a temp file, return a pointer message.
 
     Useful for large JSON / HTML / binary tool outputs that flood context.

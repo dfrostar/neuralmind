@@ -1,7 +1,6 @@
 """Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -57,7 +56,7 @@ class TestCLIQuery:
 
     def test_cmd_query_outputs_context(self, temp_project, capsys):
         """Test cmd_query outputs relevant context for the question."""
-        from neuralmind.cli import cmd_query, cmd_build
+        from neuralmind.cli import cmd_build, cmd_query
 
         # Build first
         build_args = MagicMock()
@@ -80,7 +79,7 @@ class TestCLIQuery:
 
     def test_cmd_query_json_output(self, temp_project, capsys):
         """Test cmd_query --json produces valid JSON."""
-        from neuralmind.cli import cmd_query, cmd_build
+        from neuralmind.cli import cmd_build, cmd_query
 
         # Build first
         build_args = MagicMock()
@@ -114,7 +113,7 @@ class TestCLIQuery:
 
     def test_cmd_query_has_token_reduction(self, temp_project, capsys):
         """Test cmd_query reports token reduction ratio."""
-        from neuralmind.cli import cmd_query, cmd_build
+        from neuralmind.cli import cmd_build, cmd_query
 
         # Build first
         build_args = MagicMock()
@@ -140,7 +139,7 @@ class TestCLIWakeup:
 
     def test_cmd_wakeup_outputs_context(self, temp_project, capsys):
         """Test cmd_wakeup produces context output."""
-        from neuralmind.cli import cmd_wakeup, cmd_build
+        from neuralmind.cli import cmd_build, cmd_wakeup
 
         # Build first
         build_args = MagicMock()
@@ -161,7 +160,7 @@ class TestCLIWakeup:
 
     def test_cmd_wakeup_json_output(self, temp_project, capsys):
         """Test cmd_wakeup --json produces valid JSON."""
-        from neuralmind.cli import cmd_wakeup, cmd_build
+        from neuralmind.cli import cmd_build, cmd_wakeup
 
         # Build first
         build_args = MagicMock()
@@ -198,7 +197,7 @@ class TestCLISearch:
 
     def test_cmd_search_returns_results(self, temp_project, capsys):
         """Test cmd_search returns formatted results."""
-        from neuralmind.cli import cmd_search, cmd_build
+        from neuralmind.cli import cmd_build, cmd_search
 
         # Build first
         build_args = MagicMock()
@@ -221,7 +220,7 @@ class TestCLISearch:
 
     def test_cmd_search_respects_n_parameter(self, temp_project, capsys):
         """Test cmd_search --n parameter limits results."""
-        from neuralmind.cli import cmd_search, cmd_build
+        from neuralmind.cli import cmd_build, cmd_search
 
         # Build first
         build_args = MagicMock()
@@ -241,12 +240,12 @@ class TestCLISearch:
         captured = capsys.readouterr()
         # Count the number of numbered results (e.g., "1. ", "2. ")
         lines = captured.out.split("\n")
-        result_lines = [l for l in lines if l and l[0].isdigit() and ". " in l]
+        result_lines = [line for line in lines if line and line[0].isdigit() and ". " in line]
         assert len(result_lines) <= 2
 
     def test_cmd_search_json_output(self, temp_project, capsys):
         """Test cmd_search --json produces valid JSON."""
-        from neuralmind.cli import cmd_search, cmd_build
+        from neuralmind.cli import cmd_build, cmd_search
 
         # Build first
         build_args = MagicMock()
@@ -314,7 +313,7 @@ class TestCLIStats:
 
     def test_cmd_stats_node_count_matches_graph(self, temp_project, capsys):
         """Test cmd_stats reports correct node count for sample graph."""
-        from neuralmind.cli import cmd_stats, cmd_build
+        from neuralmind.cli import cmd_build, cmd_stats
 
         # Build first
         build_args = MagicMock()
@@ -430,7 +429,7 @@ class TestCLISkeleton:
 
     def test_cmd_skeleton_outputs_skeleton(self, temp_project, capsys):
         """Test cmd_skeleton outputs skeleton for indexed file."""
-        from neuralmind.cli import cmd_skeleton, cmd_build
+        from neuralmind.cli import cmd_build, cmd_skeleton
 
         # Build first
         build_args = MagicMock()
@@ -452,7 +451,7 @@ class TestCLISkeleton:
 
     def test_cmd_skeleton_json_output(self, temp_project, capsys):
         """Test cmd_skeleton --json produces valid JSON."""
-        from neuralmind.cli import cmd_skeleton, cmd_build
+        from neuralmind.cli import cmd_build, cmd_skeleton
 
         # Build first
         build_args = MagicMock()
@@ -485,7 +484,7 @@ class TestCLISkeleton:
 
     def test_cmd_skeleton_unindexed_file_fails(self, temp_project, capsys):
         """Test cmd_skeleton fails with exit 1 for unindexed file."""
-        from neuralmind.cli import cmd_skeleton, cmd_build
+        from neuralmind.cli import cmd_build, cmd_skeleton
 
         # Build first
         build_args = MagicMock()
