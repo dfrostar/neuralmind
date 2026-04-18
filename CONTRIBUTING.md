@@ -183,11 +183,13 @@ Use this command to preview the next release PR changes (including `pyproject.to
 ```bash
 npx release-please release-pr \
   --dry-run \
-  --repo-url=dfrostar/neuralmind \
+  --repo-url=OWNER/REPO \
   --target-branch=main \
   --config-file=.release-please-config.json \
   --manifest-file=.release-please-manifest.json
 ```
+
+Replace `OWNER/REPO` with your repository (for example, `dfrostar/neuralmind`).
 
 ## Pull Request Process
 
