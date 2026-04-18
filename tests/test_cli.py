@@ -1,241 +1,211 @@
-"""Tests for NeuralMind CLI functionality.
-
-Note: Subprocess tests are skipped in CI because they require proper package installation.
-Direct function tests are used instead.
-"""
+"""Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
-import subprocess
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Skip all subprocess tests - they require package installation
-pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
-
-
-class TestCLIHelp:
-    """Tests for CLI help functionality."""
-
-    @pytest.mark.skip(reason="Requires package installation - subprocess tests not reliable in CI")
-    def test_help_shows_usage(self, temp_project):
-        """Test that --help shows usage information."""
-        result = subprocess.run(
-            [sys.executable, "-m", "neuralmind.cli", "--help"],
-            capture_output=True,
-            text=True,
-        )
-        assert result.returncode == 0
-        assert "usage" in result.stdout.lower() or "neuralmind" in result.stdout.lower()
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_build_help(self):
-        """Test that build --help shows build options."""
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_query_help(self):
-        """Test that query --help shows query options."""
-
 
 class TestCLIBuild:
     """Tests for CLI build command."""
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_build_command(self, temp_project):
-        """Test that build command works."""
+    def test_cmd_build_success(self, temp_project, capsys):
+        """Test cmd_build returns success dict with node counts."""
+        from neuralmind.cli import cmd_build
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_build_creates_index(self, temp_project):
-        """Test that build creates the neural index."""
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.force = False
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_build_force_flag(self, temp_project):
-        """Test that build --force re-embeds all nodes."""
+        cmd_build(args)
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_build_nonexistent_path(self, tmp_path):
-        """Test that build with nonexistent path fails gracefully."""
+        captured = capsys.readouterr()
+        assert "Build successful!" in captured.out
+        assert "Nodes:" in captured.out
+
+    def test_cmd_build_force_flag(self, temp_project, capsys):
+        """Test cmd_build respects --force flag."""
+        from neuralmind.cli import cmd_build
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.force = True
+
+        cmd_build(args)
+
+        captured = capsys.readouterr()
+        assert "Force rebuild: True" in captured.out
+
+    def test_cmd_build_nonexistent_path(self, capsys):
+        """Test cmd_build fails on nonexistent path."""
+        from neuralmind.cli import cmd_build
+
+        args = MagicMock()
+        args.project_path = "/nonexistent/path/12345"
+        args.force = False
+
+        with pytest.raises(SystemExit):
+            cmd_build(args)
+
+        captured = capsys.readouterr()
+        assert "Build failed" in captured.out or "error" in captured.out.lower()
 
 
 class TestCLIQuery:
     """Tests for CLI query command."""
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_query_command(self, temp_project):
-        """Test that query command works after build."""
+    def test_cmd_query_outputs_context(self, temp_project, capsys):
+        """Test cmd_query outputs relevant context for the question."""
+        from neuralmind.cli import cmd_query, cmd_build
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_query_outputs_context(self, temp_project):
-        """Test that query outputs context text."""
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_query_without_build_fails(self, temp_project):
-        """Test that query without build shows error."""
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.question = "authentication"
+        args.json = False
+
+        cmd_query(args)
+
+        captured = capsys.readouterr()
+        # Should output query confirmation and separator
+        assert "Query:" in captured.out or "authentication" in captured.out
+        assert "====" in captured.out
+
+    def test_cmd_query_json_output(self, temp_project, capsys):
+        """Test cmd_query --json produces valid JSON."""
+        from neuralmind.cli import cmd_query, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.question = "function"
+        args.json = True
+
+        cmd_query(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        data = json.loads(json_text)
+        assert "query" in data
+        assert "tokens" in data
+        assert "reduction_ratio" in data
+        assert data["query"] == "function"
+
+    def test_cmd_query_has_token_reduction(self, temp_project, capsys):
+        """Test cmd_query reports token reduction ratio."""
+        from neuralmind.cli import cmd_query, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.question = "test"
+        args.json = False
+
+        cmd_query(args)
+
+        captured = capsys.readouterr()
+        # Should report reduction ratio > 1.0
+        assert "x reduction" in captured.out or "reduction" in captured.out.lower()
 
 
 class TestCLIWakeup:
     """Tests for CLI wakeup command."""
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_wakeup_command(self, temp_project):
-        """Test that wakeup command works."""
+    def test_cmd_wakeup_outputs_context(self, temp_project, capsys):
+        """Test cmd_wakeup produces context output."""
+        from neuralmind.cli import cmd_wakeup, cmd_build
 
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_wakeup_outputs_context(self, temp_project):
-        """Test that wakeup outputs context text."""
-
-
-class TestCLISearch:
-    """Tests for CLI search command."""
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_search_command(self, temp_project):
-        """Test that search command works."""
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_search_outputs_results(self, temp_project):
-        """Test that search outputs results."""
-
-
-class TestCLIStats:
-    """Tests for CLI stats command."""
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_stats_command(self, temp_project):
-        """Test that stats command works."""
-
-
-class TestCLIBenchmark:
-    """Tests for CLI benchmark command."""
-
-    @pytest.mark.skip(reason="Requires package installation")
-    def test_benchmark_command(self, temp_project):
-        """Test that benchmark command works."""
-
-
-# Direct function tests using imports instead of subprocess
-
-
-class TestCLIDirectBuild:
-    """Direct tests for CLI build function."""
-
-    def test_cmd_build_with_valid_project(self, temp_project, capsys):
-        """Test cmd_build function directly."""
-        from neuralmind.cli import cmd_build
-
-        # Create mock args with correct attribute names from cli.py
-        args = MagicMock()
-        args.project_path = str(temp_project)  # CLI uses project_path
-        args.force = False
-
-        # cmd_build may call sys.exit on success, so we catch that
-        try:
-            cmd_build(args)
-        except SystemExit as e:
-            # Exit code 0 is success, anything else is failure
-            # cmd_build prints but doesn't return a value
-            pass
-
-        captured = capsys.readouterr()
-        # Should have printed something
-        assert "Building" in captured.out or "Build" in captured.out
-
-    def test_cmd_build_creates_index(self, temp_project, capsys):
-        """Test cmd_build creates the index."""
-        from neuralmind.cli import cmd_build
-
-        args = MagicMock()
-        args.project_path = str(temp_project)
-        args.force = False
-
-        try:
-            cmd_build(args)
-        except SystemExit:
-            pass
-
-        captured = capsys.readouterr()
-        # Should have built successfully with our sample graph
-        assert "Build" in captured.out
-
-
-class TestCLIDirectQuery:
-    """Direct tests for CLI query function."""
-
-    def test_cmd_query_with_valid_project(self, temp_project, capsys):
-        """Test cmd_query function directly."""
-        from neuralmind.cli import cmd_query
-
-        args = MagicMock()
-        args.project_path = str(temp_project)
-        args.question = "How does authentication work?"
-        args.json = False  # CLI uses --json flag
-
-        try:
-            cmd_query(args)
-        except SystemExit:
-            pass
-
-        captured = capsys.readouterr()
-        # Should produce some output
-        assert len(captured.out) > 0
-
-    def test_cmd_query_with_json_output(self, temp_project, capsys):
-        """Test cmd_query with JSON output."""
-        from neuralmind.cli import cmd_query
-
-        args = MagicMock()
-        args.project_path = str(temp_project)
-        args.question = "authentication"
-        args.json = True
-
-        try:
-            cmd_query(args)
-        except SystemExit:
-            pass
-
-        captured = capsys.readouterr()
-        if captured.out.strip():
-            # Find JSON portion of output
-            lines = captured.out.strip().split("\n")
-            json_start = None
-            for i, line in enumerate(lines):
-                if line.strip().startswith("{"):
-                    json_start = i
-                    break
-            if json_start is not None:
-                json_text = "\n".join(lines[json_start:])
-                data = json.loads(json_text)
-                assert isinstance(data, dict)
-
-
-class TestCLIDirectWakeup:
-    """Direct tests for CLI wakeup function."""
-
-    def test_cmd_wakeup_with_valid_project(self, temp_project, capsys):
-        """Test cmd_wakeup function directly."""
-        from neuralmind.cli import cmd_wakeup
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
 
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
 
-        try:
-            cmd_wakeup(args)
-        except SystemExit:
-            pass
+        cmd_wakeup(args)
 
         captured = capsys.readouterr()
-        # Should produce some output
-        assert len(captured.out) >= 0
+        # Should output context header with token count
+        assert "Wake-up Context" in captured.out or "tokens" in captured.out.lower()
+
+    def test_cmd_wakeup_json_output(self, temp_project, capsys):
+        """Test cmd_wakeup --json produces valid JSON."""
+        from neuralmind.cli import cmd_wakeup, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.json = True
+
+        cmd_wakeup(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        data = json.loads(json_text)
+        assert "type" in data
+        assert data["type"] == "wakeup"
+        assert "tokens" in data
+        assert "context" in data
 
 
-class TestCLIDirectSearch:
-    """Direct tests for CLI search function."""
+class TestCLISearch:
+    """Tests for CLI search command."""
 
-    def test_cmd_search_with_valid_project(self, temp_project, capsys):
-        """Test cmd_search function directly."""
-        from neuralmind.cli import cmd_search
+    def test_cmd_search_returns_results(self, temp_project, capsys):
+        """Test cmd_search returns formatted results."""
+        from neuralmind.cli import cmd_search, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
 
         args = MagicMock()
         args.project_path = str(temp_project)
@@ -243,84 +213,332 @@ class TestCLIDirectSearch:
         args.n = 5
         args.json = False
 
-        try:
-            cmd_search(args)
-        except SystemExit:
-            pass
+        cmd_search(args)
 
         captured = capsys.readouterr()
-        # Should produce some output
-        assert len(captured.out) >= 0
+        # Should output search header
+        assert "Search:" in captured.out or "function" in captured.out
+
+    def test_cmd_search_respects_n_parameter(self, temp_project, capsys):
+        """Test cmd_search --n parameter limits results."""
+        from neuralmind.cli import cmd_search, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.query = "test"
+        args.n = 2
+        args.json = False
+
+        cmd_search(args)
+
+        captured = capsys.readouterr()
+        # Count the number of numbered results (e.g., "1. ", "2. ")
+        lines = captured.out.split("\n")
+        result_lines = [l for l in lines if l and l[0].isdigit() and ". " in l]
+        assert len(result_lines) <= 2
+
+    def test_cmd_search_json_output(self, temp_project, capsys):
+        """Test cmd_search --json produces valid JSON."""
+        from neuralmind.cli import cmd_search, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.query = "code"
+        args.n = 3
+        args.json = True
+
+        cmd_search(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("[") or line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        results = json.loads(json_text)
+        assert isinstance(results, list)
+        assert len(results) <= 3
 
 
-class TestCLIDirectStats:
-    """Direct tests for CLI stats function."""
+class TestCLIStats:
+    """Tests for CLI stats command."""
 
-    def test_cmd_stats_with_valid_project(self, temp_project, capsys):
-        """Test cmd_stats function directly."""
+    def test_cmd_stats_outputs_statistics(self, temp_project, capsys):
+        """Test cmd_stats outputs project statistics."""
         from neuralmind.cli import cmd_stats
 
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
 
-        try:
-            cmd_stats(args)
-        except SystemExit:
-            pass
+        cmd_stats(args)
 
         captured = capsys.readouterr()
-        # Should produce some output
-        assert len(captured.out) >= 0
+        # Should output project name and built status
+        assert "Project:" in captured.out
+        assert "Built:" in captured.out
+
+    def test_cmd_stats_json_output(self, temp_project, capsys):
+        """Test cmd_stats --json produces valid JSON with statistics."""
+        from neuralmind.cli import cmd_stats
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.json = True
+
+        cmd_stats(args)
+
+        captured = capsys.readouterr()
+        stats = json.loads(captured.out)
+        assert "project" in stats
+        assert "built" in stats
+        assert isinstance(stats["built"], bool)
+
+    def test_cmd_stats_node_count_matches_graph(self, temp_project, capsys):
+        """Test cmd_stats reports correct node count for sample graph."""
+        from neuralmind.cli import cmd_stats, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.json = True
+
+        cmd_stats(args)
+
+        captured = capsys.readouterr()
+        stats = json.loads(captured.out)
+        # sample_graph has 6 nodes
+        assert stats.get("total_nodes") == 6
 
 
-class TestCLIDirectBenchmark:
-    """Direct tests for CLI benchmark function."""
+class TestCLIBenchmark:
+    """Tests for CLI benchmark command."""
 
-    def test_cmd_benchmark_with_valid_project(self, temp_project, capsys):
-        """Test cmd_benchmark function directly."""
-        from neuralmind.cli import cmd_benchmark
+    def test_cmd_benchmark_outputs_results(self, temp_project, capsys):
+        """Test cmd_benchmark outputs benchmark results."""
+        from neuralmind.cli import cmd_benchmark, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
 
         args = MagicMock()
         args.project_path = str(temp_project)
         args.json = False
 
-        try:
-            cmd_benchmark(args)
-        except SystemExit:
-            pass
+        cmd_benchmark(args)
 
         captured = capsys.readouterr()
-        # Should produce some output about benchmark
-        assert len(captured.out) >= 0
+        # Should output benchmark metrics
+        assert "Project:" in captured.out
+        assert "tokens" in captured.out.lower() or "Wake-up" in captured.out
+
+    def test_cmd_benchmark_json_output(self, temp_project, capsys):
+        """Test cmd_benchmark --json produces valid JSON with required keys."""
+        from neuralmind.cli import cmd_benchmark, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.json = True
+
+        cmd_benchmark(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        data = json.loads(json_text)
+        # All required keys per issue #15
+        assert "project" in data
+        assert "wakeup_tokens" in data
+        assert "avg_query_tokens" in data
+        assert "avg_reduction_ratio" in data
+
+    def test_cmd_benchmark_reduction_ratio_valid(self, temp_project, capsys):
+        """Test cmd_benchmark reports valid reduction ratios > 1.0."""
+        from neuralmind.cli import cmd_benchmark, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.json = True
+
+        cmd_benchmark(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        data = json.loads(json_text)
+        assert data["avg_reduction_ratio"] > 1.0
+
+
+class TestCLISkeleton:
+    """Tests for CLI skeleton command."""
+
+    def test_cmd_skeleton_outputs_skeleton(self, temp_project, capsys):
+        """Test cmd_skeleton outputs skeleton for indexed file."""
+        from neuralmind.cli import cmd_skeleton, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.file_path = "auth/handlers.py"  # From sample_graph
+        args.json = False
+
+        cmd_skeleton(args)
+
+        captured = capsys.readouterr()
+        # Should output skeleton structure
+        assert len(captured.out) > 0
+
+    def test_cmd_skeleton_json_output(self, temp_project, capsys):
+        """Test cmd_skeleton --json produces valid JSON."""
+        from neuralmind.cli import cmd_skeleton, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.file_path = "auth/handlers.py"
+        args.json = True
+
+        cmd_skeleton(args)
+
+        captured = capsys.readouterr()
+        # Extract JSON from output (may have prefix lines)
+        lines = captured.out.split("\n")
+        json_start = None
+        for i, line in enumerate(lines):
+            if line.strip().startswith("{"):
+                json_start = i
+                break
+        assert json_start is not None, f"No JSON found in output: {captured.out}"
+        json_text = "\n".join(lines[json_start:])
+        data = json.loads(json_text)
+        assert "file" in data
+        assert "skeleton" in data
+        assert "chars" in data
+
+    def test_cmd_skeleton_unindexed_file_fails(self, temp_project, capsys):
+        """Test cmd_skeleton fails with exit 1 for unindexed file."""
+        from neuralmind.cli import cmd_skeleton, cmd_build
+
+        # Build first
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.file_path = "src/nonexistent/file.py"
+        args.json = False
+
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_skeleton(args)
+
+        assert exc_info.value.code == 1
+
+        captured = capsys.readouterr()
+        assert "No graph nodes found" in captured.out or "not indexed" in captured.out
 
 
 class TestCLIMain:
-    """Tests for CLI main function."""
+    """Tests for CLI main entry point."""
 
-    def test_main_without_command_shows_help(self, capsys):
-        """Test that main without command shows help."""
+    def test_main_no_command_prints_help(self, capsys):
+        """Test main without command shows help."""
         from neuralmind.cli import main
 
         with patch("sys.argv", ["neuralmind"]):
-            try:
+            with pytest.raises(SystemExit):
                 main()
-            except SystemExit:
-                pass
 
         captured = capsys.readouterr()
-        # Should show help or usage
-        assert len(captured.out) >= 0 or len(captured.err) >= 0
+        # Should show help text
+        assert "usage" in captured.out.lower() or "neuralmind" in captured.out.lower()
 
     def test_main_with_build_command(self, temp_project, capsys):
-        """Test main with build command."""
+        """Test main with build command works end-to-end."""
         from neuralmind.cli import main
 
         with patch("sys.argv", ["neuralmind", "build", str(temp_project)]):
-            try:
-                main()
-            except SystemExit:
-                pass
+            main()
 
         captured = capsys.readouterr()
-        assert "Build" in captured.out
+        assert "Build successful!" in captured.out or "Build" in captured.out
+
+    def test_main_with_stats_command(self, temp_project, capsys):
+        """Test main with stats command works end-to-end."""
+        from neuralmind.cli import main
+
+        with patch("sys.argv", ["neuralmind", "stats", str(temp_project)]):
+            main()
+
+        captured = capsys.readouterr()
+        assert "Project:" in captured.out
