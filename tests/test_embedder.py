@@ -297,3 +297,39 @@ class TestCommunitySummary:
 
         assert isinstance(summary, dict)
         assert summary["nodes"] == []
+
+
+class TestGetFileNodes:
+    """Tests for GraphEmbedder.get_file_nodes path matching."""
+
+    def _make_embedder(self, project_path, abs_source):
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(project_path))
+        embedder.nodes = [{"id": "x", "source_file": abs_source}]
+        return embedder
+
+    def test_matches_relative_path_against_absolute_node(self, temp_project):
+        """Graphify stores absolute paths; users pass relative paths."""
+        abs_source = str((temp_project / "src" / "foo.py").resolve())
+        embedder = self._make_embedder(temp_project, abs_source)
+
+        assert len(embedder.get_file_nodes("src/foo.py")) == 1
+
+    def test_matches_dot_slash_prefixed_path(self, temp_project):
+        abs_source = str((temp_project / "src" / "foo.py").resolve())
+        embedder = self._make_embedder(temp_project, abs_source)
+
+        assert len(embedder.get_file_nodes("./src/foo.py")) == 1
+
+    def test_matches_absolute_path(self, temp_project):
+        abs_source = str((temp_project / "src" / "foo.py").resolve())
+        embedder = self._make_embedder(temp_project, abs_source)
+
+        assert len(embedder.get_file_nodes(abs_source)) == 1
+
+    def test_nonexistent_file_returns_empty(self, temp_project):
+        abs_source = str((temp_project / "src" / "foo.py").resolve())
+        embedder = self._make_embedder(temp_project, abs_source)
+
+        assert embedder.get_file_nodes("src/does_not_exist.py") == []
