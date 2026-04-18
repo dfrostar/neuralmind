@@ -19,7 +19,6 @@ DEFAULT_CONFIG = {
 }
 
 def find_config_file() -> Optional[Path]:
-    """Find the user's config file."""
     config_home = Path(os.environ.get('XDG_CONFIG_HOME', '~/.config')).expanduser()
     config_path = config_home / 'neuralmind' / 'config.toml'
     if config_path.exists():
@@ -27,12 +26,10 @@ def find_config_file() -> Optional[Path]:
     return None
 
 def load_config() -> Dict[str, Any]:
-    """Load configuration from file or return defaults."""
     config_file = find_config_file()
     if config_file:
         try:
             user_config = toml.load(config_file)
-            # Simple merge, user config overrides defaults
             config = DEFAULT_CONFIG.copy()
             config.update(user_config)
             return config
