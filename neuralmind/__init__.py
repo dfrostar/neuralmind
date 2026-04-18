@@ -67,7 +67,7 @@ Token Budget:
 
 from .context_selector import ContextSelector
 from .core import NeuralMind
-from .embedder import GraphEmbedder
+from .embedder import KnowledgeSearcher
 
 __version__ = "0.1.0"
-__all__ = ["NeuralMind", "GraphEmbedder", "ContextSelector"]
+__all__ = ["NeuralMind", "KnowledgeSearcher", "ContextSelector"]
