@@ -305,11 +305,7 @@ class GraphEmbedder:
         except Exception:
             pass
 
-        matched = [
-            n for n in self.nodes
-            if any(c == n.get("source_file", "") for c in candidates)
-        ]
-        return matched
+        return [n for n in self.nodes if any(c == n.get("source_file", "") for c in candidates)]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         """Return edges where either endpoint belongs to the given file.
@@ -333,9 +329,14 @@ class GraphEmbedder:
             return []
 
         return [
-            e for e in self.edges
-            if (e.get("_src") in node_ids or e.get("_tgt") in node_ids
-                or e.get("source") in node_ids or e.get("target") in node_ids)
+            e
+            for e in self.edges
+            if (
+                e.get("_src") in node_ids
+                or e.get("_tgt") in node_ids
+                or e.get("source") in node_ids
+                or e.get("target") in node_ids
+            )
         ]
 
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict:
