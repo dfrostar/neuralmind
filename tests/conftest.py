@@ -181,36 +181,63 @@ def mock_chromadb(mocker):
     mock_collection = mocker.MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection
 
-    # Mock query results
-    mock_collection.query.return_value = {
-        "ids": [["node_1", "node_2"]],
-        "distances": [[0.1, 0.2]],
-        "metadatas": [
-            [
-                {"name": "authenticate_user", "type": "function"},
-                {"name": "hash_password", "type": "function"},
-            ]
-        ],
-        "documents": [
-            [
-                "authenticate_user function Validates user credentials",
-                "hash_password function Securely hashes passwords",
-            ]
-        ],
-    }
+    storage: dict[str, dict[str, Any]] = {}
 
-    # Mock count and get for get_stats()
-    mock_collection.count.return_value = 6
-    mock_collection.get.return_value = {
-        "ids": ["node_1", "node_2"],
-        "metadatas": [
-            {"community": 1, "label": "authenticate_user"},
-            {"community": 1, "label": "hash_password"},
-        ],
-    }
+    def _matches_where(meta: dict[str, Any], where: dict[str, Any] | None) -> bool:
+        if not where:
+            return True
+        if "$and" in where:
+            return all(_matches_where(meta, cond) for cond in where["$and"])
+        return all(meta.get(key) == value for key, value in where.items())
 
-    # Mock upsert (no-op)
-    mock_collection.upsert.return_value = None
+    def upsert(ids, documents, metadatas):
+        for node_id, doc, meta in zip(ids, documents, metadatas, strict=False):
+            storage[node_id] = {"document": doc, "metadata": dict(meta)}
+
+    def get(ids=None, include=None, where=None, limit=None):
+        if ids is not None:
+            selected = [(node_id, storage[node_id]) for node_id in ids if node_id in storage]
+        else:
+            selected = [
+                (node_id, payload)
+                for node_id, payload in storage.items()
+                if _matches_where(payload["metadata"], where)
+            ]
+
+        if limit is not None:
+            selected = selected[:limit]
+
+        result: dict[str, Any] = {"ids": [node_id for node_id, _ in selected]}
+        include = include or []
+        if "metadatas" in include:
+            result["metadatas"] = [payload["metadata"] for _, payload in selected]
+        if "documents" in include:
+            result["documents"] = [payload["document"] for _, payload in selected]
+        return result
+
+    def query(query_texts, n_results=10, where=None, include=None):  # noqa: ARG001
+        selected = [
+            (node_id, payload)
+            for node_id, payload in storage.items()
+            if _matches_where(payload["metadata"], where)
+        ][:n_results]
+
+        ids = [node_id for node_id, _ in selected]
+        include = include or []
+
+        result: dict[str, Any] = {"ids": [ids]}
+        if "documents" in include:
+            result["documents"] = [[payload["document"] for _, payload in selected]]
+        if "metadatas" in include:
+            result["metadatas"] = [[payload["metadata"] for _, payload in selected]]
+        if "distances" in include:
+            result["distances"] = [[0.1 + (i * 0.1) for i in range(len(selected))]]
+        return result
+
+    mock_collection.upsert.side_effect = upsert
+    mock_collection.get.side_effect = get
+    mock_collection.query.side_effect = query
+    mock_collection.count.side_effect = lambda: len(storage)
 
     mocker.patch("chromadb.PersistentClient", return_value=mock_client)
 
