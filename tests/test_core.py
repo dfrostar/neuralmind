@@ -1,6 +1,7 @@
 """Tests for NeuralMind core functionality."""
 
 from pathlib import Path
+from unittest.mock import MagicMock
 
 
 class TestNeuralMindInit:
@@ -360,3 +361,147 @@ class TestNeuralMindBenchmark:
 
         assert mind._built is True
         assert isinstance(results, dict)
+
+
+class TestNeuralMindSkeleton:
+    """Tests for NeuralMind.skeleton() method."""
+
+    def test_skeleton_returns_string(self, temp_project, mock_chromadb):
+        """skeleton() returns a string for an indexed file."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        result = mind.skeleton("auth/handlers.py")
+        assert isinstance(result, str)
+
+    def test_skeleton_empty_for_unindexed_file(self, temp_project, mock_chromadb):
+        """skeleton() returns empty string for file not in the graph."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        result = mind.skeleton("nonexistent/file.py")
+        assert result == ""
+
+    def test_skeleton_auto_builds(self, temp_project, mock_chromadb):
+        """skeleton() triggers auto-build if not built."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        assert mind._built is False
+
+        # Should auto-build via _ensure_built
+        mind.skeleton("auth/handlers.py")
+        assert mind._built is True
+
+    def test_skeleton_with_mock_embedder(self, temp_project, sample_graph):
+        """skeleton() formats output correctly using mocked embedder data."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+
+        # Manually set up the embedder with graph loaded (no ChromaDB needed)
+        mind.embedder.nodes = sample_graph["nodes"]
+        mind.embedder.edges = sample_graph["edges"]
+        mind.embedder.graph = sample_graph
+
+        # Set built state and create a minimal selector
+        mind._built = True
+        from neuralmind.context_selector import ContextSelector
+
+        mock_emb = MagicMock()
+        mock_emb.get_stats.return_value = {"total_nodes": 6, "communities": 3}
+        mind.selector = ContextSelector(mock_emb, str(temp_project))
+
+        result = mind.skeleton("auth/handlers.py")
+        assert isinstance(result, str)
+
+
+class TestNeuralMindExportContext:
+    """Tests for NeuralMind.export_context() method."""
+
+    def test_export_wakeup_creates_file(self, temp_project, tmp_path, mock_chromadb):
+        """export_context without query exports wakeup context."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        output_path = str(tmp_path / "context_export.md")
+        result = mind.export_context(output_path=output_path)
+
+        assert result == output_path
+        assert Path(output_path).exists()
+        content = Path(output_path).read_text()
+        assert "NeuralMind Context Export" in content
+        assert "wakeup" in content
+
+    def test_export_query_creates_file(self, temp_project, tmp_path, mock_chromadb):
+        """export_context with query exports query context."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        output_path = str(tmp_path / "query_export.md")
+        result = mind.export_context(query="authentication", output_path=output_path)
+
+        assert Path(output_path).exists()
+        content = Path(output_path).read_text()
+        assert "query" in content
+        assert "authentication" in content
+
+    def test_export_default_path(self, temp_project, mock_chromadb):
+        """export_context uses default path when none specified."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        result = mind.export_context()
+        expected_path = str(Path(temp_project) / "neuralmind_context.md")
+        assert result == expected_path
+        assert Path(result).exists()
+
+    def test_export_includes_metadata(self, temp_project, tmp_path, mock_chromadb):
+        """export_context output includes metadata like tokens and reduction."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        output_path = str(tmp_path / "meta_export.md")
+        mind.export_context(output_path=output_path)
+
+        content = Path(output_path).read_text()
+        assert "Tokens:" in content
+        assert "Reduction:" in content
+        assert "Layers:" in content
+
+
+class TestCreateMind:
+    """Tests for create_mind() factory function."""
+
+    def test_create_mind_returns_neuralmind(self, temp_project):
+        """create_mind returns a NeuralMind instance."""
+        from neuralmind.core import NeuralMind, create_mind
+
+        mind = create_mind(str(temp_project), auto_build=False)
+        assert isinstance(mind, NeuralMind)
+
+    def test_create_mind_auto_build_true(self, temp_project, mock_chromadb):
+        """create_mind with auto_build=True builds automatically."""
+        from neuralmind.core import create_mind
+
+        mind = create_mind(str(temp_project), auto_build=True)
+        assert mind._built is True
+
+    def test_create_mind_auto_build_false(self, temp_project):
+        """create_mind with auto_build=False skips building."""
+        from neuralmind.core import create_mind
+
+        mind = create_mind(str(temp_project), auto_build=False)
+        assert mind._built is False
