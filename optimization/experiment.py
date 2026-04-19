@@ -1,6 +1,6 @@
-import subprocess
-import re
 import os
+import re
+import subprocess
 
 # --- Configuration ---
 TARGET_FILE_PATH = "/a0/usr/workdir/neuralmind/neuralmind/core.py"
@@ -18,13 +18,13 @@ EXPERIMENTS = {
 
 def modify_file(params):
     """Temporarily modifies the target file with new parameters."""
-    with open(TARGET_FILE_PATH, "r") as f:
+    with open(TARGET_FILE_PATH) as f:
         original_content = f.read()
 
     modified_content = original_content
     for key, value in params.items():
         # This regex looks for 'searcher.search(..., n=some_number, ...)'
-        pattern = re.compile(f"(searcher\\.search\\(.*n=)\\d+(.*\\))")
+        pattern = re.compile("(searcher\\.search\\(.*n=)\\d+(.*\\))")
         replacement = f"\\g<1>{value}\\g<2>"
         modified_content, count = re.subn(pattern, replacement, modified_content)
         if count == 0:
@@ -44,7 +44,7 @@ def run_benchmark():
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
-        print(f"--- EXPERIMENT FAILED: Benchmark script returned a non-zero exit code. ---")
+        print("--- EXPERIMENT FAILED: Benchmark script returned a non-zero exit code. ---")
         print(e.stderr)
         return None
 

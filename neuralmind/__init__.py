@@ -65,15 +65,15 @@ Token Budget:
 - Leaves 95%+ context free for actual work
 """
 
+from .compressors import (
+    cap_search_results,
+    compress_bash,
+    compress_read,
+    offload_if_large,
+)
 from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder
-from .compressors import (
-    compress_bash,
-    compress_read,
-    cap_search_results,
-    offload_if_large,
-)
 from .hooks import install_hooks
 
 __version__ = "0.2.0"

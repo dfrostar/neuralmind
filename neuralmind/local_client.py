@@ -1,6 +1,4 @@
 import httpx
-import json
-from typing import Any, Dict, Iterator
 
 from .config import CONFIG
 
