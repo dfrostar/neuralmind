@@ -191,7 +191,8 @@ def mock_chromadb(mocker):
         return all(meta.get(key) == value for key, value in where.items())
 
     def upsert(ids, documents, metadatas):
-        for node_id, doc, meta in zip(ids, documents, metadatas, strict=False):
+        metadata_entries = metadatas
+        for node_id, doc, meta in zip(ids, documents, metadata_entries, strict=True):
             storage[node_id] = {"document": doc, "metadata": dict(meta)}
 
     def get(ids=None, include=None, where=None, limit=None):
@@ -215,12 +216,17 @@ def mock_chromadb(mocker):
             result["documents"] = [payload["document"] for _, payload in selected]
         return result
 
-    def query(query_texts, n_results=10, where=None, include=None):  # noqa: ARG001
-        selected = [
+    def query(query_texts, n_results=10, where=None, include=None):
+        query_text = query_texts[0].lower() if query_texts else ""
+        filtered = [
             (node_id, payload)
             for node_id, payload in storage.items()
             if _matches_where(payload["metadata"], where)
-        ][:n_results]
+        ]
+        selected = sorted(
+            filtered,
+            key=lambda item: query_text not in item[1]["document"].lower(),
+        )[:n_results]
 
         ids = [node_id for node_id, _ in selected]
         include = include or []
