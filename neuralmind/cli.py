@@ -17,8 +17,11 @@ def cmd_build(args):
     project_path = args.project_path or "."
     force = args.force
     project = Path(project_path)
-    if not project.exists() or not project.is_dir():
-        print(f"Build failed: project path does not exist or is not a directory: {project_path}")
+    if not project.exists():
+        print(f"Build failed: project path does not exist: {project_path}")
+        sys.exit(1)
+    if not project.is_dir():
+        print(f"Build failed: project path is not a directory: {project_path}")
         sys.exit(1)
     print(f"Building NeuralMind index for: {project_path}")
     print(f"Force rebuild: {force}")
