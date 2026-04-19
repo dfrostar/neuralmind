@@ -174,7 +174,7 @@ def empty_project() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_chromadb(mocker):
     """Mock ChromaDB for tests that don't need real embeddings."""
     mock_client = mocker.MagicMock()
