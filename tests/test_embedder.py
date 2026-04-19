@@ -333,3 +333,160 @@ class TestGetFileNodes:
         embedder = self._make_embedder(temp_project, abs_source)
 
         assert embedder.get_file_nodes("src/does_not_exist.py") == []
+
+
+class TestGetFileEdges:
+    """Tests for GraphEmbedder.get_file_edges edge filtering."""
+
+    def test_returns_matching_edges(self, temp_project, sample_graph):
+        """get_file_edges returns edges connected to the given file's nodes."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+
+        # node_1 (auth/handlers.py) has edges to node_2 and node_3
+        node_ids = {"node_1"}
+        edges = embedder.get_file_edges("auth/handlers.py", node_ids=node_ids)
+        assert isinstance(edges, list)
+        assert len(edges) > 0
+
+    def test_returns_empty_for_unmatched_file(self, temp_project):
+        """get_file_edges returns empty list for unknown file."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+
+        edges = embedder.get_file_edges("nonexistent.py", node_ids=set())
+        assert edges == []
+
+    def test_auto_computes_node_ids(self, temp_project, sample_graph):
+        """get_file_edges computes node_ids from get_file_nodes if not provided."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+
+        # Pass node_ids=None to trigger auto-computation
+        edges = embedder.get_file_edges("auth/handlers.py", node_ids=None)
+        assert isinstance(edges, list)
+
+    def test_loads_graph_if_needed(self, temp_project):
+        """get_file_edges loads graph if edges not yet loaded."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        # Don't call load_graph — it should auto-load when edges are empty
+        assert embedder.edges == []
+
+        edges = embedder.get_file_edges("auth/handlers.py", node_ids={"node_1"})
+        # Graph should have been loaded
+        assert isinstance(edges, list)
+
+
+class TestNodeToText:
+    """Tests for GraphEmbedder._node_to_text() directly."""
+
+    def test_full_node(self, temp_project, sample_graph):
+        """_node_to_text produces text with all fields."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        node = sample_graph["nodes"][0]
+        text = embedder._node_to_text(node)
+
+        assert "Entity: authenticate_user" in text
+        assert "Type: function" in text
+        assert "File: auth/handlers.py" in text
+        assert "Community: 1" in text
+
+    def test_minimal_node(self, temp_project):
+        """_node_to_text handles minimal node with only id."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        text = embedder._node_to_text({"id": "test_node"})
+
+        assert "Entity: test_node" in text
+        assert "Type: unknown" in text
+
+    def test_node_with_norm_label(self, temp_project):
+        """_node_to_text includes normalized label when different from label."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        node = {"id": "n1", "label": "foo", "norm_label": "foo_normalized"}
+        text = embedder._node_to_text(node)
+
+        assert "Normalized: foo_normalized" in text
+
+    def test_node_with_same_norm_label(self, temp_project):
+        """_node_to_text skips norm_label when equal to label."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        node = {"id": "n1", "label": "foo", "norm_label": "foo"}
+        text = embedder._node_to_text(node)
+
+        assert "Normalized" not in text
+
+
+class TestNodeMetadata:
+    """Tests for GraphEmbedder._node_metadata() directly."""
+
+    def test_extracts_all_fields(self, temp_project, sample_graph):
+        """_node_metadata returns expected metadata keys."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        node = sample_graph["nodes"][0]
+        meta = embedder._node_metadata(node)
+
+        assert meta["label"] == "authenticate_user"
+        assert meta["file_type"] == "function"
+        assert meta["source_file"] == "auth/handlers.py"
+        assert meta["community"] == 1
+        assert meta["node_id"] == "node_1"
+
+    def test_handles_missing_fields(self, temp_project):
+        """_node_metadata uses defaults for missing fields."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        meta = embedder._node_metadata({"id": "bare"})
+
+        assert meta["label"] == "bare"
+        assert meta["file_type"] == "unknown"
+        assert meta["source_file"] == ""
+        assert meta["community"] == -1
+
+
+class TestContentHashDirect:
+    """Tests for GraphEmbedder._content_hash() directly."""
+
+    def test_consistent_hashing(self, temp_project):
+        """Same text produces same hash."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        h1 = embedder._content_hash("hello world")
+        h2 = embedder._content_hash("hello world")
+        assert h1 == h2
+
+    def test_different_texts_different_hash(self, temp_project):
+        """Different texts produce different hashes."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        h1 = embedder._content_hash("hello")
+        h2 = embedder._content_hash("world")
+        assert h1 != h2
+
+    def test_hash_is_16_chars(self, temp_project):
+        """Hash is truncated to 16 hex characters."""
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        h = embedder._content_hash("test")
+        assert len(h) == 16

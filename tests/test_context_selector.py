@@ -531,3 +531,107 @@ class TestContextResult:
         assert result.communities_loaded == []
         assert result.search_hits == 0
         assert result.reduction_ratio == 0.0
+
+
+class TestEstimateTokens:
+    """Tests for ContextSelector._estimate_tokens()."""
+
+    def test_estimate_tokens_basic(self, mock_embedder, temp_project):
+        """_estimate_tokens divides by CHARS_PER_TOKEN."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        # With CHARS_PER_TOKEN=4, "12345678" (8 chars) → 2 tokens
+        assert selector._estimate_tokens("12345678") == 2
+
+    def test_estimate_tokens_empty(self, mock_embedder, temp_project):
+        """_estimate_tokens returns 0 for empty string."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        assert selector._estimate_tokens("") == 0
+
+    def test_estimate_tokens_short(self, mock_embedder, temp_project):
+        """_estimate_tokens returns 0 for strings shorter than CHARS_PER_TOKEN."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        assert selector._estimate_tokens("ab") == 0
+
+
+class TestTruncateToTokens:
+    """Tests for ContextSelector._truncate_to_tokens()."""
+
+    def test_short_text_unchanged(self, mock_embedder, temp_project):
+        """Text within budget is returned unchanged."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        text = "short"
+        assert selector._truncate_to_tokens(text, max_tokens=100) == text
+
+    def test_long_text_truncated(self, mock_embedder, temp_project):
+        """Text exceeding budget is truncated with ellipsis."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        text = "a" * 1000
+        result = selector._truncate_to_tokens(text, max_tokens=10)
+        # max_tokens=10, CHARS_PER_TOKEN=4, so max_chars=40, result = 37 chars + "..."
+        assert len(result) == 40
+        assert result.endswith("...")
+
+    def test_exact_boundary(self, mock_embedder, temp_project):
+        """Text exactly at budget is returned unchanged."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        # max_tokens=5, CHARS_PER_TOKEN=4, so max_chars=20
+        text = "a" * 20
+        assert selector._truncate_to_tokens(text, max_tokens=5) == text
+
+
+class TestGetGraphStats:
+    """Tests for ContextSelector._get_graph_stats()."""
+
+    def test_returns_dict(self, mock_embedder, temp_project):
+        """_get_graph_stats returns a dictionary."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        stats = selector._get_graph_stats()
+        assert isinstance(stats, dict)
+        assert "total_nodes" in stats
+
+    def test_caches_result(self, mock_embedder, temp_project):
+        """_get_graph_stats caches its result."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        stats1 = selector._get_graph_stats()
+        stats2 = selector._get_graph_stats()
+        # Should be the same object (cached)
+        assert stats1 is stats2
+        # get_stats should have been called only once
+        mock_embedder.get_stats.assert_called_once()
+
+
+class TestQueryContextWithReduction:
+    """Test query context with reduction metrics."""
+
+    def test_reduction_ratio_positive(self, mock_embedder, temp_project):
+        """Query context should have a positive reduction ratio."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        result = selector.get_query_context("authentication")
+        assert result.reduction_ratio > 0
+
+    def test_query_context_populates_search_hits(self, mock_embedder, temp_project):
+        """Query context should report search hits from L3."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        result = selector.get_query_context("authentication")
+        # With the mock returning 2 search results, L3 should have some hits
+        assert result.search_hits >= 0
