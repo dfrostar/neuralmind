@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3.2] - 2026-04-20
+
+### Fixed
+- **Version sync for smoke test** — Fixed hardcoded __version__ in __init__.py to match pyproject.toml
+  - Smoke test was failing due to version mismatch between package metadata and runtime
+
+---
+
 ## [0.3.3.1] - 2026-04-20
 
 ### Fixed

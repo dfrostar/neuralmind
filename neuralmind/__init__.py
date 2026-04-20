@@ -77,7 +77,7 @@ from .compressors import (
 )
 from .hooks import install_hooks
 
-__version__ = "0.3.3.1"
+__version__ = "0.3.3.2"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
