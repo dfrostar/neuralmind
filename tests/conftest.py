@@ -193,16 +193,25 @@ def mock_chromadb(mocker):
         return True
 
     def upsert(ids, documents=None, metadatas=None, **kwargs):
-        if documents is not None and len(documents) != len(ids or []):
-            raise ValueError("documents length must match ids length")
-        if metadatas is not None and len(metadatas) != len(ids or []):
-            raise ValueError("metadatas length must match ids length")
+        ids_len = len(ids or [])
+        if documents is not None and len(documents) != ids_len:
+            raise ValueError(
+                f"documents length ({len(documents)}) must match ids length ({ids_len})"
+            )
+        if metadatas is not None and len(metadatas) != ids_len:
+            raise ValueError(
+                f"metadatas length ({len(metadatas)}) must match ids length ({ids_len})"
+            )
         docs = documents or []
         metas = metadatas or []
         for i, doc_id in enumerate(ids or []):
+            if i < len(metas) and not isinstance(metas[i], dict):
+                raise TypeError(
+                    f"metadata at index {i} must be dict, got {type(metas[i]).__name__}"
+                )
             records[doc_id] = {
                 "document": docs[i] if i < len(docs) else "",
-                "metadata": metas[i] if i < len(metas) and isinstance(metas[i], dict) else {},
+                "metadata": metas[i] if i < len(metas) else {},
             }
 
     def get(ids=None, include=None, where=None, limit=None, **kwargs):
@@ -245,6 +254,7 @@ def mock_chromadb(mocker):
                 f"{rec['metadata'].get('source_file', '')}"
             ).lower()
             overlap = sum(1 for token in query_text.split() if token and token in searchable)
+            # Smaller distance for higher lexical overlap to mimic semantic ranking shape.
             distance = 1.0 / (1 + overlap)
             scored.append((distance, doc_id, rec))
         scored.sort(key=lambda item: (item[0], item[1]))
