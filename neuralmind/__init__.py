@@ -68,6 +68,7 @@ Token Budget:
 from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder
+from .embedding_backend import EmbeddingBackend
 from .compressors import (
     compress_bash,
     compress_read,
@@ -80,6 +81,7 @@ __version__ = "0.3.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
+    "EmbeddingBackend",
     "ContextSelector",
     # Output compression (v0.2.0)
     # Brain-like learning (v0.3.0)

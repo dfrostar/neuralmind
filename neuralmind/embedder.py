@@ -21,8 +21,53 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings
 
+from .embedding_backend import EmbeddingBackend
 
-class GraphEmbedder:
+
+class GraphEmbedder(EmbeddingBackend):
+    """
+    Embeds graphify graph.json nodes into ChromaDB for semantic search.
+
+    Usage:
+        embedder = GraphEmbedder("/path/to/project")
+        embedder.load_graph()
+        embedder.embed_nodes()
+        results = embedder.search("authentication logic", n=5)
+    """
+
+    COLLECTION_NAME = "neuralmind_nodes"
+
+    def __init__(self, project_path: str, db_path: str = None):
+        """
+        Initialize the embedder for a project.
+
+        Args:
+            project_path: Path to project root (where graphify-out/ lives)
+            db_path: Optional custom path for ChromaDB storage
+        """
+        self._project_path = Path(project_path)
+        self.graph_path = self._project_path / "graphify-out" / "graph.json"
+
+        # Default DB path in project's graphify-out
+        if db_path is None:
+            db_path = str(self._project_path / "graphify-out" / "neuralmind_db")
+
+        self.db_path = db_path
+        self.graph: dict = {}
+        self.nodes: list[dict] = []
+        self.edges: list[dict] = []
+
+        # Initialize ChromaDB
+        self.client = chromadb.PersistentClient(
+            path=self.db_path, settings=Settings(anonymized_telemetry=False)
+        )
+
+        self._collection = None
+
+    @property
+    def project_path(self) -> Path:
+        """Get the project path."""
+        return self._project_path
     """
     Embeds graphify graph.json nodes into ChromaDB for semantic search.
 
@@ -409,3 +454,19 @@ class GraphEmbedder:
             "community_distribution": communities,
             "db_path": self.db_path,
         }
+
+    def clear(self) -> None:
+        """Clear all embeddings from the collection."""
+        try:
+            self.client.delete_collection(name=self.COLLECTION_NAME)
+            self._collection = None
+        except Exception:
+            pass
+
+    def close(self) -> None:
+        """Close ChromaDB client and cleanup."""
+        if hasattr(self, "client"):
+            try:
+                self.client.delete_collection(name=self.COLLECTION_NAME)
+            except Exception:
+                pass
