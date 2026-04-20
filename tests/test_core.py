@@ -93,9 +93,9 @@ class TestNeuralMindBuild:
         # First build
         mind.build()
 
-        # Force rebuild
+        # Force rebuild (existing nodes should be counted as updated, not added)
         stats = mind.build(force=True)
-        assert stats["nodes_added"] == 6
+        assert stats["nodes_updated"] == 6
 
     def test_build_without_graph_fails(self, empty_project):
         """Test that building without graph.json returns failure stats."""
