@@ -7,7 +7,7 @@
 **Two-phase token optimization for Claude Code — smart retrieval + tool-output compression in one package.**
 
 > Most tools save tokens on what you *fetch* OR on what Claude *sees back* — never both.
-> NeuralMind v0.2.0 does both in one `pip install`.
+> NeuralMind v0.3.0 does both in one `pip install`, plus learns your project patterns.
 
 ## ⚡ Two-phase optimization
 
@@ -70,6 +70,26 @@ neuralmind query . "How does authentication work?"
 # (v0.2.0) Skeleton view of a file without loading source
 neuralmind skeleton tools/voiceover.py
 ```
+
+## ✨ What's New in v0.3.0
+
+**Brain-Like Learning** — Your project learns your patterns 🧠
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| **Memory Collection** | ✅ v0.3.0 | Local JSONL storage for queries (project + global) |
+| **Opt-in Consent** | ✅ v0.3.0 | One-time TTY-only prompt, respects env vars |
+| **Pattern Discovery** | ✅ v0.3.0 | `neuralmind stats --memory` shows learned patterns |
+| **Smart Reranking** | 🔄 v0.3.1+ | Coming soon: improved context ranking |
+
+**How it works:**
+- After a few queries, NeuralMind learns which directories matter for your questions
+- Future queries get better context in fewer tokens
+- 100% local storage, no telemetry, fully under your control
+
+👉 **[See full guide in docs/brain_like_learning.md](docs/brain_like_learning.md)** or **[Setup-Guide for all platforms](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)**
+
+---
 
 ## 🔌 Compatibility
 
