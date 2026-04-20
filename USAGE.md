@@ -14,6 +14,7 @@
 - [ROI Calculator](#roi-calculator)
 - [MCP Server Integration](#mcp-server-integration)
 - [Troubleshooting](#troubleshooting)
+- [Brain-like Continual Learning](#brain-like-continual-learning)
 
 ---
 
@@ -386,6 +387,20 @@ neuralmind stats .
 ```
 
 **When to use**: Checking index health, monitoring project growth.
+
+#### `neuralmind learn`
+
+Runs the opt-in continual learning scaffold using local memory traces.
+
+```bash
+neuralmind learn .
+```
+
+If `NEURALMIND_LEARNING=0`, the command exits as a safe no-op.
+
+### Brain-like Continual Learning
+
+See **[docs/brain_like_learning.md](docs/brain_like_learning.md)** for behavior, storage paths, consent, and env-var controls.
 
 ---
 

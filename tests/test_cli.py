@@ -1,7 +1,6 @@
 """Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -133,6 +132,32 @@ class TestCLIQuery:
         captured = capsys.readouterr()
         # Should report reduction ratio > 1.0
         assert "x reduction" in captured.out or "reduction" in captured.out.lower()
+
+    def test_cmd_query_tty_opt_in_prompt_writes_consent(self, capsys):
+        """Test query prompts once and stores consent when eligible."""
+        from neuralmind.cli import cmd_query
+
+        args = MagicMock()
+        args.project_path = "/tmp/project"
+        args.question = "auth?"
+        args.json = False
+
+        mock_result = MagicMock()
+        mock_result.budget.total = 42
+        mock_result.reduction_ratio = 2.0
+        mock_result.layers_used = ["L0", "L1"]
+        mock_result.context = "ctx"
+
+        with patch("neuralmind.cli.memory.should_prompt_for_consent", return_value=True):
+            with patch("neuralmind.cli.memory.prompt_for_memory_consent", return_value=True):
+                with patch("neuralmind.cli.memory.write_consent_sentinel") as mock_write:
+                    with patch("neuralmind.cli.create_mind") as mock_create:
+                        mock_create.return_value.query.return_value = mock_result
+                        cmd_query(args)
+
+        mock_write.assert_called_once_with(True)
+        captured = capsys.readouterr()
+        assert "memory logging enabled" in captured.out.lower()
 
 
 class TestCLIWakeup:
@@ -333,6 +358,23 @@ class TestCLIStats:
         stats = json.loads(captured.out)
         # sample_graph has 6 nodes
         assert stats.get("total_nodes") == 6
+
+
+class TestCLILearn:
+    """Tests for CLI learn command."""
+
+    def test_cmd_learn_noop_when_disabled(self, monkeypatch, capsys):
+        """Test learn command is a safe no-op when disabled by env var."""
+        from neuralmind.cli import cmd_learn
+
+        monkeypatch.setenv("NEURALMIND_LEARNING", "0")
+        args = MagicMock()
+        args.project_path = "."
+
+        cmd_learn(args)
+
+        captured = capsys.readouterr()
+        assert "no-op" in captured.out.lower()
 
 
 class TestCLIBenchmark:
