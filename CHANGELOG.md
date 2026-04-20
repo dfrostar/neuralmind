@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.3] - 2026-04-20
+
+### Fixed
+- **Incremental embedding stat counting** — Fixed bug where `force=True` re-embed incorrectly counted all nodes as "added"
+  - Now correctly distinguishes between "added" (new) and "updated" (existing) nodes
+  - Critical for accurate build statistics and incremental updates
+  
+- **Test expectations** — Updated `test_build_force_reembeds_all` to expect correct behavior
+  - Existing nodes on force rebuild now correctly reported as "updated"
+  - Integration test marked as skipped in restricted network environments
+
+### Quality Improvements
+- Improved embed_nodes logic for accurate stat reporting
+
+---
+
 ## [0.3.2] - 2026-04-20
 
 ### Added
