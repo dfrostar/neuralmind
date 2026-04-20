@@ -93,9 +93,7 @@ class TestMemoryPatternLearning:
             "query": "api",
             "retrieval_summary": {"communities_loaded": [1, 2]},
         }
-        events_file.write_text(
-            f"{json.dumps(event1)}\n{json.dumps(event2)}\n", encoding="utf-8"
-        )
+        events_file.write_text(f"{json.dumps(event1)}\n{json.dumps(event2)}\n", encoding="utf-8")
 
         events = memory.read_query_events(events_file)
         assert len(events) == 2
