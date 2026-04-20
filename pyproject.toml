@@ -144,6 +144,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"neuralmind/__init__.py" = ["E402"]  # telemetry suppression setup must run before package imports
 "tests/**/*.py" = ["S101", "F841", "PT011", "PT012"]  # allow assert and test patterns
 
 

@@ -101,10 +101,7 @@ def install_hooks(
             continue
         if not isinstance(hooks[event], list):
             continue
-        hooks[event] = [
-            block for block in hooks[event]
-            if not _is_neuralmind_block(block)
-        ]
+        hooks[event] = [block for block in hooks[event] if not _is_neuralmind_block(block)]
         if not hooks[event]:
             del hooks[event]
 
@@ -149,6 +146,7 @@ def _is_neuralmind_block(block: dict) -> bool:
 # -----------------------------------------------------------------------------
 # Hook runtime — executed per tool call by Claude Code
 # -----------------------------------------------------------------------------
+
 
 def run_hook(action: str) -> int:
     """Entry point for `neuralmind _hook <action>`.
@@ -209,11 +207,7 @@ def run_hook(action: str) -> int:
         return 0
 
     if action == "cap-search":
-        content = (
-            tool_response.get("content")
-            or tool_response.get("output")
-            or ""
-        )
+        content = tool_response.get("content") or tool_response.get("output") or ""
         if not content:
             return 0
         capped = cap_search_results(content)

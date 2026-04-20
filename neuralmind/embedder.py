@@ -68,44 +68,6 @@ class GraphEmbedder(EmbeddingBackend):
     def project_path(self) -> Path:
         """Get the project path."""
         return self._project_path
-    """
-    Embeds graphify graph.json nodes into ChromaDB for semantic search.
-
-    Usage:
-        embedder = GraphEmbedder("/path/to/project")
-        embedder.load_graph()
-        embedder.embed_nodes()
-        results = embedder.search("authentication logic", n=5)
-    """
-
-    COLLECTION_NAME = "neuralmind_nodes"
-
-    def __init__(self, project_path: str, db_path: str = None):
-        """
-        Initialize the embedder for a project.
-
-        Args:
-            project_path: Path to project root (where graphify-out/ lives)
-            db_path: Optional custom path for ChromaDB storage
-        """
-        self.project_path = Path(project_path)
-        self.graph_path = self.project_path / "graphify-out" / "graph.json"
-
-        # Default DB path in project's graphify-out
-        if db_path is None:
-            db_path = str(self.project_path / "graphify-out" / "neuralmind_db")
-
-        self.db_path = db_path
-        self.graph: dict = {}
-        self.nodes: list[dict] = []
-        self.edges: list[dict] = []
-
-        # Initialize ChromaDB
-        self.client = chromadb.PersistentClient(
-            path=self.db_path, settings=Settings(anonymized_telemetry=False)
-        )
-
-        self._collection = None
 
     @property
     def collection(self):
@@ -350,11 +312,7 @@ class GraphEmbedder(EmbeddingBackend):
         except Exception:
             pass
 
-        matched = [
-            n for n in self.nodes
-            if any(c == n.get("source_file", "") for c in candidates)
-        ]
-        return matched
+        return [n for n in self.nodes if any(c == n.get("source_file", "") for c in candidates)]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         """Return edges where either endpoint belongs to the given file.
@@ -378,9 +336,14 @@ class GraphEmbedder(EmbeddingBackend):
             return []
 
         return [
-            e for e in self.edges
-            if (e.get("_src") in node_ids or e.get("_tgt") in node_ids
-                or e.get("source") in node_ids or e.get("target") in node_ids)
+            e
+            for e in self.edges
+            if (
+                e.get("_src") in node_ids
+                or e.get("_tgt") in node_ids
+                or e.get("source") in node_ids
+                or e.get("target") in node_ids
+            )
         ]
 
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict:
