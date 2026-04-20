@@ -26,7 +26,6 @@ from datetime import datetime
 from pathlib import Path
 
 from .context_selector import ContextResult, ContextSelector
-from .config import CONFIG
 from .embedder import GraphEmbedder
 
 
@@ -111,6 +110,16 @@ class NeuralMind:
         if not self._built or self.selector is None:
             self.build()
 
+    def _log_interaction(self, event: str, details: dict | None = None) -> None:
+        """Best-effort local interaction logging for continual learning."""
+        try:
+            from .memory import log_implicit_learning_event
+
+            log_implicit_learning_event(self.project_path, event=event, details=details)
+        except Exception:
+            # Never block core retrieval flows on logging.
+            return
+
     def wakeup(self) -> ContextResult:
         """
         Get minimal wake-up context for starting a conversation.
@@ -122,7 +131,15 @@ class NeuralMind:
             ContextResult with essential project context
         """
         self._ensure_built()
-        return self.selector.get_wakeup_context()
+        result = self.selector.get_wakeup_context()
+        self._log_interaction(
+            "wakeup",
+            {
+                "tokens": result.budget.total,
+                "layers": result.layers_used,
+            },
+        )
+        return result
 
     def query(self, question: str) -> ContextResult:
         """
@@ -138,7 +155,18 @@ class NeuralMind:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        return self.selector.get_query_context(question)
+        result = self.selector.get_query_context(question)
+        self._log_interaction(
+            "query",
+            {
+                "question": question,
+                "tokens": result.budget.total,
+                "layers": result.layers_used,
+                "communities_loaded": result.communities_loaded,
+                "search_hits": result.search_hits,
+            },
+        )
+        return result
 
     def skeleton(self, file_path: str) -> str:
         """Return a compact skeleton view of a file using graph data.
@@ -160,6 +188,7 @@ class NeuralMind:
 
         nodes = self.embedder.get_file_nodes(file_path)
         if not nodes:
+            self._log_interaction("skeleton_miss", {"file_path": file_path})
             return ""
 
         node_ids = {n["id"] for n in nodes}
@@ -295,8 +324,9 @@ class NeuralMind:
 
         lines.append("")
         lines.append("[Full source available: Read this file with NEURALMIND_BYPASS=1]")
-
-        return "\n".join(lines)
+        skeleton = "\n".join(lines)
+        self._log_interaction("skeleton", {"file_path": file_path, "chars": len(skeleton)})
+        return skeleton
 
     def search(self, query: str, n: int = 10, **filters) -> list[dict]:
         """
@@ -311,7 +341,17 @@ class NeuralMind:
             List of matching nodes with scores
         """
         self._ensure_built()
-        return self.embedder.search(query, n=n, **filters)
+        results = self.embedder.search(query, n=n, **filters)
+        self._log_interaction(
+            "search",
+            {
+                "query": query,
+                "n": n,
+                "filters": filters,
+                "hits": len(results),
+            },
+        )
+        return results
 
     def get_stats(self) -> dict:
         """

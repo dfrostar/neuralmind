@@ -218,6 +218,18 @@ neuralmind install-hooks --uninstall --global    # global
 
 The hook installer is **idempotent** and **non-destructive** — existing hooks from other tools (Prettier, Black, etc.) are preserved.
 
+## 🧠 Implicit continual-learning scaffolding (opt-in)
+
+NeuralMind now includes local-first memory scaffolding for future continual-learning workflows.
+
+- On first interactive use, NeuralMind asks once for consent to enable implicit interaction logging.
+- Consent is stored globally at `~/.neuralmind/continual_learning_consent.json`.
+- If enabled, interaction memory is written to both:
+  - Global: `~/.neuralmind/memory/implicit_learning.jsonl`
+  - Project-local: `<project>/.neuralmind/memory/implicit_learning.jsonl`
+
+Non-interactive runs fail open and skip logging unless `NEURALMIND_IMPLICIT_LEARNING_OPT_IN` is set.
+
 ### Coming from Pith?
 
 NeuralMind v0.2.0 provides full Pith-parity compression plus graph-backed retrieval — both in one package. Migration:
