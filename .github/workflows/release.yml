@@ -6,8 +6,38 @@ on:
       - 'v*'
 
 jobs:
+  validate-version:
+    name: Validate Tag vs Package Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check tag matches pyproject.toml version
+        run: |
+          set -euo pipefail
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PKG_VERSION="$(python - <<'EOF'
+          import re, sys
+          content = open("pyproject.toml").read()
+          m = re.search(r'^\s*version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+          if not m:
+              print("ERROR: version not found in pyproject.toml", file=sys.stderr)
+              sys.exit(1)
+          print(m.group(1))
+          EOF
+          )"
+          echo "Tag version:     ${TAG_VERSION}"
+          echo "Package version: ${PKG_VERSION}"
+          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
+            echo "ERROR: Git tag v${TAG_VERSION} does not match pyproject.toml version ${PKG_VERSION}."
+            echo "Please delete the wrong tag and push the correct tag matching pyproject.toml."
+            exit 1
+          fi
+          echo "OK: tag v${TAG_VERSION} matches pyproject.toml version ${PKG_VERSION}."
+
   test:
     name: Run Tests
+    needs: validate-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
