@@ -71,6 +71,58 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton tools/voiceover.py
 ```
 
+## 🔌 Compatibility
+
+NeuralMind has multiple components with different compatibility. Use what fits your workflow:
+
+| Component | Works With | Notes |
+|-----------|-----------|-------|
+| **CLI** (`build`, `query`, `search`, `wakeup`, `skeleton`) | ✅ Any environment | Pure Python — IDE-agnostic |
+| **MCP Server** (`neuralmind-mcp`) | ✅ Claude Code<br>✅ Claude Desktop<br>✅ Cursor (with MCP)<br>✅ Cline<br>✅ Continue<br>✅ Any MCP client | Exposes `wakeup`, `query`, `search`, `skeleton`, `stats` as MCP tools |
+| **PostToolUse Hooks** (`install-hooks`) | ✅ Claude Code only | Uses Claude Code's hook system to compress Read/Bash/Grep output |
+| **Git post-commit hook** (`init-hook`) | ✅ Any git workflow | Auto-rebuilds index on commit |
+| **Context export** (copy-paste) | ✅ ChatGPT, Gemini, Antigravity, any LLM | `neuralmind wakeup . \| pbcopy` |
+
+### Quick-start by tool
+
+<details>
+<summary><b>Claude Code</b> — full two-phase optimization</summary>
+
+```bash
+pip install neuralmind
+neuralmind build .
+neuralmind install-hooks .   # enables PostToolUse compression
+```
+</details>
+
+<details>
+<summary><b>Cursor / Cline / Continue</b> — MCP server only</summary>
+
+Add to your MCP config:
+```json
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp"
+    }
+  }
+}
+```
+Then call the tools (`neuralmind_wakeup`, `neuralmind_query`, `neuralmind_search`, `neuralmind_skeleton`) passing `project_path` as a parameter. Make sure to run `neuralmind build .` in your project first.
+</details>
+
+<details>
+<summary><b>Antigravity / Windsurf / ChatGPT / Gemini</b> — CLI + copy-paste</summary>
+
+```bash
+neuralmind wakeup .                       # ~600 tokens of project context
+neuralmind query . "your question here"   # query-specific context
+neuralmind skeleton src/auth/handlers.py  # compact file view
+```
+
+Pipe any of these into your chat interface.
+</details>
+
 ## ✨ Key Features
 
 | Feature | Description |
@@ -79,7 +131,7 @@ neuralmind skeleton tools/voiceover.py
 | **Semantic Search** | Finds code by meaning, not just keywords |
 | **Query-Aware** | Different questions get different context |
 | **CLI Tool** | Simple commands: `build`, `query`, `wakeup`, `search` |
-| **MCP Server** | Direct integration with Claude Desktop & Cursor |
+| **MCP Server** | Works with Claude Code, Claude Desktop, Cursor, Cline, Continue, and any MCP client |
 | **Auto-Updates** | Git hooks and scheduled maintenance |
 
 ## 📊 Benchmarks
