@@ -447,8 +447,8 @@ Automatically update the index after every commit:
 cat > .git/hooks/post-commit << 'EOF'
 #!/bin/bash
 echo "🧠 Updating NeuralMind index..."
-graphify update . --quiet 2>/dev/null
-neuralmind build . --quiet 2>/dev/null
+graphify update . 2>/dev/null
+neuralmind build . 2>/dev/null
 echo "✓ NeuralMind index updated"
 EOF
 
