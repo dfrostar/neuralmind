@@ -61,6 +61,11 @@ class ContextResult:
     search_hits: int = 0
     reduction_ratio: float = 0.0
 
+    @property
+    def tokens(self) -> int:
+        """Backward-compatible token count accessor."""
+        return self.budget.total
+
 
 class ContextSelector:
     """
