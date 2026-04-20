@@ -50,10 +50,7 @@ class TestInstallProject:
 
         updated = json.loads(settings_path.read_text())
         # User's hook still there
-        edit_hook = [
-            b for b in updated["hooks"]["PostToolUse"]
-            if b["matcher"] == "Edit"
-        ]
+        edit_hook = [b for b in updated["hooks"]["PostToolUse"] if b["matcher"] == "Edit"]
         assert len(edit_hook) == 1
         assert edit_hook[0]["hooks"][0]["command"] == "prettier --write"
         # Other top-level settings preserved
@@ -158,8 +155,7 @@ class TestRunHook:
             "tool_name": "Bash",
             "tool_input": {"command": "pytest -v"},
             "tool_response": {
-                "stdout": "\n".join([verbose_line] * 100)
-                + "\n===== 100 passed in 3.21s =====",
+                "stdout": "\n".join([verbose_line] * 100) + "\n===== 100 passed in 3.21s =====",
                 "stderr": "",
                 "exit_code": 0,
             },

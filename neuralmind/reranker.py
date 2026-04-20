@@ -90,9 +90,7 @@ class CooccurrenceIndex:
         max_count = max(self.cooccurrence.values()) if self.cooccurrence else 1
         return min(count / max(max_count, 1), 1.0)
 
-    def get_top_cooccurrences(
-        self, module: str, n: int = 5
-    ) -> list[tuple[str, float]]:
+    def get_top_cooccurrences(self, module: str, n: int = 5) -> list[tuple[str, float]]:
         """
         Get modules that most frequently co-occur with a given module.
 
@@ -122,9 +120,7 @@ class CooccurrenceIndex:
 
         # Normalize and sort
         max_count = max(related.values()) if related else 1
-        scored = [
-            (mod, count / max(max_count, 1)) for mod, count in related.items()
-        ]
+        scored = [(mod, count / max(max_count, 1)) for mod, count in related.items()]
         scored.sort(key=lambda x: x[1], reverse=True)
 
         return scored[:n]

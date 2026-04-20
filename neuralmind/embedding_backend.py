@@ -38,9 +38,7 @@ class EmbeddingBackend(ABC):
         """
 
     @abstractmethod
-    def embed_nodes(
-        self, force: bool = False
-    ) -> dict[str, int]:
+    def embed_nodes(self, force: bool = False) -> dict[str, int]:
         """
         Create embeddings for loaded nodes.
 
@@ -71,9 +69,7 @@ class EmbeddingBackend(ABC):
         """
 
     @abstractmethod
-    def get_community_summary(
-        self, community_id: int, max_nodes: int = 20
-    ) -> dict[str, Any]:
+    def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict[str, Any]:
         """
         Get summary of nodes in a community.
 
@@ -90,9 +86,7 @@ class EmbeddingBackend(ABC):
         """Get all nodes from a source file."""
 
     @abstractmethod
-    def get_file_edges(
-        self, source_file: str, node_ids: set[str] | None = None
-    ) -> list[dict]:
+    def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         """Get edges (dependencies) for a source file."""
 
     @abstractmethod
