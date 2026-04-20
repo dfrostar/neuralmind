@@ -303,7 +303,11 @@ class ContextSelector:
         for result in search_results:
             meta = result.get("metadata", {})
             # Prefer source_file, fall back to community, fall back to label
-            module = meta.get("source_file") or f"community_{meta.get('community', -1)}" or meta.get("label", "")
+            module = (
+                meta.get("source_file")
+                or f"community_{meta.get('community', -1)}"
+                or meta.get("label", "")
+            )
             if module:
                 self._context_modules.append(module)
 
@@ -377,7 +381,9 @@ class ContextSelector:
             # Show boost in label if applied
             boost_label = f" (+{boost:.2f} boost)" if boost > 0 else ""
 
-            parts.append(f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f}{boost_label})")
+            parts.append(
+                f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f}{boost_label})"
+            )
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
             parts.append("")

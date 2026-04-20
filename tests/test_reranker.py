@@ -186,9 +186,7 @@ class TestSemanticReranker:
 
         assert reranked == sample_search_results
 
-    def test_rerank_with_patterns_returns_results(
-        self, sample_search_results, patterns_file
-    ):
+    def test_rerank_with_patterns_returns_results(self, sample_search_results, patterns_file):
         """Test that reranking returns same number of results."""
         index = CooccurrenceIndex.load(patterns_file)
         reranker = SemanticReranker(index)
@@ -196,9 +194,7 @@ class TestSemanticReranker:
         reranked = reranker.rerank(sample_search_results)
         assert len(reranked) == len(sample_search_results)
 
-    def test_rerank_preserves_result_fields(
-        self, sample_search_results, patterns_file
-    ):
+    def test_rerank_preserves_result_fields(self, sample_search_results, patterns_file):
         """Test that reranking preserves original result fields."""
         index = CooccurrenceIndex.load(patterns_file)
         reranker = SemanticReranker(index)
@@ -220,9 +216,7 @@ class TestSemanticReranker:
             assert "_reranker_boost" in result
             assert "_combined_score" in result
 
-    def test_rerank_with_context_modules(
-        self, sample_search_results, patterns_file
-    ):
+    def test_rerank_with_context_modules(self, sample_search_results, patterns_file):
         """Test reranking with context modules specified."""
         index = CooccurrenceIndex.load(patterns_file)
         reranker = SemanticReranker(index)
@@ -299,9 +293,7 @@ class TestSemanticReranker:
     def test_measure_savings_no_change(self, sample_search_results):
         """Test savings when reranking doesn't change result order."""
         reranker = SemanticReranker()
-        savings = reranker.measure_savings(
-            sample_search_results, sample_search_results
-        )
+        savings = reranker.measure_savings(sample_search_results, sample_search_results)
         assert savings["estimated_savings_tokens"] == 0
 
     def test_measure_savings_with_reranking(self, sample_search_results):
@@ -340,9 +332,7 @@ class TestSemanticReranker:
 class TestIntegration:
     """Integration tests for learning pipeline."""
 
-    def test_index_load_and_rerank_end_to_end(
-        self, sample_search_results, patterns_file
-    ):
+    def test_index_load_and_rerank_end_to_end(self, sample_search_results, patterns_file):
         """Test complete flow: load index → rerank results."""
         # Load patterns
         index = CooccurrenceIndex.load(patterns_file)
@@ -358,9 +348,7 @@ class TestIntegration:
         assert len(reranked) == len(sample_search_results)
         assert all("_reranker_boost" in r for r in reranked)
 
-    def test_multiple_reranks_consistent(
-        self, sample_search_results, patterns_file
-    ):
+    def test_multiple_reranks_consistent(self, sample_search_results, patterns_file):
         """Test that reranking same results multiple times is consistent."""
         index = CooccurrenceIndex.load(patterns_file)
         reranker = SemanticReranker(index)

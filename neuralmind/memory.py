@@ -229,9 +229,7 @@ def build_cooccurrence_index(events: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def write_learned_patterns(
-    project_path: str | Path, index: dict[str, Any]
-) -> Path:
+def write_learned_patterns(project_path: str | Path, index: dict[str, Any]) -> Path:
     """Write learned patterns to project's patterns file.
 
     Args:

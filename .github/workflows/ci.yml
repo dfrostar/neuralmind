@@ -31,6 +31,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
+    needs: lint
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -62,6 +63,7 @@ jobs:
 
   type-check:
     name: Type Check
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -79,7 +81,6 @@ jobs:
 
       - name: Run mypy
         run: mypy neuralmind --ignore-missing-imports
-        continue-on-error: true
 
   build:
     name: Build Package

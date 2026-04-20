@@ -73,7 +73,7 @@ source venv/bin/activate  # Linux/macOS
 # 5. Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# 6. Install pre-commit hooks
+# 6. Install pre-commit hooks (runs black + ruff automatically on every commit)
 pre-commit install
 
 # 7. Verify setup
@@ -124,11 +124,11 @@ git checkout -b feature/your-feature-name
 # 3. Run tests
 pytest tests/ -v
 
-# 4. Run linting
-black .
-ruff check .
+# 4. Formatting and linting run automatically via pre-commit on commit.
+#    To run them manually before committing:
+pre-commit run --all-files
 
-# 5. Commit your changes
+# 5. Commit your changes (pre-commit hooks enforce black + ruff automatically)
 git add .
 git commit -m "feat: add new feature description"
 
@@ -172,8 +172,7 @@ test(core): add tests for wakeup method
 ### Before Submitting
 
 - [ ] Tests pass locally (`pytest tests/ -v`)
-- [ ] Code is formatted (`black .`)
-- [ ] Linting passes (`ruff check .`)
+- [ ] Code is formatted and linting passes (`pre-commit run --all-files`)
 - [ ] Documentation is updated if needed
 - [ ] Commit messages follow conventions
 
