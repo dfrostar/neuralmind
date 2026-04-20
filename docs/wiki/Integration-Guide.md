@@ -96,10 +96,10 @@ Add to `.git/hooks/post-commit`:
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
 
 # Update graph
-graphify update "$PROJECT_ROOT" --quiet
+graphify update "$PROJECT_ROOT" 2>/dev/null
 
 # Rebuild NeuralMind index
-neuralmind build "$PROJECT_ROOT" --quiet
+neuralmind build "$PROJECT_ROOT" 2>/dev/null
 ```
 
 Make it executable:
