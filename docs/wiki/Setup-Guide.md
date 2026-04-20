@@ -493,12 +493,44 @@ neuralmind query . "your question"
 
 ---
 
+## Brain-Like Learning (New in v0.2.0)
+
+After setup, NeuralMind can learn your project patterns. This is **optional but recommended**.
+
+### How It Works
+```bash
+# After setup, just use it normally
+neuralmind query . "How does authentication work?"
+
+# First time, you'll see:
+# "NeuralMind would like to learn from your queries. Enable? (y/n)"
+
+# Say yes. Then NeuralMind collects patterns from your queries.
+# After 10 similar queries: neuralmind stats --memory
+# "Top patterns: auth/ → validation/ → middleware/"
+```
+
+### Quick Reference
+| Command | Purpose |
+|---------|---------|
+| `neuralmind stats --memory` | See collected patterns |
+| `neuralmind learn . --dry-run` | Preview what would be learned (v0.2.1+) |
+| `neuralmind memory reset .` | Clear learning for this project |
+| `NEURALMIND_LEARNING=0` | Disable learning globally |
+
+### See More
+👉 **[Full Brain-Like Learning Guide](../brain_like_learning.md)** — Privacy, examples, troubleshooting
+
+---
+
 ## Next Steps
 
-1. **[CLI Reference](CLI-Reference)** — All commands and options
-2. **[Integration Guide](Integration-Guide)** — Deep dive on MCP and hooks
-3. **[Usage Guide](Usage-Guide)** — Real-world examples
-4. **[Troubleshooting](Troubleshooting)** — Common issues
+1. **Enable learning** (optional) — Say "yes" to the first-time prompt
+2. **[Brain-Like Learning](../brain_like_learning.md)** — How learning improves your context
+3. **[CLI Reference](CLI-Reference)** — All commands and options
+4. **[Integration Guide](Integration-Guide)** — Deep dive on MCP and hooks
+5. **[Usage Guide](Usage-Guide)** — Real-world examples
+6. **[Troubleshooting](Troubleshooting)** — Common issues
 
 ---
 

@@ -6,8 +6,9 @@ Welcome to the NeuralMind documentation!
 
 | Page | Description |
 |------|-------------|
-| [Installation](Installation) | How to install NeuralMind |
 | [Setup Guide](Setup-Guide) | **First-time project setup (3 commands)** |
+| [Brain-Like Learning](../brain_like_learning.md) | **Your project learns your patterns** |
+| [Installation](Installation) | How to install NeuralMind |
 | [Usage Guide](Usage-Guide) | Complete usage guide with examples |
 | [CLI Reference](CLI-Reference) | All CLI commands |
 | [API Reference](API-Reference) | Python API documentation |

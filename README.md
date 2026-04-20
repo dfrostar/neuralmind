@@ -186,6 +186,25 @@ Total: ~800-1,100 tokens vs 50,000+ for full codebase
 | `neuralmind install-hooks --uninstall` | **v0.2.0** Remove hooks (preserves other tools' hooks) |
 | `neuralmind init-hook .` | Install git post-commit hook (auto-rebuild on commit) |
 
+## 🧠 Brain-Like Learning (v0.2.0)
+
+NeuralMind now learns your project patterns. After a few queries, it understands which directories matter for your questions—and remembers them.
+
+| Feature | Status | Details |
+|---------|--------|---------|
+| **Memory Collection** | ✅ v0.2.0 | Implicit logging, fully local |
+| **Pattern Discovery** | ✅ v0.2.0 | `neuralmind stats --memory` shows patterns |
+| **Smart Reranking** | 🔄 v0.2.1 | Coming soon: improved context ranking |
+
+**How it works:**
+- Query 1: "How do I add an API endpoint?" → 15 files
+- Query 10: Same question → learns auth/ + routes/ + middleware/ matter → 5 files, better signal
+- **Privacy:** 100% local, never uploaded. Reset anytime.
+
+👉 **[See full guide in docs/brain_like_learning.md](docs/brain_like_learning.md)**
+
+---
+
 ## 🪝 PostToolUse Compression (v0.2.0)
 
 NeuralMind ships with Claude Code hooks that compress tool outputs **before** the model sees them:
