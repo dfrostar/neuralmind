@@ -149,7 +149,10 @@ def compress_read(file_path: str, raw_content: str, mind=None) -> str:
 
         skeleton = mind.skeleton(file_path)
         if skeleton and skeleton != "":
-            return skeleton + f"\n\n[neuralmind: compressed from {len(raw_content)} chars. Full source: set NEURALMIND_BYPASS=1]"
+            return (
+                skeleton
+                + f"\n\n[neuralmind: compressed from {len(raw_content)} chars. Full source: set NEURALMIND_BYPASS=1]"
+            )
         return raw_content
     except Exception:
         # Fail open — never break a Read just because compression failed

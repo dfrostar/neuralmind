@@ -5,7 +5,7 @@ import time
 import psutil
 
 # Ensure the project root is in the Python path
-sys.path.insert(0, '/a0/usr/workdir/neuralmind')
+sys.path.insert(0, "/a0/usr/workdir/neuralmind")
 
 from neuralmind.core import NeuralMind
 
@@ -20,6 +20,7 @@ def get_memory_usage():
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return peak_mem / (1024 * 1024)  # Convert to MB
+
 
 def run_benchmark():
     """Runs a standardized benchmark and returns a dictionary of metrics."""
@@ -42,12 +43,13 @@ def run_benchmark():
     token_count = len(output.split())  # Approximate token count
 
     return {
-        'time_sec': round(elapsed_time, 2),
-        'memory_mb': round(peak_mem, 2),
-        'tokens': token_count
+        "time_sec": round(elapsed_time, 2),
+        "memory_mb": round(peak_mem, 2),
+        "tokens": token_count,
     }
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Allow the script to be run directly for testing
     metrics = run_benchmark()
     print("\n--- Benchmark Results ---")
