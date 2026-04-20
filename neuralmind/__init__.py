@@ -76,12 +76,13 @@ from .compressors import (
 )
 from .hooks import install_hooks
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
     "ContextSelector",
     # Output compression (v0.2.0)
+    # Brain-like learning (v0.3.0)
     "compress_bash",
     "compress_read",
     "cap_search_results",
