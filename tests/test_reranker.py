@@ -25,19 +25,16 @@ def sample_patterns_json() -> dict:
             "patterns_learned": 3,
         },
         "cooccurrence": {
-            "auth|validation": 10,
-            "auth|middleware": 8,
-            "db|cache": 5,
-            "api|routes": 3,
+            "auth.py|validation.py": 10,
+            "auth.py|api.py": 8,
+            "api.py|routes": 5,
+            "validation.py|api.py": 3,
         },
         "module_frequency": {
-            "auth": 15,
-            "validation": 12,
-            "middleware": 8,
-            "db": 10,
-            "cache": 7,
-            "api": 5,
-            "routes": 4,
+            "auth.py": 15,
+            "validation.py": 12,
+            "api.py": 8,
+            "routes": 10,
         },
     }
 
@@ -86,7 +83,7 @@ class TestCooccurrenceIndex:
 
         assert index.is_valid()
         assert index.pattern_count() == 4
-        assert index.cooccurrence["auth|validation"] == 10
+        assert index.cooccurrence["auth.py|validation.py"] == 10
 
     def test_load_missing_file(self):
         """Test loading from non-existent file."""
@@ -111,13 +108,13 @@ class TestCooccurrenceIndex:
         """Test that score_pair returns normalized 0-1 values."""
         index = CooccurrenceIndex.load(patterns_file)
 
-        # auth|validation has count 10 (highest)
-        score = index.score_pair("auth", "validation")
+        # auth.py|validation.py has count 10 (highest)
+        score = index.score_pair("auth.py", "validation.py")
         assert 0.0 <= score <= 1.0
         assert score == 1.0  # Highest count normalized to 1.0
 
-        # api|routes has count 3 (lowest)
-        score = index.score_pair("api", "routes")
+        # validation.py|api.py has count 3 (lowest)
+        score = index.score_pair("validation.py", "api.py")
         assert 0.0 <= score <= 1.0
         assert score < 1.0
 
@@ -125,8 +122,8 @@ class TestCooccurrenceIndex:
         """Test that score is same regardless of module order."""
         index = CooccurrenceIndex.load(patterns_file)
 
-        score1 = index.score_pair("auth", "validation")
-        score2 = index.score_pair("validation", "auth")
+        score1 = index.score_pair("auth.py", "validation.py")
+        score2 = index.score_pair("validation.py", "auth.py")
         assert score1 == score2
 
     def test_score_pair_unknown_modules(self, patterns_file):
@@ -146,20 +143,20 @@ class TestCooccurrenceIndex:
         """Test that top cooccurrences are sorted by count."""
         index = CooccurrenceIndex.load(patterns_file)
 
-        # auth has cooccurrence with: validation (10), middleware (8)
-        top = index.get_top_cooccurrences("auth", n=2)
+        # auth.py has cooccurrence with: validation.py (10), api.py (8)
+        top = index.get_top_cooccurrences("auth.py", n=2)
         assert len(top) == 2
-        assert top[0][0] == "validation"  # Higher count first
-        assert top[1][0] == "middleware"
+        assert top[0][0] == "validation.py"  # Higher count first
+        assert top[1][0] == "api.py"
 
     def test_get_top_cooccurrences_respects_n(self, patterns_file):
         """Test that result count respects n parameter."""
         index = CooccurrenceIndex.load(patterns_file)
 
-        top3 = index.get_top_cooccurrences("auth", n=3)
+        top3 = index.get_top_cooccurrences("auth.py", n=3)
         assert len(top3) <= 3
 
-        top1 = index.get_top_cooccurrences("auth", n=1)
+        top1 = index.get_top_cooccurrences("auth.py", n=1)
         assert len(top1) == 1
 
     def test_get_top_cooccurrences_empty_index(self):
@@ -230,11 +227,11 @@ class TestSemanticReranker:
         index = CooccurrenceIndex.load(patterns_file)
         reranker = SemanticReranker(index)
 
-        # auth and validation have high cooccurrence
-        context = ["auth"]
+        # auth.py and validation.py have high cooccurrence in patterns (10)
+        context = ["auth.py"]
         reranked = reranker.rerank(sample_search_results, context_modules=context)
 
-        # validation should get boost
+        # validation_module should get boost since validation.py cooccurs with auth.py
         validation_result = [r for r in reranked if r["id"] == "validation_module"][0]
         assert validation_result["_reranker_boost"] > 0.0
 

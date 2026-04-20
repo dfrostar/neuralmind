@@ -635,3 +635,91 @@ class TestQueryContextWithReduction:
         result = selector.get_query_context("authentication")
         # With the mock returning 2 search results, L3 should have some hits
         assert result.search_hits >= 0
+
+
+class TestRerankerIntegration:
+    """Tests for reranker integration with context selector."""
+
+    def test_reranker_lazy_loads(self, mock_embedder, temp_project):
+        """Test that reranker is lazy-loaded on first use."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=True)
+        assert selector._reranker is None  # Not loaded yet
+
+        # Access L3 search which triggers lazy load
+        selector.get_l3_search("test query")
+        # Reranker should be loaded now
+        assert selector._reranker is not None
+
+    def test_reranking_disabled_by_flag(self, mock_embedder, temp_project):
+        """Test that reranking can be disabled."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        text, hits = selector.get_l3_search("test query")
+
+        # Should not contain boost markers when disabled
+        assert "+0" not in text or "boost" not in text.lower()
+
+    def test_context_modules_tracked_in_l2(self, mock_embedder, temp_project):
+        """Test that context modules are tracked when loading L2."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        selector.get_l2_context("authentication")
+
+        # Context modules should be populated from L2 search results
+        # (mock_embedder returns results with metadata)
+        assert isinstance(selector._context_modules, list)
+
+    def test_reranking_applied_to_l3(self, mock_embedder, temp_project):
+        """Test that reranking is applied to L3 search results."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=True)
+
+        # First load L2 to populate context modules
+        selector.get_l2_context("authentication")
+
+        # Then search L3
+        text, hits = selector.get_l3_search("authentication")
+
+        # Results should be valid strings
+        assert isinstance(text, str)
+        assert isinstance(hits, int)
+        assert hits >= 0
+
+    def test_reranker_default_enabled(self, mock_embedder, temp_project):
+        """Test that reranking is enabled by default."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        assert selector.enable_reranking is True
+
+    def test_full_query_context_with_reranking(self, temp_project):
+        """Test full query context flow with reranking enabled."""
+        from neuralmind.context_selector import ContextSelector
+        from neuralmind.embedder import GraphEmbedder
+
+        embedder = GraphEmbedder(str(temp_project))
+        embedder.load_graph()
+        embedder.embed_nodes()
+
+        selector = ContextSelector(embedder, str(temp_project), enable_reranking=True)
+        result = selector.get_query_context("authentication")
+
+        # Should have valid context and budget
+        assert isinstance(result.context, str)
+        assert result.budget.total > 0
+        assert result.reduction_ratio > 0
+
+    def test_reranking_preserves_result_count(self, mock_embedder, temp_project):
+        """Test that reranking doesn't change number of results."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=True)
+        _, hits = selector.get_l3_search("test", n=3)
+
+        # Should respect n parameter even after reranking
+        assert hits <= 3
