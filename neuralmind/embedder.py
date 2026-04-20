@@ -68,44 +68,11 @@ class GraphEmbedder(EmbeddingBackend):
     def project_path(self) -> Path:
         """Get the project path."""
         return self._project_path
-    """
-    Embeds graphify graph.json nodes into ChromaDB for semantic search.
 
-    Usage:
-        embedder = GraphEmbedder("/path/to/project")
-        embedder.load_graph()
-        embedder.embed_nodes()
-        results = embedder.search("authentication logic", n=5)
-    """
-
-    COLLECTION_NAME = "neuralmind_nodes"
-
-    def __init__(self, project_path: str, db_path: str = None):
-        """
-        Initialize the embedder for a project.
-
-        Args:
-            project_path: Path to project root (where graphify-out/ lives)
-            db_path: Optional custom path for ChromaDB storage
-        """
-        self.project_path = Path(project_path)
-        self.graph_path = self.project_path / "graphify-out" / "graph.json"
-
-        # Default DB path in project's graphify-out
-        if db_path is None:
-            db_path = str(self.project_path / "graphify-out" / "neuralmind_db")
-
-        self.db_path = db_path
-        self.graph: dict = {}
-        self.nodes: list[dict] = []
-        self.edges: list[dict] = []
-
-        # Initialize ChromaDB
-        self.client = chromadb.PersistentClient(
-            path=self.db_path, settings=Settings(anonymized_telemetry=False)
-        )
-
-        self._collection = None
+    @project_path.setter
+    def project_path(self, value: str | Path) -> None:
+        """Set the project path."""
+        self._project_path = Path(value)
 
     @property
     def collection(self):
@@ -229,10 +196,19 @@ class GraphEmbedder(EmbeddingBackend):
             # Check if we need to update
             if not force:
                 try:
-                    existing = self.collection.get(ids=[node_id], include=["metadatas"])
-                    if existing["ids"] and existing["metadatas"]:
-                        old_hash = existing["metadatas"][0].get("content_hash", "")
-                        if old_hash == meta["content_hash"]:
+                    existing = self.collection.get(
+                        ids=[node_id], include=["metadatas", "documents"]
+                    )
+                    existing_ids = existing.get("ids", [])
+                    existing_meta = (existing.get("metadatas") or [{}])[0]
+                    existing_doc = (existing.get("documents") or [""])[0]
+                    if existing_ids:
+                        old_hash = (
+                            existing_meta.get("content_hash", "")
+                            if isinstance(existing_meta, dict)
+                            else ""
+                        )
+                        if old_hash == meta["content_hash"] or existing_doc == text:
                             stats["skipped"] += 1
                             continue
                         stats["updated"] += 1
@@ -350,11 +326,7 @@ class GraphEmbedder(EmbeddingBackend):
         except Exception:
             pass
 
-        matched = [
-            n for n in self.nodes
-            if any(c == n.get("source_file", "") for c in candidates)
-        ]
-        return matched
+        return [n for n in self.nodes if any(c == n.get("source_file", "") for c in candidates)]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         """Return edges where either endpoint belongs to the given file.
@@ -378,9 +350,14 @@ class GraphEmbedder(EmbeddingBackend):
             return []
 
         return [
-            e for e in self.edges
-            if (e.get("_src") in node_ids or e.get("_tgt") in node_ids
-                or e.get("source") in node_ids or e.get("target") in node_ids)
+            e
+            for e in self.edges
+            if (
+                e.get("_src") in node_ids
+                or e.get("_tgt") in node_ids
+                or e.get("source") in node_ids
+                or e.get("target") in node_ids
+            )
         ]
 
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict:
