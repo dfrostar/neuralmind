@@ -71,23 +71,49 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton tools/voiceover.py
 ```
 
-## ✨ What's New in v0.3.0
+## ✨ What's New in v0.3.2
 
-**Brain-Like Learning** — Your project learns your patterns 🧠
+**Complete Learning Loop** — Collect → Analyze → Improve 🔄
 
 | Feature | Status | Details |
 |---------|--------|---------|
 | **Memory Collection** | ✅ v0.3.0 | Local JSONL storage for queries (project + global) |
 | **Opt-in Consent** | ✅ v0.3.0 | One-time TTY-only prompt, respects env vars |
-| **Pattern Discovery** | ✅ v0.3.0 | `neuralmind stats --memory` shows learned patterns |
-| **Smart Reranking** | 🔄 v0.3.1+ | Coming soon: improved context ranking |
+| **Pattern Learning** | ✅ v0.3.2 | `neuralmind learn .` analyzes cooccurrence patterns |
+| **Smart Reranking** | ✅ v0.3.2 | Improves context ranking by module relationships |
+| **Automatic Boosting** | ✅ v0.3.2 | Next query applies learned patterns automatically |
 
 **How it works:**
-- After a few queries, NeuralMind learns which directories matter for your questions
-- Future queries get better context in fewer tokens
+1. **Collect** (v0.3.0) — After queries, NeuralMind logs which modules matter
+2. **Learn** (v0.3.2) — Run `neuralmind learn .` to analyze patterns  
+3. **Improve** (v0.3.2) — Next queries automatically boost related modules
+4. **Repeat** — System gets smarter as you query more
+
+**Example:** Auth + validation modules appear together? Next time you ask about auth, validation gets boosted in search results automatically.
+
 - 100% local storage, no telemetry, fully under your control
+- Zero overhead if patterns unavailable (graceful fallback)
+- Works with any query pattern — learns from actual usage
 
 👉 **[See full guide in docs/brain_like_learning.md](docs/brain_like_learning.md)** or **[Setup-Guide for all platforms](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)**
+
+### Quick Learning Setup
+
+```bash
+# After a few queries have been logged:
+neuralmind learn .
+
+# Example output:
+# ✓ Learned 12 cooccurrence patterns
+# ✓ Patterns saved to .neuralmind/learned_patterns.json
+# ✓ Next query will apply learned patterns for improved retrieval
+# 
+# Top cooccurrence patterns:
+#   community_0|community_1: 5 times
+#   community_1|community_2: 4 times
+```
+
+On your next `neuralmind query`, the reranker automatically boosts modules that co-occur with your context, improving relevance without any extra cost.
 
 ---
 

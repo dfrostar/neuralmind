@@ -288,6 +288,7 @@ jobs:
 | `neuralmind query . "..."` | Query with natural language | Daily usage |
 | `neuralmind wakeup .` | Get project overview | Start new AI conversations |
 | `neuralmind search . "..."` | Direct semantic search | Find specific code entities |
+| `neuralmind learn .` | **NEW** Analyze query patterns → improve ranking | After collecting queries |
 | `neuralmind benchmark .` | Measure token reduction | Verify cost savings |
 | `neuralmind stats .` | Show index statistics | Check index health |
 
@@ -353,6 +354,42 @@ neuralmind search . "database models"
 ```
 
 **When to use**: When you want to find specific code entities quickly.
+
+#### `neuralmind learn` (v0.3.2+)
+
+Analyzes your query history to discover module relationships and improve ranking.
+
+```bash
+# After collecting queries, analyze patterns
+neuralmind learn .
+
+# Example output:
+# Analyzing 8 query events...
+# ✓ Learned 12 cooccurrence patterns
+# ✓ Patterns saved to .neuralmind/learned_patterns.json
+# ✓ Next query will apply learned patterns for improved retrieval
+# 
+# Top cooccurrence patterns:
+#   community_0|community_1: 5 times
+#   community_1|community_2: 4 times
+#   community_0|community_2: 3 times
+```
+
+**What it does**:
+- Reads query events from `.neuralmind/memory/query_events.jsonl`
+- Finds which code modules appear together in successful queries
+- Saves patterns to `.neuralmind/learned_patterns.json`
+- On next query, automatically boosts related modules in search results
+
+**When to use**: After 5-10 queries have been logged to build meaningful patterns. Run weekly for continuous improvement.
+
+**How it improves retrieval**:
+- Example: If you frequently query about "auth" + "validation" together
+- System learns this pattern (cooccurrence score: high)
+- Next time you ask about auth, validation automatically gets boosted in results
+- Better relevance = smaller context needed = more token savings
+
+**Privacy**: 100% local analysis. No data sent anywhere. Patterns file is just JSON in your project.
 
 #### `neuralmind benchmark`
 
