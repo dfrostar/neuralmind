@@ -194,15 +194,16 @@ class GraphEmbedder(EmbeddingBackend):
             meta["embedded_at"] = datetime.now().isoformat()
 
             # Check if we need to update
-            if not force:
-                try:
-                    existing = self.collection.get(
-                        ids=[node_id], include=["metadatas", "documents"]
-                    )
-                    existing_ids = existing.get("ids", [])
-                    existing_meta = (existing.get("metadatas") or [{}])[0]
-                    existing_doc = (existing.get("documents") or [""])[0]
-                    if existing_ids:
+            try:
+                existing = self.collection.get(
+                    ids=[node_id], include=["metadatas", "documents"]
+                )
+                existing_ids = existing.get("ids", [])
+
+                if existing_ids:
+                    if not force:
+                        existing_meta = (existing.get("metadatas") or [{}])[0]
+                        existing_doc = (existing.get("documents") or [""])[0]
                         old_hash = (
                             existing_meta.get("content_hash", "")
                             if isinstance(existing_meta, dict)
@@ -211,12 +212,10 @@ class GraphEmbedder(EmbeddingBackend):
                         if old_hash == meta["content_hash"] or existing_doc == text:
                             stats["skipped"] += 1
                             continue
-                        stats["updated"] += 1
-                    else:
-                        stats["added"] += 1
-                except Exception:
+                    stats["updated"] += 1
+                else:
                     stats["added"] += 1
-            else:
+            except Exception:
                 stats["added"] += 1
 
             batch_ids.append(node_id)
