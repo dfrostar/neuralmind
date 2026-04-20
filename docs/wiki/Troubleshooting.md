@@ -295,7 +295,7 @@ neuralmind stats /path
 
 ```bash
 # Search directly for the code
-neuralmind search /path "function_name" --limit 20
+neuralmind search /path "function_name" --n 20
 
 # Check if it's in the graph
 python -c "
@@ -432,9 +432,9 @@ neuralmind build /path --force  # Re-embeds everything
 time neuralmind query /path "test"
 time neuralmind query /path "another test"  # Should be faster
 
-# Move database to SSD if on HDD
+# Move database to SSD if on HDD — rebuild after moving
 mv graphify-out/neuralmind_db /ssd/path/
-neuralmind build /path --db-path /ssd/path/neuralmind_db
+neuralmind build /path --force
 ```
 
 ### High Memory Usage
