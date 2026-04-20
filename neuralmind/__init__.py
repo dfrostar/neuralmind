@@ -77,7 +77,7 @@ from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 
-__version__ = "0.3.3.2"
+__version__ = "0.3.4"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
