@@ -83,16 +83,16 @@ class TestGraphEmbedder:
         assert stats2["skipped"] >= 0
 
     def test_embed_nodes_force_reembeds(self, temp_project):
-        """Test that embed_nodes with force=True re-embeds all."""
+        """Test that embed_nodes with force=True re-embeds all (as updates)."""
         from neuralmind.embedder import GraphEmbedder
 
         embedder = GraphEmbedder(str(temp_project))
         embedder.load_graph()
         embedder.embed_nodes()
 
-        # Force re-embed
+        # Force re-embed: existing nodes counted as "updated" not "added"
         stats = embedder.embed_nodes(force=True)
-        assert stats["added"] == 6
+        assert stats["updated"] == 6
 
     def test_search_returns_list(self, temp_project):
         """Test that search returns a list."""
