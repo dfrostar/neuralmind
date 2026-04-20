@@ -151,13 +151,40 @@ def cmd_learn(args):
         print("Learning is disabled (NEURALMIND_LEARNING=0). No-op.")
         return
 
-    project_events = memory.count_events(memory.project_query_events_file(project_path))
-    global_events = memory.count_events(memory.global_query_events_file())
+    # Count events
+    events_file = memory.project_query_events_file(project_path)
+    project_event_count = memory.count_events(events_file)
 
-    print(f"Learning scaffold ready for: {project_path}")
-    print("No model training runs in this MVP; memory collection is prepared.")
-    print(f"Project memory events: {project_events}")
-    print(f"Global memory events: {global_events}")
+    if project_event_count == 0:
+        print(f"No query events found for {project_path}")
+        print("Events are logged automatically when you query the codebase.")
+        return
+
+    # Read and analyze events
+    events = memory.read_query_events(events_file)
+    if not events:
+        print("No queryable events found in memory.")
+        return
+
+    # Build patterns
+    print(f"Analyzing {len(events)} query events...")
+    index = memory.build_cooccurrence_index(events)
+
+    # Write patterns
+    patterns_file = memory.write_learned_patterns(project_path, index)
+
+    # Report results
+    print(f"✓ Learned {index['metadata']['patterns_learned']} cooccurrence patterns")
+    print(f"✓ Patterns saved to {patterns_file}")
+    print(f"✓ Next query will apply learned patterns for improved retrieval")
+
+    # Show top patterns
+    cooccurrence = index["cooccurrence"]
+    if cooccurrence:
+        print("\nTop cooccurrence patterns:")
+        sorted_pairs = sorted(cooccurrence.items(), key=lambda x: x[1], reverse=True)
+        for pair, count in sorted_pairs[:5]:
+            print(f"  {pair}: {count} times")
 
 
 def cmd_skeleton(args):

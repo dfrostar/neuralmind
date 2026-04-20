@@ -65,3 +65,138 @@ class TestMemoryLogging:
         payload = json.loads(line)
         assert payload["query"] == "how auth works"
         assert payload["retrieval_summary"]["search_hits"] == 3
+
+
+class TestMemoryPatternLearning:
+    """Tests for cooccurrence pattern learning."""
+
+    def test_read_query_events_empty_file(self, tmp_path):
+        """read_query_events handles missing file gracefully."""
+        from neuralmind import memory
+
+        events_file = tmp_path / "nonexistent.jsonl"
+        events = memory.read_query_events(events_file)
+        assert events == []
+
+    def test_read_query_events_from_jsonl(self, tmp_path):
+        """read_query_events loads events from JSONL file."""
+        from neuralmind import memory
+
+        events_file = tmp_path / "events.jsonl"
+        event1 = {
+            "event_type": "query",
+            "query": "auth",
+            "retrieval_summary": {"communities_loaded": [0, 1]},
+        }
+        event2 = {
+            "event_type": "query",
+            "query": "api",
+            "retrieval_summary": {"communities_loaded": [1, 2]},
+        }
+        events_file.write_text(
+            f"{json.dumps(event1)}\n{json.dumps(event2)}\n", encoding="utf-8"
+        )
+
+        events = memory.read_query_events(events_file)
+        assert len(events) == 2
+        assert events[0]["query"] == "auth"
+        assert events[1]["query"] == "api"
+
+    def test_read_query_events_skips_invalid_lines(self, tmp_path):
+        """read_query_events skips invalid JSON lines."""
+        from neuralmind import memory
+
+        events_file = tmp_path / "events.jsonl"
+        event = {"event_type": "query", "query": "test"}
+        events_file.write_text(
+            f"{json.dumps(event)}\ninvalid json\n{json.dumps(event)}\n",
+            encoding="utf-8",
+        )
+
+        events = memory.read_query_events(events_file)
+        assert len(events) == 2
+
+    def test_extract_module_ids_from_event(self):
+        """extract_module_ids_from_event extracts communities."""
+        from neuralmind import memory
+
+        event = {
+            "event_type": "query",
+            "retrieval_summary": {"communities_loaded": [0, 1, 2]},
+        }
+        modules = memory.extract_module_ids_from_event(event)
+        assert modules == ["community_0", "community_1", "community_2"]
+
+    def test_extract_module_ids_empty_event(self):
+        """extract_module_ids handles events with no communities."""
+        from neuralmind import memory
+
+        event = {"event_type": "query", "retrieval_summary": {}}
+        modules = memory.extract_module_ids_from_event(event)
+        assert modules == []
+
+    def test_build_cooccurrence_index(self):
+        """build_cooccurrence_index analyzes events for patterns."""
+        from neuralmind import memory
+
+        events = [
+            {
+                "event_type": "query",
+                "retrieval_summary": {"communities_loaded": [0, 1]},
+            },
+            {
+                "event_type": "query",
+                "retrieval_summary": {"communities_loaded": [0, 1]},
+            },
+            {
+                "event_type": "query",
+                "retrieval_summary": {"communities_loaded": [1, 2]},
+            },
+        ]
+
+        index = memory.build_cooccurrence_index(events)
+
+        assert index["metadata"]["version"] == "1"
+        assert index["metadata"]["events_analyzed"] == 3
+        assert index["cooccurrence"]["community_0|community_1"] == 2
+        assert index["cooccurrence"]["community_1|community_2"] == 1
+        assert index["module_frequency"]["community_0"] == 2
+        assert index["module_frequency"]["community_1"] == 3
+
+    def test_build_cooccurrence_index_empty(self):
+        """build_cooccurrence_index handles empty events."""
+        from neuralmind import memory
+
+        index = memory.build_cooccurrence_index([])
+        assert index["metadata"]["events_analyzed"] == 0
+        assert index["metadata"]["patterns_learned"] == 0
+        assert index["cooccurrence"] == {}
+
+    def test_write_learned_patterns(self, tmp_path):
+        """write_learned_patterns saves patterns to JSON file."""
+        from neuralmind import memory
+
+        project_path = tmp_path / "project"
+        project_path.mkdir()
+
+        index = {
+            "metadata": {
+                "version": "1",
+                "created_at": "2026-04-20T00:00:00Z",
+                "events_analyzed": 3,
+                "patterns_learned": 2,
+            },
+            "cooccurrence": {"community_0|community_1": 2},
+            "module_frequency": {"community_0": 2, "community_1": 3},
+        }
+
+        patterns_file = memory.write_learned_patterns(project_path, index)
+
+        assert patterns_file.exists()
+        assert patterns_file.name == "learned_patterns.json"
+        assert ".neuralmind" in str(patterns_file)
+
+        # Verify content
+        saved_index = json.loads(patterns_file.read_text(encoding="utf-8"))
+        assert saved_index["metadata"]["patterns_learned"] == 2
+        assert saved_index["cooccurrence"]["community_0|community_1"] == 2
