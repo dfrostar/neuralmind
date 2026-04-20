@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.2.2"
-description = "Adaptive Neural Knowledge System + PostToolUse compression hooks. Two-phase token optimization (retrieval + consumption) for Claude Code."
+version = "0.3.0"
+description = "Adaptive Neural Knowledge System + brain-like learning. Achieves 40-70x token reduction through intelligent context retrieval and optional learning from query patterns."
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -27,9 +27,13 @@ keywords = [
     "context-window",
     "ai-coding-assistant",
     "claude-code",
+    "copilot",
+    "cursor",
     "posttooluse-hook",
     "skeleton-view",
-    "output-compression"
+    "output-compression",
+    "brain-like-learning",
+    "continual-learning"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
