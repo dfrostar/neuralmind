@@ -20,6 +20,15 @@ def cmd_build(args):
     print(f"Building NeuralMind index for: {project_path}")
     print(f"Force rebuild: {force}")
     print()
+
+    path = Path(project_path)
+    if not path.exists():
+        print(f"Build failed: project path does not exist: {project_path}")
+        sys.exit(1)
+    if not path.is_dir():
+        print(f"Build failed: project path is not a directory: {project_path}")
+        sys.exit(1)
+
     mind = NeuralMind(project_path)
     result = mind.build(force=force)
     if result.get("success"):
