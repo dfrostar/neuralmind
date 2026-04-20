@@ -131,3 +131,122 @@ def log_query_event(project_path: str | Path, question: str, result: Any) -> boo
     except Exception:
         return False
     return True
+
+
+def read_query_events(events_file: Path) -> list[dict[str, Any]]:
+    """Read query events from JSONL file.
+
+    Args:
+        events_file: Path to query_events.jsonl
+
+    Returns:
+        List of event dictionaries (empty if file doesn't exist)
+    """
+    if not events_file.exists():
+        return []
+
+    events = []
+    try:
+        with events_file.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                    if event.get("event_type") == "query":
+                        events.append(event)
+                except json.JSONDecodeError:
+                    continue
+    except Exception:
+        pass
+
+    return events
+
+
+def extract_module_ids_from_event(event: dict[str, Any]) -> list[str]:
+    """Extract module IDs from a query event.
+
+    Returns module names from communities_loaded in retrieval summary.
+
+    Args:
+        event: Query event dictionary
+
+    Returns:
+        List of module identifiers
+    """
+    modules = []
+    summary = event.get("retrieval_summary", {})
+    communities = summary.get("communities_loaded", [])
+
+    for comm_id in communities:
+        if comm_id >= 0:
+            modules.append(f"community_{comm_id}")
+
+    return modules
+
+
+def build_cooccurrence_index(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build cooccurrence patterns from query events.
+
+    Analyzes which modules appear together in successful queries.
+    Patterns are stored as module_pair → count mappings.
+
+    Args:
+        events: List of query events
+
+    Returns:
+        Index dict with cooccurrence patterns and metadata
+    """
+    cooccurrence: dict[str, int] = {}
+    module_frequency: dict[str, int] = {}
+
+    for event in events:
+        modules = extract_module_ids_from_event(event)
+        if not modules:
+            continue
+
+        # Count module frequencies
+        for mod in modules:
+            module_frequency[mod] = module_frequency.get(mod, 0) + 1
+
+        # Count pairwise cooccurrences
+        for i, mod_a in enumerate(modules):
+            for mod_b in modules[i + 1 :]:
+                # Canonicalize pair (alphabetical order)
+                pair = "|".join(sorted([mod_a, mod_b]))
+                cooccurrence[pair] = cooccurrence.get(pair, 0) + 1
+
+    return {
+        "metadata": {
+            "version": "1",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "events_analyzed": len(events),
+            "patterns_learned": len(cooccurrence),
+        },
+        "cooccurrence": cooccurrence,
+        "module_frequency": module_frequency,
+    }
+
+
+def write_learned_patterns(
+    project_path: str | Path, index: dict[str, Any]
+) -> Path:
+    """Write learned patterns to project's patterns file.
+
+    Args:
+        project_path: Path to project root
+        index: Cooccurrence index from build_cooccurrence_index()
+
+    Returns:
+        Path to written patterns file
+    """
+    project_path = Path(project_path)
+    patterns_dir = project_path / ".neuralmind"
+    patterns_dir.mkdir(parents=True, exist_ok=True)
+
+    patterns_file = patterns_dir / "learned_patterns.json"
+    with patterns_file.open("w", encoding="utf-8") as f:
+        json.dump(index, f, indent=2)
+
+    return patterns_file
