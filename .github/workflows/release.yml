@@ -176,32 +176,8 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create Release
+      - name: Attach dist artifacts to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: NeuralMind v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## NeuralMind v${{ steps.get_version.outputs.VERSION }}
-
-            ### Installation
-
-            ```bash
-            pip install neuralmind==${{ steps.get_version.outputs.VERSION }}
-            ```
-
-            ### What's Changed
-
-            See [CHANGELOG.md](CHANGELOG.md) for details.
-
-            ### Links
-
-            - [PyPI](https://pypi.org/project/neuralmind/${{ steps.get_version.outputs.VERSION }}/)
-            - [Documentation](https://github.com/dfrostar/neuralmind#readme)
           files: |
             dist/*
-          draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
