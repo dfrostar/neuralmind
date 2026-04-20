@@ -201,14 +201,12 @@ class GraphEmbedder(EmbeddingBackend):
                     )
                     existing_ids = existing.get("ids", [])
                     existing_meta = (existing.get("metadatas") or [{}])[0]
+                    if not isinstance(existing_meta, dict):
+                        existing_meta = {}
                     existing_doc = (existing.get("documents") or [""])[0]
                     if existing_ids:
-                        old_hash = (
-                            existing_meta.get("content_hash", "")
-                            if isinstance(existing_meta, dict)
-                            else ""
-                        )
-                        if old_hash == meta["content_hash"] or existing_doc == text:
+                        old_hash = existing_meta.get("content_hash", "")
+                        if (old_hash and old_hash == meta["content_hash"]) or existing_doc == text:
                             stats["skipped"] += 1
                             continue
                         stats["updated"] += 1
