@@ -27,7 +27,6 @@ class EmbeddingBackend(ABC):
     @abstractmethod
     def project_path(self) -> Path:
         """Get the project path."""
-        pass
 
     @abstractmethod
     def load_graph(self) -> bool:
@@ -37,7 +36,6 @@ class EmbeddingBackend(ABC):
         Returns:
             True if loaded successfully, False otherwise
         """
-        pass
 
     @abstractmethod
     def embed_nodes(
@@ -52,7 +50,6 @@ class EmbeddingBackend(ABC):
         Returns:
             Dictionary with counts: {'added': int, 'updated': int, 'skipped': int}
         """
-        pass
 
     @abstractmethod
     def search(
@@ -72,7 +69,6 @@ class EmbeddingBackend(ABC):
         Returns:
             List of results with 'id', 'text', 'metadata', 'distance'/'score'
         """
-        pass
 
     @abstractmethod
     def get_community_summary(
@@ -88,31 +84,25 @@ class EmbeddingBackend(ABC):
         Returns:
             Dictionary with 'id', 'summary', 'node_count', 'nodes'
         """
-        pass
 
     @abstractmethod
     def get_file_nodes(self, source_file: str) -> list[dict]:
         """Get all nodes from a source file."""
-        pass
 
     @abstractmethod
     def get_file_edges(
         self, source_file: str, node_ids: set[str] | None = None
     ) -> list[dict]:
         """Get edges (dependencies) for a source file."""
-        pass
 
     @abstractmethod
     def get_stats(self) -> dict[str, Any]:
         """Get index statistics (total nodes, communities, etc.)."""
-        pass
 
     @abstractmethod
     def clear(self) -> None:
         """Clear all embeddings."""
-        pass
 
     @abstractmethod
     def close(self) -> None:
         """Close connections and cleanup."""
-        pass

@@ -1,8 +1,8 @@
+
 import httpx
-import json
-from typing import Any, Dict, Iterator
 
 from .config import CONFIG
+
 
 class OllamaClient:
     """Client for interacting with a local Ollama server."""

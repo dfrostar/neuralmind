@@ -7,11 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 from neuralmind.hooks import (
-    BLOCK_KEY,
-    _hook_block,
     _is_neuralmind_block,
     install_hooks,
     run_hook,
