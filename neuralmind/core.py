@@ -26,8 +26,8 @@ from datetime import datetime
 from pathlib import Path
 
 from .context_selector import ContextResult, ContextSelector
-from .config import CONFIG
 from .embedder import GraphEmbedder
+from .memory import log_query_event
 
 
 class NeuralMind:
@@ -138,7 +138,9 @@ class NeuralMind:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        return self.selector.get_query_context(question)
+        result = self.selector.get_query_context(question)
+        log_query_event(self.project_path, question, result)
+        return result
 
     def skeleton(self, file_path: str) -> str:
         """Return a compact skeleton view of a file using graph data.
@@ -194,9 +196,12 @@ class NeuralMind:
 
         # Separate the file-level node (source_location "L1" or label matching filename)
         file_node = next(
-            (n for n in code_nodes
-             if n.get("source_location") == "L1"
-             or n.get("label", "").endswith((".py", ".ts", ".js", ".go", ".rs"))),
+            (
+                n
+                for n in code_nodes
+                if n.get("source_location") == "L1"
+                or n.get("label", "").endswith((".py", ".ts", ".js", ".go", ".rs"))
+            ),
             None,
         )
         function_nodes = [n for n in code_nodes if n is not file_node]
@@ -227,14 +232,14 @@ class NeuralMind:
                 callee_node = next((n for n in function_nodes if n["id"] == callee_id), None)
                 caller_node = next((n for n in function_nodes if n["id"] == caller_id), None)
                 if caller_node and callee_node:
-                    calls_map.setdefault(
-                        caller_node.get("label", caller_id),
-                        []
-                    ).append(callee_node.get("label", callee_id))
+                    calls_map.setdefault(caller_node.get("label", caller_id), []).append(
+                        callee_node.get("label", callee_id)
+                    )
 
         # Cross-file edges
         cross_edges = [
-            e for e in edges
+            e
+            for e in edges
             if e.get("relation") in ("shares_data_with", "imports_from", "implements", "uses")
             and (
                 (e.get("_src") in node_ids) != (e.get("_tgt") in node_ids)
@@ -289,9 +294,7 @@ class NeuralMind:
                     inside_id,
                 )
                 score_str = f" {score}" if score else ""
-                lines.append(
-                    f"{inside_label} {rel} → {outside_id} ({conf}{score_str})"
-                )
+                lines.append(f"{inside_label} {rel} → {outside_id} ({conf}{score_str})")
 
         lines.append("")
         lines.append("[Full source available: Read this file with NEURALMIND_BYPASS=1]")

@@ -10,6 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from neuralmind import memory
 from neuralmind.core import NeuralMind, create_mind
 
 
@@ -33,6 +34,7 @@ def cmd_build(args):
 
 
 def cmd_query(args):
+    _maybe_prompt_for_memory_opt_in()
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.query(args.question)
     if args.json:
@@ -50,6 +52,23 @@ def cmd_query(args):
         print("=" * 60)
         print(result.context)
         print("=" * 60)
+
+
+def _maybe_prompt_for_memory_opt_in():
+    is_tty = sys.stdin.isatty() and sys.stdout.isatty()
+    if not memory.should_prompt_for_consent(is_tty=is_tty):
+        return
+
+    print(
+        "NeuralMind can keep local query memory (project + global JSONL) "
+        "to improve future retrieval."
+    )
+    enabled = memory.prompt_for_memory_consent()
+    memory.write_consent_sentinel(enabled)
+    if enabled:
+        print("NeuralMind memory logging enabled.")
+    else:
+        print("NeuralMind memory logging disabled.")
 
 
 def cmd_wakeup(args):
@@ -117,10 +136,25 @@ def cmd_stats(args):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
 
 
+def cmd_learn(args):
+    project_path = Path(args.project_path).resolve()
+    if memory.is_learning_disabled():
+        print("Learning is disabled (NEURALMIND_LEARNING=0). No-op.")
+        return
+
+    project_events = memory.count_events(memory.project_query_events_file(project_path))
+    global_events = memory.count_events(memory.global_query_events_file())
+
+    print(f"Learning scaffold ready for: {project_path}")
+    print("No model training runs in this MVP; memory collection is prepared.")
+    print(f"Project memory events: {project_events}")
+    print(f"Global memory events: {global_events}")
+
 
 def cmd_skeleton(args):
     """Return a graph-backed compact view of a file."""
     from .core import create_mind
+
     mind = create_mind(args.project_path, auto_build=True)
     skeleton = mind.skeleton(args.file_path)
     if not skeleton:
@@ -131,7 +165,11 @@ def cmd_skeleton(args):
             print("Build the graph first: neuralmind build .")
         sys.exit(1)
     if args.json:
-        print(json.dumps({"file": args.file_path, "skeleton": skeleton, "chars": len(skeleton)}, indent=2))
+        print(
+            json.dumps(
+                {"file": args.file_path, "skeleton": skeleton, "chars": len(skeleton)}, indent=2
+            )
+        )
     else:
         print(skeleton)
 
@@ -139,6 +177,7 @@ def cmd_skeleton(args):
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
+
     scope = "global" if args.global_ else "project"
     project_path = args.project_path if scope == "project" else None
     try:
@@ -162,6 +201,7 @@ def cmd_install_hooks(args):
 def cmd_hook(args):
     """Internal: runtime entrypoint invoked by Claude Code hooks."""
     from .hooks import run_hook
+
     sys.exit(run_hook(args.action))
 
 
@@ -280,8 +320,16 @@ def main():
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
 
+    learn_p = subparsers.add_parser(
+        "learn", help="Run continual learning scaffold (safe no-op for MVP)"
+    )
+    learn_p.add_argument("project_path")
+    learn_p.set_defaults(func=cmd_learn)
+
     # Init-hook command
-    init_parser = subparsers.add_parser("init-hook", help="Initialize Git post-commit hook for auto-updates")
+    init_parser = subparsers.add_parser(
+        "init-hook", help="Initialize Git post-commit hook for auto-updates"
+    )
     init_parser.add_argument(
         "project_path",
         type=str,
@@ -298,7 +346,8 @@ def main():
     )
     skel_p.add_argument("file_path", help="File to show skeleton for")
     skel_p.add_argument(
-        "--project-path", default=".",
+        "--project-path",
+        default=".",
         help="Project root (default: current directory)",
     )
     skel_p.add_argument("--json", "-j", action="store_true")
@@ -310,15 +359,20 @@ def main():
         help="Install/uninstall Claude Code PostToolUse compression hooks",
     )
     hooks_p.add_argument(
-        "project_path", nargs="?", default=".",
+        "project_path",
+        nargs="?",
+        default=".",
         help="Project root (used when --global not set). Default: current dir",
     )
     hooks_p.add_argument(
-        "--global", dest="global_", action="store_true",
+        "--global",
+        dest="global_",
+        action="store_true",
         help="Install hooks in ~/.claude/settings.json (affects all projects)",
     )
     hooks_p.add_argument(
-        "--uninstall", action="store_true",
+        "--uninstall",
+        action="store_true",
         help="Remove neuralmind hooks, preserve other hooks",
     )
     hooks_p.set_defaults(func=cmd_install_hooks)

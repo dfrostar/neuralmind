@@ -1,7 +1,7 @@
 """Tests for NeuralMind core functionality."""
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestNeuralMindInit:
@@ -246,6 +246,18 @@ class TestNeuralMindQuery:
 
         assert mind._built is True
         assert result.context is not None
+
+    def test_query_logs_memory_event(self, temp_project, mock_chromadb):
+        """Test that query attempts to log a memory event."""
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.build()
+
+        with patch("neuralmind.core.log_query_event") as mock_log:
+            result = mind.query("test memory log")
+
+        mock_log.assert_called_once_with(mind.project_path, "test memory log", result)
 
 
 class TestNeuralMindSearch:
