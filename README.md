@@ -71,6 +71,8 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton tools/voiceover.py
 ```
 
+👉 **[See Setup-Guide in Wiki for detailed first-time setup instructions across all platforms (Claude, Copilot, Cursor, VSCode, etc.)](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)**
+
 ## 🔌 Compatibility
 
 NeuralMind has multiple components with different compatibility. Use what fits your workflow:
