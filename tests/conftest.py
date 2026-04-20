@@ -174,7 +174,7 @@ def empty_project() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_chromadb(mocker):
     """Mock ChromaDB for tests that don't need real embeddings."""
     mock_client = mocker.MagicMock()
@@ -201,10 +201,14 @@ def mock_chromadb(mocker):
                 "metadata": metas[i] if i < len(metas) and isinstance(metas[i], dict) else {},
             }
 
-    def get(ids=None, include=None, where=None, **kwargs):
+    def get(ids=None, include=None, where=None, limit=None, **kwargs):
         selected_ids = [doc_id for doc_id in (ids or []) if doc_id in records]
         if ids is None:
-            selected_ids = [doc_id for doc_id, rec in records.items() if _matches_where(rec["metadata"], where)]
+            selected_ids = [
+                doc_id for doc_id, rec in records.items() if _matches_where(rec["metadata"], where)
+            ]
+        if isinstance(limit, int) and limit >= 0:
+            selected_ids = selected_ids[:limit]
 
         result: dict[str, Any] = {"ids": selected_ids}
         include_set = set(include or [])
@@ -216,6 +220,9 @@ def mock_chromadb(mocker):
 
     def count():
         return len(records)
+
+    def delete_collection(name=None, **kwargs):
+        records.clear()
 
     def query(query_texts, n_results=10, where=None, include=None, **kwargs):
         query_text = " ".join(query_texts or []).lower()
@@ -252,6 +259,7 @@ def mock_chromadb(mocker):
     mock_collection.get.side_effect = get
     mock_collection.count.side_effect = count
     mock_collection.query.side_effect = query
+    mock_client.delete_collection.side_effect = delete_collection
 
     mocker.patch("chromadb.PersistentClient", return_value=mock_client)
 

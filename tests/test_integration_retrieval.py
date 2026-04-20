@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from neuralmind import NeuralMind, GraphEmbedder
+from neuralmind import GraphEmbedder, NeuralMind
 
 
 @pytest.fixture
