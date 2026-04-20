@@ -253,8 +253,8 @@ Both approaches are valid; the tradeoff is retrieval quality vs. simplicity.
 
 | Approach | Token Reduction | Accuracy | Deps | Learns Over Time |
 |---|---|---|---|---|
-| Heuristic-only (no embeddings) | ~97% | 70-80% top-5 (community baseline) | None | No |
-| NeuralMind | 40-70x | Higher semantic relevance on natural-language queries | ChromaDB | Yes (cooccurrence patterns) |
+| Heuristic-only (no embeddings) | ~33x (~97% fewer tokens) | 70-80% top-5 (community baseline) | None | No |
+| NeuralMind | 40-70x | Project-dependent; evaluate against the same top-5 query set | ChromaDB | Yes (cooccurrence patterns) |
 
 NeuralMind does include a dependency (ChromaDB), but it still runs entirely offline — **no API calls, no cloud services, no data leaves your machine**.
 
@@ -889,7 +889,7 @@ neuralmind query . "question"     # get context for a specific question
 - Heuristic-only baseline (community-reported): **70-80% top-5 retrieval accuracy**
 - NeuralMind target: exceed that baseline on the same query set with semantic retrieval
 
-Use `neuralmind benchmark . --json` for token/cost metrics, then run your project's top-5 relevance evaluation side-by-side against a heuristic-only retriever to publish an apples-to-apples accuracy comparison.
+Use `neuralmind benchmark . --json` for token/cost metrics. For top-5 retrieval accuracy, run a project-specific relevance harness (same labeled query set for both systems) and compare NeuralMind vs a heuristic-only retriever side-by-side for an apples-to-apples accuracy report.
 
 ---
 
