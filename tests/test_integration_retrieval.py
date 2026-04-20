@@ -216,8 +216,7 @@ class TestRetrievalPipeline:
         assert len(skeleton) > 0
         assert any("auth" in str(node).lower() for node in skeleton)
 
-    @pytest.mark.skip(reason="Requires S3 access for ONNX model download (blocked by firewall in CI)")
-    def test_incremental_embedding(self, minimal_project):
+    def test_incremental_embedding(self, minimal_project, mock_chromadb):
         """
         Test that incremental embedding works (only updates changed nodes).
 

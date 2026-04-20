@@ -180,37 +180,78 @@ def mock_chromadb(mocker):
     mock_client = mocker.MagicMock()
     mock_collection = mocker.MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection
+    records: dict[str, dict[str, Any]] = {}
 
-    # Mock query results
-    mock_collection.query.return_value = {
-        "ids": [["node_1", "node_2"]],
-        "distances": [[0.1, 0.2]],
-        "metadatas": [
-            [
-                {"name": "authenticate_user", "type": "function"},
-                {"name": "hash_password", "type": "function"},
-            ]
-        ],
-        "documents": [
-            [
-                "authenticate_user function Validates user credentials",
-                "hash_password function Securely hashes passwords",
-            ]
-        ],
-    }
+    def _matches_where(metadata: dict[str, Any], where: dict[str, Any] | None) -> bool:
+        if not where:
+            return True
+        if "$and" in where:
+            return all(_matches_where(metadata, clause) for clause in where["$and"])
+        for key, value in where.items():
+            if metadata.get(key) != value:
+                return False
+        return True
 
-    # Mock count and get for get_stats()
-    mock_collection.count.return_value = 6
-    mock_collection.get.return_value = {
-        "ids": ["node_1", "node_2"],
-        "metadatas": [
-            {"community": 1, "label": "authenticate_user"},
-            {"community": 1, "label": "hash_password"},
-        ],
-    }
+    def upsert(ids, documents=None, metadatas=None, **kwargs):
+        docs = documents or []
+        metas = metadatas or []
+        for i, doc_id in enumerate(ids or []):
+            records[doc_id] = {
+                "document": docs[i] if i < len(docs) else "",
+                "metadata": metas[i] if i < len(metas) and isinstance(metas[i], dict) else {},
+            }
 
-    # Mock upsert (no-op)
-    mock_collection.upsert.return_value = None
+    def get(ids=None, include=None, where=None, **kwargs):
+        selected_ids = [doc_id for doc_id in (ids or []) if doc_id in records]
+        if ids is None:
+            selected_ids = [doc_id for doc_id, rec in records.items() if _matches_where(rec["metadata"], where)]
+
+        result: dict[str, Any] = {"ids": selected_ids}
+        include_set = set(include or [])
+        if not include or "metadatas" in include_set:
+            result["metadatas"] = [records[doc_id]["metadata"] for doc_id in selected_ids]
+        if not include or "documents" in include_set:
+            result["documents"] = [records[doc_id]["document"] for doc_id in selected_ids]
+        return result
+
+    def count():
+        return len(records)
+
+    def query(query_texts, n_results=10, where=None, include=None, **kwargs):
+        query_text = " ".join(query_texts or []).lower()
+        include_set = set(include or [])
+
+        candidates = [
+            (doc_id, rec)
+            for doc_id, rec in records.items()
+            if _matches_where(rec["metadata"], where)
+        ]
+        scored = []
+        for doc_id, rec in candidates:
+            searchable = (
+                f"{rec['document']} "
+                f"{rec['metadata'].get('label', '')} "
+                f"{rec['metadata'].get('source_file', '')}"
+            ).lower()
+            overlap = sum(1 for token in query_text.split() if token and token in searchable)
+            distance = 1.0 / (1 + overlap)
+            scored.append((distance, doc_id, rec))
+        scored.sort(key=lambda item: (item[0], item[1]))
+        top = scored[:n_results]
+
+        result: dict[str, Any] = {"ids": [[doc_id for _, doc_id, _ in top]]}
+        if not include or "documents" in include_set:
+            result["documents"] = [[rec["document"] for _, _, rec in top]]
+        if not include or "metadatas" in include_set:
+            result["metadatas"] = [[rec["metadata"] for _, _, rec in top]]
+        if not include or "distances" in include_set:
+            result["distances"] = [[distance for distance, _, _ in top]]
+        return result
+
+    mock_collection.upsert.side_effect = upsert
+    mock_collection.get.side_effect = get
+    mock_collection.count.side_effect = count
+    mock_collection.query.side_effect = query
 
     mocker.patch("chromadb.PersistentClient", return_value=mock_client)
 

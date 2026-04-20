@@ -92,7 +92,7 @@ class TestGraphEmbedder:
 
         # Force re-embed
         stats = embedder.embed_nodes(force=True)
-        assert stats["added"] == 6
+        assert stats["updated"] == 6
 
     def test_search_returns_list(self, temp_project):
         """Test that search returns a list."""
