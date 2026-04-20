@@ -13,6 +13,14 @@ class _TTYStringIO(io.StringIO):
         return True
 
 
+def _raise_no_prompt(_: str) -> str:
+    raise RuntimeError("no prompt")
+
+
+def _read_last_jsonl_entry(path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8").strip().splitlines()[-1])
+
+
 class TestConsent:
     def test_non_interactive_defaults_to_disabled(self, tmp_path, monkeypatch):
         monkeypatch.setenv("NEURALMIND_HOME", str(tmp_path / "global"))
@@ -40,9 +48,7 @@ class TestConsent:
         assert payload["opted_in"] is True
         assert payload["source"] == "prompt"
 
-        monkeypatch.setattr(
-            "builtins.input", lambda _: (_ for _ in ()).throw(RuntimeError("no prompt"))
-        )
+        monkeypatch.setattr("builtins.input", _raise_no_prompt)
         assert ensure_implicit_learning_consent() is True
 
 
@@ -70,8 +76,8 @@ class TestImplicitMemoryLogging:
 
         assert global_log.exists()
         assert project_log.exists()
-        global_event = json.loads(global_log.read_text(encoding="utf-8").strip().splitlines()[-1])
-        project_event = json.loads(project_log.read_text(encoding="utf-8").strip().splitlines()[-1])
+        global_event = _read_last_jsonl_entry(global_log)
+        project_event = _read_last_jsonl_entry(project_log)
         assert global_event["event"] == "query"
         assert project_event["details"]["question"] == "how auth works"
 
@@ -122,7 +128,7 @@ class TestCoreIntegration:
         mind = NeuralMind(str(tmp_path))
         mind._built = True
         mind.selector = SimpleNamespace()
-        monkeypatch.setattr(mind.embedder, "search", lambda query, n=10, **kwargs: [{"id": "node"}])
+        monkeypatch.setattr(mind.embedder, "search", lambda query, n, **kwargs: [{"id": "node"}])
 
         log_mock = MagicMock()
         monkeypatch.setattr(mind, "_log_interaction", log_mock)

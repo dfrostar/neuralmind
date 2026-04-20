@@ -22,11 +22,16 @@ Usage:
     print(f"Token reduction: {result.reduction_ratio:.1f}x")
 """
 
+import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .context_selector import ContextResult, ContextSelector
 from .embedder import GraphEmbedder
+from .memory import log_implicit_learning_event
+
+logger = logging.getLogger(__name__)
 
 
 class NeuralMind:
@@ -110,14 +115,13 @@ class NeuralMind:
         if not self._built or self.selector is None:
             self.build()
 
-    def _log_interaction(self, event: str, details: dict | None = None) -> None:
+    def _log_interaction(self, event: str, details: dict[str, Any] | None = None) -> None:
         """Best-effort local interaction logging for continual learning."""
         try:
-            from .memory import log_implicit_learning_event
-
             log_implicit_learning_event(self.project_path, event=event, details=details)
-        except Exception:
+        except Exception as exc:
             # Never block core retrieval flows on logging.
+            logger.debug("Implicit interaction logging skipped: %s", exc)
             return
 
     def wakeup(self) -> ContextResult:

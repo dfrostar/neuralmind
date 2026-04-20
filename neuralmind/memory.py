@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from typing import Any
 CONSENT_SENTINEL = "continual_learning_consent.json"
 GLOBAL_MEMORY_FILE = "implicit_learning.jsonl"
 PROJECT_MEMORY_FILE = "implicit_learning.jsonl"
+logger = logging.getLogger(__name__)
 
 
 def global_neuralmind_home() -> Path:
@@ -34,7 +36,7 @@ def _read_consent_state(path: Path) -> bool | None:
         return None
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
+    except (OSError, ValueError, json.JSONDecodeError):
         return None
     opted_in = payload.get("opted_in")
     if isinstance(opted_in, bool):
@@ -57,6 +59,12 @@ def ensure_implicit_learning_consent() -> bool:
 
     Returns:
         True when logging is allowed, False otherwise.
+
+    Environment control:
+        NEURALMIND_IMPLICIT_LEARNING_OPT_IN accepts truthy values
+        "1", "true", "yes", "y", "on" to opt in.
+        If set to any other value, logging is disabled.
+        If unset, interactive TTY sessions are prompted once.
     """
     sentinel = consent_sentinel_path()
     saved = _read_consent_state(sentinel)
@@ -75,9 +83,12 @@ def ensure_implicit_learning_consent() -> bool:
     if not (stdin and stdout and stdin.isatty() and stdout.isatty()):
         return False
 
-    print("\nNeuralMind can optionally log local interaction memory for continual learning.")
-    print(f"Stored only on this machine in: {global_neuralmind_home()} and <project>/.neuralmind")
-    answer = input("Enable implicit continual-learning memory logging? [y/N]: ").strip().lower()
+    answer = input(
+        "\nNeuralMind can optionally log local interaction memory for continual learning.\n"
+        f"Stored only on this machine in: {global_neuralmind_home()} and each project's "
+        ".neuralmind directory.\n"
+        "Enable implicit continual learning memory logging? [y/N] (default: No): "
+    ).strip().lower()
     opted_in = answer in {"y", "yes"}
     _write_consent_state(sentinel, opted_in=opted_in, source="prompt")
     return opted_in
@@ -114,5 +125,6 @@ def log_implicit_learning_event(
             project_neuralmind_home(project_root) / "memory" / PROJECT_MEMORY_FILE, payload
         )
         return True
-    except Exception:
+    except OSError as exc:
+        logger.debug("Could not write implicit learning event: %s", exc)
         return False
