@@ -21,6 +21,8 @@ Token Budget Management:
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .reranker import CooccurrenceIndex, SemanticReranker
+
 
 @dataclass
 class TokenBudget:
@@ -87,13 +89,14 @@ class ContextSelector:
     # Chars per token estimate
     CHARS_PER_TOKEN = 4
 
-    def __init__(self, embedder, project_path: str = None):
+    def __init__(self, embedder, project_path: str = None, enable_reranking: bool = True):
         """
         Initialize context selector.
 
         Args:
             embedder: GraphEmbedder instance with loaded embeddings
             project_path: Path to project root (for reading metadata files)
+            enable_reranking: If True, apply learned patterns to rerank L3 search results
         """
         self.embedder = embedder
         # Handle project_path - can be string, Path, or get from embedder
@@ -109,6 +112,11 @@ class ContextSelector:
             )
         else:
             self.project_path = Path.cwd()
+
+        # Reranking configuration
+        self.enable_reranking = enable_reranking
+        self._reranker: SemanticReranker | None = None
+        self._context_modules: list[str] = []
 
         # Cache for layer content
         self._l0_cache: str | None = None
@@ -131,6 +139,15 @@ class ContextSelector:
         if self._graph_stats is None:
             self._graph_stats = self.embedder.get_stats()
         return self._graph_stats
+
+    def _get_reranker(self) -> SemanticReranker:
+        """Lazy-load reranker with learned patterns."""
+        if self._reranker is None:
+            # Load learned patterns from project
+            patterns_file = self.project_path / ".neuralmind" / "learned_patterns.json"
+            index = CooccurrenceIndex.load(patterns_file)
+            self._reranker = SemanticReranker(index)
+        return self._reranker
 
     def _load_project_identity(self) -> tuple[str, str]:
         """
@@ -281,6 +298,15 @@ class ContextSelector:
         if not search_results:
             return "", []
 
+        # Track module IDs for L3 reranking context
+        self._context_modules = []
+        for result in search_results:
+            meta = result.get("metadata", {})
+            # Prefer source_file, fall back to community, fall back to label
+            module = meta.get("source_file") or f"community_{meta.get('community', -1)}" or meta.get("label", "")
+            if module:
+                self._context_modules.append(module)
+
         # Count community hits
         community_scores: dict[int, float] = {}
         for result in search_results:
@@ -325,6 +351,7 @@ class ContextSelector:
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
+        Optionally applies learned reranking if patterns are available.
 
         Returns:
             Tuple of (search_results_text, number of hits)
@@ -334,13 +361,23 @@ class ContextSelector:
         if not results:
             return "", 0
 
+        # Apply reranking if enabled
+        if self.enable_reranking:
+            reranker = self._get_reranker()
+            if reranker.enabled:
+                results = reranker.rerank(results, context_modules=self._context_modules)
+
         parts = ["## Search Results", ""]
 
         for i, result in enumerate(results, 1):
             meta = result.get("metadata", {})
             score = result.get("score", 0)
+            boost = result.get("_reranker_boost", 0.0)
 
-            parts.append(f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f})")
+            # Show boost in label if applied
+            boost_label = f" (+{boost:.2f} boost)" if boost > 0 else ""
+
+            parts.append(f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f}{boost_label})")
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
             parts.append("")

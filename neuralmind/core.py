@@ -38,16 +38,18 @@ class NeuralMind:
     Achieves 6-49x token reduction through progressive disclosure.
     """
 
-    def __init__(self, project_path: str, db_path: str = None):
+    def __init__(self, project_path: str, db_path: str = None, enable_reranking: bool = True):
         """
         Initialize NeuralMind for a project.
 
         Args:
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
+            enable_reranking: If True, apply learned patterns to rerank search results
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
+        self.enable_reranking = enable_reranking
 
         # Initialize components
         self.embedder = GraphEmbedder(project_path, db_path)
@@ -82,8 +84,8 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Initialize selector
-        self.selector = ContextSelector(self.embedder, str(self.project_path))
+        # Initialize selector with reranking
+        self.selector = ContextSelector(self.embedder, str(self.project_path), enable_reranking=self.enable_reranking)
 
         # Get final stats
         final_stats = self.embedder.get_stats()
