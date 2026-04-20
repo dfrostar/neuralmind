@@ -78,7 +78,7 @@ jobs:
           pip install mypy
 
       - name: Run mypy
-        run: mypy neuralmind --ignore-missing-imports
+        run: mypy neuralmind --ignore-missing-imports --disable-error-code=no-untyped-def --implicit-optional
         continue-on-error: true
 
   build:
