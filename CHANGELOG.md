@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.4] - 2026-04-20
+
+### Documentation
+
+- **CLI Reference** — Corrected all CLI flag documentation to match the actual implementation
+  - Removed non-existent `--verbose`, `--export`, `--db-path`, `--type`, `--community`, `--queries` flags
+  - Renamed `--limit` to `--n` for the `search` command (matches implementation)
+  - Removed unsupported `--quiet` flag from `build` examples in Usage and Integration guides
+- **Installation Guide** — Added missing `toml>=0.10` core dependency; fixed `python -m neuralmind` references to use the installed `neuralmind` entry point
+- **Troubleshooting** — Fixed `python -m neuralmind` reference and removed non-existent `--verbose` option from examples
+- **Setup Guide** — Created missing `docs/wiki/Setup-Guide.md`, fixing broken link referenced in Home and README
+- **README** — Updated "What's New" to reflect the full v0.3.x feature set including 0.3.3 stability fixes
+
+### Changed
+- Version bumped from 0.3.3.2 → 0.3.4 for this documentation polish release
+
+---
+
 ## [0.3.3.2] - 2026-04-20
 
 ### Fixed

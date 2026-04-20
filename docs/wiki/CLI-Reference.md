@@ -13,6 +13,10 @@ Complete command-line interface documentation for NeuralMind.
   - [search](#search)
   - [benchmark](#benchmark)
   - [stats](#stats)
+  - [learn](#learn)
+  - [skeleton](#skeleton)
+  - [install-hooks](#install-hooks)
+  - [init-hook](#init-hook)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -69,8 +73,7 @@ neuralmind build <project_path> [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--force` | False | Force re-embedding of all nodes, even if unchanged |
-| `--db-path` | Auto | Custom path for ChromaDB storage |
+| `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
 
 #### Output
 
@@ -89,9 +92,6 @@ neuralmind build /path/to/project
 
 # Force complete rebuild
 neuralmind build /path/to/project --force
-
-# Custom database location
-neuralmind build /path/to/project --db-path /custom/path/db
 ```
 
 #### Prerequisites
@@ -121,8 +121,7 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | False | Output results as JSON |
-| `--verbose` | False | Include detailed layer breakdown |
+| `--json`, `-j` | False | Output results as JSON |
 
 #### Output
 
@@ -138,11 +137,8 @@ Returns:
 # Basic query
 neuralmind query /path/to/project "How does authentication work?"
 
-# Query with JSON output
+# JSON output
 neuralmind query /path/to/project "What are the main API endpoints?" --json
-
-# Verbose output with layer details
-neuralmind query /path/to/project "Explain the database models" --verbose
 ```
 
 #### Sample Output
@@ -186,8 +182,7 @@ neuralmind wakeup <project_path> [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | False | Output results as JSON |
-| `--export` | None | Export context to file path |
+| `--json`, `-j` | False | Output results as JSON |
 
 #### Output
 
@@ -202,8 +197,8 @@ Returns L0 (Identity) + L1 (Summary) context, typically ~600 tokens, suitable fo
 # Get wake-up context
 neuralmind wakeup /path/to/project
 
-# Export to file
-neuralmind wakeup /path/to/project --export context.md
+# Redirect to file
+neuralmind wakeup /path/to/project > context.md
 
 # JSON format
 neuralmind wakeup /path/to/project --json
@@ -256,10 +251,8 @@ neuralmind search <project_path> "<query>" [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--limit` | 10 | Maximum number of results |
-| `--type` | All | Filter by node type (function, class, file, etc.) |
-| `--community` | All | Filter by community ID |
-| `--json` | False | Output results as JSON |
+| `--n` | 10 | Maximum number of results |
+| `--json`, `-j` | False | Output results as JSON |
 
 #### Output
 
@@ -267,7 +260,6 @@ Returns matching code entities with:
 - Entity name and type
 - Similarity score (0-1)
 - File path
-- Brief description
 - Community membership
 
 #### Examples
@@ -276,14 +268,8 @@ Returns matching code entities with:
 # Basic search
 neuralmind search /path/to/project "authentication"
 
-# Limited results
-neuralmind search /path/to/project "database connection" --limit 5
-
-# Filter by type
-neuralmind search /path/to/project "validate" --type function
-
-# Filter by community
-neuralmind search /path/to/project "user" --community 5
+# Limit results
+neuralmind search /path/to/project "database connection" --n 5
 
 # JSON output
 neuralmind search /path/to/project "API endpoint" --json
@@ -333,8 +319,7 @@ neuralmind benchmark <project_path> [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--queries` | Default set | Custom queries (comma-separated) |
-| `--json` | False | Output results as JSON |
+| `--json`, `-j` | False | Output results as JSON |
 
 #### Output
 
@@ -349,9 +334,6 @@ Comprehensive benchmark report including:
 ```bash
 # Run default benchmark
 neuralmind benchmark /path/to/project
-
-# Custom queries
-neuralmind benchmark /path/to/project --queries "How does auth work?,What are the API routes?"
 
 # JSON output
 neuralmind benchmark /path/to/project --json
@@ -400,8 +382,7 @@ neuralmind stats <project_path> [OPTIONS]
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--json` | False | Output as JSON |
-| `--verbose` | False | Include detailed breakdowns |
+| `--json`, `-j` | False | Output as JSON |
 
 #### Output
 
@@ -417,9 +398,6 @@ Displays:
 ```bash
 # Basic stats
 neuralmind stats /path/to/project
-
-# Verbose output
-neuralmind stats /path/to/project --verbose
 
 # JSON format
 neuralmind stats /path/to/project --json
@@ -458,6 +436,144 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 
 ---
 
+### learn
+
+Analyze query history to discover cooccurrence patterns and improve future search relevance.
+
+```bash
+neuralmind learn <project_path>
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+
+#### Examples
+
+```bash
+neuralmind learn .
+neuralmind learn /path/to/project
+```
+
+After collecting 5–10 queries, this command:
+1. Reads `.neuralmind/memory/query_events.jsonl`
+2. Finds which modules frequently appear together
+3. Saves patterns to `.neuralmind/learned_patterns.json`
+4. Future queries automatically apply boosted reranking
+
+**Note:** Learning must be enabled (not blocked by `NEURALMIND_LEARNING=0`).
+
+---
+
+### skeleton
+
+Print a compact graph-backed view of a file — functions, rationales, and call graph — without loading the full source.
+
+```bash
+neuralmind skeleton <file_path> [--project-path .] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `file_path` | Yes | Path to the source file (absolute or project-relative) |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--project-path` | `.` | Project root directory |
+| `--json`, `-j` | False | Output as JSON |
+
+#### Examples
+
+```bash
+# Skeleton for a file in the current project
+neuralmind skeleton src/auth/handlers.py
+
+# Skeleton with explicit project root
+neuralmind skeleton src/auth/handlers.py --project-path /path/to/project
+
+# JSON output
+neuralmind skeleton src/auth/handlers.py --json
+```
+
+---
+
+### install-hooks
+
+Install or uninstall Claude Code PostToolUse compression hooks that automatically compress Read/Bash/Grep output.
+
+```bash
+neuralmind install-hooks [project_path] [--global] [--uninstall]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory). Ignored when `--global` is set |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--global` | False | Install hooks in `~/.claude/settings.json` (all projects) |
+| `--uninstall` | False | Remove NeuralMind hooks while preserving other tools' hooks |
+
+#### Examples
+
+```bash
+# Install hooks for current project
+neuralmind install-hooks .
+
+# Install hooks globally
+neuralmind install-hooks --global
+
+# Uninstall project hooks
+neuralmind install-hooks --uninstall
+
+# Uninstall global hooks
+neuralmind install-hooks --uninstall --global
+```
+
+**Bypass temporarily:**
+
+```bash
+NEURALMIND_BYPASS=1 claude-code ...
+```
+
+---
+
+### init-hook
+
+Install (or update) a Git post-commit hook that rebuilds the neural index automatically after every commit. Safe and idempotent — re-running only updates the NeuralMind block without touching other hooks.
+
+```bash
+neuralmind init-hook [project_path]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+
+#### Examples
+
+```bash
+# Install hook in current project
+neuralmind init-hook .
+
+# Install hook for a specific project
+neuralmind init-hook /path/to/project
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -475,10 +591,9 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NEURALMIND_DB_PATH` | Auto | Default database path |
-| `NEURALMIND_LOG_LEVEL` | INFO | Logging verbosity (DEBUG, INFO, WARNING, ERROR) |
-| `CHROMADB_HOST` | None | Remote ChromaDB host (for distributed setups) |
-| `CHROMADB_PORT` | None | Remote ChromaDB port |
+| `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
+| `NEURALMIND_LEARNING` | `1` | Set to `0` to disable continual learning |
+| `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 
 ---
 
@@ -503,7 +618,7 @@ neuralmind wakeup ~/projects/myapp > context.md
 neuralmind query ~/projects/myapp "How does the payment system work?"
 
 # 6. Search for specific entities
-neuralmind search ~/projects/myapp "PaymentController" --limit 5
+neuralmind search ~/projects/myapp "PaymentController" --n 5
 
 # 7. Run benchmark
 neuralmind benchmark ~/projects/myapp

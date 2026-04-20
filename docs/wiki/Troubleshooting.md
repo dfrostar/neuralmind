@@ -37,9 +37,6 @@ python -c "import site; print(site.USER_BASE + '/bin')"
 # Add to PATH (Linux/macOS)
 export PATH="$HOME/.local/bin:$PATH"
 
-# Or run as module
-python -m neuralmind --help
-
 # If using virtual environment, ensure it's activated
 source venv/bin/activate  # Linux/macOS
 venv\Scripts\activate     # Windows
@@ -256,7 +253,7 @@ neuralmind query /path/to/project "your question"
 neuralmind query /path "How does JWT authentication work?"  # Instead of "auth"
 
 # Use search to understand what's indexed
-neuralmind search /path "authentication" --limit 20
+neuralmind search /path "authentication" --n 20
 
 # Check graph quality
 cat /path/graphify-out/GRAPH_REPORT.md
@@ -278,9 +275,6 @@ neuralmind build /path --force
 **Solutions**:
 
 ```bash
-# Check token breakdown
-neuralmind query /path "your question" --verbose
-
 # For minimal context, use wakeup
 neuralmind wakeup /path  # L0 + L1 only
 
@@ -332,14 +326,8 @@ graphify update /path
 **Solutions**:
 
 ```bash
-# Test server manually
-neuralmind-mcp
-
-# Check if command exists
-which neuralmind-mcp
-
-# Try running as module
-python -m neuralmind.mcp_server
+# Test the same operation via CLI first
+neuralmind query /path/to/project "test question"
 
 # Check for port conflicts
 lsof -i :8080  # If using custom port

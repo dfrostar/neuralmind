@@ -71,7 +71,7 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton tools/voiceover.py
 ```
 
-## ✨ What's New in v0.3.2
+## ✨ What's New in v0.3.x
 
 **Complete Learning Loop** — Collect → Analyze → Improve 🔄
 
@@ -79,13 +79,15 @@ neuralmind skeleton tools/voiceover.py
 |---------|--------|---------|
 | **Memory Collection** | ✅ v0.3.0 | Local JSONL storage for queries (project + global) |
 | **Opt-in Consent** | ✅ v0.3.0 | One-time TTY-only prompt, respects env vars |
+| **EmbeddingBackend** | ✅ v0.3.1 | Abstraction layer — future Pinecone/Weaviate support |
 | **Pattern Learning** | ✅ v0.3.2 | `neuralmind learn .` analyzes cooccurrence patterns |
 | **Smart Reranking** | ✅ v0.3.2 | Improves context ranking by module relationships |
 | **Automatic Boosting** | ✅ v0.3.2 | Next query applies learned patterns automatically |
+| **Accurate Build Stats** | ✅ v0.3.3 | Correctly distinguishes added vs updated nodes on force-rebuild |
 
 **How it works:**
 1. **Collect** (v0.3.0) — After queries, NeuralMind logs which modules matter
-2. **Learn** (v0.3.2) — Run `neuralmind learn .` to analyze patterns  
+2. **Learn** (v0.3.2) — Run `neuralmind learn .` to analyze patterns
 3. **Improve** (v0.3.2) — Next queries automatically boost related modules
 4. **Repeat** — System gets smarter as you query more
 
@@ -281,8 +283,8 @@ Unlike Pith's regex-based skeletonization, NeuralMind uses the semantic graph yo
 ```bash
 # .git/hooks/post-commit
 #!/bin/bash
-graphify update . --quiet
-neuralmind build . --quiet
+graphify update . 2>/dev/null
+neuralmind build . 2>/dev/null
 ```
 
 ### Cron Job
