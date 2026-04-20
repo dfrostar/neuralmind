@@ -174,7 +174,7 @@ def empty_project() -> Generator[Path, None, None]:
         yield Path(tmpdir)
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_chromadb(mocker):
     """Mock ChromaDB for tests that don't need real embeddings."""
     mock_client = mocker.MagicMock()
@@ -193,6 +193,10 @@ def mock_chromadb(mocker):
         return True
 
     def upsert(ids, documents=None, metadatas=None, **kwargs):
+        if documents is not None and len(documents) != len(ids or []):
+            raise ValueError("documents length must match ids length")
+        if metadatas is not None and len(metadatas) != len(ids or []):
+            raise ValueError("metadatas length must match ids length")
         docs = documents or []
         metas = metadatas or []
         for i, doc_id in enumerate(ids or []):

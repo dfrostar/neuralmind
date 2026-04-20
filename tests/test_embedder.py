@@ -3,6 +3,10 @@
 import json
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.usefixtures("mock_chromadb")
+
 
 class TestGraphEmbedder:
     """Tests for GraphEmbedder class."""

@@ -14,6 +14,8 @@ import pytest
 
 from neuralmind import GraphEmbedder, NeuralMind
 
+pytestmark = pytest.mark.usefixtures("mock_chromadb")
+
 
 @pytest.fixture
 def minimal_project():
