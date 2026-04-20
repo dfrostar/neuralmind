@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.3.1] - 2026-04-20
+
+### Fixed
+- **Test expectations** — Fixed all remaining test expectations for embedder stat counting
+  - `test_embed_nodes_force_reembeds` corrected to expect updated count
+
+---
+
 ## [0.3.3] - 2026-04-20
 
 ### Fixed
