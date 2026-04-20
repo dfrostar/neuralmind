@@ -137,6 +137,7 @@ pre-commit install
 |---------|---------|----------|
 | chromadb | ≥0.4.0 | Vector database for embeddings |
 | pyyaml | ≥6.0 | Configuration file parsing |
+| toml | ≥0.10 | TOML configuration file support |
 
 ### Optional Dependencies
 
@@ -283,8 +284,8 @@ neuralmind wakeup .
 # Linux/macOS
 export PATH="$HOME/.local/bin:$PATH"
 
-# Or use python -m
-python -m neuralmind --help
+# Then retry
+neuralmind --help
 ```
 
 #### "No module named 'chromadb'"
