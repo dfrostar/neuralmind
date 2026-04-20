@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "neuralmind"
 version = "0.3.4"
-description = "Adaptive Neural Knowledge System + PostToolUse compression hooks. Two-phase token optimization (retrieval + consumption) for Claude Code."
+description = "Reduce Claude, GPT, and Gemini token costs on code questions by 40-70x. Semantic codebase indexing, MCP server, and PostToolUse compression hooks for Claude Code, Cursor, Cline, and Continue."
 readme = "README.md"
 license = "MIT"
 authors = [
@@ -17,19 +17,54 @@ maintainers = [
 keywords = [
     "ai",
     "llm",
+    "llm-tools",
+    "rag",
+    "code-rag",
     "code-understanding",
+    "code-search",
+    "codebase-indexing",
+    "codebase-search",
+    "repo-map",
     "knowledge-graph",
     "token-reduction",
-    "semantic-search",
-    "mcp",
-    "chromadb",
-    "embeddings",
+    "token-optimization",
+    "reduce-tokens",
+    "claude-token-cost",
+    "llm-cost-optimization",
+    "context-engineering",
     "context-window",
+    "long-context",
+    "semantic-search",
+    "semantic-code-search",
+    "embeddings",
+    "vector-database",
+    "chromadb",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
     "ai-coding-assistant",
+    "ai-coding-agent",
+    "ai-agent",
+    "agent-tools",
+    "claude",
     "claude-code",
+    "claude-desktop",
+    "anthropic",
+    "cursor",
+    "cursor-alternative",
+    "cline",
+    "continue-dev",
+    "aider",
+    "copilot-alternative",
+    "sourcegraph-cody-alternative",
+    "openai",
+    "gpt-4",
+    "gemini",
     "posttooluse-hook",
     "skeleton-view",
-    "output-compression"
+    "output-compression",
+    "developer-tools",
+    "developer-productivity"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

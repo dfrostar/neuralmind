@@ -262,6 +262,25 @@ If your priority is strict zero-dependency operation, heuristic-only is the simp
 
 ---
 
+## ⚖️ NeuralMind vs. Alternatives
+
+Short answers to "why not just use X?". Each row links to a deeper page.
+
+| Compared against | Short verdict |
+|---|---|
+| [Cursor `@codebase`](docs/comparisons/vs-cursor-codebase.md) | Works *only* in Cursor; NeuralMind works in any agent and adds tool-output compression |
+| [Aider repo-map](docs/comparisons/vs-aider-repomap.md) | Aider is syntactic only; NeuralMind adds semantic retrieval and compression |
+| [Sourcegraph Cody](docs/comparisons/vs-cody.md) | Cody is server-hosted and org-wide; NeuralMind is local and per-project |
+| [Continue / Cline](docs/comparisons/vs-continue-cline.md) | Those are agent runtimes; NeuralMind is the context/compression layer underneath |
+| [LangChain / LlamaIndex for code](docs/comparisons/vs-langchain-llamaindex.md) | Frameworks you assemble; NeuralMind is the assembled default for code agents |
+| [Long context windows (1M/2M)](docs/comparisons/vs-long-context.md) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
+| [Generic RAG over a codebase](docs/comparisons/vs-rag.md) | Text chunking loses structure; NeuralMind keeps the call graph |
+| [Tree-sitter / ctags / grep](docs/comparisons/vs-treesitter-ctags.md) | Deterministic but syntactic; use alongside NeuralMind, not instead of |
+
+Full comparison index: [docs/comparisons/](docs/comparisons/README.md).
+
+---
+
 ## 🚀 Quick Start (humans)
 
 ```bash
@@ -895,6 +914,59 @@ For top-5 retrieval accuracy, run a project-specific relevance harness with the 
 
 ---
 
+## ❓ FAQ
+
+### How much does NeuralMind reduce Claude / GPT token costs?
+
+Measured on real repos: **40–70× reduction per query** (see [Benchmarks](#-benchmarks)). For a team running 100 queries/day on Claude Sonnet, that is roughly **$450/month → $7/month**. Exact savings depend on codebase size and model pricing.
+
+### Does NeuralMind work outside Claude Code?
+
+Yes. The CLI works anywhere Python runs; the MCP server works with Cursor, Cline, Continue, Claude Desktop, and any MCP-compatible agent. For non-MCP tools like ChatGPT or Gemini, `neuralmind wakeup . | pbcopy` pipes context into a regular chat window. Only the PostToolUse compression hooks are Claude-Code-specific.
+
+### Does my code leave my machine?
+
+No. NeuralMind is fully offline — no API calls, no cloud services. Embeddings run locally via ChromaDB, and the knowledge graph is stored in `graphify-out/` in your project. Query memory (optional, opt-in) is written to `.neuralmind/` on disk.
+
+### Is this RAG? How is it different from LangChain or LlamaIndex?
+
+It is a form of RAG, but specialized for code. Instead of chunking text, NeuralMind retrieves over a **knowledge graph of code entities** (functions, classes, clusters) with a fixed 4-layer structure. That keeps the call graph intact and produces a token-budgeted output instead of a flat list of chunks. See [vs. LangChain/LlamaIndex](docs/comparisons/vs-langchain-llamaindex.md).
+
+### I have a 1M context window now — do I still need this?
+
+Long context makes it *possible* to stuff a whole repo in; it does not make it *cheap*. You still pay per input token, so a 50K-token repo at Claude Sonnet rates costs ~$0.15 **every turn**. NeuralMind drops that to ~$0.002. See [vs. long context](docs/comparisons/vs-long-context.md).
+
+### Does it support my language?
+
+Any language [graphify](https://github.com/dfrostar/graphify) supports (Python, JavaScript/TypeScript, and others via tree-sitter). NeuralMind consumes `graphify-out/graph.json` — if graphify can index it, NeuralMind can query it.
+
+### What is the difference between `wakeup`, `query`, and `skeleton`?
+
+- **`wakeup`** — ~400 tokens of project orientation (L0 + L1). Run it at session start.
+- **`query`** — ~800–1,100 tokens for a specific natural-language question (L0–L3).
+- **`skeleton`** — compact view of a single file (functions + call graph + cross-file edges). Use before `Read`.
+
+### How does the PostToolUse compression work?
+
+When `neuralmind install-hooks .` has been run, Claude Code invokes NeuralMind **after** every `Read`/`Bash`/`Grep` tool call but **before** the agent sees the output. `Read` becomes a skeleton (~88% smaller), `Bash` keeps errors + last 3 lines (~91% smaller), `Grep` caps at 25 matches. Set `NEURALMIND_BYPASS=1` on any command to opt out.
+
+### Can I use NeuralMind without a knowledge graph?
+
+No — the knowledge graph (`graphify-out/graph.json`) is the source of truth. Run `graphify update .` first, then `neuralmind build .`.
+
+### Does it auto-update when I change code?
+
+Only if you install the git post-commit hook with `neuralmind init-hook .`. Otherwise run `neuralmind build .` manually; it is incremental and only re-embeds changed nodes.
+
+### What do I do if retrieval quality is poor on my repo?
+
+1. Check that `neuralmind stats .` reports all your nodes indexed.
+2. Run `neuralmind benchmark .` to see reduction ratios.
+3. Enable query memory (it prompts on first TTY run) and periodically run `neuralmind learn .` — cooccurrence-based reranking improves relevance on your actual queries.
+4. Open an issue with the query and expected result — retrieval quality is the thing we most want to improve.
+
+---
+
 ## 📚 Documentation
 
 | Resource | Contents |
@@ -907,6 +979,7 @@ For top-5 retrieval accuracy, run a project-specific relevance harness with the 
 | **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
+| **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Aider, Cody, LangChain, long context, RAG, tree-sitter |
 | **[USAGE.md](USAGE.md)** | Extended usage examples |
 
 ---
