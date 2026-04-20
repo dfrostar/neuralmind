@@ -1,5 +1,42 @@
 # Changelog
 
+## [0.3.2] - 2026-04-20
+
+### Added
+
+#### Cooccurrence-Based Reranking (v0.3.2)
+- **Reranker integration** — Applies learned module patterns to improve search relevance
+  - `CooccurrenceIndex` class loads learned patterns from JSON
+  - `SemanticReranker` class applies patterns to search results
+  - Lazy-loads reranker in context selector for zero overhead if patterns unavailable
+  - Boost factor (0-1) amplifies semantic relevance by up to 30%
+  
+- **Learning pipeline** — Analyzes query history to discover module relationships
+  - `neuralmind learn .` command builds cooccurrence patterns from events
+  - Extracts module pairs that frequently appear together
+  - Saves patterns to `.neuralmind/learned_patterns.json`
+  - Shows top patterns and statistics to user
+
+- **Seamless integration** — Automatic reranking in retrieval pipeline
+  - L2 context tracks loaded modules for reranker context
+  - L3 search automatically reranks results if patterns available
+  - Displays reranker boost scores in search output
+  - Enable/disable via `enable_reranking` flag (default: enabled)
+
+### Changed
+- **NeuralMind class** — Added `enable_reranking` parameter for control
+- **ContextSelector** — Integrated reranking into L3 search pipeline
+- **CLI** — `learn` command now functional (was scaffold)
+
+### Quality Improvements
+- 30 new tests for reranker classes and functions
+- 8 tests for pattern learning and cooccurrence analysis
+- 3 tests for learn CLI command integration
+- 7 integration tests for context selector + reranker pipeline
+- Token savings measurement foundation
+
+---
+
 ## [0.3.1] - 2026-04-20
 
 ### Added

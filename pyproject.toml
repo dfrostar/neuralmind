@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.3.1"
+version = "0.3.2"
 description = "Adaptive Neural Knowledge System + PostToolUse compression hooks. Two-phase token optimization (retrieval + consumption) for Claude Code."
 readme = "README.md"
 license = "MIT"
