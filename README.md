@@ -178,6 +178,7 @@ Total: ~800-1,100 tokens vs 50,000+ for full codebase
 | `neuralmind search . "..."` | Direct semantic search |
 | `neuralmind benchmark .` | Measure token reduction |
 | `neuralmind stats .` | Show index statistics |
+| `neuralmind learn .` | Run opt-in continual learning scaffold (MVP) |
 | `neuralmind skeleton <file>` | **v0.2.0** Compact graph-backed file view |
 | `neuralmind install-hooks .` | **v0.2.0** Install PostToolUse compression hooks (project) |
 | `neuralmind install-hooks --global` | **v0.2.0** Install hooks globally for all projects |
@@ -296,6 +297,7 @@ For Claude Desktop or Cursor:
 ## 📚 Documentation
 
 - **[USAGE.md](USAGE.md)** — Complete usage guide with examples
+- **[Brain-like Continual Learning](docs/brain_like_learning.md)** — Opt-in memory + learning scaffolding
 - **[Wiki](https://github.com/dfrostar/neuralmind/wiki)** — Full documentation
 - **[API Reference](https://github.com/dfrostar/neuralmind/wiki/API-Reference)** — Python API docs
 
