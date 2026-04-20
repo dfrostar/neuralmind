@@ -195,9 +195,7 @@ class GraphEmbedder(EmbeddingBackend):
 
             # Check if we need to update
             try:
-                existing = self.collection.get(
-                    ids=[node_id], include=["metadatas", "documents"]
-                )
+                existing = self.collection.get(ids=[node_id], include=["metadatas", "documents"])
                 existing_ids = existing.get("ids", [])
 
                 if existing_ids:

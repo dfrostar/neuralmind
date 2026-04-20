@@ -85,7 +85,9 @@ class NeuralMind:
         embed_stats = self.embedder.embed_nodes(force=force)
 
         # Initialize selector with reranking
-        self.selector = ContextSelector(self.embedder, str(self.project_path), enable_reranking=self.enable_reranking)
+        self.selector = ContextSelector(
+            self.embedder, str(self.project_path), enable_reranking=self.enable_reranking
+        )
 
         # Get final stats
         final_stats = self.embedder.get_stats()
