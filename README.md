@@ -889,7 +889,9 @@ neuralmind query . "question"     # get context for a specific question
 - Heuristic-only baseline (community-reported): **70-80% top-5 retrieval accuracy**
 - NeuralMind target: exceed that baseline on the same query set with semantic retrieval
 
-Use `neuralmind benchmark . --json` for token/cost metrics. For top-5 retrieval accuracy, run a project-specific relevance harness (same labeled query set for both systems) and compare NeuralMind vs a heuristic-only retriever side-by-side for an apples-to-apples accuracy report.
+Use `neuralmind benchmark . --json` for token/cost metrics.
+
+For top-5 retrieval accuracy, run a project-specific relevance harness with the same labeled query set for both systems. Then compare NeuralMind vs a heuristic-only retriever side-by-side for an apples-to-apples accuracy report.
 
 ---
 
