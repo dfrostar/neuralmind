@@ -49,7 +49,7 @@ class CooccurrenceIndex:
             if not path.exists():
                 return index
 
-            with open(path, "r") as f:
+            with open(path) as f:
                 data = json.load(f)
 
             index.cooccurrence = data.get("cooccurrence", {})

@@ -176,7 +176,7 @@ def cmd_learn(args):
     # Report results
     print(f"✓ Learned {index['metadata']['patterns_learned']} cooccurrence patterns")
     print(f"✓ Patterns saved to {patterns_file}")
-    print(f"✓ Next query will apply learned patterns for improved retrieval")
+    print("✓ Next query will apply learned patterns for improved retrieval")
 
     # Show top patterns
     cooccurrence = index["cooccurrence"]

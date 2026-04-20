@@ -1,7 +1,8 @@
 import os
-import toml
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
+
+import toml
 
 DEFAULT_CONFIG = {
     'local_models': {
@@ -18,14 +19,14 @@ DEFAULT_CONFIG = {
     }
 }
 
-def find_config_file() -> Optional[Path]:
+def find_config_file() -> Path | None:
     config_home = Path(os.environ.get('XDG_CONFIG_HOME', '~/.config')).expanduser()
     config_path = config_home / 'neuralmind' / 'config.toml'
     if config_path.exists():
         return config_path
     return None
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     config_file = find_config_file()
     if config_file:
         try:

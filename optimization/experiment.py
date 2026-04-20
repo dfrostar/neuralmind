@@ -1,6 +1,6 @@
-import subprocess
-import re
 import os
+import re
+import subprocess
 
 # --- Configuration ---
 TARGET_FILE_PATH = '/a0/usr/workdir/neuralmind/neuralmind/core.py'
@@ -17,13 +17,13 @@ EXPERIMENTS = {
 
 def modify_file(params):
     """Temporarily modifies the target file with new parameters."""
-    with open(TARGET_FILE_PATH, 'r') as f:
+    with open(TARGET_FILE_PATH) as f:
         original_content = f.read()
-    
+
     modified_content = original_content
     for key, value in params.items():
         # This regex looks for 'searcher.search(..., n=some_number, ...)'
-        pattern = re.compile(f"(searcher\\.search\\(.*n=)\\d+(.*\\))")
+        pattern = re.compile("(searcher\\.search\\(.*n=)\\d+(.*\\))")
         replacement = f"\\g<1>{value}\\g<2>"
         modified_content, count = re.subn(pattern, replacement, modified_content)
         if count == 0:
@@ -31,7 +31,7 @@ def modify_file(params):
 
     with open(TARGET_FILE_PATH, 'w') as f:
         f.write(modified_content)
-    
+
     return original_content
 
 def run_benchmark():
@@ -45,7 +45,7 @@ def run_benchmark():
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
-        print(f'--- EXPERIMENT FAILED: Benchmark script returned a non-zero exit code. ---')
+        print('--- EXPERIMENT FAILED: Benchmark script returned a non-zero exit code. ---')
         print(e.stderr)
         return None
 
@@ -67,7 +67,7 @@ def log_results(experiment_name, params, metrics):
     if not os.path.exists(RESULTS_FILE_PATH):
         with open(RESULTS_FILE_PATH, 'w') as f:
             f.write('Experiment\tParameters\tTime_sec\tMemory_MB\tTokens\n')
-    
+
     with open(RESULTS_FILE_PATH, 'a') as f:
         param_str = str(params) if params != 'baseline' else 'baseline'
         f.write(f'{experiment_name}\t{param_str}\t{metrics["time_sec"]}\t{metrics["memory_mb"]}\t{metrics["tokens"]}\n')
@@ -77,22 +77,22 @@ def run_experiment(name, params):
     """Runs a single experiment."""
     print(f'\n--- Starting Experiment: {name} ---')
     original_content = None
-    
+
     if params == 'baseline':
         print('Modification step skipped for this baseline run.')
     else:
         print(f'Applying parameters: {params}')
         original_content = modify_file(params)
-    
+
     print(f'Running command: {PYTHON_EXECUTABLE} {BENCHMARK_SCRIPT_PATH}')
     output = run_benchmark()
-    
+
     if output:
         print(f'--- Captured Benchmark Output ---\n{output}\n-----------------------------')
         metrics = parse_metrics(output)
         if metrics:
             log_results(name, params, metrics)
-    
+
     if original_content:
         with open(TARGET_FILE_PATH, 'w') as f:
             f.write(original_content)

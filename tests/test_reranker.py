@@ -205,7 +205,7 @@ class TestSemanticReranker:
 
         reranked = reranker.rerank(sample_search_results)
 
-        for original, result in zip(sample_search_results, reranked):
+        for original, result in zip(sample_search_results, reranked, strict=False):
             assert result["id"] == original["id"]
             assert result["text"] == original["text"]
 
