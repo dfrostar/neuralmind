@@ -34,7 +34,7 @@ def cmd_build(args):
 
 
 def cmd_query(args):
-    _maybe_prompt_memory_opt_in()
+    _maybe_prompt_for_memory_opt_in()
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.query(args.question)
     if args.json:
@@ -54,7 +54,7 @@ def cmd_query(args):
         print("=" * 60)
 
 
-def _maybe_prompt_memory_opt_in():
+def _maybe_prompt_for_memory_opt_in():
     is_tty = sys.stdin.isatty() and sys.stdout.isatty()
     if not memory.should_prompt_for_consent(is_tty=is_tty):
         return
