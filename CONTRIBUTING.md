@@ -12,6 +12,7 @@ First off, thank you for considering contributing to NeuralMind! It's people lik
 - [Style Guidelines](#style-guidelines)
 - [Testing](#testing)
 - [Documentation](#documentation)
+- [Release Process](#release-process)
 - [Community](#community)
 
 ## Code of Conduct
@@ -301,6 +302,51 @@ class TestNeuralMindQuery:
 - Update wiki for new features
 - Keep examples working
 - Add type hints
+
+## Release Process
+
+Releases are managed with [release-please](https://github.com/googleapis/release-please). The process is fully automated once commits land on `main`.
+
+### How it works
+
+1. **Commit to `main` using [Conventional Commits](https://www.conventionalcommits.org/)**
+   — `feat:` bumps the minor version, `fix:` bumps the patch version, `feat!:` or `BREAKING CHANGE:` bumps major.
+2. **release-please opens a Release PR automatically.**
+   The PR bumps the version in `pyproject.toml`, updates `CHANGELOG.md`, and proposes a new git tag.
+3. **Merge the Release PR** when you're ready to ship.
+   Merging it creates the git tag (e.g. `v0.4.0`), which triggers the existing `release.yml` workflow that publishes to PyPI and TestPyPI.
+
+### Dry-run a version bump
+
+To preview what a bump would look like without releasing:
+
+```bash
+# Install release-please CLI
+npm install -g release-please
+
+# Preview the next release PR (no writes)
+release-please release-pr \
+  --repo-url dfrostar/neuralmind \
+  --config-file release-please-config.json \
+  --manifest-file .release-please-manifest.json \
+  --dry-run
+```
+
+### Manual release (emergency only)
+
+If you must release manually (e.g. a hotfix not using release-please):
+
+```bash
+# 1. Update the version in pyproject.toml
+# 2. Update CHANGELOG.md
+# 3. Update .release-please-manifest.json to match the new version
+# 4. Commit with: chore(release): vX.Y.Z
+# 5. Push the tag (must match pyproject.toml version):
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+The `validate-version` gate in `release.yml` will reject the push if the tag and `pyproject.toml` version differ.
 
 ## Community
 
