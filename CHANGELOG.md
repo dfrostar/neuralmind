@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.3.1] - 2026-04-20
+
+### Added
+- **EmbeddingBackend abstraction layer** — Decouples ChromaDB from core logic
+  - New abstract base class enables backend swaps and mocking
+  - Improves testability (no ChromaDB overhead in tests)
+  - Future-proofs architecture for Pinecone/Weaviate integration
+
+- **Comprehensive integration tests** — 14 tests validating 4-layer retrieval pipeline
+  - End-to-end retrieval pipeline tests
+  - Query-aware context validation
+  - Token reduction verification
+  - Community detection and file skeleton tests
+  - Incremental embedding validation
+
+### Changed
+- **GraphEmbedder** — Now implements EmbeddingBackend interface
+  - Adds `clear()` and `close()` methods
+  - Maintains full backward compatibility
+  
+### Fixed
+- Version string sync (__init__.py was v0.2.0, now v0.3.1)
+- Wiki navigation updated to highlight new guides
+
+### Quality Improvements
+- Better code organization with clear abstractions
+- Improved documentation discoverability
+- Foundation for swappable embedding backends
+
+---
+
 ## [0.3.0] - 2026-04-20
 
 ### Added
