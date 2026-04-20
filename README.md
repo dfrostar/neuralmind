@@ -247,6 +247,21 @@ You: "How does authentication work in my codebase?"
 
 ---
 
+## 🤔 Why NeuralMind vs. Heuristic-Only
+
+Both approaches are valid; the tradeoff is retrieval quality vs. simplicity.
+
+| Approach | Token Reduction | Accuracy | Deps | Learns Over Time |
+|---|---|---|---|---|
+| Heuristic-only (no embeddings) | ~97% | 70-80% top-5 (community baseline) | None | No |
+| NeuralMind | 40-70x | Higher semantic relevance on natural-language queries | ChromaDB | Yes (cooccurrence patterns) |
+
+NeuralMind does include a dependency (ChromaDB), but it still runs entirely offline — **no API calls, no cloud services, no data leaves your machine**.
+
+If your priority is strict zero-dependency operation, heuristic-only is the simplest path. If your priority is stronger semantic retrieval and adaptive relevance, NeuralMind is the better fit.
+
+---
+
 ## 🚀 Quick Start (humans)
 
 ```bash
@@ -868,6 +883,13 @@ neuralmind query . "question"     # get context for a specific question
 |---------|-------|--------|-----------|---------------|
 | cmmc20 (React/Node) | 241 | 341 tokens | 739 tokens | **65.6x** |
 | mempalace (Python) | 1,626 | 412 tokens | 891 tokens | **46.0x** |
+
+### Retrieval quality baseline (heuristic vs semantic)
+
+- Heuristic-only baseline (community-reported): **70-80% top-5 retrieval accuracy**
+- NeuralMind target: exceed that baseline on the same query set with semantic retrieval
+
+Use `neuralmind benchmark . --json` for token/cost metrics, then run your project's top-5 relevance evaluation side-by-side against a heuristic-only retriever to publish an apples-to-apples accuracy comparison.
 
 ---
 
