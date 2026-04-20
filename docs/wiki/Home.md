@@ -7,7 +7,8 @@ Welcome to the NeuralMind documentation!
 | Page | Description |
 |------|-------------|
 | **[Setup Guide](Setup-Guide)** | **First-time setup for any platform (Claude Code, Copilot, Cursor, VSCode)** |
-| **[Brain-Like Learning](../brain_like_learning.md)** | **Your project learns your patterns (v0.3.0+)** |
+| **[Learning Guide](Learning-Guide)** | **NEW: How your project learns and improves (v0.3.2+)** |
+| **[Brain-Like Learning](../brain_like_learning.md)** | **Design rationale: Why learning matters (v0.3.0+)** |
 | [Installation](Installation) | How to install NeuralMind |
 | [Usage Guide](Usage-Guide) | Complete usage guide with examples |
 | [CLI Reference](CLI-Reference) | All CLI commands |
