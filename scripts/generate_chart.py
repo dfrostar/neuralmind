@@ -84,7 +84,7 @@ def render() -> None:
         linewidth=0.6,
     )
     # Hatch pattern for estimated bars — a second visual cue.
-    for bar, m in zip(bars, measured_flags, strict=False):
+    for bar, m in zip(bars, measured_flags, strict=True):
         if not m:
             bar.set_hatch("//")
 
@@ -111,7 +111,7 @@ def render() -> None:
     )
 
     # Value labels on each bar.
-    for bar, r in zip(bars, ratios, strict=False):
+    for bar, r in zip(bars, ratios, strict=True):
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
             bar.get_height() + max_ratio * 0.03,

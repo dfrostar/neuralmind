@@ -102,7 +102,12 @@ def cmd_benchmark(args):
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
 
-    if getattr(args, "contribute", False) is True:
+    try:
+        contribute = args.contribute
+    except AttributeError:
+        contribute = False
+
+    if isinstance(contribute, bool) and contribute:
         _emit_community_submission(args, result, mind)
         return
 
