@@ -76,11 +76,13 @@ from .core import NeuralMind
 from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
+from .in_memory_backend import InMemoryEmbeddingBackend
 
 __version__ = "0.3.4"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
+    "InMemoryEmbeddingBackend",
     "EmbeddingBackend",
     "ContextSelector",
     # Output compression (v0.2.0)
