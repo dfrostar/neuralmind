@@ -52,13 +52,13 @@ class RateLimiter:
     def __init__(self, max_calls: int = 60, window_seconds: int = 60):
         self.max_calls = max_calls
         self.window_seconds = window_seconds
-        self._history: dict[str, deque[float]] = defaultdict(deque)
+        self._actor_request_history: dict[str, deque[float]] = defaultdict(deque)
 
     def allow(self, actor: str) -> bool:
         now = time.time()
-        history = self._history[actor]
+        history = self._actor_request_history[actor]
         cutoff = now - self.window_seconds
-        while history and history[0] <= cutoff:
+        while history and history[0] < cutoff:
             history.popleft()
         if len(history) >= self.max_calls:
             return False
