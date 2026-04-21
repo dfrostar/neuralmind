@@ -62,7 +62,7 @@ class TestHandleToolCall:
         """neuralmind_stats returns valid JSON with expected keys."""
         result = handle_tool_call(
             "neuralmind_stats",
-            {"project_path": str(temp_project)},
+            {"project_path": str(temp_project), "role": "reader"},
         )
         data = json.loads(result)
         assert "project" in data
@@ -76,10 +76,27 @@ class TestHandleToolCall:
 
             result = handle_tool_call(
                 "neuralmind_build",
-                {"project_path": str(temp_project)},
+                {"project_path": str(temp_project), "role": "builder"},
             )
             data = json.loads(result)
             assert data.get("success") is True
+
+    def test_project_path_is_required(self):
+        """project_path is mandatory for all MCP tool calls."""
+        result = handle_tool_call("neuralmind_query", {"question": "q"})
+        data = json.loads(result)
+        assert "error" in data
+        assert "Missing required argument: project_path" in data["error"]
+
+    def test_default_role_enforces_least_privilege(self, temp_project):
+        """Default role is reader, so mutating tools are denied unless role is provided."""
+        result = handle_tool_call(
+            "neuralmind_build",
+            {"project_path": str(temp_project)},
+        )
+        data = json.loads(result)
+        assert "error" in data
+        assert "Access denied" in data["error"]
 
     def test_tool_exception_returns_error(self):
         """Exceptions in tool handlers are caught and returned as error."""

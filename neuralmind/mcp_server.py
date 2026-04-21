@@ -286,16 +286,15 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
     project_path_raw = arguments.get("project_path")
-    project_path = str(project_path_raw) if project_path_raw else None
-    actor = str(arguments.get("actor", "anonymous"))
-    role = str(arguments.get("role", "builder"))
+    project_path = str(project_path_raw).strip() if project_path_raw else ""
+    actor = str(arguments.get("actor", "anonymous")).strip() or "anonymous"
+    role = str(arguments.get("role", "reader")).strip() or "reader"
 
     try:
-        if project_path is not None:
-            security = get_security_manager(project_path)
-            result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
-        else:
-            result = handlers[name](arguments)
+        if not project_path:
+            return json.dumps({"error": "Missing required argument: project_path"})
+        security = get_security_manager(project_path)
+        result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
     except Exception as e:
         return json.dumps({"error": str(e)})

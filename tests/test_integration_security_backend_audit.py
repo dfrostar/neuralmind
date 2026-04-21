@@ -44,6 +44,8 @@ def test_end_to_end_backend_switching(tmp_path):
     switched = mind.switch_backend("in_memory")
     assert switched["success"] is True
     assert switched["backend"] == "in_memory"
+    events = AuditTrail(project).read_events()
+    assert any(event["action"] == "switch_backend" and event["category"] == "backend" for event in events)
 
 
 def test_end_to_end_audit_trail_validation(tmp_path):
@@ -75,6 +77,15 @@ def test_end_to_end_mcp_security_enforcement(tmp_path):
     assert "error" in denied
     assert "Access denied" in denied["error"]
 
+    missing_path = json.loads(
+        handle_tool_call(
+            "neuralmind_query",
+            {"question": "authentication", "actor": "alice", "role": "reader"},
+        )
+    )
+    assert "error" in missing_path
+    assert "Missing required argument: project_path" in missing_path["error"]
+
     allowed = json.loads(
         handle_tool_call(
             "neuralmind_query",
@@ -87,3 +98,17 @@ def test_end_to_end_mcp_security_enforcement(tmp_path):
         )
     )
     assert "context" in allowed
+    events = AuditTrail(project).read_events()
+    assert any(
+        event["category"] == "security"
+        and event["action"] == "mcp_call_denied"
+        and event.get("target") == "neuralmind_build"
+        for event in events
+    )
+    assert any(
+        event["category"] == "security"
+        and event["action"] == "mcp_call"
+        and event.get("status") == "success"
+        and event.get("target") == "neuralmind_query"
+        for event in events
+    )

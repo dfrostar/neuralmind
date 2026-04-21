@@ -410,6 +410,38 @@ productivity tools.
 
 ---
 
+## Backend, Audit, and MCP Security Architecture
+
+NeuralMind hardens runtime behavior with three cooperating components:
+
+1. **BackendManager (`neuralmind/backend_manager.py`)**
+   - Loads backend/runtime config from `neuralmind-backend.yaml|yml|json`
+   - Selects a concrete backend implementation (`graph`/`chroma` or `in_memory`)
+   - Supports runtime `switch_backend(...)` so `NeuralMind` can rebuild on a new backend
+
+2. **AuditTrail (`neuralmind/audit.py`)**
+   - Stores append-only JSONL records at `.neuralmind/audit_events.jsonl`
+   - Captures build/query/search/wakeup/backend switch events and MCP security decisions
+   - Exposes `nist_rmf_summary()` rollups for AU/AC/SI-oriented control visibility
+
+3. **MCPSecurityManager (`neuralmind/mcp_security.py`)**
+   - Enforces **RBAC** per tool name (least-privilege role policies)
+   - Enforces **rate limiting** with sliding windows per actor
+   - Writes allow/deny/failure security events into the audit trail
+
+### End-to-End MCP Enforcement Path
+
+`handle_tool_call(...)` in `neuralmind/mcp_server.py` follows this sequence:
+
+1. Validate `project_path` is present
+2. Resolve project-scoped security manager via `get_security_manager(project_path)`
+3. Execute tool call only through `secure_call(actor, role, tool_name, handler)`
+4. Return structured JSON result or JSON error
+
+This guarantees MCP calls are not executed through an unenforced path and that denied/allowed attempts are auditable.
+
+---
+
 ## Token Budget Management
 
 ### Budget Allocation
