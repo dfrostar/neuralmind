@@ -1,0 +1,80 @@
+{
+  "_comment": "Committed query set for the self-benchmarking suite. Each query carries the modules we expect to see in the top retrieval hits — used by the regression test to verify retrieval quality on top of raw token reduction. Keep the shape small; CI runs this on every PR.",
+  "queries": [
+    {
+      "id": "auth-flow",
+      "question": "How does authentication work in this codebase?",
+      "shape": "cross-file",
+      "expected_modules": ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"]
+    },
+    {
+      "id": "api-endpoints",
+      "question": "What are the main API endpoints?",
+      "shape": "focused",
+      "expected_modules": ["api/routes.py"]
+    },
+    {
+      "id": "billing-flow",
+      "question": "Explain the billing flow from a user perspective.",
+      "shape": "cross-file",
+      "expected_modules": ["billing/stripe_client.py", "billing/invoices.py", "users/crud.py"]
+    },
+    {
+      "id": "user-storage",
+      "question": "How are users stored in the database?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.py", "db/connection.py"]
+    },
+    {
+      "id": "jwt-verify",
+      "question": "How does JWT signature verification work?",
+      "shape": "focused",
+      "expected_modules": ["auth/jwt_utils.py"]
+    },
+    {
+      "id": "stripe-webhook",
+      "question": "What happens when a Stripe webhook fires?",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.py"]
+    },
+    {
+      "id": "create-user",
+      "question": "How do I create a new user?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.py", "api/routes.py"]
+    },
+    {
+      "id": "refund",
+      "question": "Show me the refund logic.",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.py"]
+    },
+    {
+      "id": "db-choice",
+      "question": "What database does this project use?",
+      "shape": "identity",
+      "expected_modules": ["db/connection.py"]
+    },
+    {
+      "id": "invoice-send",
+      "question": "How are invoices sent to users?",
+      "shape": "cross-file",
+      "expected_modules": ["billing/invoices.py", "users/crud.py"]
+    }
+  ],
+  "learning_seed": {
+    "_comment": "Queries used to seed the memory log before Phase 2 (learning uplift). Heavier on auth + billing than on users, to create a realistic cooccurrence signal the reranker can exploit.",
+    "history": [
+      "How does the JWT token get signed?",
+      "Where is password hashing done?",
+      "Can a user log in with an expired token?",
+      "How do I charge a customer?",
+      "What happens if a Stripe charge fails?",
+      "How do I issue a partial refund?",
+      "Where are invoices stored?",
+      "How does the login endpoint work?",
+      "What middleware runs before /api/billing/charge?",
+      "How is a user session revoked?"
+    ]
+  }
+}

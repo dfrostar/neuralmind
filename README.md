@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/neuralmind.svg)](https://pypi.org/project/neuralmind/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
 
 **Semantic code intelligence for AI coding agents — smart context retrieval + tool-output compression in one package.**
 
@@ -963,19 +964,45 @@ neuralmind query . "question"     # get context for a specific question
 
 ## 📊 Benchmarks
 
+NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **20×** — well below the typical 40–70× NeuralMind hits on real repos).
+
+![Benchmark efficiency by tokenizer](docs/images/benchmark_chart.png)
+
+### What CI measures on every PR
+
+- **Phase 1 — Reduction.** Naive baseline (every `.py` file in the fixture concatenated) vs `NeuralMind.query()` output, per query. All tokens counted with `tiktoken`.
+- **Phase 2 — Learning uplift.** Same queries run cold, then after seeding memory and running `neuralmind learn`. Reports the delta in reduction ratio and top-k retrieval hit rate. On a 500-line fixture the numerical uplift is modest by design — the test proves the mechanism persists, not that it's magic.
+- **Per-model breakdown.** GPT-4o and GPT-4/3.5 counts are *measured* via real tiktoken encodings. Claude uses the Anthropic SDK tokenizer when available, else a clearly-labeled *estimate* derived from published vocab ratios. Llama is always estimated. **No fabricated numbers anywhere.**
+- **Memory persistence.** `tests/test_memory_persistence.py` asserts events are logged, `neuralmind learn` produces a patterns file, and subsequent queries load it without error.
+
+### External benchmarks on real repos
+
 | Project | Nodes | Wakeup | Avg Query | Avg Reduction |
 |---------|-------|--------|-----------|---------------|
-| cmmc20 (React/Node) | 241 | 341 tokens | 739 tokens | **65.6x** |
-| mempalace (Python) | 1,626 | 412 tokens | 891 tokens | **46.0x** |
+| cmmc20 (React/Node) | 241 | 341 tokens | 739 tokens | **65.6×** |
+| mempalace (Python) | 1,626 | 412 tokens | 891 tokens | **46.0×** |
 
-### Retrieval quality baseline (heuristic vs semantic)
+These are from external projects NeuralMind has been run against — not gated by CI, but verifiable via `neuralmind benchmark . --json` on those projects.
 
-- Heuristic-only baseline (community-reported): **70-80% top-5 retrieval accuracy**
-- NeuralMind target: exceed that baseline on the same query set with semantic retrieval
+### Reproduce locally
 
-Use `neuralmind benchmark . --json` for token/cost metrics.
+```bash
+pip install . tiktoken matplotlib graphifyy
+graphify update tests/fixtures/sample_project
+neuralmind build tests/fixtures/sample_project --force
+python -m tests.benchmark.run          # phase 1 + phase 2
+python -m tests.benchmark.multi_model  # per-model breakdown
+python scripts/generate_chart.py       # refreshes the PNG above
+```
 
-For top-5 retrieval accuracy, run a project-specific relevance harness with the same labeled query set for both systems. Then compare NeuralMind vs a heuristic-only retriever side-by-side for an apples-to-apples accuracy report.
+Full machine-readable results land in `tests/benchmark/results.json`, human-readable report in `tests/benchmark/report.md`.
+
+### Retrieval quality baseline
+
+- Heuristic-only baseline (community-reported): **70–80% top-5 retrieval accuracy**
+- NeuralMind target on the same query set: exceed that baseline via semantic retrieval + learned cooccurrence reranking
+
+The pytest regression gate (`tests/test_benchmark_regression.py`) currently enforces **≥50% top-k hit rate** on the fixture plus **≥20× reduction**.
 
 ---
 
