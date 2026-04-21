@@ -136,7 +136,9 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 ## Compliance Framework Alignment
 
-NeuralMind is designed to work with standard enterprise compliance requirements:
+NeuralMind is **designed to support** standard enterprise compliance requirements. Because it runs entirely locally and makes no external calls, it can fit into existing compliance workflows:
+
+*Note: NeuralMind itself is not "certified" for any framework, but the tool's architecture aligns with the security requirements of these standards.*
 
 ### ✅ GDPR (General Data Protection Regulation)
 - **Data Residency**: All code remains in your jurisdiction (on your machine/infrastructure)
@@ -198,30 +200,33 @@ One of the biggest enterprise concerns with AI tools is the "black box" problem 
 
 ### How NeuralMind Solves This
 
-Every context recommendation made by NeuralMind is **fully auditable and explainable**:
+NeuralMind is **transparent by design**:
 
-#### Evidence Provenance
+#### Full Query Provenance
 
-Each piece of context returned by NeuralMind includes metadata about its origin:
+When NeuralMind answers a question, it provides complete metadata about the context:
 
-- **EXTRACTED** – Code taken directly from your repository (100% ground truth, zero AI inference)
-- **INFERRED** – AI interpretation of relationships between code elements (flagged for review)
-- **AMBIGUOUS** – Uncertain relationships that require human validation (safety-first tagging)
+- **Which layers were used** – L0 (identity), L1 (summary), L2 (on-demand modules), L3 (semantic search)
+- **Which code communities were loaded** – Specific clusters of related code
+- **Search quality metrics** – Number of semantic hits, relevance scores
+- **Token budget breakdown** – Exactly how many tokens came from each layer
+- **Reduction ratio** – How much you saved vs. loading the full codebase
 
-This allows your team to:
-- Verify that answers are based on real code, not model hallucination
-- Audit AI recommendations before implementation
-- Establish clear accountability for decisions made with AI assistance
-- Meet regulatory requirements for explainability (SOC 2, ISO 27001, etc.)
+You can always:
+- **Reproduce any result** – Same query + same codebase = same context (deterministic)
+- **Audit the decision path** – See exactly which code entities and clusters were selected
+- **Verify completeness** – Check if all relevant code was captured
+- **Understand the tradeoffs** – View the token budget breakdown by layer
 
-#### Transparency by Default
+#### Transparency by Design
 
-- View the full knowledge graph that backs every query
-- See exactly which code entities were retrieved and why
-- Reproduce results deterministically (same code = same context)
-- Understand the semantic relationships the AI is using
+All processing is local and observable:
+- No hidden cloud processing or external model calls
+- No black-box ranking algorithms (semantic search is transparent)
+- Can read the source code selection in full
+- Every decision is reproducible and explainable
 
-This is critical for regulated industries (healthcare, finance, legal, government) where AI recommendations must be auditable.
+This is critical for regulated industries (healthcare, finance, legal, government) where AI recommendations must be auditable and verifiable.
 
 ---
 
