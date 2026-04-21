@@ -6,6 +6,10 @@ Deep dive into NeuralMind's 4-layer progressive disclosure system and technical 
 
 - [Overview](#overview)
 - [Design Principles](#design-principles)
+- [Pluggable Architecture](#pluggable-architecture)
+  - [Embedding Backends](#embedding-backends)
+  - [Embedding Models](#embedding-models)
+  - [Context Strategies](#context-strategies)
 - [4-Layer Progressive Disclosure](#4-layer-progressive-disclosure)
   - [Layer 0: Identity](#layer-0-identity)
   - [Layer 1: Summary](#layer-1-summary)
@@ -17,6 +21,7 @@ Deep dive into NeuralMind's 4-layer progressive disclosure system and technical 
 - [Embedding Strategy](#embedding-strategy)
 - [Community Detection](#community-detection)
 - [Performance Optimization](#performance-optimization)
+- [Enterprise Features](#enterprise-features)
 
 ---
 
@@ -94,6 +99,92 @@ Only re-process changed nodes to minimize rebuild time.
 ### 5. Token Budget Discipline
 
 Strict token limits per layer ensure consistent, predictable context sizes.
+
+---
+
+## Pluggable Architecture
+
+NeuralMind uses **abstraction layers** to support multiple backends, models, and strategies without vendor lock-in.
+
+### Embedding Backends
+
+Abstract interface: `EmbeddingBackend`
+
+**Current implementations:**
+- **ChromaDB** (default): Local, zero-configuration, perfect for development
+- **PostgreSQL pgvector**: Enterprise-scale (100M+ vectors), full ACID compliance, integrates with existing databases
+- **LanceDB**: Lightweight, Rust-based, offline/edge-ready
+
+**Factory pattern:**
+```python
+from neuralmind.backend_manager import BackendFactory
+
+# Automatically selects based on neuralmind.toml
+backend = BackendFactory.create(project_path=".")
+
+# Or explicitly override
+backend = BackendFactory.create_with_backend_name(
+    project_path=".",
+    backend_name="postgres",
+    connection_string="postgresql://localhost/neuralmind"
+)
+```
+
+### Embedding Models
+
+Abstract interface: `EmbeddingModel`
+
+**Current implementations:**
+- **SentenceTransformers** (default): Fast, lightweight, production-ready
+- **Ollama**: Local-only LLM embeddings for complete offline deployments
+- **Custom**: Support for domain-specific fine-tuned models
+
+**Factory pattern:**
+```python
+from neuralmind.embedding_models import EmbeddingModelFactory
+
+# Create model
+model = EmbeddingModelFactory.create(
+    model_type="sentence-transformers",
+    model_name="sentence-transformers/all-mpnet-base-v2",
+    device="cuda"
+)
+
+# Or load from config
+model = EmbeddingModelFactory.from_config({
+    "type": "sentence-transformers",
+    "name": "sentence-transformers/all-MiniLM-L6-v2",
+    "options": {"device": "cpu"}
+})
+```
+
+### Context Strategies
+
+Choose your strategy based on your LLM and use case:
+
+**Strategies:**
+- **RETRIEVAL**: NeuralMind optimized context only (~800 tokens, ~3s)
+- **LONG_CONTEXT**: Full codebase (~50K tokens, ~60s)
+- **HYBRID**: Smart auto-switch based on confidence
+
+**Implementation:**
+```python
+from neuralmind.hybrid_context import HybridContextSelector, HybridContextConfig
+
+config = HybridContextConfig(
+    strategy="hybrid",
+    auto_switch_threshold=0.75  # Augment if < 75% confident
+)
+
+selector = HybridContextSelector(config)
+metrics = selector.evaluate_retrieval_result(context_result)
+
+if selector.should_augment_context(metrics):
+    # Automatically expand context if confidence is low
+    context_str, meta = selector.build_hybrid_context(
+        context_result, full_codebase
+    )
+```
 
 ---
 
@@ -627,8 +718,76 @@ def expand_context(matched_nodes: List[Node], budget: int) -> List[Node]:
 
 ---
 
+## Enterprise Features
+
+### Audit Trail (NIST AI RMF Compliance)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   AUDIT TRAIL FLOW                           │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Query Execution                                            │
+│        ↓                                                     │
+│  Capture Evidence (what code was retrieved)                │
+│        ↓                                                     │
+│  Record Model Metadata (embeddings version, backend)       │
+│        ↓                                                     │
+│  Snapshot Code State (git commit, reproducibility)         │
+│        ↓                                                     │
+│  Calculate Confidence Metrics                              │
+│        ↓                                                     │
+│  Write Immutable Log Entry (.neuralmind/audit/...)         │
+│        ↓                                                     │
+│  Optional: Generate NIST RMF Reports                       │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Storage:**
+- Immutable JSONL format (one entry per line)
+- Filesystem-based (independent of backend choice)
+- Automatically logged on every query
+- Exportable for external audit tools
+
+**Compliance mapping:**
+- NIST GOVERN: Full transparency of decisions
+- NIST MAP: Evidence provenance tracking
+- NIST MEASURE: Token metrics and efficiency
+- NIST MANAGE: Reproducibility and auditability
+
+### Security (MCP Server Hardening)
+
+**Defense layers:**
+1. **Authentication**: User identification (OAuth, LDAP, etc. via wrapper)
+2. **Authorization**: Role-Based Access Control (RBAC) with permissions
+3. **Rate Limiting**: Per-user, per-minute, per-hour, per-day quotas
+4. **Audit Logging**: Every tool call recorded with outcome
+5. **Anomaly Detection**: Flags suspicious patterns (rapid calls, repeated tools)
+
+**Example:**
+```
+User Request
+    ↓
+[RBAC Check] Can alice call neuralmind_build?
+    ↓ No → DENIED (logged)
+    ↓ Yes ↓
+[Rate Limit Check] Is alice within quotas?
+    ↓ No → DENIED (logged)
+    ↓ Yes ↓
+[Anomaly Check] Suspicious pattern detected?
+    ↓ Yes → LOGGED (allowed, but flagged)
+    ↓ No ↓
+[Execute Tool]
+    ↓
+[Audit Log] Record user, tool, result, tokens
+```
+
+---
+
 ## See Also
 
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
+- [Enterprise Features](Enterprise-Features.md) - Detailed guide to enterprise capabilities
