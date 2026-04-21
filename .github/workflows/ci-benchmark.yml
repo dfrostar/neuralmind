@@ -1,0 +1,92 @@
+name: Self-benchmark
+
+# Runs the hermetic self-benchmark on every PR and every push to main.
+# Produces a PR comment with reduction + learning uplift, and fails the
+# build if the aggregate reduction drops below the conservative floor.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package + benchmark deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install . tiktoken matplotlib graphifyy
+
+      - name: Build fixture knowledge graph
+        run: |
+          graphify update tests/fixtures/sample_project
+          neuralmind build tests/fixtures/sample_project --force
+
+      - name: Run benchmark (Phase 1 + Phase 2)
+        id: bench
+        run: |
+          python -m tests.benchmark.run
+          python -m tests.benchmark.multi_model
+
+      - name: Run memory-persistence + regression tests
+        run: pytest tests/test_benchmark_regression.py tests/test_memory_persistence.py -v
+
+      - name: Generate chart
+        run: python scripts/generate_chart.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            tests/benchmark/results.json
+            tests/benchmark/report.md
+            tests/benchmark/multi_model.json
+            tests/benchmark/multi_model.md
+            docs/images/benchmark_chart.png
+          if-no-files-found: error
+
+      - name: Build PR comment body
+        if: github.event_name == 'pull_request'
+        id: comment
+        run: |
+          # Two-step pattern: generate the body in a file, then hand it to
+          # the comment action via GITHUB_OUTPUT. Actions inputs don't
+          # process $(...) shell substitutions, so we must materialize
+          # the body here.
+          {
+            echo 'body<<EOF'
+            cat tests/benchmark/report.md
+            echo ''
+            cat tests/benchmark/multi_model.md
+            echo ''
+            echo '---'
+            echo '_Automated by `.github/workflows/ci-benchmark.yml` — regenerate locally with `python -m tests.benchmark.run`._'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: neuralmind-self-benchmark
+          message: ${{ steps.comment.outputs.body }}
