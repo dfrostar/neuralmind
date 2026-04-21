@@ -1,0 +1,58 @@
+name: Refresh benchmark chart
+
+# Regenerates docs/images/benchmark_chart.png from the latest measured
+# numbers and commits it back to main. Runs weekly + on manual dispatch
+# to avoid creating commit noise on every merge.
+#
+# Guarded against CI loops via paths-ignore and a [skip ci] tag on the
+# auto-commit — the benchmark workflow will not re-trigger from this.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # weekly, Monday 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package + benchmark deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install . tiktoken matplotlib graphifyy
+
+      - name: Build fixture knowledge graph
+        run: |
+          graphify update tests/fixtures/sample_project
+          neuralmind build tests/fixtures/sample_project --force
+
+      - name: Run benchmark + generate chart
+        run: |
+          python -m tests.benchmark.run
+          python -m tests.benchmark.multi_model
+          python scripts/generate_chart.py
+
+      - name: Commit chart if it changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/images/benchmark_chart.png
+          if git diff --cached --quiet; then
+            echo "Chart unchanged — nothing to commit."
+            exit 0
+          fi
+          # [skip ci] prevents this commit from re-triggering the PR
+          # benchmark workflow, which would be wasteful on main.
+          git commit -m "docs: refresh benchmark chart [skip ci]"
+          git push
