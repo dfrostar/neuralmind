@@ -15,6 +15,8 @@ Automate NeuralMind commands to run on a schedule for continuous codebase monito
   - [Multi-Project Setup](#multi-project-setup)
 - [Cron / Linux / macOS](#cron--linux--macos)
 - [Running on Multiple Projects](#running-on-multiple-projects)
+  - [Master Configuration File](#master-configuration-file)
+  - [Auto-Discovery of Projects](#auto-discovery-of-projects-recommended)
 - [Examples](#examples)
   - [Schedule for Single Project](#schedule-for-single-project)
   - [Schedule for Multiple Projects](#schedule-for-multiple-projects)
@@ -478,6 +480,170 @@ Then use a script to read this config and schedule tasks (PowerShell pseudocode)
 ```powershell
 # Read YAML, loop through projects, register tasks
 # (Implementation would require a YAML parser)
+```
+
+### Auto-Discovery of Projects (Recommended)
+
+Instead of manually maintaining a config file, use a **master discovery script** that automatically finds all projects in a root directory that have been initialized with NeuralMind (those with `neuralmind.db/` or `.neuralmind/`).
+
+**PowerShell: `C:\scripts\run-neuralmind-all.ps1`**
+
+```powershell
+# ============================================================
+# NeuralMind Master Scheduler - Auto-Discovery
+# Finds all initialized projects and runs audit suite
+# ============================================================
+
+param(
+    [string]$RootPath = "$env:USERPROFILE\claudecode",
+    [string]$LogDir = "$env:USERPROFILE\Documents\neuralmind-logs",
+    [int]$MaxDegreeOfParallelism = 2
+)
+
+# Validate root path
+if (!(Test-Path $RootPath)) {
+    Write-Error "Root path does not exist: $RootPath"
+    exit 1
+}
+
+# Ensure log directory exists
+if (!(Test-Path $LogDir)) { 
+    New-Item -ItemType Directory -Path $LogDir | Out-Null 
+}
+
+$masterLogFile = "$LogDir\master_run_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').log"
+
+function Log {
+    param([string]$Message)
+    $msg = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
+    Write-Host $msg
+    Add-Content -Path $masterLogFile -Value $msg
+}
+
+Log "=== NeuralMind Auto-Discovery Started at $RootPath ==="
+
+# Find all projects with NeuralMind index
+$projects = Get-ChildItem -Path $RootPath -Directory | Where-Object {
+    (Test-Path (Join-Path $_.FullName "neuralmind.db")) -or
+    (Test-Path (Join-Path $_.FullName ".neuralmind"))
+} | Select-Object -ExpandProperty FullName
+
+if ($projects.Count -eq 0) {
+    Log "No initialized NeuralMind projects found in $RootPath"
+    Log "Initialize a project with: neuralmind build ."
+    exit 0
+}
+
+Log "Found $($projects.Count) initialized project(s)"
+
+# Run audit on each project
+foreach ($projectPath in $projects) {
+    $projectName = Split-Path $projectPath -Leaf
+    $projectLog = "$LogDir\$(Get-Date -Format 'yyyy-MM-dd_HHmmss')_$projectName.log"
+    
+    Log "Processing: $projectName"
+    
+    try {
+        Push-Location $projectPath
+        
+        # Run wakeup
+        neuralmind wakeup . 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        
+        # Generate audit reports
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HHmmss"
+        $auditJson = "$LogDir\audit_${projectName}_$timestamp.json"
+        $auditMd = "$LogDir\audit_${projectName}_$timestamp.md"
+        
+        neuralmind audit-report . --format json --output $auditJson 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        neuralmind audit-report . --format markdown --output $auditMd 2>&1 | Tee-Object -FilePath $projectLog -Append | ForEach-Object { Log $_ }
+        
+        Log "✓ Completed: $projectName"
+    } catch {
+        Log "✗ Error on $projectName : $_"
+    } finally {
+        Pop-Location
+    }
+}
+
+Log "=== Auto-Discovery Complete ==="
+Log "Master log: $masterLogFile"
+Log "Individual logs and reports in: $LogDir"
+```
+
+**Setup:** Register this script to run once daily:
+
+```powershell
+# Run PowerShell as Administrator
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Register task - runs daily at 2 AM, discovers all projects automatically
+$trigger = New-ScheduledTaskTrigger -Daily -At 2:00am
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\scripts\run-neuralmind-all.ps1"
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable
+Register-ScheduledTask -TaskName "NeuralMind Suite - Auto-Discovery" -Trigger $trigger -Action $action -Settings $settings -RunLevel Highest -Description "Daily NeuralMind audit for all initialized projects"
+```
+
+**How it works:**
+1. Scans `C:\Users\dtfro\claudecode` for all subdirectories
+2. Identifies projects that have been initialized with NeuralMind (have `neuralmind.db/`)
+3. Runs wakeup + audit-report on each project
+4. Logs all output to `Documents\neuralmind-logs\`
+5. **No manual task updates needed** — new projects are picked up automatically
+
+**Bash equivalent for Linux/macOS:**
+
+```bash
+#!/bin/bash
+# /home/user/scripts/neuralmind-auto-discovery.sh
+
+ROOT_PATH="${1:-$HOME/projects}"
+LOG_DIR="${2:-$HOME/neuralmind-logs}"
+mkdir -p "$LOG_DIR"
+
+MASTER_LOG="$LOG_DIR/master_$(date +%Y-%m-%d_%H%M%S).log"
+
+log() {
+    msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$msg" | tee -a "$MASTER_LOG"
+}
+
+log "=== NeuralMind Auto-Discovery Started at $ROOT_PATH ==="
+
+projects=()
+while IFS= read -r -d '' project_dir; do
+    projects+=("$project_dir")
+done < <(find "$ROOT_PATH" -maxdepth 1 -type d -exec test -e "{}/.neuralmind" -o -e "{}/neuralmind.db" \; -print0)
+
+if [ ${#projects[@]} -eq 0 ]; then
+    log "No initialized NeuralMind projects found in $ROOT_PATH"
+    exit 0
+fi
+
+log "Found ${#projects[@]} initialized project(s)"
+
+for project_path in "${projects[@]}"; do
+    project_name=$(basename "$project_path")
+    project_log="$LOG_DIR/$(date +%Y-%m-%d_%H%M%S)_${project_name}.log"
+    
+    log "Processing: $project_name"
+    
+    (
+        cd "$project_path"
+        neuralmind wakeup . >> "$project_log" 2>&1
+        timestamp=$(date +%Y-%m-%d_%H%M%S)
+        neuralmind audit-report . --format json --output "$LOG_DIR/audit_${project_name}_$timestamp.json" >> "$project_log" 2>&1
+        neuralmind audit-report . --format markdown --output "$LOG_DIR/audit_${project_name}_$timestamp.md" >> "$project_log" 2>&1
+        log "✓ Completed: $project_name"
+    ) || log "✗ Error on $project_name"
+done
+
+log "=== Auto-Discovery Complete ==="
+```
+
+Add to crontab:
+```bash
+crontab -e
+# Add: 0 2 * * * /home/user/scripts/neuralmind-auto-discovery.sh $HOME/claudecode
 ```
 
 ---
