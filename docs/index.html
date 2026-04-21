@@ -312,6 +312,61 @@
       .reveal{opacity:0;animation:revealFade linear both;animation-timeline:view();animation-range:entry 0% entry 60%}
       @keyframes revealFade{to{opacity:1}}
     }
+
+    /* SYMPTOM / GOAL TABLES (#when) */
+    .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-6);margin-top:var(--space-10)}
+    @media(max-width:900px){.sg-grid{grid-template-columns:1fr}}
+    .sg-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-6);box-shadow:var(--shadow-sm)}
+    .sg-card h3{font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-5);color:var(--color-text)}
+    .sg-row{display:grid;grid-template-columns:1fr auto;gap:var(--space-4);align-items:center;padding:var(--space-3) 0;border-bottom:1px solid var(--color-divider);font-size:var(--text-sm)}
+    .sg-row:last-child{border-bottom:none}
+    .sg-row-text{color:var(--color-text-muted);line-height:1.5}
+    .sg-row-action{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-primary);font-weight:600;white-space:nowrap;background:var(--color-primary-highlight);padding:var(--space-1) var(--space-2);border-radius:var(--radius-sm)}
+
+    /* PERSONA GRID (#who) */
+    .persona-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-4);margin-top:var(--space-10)}
+    .persona-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-5);transition:border-color var(--transition),transform var(--transition)}
+    .persona-card:hover{border-color:var(--color-primary);transform:translateY(-2px)}
+    .persona-card h4{font-family:var(--font-display);font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-2);color:var(--color-text)}
+    .persona-card p{font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.6}
+    .persona-not-fit{margin-top:var(--space-8);padding:var(--space-5);background:var(--color-surface-offset);border-left:3px solid var(--color-warning);border-radius:var(--radius-md);font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.6}
+    .persona-not-fit strong{color:var(--color-text);display:block;margin-bottom:var(--space-2)}
+
+    /* USE CASES (#use-cases) */
+    .uc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-5);margin-top:var(--space-10)}
+    .uc-card{display:flex;flex-direction:column;padding:var(--space-6);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);transition:border-color var(--transition),transform var(--transition),box-shadow var(--transition);text-decoration:none;color:inherit}
+    .uc-card:hover{border-color:var(--color-primary);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+    .uc-card-icon{width:44px;height:44px;border-radius:var(--radius-md);background:var(--color-primary-highlight);color:var(--color-primary);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-4)}
+    .uc-card h3{font-family:var(--font-display);font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-2);color:var(--color-text)}
+    .uc-card p{flex:1;font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.6;margin-bottom:var(--space-4)}
+    .uc-card-link{font-size:var(--text-sm);font-weight:600;color:var(--color-primary);display:inline-flex;align-items:center;gap:var(--space-1);transition:gap var(--transition)}
+    .uc-card:hover .uc-card-link{gap:var(--space-2)}
+
+    /* ALTERNATIVES MATRIX (#vs extended) */
+    .alts-heading{margin-top:var(--space-16);padding-top:var(--space-12);border-top:1px solid var(--color-divider)}
+    .alts-heading h3{font-family:var(--font-display);font-size:var(--text-xl);font-weight:700;margin-bottom:var(--space-3);color:var(--color-text)}
+    .alts-heading p{font-size:var(--text-base);color:var(--color-text-muted);max-width:var(--content-narrow)}
+    .alts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:var(--space-4);margin-top:var(--space-8)}
+    .alt-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-5);transition:border-color var(--transition),transform var(--transition);display:flex;flex-direction:column}
+    .alt-card:hover{border-color:var(--color-primary);transform:translateY(-1px)}
+    .alt-card h4{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-3);color:var(--color-text)}
+    .alt-card p{flex:1;font-size:var(--text-sm);color:var(--color-text-muted);line-height:1.6;margin-bottom:var(--space-4)}
+    .alt-card a{font-size:var(--text-xs);font-weight:600;color:var(--color-primary);text-decoration:none}
+    .alt-card a:hover{text-decoration:underline}
+
+    /* FAQ (#faq) */
+    .faq-list{max-width:var(--content-default);margin:var(--space-10) auto 0}
+    .faq-item{border-bottom:1px solid var(--color-divider)}
+    .faq-item summary{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-5) 0;cursor:pointer;font-family:var(--font-display);font-size:var(--text-base);font-weight:600;color:var(--color-text);list-style:none;transition:color var(--transition)}
+    .faq-item summary::-webkit-details-marker{display:none}
+    .faq-item summary:hover{color:var(--color-primary)}
+    .faq-item summary::after{content:'+';font-size:var(--text-xl);color:var(--color-text-muted);transition:transform var(--transition);line-height:1;flex-shrink:0}
+    .faq-item[open] summary::after{transform:rotate(45deg);color:var(--color-primary)}
+    .faq-item .faq-body{padding:0 0 var(--space-5);color:var(--color-text-muted);font-size:var(--text-sm);line-height:1.7}
+    .faq-item .faq-body p+p{margin-top:var(--space-3)}
+    .faq-item .faq-body a{color:var(--color-primary);text-decoration:none;border-bottom:1px solid var(--color-primary);transition:color var(--transition),border-color var(--transition)}
+    .faq-item .faq-body a:hover{color:var(--color-primary-hover);border-color:var(--color-primary-hover)}
+    .faq-item .faq-body code{font-family:var(--font-mono);font-size:.9em;background:var(--color-surface-offset);padding:1px 5px;border-radius:3px;color:var(--color-text)}
   </style>
 </head>
 <body>
@@ -336,10 +391,11 @@
     NeuralMind
   </a>
   <div class="nav-links">
+    <a href="#when">When to use</a>
     <a href="#how-it-works">How it works</a>
-    <a href="#savings">Savings</a>
-    <a href="#mcp">MCP Tools</a>
-    <a href="#vs">vs. Heuristic</a>
+    <a href="#use-cases">Use cases</a>
+    <a href="#vs">Compare</a>
+    <a href="#faq">FAQ</a>
   </div>
   <div class="nav-actions">
     <button class="theme-toggle" data-theme-toggle aria-label="Switch to light mode">
@@ -425,6 +481,64 @@
         <div class="compare-divider"></div>
         <div class="compare-metric"><div class="compare-metric-label">Monthly (100 queries/day)</div><div class="compare-metric-value good">~$7</div></div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHEN TO REACH FOR IT -->
+<section class="section" id="when" aria-labelledby="when-heading">
+  <div class="container-wide">
+    <div class="reveal">
+      <div class="section-label" aria-hidden="true">When to reach for it</div>
+      <h2 class="section-title" id="when-heading">Two ways to know<br>you need this</h2>
+      <p class="section-desc">Start with what's annoying you (symptoms), or start with what you're trying to achieve (goals). Every row maps to the specific command that fixes it.</p>
+    </div>
+    <div class="sg-grid reveal">
+      <div class="sg-card">
+        <h3>Symptoms — "This is happening to me"</h3>
+        <div class="sg-row"><span class="sg-row-text">Claude Code hits context limits mid-task</span><span class="sg-row-action">install-hooks</span></div>
+        <div class="sg-row"><span class="sg-row-text">My monthly LLM bill keeps climbing</span><span class="sg-row-action">query + hooks</span></div>
+        <div class="sg-row"><span class="sg-row-text">I re-paste project context every session</span><span class="sg-row-action">wakeup</span></div>
+        <div class="sg-row"><span class="sg-row-text">Agent reads a 2,000-line file to answer one question</span><span class="sg-row-action">skeleton</span></div>
+        <div class="sg-row"><span class="sg-row-text">Grep floods the agent with 100+ matches</span><span class="sg-row-action">install-hooks</span></div>
+        <div class="sg-row"><span class="sg-row-text">I want to query my code from ChatGPT / Gemini</span><span class="sg-row-action">wakeup | pbcopy</span></div>
+        <div class="sg-row"><span class="sg-row-text">Retrieval feels random across similar questions</span><span class="sg-row-action">learn</span></div>
+      </div>
+      <div class="sg-card">
+        <h3>Goals — "What am I solving for?"</h3>
+        <div class="sg-row"><span class="sg-row-text">Cut LLM spend on code Q&amp;A</span><span class="sg-row-action">5–10× cheaper</span></div>
+        <div class="sg-row"><span class="sg-row-text">Faster, more grounded agent responses</span><span class="sg-row-action">fewer hallucinations</span></div>
+        <div class="sg-row"><span class="sg-row-text">Keep all code local — no SaaS, no telemetry</span><span class="sg-row-action">100% offline</span></div>
+        <div class="sg-row"><span class="sg-row-text">Work across Claude + GPT + Gemini with one index</span><span class="sg-row-action">model-agnostic</span></div>
+        <div class="sg-row"><span class="sg-row-text">Make retrieval adapt to our actual queries</span><span class="sg-row-action">neuralmind learn</span></div>
+        <div class="sg-row"><span class="sg-row-text">Measure and report savings to stakeholders</span><span class="sg-row-action">benchmark --json</span></div>
+        <div class="sg-row"><span class="sg-row-text">Auto-refresh the index on every commit</span><span class="sg-row-action">init-hook</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHO IS THIS FOR -->
+<section class="section section-bg" id="who" aria-labelledby="who-heading">
+  <div class="container-wide">
+    <div class="reveal">
+      <div class="section-label" aria-hidden="true">Who this is for</div>
+      <h2 class="section-title" id="who-heading">Built for developers<br>paying per token</h2>
+      <p class="section-desc">If one of these fits, NeuralMind was built for you.</p>
+    </div>
+    <div class="persona-grid reveal">
+      <div class="persona-card"><h4>Claude Code user</h4><p>Watching your token bill climb. PostToolUse hooks compress every Read/Bash/Grep on top of ~60× query savings.</p></div>
+      <div class="persona-card"><h4>Cursor user</h4><p>Want semantic retrieval outside Cursor too. CLI + MCP work in any agent with the same index.</p></div>
+      <div class="persona-card"><h4>Cline / Continue user</h4><p>No built-in codebase index. Drop-in MCP tools — <code style="font-family:var(--font-mono);font-size:.85em">query</code>, <code style="font-family:var(--font-mono);font-size:.85em">skeleton</code>, <code style="font-family:var(--font-mono);font-size:.85em">wakeup</code>.</p></div>
+      <div class="persona-card"><h4>GPT / Gemini / local models</h4><p>Pipe wakeup or query output into any chat — model-agnostic, works anywhere.</p></div>
+      <div class="persona-card"><h4>Solo dev, growing monorepo</h4><p>Incremental rebuilds + learning that adapts to your real query patterns.</p></div>
+      <div class="persona-card"><h4>Team lead tracking LLM spend</h4><p>Measurable per-query reduction with <code style="font-family:var(--font-mono);font-size:.85em">neuralmind benchmark</code>.</p></div>
+      <div class="persona-card"><h4>Security-conscious / regulated</h4><p>100% local, offline, no outbound calls. Nothing leaves the machine — ever.</p></div>
+      <div class="persona-card"><h4>Researcher / hobbyist</h4><p>Open-source reference implementation of two-phase token optimization. MIT.</p></div>
+    </div>
+    <div class="persona-not-fit reveal">
+      <strong>Not a fit if:</strong>
+      you need cross-repo search across a whole organization (try <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cody.md" target="_blank" rel="noopener noreferrer" style="color:var(--color-primary);border-bottom:1px solid var(--color-primary)">Sourcegraph Cody</a>), or you only want inline completions (try <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-github-copilot.md" target="_blank" rel="noopener noreferrer" style="color:var(--color-primary);border-bottom:1px solid var(--color-primary)">GitHub Copilot</a>).
     </div>
   </div>
 </section>
@@ -589,6 +703,49 @@
   </div>
 </section>
 
+<!-- USE CASES -->
+<section class="section" id="use-cases" aria-labelledby="uc-heading">
+  <div class="container-wide">
+    <div class="reveal">
+      <div class="section-label" aria-hidden="true">Use Cases</div>
+      <h2 class="section-title" id="uc-heading">Step-by-step walkthroughs<br>for your workflow</h2>
+      <p class="section-desc">Command-driven guides matched to how people actually use NeuralMind. Copy, run, done.</p>
+    </div>
+    <div class="uc-grid reveal">
+      <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md" target="_blank" rel="noopener noreferrer" class="uc-card">
+        <div class="uc-card-icon" aria-hidden="true"><i data-lucide="terminal" style="width:22px;height:22px;"></i></div>
+        <h3>Claude Code user</h3>
+        <p>Full two-phase setup, daily workflow, and a before/after table for every tool call.</p>
+        <span class="uc-card-link">Read walkthrough →</span>
+      </a>
+      <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cost-optimization.md" target="_blank" rel="noopener noreferrer" class="uc-card">
+        <div class="uc-card-icon" aria-hidden="true"><i data-lucide="trending-down" style="width:22px;height:22px;"></i></div>
+        <h3>Cost optimization</h3>
+        <p>Baseline → measure → stakeholder-ready savings report. Built for tracking LLM spend.</p>
+        <span class="uc-card-link">Read walkthrough →</span>
+      </a>
+      <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/any-llm.md" target="_blank" rel="noopener noreferrer" class="uc-card">
+        <div class="uc-card-icon" aria-hidden="true"><i data-lucide="shuffle" style="width:22px;height:22px;"></i></div>
+        <h3>Any LLM (ChatGPT / Gemini / local)</h3>
+        <p>Copy-paste and CLI-piped context for non-MCP chats and mixed-model workflows.</p>
+        <span class="uc-card-link">Read walkthrough →</span>
+      </a>
+      <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md" target="_blank" rel="noopener noreferrer" class="uc-card">
+        <div class="uc-card-icon" aria-hidden="true"><i data-lucide="shield-check" style="width:22px;height:22px;"></i></div>
+        <h3>Offline / regulated work</h3>
+        <p>Air-gapped install, compliance properties table, audit trail — nothing leaves the box.</p>
+        <span class="uc-card-link">Read walkthrough →</span>
+      </a>
+      <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/growing-monorepo.md" target="_blank" rel="noopener noreferrer" class="uc-card">
+        <div class="uc-card-icon" aria-hidden="true"><i data-lucide="git-branch" style="width:22px;height:22px;"></i></div>
+        <h3>Growing monorepo</h3>
+        <p>Three freshness strategies + large-repo tuning for codebases that change daily.</p>
+        <span class="uc-card-link">Read walkthrough →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
 <!-- VS -->
 <section class="section section-bg" id="vs" aria-labelledby="vs-heading">
   <div class="container">
@@ -611,6 +768,153 @@
           <tr><td>File skeleton view</td><td><span class="cross" aria-label="No">✗</span> No</td><td class="nm-col"><span class="check" aria-label="Yes">✓</span> <strong>Call graph + deps</strong></td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="alts-heading reveal">
+      <h3>NeuralMind vs. everything else</h3>
+      <p>Honest one-liners on every tool developers evaluate alongside NeuralMind. Each links to a full comparison page with feature matrix and trade-offs.</p>
+    </div>
+    <div class="alts-grid reveal">
+      <div class="alt-card">
+        <h4>vs. Cursor @codebase</h4>
+        <p>Works <em>only</em> in Cursor. NeuralMind works in any agent and adds tool-output compression on top.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cursor-codebase.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. GitHub Copilot</h4>
+        <p>Copilot is hosted completions tied to your GitHub account. NeuralMind is local context for any agent, any model.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-github-copilot.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Aider repo-map</h4>
+        <p>Aider's repo-map is syntactic only (tree-sitter + PageRank). NeuralMind adds semantic retrieval and compression.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-aider-repomap.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Sourcegraph Cody</h4>
+        <p>Cody is server-hosted and org-wide. NeuralMind is local and per-project — different scale, different deployment model.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cody.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Continue / Cline</h4>
+        <p>Those are agent runtimes. NeuralMind is the context and compression layer underneath — they compose.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-continue-cline.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Windsurf / Codeium</h4>
+        <p>Vertically integrated IDE with server-side indexing. NeuralMind is editor- and model-agnostic, fully local.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-windsurf-codeium.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Claude Projects</h4>
+        <p>Projects reloads all attached files every turn. NeuralMind retrieves only what the query needs — ~800 tokens vs tens of thousands.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-claude-projects.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Prompt caching</h4>
+        <p>Caching amortizes a big prompt. NeuralMind makes the prompt small in the first place — combine both for the cheapest workload.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-prompt-caching.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. LangChain / LlamaIndex</h4>
+        <p>Frameworks you assemble yourself. NeuralMind is the assembled, opinionated default for code agents.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-langchain-llamaindex.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Long context (1M / 2M)</h4>
+        <p>Possible ≠ cheap. A 50K-token repo at Claude Sonnet rates costs $0.15 every turn; NeuralMind drops that to $0.002.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. Generic RAG</h4>
+        <p>Text chunking loses structure. NeuralMind keeps the call graph, clusters, and cross-file edges intact.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+      <div class="alt-card">
+        <h4>vs. tree-sitter / ctags / grep</h4>
+        <p>Deterministic but syntactic. Use alongside NeuralMind for exact-name lookups — not instead of it for natural-language questions.</p>
+        <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md" target="_blank" rel="noopener noreferrer">Read full comparison →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq" aria-labelledby="faq-heading">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label" aria-hidden="true">FAQ</div>
+      <h2 class="section-title" id="faq-heading">Honest answers<br>to common questions</h2>
+      <p class="section-desc">The questions we get asked most. Click any question to expand.</p>
+    </div>
+    <div class="faq-list reveal">
+      <details class="faq-item">
+        <summary>How much does NeuralMind actually reduce Claude / GPT token costs?</summary>
+        <div class="faq-body">
+          <p>Measured on real repos: <strong>40–70× reduction per query</strong>. For a team running 100 queries/day on Claude Sonnet, that is roughly <strong>$450/month → $7/month</strong>. With PostToolUse hooks layered on top, combined savings are typically 5–10× beyond the query reduction. Exact numbers depend on codebase size and model pricing — run <code>neuralmind benchmark . --json</code> on your project for a concrete figure.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>Does NeuralMind work outside Claude Code?</summary>
+        <div class="faq-body">
+          <p>Yes. The CLI runs anywhere Python runs. The MCP server integrates with Cursor, Cline, Continue, Claude Desktop, and any MCP-compatible agent. For non-MCP tools like ChatGPT or Gemini, pipe <code>neuralmind wakeup . | pbcopy</code> into a regular chat window.</p>
+          <p>Only the PostToolUse compression hooks are Claude-Code-specific — everything else is model- and agent-agnostic.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>Does my code leave my machine?</summary>
+        <div class="faq-body">
+          <p>No. NeuralMind is fully offline — no API calls, no cloud services, no telemetry. Embeddings run locally via ChromaDB, the knowledge graph is stored in <code>graphify-out/</code> inside your project, and query memory (optional, opt-in) is written to <code>.neuralmind/</code> on disk.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>Is this just RAG? How is it different from LangChain or LlamaIndex?</summary>
+        <div class="faq-body">
+          <p>It is a form of RAG, but specialized for code. Instead of chunking text, NeuralMind retrieves over a <strong>knowledge graph of code entities</strong> (functions, classes, clusters) with a fixed 4-layer structure. The call graph stays intact, and the output is a token-budgeted context — not a flat list of chunks.</p>
+          <p>See the full <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-langchain-llamaindex.md" target="_blank" rel="noopener noreferrer">vs. LangChain/LlamaIndex</a> comparison.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>I have a 1M context window now — do I still need this?</summary>
+        <div class="faq-body">
+          <p>Long context makes it <em>possible</em> to stuff a whole repo in; it does not make it <em>cheap</em>. A 50K-token repo at Claude Sonnet rates costs ~$0.15 every turn. NeuralMind drops that to ~$0.002.</p>
+          <p>See <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md" target="_blank" rel="noopener noreferrer">vs. long context</a> for the full math.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>What languages does it support?</summary>
+        <div class="faq-body">
+          <p>Any language <a href="https://github.com/dfrostar/graphify" target="_blank" rel="noopener noreferrer">graphify</a> supports (Python, JavaScript/TypeScript, and others via tree-sitter). NeuralMind consumes <code>graphify-out/graph.json</code> — if graphify can index it, NeuralMind can query it.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>What is the difference between <code>wakeup</code>, <code>query</code>, and <code>skeleton</code>?</summary>
+        <div class="faq-body">
+          <p><code>wakeup</code> — ~400 tokens of project orientation (L0 + L1). Run it at session start.</p>
+          <p><code>query</code> — ~800–1,100 tokens for a specific natural-language question (L0–L3).</p>
+          <p><code>skeleton</code> — compact view of a single file (functions + call graph + cross-file edges). Use before <code>Read</code>.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>How does the PostToolUse compression work?</summary>
+        <div class="faq-body">
+          <p>When <code>neuralmind install-hooks .</code> has been run, Claude Code invokes NeuralMind <strong>after</strong> every Read/Bash/Grep tool call but <strong>before</strong> the agent sees the output. Read becomes a skeleton (~88% smaller). Bash keeps errors + the last 3 lines (~91% smaller). Grep caps at 25 matches.</p>
+          <p>Set <code>NEURALMIND_BYPASS=1</code> on any command to opt out temporarily.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>Does it auto-update when I change code?</summary>
+        <div class="faq-body">
+          <p>Only if you install the git post-commit hook with <code>neuralmind init-hook .</code>. Otherwise run <code>neuralmind build .</code> manually — it's incremental, and only re-embeds changed nodes.</p>
+        </div>
+      </details>
+      <details class="faq-item">
+        <summary>What if retrieval quality is poor on my repo?</summary>
+        <div class="faq-body">
+          <p>First, check that <code>neuralmind stats .</code> reports all your nodes indexed. Then run <code>neuralmind benchmark .</code> to see reduction ratios on real queries. Enable query memory (it prompts on first TTY run) and periodically run <code>neuralmind learn .</code> — cooccurrence-based reranking improves relevance on your actual patterns.</p>
+          <p>If it still feels off, <a href="https://github.com/dfrostar/neuralmind/issues" target="_blank" rel="noopener noreferrer">open an issue</a> with the query and expected result. Retrieval quality is the thing we most want to improve.</p>
+        </div>
+      </details>
     </div>
   </div>
 </section>
