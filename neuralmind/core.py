@@ -39,6 +39,9 @@ class NeuralMind:
     Achieves 6-49x token reduction through progressive disclosure.
     """
 
+    # Keep highlights compact to avoid inflating query context.
+    MAX_HYBRID_HIGHLIGHT_RESULTS = 3
+
     def __init__(
         self,
         project_path: str,
@@ -94,6 +97,7 @@ class NeuralMind:
                 details=details or {},
             )
         except Exception:
+            # Audit logging must never block primary query/build/search flows.
             pass
 
     def build(self, force: bool = False) -> dict:
@@ -226,7 +230,7 @@ class NeuralMind:
         return result
 
     def _build_hybrid_highlights(self, question: str) -> str:
-        results = self.embedder.search(question, n=3)
+        results = self.embedder.search(question, n=self.MAX_HYBRID_HIGHLIGHT_RESULTS)
         if not results:
             return ""
         lines = ["## Hybrid Highlights"]

@@ -34,11 +34,11 @@ def test_security_manager_audits_success_and_failure(temp_project):
         manager.secure_call("alice", "reader", "neuralmind_build", lambda: {"ok": True})
 
     with pytest.raises(RuntimeError):
-        limiter = RateLimiter(max_calls=1, window_seconds=60)
+        strict_limiter = RateLimiter(max_calls=1, window_seconds=60)
         limited = MCPSecurityManager(
             project_path=str(temp_project),
             policy=RBACPolicy({"reader": {"neuralmind_query"}}),
-            rate_limiter=limiter,
+            rate_limiter=strict_limiter,
             audit_trail=AuditTrail(temp_project),
         )
         limited.secure_call("bob", "reader", "neuralmind_query", lambda: {"ok": True})

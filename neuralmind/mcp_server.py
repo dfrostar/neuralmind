@@ -285,12 +285,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
-    project_path = str(arguments.get("project_path", ""))
+    project_path_raw = arguments.get("project_path")
+    project_path = str(project_path_raw) if project_path_raw else None
     actor = str(arguments.get("actor", "anonymous"))
     role = str(arguments.get("role", "builder"))
 
     try:
-        if project_path:
+        if project_path is not None:
             security = get_security_manager(project_path)
             result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         else:

@@ -56,7 +56,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         }
 
     def _content_hash(self, text: str) -> str:
-        return hashlib.sha256(text.encode()).hexdigest()[:16]
+        return hashlib.sha256(text.encode()).hexdigest()
 
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
         if not self.nodes and not self.load_graph():
@@ -84,6 +84,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
             self._index[node_id] = {
                 "id": node_id,
                 "document": text,
+                "terms": set(text.lower().split()),
                 "metadata": self._node_metadata(node),
                 "content_hash": content_hash,
             }
@@ -104,12 +105,11 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         if not query_terms:
             return []
 
-        def _score(doc: str) -> float:
-            doc_terms = set(doc.lower().split())
+        def _calculate_term_overlap_score(doc_terms: set[str]) -> float:
             overlap = len(query_terms & doc_terms)
             return overlap / max(len(query_terms), 1)
 
-        def _match_rule(metadata: dict[str, Any], rule: dict[str, Any]) -> bool:
+        def _metadata_matches_filter(metadata: dict[str, Any], rule: dict[str, Any]) -> bool:
             for key, value in rule.items():
                 if metadata.get(key) != value:
                     return False
@@ -121,19 +121,21 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         if community is not None:
             combined_where["community"] = community
 
-        def _match(metadata: dict[str, Any]) -> bool:
+        def _satisfies_where_clause(metadata: dict[str, Any]) -> bool:
             if not combined_where:
                 return True
             if "$and" in combined_where:
-                return all(_match_rule(metadata, rule) for rule in combined_where["$and"])
-            return _match_rule(metadata, combined_where)
+                return all(
+                    _metadata_matches_filter(metadata, rule) for rule in combined_where["$and"]
+                )
+            return _metadata_matches_filter(metadata, combined_where)
 
         scored: list[dict[str, Any]] = []
         for entry in self._index.values():
             metadata = entry["metadata"]
-            if not _match(metadata):
+            if not _satisfies_where_clause(metadata):
                 continue
-            score = _score(entry["document"])
+            score = _calculate_term_overlap_score(entry["terms"])
             if score <= 0:
                 continue
             scored.append(
