@@ -354,6 +354,12 @@
     .alt-card a{font-size:var(--text-xs);font-weight:600;color:var(--color-primary);text-decoration:none}
     .alt-card a:hover{text-decoration:underline}
 
+    /* PROOF / BENCHMARK (#proof) */
+    .proof-chart{display:block;max-width:100%;border-radius:var(--radius-xl);border:1px solid var(--color-border);margin:0 auto var(--space-10);box-shadow:var(--shadow-md)}
+    .ci-badge{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-1) var(--space-3);background:color-mix(in oklch,var(--color-success) 12%,var(--color-surface));border:1px solid color-mix(in oklch,var(--color-success) 30%,var(--color-border));border-radius:var(--radius-full);font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-success);margin-bottom:var(--space-8)}
+    .ci-dot{width:6px;height:6px;border-radius:50%;background:var(--color-success);animation:cidot 2s ease-in-out infinite}@keyframes cidot{0%,100%{opacity:1}50%{opacity:.3}}
+    .proof-actions{margin-top:var(--space-6);display:flex;gap:var(--space-4);flex-wrap:wrap}
+
     /* FAQ (#faq) */
     .faq-list{max-width:var(--content-default);margin:var(--space-10) auto 0}
     .faq-item{border-bottom:1px solid var(--color-divider)}
@@ -394,6 +400,7 @@
     <a href="#when">When to use</a>
     <a href="#how-it-works">How it works</a>
     <a href="#use-cases">Use cases</a>
+    <a href="#proof">Proof</a>
     <a href="#vs">Compare</a>
     <a href="#faq">FAQ</a>
   </div>
@@ -680,6 +687,43 @@
           <tr><td><strong>GPT-4.5</strong></td><td class="cost-high">$11,250 / mo</td><td class="cost-low">$180 / mo</td><td class="savings-val">$11,070 saved</td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF / BENCHMARK -->
+<section class="section" id="proof" aria-labelledby="proof-heading">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label" aria-hidden="true">CI-Verified</div>
+      <h2 class="section-title" id="proof-heading">Every claim measured<br>in CI on every PR</h2>
+      <p class="section-desc">NeuralMind benchmarks itself automatically — a real fixture codebase, real tokenizer calls (tiktoken), real retrieval. The numbers below are never hardcoded. CI fails if reduction drops below the floor.</p>
+    </div>
+    <div class="reveal" style="text-align:center">
+      <span class="ci-badge"><span class="ci-dot"></span>&nbsp;CI passing — measured with tiktoken o200k_base + cl100k_base on every pull request</span>
+    </div>
+    <div class="reveal">
+      <img src="images/benchmark_chart.png"
+           alt="NeuralMind token reduction by tokenizer — bar chart auto-generated in CI"
+           class="proof-chart"
+           loading="lazy">
+    </div>
+    <div class="reveal">
+      <h3 style="font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;margin-bottom:var(--space-4);color:var(--color-text)">Community benchmarks — real repos, zero telemetry</h3>
+      <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">Your code never leaves your machine. You submit only the numbers.</p>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th scope="col">Project</th><th scope="col">Language</th><th scope="col">Nodes</th><th scope="col">Avg query tokens</th><th scope="col">Reduction</th><th scope="col">Model</th></tr></thead>
+          <tbody>
+            <tr><td>cmmc20</td><td>JavaScript</td><td>241</td><td>739</td><td class="savings-val">65.6×</td><td>Claude 3.5 Sonnet</td></tr>
+            <tr><td>mempalace</td><td>Python</td><td>1,626</td><td>891</td><td class="savings-val">46.0×</td><td>Claude 3.5 Sonnet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="proof-actions">
+        <a href="https://github.com/dfrostar/neuralmind#-benchmarks" target="_blank" rel="noopener noreferrer" class="btn-ghost">See full benchmark details →</a>
+        <a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml" target="_blank" rel="noopener noreferrer" class="btn-ghost">Submit your numbers →</a>
+      </div>
     </div>
   </div>
 </section>

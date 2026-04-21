@@ -13,6 +13,7 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | **[Setup Guide](Setup-Guide)** | First-time setup for Claude Code, Cursor, Claude Desktop, or any MCP client |
 | **[Use Cases](Use-Cases)** | Step-by-step walkthroughs by persona: Claude Code user, cost optimization, any-LLM, offline/regulated, growing monorepo |
 | **[Comparisons](Comparisons)** | Honest "NeuralMind vs X" pages: Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
+| **[Benchmarks](../blob/main/README.md#-benchmarks)** | CI-measured reduction ratios, per-model breakdown, community submissions, and how to run it on your own code |
 
 ### Reference
 
@@ -94,6 +95,20 @@ neuralmind init-hook .        # auto-rebuild on every git commit (optional)
 | [Prompt caching](Comparisons#prompt-caching) | Caching amortizes big prompts; NeuralMind makes them small |
 
 Full list: [Comparisons](Comparisons).
+
+## Prove it on your code
+
+Don't trust fixture numbers — measure it on your own repo:
+
+```bash
+pip install neuralmind graphifyy
+graphify update . && neuralmind build .
+neuralmind benchmark . --contribute
+```
+
+This outputs your reduction ratio, tokens per query, and an estimated monthly savings figure at Claude 3.5 Sonnet pricing. The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
+
+Full walkthrough: [Does NeuralMind work on *your* codebase?](../blob/main/docs/use-cases/benchmark-your-repo.md)
 
 ## Support
 
