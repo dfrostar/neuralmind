@@ -11,6 +11,7 @@ We don't assert a specific numerical uplift (too noisy on a small
 fixture). We assert the **mechanism** — files grow, patterns load,
 reranking runs — which is what an end user depends on.
 """
+
 from __future__ import annotations
 
 import json
@@ -18,7 +19,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "sample_project"
@@ -124,9 +124,7 @@ def test_learned_patterns_load_on_next_query(clean_project_memory):
         nm.query(q)
 
     events = memory.read_query_events(memory.project_query_events_file(FIXTURE_DIR))
-    memory.write_learned_patterns(
-        str(FIXTURE_DIR), memory.build_cooccurrence_index(events)
-    )
+    memory.write_learned_patterns(str(FIXTURE_DIR), memory.build_cooccurrence_index(events))
 
     # New NeuralMind instance — forces a fresh load of learned patterns.
     nm2 = NeuralMind(str(FIXTURE_DIR))

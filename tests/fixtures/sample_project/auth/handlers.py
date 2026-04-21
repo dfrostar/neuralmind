@@ -1,12 +1,12 @@
 """Authentication handlers — login, logout, token refresh."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from .jwt_utils import encode_token, decode_token, TokenExpiredError
-from ..users.crud import get_user_by_email, update_last_login
 from ..db.connection import get_connection
-
+from ..users.crud import get_user_by_email, update_last_login
+from .jwt_utils import decode_token, encode_token
 
 SESSION_TTL = timedelta(hours=1)
 REFRESH_TTL = timedelta(days=30)

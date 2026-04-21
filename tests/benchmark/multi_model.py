@@ -22,15 +22,15 @@ Run locally:
     python -m tests.benchmark.run
     python -m tests.benchmark.multi_model
 """
+
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
 
 import tiktoken
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
@@ -40,8 +40,8 @@ MULTI_MODEL_PATH = REPO_ROOT / "tests" / "benchmark" / "multi_model.json"
 # cl100k-based tokenizer. Sources: Anthropic's tokenization blog post;
 # Meta Llama 3 tokenizer paper. These are rough — labelled "estimated"
 # everywhere they're shown.
-CLAUDE_CORRECTION = 1.08   # Claude's tokenizer is slightly chattier than GPT-4o
-LLAMA_CORRECTION = 1.22    # Llama 3 tokenizer is noticeably chattier on code
+CLAUDE_CORRECTION = 1.08  # Claude's tokenizer is slightly chattier than GPT-4o
+LLAMA_CORRECTION = 1.22  # Llama 3 tokenizer is noticeably chattier on code
 
 
 @dataclass
@@ -58,10 +58,26 @@ class ModelMeasurement:
 
 
 def _tiktoken_counter(encoding_name: str) -> Callable[[str], int] | None:
-    """Return a counter for a tiktoken encoding, or None if unavailable."""
+    """Return a counter for a tiktoken encoding, or None if unavailable.
+
+    tiktoken lazily downloads vocab files from Azure Blob Storage; that
+    endpoint can fail on restricted networks or transient 5xx errors.
+    We probe with a trivial encode so the download happens here (and we
+    can catch it) rather than on the first real call.
+    """
     try:
         enc = tiktoken.get_encoding(encoding_name)
-    except Exception:
+        # Force vocab load now so errors surface here, not later.
+        _ = enc.encode("probe")
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Tokenizer %s unavailable (%s: %s). Skipping this model row.",
+            encoding_name,
+            type(exc).__name__,
+            exc,
+        )
         return None
     return lambda s: len(enc.encode(s))
 
@@ -150,6 +166,27 @@ def collect_measurements(naive_text: str, neuralmind_text: str) -> list[ModelMea
             )
         )
 
+    # Last-resort: if every tiktoken fallback failed (restricted network,
+    # transient Azure outage), still emit a row using a character-based
+    # approximation so downstream steps (chart + report) don't crash.
+    # ~4 chars/token is a widely-cited English+code average; the ratio
+    # between naive and neuralmind text is preserved because both sides
+    # use the same approximation.
+    if not rows:
+        naive_approx = max(1, len(naive_text) // 4)
+        nm_approx = max(1, len(neuralmind_text) // 4)
+        rows.append(
+            ModelMeasurement(
+                model="Generic (character approximation)",
+                tokenizer="chars ÷ 4 — tiktoken downloads unavailable in this environment",
+                naive_tokens=naive_approx,
+                neuralmind_tokens=nm_approx,
+                reduction_ratio=naive_approx / max(nm_approx, 1),
+                measured=False,
+                note="tiktoken vocab download failed; rerun with network access for precise counts",
+            )
+        )
+
     return rows
 
 
@@ -215,9 +252,7 @@ def reconstruct_texts() -> tuple[str, str]:
 
 def write_outputs(rows: list[ModelMeasurement]) -> None:
     """Write both JSON (machine) and markdown (human) outputs."""
-    MULTI_MODEL_PATH.write_text(
-        json.dumps({"models": [asdict(r) for r in rows]}, indent=2)
-    )
+    MULTI_MODEL_PATH.write_text(json.dumps({"models": [asdict(r) for r in rows]}, indent=2))
 
     md_path = MULTI_MODEL_PATH.with_suffix(".md")
     lines = [

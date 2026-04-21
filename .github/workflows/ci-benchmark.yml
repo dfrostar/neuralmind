@@ -36,6 +36,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install . tiktoken matplotlib graphifyy
 
+      - name: Pre-fetch tiktoken vocab
+        # tiktoken lazily downloads vocab files from Azure Blob Storage on
+        # first use. Doing it here makes any network failure fail loudly
+        # and early instead of mid-benchmark with a confusing traceback.
+        # The benchmark code also has a graceful fallback, so this step
+        # is "nice to have" — the benchmark still runs (with a char-based
+        # approximation) if the download fails.
+        continue-on-error: true
+        run: |
+          python -c "
+          import tiktoken
+          for name in ('o200k_base', 'cl100k_base'):
+              try:
+                  enc = tiktoken.get_encoding(name)
+                  enc.encode('probe')
+                  print(f'[tiktoken] {name} OK')
+              except Exception as e:
+                  print(f'[tiktoken] {name} FAILED: {type(e).__name__}: {e}')
+          "
+
       - name: Build fixture knowledge graph
         run: |
           graphify update tests/fixtures/sample_project

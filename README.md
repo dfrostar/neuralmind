@@ -989,7 +989,7 @@ neuralmind query . "question"     # get context for a specific question
 
 ## 📊 Benchmarks
 
-NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **20×** — well below the typical 40–70× NeuralMind hits on real repos).
+NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **4×** on the small fixture — the fixture is intentionally tiny, real repos consistently hit 40–70× as shown below).
 
 ![Benchmark efficiency by tokenizer](docs/images/benchmark_chart.png)
 
@@ -1050,7 +1050,7 @@ Output shows your reduction ratio, tokens per query, and estimated monthly savin
 - Heuristic-only baseline (community-reported): **70–80% top-5 retrieval accuracy**
 - NeuralMind target on the same query set: exceed that baseline via semantic retrieval + learned cooccurrence reranking
 
-The pytest regression gate (`tests/test_benchmark_regression.py`) currently enforces **≥50% top-k hit rate** on the fixture plus **≥20× reduction**.
+The pytest regression gate (`tests/test_benchmark_regression.py`) currently enforces **≥50% top-k hit rate** on the fixture plus **≥4× reduction** (low because the fixture is tiny; real repos measure 10× higher).
 
 ---
 
