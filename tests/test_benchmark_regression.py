@@ -10,6 +10,7 @@ Skipped cleanly if the fixture has not been built yet (missing
 pytest so the skip only triggers during local-dev runs where the user
 opted out of benchmark-gating.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,14 +18,13 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "sample_project"
 GRAPH_JSON = FIXTURE_DIR / "graphify-out" / "graph.json"
 RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
 
 REDUCTION_FLOOR = 20.0  # keep in sync with tests/benchmark/run.py
-HIT_RATE_FLOOR = 0.50   # at least half of expected modules should show up
+HIT_RATE_FLOOR = 0.50  # at least half of expected modules should show up
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +66,8 @@ def test_top_k_hit_rate_above_floor(benchmark_results):
 def test_every_query_has_at_least_one_module_hit(benchmark_results):
     """No single query should return zero relevant modules."""
     zero_hit = [
-        q["id"] for q in benchmark_results["phase1_reduction"]["queries"]
+        q["id"]
+        for q in benchmark_results["phase1_reduction"]["queries"]
         if q["top_k_hit_rate"] == 0.0
     ]
     assert not zero_hit, (

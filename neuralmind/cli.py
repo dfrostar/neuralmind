@@ -102,7 +102,7 @@ def cmd_benchmark(args):
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
 
-    if getattr(args, "contribute", False):
+    if getattr(args, "contribute", False) is True:
         _emit_community_submission(args, result, mind)
         return
 
@@ -208,7 +208,9 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     print()
     print("If you want to contribute this to the public community leaderboard")
     print("(entirely optional — NeuralMind never uploads anything automatically):")
-    print("  • Issue form  : https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml")
+    print(
+        "  • Issue form  : https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml"
+    )
     print("  • Direct PR   : add to docs/community-benchmarks.json, then")
     print("                  python scripts/render_community_table.py --inject README.md")
 
@@ -238,7 +240,7 @@ def _maybe_detect_repo_url(project_path: str) -> str | None:
         url = out.decode().strip()
         # Normalize SSH → HTTPS for public display
         if url.startswith("git@github.com:"):
-            url = "https://github.com/" + url[len("git@github.com:"):].removesuffix(".git")
+            url = "https://github.com/" + url[len("git@github.com:") :].removesuffix(".git")
         return url or None
     except Exception:
         return None
@@ -491,9 +493,11 @@ def main():
         "--contribute",
         action="store_true",
         help="Emit a schema-ready JSON blob you can submit to the community benchmarks. "
-             "No data is uploaded — you copy-paste the output into an issue or PR.",
+        "No data is uploaded — you copy-paste the output into an issue or PR.",
     )
-    bench_p.add_argument("--project-name", help="Project name for contribution (optional; prompts on TTY)")
+    bench_p.add_argument(
+        "--project-name", help="Project name for contribution (optional; prompts on TTY)"
+    )
     bench_p.add_argument("--language", help="Primary language for contribution (optional)")
     bench_p.add_argument("--model", help="LLM you run against (optional)")
     bench_p.add_argument("--repo-url", help="Public repo URL (optional)")

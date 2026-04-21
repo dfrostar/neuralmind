@@ -17,13 +17,12 @@ Sanity rules beyond the schema:
   tiny projects can legitimately invert.
 - No duplicate ``project_name`` + ``submitted_by`` combos
 """
+
 from __future__ import annotations
 
 import json
-import sys
 from datetime import date
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = REPO_ROOT / "docs" / "community-benchmarks.json"
@@ -45,9 +44,7 @@ def validate_schema(data: dict, schema: dict) -> list[str]:
     try:
         import jsonschema
     except ImportError:
-        return [
-            "jsonschema not installed — `pip install jsonschema` to enable schema checks."
-        ]
+        return ["jsonschema not installed — `pip install jsonschema` to enable schema checks."]
 
     validator = jsonschema.Draft7Validator(schema)
     errors = []
@@ -74,9 +71,7 @@ def sanity_checks(entries: list[dict]) -> list[str]:
             try:
                 submitted = date.fromisoformat(ds)
                 if submitted > today:
-                    errors.append(
-                        f"entry[{i}] ({name}): date_submitted {ds} is in the future."
-                    )
+                    errors.append(f"entry[{i}] ({name}): date_submitted {ds} is in the future.")
             except ValueError:
                 errors.append(f"entry[{i}] ({name}): date_submitted {ds!r} not ISO YYYY-MM-DD.")
 

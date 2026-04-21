@@ -22,15 +22,15 @@ Run locally:
     python -m tests.benchmark.run
     python -m tests.benchmark.multi_model
 """
+
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, asdict
+from collections.abc import Callable
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
 
 import tiktoken
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
@@ -40,8 +40,8 @@ MULTI_MODEL_PATH = REPO_ROOT / "tests" / "benchmark" / "multi_model.json"
 # cl100k-based tokenizer. Sources: Anthropic's tokenization blog post;
 # Meta Llama 3 tokenizer paper. These are rough — labelled "estimated"
 # everywhere they're shown.
-CLAUDE_CORRECTION = 1.08   # Claude's tokenizer is slightly chattier than GPT-4o
-LLAMA_CORRECTION = 1.22    # Llama 3 tokenizer is noticeably chattier on code
+CLAUDE_CORRECTION = 1.08  # Claude's tokenizer is slightly chattier than GPT-4o
+LLAMA_CORRECTION = 1.22  # Llama 3 tokenizer is noticeably chattier on code
 
 
 @dataclass
@@ -215,9 +215,7 @@ def reconstruct_texts() -> tuple[str, str]:
 
 def write_outputs(rows: list[ModelMeasurement]) -> None:
     """Write both JSON (machine) and markdown (human) outputs."""
-    MULTI_MODEL_PATH.write_text(
-        json.dumps({"models": [asdict(r) for r in rows]}, indent=2)
-    )
+    MULTI_MODEL_PATH.write_text(json.dumps({"models": [asdict(r) for r in rows]}, indent=2))
 
     md_path = MULTI_MODEL_PATH.with_suffix(".md")
     lines = [

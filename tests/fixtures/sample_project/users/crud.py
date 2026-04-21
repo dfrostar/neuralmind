@@ -1,4 +1,5 @@
 """User model + CRUD operations."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
