@@ -648,6 +648,102 @@ crontab -e
 
 ---
 
+## Scheduling Cloud Repos + Local Projects
+
+For cloud repositories (GitHub, GitLab, etc.), use a **cloud sync script** that clones/updates repos before auto-discovery runs:
+
+**Daily Schedule:**
+- **1:00 AM** — Cloud sync: clone/update repos from GitHub
+- **2:00 AM** — Auto-discovery: audit all projects (local + synced cloud repos)
+
+### Cloud Sync Script (Windows)
+
+**Save to `C:\scripts\sync-and-audit-cloud-repos.ps1`:**
+
+```powershell
+# ============================================================
+# NeuralMind Cloud Repo Sync
+# Clones/updates cloud repos before auto-discovery audits them
+# ============================================================
+
+param(
+    [string]$LocalDir = "$env:USERPROFILE\claudecode",
+    [string]$LogDir = "$env:USERPROFILE\Documents\neuralmind-logs"
+)
+
+$repos = @(
+    @{ url = "https://github.com/dfrostar/neuralmind.git"; name = "neuralmind" },
+    @{ url = "https://github.com/dfrostar/polymarket.git"; name = "polymarket" }
+)
+
+if (!(Test-Path $LogDir)) { 
+    New-Item -ItemType Directory -Path $LogDir | Out-Null 
+}
+
+$logFile = "$LogDir\sync_$(Get-Date -Format 'yyyy-MM-dd_HHmmss').log"
+
+function Log {
+    param([string]$Message)
+    $msg = "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $Message"
+    Write-Host $msg
+    Add-Content -Path $logFile -Value $msg
+}
+
+Log "=== Cloud Repo Sync Started ==="
+
+foreach ($repo in $repos) {
+    $repoPath = Join-Path $LocalDir $repo.name
+    
+    try {
+        if (Test-Path $repoPath) {
+            Log "Updating $($repo.name)..."
+            cd $repoPath
+            git pull 2>&1 | ForEach-Object { Log $_ }
+        } else {
+            Log "Cloning $($repo.name)..."
+            cd $LocalDir
+            git clone $repo.url 2>&1 | ForEach-Object { Log $_ }
+            cd $repoPath
+        }
+        
+        # Build index if needed
+        if (!(Test-Path ".neuralmind") -and !(Test-Path "neuralmind.db")) {
+            Log "Building NeuralMind index for $($repo.name)..."
+            graphify build 2>&1 | ForEach-Object { Log $_ }
+            neuralmind build . 2>&1 | ForEach-Object { Log $_ }
+        }
+        
+        Log "✓ Ready: $($repo.name)"
+    } catch {
+        Log "✗ Error on $($repo.name): $_"
+    }
+}
+
+Log "=== Sync Complete ==="
+Log "Audit will run at 2 AM with auto-discovery"
+```
+
+**Register the sync task** (in Administrator PowerShell):
+
+```powershell
+$trigger = New-ScheduledTaskTrigger -Daily -At 1:00am
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\scripts\sync-and-audit-cloud-repos.ps1"
+$settings = New-ScheduledTaskSettingsSet -StartWhenAvailable
+Register-ScheduledTask -TaskName "NeuralMind Cloud Sync" -Trigger $trigger -Action $action -Settings $settings -RunLevel Highest
+```
+
+**To add more cloud repos,** edit the `$repos` array in the script:
+
+```powershell
+$repos = @(
+    @{ url = "https://github.com/dfrostar/neuralmind.git"; name = "neuralmind" },
+    @{ url = "https://github.com/dfrostar/polymarket.git"; name = "polymarket" },
+    @{ url = "https://github.com/yourorg/another-repo.git"; name = "another-repo" }
+)
+```
+
+---
+
 ## Examples
 
 ### Schedule for Single Project
