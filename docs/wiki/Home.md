@@ -25,6 +25,7 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | [API Reference](API-Reference) | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |
 | [Architecture](Architecture) | How the 4-layer progressive disclosure system works |
 | [Integration Guide](Integration-Guide) | MCP, CI/CD, VS Code, JetBrains, any-LLM piping |
+| [Scheduling Guide](Scheduling-Guide) | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
 | [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence-based reranking (v0.3.2+) |
 | [Brain-Like Learning](../blob/main/docs/brain_like_learning.md) | Design rationale for the learning system |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |
