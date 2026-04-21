@@ -7,6 +7,7 @@ and audit logging (audit.py). Captures evidence provenance for every query.
 """
 
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .audit import (
@@ -89,6 +90,7 @@ def build_audit_entry(
     entry = AuditLogEntry(
         audit_id=audit_id,
         query_text=query_text,
+        timestamp=datetime.now(timezone.utc).isoformat(),
         project_path=str(project_path.resolve()),
         user_id=get_user_id(),
         evidence=evidence_items,
