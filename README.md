@@ -36,6 +36,98 @@
 
 ---
 
+## 🚀 What's New: Enterprise Features (v0.4+)
+
+NeuralMind now includes **production-ready enterprise features** for large-scale, regulated deployments:
+
+### 1. **NIST AI RMF Audit Trail** 
+Every query is logged with full provenance for compliance:
+- Query history with evidence tracking (which code was retrieved, why)
+- Model metadata (embedding version, backend)
+- Code state snapshots (git commit, reproducibility)
+- NIST AI RMF compliance reports (GOVERN, MAP, MEASURE, MANAGE)
+- Export for SIEM integration and auditor review
+
+```bash
+neuralmind audit-report . --format json --output
+# Output: .neuralmind/audit/reports/nist_rmf_report_20260421_*.json
+```
+
+### 2. **Pluggable Embedding Backends**
+Choose your backend based on your infrastructure:
+- **ChromaDB** (default): Local, fast, zero server
+- **PostgreSQL pgvector**: Enterprise database integration, scales to 100M+ vectors
+- **LanceDB**: Lightweight, Rust-based, serverless for offline/edge deployments
+
+```toml
+# neuralmind.toml
+[embeddings]
+backend = "postgres"  # or "chromadb", "lancedb"
+
+[backends.postgres]
+connection_string = "postgresql://user:pass@db.company.com/neuralmind"
+```
+
+### 3. **MCP Server Security Hardening**
+Enterprise-grade access control for MCP deployments:
+- **Role-Based Access Control** (RBAC): viewer, developer, admin roles
+- **Rate limiting**: Per-minute, per-hour, per-day quotas
+- **Audit logging**: Every tool call logged with user, permissions, outcome
+- **Anomaly detection**: Alerts on suspicious patterns (rapid calls, repeated tools)
+
+```python
+from neuralmind.mcp_security import MCPSecurityMiddleware, Role, RateLimit
+
+middleware = MCPSecurityMiddleware(
+    project_path=".",
+    user_id="alice@company.com",
+    role=Role.DEVELOPER,
+    rate_limit_config=RateLimit(calls_per_minute=60)
+)
+
+# Wrap MCP tools with security
+secure_query = middleware.wrap_tool("neuralmind_query", tool_query)
+```
+
+### 4. **Embedding Model Swappability**
+Support for custom, domain-specific embedding models:
+- **SentenceTransformers** (default): Fast, lightweight baseline
+- **Ollama**: Local-only LLM embeddings
+- **Custom models**: Use fine-tuned models trained on proprietary data
+- **Model registry**: Dynamically discover available models
+
+```python
+from neuralmind.embedding_models import EmbeddingModelFactory
+
+# Use domain-specific model
+model = EmbeddingModelFactory.create(
+    model_type="sentence-transformers",
+    model_name="sentence-transformers/all-mpnet-base-v2"  # Better accuracy
+)
+```
+
+### 5. **Hybrid Context Strategy**
+Intelligently balance cost, speed, and accuracy:
+- **Fast retrieval** (~3s): NeuralMind optimized context (~800 tokens)
+- **Long-context** (~60s): Full codebase (50K+ tokens)
+- **Hybrid (smart)**: Start with retrieval, augment if confidence too low
+
+```python
+from neuralmind.hybrid_context import HybridContextSelector, estimate_query_cost
+
+selector = HybridContextSelector()
+metrics = selector.evaluate_retrieval_result(result)
+
+# Get cost analysis
+estimate = estimate_query_cost(
+    retrieval_tokens=847,
+    full_context_tokens=50000
+)
+print(f"Savings: {estimate.savings_percent:.0f}%")
+```
+
+---
+
 ## 📌 For AI Coding Agents
 
 > **If you are Claude Code, Codex, Cursor, Cline, or any AI agent with NeuralMind installed, start here.**
@@ -1132,6 +1224,173 @@ Output shows your reduction ratio, tokens per query, and estimated monthly savin
 - NeuralMind target on the same query set: exceed that baseline via semantic retrieval + learned cooccurrence reranking
 
 The pytest regression gate (`tests/test_benchmark_regression.py`) currently enforces **≥50% top-k hit rate** on the fixture plus **≥4× reduction** (low because the fixture is tiny; real repos measure 10× higher).
+
+---
+
+## 🏢 Enterprise Deployment & Governance
+
+### Audit & Compliance
+
+Every query is logged with full provenance:
+
+```bash
+# Generate NIST AI RMF compliance report
+neuralmind audit-report . --format json --output
+
+# Export audit trail for external compliance tools
+neuralmind audit-export . --format json
+
+# View recent audit entries
+neuralmind audit-list .
+```
+
+**Audit trail includes:**
+- Full query provenance (what code was retrieved, why)
+- Model metadata (embedding model version, backend)
+- Code state snapshot (git commit for reproducibility)
+- Confidence & reproducibility scores
+- Token metrics (how much was saved vs. baseline)
+
+**Export to:**
+- SIEM systems (via JSON format)
+- Compliance auditors (via Markdown format)
+- Internal dashboards (via API)
+
+### Backend Selection & Migration
+
+Standardize on your preferred database backend:
+
+```bash
+# See available backends
+neuralmind backend-list
+# Output: chromadb, lancedb, postgres
+
+# Check backend health
+neuralmind backend-check .
+# Output: Healthy ✓, statistics, any issues
+
+# Switch backends (with automatic migration)
+neuralmind backend-switch postgres \
+  --connection-string "postgresql://prod.company.com/neuralmind"
+```
+
+**Supported backends:**
+- **ChromaDB** (default): Zero configuration, great for development
+- **PostgreSQL pgvector**: Enterprise database, scales to 100M+ vectors
+- **LanceDB**: Lightweight, offline-ready, air-gapped compatible
+
+### MCP Server Security (Enterprise)
+
+For teams deploying NeuralMind as a centralized MCP server:
+
+```python
+from neuralmind.mcp_security import (
+    MCPSecurityMiddleware, Role, RateLimit, RolePermissionMap
+)
+
+# Configure security middleware
+middleware = MCPSecurityMiddleware(
+    project_path="/shared/project",
+    user_id="team@company.com",
+    role=Role.DEVELOPER,
+    rate_limit_config=RateLimit(
+        calls_per_minute=100,
+        calls_per_hour=5000,
+        max_token_budget_per_day=1_000_000
+    )
+)
+
+# Wrap tools with authorization + rate limiting
+secure_query = middleware.wrap_tool("neuralmind_query", tool_query)
+secure_build = middleware.wrap_tool("neuralmind_build", tool_build)
+```
+
+**Features:**
+- ✅ Role-based access control (viewer, developer, admin)
+- ✅ Rate limiting per user + anomaly detection
+- ✅ Audit log of all tool calls (.neuralmind/audit/mcp/tool_calls.jsonl)
+- ✅ Transparent permission framework
+
+### Custom Embedding Models
+
+Fine-tune embeddings for your domain:
+
+```python
+from neuralmind.embedding_models import EmbeddingModelFactory
+
+# Use a better model for your domain
+model = EmbeddingModelFactory.create(
+    model_type="sentence-transformers",
+    model_name="sentence-transformers/all-mpnet-base-v2",
+    options={"device": "cuda"}
+)
+
+# Or use local Ollama for fully offline deployments
+model = EmbeddingModelFactory.create(
+    model_type="ollama",
+    model_name="nomic-embed-text",
+    endpoint="http://ollama.company.com:11434"
+)
+```
+
+### Hybrid Context Strategy
+
+Intelligently balance speed, cost, and accuracy:
+
+```python
+from neuralmind.hybrid_context import (
+    HybridContextSelector, estimate_query_cost
+)
+
+selector = HybridContextSelector()
+
+# Evaluate retrieval quality
+metrics = selector.evaluate_retrieval_result(context_result)
+print(f"Confidence: {metrics.confidence:.0%}")
+
+# Get cost analysis (show value to stakeholders)
+estimate = estimate_query_cost(
+    retrieval_tokens=847,
+    full_context_tokens=50000
+)
+print(f"Cost savings: {estimate.savings_percent:.0f}%")
+print(f"Time: {estimate.time_estimate_retrieval_s:.0f}s vs {estimate.time_estimate_long_context_s:.0f}s")
+
+# Auto-augment if confidence is low
+if selector.should_augment_context(metrics):
+    context_str, meta = selector.build_hybrid_context(
+        context_result, full_codebase
+    )
+```
+
+### Configuration Management
+
+Centralize configuration in `neuralmind.toml` or `.neuralmind/config.toml`:
+
+```toml
+[embeddings]
+backend = "postgres"
+
+[embeddings.model]
+type = "sentence-transformers"
+name = "sentence-transformers/all-mpnet-base-v2"
+dimensions = 768
+
+[backends.postgres]
+connection_string = "postgresql://localhost/neuralmind"
+table_name = "code_embeddings"
+
+[context]
+strategy = "hybrid"
+
+[context.hybrid]
+auto_switch_threshold = 0.75  # Augment if < 75% confident
+
+[audit]
+enabled = true
+location = ".neuralmind/audit/queries.jsonl"
+export_format = "json"
+```
 
 ---
 
