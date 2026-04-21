@@ -286,9 +286,15 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
     project_path_raw = arguments.get("project_path")
-    project_path = str(project_path_raw).strip() if project_path_raw else ""
-    actor = str(arguments.get("actor", "anonymous")).strip() or "anonymous"
-    role = str(arguments.get("role", "reader")).strip() or "reader"
+    project_path = ""
+    if project_path_raw is not None:
+        project_path = str(project_path_raw).strip()
+
+    actor_raw = arguments.get("actor")
+    actor = "anonymous" if actor_raw is None else str(actor_raw).strip() or "anonymous"
+
+    role_raw = arguments.get("role")
+    role = "reader" if role_raw is None else str(role_raw).strip() or "reader"
 
     try:
         if not project_path:
