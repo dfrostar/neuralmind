@@ -22,3 +22,7 @@ Aider builds a concise, tree-sitter-derived map of your repository — a ranked 
 - **Pick NeuralMind** if you want semantic (not just syntactic) retrieval, want it outside Aider, or want the consumption-side compression. Aider's map answers "what symbols exist"; NeuralMind's query answers "which 800 tokens best explain X".
 
 They compose: you can feed NeuralMind's `wakeup` output into an Aider session as additional context.
+
+---
+
+[← Back to comparison index](./README.md)

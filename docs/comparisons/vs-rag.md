@@ -24,3 +24,7 @@ Code is not prose. It has structure (call graphs, imports, class hierarchies) th
 - **Pick NeuralMind** for code. The graph-aware layers and skeleton output capture the structural context that generic chunking throws away — and you don't pay for the throwaway tokens.
 
 If you already have a generic RAG pipeline and only want the compression half, NeuralMind's PostToolUse hooks can run standalone without the retrieval layer.
+
+---
+
+[← Back to comparison index](./README.md)

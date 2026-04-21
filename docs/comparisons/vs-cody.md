@@ -23,3 +23,7 @@ Sourcegraph Cody is a code AI assistant backed by Sourcegraph's server-side code
 - **Pick NeuralMind** if you want a zero-infrastructure, local, per-project tool that integrates into any agent and compresses not just retrieval but also tool output.
 
 They address different scales: Cody for "find something across 500 repos", NeuralMind for "answer this question about this repo using the fewest tokens possible".
+
+---
+
+[← Back to comparison index](./README.md)

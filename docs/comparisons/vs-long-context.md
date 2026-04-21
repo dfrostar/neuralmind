@@ -34,3 +34,7 @@ Long context windows make it *possible* to stuff everything in. They do not make
 - **Use NeuralMind** for sustained coding work — the per-query savings compound daily, and retrieval quality actually *improves* as the repo grows (more signal for clustering), where raw long context gets worse.
 
 The two also compose: feed NeuralMind's output into a long-context model and you get both focus and headroom.
+
+---
+
+[← Back to comparison index](./README.md)

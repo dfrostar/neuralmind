@@ -23,3 +23,7 @@ Cursor's `@codebase` feature indexes your repository and injects relevant chunks
 - **Pick NeuralMind** if you want the same quality of retrieval outside Cursor, measurable token savings, offline operation, or tool-output compression that cuts cost across *every* `Read`/`Bash`/`Grep` call — not just explicit `@codebase` invocations.
 
 They are not mutually exclusive: run NeuralMind's MCP server inside Cursor and you get compression on top of Cursor's own indexing.
+
+---
+
+[← Back to comparison index](./README.md)
