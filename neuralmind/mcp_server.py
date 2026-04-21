@@ -41,6 +41,7 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import NeuralMind
+from neuralmind.mcp_security import get_security_manager
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -284,8 +285,16 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
+    project_path = str(arguments.get("project_path", ""))
+    actor = str(arguments.get("actor", "anonymous"))
+    role = str(arguments.get("role", "builder"))
+
     try:
-        result = handlers[name](arguments)
+        if project_path:
+            security = get_security_manager(project_path)
+            result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
+        else:
+            result = handlers[name](arguments)
         return json.dumps(result, indent=2, default=str)
     except Exception as e:
         return json.dumps({"error": str(e)})
