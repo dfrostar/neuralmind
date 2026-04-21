@@ -26,20 +26,19 @@ Run locally:
     neuralmind build tests/fixtures/sample_project --force
     python -m tests.benchmark.run
 """
+
 from __future__ import annotations
 
 import json
 import shutil
 import time
-from dataclasses import dataclass, field, asdict
+from collections.abc import Iterable
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 import tiktoken
 
-from neuralmind import NeuralMind
-from neuralmind import memory
-
+from neuralmind import NeuralMind, memory
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "sample_project"
@@ -267,7 +266,9 @@ def _dollars_saved(naive_tokens: int, neuralmind_tokens: int, queries_per_day: i
     Labeled as an estimate everywhere it's shown. This is input tokens
     only — output is unchanged.
     """
-    per_query_savings = (naive_tokens - neuralmind_tokens) / 1_000_000 * CLAUDE_SONNET_INPUT_PER_MTOK
+    per_query_savings = (
+        (naive_tokens - neuralmind_tokens) / 1_000_000 * CLAUDE_SONNET_INPUT_PER_MTOK
+    )
     return per_query_savings * queries_per_day * 30
 
 
@@ -356,9 +357,7 @@ def write_report(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
         "- Baseline: every `.py` file in `tests/fixtures/sample_project/` concatenated.",
         "- Tokenizer: `tiktoken` GPT-4o encoding (per-model breakdown in `multi_model.json` if generated).",
         f"- Pricing: Claude 3.5 Sonnet input @ ${CLAUDE_SONNET_INPUT_PER_MTOK}/MTok.",
-        "- Regression floor: `{0:.0f}×` — well below NeuralMind's typical `40–70×` on real repos.".format(
-            REDUCTION_FLOOR
-        ),
+        f"- Regression floor: `{REDUCTION_FLOOR:.0f}×` — well below NeuralMind's typical `40–70×` on real repos.",
         "",
     ]
     REPORT_PATH.write_text("\n".join(lines))
@@ -416,7 +415,15 @@ def main() -> int:
     )
     print(f"Memory: {mem['events_logged']} events, {mem['patterns_learned']} patterns")
 
-    return 0 if phase1.avg_reduction >= REDUCTION_FLOOR else 1
+    if phase1.avg_reduction < REDUCTION_FLOOR:
+        raise SystemExit(
+            "Benchmark regression: "
+            f"Phase 1 average reduction {phase1.avg_reduction:.2f}× "
+            f"< floor {REDUCTION_FLOOR:.2f}×. "
+            f"Details: {RESULTS_PATH} and {REPORT_PATH}"
+        )
+
+    return 0
 
 
 if __name__ == "__main__":

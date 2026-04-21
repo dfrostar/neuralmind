@@ -44,8 +44,9 @@ jobs:
       - name: Run benchmark (Phase 1 + Phase 2)
         id: bench
         run: |
-          python -m tests.benchmark.run
-          python -m tests.benchmark.multi_model
+          set -euo pipefail
+          python -u -m tests.benchmark.run
+          python -u -m tests.benchmark.multi_model
 
       - name: Run memory-persistence + regression tests
         run: pytest tests/test_benchmark_regression.py tests/test_memory_persistence.py -v
