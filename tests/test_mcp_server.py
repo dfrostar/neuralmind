@@ -10,6 +10,7 @@ import pytest
 
 from neuralmind.mcp_server import (
     _mind_cache,
+    _security_cache,
     get_mind,
     handle_tool_call,
     tool_build,
@@ -21,8 +22,10 @@ from neuralmind.mcp_server import (
 def clear_mind_cache():
     """Clear the module-level mind cache between tests."""
     _mind_cache.clear()
+    _security_cache.clear()
     yield
     _mind_cache.clear()
+    _security_cache.clear()
 
 
 class TestGetMind:
