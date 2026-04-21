@@ -71,11 +71,14 @@ from .compressors import (
     compress_read,
     offload_if_large,
 )
+from .audit import AuditTrail
+from .backend_manager import BackendManager
 from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
+from .in_memory_backend import InMemoryEmbeddingBackend
 
 __version__ = "0.3.4"
 __all__ = [
@@ -83,6 +86,9 @@ __all__ = [
     "GraphEmbedder",
     "EmbeddingBackend",
     "ContextSelector",
+    "AuditTrail",
+    "BackendManager",
+    "InMemoryEmbeddingBackend",
     # Output compression (v0.2.0)
     # Brain-like learning (v0.3.0)
     "compress_bash",

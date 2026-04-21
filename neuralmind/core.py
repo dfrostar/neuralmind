@@ -25,8 +25,9 @@ Usage:
 from datetime import datetime
 from pathlib import Path
 
+from .audit import AuditTrail
+from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .embedder import GraphEmbedder
 from .memory import log_query_event
 
 
@@ -38,7 +39,14 @@ class NeuralMind:
     Achieves 6-49x token reduction through progressive disclosure.
     """
 
-    def __init__(self, project_path: str, db_path: str = None, enable_reranking: bool = True):
+    def __init__(
+        self,
+        project_path: str,
+        db_path: str = None,
+        enable_reranking: bool = True,
+        backend_name: str | None = None,
+        backend_config_path: str | None = None,
+    ):
         """
         Initialize NeuralMind for a project.
 
@@ -50,14 +58,27 @@ class NeuralMind:
         self.project_path = Path(project_path)
         self.db_path = db_path
         self.enable_reranking = enable_reranking
+        self.backend_manager = BackendManager(str(self.project_path), db_path=db_path)
+        self.backend_config = self.backend_manager.load_config(backend_config_path)
+        self.backend_name = backend_name or self.backend_config.get("backend", {}).get("type", "graph")
+        self.hybrid_context = bool(self.backend_config.get("hybrid_context", False))
+        self.audit = AuditTrail(self.project_path)
 
         # Initialize components
-        self.embedder = GraphEmbedder(project_path, db_path)
+        self.embedder = self.backend_manager.create_backend(
+            self.backend_name, options=self.backend_config.get("backend", {}).get("options", {})
+        )
         self.selector: ContextSelector | None = None
 
         # State tracking
         self._built = False
         self._build_stats: dict = {}
+        self.audit.log_event(
+            category="backend",
+            action="initialize",
+            target=self.backend_name,
+            details={"project": self.project_path.name},
+        )
 
     def build(self, force: bool = False) -> dict:
         """
@@ -75,6 +96,13 @@ class NeuralMind:
 
         # Load graph
         if not self.embedder.load_graph():
+            self.audit.log_event(
+                category="backend",
+                action="build",
+                status="failed",
+                target=self.backend_name,
+                details={"reason": "graph_load_failed"},
+            )
             return {
                 "success": False,
                 "error": f"Could not load graph from {self.embedder.graph_path}",
@@ -105,9 +133,16 @@ class NeuralMind:
             "db_path": final_stats.get("db_path", ""),
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
+            "backend": self.backend_name,
         }
 
         self._built = True
+        self.audit.log_event(
+            category="backend",
+            action="build",
+            target=self.backend_name,
+            details={"nodes_total": self._build_stats["nodes_total"]},
+        )
         return self._build_stats
 
     def _ensure_built(self):
@@ -126,7 +161,9 @@ class NeuralMind:
             ContextResult with essential project context
         """
         self._ensure_built()
-        return self.selector.get_wakeup_context()
+        result = self.selector.get_wakeup_context()
+        self.audit.log_event(category="audit", action="wakeup", target=self.backend_name)
+        return result
 
     def query(self, question: str) -> ContextResult:
         """
@@ -143,7 +180,25 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_query_context(question)
+        if self.hybrid_context:
+            highlights = self.embedder.search(question, n=3)
+            if highlights:
+                lines = ["", "## Hybrid Search Highlights"]
+                for item in highlights:
+                    meta = item.get("metadata", {})
+                    lines.append(
+                        f"- {meta.get('label', item.get('id', 'unknown'))} "
+                        f"({meta.get('source_file', 'unknown')})"
+                    )
+                result.context = result.context + "\n" + "\n".join(lines)
+                result.layers_used.append("Hybrid:Highlights")
         log_query_event(self.project_path, question, result)
+        self.audit.log_event(
+            category="audit",
+            action="query",
+            target=self.backend_name,
+            details={"question": question},
+        )
         return result
 
     def skeleton(self, file_path: str) -> str:
@@ -318,7 +373,27 @@ class NeuralMind:
             List of matching nodes with scores
         """
         self._ensure_built()
-        return self.embedder.search(query, n=n, **filters)
+        results = self.embedder.search(query, n=n, **filters)
+        self.audit.log_event(
+            category="audit",
+            action="search",
+            target=self.backend_name,
+            details={"query": query, "n": n},
+        )
+        return results
+
+    def switch_backend(self, backend_name: str, auto_build: bool = False, **options) -> str:
+        """Switch embedding backend implementation at runtime."""
+        if hasattr(self.embedder, "close"):
+            self.embedder.close()
+        self.embedder = self.backend_manager.create_backend(backend_name, options=options)
+        self.backend_name = backend_name
+        self.selector = None
+        self._built = False
+        self.audit.log_event(category="backend", action="switch", target=backend_name, details=options)
+        if auto_build:
+            self.build()
+        return backend_name
 
     def get_stats(self) -> dict:
         """
