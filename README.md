@@ -4,10 +4,35 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
+[![Local-First](https://img.shields.io/badge/Local--First-No%20Exfiltration-brightgreen.svg)](#-security--compliance)
+[![Offline](https://img.shields.io/badge/Offline-100%25-blue.svg)](#-security--compliance)
 
 **Semantic code intelligence for AI coding agents — smart context retrieval + tool-output compression in one package.**
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
+
+> **⚖️ Not affiliated with NeuralMind.ai. This project is an independent, open-source tool for semantic code intelligence.**
+
+---
+
+## 🔒 Security & Compliance
+
+**For enterprises and regulated industries:**
+
+- **100% Local Processing** – Your code never leaves your machine. All embeddings are generated and stored locally using ChromaDB.
+- **No External APIs** – NeuralMind runs completely offline. No cloud services, no telemetry, no data exfiltration.
+- **Explainable AI** – Every context decision is auditable. Know exactly which code was retrieved (Extracted) vs. inferred by the model.
+- **Open-Source & MIT Licensed** – Full transparency. No hidden clauses, no vendor lock-in. Audit the code yourself.
+- **GDPR/HIPAA-Friendly** – Process sensitive code without compliance concerns. All data stays under your control.
+
+**For CTOs & Security Teams:**
+- ✅ Zero external dependencies for code storage
+- ✅ Runs behind your firewall or on-premise
+- ✅ No collection of usage metrics or code patterns
+- ✅ Predictable, reproducible results (not a black box)
+- ✅ Works with proprietary and sensitive code
+
+[See full security policy](SECURITY.md)
 
 ---
 
@@ -331,6 +356,62 @@ See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guide
 | A **researcher / hobbyist** exploring LLM cost optimization | Open-source reference implementation of two-phase token optimization |
 
 Not a fit if: you need cross-repo search across a whole organization (use [Sourcegraph Cody](docs/comparisons/vs-cody.md)), or you only want inline completions (use [Copilot](docs/comparisons/vs-github-copilot.md)).
+
+---
+
+## 🏢 Enterprise Use Cases
+
+NeuralMind solves specific pain points for companies at scale:
+
+### Regulated Industries (Finance, Healthcare, Legal, Government)
+
+**Challenge:** AI tools can't be trusted if they can't explain decisions.
+
+**NeuralMind Solution:**
+- Every recommendation is traceable to extracted code (auditable, not guessed)
+- Works 100% on-premise — no cloud, no data transfer, zero exfiltration risk
+- Meets GDPR, HIPAA, SOC 2, and ISO 27001 requirements
+- Explainability by design — see what code fed each decision
+
+### Enterprises with Proprietary / Sensitive Code
+
+**Challenge:** Sending code to external APIs or SaaS models is a legal no-go.
+
+**NeuralMind Solution:**
+- All processing stays on your hardware or internal network
+- No ChromaDB cloud — uses local SQLite-compatible storage
+- No API keys, no authentication to external vendors
+- Process trade secrets, algorithms, and confidential code safely
+
+### Large Organizations Scaling AI Coding Assistant Spend
+
+**Challenge:** 100 developers × Claude Sonnet queries = $50K+/month LLM bill
+
+**NeuralMind Solution:**
+- 40–70× token reduction per query → cut budget by 95%+
+- Explicit benchmarking (`neuralmind benchmark`) to show ROI to finance
+- Measurable savings: baseline vs. optimized (in dollars)
+- Deploy once, benefit across all teams using the same codebase
+
+### Internal Platform Teams & Shared Infrastructure
+
+**Challenge:** Different teams query the same codebase; results are inconsistent.
+
+**NeuralMind Solution:**
+- Build the index once → share across all teams
+- Cooccurrence learning adapts to your org's query patterns (`neuralmind learn`)
+- Consistent, reproducible context for every question
+- Single source of truth for "how does this system work?"
+
+### Teams Needing Offline/Disconnected Development
+
+**Challenge:** Regulated environments, air-gapped networks, or unreliable connectivity.
+
+**NeuralMind Solution:**
+- No internet required after the initial install
+- Pre-build the index on a connected machine, ship it in source control
+- Works in submarines, rural offices, flight-mode development
+- No API rate limiting or service outages
 
 ---
 

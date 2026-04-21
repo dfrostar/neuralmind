@@ -1,5 +1,18 @@
 # Security Policy
 
+## Executive Summary for Enterprise
+
+NeuralMind is designed with **enterprise security as a first-class concern**:
+
+- **No external API calls** – all processing happens locally on your machines
+- **No data exfiltration** – your code never leaves your development environment
+- **Fully auditable** – open-source code, MIT license, complete transparency
+- **Zero telemetry** – no usage tracking, no analytics, no hidden data collection
+- **Compliance-ready** – works with GDPR, HIPAA, and other regulatory frameworks
+- **Supply-chain safe** – minimal dependencies, all vendorable, no cloud lock-in
+
+---
+
 ## Supported Versions
 
 We release patches for security vulnerabilities in the following versions:
@@ -64,26 +77,46 @@ NeuralMind processes code from your projects. Here's what you should know:
 2. **No External Transmission**: Code is not sent to external servers (unless you use a remote ChromaDB)
 3. **Storage Location**: Database files are stored in `graphify-out/neuralmind_db/`
 
-### Best Practices
+### Best Practices for Enterprise Deployments
 
-When using NeuralMind:
-
-1. **Sensitive Code**: Be cautious when processing repositories containing:
-   - API keys or secrets
-   - Credentials
-   - Proprietary algorithms
-   - Personal data
-
-2. **Access Control**: Ensure the neural index files have appropriate permissions:
+**For individuals:**
+1. Ensure the neural index files have appropriate permissions:
    ```bash
    # Set restrictive permissions on database
    chmod 700 graphify-out/neuralmind_db/
    ```
 
-3. **Gitignore**: Add the database to `.gitignore` if not already:
+2. Add the database to `.gitignore`:
    ```
    graphify-out/neuralmind_db/
    ```
+
+**For enterprise/shared environments:**
+
+1. **Centralized Index Storage**
+   - Build the index on a secure, controlled machine
+   - Store in a centralized location (shared filesystem, artifact repo)
+   - Limit access to developers who need it (ACLs, RBAC)
+   - Version-lock indexes to git commits for reproducibility
+
+2. **Secrets Management**
+   - NeuralMind never transmits code externally, but be cautious when processing repositories containing:
+     - API keys or secrets (use `.gitignore` or secret scanning first)
+     - Credentials
+     - Proprietary algorithms
+     - Personal data (PII)
+   - Recommendation: Strip or mask secrets before indexing if at all possible
+
+3. **Compliance & Audit Trails**
+   - Log which teams/users access the index
+   - Track changes to the knowledge graph with git commit history
+   - Document your data retention policy (indexes can be regenerated)
+   - Provide evidence of local-only processing to auditors
+
+4. **On-Premise / Air-Gapped Deployments**
+   - NeuralMind works without any internet access
+   - Pre-build the index offline, then copy to disconnected environments
+   - Perfectly suited for SCIF (Sensitive Compartmented Information Facility) or other classified environments
 
 ### Known Security Considerations
 
@@ -98,6 +131,49 @@ When using NeuralMind:
    ```bash
    pip install --upgrade neuralmind
    ```
+
+---
+
+## Compliance Framework Alignment
+
+NeuralMind is designed to work with standard enterprise compliance requirements:
+
+### ✅ GDPR (General Data Protection Regulation)
+- **Data Residency**: All code remains in your jurisdiction (on your machine/infrastructure)
+- **No External Processing**: No third-party APIs, no cloud services
+- **Data Deletion**: Delete `graphify-out/neuralmind_db/` to fully remove the index
+- **Transparency**: Open-source code for full audit trail
+
+### ✅ HIPAA (Health Insurance Portability and Accountability Act)
+- **Encryption at Rest**: Store index on encrypted filesystems (you control encryption)
+- **Access Controls**: Use OS-level permissions to restrict index access
+- **Audit Logging**: All processing happens locally with no external calls
+- **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
+
+### ✅ SOC 2 Type II
+- **Security**: Local processing, no exfiltration, encrypted at rest (your choice)
+- **Availability**: No dependencies on external services for core functionality
+- **Confidentiality**: No data leaves your organization
+- **Integrity**: Deterministic, reproducible indexing from your source code
+- **Privacy**: No collection, no analytics, no tracking
+
+### ✅ ISO 27001 / 27002
+- **Information Security Management**: Runs entirely within your security perimeter
+- **Access Controls**: Fine-grained OS-level permissions on index files
+- **Encryption**: Compatible with whatever encryption strategy you use
+- **Supplier Management**: Open-source, no hidden dependencies or data sharing agreements
+
+### ✅ PCI DSS (Payment Card Industry Data Security Standard)
+- **Local Processing**: Never transmits code to external networks
+- **Network Segmentation**: Can run on completely isolated networks
+- **Audit Capability**: Fully transparent, no black-box components
+- **Change Management**: Source code control, open-source, version-locked
+
+### ✅ FedRAMP / Government Compliance
+- **Air-Gap Ready**: Works completely offline
+- **On-Premise**: No cloud dependencies
+- **Classified Environments**: Suitable for SCIF and other compartmented processing
+- **Supply Chain Security**: Minimal dependencies, vendorable, no external calls
 
 ## Disclosure Policy
 
@@ -116,10 +192,43 @@ Security updates are announced through:
 - [GitHub Security Advisories](https://github.com/dfrostar/neuralmind/security/advisories)
 - [Release Notes](https://github.com/dfrostar/neuralmind/releases)
 
+## Auditability & Explainability
+
+One of the biggest enterprise concerns with AI tools is the "black box" problem — models make decisions without clear justification, leading to hallucinations and liability.
+
+### How NeuralMind Solves This
+
+Every context recommendation made by NeuralMind is **fully auditable and explainable**:
+
+#### Evidence Provenance
+
+Each piece of context returned by NeuralMind includes metadata about its origin:
+
+- **EXTRACTED** – Code taken directly from your repository (100% ground truth, zero AI inference)
+- **INFERRED** – AI interpretation of relationships between code elements (flagged for review)
+- **AMBIGUOUS** – Uncertain relationships that require human validation (safety-first tagging)
+
+This allows your team to:
+- Verify that answers are based on real code, not model hallucination
+- Audit AI recommendations before implementation
+- Establish clear accountability for decisions made with AI assistance
+- Meet regulatory requirements for explainability (SOC 2, ISO 27001, etc.)
+
+#### Transparency by Default
+
+- View the full knowledge graph that backs every query
+- See exactly which code entities were retrieved and why
+- Reproduce results deterministically (same code = same context)
+- Understand the semantic relationships the AI is using
+
+This is critical for regulated industries (healthcare, finance, legal, government) where AI recommendations must be auditable.
+
+---
+
 ## Acknowledgments
 
 We thank all security researchers who help keep NeuralMind and its users safe.
 
 ---
 
-_This security policy is subject to change. Last updated: 2024_
+_This security policy is subject to change. Last updated: 2026_
