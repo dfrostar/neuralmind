@@ -1,0 +1,49 @@
+name: Validate community benchmarks
+
+# Runs on every PR that touches the community-benchmarks JSON/schema or
+# the rendering/validation scripts. Validates the JSON against the
+# schema + sanity rules, regenerates the README table, and fails the
+# build if anything's off.
+
+on:
+  pull_request:
+    paths:
+      - "docs/community-benchmarks.json"
+      - "docs/community-benchmarks.schema.json"
+      - "scripts/validate_community_benchmarks.py"
+      - "scripts/render_community_table.py"
+      - ".github/workflows/validate-community-benchmarks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install jsonschema
+
+      - name: Validate schema + sanity rules
+        id: validate
+        run: python scripts/validate_community_benchmarks.py
+
+      - name: Re-render README table (dry run)
+        run: |
+          python scripts/render_community_table.py --inject README.md
+          if ! git diff --exit-code README.md; then
+            echo ""
+            echo "::error::README.md community-benchmarks table is out of sync."
+            echo "::error::Run: python scripts/render_community_table.py --inject README.md"
+            echo "::error::then commit the README change alongside your JSON edit."
+            exit 1
+          fi
