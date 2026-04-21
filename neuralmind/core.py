@@ -25,8 +25,9 @@ Usage:
 from datetime import datetime
 from pathlib import Path
 
+from .audit import get_audit_trail
+from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .embedder import GraphEmbedder
 from .memory import log_query_event
 
 
@@ -38,7 +39,17 @@ class NeuralMind:
     Achieves 6-49x token reduction through progressive disclosure.
     """
 
-    def __init__(self, project_path: str, db_path: str = None, enable_reranking: bool = True):
+    # Keep highlights compact to avoid inflating query context.
+    MAX_HYBRID_HIGHLIGHT_RESULTS = 3
+
+    def __init__(
+        self,
+        project_path: str,
+        db_path: str = None,
+        enable_reranking: bool = True,
+        backend_type: str | None = None,
+        hybrid_context: bool | None = None,
+    ):
         """
         Initialize NeuralMind for a project.
 
@@ -50,14 +61,44 @@ class NeuralMind:
         self.project_path = Path(project_path)
         self.db_path = db_path
         self.enable_reranking = enable_reranking
+        self.backend_manager = BackendManager(
+            project_path=str(self.project_path), db_path=db_path, backend=backend_type
+        )
+        self.hybrid_context = (
+            bool(self.backend_manager.config.get("hybrid_context", False))
+            if hybrid_context is None
+            else hybrid_context
+        )
+        self.audit = get_audit_trail(self.project_path)
 
         # Initialize components
-        self.embedder = GraphEmbedder(project_path, db_path)
+        self.embedder = self.backend_manager.backend
         self.selector: ContextSelector | None = None
 
         # State tracking
         self._built = False
         self._build_stats: dict = {}
+
+    def _emit_audit(
+        self,
+        category: str,
+        action: str,
+        status: str = "success",
+        target: str = "",
+        details: dict | None = None,
+    ) -> None:
+        try:
+            self.audit.append_event(
+                category=category,
+                action=action,
+                actor="neuralmind",
+                status=status,
+                target=target,
+                details=details or {},
+            )
+        except Exception:
+            # Audit logging must never block primary query/build/search flows.
+            pass
 
     def build(self, force: bool = False) -> dict:
         """
@@ -75,6 +116,13 @@ class NeuralMind:
 
         # Load graph
         if not self.embedder.load_graph():
+            self._emit_audit(
+                category="backend",
+                action="build",
+                status="failure",
+                target=self.project_path.name,
+                details={"backend": self.backend_manager.backend_name},
+            )
             return {
                 "success": False,
                 "error": f"Could not load graph from {self.embedder.graph_path}",
@@ -97,6 +145,7 @@ class NeuralMind:
         self._build_stats = {
             "success": True,
             "project": self.project_path.name,
+            "backend": self.backend_manager.backend_name,
             "nodes_total": final_stats.get("total_nodes", 0),
             "communities": final_stats.get("communities", 0),
             "nodes_added": embed_stats.get("added", 0),
@@ -108,6 +157,16 @@ class NeuralMind:
         }
 
         self._built = True
+        self._emit_audit(
+            category="backend",
+            action="build",
+            status="success",
+            target=self.project_path.name,
+            details={
+                "backend": self.backend_manager.backend_name,
+                "nodes_total": self._build_stats.get("nodes_total", 0),
+            },
+        )
         return self._build_stats
 
     def _ensure_built(self):
@@ -126,7 +185,15 @@ class NeuralMind:
             ContextResult with essential project context
         """
         self._ensure_built()
-        return self.selector.get_wakeup_context()
+        result = self.selector.get_wakeup_context()
+        self._emit_audit(
+            category="audit",
+            action="wakeup",
+            status="success",
+            target=self.project_path.name,
+            details={"tokens": result.budget.total},
+        )
+        return result
 
     def query(self, question: str) -> ContextResult:
         """
@@ -143,8 +210,38 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_query_context(question)
+        if self.hybrid_context:
+            highlights = self._build_hybrid_highlights(question)
+            if highlights:
+                result.context = f"{highlights}\n\n{result.context}"
         log_query_event(self.project_path, question, result)
+        self._emit_audit(
+            category="audit",
+            action="query",
+            status="success",
+            target=self.project_path.name,
+            details={
+                "question": question,
+                "tokens": result.budget.total,
+                "search_hits": result.search_hits,
+                "hybrid_context": self.hybrid_context,
+            },
+        )
         return result
+
+    def _build_hybrid_highlights(self, question: str) -> str:
+        results = self.embedder.search(question, n=self.MAX_HYBRID_HIGHLIGHT_RESULTS)
+        if not results:
+            return ""
+        lines = ["## Hybrid Highlights"]
+        for item in results:
+            metadata = item.get("metadata", {})
+            label = metadata.get("label", item.get("id", "unknown"))
+            source = metadata.get("source_file", "")
+            score = item.get("score", 0.0)
+            source_suffix = f" ({source})" if source else ""
+            lines.append(f"- {label}{source_suffix} — score {score:.2f}")
+        return "\n".join(lines)
 
     def skeleton(self, file_path: str) -> str:
         """Return a compact skeleton view of a file using graph data.
@@ -318,7 +415,32 @@ class NeuralMind:
             List of matching nodes with scores
         """
         self._ensure_built()
-        return self.embedder.search(query, n=n, **filters)
+        results = self.embedder.search(query, n=n, **filters)
+        self._emit_audit(
+            category="audit",
+            action="search",
+            status="success",
+            target=self.project_path.name,
+            details={"query": query, "results": len(results)},
+        )
+        return results
+
+    def switch_backend(self, backend: str, db_path: str | None = None) -> dict:
+        previous = self.backend_manager.backend_name
+        self.embedder = self.backend_manager.switch_backend(backend, db_path=db_path)
+        self.selector = None
+        self._built = False
+        self._emit_audit(
+            category="backend",
+            action="switch_backend",
+            status="success",
+            target=self.project_path.name,
+            details={"from": previous, "to": backend},
+        )
+        result = self.build()
+        result["backend_switched_from"] = previous
+        result["backend"] = self.backend_manager.backend_name
+        return result
 
     def get_stats(self) -> dict:
         """
