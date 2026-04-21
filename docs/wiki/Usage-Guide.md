@@ -19,7 +19,12 @@
 
 ## What is NeuralMind?
 
-**NeuralMind** is an intelligent context system that dramatically reduces the tokens needed when working with AI coding assistants like Claude, GPT-4, and Cursor.
+**NeuralMind is a two-phase token optimizer for AI coding agents.**
+
+- **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
+- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
+
+Combined effect: **5–10× total reduction** vs baseline agent usage. 100% local, offline, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
 
 ### The Core Problem
 
@@ -27,12 +32,12 @@
 You: "How does authentication work in my codebase?"
 
 ❌ Traditional approach: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind approach: Load smart context → 766 tokens → $0.002-$0.06/query
+✅ NeuralMind approach:  Smart context         → ~800 tokens   → $0.002-$0.06/query
 ```
 
 ### The Solution
 
-NeuralMind creates a semantic understanding of your codebase and provides query-aware context that includes only what's relevant to your question.
+NeuralMind turns a code repository into a queryable knowledge graph + vector index, and exposes it via CLI, MCP server, and (for Claude Code) PostToolUse compression hooks. When you ask a question, only the context relevant to *that question* is surfaced.
 
 ---
 

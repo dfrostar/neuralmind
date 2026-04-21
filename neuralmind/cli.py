@@ -320,7 +320,16 @@ fi
 
 
 def main():
-    parser = argparse.ArgumentParser(description="NeuralMind - Adaptive Neural Knowledge System")
+    parser = argparse.ArgumentParser(
+        description=(
+            "NeuralMind — reduce Claude/GPT/Gemini token costs 40-70x on code questions. "
+            "Local semantic codebase index + MCP server + PostToolUse compression hooks "
+            "for Claude Code, Cursor, Cline, and Continue."
+        ),
+        epilog=(
+            "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
+        ),
+    )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
