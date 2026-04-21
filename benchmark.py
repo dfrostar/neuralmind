@@ -10,6 +10,8 @@ sys.path.insert(0, "/a0/usr/workdir/neuralmind")
 
 from neuralmind.core import NeuralMind
 
+TOKEN_ENCODING = tiktoken.get_encoding("cl100k_base")
+
 
 def get_memory_usage():
     """Gets the peak memory usage of the current process and its children."""
@@ -41,8 +43,7 @@ def run_benchmark():
 
     elapsed_time = time.time() - start_time
     peak_mem = get_memory_usage()
-    encoding = tiktoken.get_encoding("cl100k_base")
-    token_count = len(encoding.encode(output))
+    token_count = len(TOKEN_ENCODING.encode(output))
 
     return {
         "time_sec": round(elapsed_time, 2),
