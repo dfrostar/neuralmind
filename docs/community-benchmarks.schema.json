@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.schema.json",
+  "title": "NeuralMind Community Benchmark Entry",
+  "description": "One row in docs/community-benchmarks.json. Users submit a PR adding an entry to the `entries` array; CI validates against this schema.",
+  "type": "object",
+  "required": [
+    "project_name",
+    "language",
+    "nodes",
+    "avg_reduction_ratio",
+    "date_submitted",
+    "submitted_by",
+    "verification_command"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "description": "Short, human-readable project name. Keep under 40 chars.",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "language": {
+      "type": "string",
+      "description": "Primary language of the codebase.",
+      "enum": ["Python", "JavaScript", "TypeScript", "Go", "Rust", "Java", "C#", "Ruby", "PHP", "C++", "Mixed", "Other"]
+    },
+    "repo_url": {
+      "type": "string",
+      "description": "Public repo URL if the project is open source. Optional — private repos are fine; you just can't link to them.",
+      "format": "uri"
+    },
+    "nodes": {
+      "type": "integer",
+      "description": "Total node count reported by `neuralmind stats .`. Integer, > 0.",
+      "minimum": 1
+    },
+    "avg_wakeup_tokens": {
+      "type": "integer",
+      "description": "Average tokens returned by `neuralmind wakeup .`. Typical range: 200–800.",
+      "minimum": 0
+    },
+    "avg_query_tokens": {
+      "type": "integer",
+      "description": "Average tokens returned by `neuralmind query` across a representative query set.",
+      "minimum": 0
+    },
+    "avg_reduction_ratio": {
+      "type": "number",
+      "description": "Average reduction ratio vs naive 'load everything' baseline. Must be >= 1 (ratio, not percentage).",
+      "minimum": 1
+    },
+    "queries_per_day": {
+      "type": "integer",
+      "description": "Typical query volume, used for cost-savings estimation. Optional.",
+      "minimum": 0
+    },
+    "model": {
+      "type": "string",
+      "description": "Which LLM you run NeuralMind against most often. Used for honest cost-savings calculation.",
+      "enum": [
+        "Claude 3.5 Sonnet",
+        "Claude 3.5 Haiku",
+        "Claude 3 Opus",
+        "GPT-4o",
+        "GPT-4o-mini",
+        "GPT-4",
+        "GPT-3.5-turbo",
+        "Gemini 1.5 Pro",
+        "Gemini 1.5 Flash",
+        "Llama 3 70B",
+        "Llama 3 8B",
+        "Mixtral",
+        "Local / other"
+      ]
+    },
+    "date_submitted": {
+      "type": "string",
+      "description": "ISO 8601 date of submission (YYYY-MM-DD).",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "GitHub username of the submitter (no leading @).",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9-]{0,38}$"
+    },
+    "verification_command": {
+      "type": "string",
+      "description": "The exact command you ran to produce these numbers. Reviewers can re-run it locally to verify — this is what makes the table auditable.",
+      "minLength": 5
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional additional context — e.g. 'private monorepo', 'runs on Claude Code with hooks installed', 'includes auto-generated code excluded'. Keep short.",
+      "maxLength": 280
+    }
+  }
+}

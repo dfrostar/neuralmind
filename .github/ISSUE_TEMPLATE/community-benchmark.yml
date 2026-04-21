@@ -1,0 +1,134 @@
+name: Community benchmark submission
+description: Submit your NeuralMind token-reduction numbers for inclusion in the public leaderboard.
+title: "[benchmark] <project-name>"
+labels: ["benchmark", "community"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing a real-world benchmark! A few notes before you fill this out:
+
+        - **Your code never leaves your machine.** You're submitting *numbers*, not source.
+        - A maintainer will convert this issue into a PR adding your entry to
+          [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json).
+          You can also open the PR yourself — see the [contribution guide](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json#L2) in that file.
+        - Expect a reviewer to ask for the exact command you ran, so the numbers are reproducible.
+
+  - type: input
+    id: project_name
+    attributes:
+      label: Project name
+      description: Short, human-readable. Keep under 40 chars.
+      placeholder: "my-awesome-backend"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Primary language
+      options:
+        - Python
+        - JavaScript
+        - TypeScript
+        - Go
+        - Rust
+        - Java
+        - C#
+        - Ruby
+        - PHP
+        - C++
+        - Mixed
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: repo_url
+    attributes:
+      label: Public repo URL (optional)
+      description: Skip if private.
+      placeholder: "https://github.com/you/project"
+
+  - type: input
+    id: nodes
+    attributes:
+      label: Node count
+      description: From `neuralmind stats .`
+      placeholder: "241"
+    validations:
+      required: true
+
+  - type: input
+    id: avg_wakeup_tokens
+    attributes:
+      label: Average wakeup tokens
+      description: From `neuralmind wakeup .`
+      placeholder: "341"
+
+  - type: input
+    id: avg_query_tokens
+    attributes:
+      label: Average query tokens
+      description: From `neuralmind benchmark .`
+      placeholder: "739"
+
+  - type: input
+    id: avg_reduction_ratio
+    attributes:
+      label: Average reduction ratio
+      description: From `neuralmind benchmark .` — ratio, not percentage (e.g. 65.6, not 98.5%)
+      placeholder: "65.6"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: model
+    attributes:
+      label: Model you're measuring against
+      options:
+        - Claude 3.5 Sonnet
+        - Claude 3.5 Haiku
+        - Claude 3 Opus
+        - GPT-4o
+        - GPT-4o-mini
+        - GPT-4
+        - GPT-3.5-turbo
+        - Gemini 1.5 Pro
+        - Gemini 1.5 Flash
+        - Llama 3 70B
+        - Llama 3 8B
+        - Mixtral
+        - Local / other
+
+  - type: input
+    id: queries_per_day
+    attributes:
+      label: Typical queries per day (optional)
+      description: Used for cost-savings estimates.
+      placeholder: "100"
+
+  - type: input
+    id: verification_command
+    attributes:
+      label: Exact command you ran
+      description: Reviewers may re-run this. Keep it reproducible.
+      placeholder: "neuralmind benchmark . --json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything a reader should know — private monorepo, PostToolUse hooks enabled, auto-generated code excluded, etc. Keep under 280 chars.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmations
+      options:
+        - label: "I ran `neuralmind benchmark .` (or equivalent) to produce these numbers."
+          required: true
+        - label: "I'm fine with this submission being public (project name, language, numbers, GitHub username)."
+          required: true
