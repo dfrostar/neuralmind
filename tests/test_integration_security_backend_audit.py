@@ -45,7 +45,9 @@ def test_end_to_end_backend_switching(tmp_path):
     assert switched["success"] is True
     assert switched["backend"] == "in_memory"
     events = AuditTrail(project).read_events()
-    assert any(event["action"] == "switch_backend" and event["category"] == "backend" for event in events)
+    assert any(
+        event["action"] == "switch_backend" and event["category"] == "backend" for event in events
+    )
 
 
 def test_end_to_end_audit_trail_validation(tmp_path):
