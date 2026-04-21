@@ -248,6 +248,31 @@ You: "How does authentication work in my codebase?"
 
 ---
 
+## ✅ Does it work on *your* code? Prove it in 5 minutes.
+
+> NeuralMind [benchmarks itself in CI](#-benchmarks) on every PR. But your codebase isn't our fixture. The only way to know what it does for **you** is to measure it on **your code**.
+
+```bash
+pip install neuralmind graphifyy
+cd /path/to/your-project
+graphify update . && neuralmind build .
+neuralmind benchmark .
+```
+
+You'll get back your actual reduction ratio and per-query token count — typically **30–80× on real repos**. No telemetry, nothing uploaded, nothing committed. If the numbers don't justify it, `pip uninstall neuralmind` and move on — 5 minutes lost.
+
+**Want the dollar figure for your team?**
+
+```bash
+neuralmind benchmark . --contribute
+```
+
+That flag produces a ready-to-share JSON blob with your project's numbers, the exact command that produced them, and an estimated monthly savings at your query volume. Paste it into Slack, a design doc, a PR — or optionally [contribute it to the public leaderboard](#community-benchmarks).
+
+**Full walkthrough:** [Does NeuralMind work on *your* codebase?](docs/use-cases/benchmark-your-repo.md)
+
+---
+
 ## 🚨 When do I reach for NeuralMind?
 
 Two ways to decide: start with what's annoying you (**symptoms**), or start with what you're trying to achieve (**goals**).
@@ -995,7 +1020,7 @@ _2 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes 
 
 All entries include the exact `neuralmind` command that produced them, so reviewers (and any reader) can audit the numbers.
 
-### Reproduce locally
+### Reproduce locally (on our fixture)
 
 ```bash
 pip install . tiktoken matplotlib graphifyy
@@ -1007,6 +1032,18 @@ python scripts/generate_chart.py       # refreshes the PNG above
 ```
 
 Full machine-readable results land in `tests/benchmark/results.json`, human-readable report in `tests/benchmark/report.md`.
+
+### Reproduce on *your* code
+
+Don't just trust numbers from our fixture — run it on your repo:
+
+```bash
+pip install neuralmind graphifyy
+graphify update . && neuralmind build .
+neuralmind benchmark . --contribute
+```
+
+Output shows your reduction ratio, tokens per query, and estimated monthly savings at Claude 3.5 Sonnet pricing. Full walkthrough: [**Does NeuralMind work on *your* codebase?**](docs/use-cases/benchmark-your-repo.md)
 
 ### Retrieval quality baseline
 
