@@ -672,8 +672,8 @@ param(
 )
 
 $repos = @(
-    @{ url = "https://github.com/dfrostar/neuralmind.git"; name = "neuralmind" },
-    @{ url = "https://github.com/dfrostar/polymarket.git"; name = "polymarket" }
+    @{ url = "https://github.com/yourname/cloud-repo-1.git"; name = "cloud-repo-1" },
+    @{ url = "https://github.com/yourname/cloud-repo-2.git"; name = "cloud-repo-2" }
 )
 
 if (!(Test-Path $LogDir)) { 
@@ -736,8 +736,8 @@ Register-ScheduledTask -TaskName "NeuralMind Cloud Sync" -Trigger $trigger -Acti
 
 ```powershell
 $repos = @(
-    @{ url = "https://github.com/dfrostar/neuralmind.git"; name = "neuralmind" },
-    @{ url = "https://github.com/dfrostar/polymarket.git"; name = "polymarket" },
+    @{ url = "https://github.com/yourname/cloud-repo-1.git"; name = "cloud-repo-1" },
+    @{ url = "https://github.com/yourname/cloud-repo-2.git"; name = "cloud-repo-2" },
     @{ url = "https://github.com/yourorg/another-repo.git"; name = "another-repo" }
 )
 ```
