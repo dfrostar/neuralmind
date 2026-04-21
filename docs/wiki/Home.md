@@ -1,41 +1,63 @@
 # 🧠 NeuralMind Wiki
 
-Welcome to the NeuralMind documentation!
+**Reduce Claude, GPT, and Gemini token costs 40–70× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.
+
+Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
 ## Quick Links
 
-| Page | Description |
-|------|-------------|
-| **[Setup Guide](Setup-Guide)** | **First-time setup for any platform (Claude Code, Copilot, Cursor, VSCode)** |
-| **[Learning Guide](Learning-Guide)** | **NEW: How your project learns and improves (v0.3.2+)** |
-| **[Brain-Like Learning](../brain_like_learning.md)** | **Design rationale: Why learning matters (v0.3.0+)** |
-| [Installation](Installation) | How to install NeuralMind |
-| [Usage Guide](Usage-Guide) | Complete usage guide with examples |
-| [CLI Reference](CLI-Reference) | All CLI commands |
-| [API Reference](API-Reference) | Python API documentation |
-| [Architecture](Architecture) | How the 4-layer system works |
-| [Integration Guide](Integration-Guide) | MCP, CI/CD, IDE setup |
+### Start here
+
+| Page | When to read it |
+|------|-----------------|
+| **[Setup Guide](Setup-Guide)** | First-time setup for Claude Code, Cursor, Claude Desktop, or any MCP client |
+| **[Use Cases](Use-Cases)** | Step-by-step walkthroughs by persona: Claude Code user, cost optimization, any-LLM, offline/regulated, growing monorepo |
+| **[Comparisons](Comparisons)** | Honest "NeuralMind vs X" pages: Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
+
+### Reference
+
+| Page | Contents |
+|------|----------|
+| [Installation](Installation) | Install from PyPI; optional `[mcp]` extras |
+| [Usage Guide](Usage-Guide) | End-to-end examples for every command |
+| [CLI Reference](CLI-Reference) | All CLI commands, flags, and output shapes |
+| [API Reference](API-Reference) | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |
+| [Architecture](Architecture) | How the 4-layer progressive disclosure system works |
+| [Integration Guide](Integration-Guide) | MCP, CI/CD, VS Code, JetBrains, any-LLM piping |
+| [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence-based reranking (v0.3.2+) |
+| [Brain-Like Learning](../blob/main/docs/brain_like_learning.md) | Design rationale for the learning system |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |
 
 ## What is NeuralMind?
 
-NeuralMind is an intelligent context system that dramatically reduces the tokens needed when working with AI coding assistants like Claude, GPT-4, and Cursor.
+A two-phase token optimizer for AI coding agents.
 
-### The Core Problem
+- **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
+- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
+
+Combined effect: **5–10× total reduction** vs baseline agent usage, offline and model-agnostic.
+
+### The core problem
 
 ```
 You: "How does authentication work in my codebase?"
 
 ❌ Traditional: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
-✅ NeuralMind: Smart context → 766 tokens → $0.002-$0.06/query
+✅ NeuralMind: Smart context → ~800 tokens → $0.002-$0.06/query
 ```
 
-### Key Benefits
+### When do I reach for it?
 
-- **40-70x token reduction** — Only loads relevant context
-- **98% cost savings** — $450/month → $7/month
-- **Query-aware** — Different questions get different context
-- **Easy to use** — Simple CLI commands
+Short answer: if any of these describe you, start with the [Use Cases](Use-Cases) page.
+
+- My Claude Code session hits context limits mid-task
+- My monthly LLM bill is climbing
+- I start every session re-pasting project structure
+- The agent reads a 2,000-line file to answer one question
+- I want to query my codebase from ChatGPT / Gemini / a local model
+- I need AI coding help but code can't leave my machine
+
+Full symptom-and-goal matrix in the main [README](../blob/main/README.md#-when-do-i-reach-for-neuralmind).
 
 ## Quick Start
 
@@ -49,21 +71,32 @@ graphify update .
 neuralmind build .
 
 # Use
+neuralmind wakeup .
 neuralmind query . "How does authentication work?"
+neuralmind skeleton src/auth/handlers.py
 ```
 
-## Use Cases
+Claude Code users, add the PostToolUse compression hooks:
 
-1. **Daily Development** — Get context for AI coding questions
-2. **Onboarding** — Generate project overviews for new team members
-3. **Code Review** — Understand related code quickly
-4. **Documentation** — AI-assisted docs from actual code
-5. **CI/CD** — Auto-update context files
-6. **IDE Integration** — MCP server for Claude/Cursor
+```bash
+neuralmind install-hooks .
+neuralmind init-hook .        # auto-rebuild on every git commit (optional)
+```
 
-👉 **[See full use cases in Usage Guide](Usage-Guide)**
+## Compare to alternatives
+
+| Compared against | Short verdict |
+|---|---|
+| [Cursor `@codebase`](Comparisons#cursor-codebase) | Works only in Cursor; NeuralMind works anywhere |
+| [GitHub Copilot](Comparisons#github-copilot) | Copilot is hosted completions; NeuralMind is local context |
+| [Claude Projects](Comparisons#claude-projects) | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
+| [Long context windows](Comparisons#long-context) | Possible ≠ cheap — NeuralMind drops per-query cost ~60× |
+| [Prompt caching](Comparisons#prompt-caching) | Caching amortizes big prompts; NeuralMind makes them small |
+
+Full list: [Comparisons](Comparisons).
 
 ## Support
 
-- **[GitHub Issues](https://github.com/dfrostar/neuralmind/issues)** — Bug reports
-- **[GitHub Discussions](https://github.com/dfrostar/neuralmind/discussions)** — Questions & ideas
+- [GitHub Issues](https://github.com/dfrostar/neuralmind/issues) — bug reports, feature requests
+- [GitHub Discussions](https://github.com/dfrostar/neuralmind/discussions) — questions and ideas
+- [Main README](../blob/main/README.md) — always the most current overview
