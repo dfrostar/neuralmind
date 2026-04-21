@@ -1,4 +1,5 @@
 """Stripe integration — charges, refunds, webhook signature verification."""
+
 from __future__ import annotations
 
 import hashlib
@@ -6,10 +7,9 @@ import hmac
 import json
 import time
 
-from ..users.crud import get_user
 from ..db.connection import get_connection
+from ..users.crud import get_user
 from .invoices import create_invoice
-
 
 STRIPE_SECRET_KEY = "sk_test_REPLACE"
 STRIPE_WEBHOOK_SECRET = "whsec_REPLACE"
@@ -80,9 +80,7 @@ def verify_webhook(payload: bytes, signature_header: str) -> dict:
         raise WebhookVerificationError("timestamp outside tolerance")
 
     signed_payload = f"{timestamp}.".encode() + payload
-    expected = hmac.new(
-        STRIPE_WEBHOOK_SECRET.encode(), signed_payload, hashlib.sha256
-    ).hexdigest()
+    expected = hmac.new(STRIPE_WEBHOOK_SECRET.encode(), signed_payload, hashlib.sha256).hexdigest()
 
     if not hmac.compare_digest(expected, signature):
         raise WebhookVerificationError("signature mismatch")

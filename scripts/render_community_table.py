@@ -9,13 +9,12 @@ Two modes:
   The CI workflow uses this mode to auto-refresh the README when the
   JSON changes.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_PATH = REPO_ROOT / "docs" / "community-benchmarks.json"
