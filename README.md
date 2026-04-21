@@ -247,6 +247,23 @@ You: "How does authentication work in my codebase?"
 
 ---
 
+## 👤 Who is NeuralMind for?
+
+| You are… | NeuralMind gives you… |
+|---|---|
+| A **Claude Code user** watching your token bill climb | PostToolUse compression on every Read/Bash/Grep + ~60× smaller query context |
+| A **Cursor user** who wants semantic retrieval outside Cursor too | CLI + MCP server that works in any agent with the same index |
+| A **Cline / Continue user** without a built-in codebase index | Drop-in MCP `neuralmind_query` and `neuralmind_skeleton` tools |
+| Running **OpenAI / Gemini / local models** | Model-agnostic context — pipe `wakeup` / `query` output into any chat |
+| A **solo developer** with a growing monorepo | Incremental rebuilds + learning that adapts to your query patterns |
+| A **team tech lead** worried about LLM spend | Measurable per-query token reduction with `neuralmind benchmark` |
+| A **security-conscious engineer** or in a **regulated industry** | 100% local, offline, no code leaves the machine |
+| A **researcher / hobbyist** exploring LLM cost optimization | Open-source reference implementation of two-phase token optimization |
+
+Not a fit if: you need cross-repo search across a whole organization (use [Sourcegraph Cody](docs/comparisons/vs-cody.md)), or you only want inline completions (use [Copilot](docs/comparisons/vs-github-copilot.md)).
+
+---
+
 ## 🤔 Why NeuralMind vs. Heuristic-Only
 
 Both approaches are valid; the tradeoff is retrieval quality vs. simplicity.
@@ -272,6 +289,10 @@ Short answers to "why not just use X?". Each row links to a deeper page.
 | [Aider repo-map](docs/comparisons/vs-aider-repomap.md) | Aider is syntactic only; NeuralMind adds semantic retrieval and compression |
 | [Sourcegraph Cody](docs/comparisons/vs-cody.md) | Cody is server-hosted and org-wide; NeuralMind is local and per-project |
 | [Continue / Cline](docs/comparisons/vs-continue-cline.md) | Those are agent runtimes; NeuralMind is the context/compression layer underneath |
+| [GitHub Copilot](docs/comparisons/vs-github-copilot.md) | Copilot is hosted completions; NeuralMind is local context for any agent |
+| [Windsurf / Codeium](docs/comparisons/vs-windsurf-codeium.md) | Vertically integrated IDE; NeuralMind is editor- and model-agnostic |
+| [Claude Projects](docs/comparisons/vs-claude-projects.md) | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
+| [Prompt caching](docs/comparisons/vs-prompt-caching.md) | Caching amortizes a big prompt; NeuralMind makes the prompt small — combine both |
 | [LangChain / LlamaIndex for code](docs/comparisons/vs-langchain-llamaindex.md) | Frameworks you assemble; NeuralMind is the assembled default for code agents |
 | [Long context windows (1M/2M)](docs/comparisons/vs-long-context.md) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
 | [Generic RAG over a codebase](docs/comparisons/vs-rag.md) | Text chunking loses structure; NeuralMind keeps the call graph |

@@ -26,3 +26,7 @@ They are complementary. NeuralMind's `search` command gives you ranked semantic 
 ## The heuristic-only alternative
 
 If you want NeuralMind's output *shape* (skeletons, clusters) without embeddings, the [graphify](https://github.com/dfrostar/graphify) knowledge graph alone already provides ~33x token reduction with zero ML dependencies. NeuralMind adds semantic retrieval on top, trading a ChromaDB dependency for stronger recall on paraphrased queries.
+
+---
+
+[← Back to comparison index](./README.md)

@@ -15,6 +15,10 @@ Each page follows the same structure:
 | [Aider repo-map](./vs-aider-repomap.md) | "Aider already builds a repo-map, isn't this the same?" |
 | [Sourcegraph Cody](./vs-cody.md) | "How is this different from Cody's code context?" |
 | [Continue / Cline](./vs-continue-cline.md) | "I already have an MCP-capable IDE agent" |
+| [GitHub Copilot](./vs-github-copilot.md) | "I pay for Copilot — does this overlap?" |
+| [Windsurf / Codeium](./vs-windsurf-codeium.md) | "How does this compare to the Windsurf IDE?" |
+| [Claude Projects](./vs-claude-projects.md) | "Can't I just attach files to a Claude Project?" |
+| [Prompt caching](./vs-prompt-caching.md) | "Doesn't prompt caching solve the cost problem?" |
 | [LangChain / LlamaIndex for code](./vs-langchain-llamaindex.md) | "Can I just wire up RAG myself?" |
 | [Long context windows](./vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
 | [Generic RAG over a codebase](./vs-rag.md) | "Isn't this just RAG with extra steps?" |

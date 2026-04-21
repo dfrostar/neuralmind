@@ -22,3 +22,7 @@ General-purpose frameworks for building RAG pipelines. You choose a loader, spli
 - **Pick NeuralMind** if you want the "best default" code context for an AI coding agent with zero glue code and measurable per-query token savings.
 
 Roughly: LangChain/LlamaIndex give you the Lego bricks; NeuralMind is the assembled model optimized specifically for "AI agent answers questions about a repo".
+
+---
+
+[← Back to comparison index](./README.md)

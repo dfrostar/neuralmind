@@ -24,3 +24,7 @@ Use both. NeuralMind makes Continue/Cline cheaper and more accurate by:
 2. (In Claude Code) compressing every `Read`/`Bash`/`Grep` result via PostToolUse hooks.
 
 If you only use Continue or Cline without NeuralMind, you rely on their built-in file-read/grep flow — which loads raw content and pays for every line the model sees. NeuralMind is the compression layer underneath.
+
+---
+
+[← Back to comparison index](./README.md)
