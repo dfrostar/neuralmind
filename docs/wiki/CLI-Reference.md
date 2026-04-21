@@ -17,6 +17,12 @@ Complete command-line interface documentation for NeuralMind.
   - [skeleton](#skeleton)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
+  - [audit-report](#audit-report) (v0.4+)
+  - [audit-list](#audit-list) (v0.4+)
+  - [audit-export](#audit-export) (v0.4+)
+  - [backend-list](#backend-list) (v0.4+)
+  - [backend-check](#backend-check) (v0.4+)
+  - [backend-switch](#backend-switch) (v0.4+)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -97,7 +103,7 @@ neuralmind build /path/to/project --force
 #### Prerequisites
 
 Before running `build`, ensure:
-1. Graphify has been run on the project: `graphify update /path/to/project`
+1. Graphify has been run on the project: `graphify build /path/to/project`
 2. The file `graphify-out/graph.json` exists in the project directory
 
 ---
@@ -574,6 +580,166 @@ neuralmind init-hook /path/to/project
 
 ---
 
+### audit-report
+
+Generate NIST AI RMF compliance report from audit trail (v0.4+).
+
+```bash
+neuralmind audit-report <project_path> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No (default: `.`) | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--format` | `json` | Output format: `json` or `markdown` |
+| `--output`, `-o` | False | Export report to file in `.neuralmind/audit/reports/` |
+
+#### Examples
+
+```bash
+# Generate JSON report to stdout
+neuralmind audit-report .
+
+# Generate Markdown report and save to file
+neuralmind audit-report . --format markdown --output
+
+# Generate report for specific project
+neuralmind audit-report /path/to/project --format json --output
+```
+
+---
+
+### audit-list
+
+List recent audit entries for a project (v0.4+).
+
+```bash
+neuralmind audit-list <project_path> [OPTIONS]
+```
+
+#### Examples
+
+```bash
+# List audit entries for current project
+neuralmind audit-list .
+
+# List entries for specific project
+neuralmind audit-list /path/to/project
+```
+
+---
+
+### audit-export
+
+Export audit trail for compliance tools and SIEM integration (v0.4+).
+
+```bash
+neuralmind audit-export <project_path> [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--format` | `json` | Output format: `json` or `markdown` |
+| `--output`, `-o` | False | Export to file |
+
+#### Examples
+
+```bash
+# Export audit trail for SIEM
+neuralmind audit-export . --format json --output
+```
+
+---
+
+### backend-list
+
+List available embedding backends (v0.4+).
+
+```bash
+neuralmind backend-list [OPTIONS]
+```
+
+#### Examples
+
+```bash
+# List available backends
+neuralmind backend-list
+
+# Example output:
+#   Available embedding backends:
+#   • chromadb (default)
+#   • lancedb
+#   • postgres
+```
+
+---
+
+### backend-check
+
+Check health of the current embedding backend (v0.4+).
+
+```bash
+neuralmind backend-check <project_path> [OPTIONS]
+```
+
+#### Examples
+
+```bash
+# Check backend health
+neuralmind backend-check .
+
+# Example output:
+#   Backend: ChromaDB
+#   Status: ✓ Healthy
+#   Nodes: 2,847
+#   Communities: 42
+```
+
+---
+
+### backend-switch
+
+Migrate embeddings between backends (v0.4+).
+
+```bash
+neuralmind backend-switch <project_path> <backend_name> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+| `backend_name` | Yes | Target backend: `chromadb`, `postgres`, or `lancedb` |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--connection-string` | - | Connection string for postgres (e.g., `postgresql://user:pass@host/db`) |
+| `--db-path` | - | Database path for chromadb/lancedb |
+
+#### Examples
+
+```bash
+# Switch from ChromaDB to PostgreSQL
+neuralmind backend-switch . postgres --connection-string "postgresql://localhost/neuralmind"
+
+# Switch to LanceDB
+neuralmind backend-switch . lancedb --db-path ".neuralmind/embeddings.lance"
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -602,26 +768,30 @@ neuralmind init-hook /path/to/project
 ### Complete Workflow
 
 ```bash
-# 1. Generate knowledge graph
-graphify update ~/projects/myapp
+# 1. Generate code graph (one-time)
+cd ~/projects/myapp
+graphify build
 
 # 2. Build neural index
-neuralmind build ~/projects/myapp
+neuralmind build .
 
 # 3. View statistics
-neuralmind stats ~/projects/myapp
+neuralmind stats .
 
 # 4. Get wake-up context for new conversation
-neuralmind wakeup ~/projects/myapp > context.md
+neuralmind wakeup . > context.md
 
 # 5. Query specific functionality
-neuralmind query ~/projects/myapp "How does the payment system work?"
+neuralmind query . "How does the payment system work?"
 
 # 6. Search for specific entities
-neuralmind search ~/projects/myapp "PaymentController" --n 5
+neuralmind search . "PaymentController" -n 5
 
 # 7. Run benchmark
-neuralmind benchmark ~/projects/myapp
+neuralmind benchmark .
+
+# 8. (Optional) Generate NIST compliance report
+neuralmind audit-report . --format markdown --output
 ```
 
 ### Scripting Integration
