@@ -260,6 +260,7 @@ If `Built: False`, run `graphify update . && neuralmind build .` again.
 ## Next Steps
 
 - **[CLI Reference](CLI-Reference)** — All commands and options
+- **[Scheduling Guide](Scheduling-Guide)** — Automate audits & queries on Windows, Linux, macOS, or GitHub Actions
 - **[Learning Guide](Learning-Guide)** — Teach NeuralMind your query patterns
 - **[Integration Guide](Integration-Guide)** — CI/CD, VS Code, JetBrains
 - **[Troubleshooting](Troubleshooting)** — Common issues and fixes
