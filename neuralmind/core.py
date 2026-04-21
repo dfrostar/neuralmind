@@ -25,6 +25,7 @@ Usage:
 from datetime import datetime
 from pathlib import Path
 
+from .audit_integration import log_query_with_audit
 from .context_selector import ContextResult, ContextSelector
 from .embedder import GraphEmbedder
 from .memory import log_query_event
@@ -143,7 +144,13 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_query_context(question)
+
+        # Log to memory (opt-in, for learning patterns)
         log_query_event(self.project_path, question, result)
+
+        # Log to audit trail (comprehensive, for compliance)
+        log_query_with_audit(question, result, self.project_path, self.embedder)
+
         return result
 
     def skeleton(self, file_path: str) -> str:

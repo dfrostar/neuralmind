@@ -588,11 +588,145 @@ def main():
     )
     hook_p.set_defaults(func=cmd_hook)
 
+    # Audit trail commands — NIST AI RMF compliance
+    audit_p = subparsers.add_parser(
+        "audit-report",
+        help="Generate NIST AI RMF compliance report from audit trail",
+    )
+    audit_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    audit_p.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    audit_p.add_argument(
+        "--output",
+        action="store_true",
+        help="Export report to file in .neuralmind/audit/reports/",
+    )
+    audit_p.add_argument(
+        "--json",
+        "-j",
+        action="store_true",
+        help="Force JSON output (overrides --format)",
+    )
+    audit_p.set_defaults(func=cmd_audit_report)
+
+    audit_list_p = subparsers.add_parser(
+        "audit-list",
+        help="List recent audit entries for a project",
+    )
+    audit_list_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    audit_list_p.set_defaults(func=cmd_audit_list)
+
+    audit_export_p = subparsers.add_parser(
+        "audit-export",
+        help="Export audit trail for compliance tools and SIEM integration",
+    )
+    audit_export_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    audit_export_p.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        help="Output format (default: json)",
+    )
+    audit_export_p.set_defaults(func=cmd_audit_export)
+
     args = parser.parse_args()
     if args.command is None:
         parser.print_help()
         sys.exit(1)
     args.func(args)
+
+
+def cmd_audit_report(args):
+    """Generate NIST AI RMF compliance report from audit trail."""
+    from .audit import export_nist_rmf_report, generate_nist_rmf_report
+
+    project_path = args.project_path or "."
+    output_format = args.format or "json"
+
+    report = generate_nist_rmf_report(project_path)
+
+    if report.get("status") == "no_data":
+        print(report["message"])
+        return
+
+    if args.json or output_format == "json":
+        print(json.dumps(report, indent=2))
+    else:
+        # Print markdown summary
+        from .audit import _report_to_markdown
+
+        markdown = _report_to_markdown(report)
+        print(markdown)
+
+    # Export to file if requested
+    if args.output:
+        output_path = export_nist_rmf_report(project_path, output_format)
+        if output_path:
+            print(f"\n✓ Report exported to: {output_path}")
+
+
+def cmd_audit_list(args):
+    """List audit entries for a project."""
+    from .audit import count_audit_entries, read_audit_entries
+
+    project_path = args.project_path or "."
+    entries = read_audit_entries(project_path)
+
+    if not entries:
+        print("No audit entries found.")
+        return
+
+    print(f"Audit entries for {Path(project_path).name}:")
+    print(f"Total: {count_audit_entries(project_path)}")
+    print()
+
+    for i, entry in enumerate(entries[-10:], 1):  # Show last 10
+        print(f"{i}. {entry.timestamp}")
+        print(f"   Query: {entry.query_text[:70]}...")
+        print(f"   Evidence: {entry.evidence_count} items")
+        print(f"   Reduction: {entry.reduction_ratio:.1f}x")
+        print()
+
+
+def cmd_audit_export(args):
+    """Export audit trail for external compliance tools."""
+    from .audit import export_nist_rmf_report, read_audit_entries
+
+    project_path = args.project_path or "."
+    output_format = args.format or "json"
+
+    entries = read_audit_entries(project_path)
+    if not entries:
+        print("No audit entries to export.")
+        return
+
+    output_path = export_nist_rmf_report(project_path, output_format)
+    if output_path:
+        print(f"✓ Audit trail exported to: {output_path}")
+        print(f"  Format: {output_format}")
+        print(f"  Entries: {len(entries)}")
+    else:
+        print("Export failed.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
