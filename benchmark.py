@@ -3,6 +3,7 @@ import sys
 import time
 
 import psutil
+import tiktoken
 
 # Ensure the project root is in the Python path
 sys.path.insert(0, "/a0/usr/workdir/neuralmind")
@@ -40,7 +41,8 @@ def run_benchmark():
 
     elapsed_time = time.time() - start_time
     peak_mem = get_memory_usage()
-    token_count = len(output.split())  # Approximate token count
+    encoding = tiktoken.get_encoding("cl100k_base")
+    token_count = len(encoding.encode(output))
 
     return {
         "time_sec": round(elapsed_time, 2),
@@ -55,4 +57,4 @@ if __name__ == "__main__":
     print("\n--- Benchmark Results ---")
     print(f"Execution Time: {metrics['time_sec']} seconds")
     print(f"Peak Memory: {metrics['memory_mb']} MB")
-    print(f"Approx. Output Tokens: {metrics['tokens']}")
+    print(f"Output Tokens: {metrics['tokens']}")
