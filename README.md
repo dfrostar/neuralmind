@@ -975,14 +975,25 @@ NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/f
 - **Per-model breakdown.** GPT-4o and GPT-4/3.5 counts are *measured* via real tiktoken encodings. Claude uses the Anthropic SDK tokenizer when available, else a clearly-labeled *estimate* derived from published vocab ratios. Llama is always estimated. **No fabricated numbers anywhere.**
 - **Memory persistence.** `tests/test_memory_persistence.py` asserts events are logged, `neuralmind learn` produces a patterns file, and subsequent queries load it without error.
 
-### External benchmarks on real repos
+### Community benchmarks
 
-| Project | Nodes | Wakeup | Avg Query | Avg Reduction |
-|---------|-------|--------|-----------|---------------|
-| cmmc20 (React/Node) | 241 | 341 tokens | 739 tokens | **65.6×** |
-| mempalace (Python) | 1,626 | 412 tokens | 891 tokens | **46.0×** |
+Real-world numbers submitted by users. Your code never leaves your machine — you submit a PR (or an issue, which a maintainer converts to a PR) with only the numbers. CI validates every entry against the schema and re-renders this table automatically.
 
-These are from external projects NeuralMind has been run against — not gated by CI, but verifiable via `neuralmind benchmark . --json` on those projects.
+<!-- COMMUNITY-BENCHMARKS:START -->
+| Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
+|---------|------|------:|-------:|----------:|----------:|-------|-----------|
+| cmmc20 | JavaScript | 241 | 341 | 739 | **65.6×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+| mempalace | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+
+_2 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands._
+<!-- COMMUNITY-BENCHMARKS:END -->
+
+**Submit yours:**
+
+- **Easy path:** [open a benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml) — fill out a form, a maintainer converts it to a PR.
+- **PR directly:** add an entry to [`docs/community-benchmarks.json`](docs/community-benchmarks.json) and run `python scripts/render_community_table.py --inject README.md` to regenerate the table. Schema: [`community-benchmarks.schema.json`](docs/community-benchmarks.schema.json).
+
+All entries include the exact `neuralmind` command that produced them, so reviewers (and any reader) can audit the numbers.
 
 ### Reproduce locally
 
