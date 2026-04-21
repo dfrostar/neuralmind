@@ -24,23 +24,27 @@ See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflo
 ## 30-Second Setup
 
 ```bash
-# 1. Install NeuralMind and graphify
-pip install neuralmind graphifyy
+# 1. Install NeuralMind
+pip install neuralmind
 
-# 2. Go to your project
+# 2. Install graphify (required for code graph generation)
+git clone https://github.com/safishamsi/graphify.git
+cd graphify && pip install -e .
+
+# 3. Go to your project
 cd /path/to/your-project
 
-# 3. Generate the knowledge graph
-graphify update .
+# 4. Generate the code graph
+graphify build
 
-# 4. Build the neural index
+# 5. Build the neural index
 neuralmind build .
 
-# 5. Test it
-neuralmind wakeup .
+# 6. Test it
+neuralmind stats .
 ```
 
-You should see a compact project overview. If you do, NeuralMind is ready.
+You should see output with `Built: True`, node count, and community count. If you do, NeuralMind is ready.
 
 ---
 
@@ -62,16 +66,20 @@ You should see a compact project overview. If you do, NeuralMind is ready.
 Claude Code gets the full two-phase optimization: smart retrieval **and** compressed tool outputs.
 
 ```bash
-pip install neuralmind graphifyy
+# 1. Install dependencies
+pip install neuralmind
+git clone https://github.com/safishamsi/graphify.git
+cd graphify && pip install -e .
 
-cd your-project
-graphify update .
+# 2. Setup your project
+cd /path/to/your-project
+graphify build
 neuralmind build .
 
-# Install PostToolUse compression hooks (compresses Read/Bash/Grep output)
+# 3. Install PostToolUse compression hooks (compresses Read/Bash/Grep output)
 neuralmind install-hooks .
 
-# Optional: auto-rebuild index on every git commit
+# 4. Optional: auto-rebuild index on every git commit
 neuralmind init-hook .
 ```
 

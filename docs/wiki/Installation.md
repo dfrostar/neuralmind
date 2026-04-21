@@ -44,14 +44,26 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 For most users, the quickest path:
 
 ```bash
-# Install NeuralMind
+# 1. Install NeuralMind from PyPI
 pip install neuralmind
 
-# Install graphify for knowledge graph generation
-pip install graphifyy
+# 2. Install graphify (required for code graph generation)
+#    Note: graphify is not on PyPI, must install from source
+git clone https://github.com/safishamsi/graphify.git
+cd graphify
+pip install -e .
 
-# Verify installation
+# 3. Verify installation
 neuralmind --help
+graphify --help
+```
+
+**Quick path on Windows (PowerShell):**
+```powershell
+pip install neuralmind
+git clone https://github.com/safishamsi/graphify.git
+cd graphify
+pip install -e .
 ```
 
 ---
@@ -158,11 +170,11 @@ pre-commit install
 | black | ≥23.0 | Code formatting |
 | ruff | ≥0.1.0 | Fast linting |
 
-### External Tools
+### External Tools (Required)
 
 | Tool | Installation | Purpose |
 |------|--------------|----------|
-| graphify | `pip install graphifyy` | Knowledge graph generation |
+| graphify | `git clone https://github.com/safishamsi/graphify.git && cd graphify && pip install -e .` | **REQUIRED**: Generates semantic code graph that NeuralMind uses |
 
 ---
 
@@ -303,18 +315,24 @@ pip install chromadb>=0.4.0
 
 #### "graph.json not found"
 
-**Cause**: Knowledge graph not generated.
+**Cause**: Knowledge graph not generated. This is **required** — NeuralMind needs a code graph to work.
 
 **Solution**:
 ```bash
-# Install graphify if not present
-pip install graphifyy
+# 1. Install graphify (if not already done)
+git clone https://github.com/safishamsi/graphify.git
+cd graphify
+pip install -e .
 
-# Generate knowledge graph
-graphify update /path/to/your/project
+# 2. Generate knowledge graph
+cd /path/to/your/project
+graphify build
 
-# Then build neural index
-neuralmind build /path/to/your/project
+# 3. Then build neural index
+neuralmind build .
+
+# 4. Verify it worked
+neuralmind stats .
 ```
 
 #### Memory Error on Large Codebases

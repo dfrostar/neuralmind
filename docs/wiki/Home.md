@@ -62,19 +62,43 @@ Full symptom-and-goal matrix in the main [README](../blob/main/README.md#-when-d
 
 ## Quick Start
 
+### Step 1: Install packages
 ```bash
-# Install
-pip install neuralmind graphifyy
+# Install NeuralMind from PyPI
+pip install neuralmind
 
-# Setup
-cd your-project
-graphify update .
+# Install graphify (required for code graph generation)
+git clone https://github.com/safishamsi/graphify.git
+cd graphify && pip install -e .
+```
+
+### Step 2: Set up your project
+```bash
+cd /path/to/your-project
+
+# Generate code graph (one-time)
+graphify build
+
+# Build neural index
 neuralmind build .
 
-# Use
+# Verify setup
+neuralmind stats .
+```
+
+### Step 3: Use it
+```bash
+# Get project overview (~400 tokens)
 neuralmind wakeup .
+
+# Ask specific questions (~800 tokens)
 neuralmind query . "How does authentication work?"
+
+# Explore files efficiently
 neuralmind skeleton src/auth/handlers.py
+
+# Search for entities
+neuralmind search . "authenticate"
 ```
 
 Claude Code users, add the PostToolUse compression hooks:
@@ -101,9 +125,8 @@ Full list: [Comparisons](Comparisons).
 Don't trust fixture numbers — measure it on your own repo:
 
 ```bash
-pip install neuralmind graphifyy
-graphify update . && neuralmind build .
-neuralmind benchmark . --contribute
+cd /path/to/your-project
+graphify build && neuralmind build . && neuralmind benchmark . --contribute
 ```
 
 This outputs your reduction ratio, tokens per query, and an estimated monthly savings figure at Claude 3.5 Sonnet pricing. The `--contribute` flag produces a ready-to-share JSON blob you can paste into a PR (or a [benchmark submission issue](https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml)) to add to the public leaderboard.
