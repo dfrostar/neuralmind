@@ -6,13 +6,23 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for contributing a real-world benchmark! A few notes before you fill this out:
+        Thanks for contributing a real-world benchmark!
 
-        - **Your code never leaves your machine.** You're submitting *numbers*, not source.
-        - A maintainer will convert this issue into a PR adding your entry to
-          [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json).
-          You can also open the PR yourself — see the [contribution guide](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json#L2) in that file.
-        - Expect a reviewer to ask for the exact command you ran, so the numbers are reproducible.
+        **Fastest way to fill this out:**
+
+        ```bash
+        neuralmind benchmark . --contribute
+        ```
+
+        That command prints your numbers (ratio, tokens per query, estimated monthly savings) *and* a ready-to-paste JSON blob. Copy the values from the JSON into the fields below — most are 1:1.
+
+        **Privacy:** Your code never leaves your machine. You're submitting *numbers*, not source. NeuralMind never uploads anything automatically — you choose if and when to submit.
+
+        A maintainer will convert this issue into a PR adding your entry to
+        [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json).
+        You can also open the PR yourself. Expect a reviewer to ask for the exact command you ran, so the numbers are reproducible.
+
+        **Full walkthrough:** [Does NeuralMind work on your codebase?](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md)
 
   - type: input
     id: project_name

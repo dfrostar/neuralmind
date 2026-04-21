@@ -101,6 +101,11 @@ def cmd_benchmark(args):
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
+
+    if getattr(args, "contribute", False):
+        _emit_community_submission(args, result, mind)
+        return
+
     if args.json:
         print(json.dumps(result, indent=2))
     else:
@@ -109,6 +114,134 @@ def cmd_benchmark(args):
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
         print(f"Summary: {result['summary']}")
+
+
+def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
+    """Transform benchmark output into a community-benchmarks.json entry.
+
+    Outputs a JSON blob users can paste directly into the community
+    benchmarks file or attach to an issue/PR. Missing metadata is
+    prompted interactively (TTY) or left as `null` with a comment
+    explaining the omission (non-TTY / scripted use).
+    """
+    from datetime import date
+
+    project_name = getattr(args, "project_name", None) or _prompt(
+        "Project name (short, under 40 chars)",
+        default=Path(args.project_path).resolve().name,
+    )
+    language = getattr(args, "language", None) or _prompt(
+        "Primary language (Python / JavaScript / TypeScript / Go / Rust / Java / Mixed / Other)",
+        default="",
+    )
+    model = getattr(args, "model", None) or _prompt(
+        "Which model you run this against (e.g. 'Claude 3.5 Sonnet')",
+        default="",
+    )
+    repo_url = getattr(args, "repo_url", None) or _maybe_detect_repo_url(args.project_path)
+    notes = getattr(args, "notes", None)
+
+    submitted_by = getattr(args, "submitter", None) or _prompt(
+        "Your GitHub username (no leading @)",
+        default="",
+    )
+
+    # Try to pull node count from stats; fall back to None so the reviewer
+    # can spot it rather than silently reporting 0.
+    try:
+        stats = mind.get_stats() if hasattr(mind, "get_stats") else {}
+    except Exception:
+        stats = {}
+    nodes = stats.get("total_nodes") or benchmark_result.get("nodes")
+
+    entry = {
+        "project_name": project_name,
+        "language": language or "Other",
+        "nodes": nodes,
+        "avg_wakeup_tokens": benchmark_result.get("wakeup_tokens"),
+        "avg_query_tokens": benchmark_result.get("avg_query_tokens"),
+        "avg_reduction_ratio": round(float(benchmark_result.get("avg_reduction_ratio", 0)), 1),
+        "model": model or None,
+        "date_submitted": date.today().isoformat(),
+        "submitted_by": submitted_by or None,
+        "verification_command": f"neuralmind benchmark {args.project_path} --json",
+    }
+    if repo_url:
+        entry["repo_url"] = repo_url
+    if notes:
+        entry["notes"] = notes
+
+    # Drop null fields — schema treats them as missing, not null.
+    entry = {k: v for k, v in entry.items() if v is not None and v != ""}
+
+    # Lead with the value, not the JSON.
+    ratio = float(benchmark_result.get("avg_reduction_ratio", 0))
+    avg_query_tokens = benchmark_result.get("avg_query_tokens") or 0
+    naive_tokens_estimate = int(avg_query_tokens * ratio) if avg_query_tokens else 0
+
+    # Rough per-query dollar cost at Claude 3.5 Sonnet input pricing.
+    # The user can adjust if they run against a different model.
+    sonnet_per_mtok = 3.0
+    monthly_naive = naive_tokens_estimate / 1_000_000 * sonnet_per_mtok * 100 * 30
+    monthly_nm = avg_query_tokens / 1_000_000 * sonnet_per_mtok * 100 * 30
+    monthly_saved = monthly_naive - monthly_nm
+
+    print()
+    print("=" * 68)
+    print("What you just proved on your code:")
+    print("=" * 68)
+    print(f"  Reduction ratio  :  {ratio:.1f}×  (on YOUR codebase, not a demo fixture)")
+    print(f"  Tokens per query :  {avg_query_tokens:,}  (vs ~{naive_tokens_estimate:,} raw)")
+    print(
+        f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}"
+        f"  (Claude 3.5 Sonnet input, 100 queries/day)"
+    )
+    print("")
+    print("  Different model or volume? Scale linearly: GPT-4o ≈ 5× Sonnet cost;")
+    print("  Haiku ≈ 1/4. Ratio stays the same.")
+    print("=" * 68)
+    print()
+    print("Shareable JSON (paste into Slack, docs, PRs, or the community leaderboard):")
+    print("-" * 68)
+    print(json.dumps(entry, indent=2))
+    print("-" * 68)
+    print()
+    print("If you want to contribute this to the public community leaderboard")
+    print("(entirely optional — NeuralMind never uploads anything automatically):")
+    print("  • Issue form  : https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml")
+    print("  • Direct PR   : add to docs/community-benchmarks.json, then")
+    print("                  python scripts/render_community_table.py --inject README.md")
+
+
+def _prompt(label: str, default: str = "") -> str:
+    """Interactive prompt. Returns default if stdin isn't a TTY."""
+    if not sys.stdin.isatty():
+        return default
+    suffix = f" [{default}]" if default else ""
+    try:
+        response = input(f"{label}{suffix}: ").strip()
+    except EOFError:
+        return default
+    return response or default
+
+
+def _maybe_detect_repo_url(project_path: str) -> str | None:
+    """Best-effort: read the origin URL from .git/config if present."""
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", project_path, "remote", "get-url", "origin"],
+            stderr=subprocess.DEVNULL,
+            timeout=3,
+        )
+        url = out.decode().strip()
+        # Normalize SSH → HTTPS for public display
+        if url.startswith("git@github.com:"):
+            url = "https://github.com/" + url[len("git@github.com:"):].removesuffix(".git")
+        return url or None
+    except Exception:
+        return None
 
 
 def cmd_search(args):
@@ -348,9 +481,24 @@ def main():
     wakeup_p.add_argument("--json", "-j", action="store_true")
     wakeup_p.set_defaults(func=cmd_wakeup)
 
-    bench_p = subparsers.add_parser("benchmark", help="Run benchmark")
+    bench_p = subparsers.add_parser(
+        "benchmark",
+        help="Run benchmark on your project (supports --contribute for community submissions)",
+    )
     bench_p.add_argument("project_path")
     bench_p.add_argument("--json", "-j", action="store_true")
+    bench_p.add_argument(
+        "--contribute",
+        action="store_true",
+        help="Emit a schema-ready JSON blob you can submit to the community benchmarks. "
+             "No data is uploaded — you copy-paste the output into an issue or PR.",
+    )
+    bench_p.add_argument("--project-name", help="Project name for contribution (optional; prompts on TTY)")
+    bench_p.add_argument("--language", help="Primary language for contribution (optional)")
+    bench_p.add_argument("--model", help="LLM you run against (optional)")
+    bench_p.add_argument("--repo-url", help="Public repo URL (optional)")
+    bench_p.add_argument("--submitter", help="Your GitHub username (optional)")
+    bench_p.add_argument("--notes", help="Optional notes for the submission")
     bench_p.set_defaults(func=cmd_benchmark)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
