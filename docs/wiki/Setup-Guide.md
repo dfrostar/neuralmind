@@ -2,6 +2,10 @@
 
 First-time setup for NeuralMind on any platform in under 5 minutes.
 
+NeuralMind is a two-phase token optimizer for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens, plus PostToolUse hooks that compress `Read`/`Bash`/`Grep` output before your agent sees it. Typical combined reduction is **5–10× vs baseline** Claude Code / Cursor / any-LLM usage.
+
+See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflow, or [Comparisons](Comparisons) for how it differs from Cursor `@codebase`, Copilot, Claude Projects, long context, and others.
+
 ## Table of Contents
 
 - [30-Second Setup](#30-second-setup)

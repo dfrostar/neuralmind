@@ -1,0 +1,56 @@
+name: Sync docs/wiki to GitHub Wiki
+
+# Mirrors docs/wiki/*.md from this repo into the <repo>.wiki.git repo
+# whenever the wiki source changes on main. Also supports manual runs.
+#
+# Requires the live GitHub Wiki to have been initialized once via the UI
+# (Wiki tab → "Create the first page"). After that, this workflow takes over.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/wiki/**'
+      - '.github/workflows/sync-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Clone live wiki repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" wiki-live
+          cd wiki-live
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Sync markdown files
+        run: |
+          set -euo pipefail
+          # Copy every .md from docs/wiki/ into the wiki repo root (GitHub Wiki is flat)
+          rsync -av --delete --exclude='.git/' \
+            --include='*.md' --include='*/' --exclude='*' \
+            docs/wiki/ wiki-live/
+
+      - name: Commit and push if changed
+        working-directory: wiki-live
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "Sync from docs/wiki @ ${GITHUB_SHA::7}"
+            git push origin HEAD:master || git push origin HEAD:main
+            echo "Wiki updated."
+          else
+            echo "No wiki changes to push."
+          fi
