@@ -26,6 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .audit_integration import log_query_with_audit
+from .backend_manager import BackendFactory, EmbeddingConfig, check_backend_health
 from .context_selector import ContextResult, ContextSelector
 from .embedder import GraphEmbedder
 from .memory import log_query_event
@@ -37,28 +38,88 @@ class NeuralMind:
 
     Replaces static Obsidian wiki with intelligent, query-aware context.
     Achieves 6-49x token reduction through progressive disclosure.
+
+    Supports pluggable embedding backends:
+    - chromadb (default, local)
+    - postgres (PostgreSQL pgvector)
+    - lancedb (Rust-based, lightweight)
     """
 
-    def __init__(self, project_path: str, db_path: str = None, enable_reranking: bool = True):
+    def __init__(
+        self,
+        project_path: str,
+        db_path: str = None,
+        enable_reranking: bool = True,
+        backend_config: EmbeddingConfig | None = None,
+    ):
         """
         Initialize NeuralMind for a project.
 
         Args:
             project_path: Path to project root (where graphify-out/ lives)
-            db_path: Optional custom path for ChromaDB storage
+            db_path: Optional custom path for database storage (backend-specific)
             enable_reranking: If True, apply learned patterns to rerank search results
+            backend_config: Backend configuration. If None, loads from .neuralmind/config.toml
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
         self.enable_reranking = enable_reranking
+        self.backend_config = backend_config
 
-        # Initialize components
-        self.embedder = GraphEmbedder(project_path, db_path)
+        # Initialize components using backend factory
+        # If db_path provided, pass it as override (for backward compatibility)
+        if backend_config is not None:
+            self.embedder = BackendFactory.create(
+                project_path,
+                config=backend_config,
+                db_path=db_path,
+            )
+        else:
+            # Load from config file, or use default
+            self.embedder = BackendFactory.create(project_path, db_path=db_path)
+
         self.selector: ContextSelector | None = None
 
         # State tracking
         self._built = False
         self._build_stats: dict = {}
+
+    @classmethod
+    def with_backend(
+        cls,
+        project_path: str,
+        backend_name: str,
+        **backend_options,
+    ) -> "NeuralMind":
+        """
+        Create NeuralMind with a specific backend.
+
+        Args:
+            project_path: Project root
+            backend_name: "chromadb", "postgres", "lancedb"
+            **backend_options: Backend-specific options
+
+        Returns:
+            NeuralMind instance with specified backend
+
+        Example:
+            mind = NeuralMind.with_backend(
+                ".",
+                "postgres",
+                connection_string="postgresql://localhost/neuralmind"
+            )
+        """
+        config = EmbeddingConfig(backend_name=backend_name, **backend_options)
+        return cls(project_path, backend_config=config)
+
+    def check_health(self) -> dict:
+        """
+        Check if the backend is healthy and accessible.
+
+        Returns:
+            {'healthy': bool, 'backend': str, 'issues': [...], 'stats': {...}}
+        """
+        return check_backend_health(self.embedder)
 
     def build(self, force: bool = False) -> dict:
         """

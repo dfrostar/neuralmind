@@ -648,6 +648,49 @@ def main():
     )
     audit_export_p.set_defaults(func=cmd_audit_export)
 
+    # Backend management commands
+    backend_list_p = subparsers.add_parser(
+        "backend-list",
+        help="List available embedding backends",
+    )
+    backend_list_p.set_defaults(func=cmd_backend_list)
+
+    backend_check_p = subparsers.add_parser(
+        "backend-check",
+        help="Check embedding backend health and configuration",
+    )
+    backend_check_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    backend_check_p.set_defaults(func=cmd_backend_check)
+
+    backend_switch_p = subparsers.add_parser(
+        "backend-switch",
+        help="Switch to a different embedding backend",
+    )
+    backend_switch_p.add_argument(
+        "new_backend",
+        help="New backend name: chromadb, postgres, lancedb",
+    )
+    backend_switch_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    backend_switch_p.add_argument(
+        "--connection-string",
+        help="For postgres: database connection URL",
+    )
+    backend_switch_p.add_argument(
+        "--db-path",
+        help="For chromadb/lancedb: database path",
+    )
+    backend_switch_p.set_defaults(func=cmd_backend_switch)
+
     args = parser.parse_args()
     if args.command is None:
         parser.print_help()
@@ -726,6 +769,96 @@ def cmd_audit_export(args):
         print(f"  Entries: {len(entries)}")
     else:
         print("Export failed.")
+        sys.exit(1)
+
+
+def cmd_backend_list(args):
+    """List available embedding backends."""
+    from .backend_manager import BackendRegistry
+
+    backends = BackendRegistry.list_available()
+    print("Available embedding backends:")
+    for backend_name in backends:
+        print(f"  • {backend_name}")
+
+    print("\nSet backend in .neuralmind/config.toml:")
+    print("  [embeddings]")
+    print("  backend = 'chromadb'  # or 'postgres', 'lancedb'")
+
+
+def cmd_backend_check(args):
+    """Check backend health and configuration."""
+    from .backend_manager import BackendFactory
+
+    project_path = args.project_path or "."
+
+    try:
+        backend = BackendFactory.create(project_path)
+        health = backend.check_health()
+
+        print(f"Backend: {health['backend']}")
+        print(f"Status: {'✓ Healthy' if health['healthy'] else '✗ Unhealthy'}")
+
+        if health["issues"]:
+            print("Issues:")
+            for issue in health["issues"]:
+                print(f"  - {issue}")
+
+        if health["stats"]:
+            print("Statistics:")
+            for key, value in health["stats"].items():
+                print(f"  {key}: {value}")
+
+    except Exception as e:
+        print(f"Error checking backend: {e}")
+        sys.exit(1)
+
+
+def cmd_backend_switch(args):
+    """Switch to a different embedding backend."""
+    from .backend_manager import BackendFactory, EmbeddingConfig, migrate_between_backends
+
+    project_path = args.project_path or "."
+    new_backend = args.new_backend.lower()
+
+    # Get current backend
+    try:
+        from .backend_manager import EmbeddingConfig as CurrentConfig
+
+        current_config = CurrentConfig.from_toml(Path(project_path) / ".neuralmind" / "config.toml")
+    except Exception:
+        current_config = EmbeddingConfig()
+
+    new_config = EmbeddingConfig(backend_name=new_backend, **vars(args))
+
+    print(f"Switching backend: {current_config.backend_name} → {new_backend}")
+    print("This will re-embed the code graph in the new backend...")
+    print()
+
+    # Perform migration
+    result = migrate_between_backends(project_path, current_config, new_config)
+
+    if result.get("success"):
+        print(f"✓ Migration successful!")
+        print(f"  Nodes migrated: {result.get('nodes_migrated', 0)}")
+        print(f"  Duration: {result.get('duration_seconds', 0)}s")
+
+        # Save new configuration
+        config_path = Path(project_path) / ".neuralmind" / "config.toml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+
+        config_content = f"""
+[embeddings]
+backend = "{new_backend}"
+
+[backends.{new_backend}]
+# Backend-specific configuration
+# Edit as needed for your environment
+"""
+        config_path.write_text(config_content)
+        print(f"\n✓ Configuration saved to: {config_path}")
+    else:
+        print(f"✗ Migration failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
 
 
