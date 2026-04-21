@@ -247,6 +247,50 @@ You: "How does authentication work in my codebase?"
 
 ---
 
+## 🚨 When do I reach for NeuralMind?
+
+Two ways to decide: start with what's annoying you (**symptoms**), or start with what you're trying to achieve (**goals**).
+
+### Symptoms — "This is happening to me"
+
+| What you notice | Reach for | Why it fixes it |
+|---|---|---|
+| Claude Code hits context limits mid-task | `neuralmind install-hooks .` | Auto-compresses Read/Bash/Grep **before** the agent sees them (~88–91%) |
+| My monthly LLM bill is climbing | `neuralmind query` + hooks | 40–70× fewer tokens per code question |
+| I start every session re-pasting project structure | `neuralmind wakeup .` | ~400 tokens of orientation; pipe into any chat |
+| Agent reads a 2,000-line file to answer about one function | `neuralmind skeleton <file>` | Functions + call graph, no body; ~88% cheaper than `Read` |
+| `grep` floods the agent with hundreds of matches | `neuralmind install-hooks .` | Caps at 25 matches with "N more hidden" pointer |
+| The agent is confidently wrong about what my code does | Start session with `wakeup`; ask with `query` | Grounds the model in real structure instead of guessing |
+| I want to query my codebase from ChatGPT / Gemini | `neuralmind wakeup . \| pbcopy` | Model-agnostic output; paste into any chat |
+| Retrieval feels random across similar questions | `neuralmind learn .` | Cooccurrence-based reranking adapts to your patterns |
+| Index feels out of date after a refactor | `neuralmind build .` (or `init-hook` once) | Incremental — only re-embeds changed nodes |
+
+### Goals — "What am I trying to solve for?"
+
+| If your goal is… | Do this | Expected outcome |
+|---|---|---|
+| **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | 5–10× total reduction vs baseline agent |
+| **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
+| **Keep all code local** (no SaaS, no telemetry) | Default install — no extra config | 100% offline; nothing leaves the machine |
+| **Work across Claude + GPT + Gemini** with one index | Build once, pipe output into any model | Same context quality, model-agnostic |
+| **Make retrieval adapt** to how your team queries | Enable memory (TTY prompt) + `neuralmind learn .` | Relevance improves on repeat patterns |
+| **Measure savings** for a manager or stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios, dollar estimate |
+| **Auto-refresh** the index as code changes | `neuralmind init-hook .` (git post-commit) | Every commit rebuilds incrementally |
+
+### Still not sure?
+
+You **probably don't need NeuralMind** if:
+
+- Your codebase is under ~5K tokens total (just paste the whole thing in).
+- You don't use an AI coding agent.
+- You only want inline completions — use [Copilot](docs/comparisons/vs-github-copilot.md) or [Cursor](docs/comparisons/vs-cursor-codebase.md) directly.
+
+You **almost certainly want NeuralMind** if any row above describes a recurring frustration, or if your LLM bill has crossed the point where a 40–70× reduction is worth 5 minutes of setup.
+
+See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guides matched to your situation.
+
+---
+
 ## 👤 Who is NeuralMind for?
 
 | You are… | NeuralMind gives you… |
@@ -1000,7 +1044,8 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
-| **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Aider, Cody, LangChain, long context, RAG, tree-sitter |
+| **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo |
+| **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
 | **[USAGE.md](USAGE.md)** | Extended usage examples |
 
 ---
