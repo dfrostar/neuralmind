@@ -18,6 +18,7 @@ Run after the benchmark:
     python -m tests.benchmark.multi_model
     python scripts/generate_chart.py
 """
+
 from __future__ import annotations
 
 import json
@@ -26,7 +27,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MULTI_MODEL_PATH = REPO_ROOT / "tests" / "benchmark" / "multi_model.json"
@@ -48,9 +48,7 @@ def _git_short_sha() -> str:
 
 def render() -> None:
     if not MULTI_MODEL_PATH.exists():
-        raise FileNotFoundError(
-            f"{MULTI_MODEL_PATH} missing — run multi_model.py first."
-        )
+        raise FileNotFoundError(f"{MULTI_MODEL_PATH} missing — run multi_model.py first.")
     data = json.loads(MULTI_MODEL_PATH.read_text())
     rows = data["models"]
     if not rows:
@@ -86,7 +84,7 @@ def render() -> None:
         linewidth=0.6,
     )
     # Hatch pattern for estimated bars — a second visual cue.
-    for bar, m in zip(bars, measured_flags):
+    for bar, m in zip(bars, measured_flags, strict=True):
         if not m:
             bar.set_hatch("//")
 
@@ -101,10 +99,7 @@ def render() -> None:
     headline = "NeuralMind token reduction by tokenizer"
     subtitle = f"fixture: tests/fixtures/sample_project @ {_git_short_sha()}"
     if avg_ratio is not None and total_naive and total_nm:
-        subtitle += (
-            f"   •   aggregate {avg_ratio:.1f}×"
-            f"   •   {total_naive:,} → {total_nm:,} tokens"
-        )
+        subtitle += f"   •   aggregate {avg_ratio:.1f}×   •   {total_naive:,} → {total_nm:,} tokens"
     ax.set_title(headline, color="white", fontsize=15, pad=14, fontweight="bold")
     fig.text(
         0.5,
@@ -116,7 +111,7 @@ def render() -> None:
     )
 
     # Value labels on each bar.
-    for bar, r in zip(bars, ratios):
+    for bar, r in zip(bars, ratios, strict=True):
         ax.text(
             bar.get_x() + bar.get_width() / 2.0,
             bar.get_height() + max_ratio * 0.03,

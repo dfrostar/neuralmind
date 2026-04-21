@@ -1,10 +1,11 @@
 """Invoice generation and delivery."""
+
 from __future__ import annotations
 
 import time
 
-from ..users.crud import get_user
 from ..db.connection import get_connection
+from ..users.crud import get_user
 
 
 def create_invoice(user_id: int, amount_cents: int, charge_id: str, description: str) -> dict:

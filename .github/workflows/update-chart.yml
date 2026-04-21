@@ -32,6 +32,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install . tiktoken matplotlib graphifyy
 
+      - name: Pre-fetch tiktoken vocab
+        continue-on-error: true
+        run: |
+          python -c "
+          import tiktoken
+          for name in ('o200k_base', 'cl100k_base'):
+              try:
+                  tiktoken.get_encoding(name).encode('probe')
+                  print(f'[tiktoken] {name} OK')
+              except Exception as e:
+                  print(f'[tiktoken] {name} FAILED: {e}')
+          "
+
       - name: Build fixture knowledge graph
         run: |
           graphify update tests/fixtures/sample_project
