@@ -5,8 +5,8 @@ import pytest
 from neuralmind.mcp_security import (
     AccessDeniedError,
     MCPSecurityManager,
-    RateLimitExceededError,
     RateLimiter,
+    RateLimitExceededError,
 )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -91,7 +92,15 @@ class MCPSecurityManager:
             details={"window_seconds": self.rate_limiter.window.total_seconds()},
         )
 
-    def secure_call(self, actor: str, role: str, tool_name: str, action, *args, **kwargs) -> Any:
+    def secure_call(
+        self,
+        actor: str,
+        role: str,
+        tool_name: str,
+        action: Callable[..., Any],
+        *args,
+        **kwargs,
+    ) -> Any:
         try:
             self.enforce(actor, role, tool_name)
             result = action(*args, **kwargs)
@@ -103,13 +112,23 @@ class MCPSecurityManager:
                 status="success",
             )
             return result
-        except Exception as exc:
+        except (AccessDeniedError, RateLimitExceededError) as exc:
             self.audit.log_event(
                 category="security",
                 action="tool_call",
                 actor=actor,
                 target=tool_name,
                 status="denied",
+                details={"error": str(exc)},
+            )
+            raise
+        except Exception as exc:
+            self.audit.log_event(
+                category="security",
+                action="tool_call",
+                actor=actor,
+                target=tool_name,
+                status="failed",
                 details={"error": str(exc)},
             )
             raise

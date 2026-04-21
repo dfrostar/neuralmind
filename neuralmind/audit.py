@@ -55,7 +55,9 @@ class AuditTrail:
             f.write(json.dumps(asdict(event), default=str) + "\n")
         return event
 
-    def list_events(self, category: str | None = None, status: str | None = None) -> list[dict[str, Any]]:
+    def list_events(
+        self, category: str | None = None, status: str | None = None
+    ) -> list[dict[str, Any]]:
         if not self.audit_file.exists():
             return []
         events: list[dict[str, Any]] = []

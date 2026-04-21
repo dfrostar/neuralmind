@@ -30,6 +30,8 @@ from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import log_query_event
 
+DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
+
 
 class NeuralMind:
     """
@@ -60,7 +62,9 @@ class NeuralMind:
         self.enable_reranking = enable_reranking
         self.backend_manager = BackendManager(str(self.project_path), db_path=db_path)
         self.backend_config = self.backend_manager.load_config(backend_config_path)
-        self.backend_name = backend_name or self.backend_config.get("backend", {}).get("type", "graph")
+        self.backend_name = backend_name or self.backend_config.get("backend", {}).get(
+            "type", "graph"
+        )
         self.hybrid_context = bool(self.backend_config.get("hybrid_context", False))
         self.audit = AuditTrail(self.project_path)
 
@@ -181,7 +185,7 @@ class NeuralMind:
         self._ensure_built()
         result = self.selector.get_query_context(question)
         if self.hybrid_context:
-            highlights = self.embedder.search(question, n=3)
+            highlights = self.embedder.search(question, n=DEFAULT_HYBRID_HIGHLIGHT_COUNT)
             if highlights:
                 lines = ["", "## Hybrid Search Highlights"]
                 for item in highlights:
@@ -390,7 +394,9 @@ class NeuralMind:
         self.backend_name = backend_name
         self.selector = None
         self._built = False
-        self.audit.log_event(category="backend", action="switch", target=backend_name, details=options)
+        self.audit.log_event(
+            category="backend", action="switch", target=backend_name, details=options
+        )
         if auto_build:
             self.build()
         return backend_name
