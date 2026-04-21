@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +49,7 @@ class RateLimiter:
 
     def check(self, actor: str, tool_name: str) -> None:
         key = f"{actor}:{tool_name}"
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         cutoff = now - self.window
         entries = self._events[key]
         while entries and entries[0] < cutoff:

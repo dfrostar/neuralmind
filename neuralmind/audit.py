@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -43,7 +43,7 @@ class AuditTrail:
     ) -> AuditEvent:
         event = AuditEvent(
             event_id=str(uuid.uuid4()),
-            timestamp=datetime.now(UTC).isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             category=category,
             action=action,
             actor=actor,
@@ -95,5 +95,5 @@ class AuditTrail:
             "category_counts": categories,
             "status_counts": statuses,
             "controls": controls,
-            "generated_at": datetime.now(UTC).isoformat(),
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }
