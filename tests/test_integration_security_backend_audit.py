@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock
 
 from neuralmind.core import NeuralMind
 from neuralmind.mcp_server import _mind_cache, _security_cache, handle_tool_call
@@ -13,10 +14,13 @@ def test_end_to_end_backend_switching(temp_project, mock_chromadb):
     stats = mind.build()
     assert stats["success"] is True
     assert mind.backend_name == "in_memory"
+    previous_backend = mind.embedder
+    previous_backend.close = MagicMock()
 
     switched = mind.switch_backend("graph", auto_build=True)
     assert switched == "graph"
     assert mind.backend_name == "graph"
+    previous_backend.close.assert_called_once()
     assert mind.get_stats()["built"] is True
 
 
@@ -55,4 +59,4 @@ def test_end_to_end_mcp_security(temp_project, mock_chromadb):
         {"project_path": str(temp_project), "actor": "bob", "role": "viewer"},
     )
     allowed = json.loads(allowed_raw)
-    assert "error" not in allowed or allowed.get("code") != "security_denied"
+    assert "project" in allowed

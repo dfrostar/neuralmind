@@ -15,7 +15,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def __init__(self, project_path: str, db_path: str | None = None):
         self._project_path = Path(project_path)
-        self.db_path = db_path or ":memory:"
+        self.db_path = db_path or "in-memory"
         self.graph_path = self._project_path / "graphify-out" / "graph.json"
         self.graph: dict[str, Any] = {}
         self.nodes: list[dict[str, Any]] = []
@@ -48,7 +48,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
         if not self.nodes and not self.load_graph():
-            return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
+            return {"added": 0, "updated": 0, "skipped": 0}
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         for node in self.nodes:
@@ -80,7 +80,9 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
     def _tokens(self, text: str) -> set[str]:
         return set(re.findall(r"[a-zA-Z0-9_]+", text.lower()))
 
-    def search(self, query: str, n: int = 5, where: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def search(
+        self, query: str, n: int = 5, where: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         if not self._docs:
             self.embed_nodes(force=False)
         q = self._tokens(query)
@@ -133,7 +135,9 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         if not self.nodes and not self.load_graph():
             return []
         normalized = str(source_file).replace("\\", "/").lstrip("./")
-        return [n for n in self.nodes if str(n.get("source_file", "")).replace("\\", "/") == normalized]
+        return [
+            n for n in self.nodes if str(n.get("source_file", "")).replace("\\", "/") == normalized
+        ]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         if not self.edges and not self.load_graph():
@@ -142,7 +146,12 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         return [
             e
             for e in self.edges
-            if (e.get("_src") in ids or e.get("_tgt") in ids or e.get("source") in ids or e.get("target") in ids)
+            if (
+                e.get("_src") in ids
+                or e.get("_tgt") in ids
+                or e.get("source") in ids
+                or e.get("target") in ids
+            )
         ]
 
     def get_stats(self) -> dict[str, Any]:

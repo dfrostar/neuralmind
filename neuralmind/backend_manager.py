@@ -36,7 +36,11 @@ class BackendManager:
                 continue
             if path.suffix.lower() == ".json":
                 return json.loads(path.read_text(encoding="utf-8"))
-            return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            try:
+                return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            except yaml.YAMLError as exc:
+                ext = path.suffix.lower().lstrip(".")
+                raise ValueError(f"Invalid backend config {ext} at {path}") from exc
         return {}
 
     def create_backend(
@@ -54,7 +58,9 @@ class BackendManager:
             return InMemoryEmbeddingBackend(str(self.project_path), db_path=db_path)
         raise ValueError(f"Unsupported backend: {backend_name}")
 
-    def create_backend_from_config(self, config: dict[str, Any]) -> tuple[EmbeddingBackend, dict[str, Any]]:
+    def create_backend_from_config(
+        self, config: dict[str, Any]
+    ) -> tuple[EmbeddingBackend, dict[str, Any]]:
         backend_cfg = config.get("backend", {})
         backend_name = backend_cfg.get("type", "graph")
         options = backend_cfg.get("options", {})

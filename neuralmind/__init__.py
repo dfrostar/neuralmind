@@ -65,14 +65,14 @@ Token Budget:
 - Leaves 95%+ context free for actual work
 """
 
+from .audit import AuditTrail
+from .backend_manager import BackendManager
 from .compressors import (
     cap_search_results,
     compress_bash,
     compress_read,
     offload_if_large,
 )
-from .audit import AuditTrail
-from .backend_manager import BackendManager
 from .context_selector import ContextSelector
 from .core import NeuralMind
 from .embedder import GraphEmbedder

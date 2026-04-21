@@ -304,7 +304,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     try:
         security = get_security_manager(project_path)
-        result = security.secure_call(actor, role, name, handlers[name], arguments)
+        result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
     except (AccessDeniedError, RateLimitExceededError) as e:
         return json.dumps({"error": str(e), "code": "security_denied"})
