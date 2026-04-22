@@ -17,6 +17,14 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | **[Compatibility Matrix](../docs/COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
 | **[Benchmarks](../blob/main/README.md#-benchmarks)** | CI-measured reduction ratios, per-model breakdown, community submissions, and how to run it on your own code |
 
+### Enterprise & Deployment
+
+| Page | For... |
+|------|--------|
+| **[Deployment Guide](../docs/DEPLOYMENT-GUIDE.md)** | DevOps/Infrastructure: Architecture patterns, Docker, Kubernetes, PostgreSQL backend, scaling, monitoring |
+| **[Security Guide](../docs/SECURITY-GUIDE.md)** | Security teams: RBAC, encryption, secrets management, NIST AI RMF, SOC 2, threat models |
+| **[Upgrading Guide](../docs/UPGRADING.md)** | Everyone: How to upgrade between versions, breaking changes, rollback procedures |
+
 ### Reference
 
 | Page | Contents |
@@ -31,6 +39,7 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence-based reranking (v0.3.2+) |
 | [Brain-Like Learning](../blob/main/docs/brain_like_learning.md) | Design rationale for the learning system |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |
+| [FAQ](FAQ) | 30+ frequently asked questions answered |
 
 ## What is NeuralMind?
 
