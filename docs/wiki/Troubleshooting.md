@@ -8,6 +8,7 @@ Common issues and solutions for NeuralMind.
 - [Build Issues](#build-issues)
 - [Query Issues](#query-issues)
 - [MCP Issues](#mcp-issues)
+- [Scheduling & Automation Issues](#scheduling--automation-issues)
 - [Performance Issues](#performance-issues)
 - [Error Reference](#error-reference)
 - [Getting Help](#getting-help)
@@ -387,6 +388,164 @@ neuralmind build /path/to/project
 
 # Check MCP server logs (run manually to see output)
 neuralmind-mcp 2>&1 | tee mcp.log
+```
+
+---
+
+## Scheduling & Automation Issues
+
+### Windows Task Scheduler: "Access is denied"
+
+**Symptoms**: Running `Register-ScheduledTask` fails with permission error.
+
+**Causes**:
+1. PowerShell not running as Administrator
+2. User doesn't have Task Scheduler permissions
+
+**Solutions**:
+
+```powershell
+# MUST run PowerShell as Administrator
+# Right-click PowerShell → "Run as administrator"
+
+# Then set execution policy
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Now register the task
+$trigger = New-ScheduledTaskTrigger -Daily -At 2:00am
+$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\scripts\run-neuralmind-all.ps1"
+Register-ScheduledTask -TaskName "NeuralMind Suite" -Trigger $trigger -Action $action -RunLevel Highest
+```
+
+### Scheduled Task Not Running
+
+**Symptoms**: Task appears in Task Scheduler but never executes.
+
+**Causes**:
+1. Script path is incorrect
+2. Python/neuralmind not in PATH when task runs
+3. Task disabled or trigger misconfigured
+4. Network not available (if using network-dependent features)
+
+**Solutions**:
+
+```powershell
+# Verify task exists and is enabled
+Get-ScheduledTask -TaskName "NeuralMind*" | Select-Object TaskName, State
+
+# Check task history
+Get-ScheduledTaskInfo -TaskName "NeuralMind Suite"
+
+# Test running manually
+Start-ScheduledTask -TaskName "NeuralMind Suite"
+
+# Check results and logs
+Get-ScheduledTaskInfo -TaskName "NeuralMind Suite" | Select-Object LastRunTime, LastTaskResult
+```
+
+**If task runs but fails silently:**
+
+1. Use full path to Python in script:
+```powershell
+# Bad: powershell.exe -File script.ps1
+# Good: C:\Users\username\AppData\Local\Programs\Python\Python311\python.exe script.py
+```
+
+2. Add error handling to script:
+```powershell
+$ErrorActionPreference = "Stop"
+try {
+    cd C:\path\to\project
+    neuralmind wakeup . 2>&1 | Tee-Object -FilePath "C:\logs\neuralmind.log"
+} catch {
+    Add-Content -Path "C:\logs\error.log" -Value "Error: $_"
+    exit 1
+}
+```
+
+3. Test the script directly:
+```powershell
+# Run in PowerShell (not scheduled) to see errors
+C:\scripts\run-neuralmind-all.ps1
+```
+
+### Auto-Discovery Not Finding Projects
+
+**Symptoms**: Scheduled task runs but finds "0 initialized projects".
+
+**Causes**:
+1. Projects don't have `neuralmind.db/` directory
+2. Wrong root path in script
+3. Path permissions issue
+
+**Solutions**:
+
+```powershell
+# Verify projects are initialized
+Get-ChildItem -Path "C:\Users\dtfro\claudecode" -Directory | ForEach-Object {
+    $hasIndex = Test-Path (Join-Path $_.FullName "neuralmind.db")
+    Write-Host "$($_.Name): $($hasIndex ? 'Ready' : 'NOT INITIALIZED')"
+}
+
+# Initialize missing projects
+cd "C:\path\to\project"
+graphify update .
+neuralmind build .
+```
+
+### Cloud Repo Sync Failing
+
+**Symptoms**: Cloud sync task runs but doesn't update repos.
+
+**Causes**:
+1. Git not in PATH
+2. SSH keys not configured
+3. Repository URL incorrect
+4. No internet connectivity
+
+**Solutions**:
+
+```powershell
+# Verify git is accessible
+git --version
+
+# Test cloning manually
+cd C:\temp
+git clone https://github.com/yourname/your-repo.git
+
+# If SSH required, ensure keys are set up
+ssh -T git@github.com
+
+# Check repo URLs in sync script
+# Should be: https://github.com/owner/repo.git
+# NOT: git@github.com:owner/repo.git (unless SSH configured)
+```
+
+### Logs Not Being Created
+
+**Symptoms**: Scheduled tasks run but no log files appear in expected directory.
+
+**Causes**:
+1. Log directory path wrong or doesn't exist
+2. Permissions issue with log directory
+3. Task failed before logging started
+
+**Solutions**:
+
+```powershell
+# Create log directory if missing
+$logDir = "$env:USERPROFILE\Documents\neuralmind-logs"
+if (!(Test-Path $logDir)) {
+    New-Item -ItemType Directory -Path $logDir | Out-Null
+}
+
+# Check directory permissions
+Get-Acl $logDir
+
+# Manually test logging
+$logFile = "$logDir\test.log"
+"Test message" | Tee-Object -FilePath $logFile
+Get-Content $logFile
 ```
 
 ---

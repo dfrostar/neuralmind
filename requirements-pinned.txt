@@ -1,0 +1,30 @@
+# NeuralMind - Pinned Production Dependencies
+# Generated: 2026-04-22
+# Used for: reproducible builds, CI/CD testing
+# Install with: pip install -r requirements-pinned.txt
+
+# Core dependencies
+chromadb==0.4.24
+pyyaml==6.0.1
+toml==0.10.2
+
+# Optional: MCP Server
+mcp==0.1.0
+
+# Optional: Development & Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.12.1
+ruff==0.1.11
+mypy==1.8.0
+
+# External tools (required separately)
+# graphify - install from: git clone https://github.com/safishamsi/graphify.git && cd graphify && pip install -e .
+
+# Documentation
+# sphinx==7.2.6
+# sphinx-rtd-theme==2.0.0
+
+# Benchmarking
+tiktoken==0.5.2
+matplotlib==3.8.2

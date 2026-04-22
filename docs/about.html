@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence platform for AI agents. Reduce token costs 5–10×, 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF">
+    <title>About NeuralMind - Semantic Code Intelligence</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; }
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 2rem; }
+        section { padding: 3rem 2rem; border-bottom: 1px solid #eee; }
+        h2 { font-size: 1.8rem; color: #667eea; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.3rem; color: #333; margin: 2rem 0 1rem 0; }
+        ul { margin-left: 2rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.5rem; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        nav { background: #333; padding: 1rem 2rem; }
+        nav a { color: white; margin-right: 2rem; }
+        footer { background: #333; color: white; padding: 2rem; text-align: center; }
+        .quote { font-size: 1.1rem; font-style: italic; color: #666; margin: 2rem 0; padding: 1rem 2rem; border-left: 4px solid #667eea; }
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="container" style="max-width: 100%; padding: 1rem 2rem;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <a href="/">🧠 NeuralMind</a>
+            <a href="wiki/">Docs</a>
+            <a href="about.html">About</a>
+        </div>
+    </nav>
+
+    <header>
+        <div class="container">
+            <h1>About NeuralMind</h1>
+            <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
+        </div>
+    </header>
+
+    <section>
+        <div class="container">
+            <h2>Mission</h2>
+            <p>NeuralMind exists to solve a fundamental problem: AI agents waste tokens loading raw source code when they only need small, semantic context.</p>
+            <div class="quote">
+                "Why load 50,000 tokens of raw source to answer 'How does authentication work?' when you could use 800 tokens of smart, indexed context?"
+            </div>
+            <p>Our mission is to make semantic code intelligence accessible, affordable, and trustworthy—without data exfiltration, vendor lock-in, or compliance headaches.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>The Problem We Solve</h2>
+            <h3>For Individual Developers</h3>
+            <ul>
+                <li><strong>High token costs</strong> — Claude, ChatGPT, and Gemini bills climb fast when agents read entire files</li>
+                <li><strong>Context limits</strong> — Large codebases hit context window ceilings mid-task</li>
+                <li><strong>Slow iteration</strong> — Every query loads files from scratch</li>
+                <li><strong>Privacy concerns</strong> — Code is uploaded to external APIs</li>
+            </ul>
+
+            <h3>For Teams & Enterprises</h3>
+            <ul>
+                <li><strong>Compliance</strong> — No NIST AI RMF audit trail, no SOC 2 compliance, no proof of code safety</li>
+                <li><strong>Cost at scale</strong> — Millions of tokens per month for monorepos</li>
+                <li><strong>Vendor dependency</strong> — Locked into Cursor, Copilot, or proprietary tools</li>
+                <li><strong>Reproducibility</strong> — No way to audit which code was retrieved or why</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>How We Solve It</h2>
+            <h3>Two-Phase Token Optimization</h3>
+            <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
+            <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
+            <p><strong>Result:</strong> 5–10× total token reduction vs baseline usage. 40–70% cost savings.</p>
+
+            <h3>Enterprise Ready</h3>
+            <ul>
+                <li>✅ <strong>100% local & offline</strong> — No cloud, no telemetry, zero data exfiltration</li>
+                <li>✅ <strong>NIST AI RMF audit trail</strong> — Full query provenance, compliance reporting</li>
+                <li>✅ <strong>Open source & MIT licensed</strong> — No vendor lock-in, full transparency</li>
+                <li>✅ <strong>Works everywhere</strong> — Claude Code, Cursor, ChatGPT, Gemini, local LLMs</li>
+                <li>✅ <strong>Pluggable backends</strong> — ChromaDB, PostgreSQL, LanceDB</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Technical Innovation</h2>
+            <h3>4-Layer Progressive Disclosure</h3>
+            <p>NeuralMind doesn't load code randomly. It uses a 4-layer index that progressively surfaces context:</p>
+            <ul>
+                <li><strong>Layer 0:</strong> Project overview (functions, classes, architecture)</li>
+                <li><strong>Layer 1:</strong> Community detection (related modules & clusters)</li>
+                <li><strong>Layer 2:</strong> Semantic search results (matching code)</li>
+                <li><strong>Layer 3:</strong> Query-specific code (imports, dependencies)</li>
+            </ul>
+            <p>The agent gets exactly what it needs, in order, without bloat.</p>
+
+            <h3>Learnable Patterns</h3>
+            <p>NeuralMind learns from your actual queries. Over time, cooccurrence-based reranking improves retrieval quality based on how you ask questions. Better answers, without external training.</p>
+
+            <h3>Compliance-First Design</h3>
+            <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Open Source & Community</h2>
+            <p>NeuralMind is MIT licensed and fully open source. No hidden business model, no vendor lock-in, no surprise rate limits.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind">View on GitHub →</a></p>
+
+            <h3>Get Involved</h3>
+            <ul>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues">Report bugs or request features</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/discussions">Join discussions</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md">Contribute code</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">Share your results</a></li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Status & Roadmap</h2>
+            <h3>Current Release: v0.4.2</h3>
+            <p>Production-ready with NIST AI RMF audit trail, MCP security hardening, and pluggable embedding backends. Actively maintained and tested.</p>
+
+            <h3>Future Releases</h3>
+            <ul>
+                <li><strong>v0.5.0 (Q3 2026)</strong> — PostgreSQL pgvector scale testing, advanced monitoring dashboard, enhanced MCP server</li>
+                <li><strong>v1.0.0 (Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options</li>
+            </ul>
+
+            <p><a href="../docs/FUTURE-PROOFING-PLAN.md">See the full roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Why NeuralMind?</h2>
+            <h3>Not Affiliated with NeuralMind.ai</h3>
+            <p>This is an independent, open-source project. No relationship to NeuralMind.ai (a different company). We chose the name because it reflects our philosophy: a "neural" index that learns your codebase.</p>
+
+            <h3>Compared to Alternatives</h3>
+            <ul>
+                <li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>
+                <li><strong>vs Claude Projects:</strong> Selects only relevant context instead of loading all files</li>
+                <li><strong>vs Long Context:</strong> 5–10× cheaper than paying for 100K token windows</li>
+                <li><strong>vs Prompt Caching:</strong> Makes prompts small instead of caching big ones</li>
+            </ul>
+
+            <p><a href="wiki/Comparisons">See detailed comparisons →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Core Values</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Privacy First</strong>
+                    <p>Your code stays local. Zero cloud calls, zero telemetry, zero data exfiltration.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Transparency</strong>
+                    <p>Open source, MIT licensed. Every decision is auditable, every result is explainable.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Compliance Ready</strong>
+                    <p>Built for regulated industries. NIST AI RMF, SOC 2, GDPR, HIPAA friendly.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Interoperable</strong>
+                    <p>Works with your tools. Claude Code, Cursor, ChatGPT, local LLMs—not locked in.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Efficient</strong>
+                    <p>Smart context reduces tokens 5–10×. Lower costs, better answers.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Community Driven</strong>
+                    <p>Built in public. Issues, discussions, and contributions welcome.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Getting Started</h2>
+            <p>Ready to reduce your token costs by 5–10×?</p>
+            <ul>
+                <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup</li>
+                <li><a href="wiki/">Full Documentation</a> — Learn all features</li>
+                <li><a href="https://github.com/dfrostar/neuralmind">GitHub Repository</a> — View source code</li>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues">Report Issues</a> — Help improve NeuralMind</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 1rem;">
+                <a href="/">Home</a> •
+                <a href="wiki/">Docs</a> •
+                <a href="about.html">About</a> •
+                <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            </p>
+            <p style="color: #999;">© 2026 NeuralMind Contributors. MIT License. Not affiliated with NeuralMind.ai.</p>
+        </div>
+    </footer>
+</body>
+</html>
