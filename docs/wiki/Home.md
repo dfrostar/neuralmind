@@ -13,6 +13,8 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | **[Setup Guide](Setup-Guide)** | First-time setup for Claude Code, Cursor, Claude Desktop, or any MCP client |
 | **[Use Cases](Use-Cases)** | Step-by-step walkthroughs by persona: Claude Code user, cost optimization, any-LLM, offline/regulated, growing monorepo |
 | **[Comparisons](Comparisons)** | Honest "NeuralMind vs X" pages: Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
+| **[Version Strategy](../docs/VERSION-STRATEGY.md)** | Versioning policy, breaking changes, release schedule, deprecation timeline |
+| **[Compatibility Matrix](../docs/COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
 | **[Benchmarks](../blob/main/README.md#-benchmarks)** | CI-measured reduction ratios, per-model breakdown, community submissions, and how to run it on your own code |
 
 ### Reference
