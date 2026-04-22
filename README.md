@@ -11,7 +11,7 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **⚖️ Not affiliated with NeuralMind.ai. This project is an independent, open-source tool for semantic code intelligence.**
+> **🌐 [Visit the landing page](https://dfrostar.github.io/neuralmind/) • 📖 [Read the About page](https://dfrostar.github.io/neuralmind/about.html) • ⚖️ Not affiliated with NeuralMind.ai**
 
 ---
 
@@ -1195,11 +1195,14 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Setup Guide](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)** | First-time setup for Claude Code, Claude Desktop, Cursor, any LLM |
 | **[CLI Reference](https://github.com/dfrostar/neuralmind/wiki/CLI-Reference)** | All commands and options |
 | **[Scheduling Guide](https://github.com/dfrostar/neuralmind/wiki/Scheduling-Guide)** | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
+| **[Version Strategy](docs/VERSION-STRATEGY.md)** | Versioning policy, breaking changes, support timeline, upgrade path |
+| **[Compatibility Matrix](docs/COMPATIBILITY.md)** | Version compatibility, Python/platform support, known issues, migration guides |
 | **[Learning Guide](https://github.com/dfrostar/neuralmind/wiki/Learning-Guide)** | Continual learning details |
 | **[API Reference](https://github.com/dfrostar/neuralmind/wiki/API-Reference)** | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |
 | **[Architecture](https://github.com/dfrostar/neuralmind/wiki/Architecture)** | 4-layer progressive disclosure design |
 | **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
+| **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative roadmap for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
