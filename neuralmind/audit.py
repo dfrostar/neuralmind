@@ -1,38 +1,47 @@
-"""Audit trail utilities and NIST RMF reporting."""
+"""Audit trail utilities for backend/security observability."""
 
 from __future__ import annotations
 
 import json
-import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+AUDIT_FILE_NAME = "audit_events.jsonl"
+_AUDIT_CACHE: dict[str, AuditTrail] = {}
+
 
 @dataclass
 class AuditEvent:
-    event_id: str
-    timestamp: str
     category: str
     action: str
     actor: str
     status: str
-    target: str = ""
-    details: dict[str, Any] = field(default_factory=dict)
+    target: str
+    details: dict[str, Any]
+    timestamp: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "timestamp": self.timestamp,
+            "category": self.category,
+            "action": self.action,
+            "actor": self.actor,
+            "status": self.status,
+            "target": self.target,
+            "details": self.details,
+        }
 
 
 class AuditTrail:
-    """Append-only JSONL audit trail."""
+    """Append-only JSONL audit trail for a project."""
 
-    def __init__(self, project_path: str | Path, audit_file: str | Path | None = None):
-        self.project_path = Path(project_path)
-        if audit_file is None:
-            audit_file = self.project_path / "graphify-out" / "audit" / "audit_trail.jsonl"
-        self.audit_file = Path(audit_file)
-        self.audit_file.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, project_path: str | Path):
+        self.project_path = Path(project_path).resolve()
+        self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
 
-    def log_event(
+    def append_event(
         self,
         category: str,
         action: str,
@@ -40,60 +49,73 @@ class AuditTrail:
         status: str = "success",
         target: str = "",
         details: dict[str, Any] | None = None,
-    ) -> AuditEvent:
+    ) -> dict[str, Any]:
         event = AuditEvent(
-            event_id=str(uuid.uuid4()),
-            timestamp=datetime.now(timezone.utc).isoformat(),
             category=category,
             action=action,
             actor=actor,
             status=status,
             target=target,
             details=details or {},
+            timestamp=datetime.now(timezone.utc).isoformat(),
         )
-        with open(self.audit_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(asdict(event), default=str) + "\n")
-        return event
+        payload = event.to_dict()
+        self.events_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.events_file.open("a", encoding="utf-8") as file:
+            file.write(json.dumps(payload, sort_keys=True) + "\n")
+        return payload
 
-    def list_events(
-        self, category: str | None = None, status: str | None = None
-    ) -> list[dict[str, Any]]:
-        if not self.audit_file.exists():
+    def read_events(self) -> list[dict[str, Any]]:
+        if not self.events_file.exists():
             return []
         events: list[dict[str, Any]] = []
-        with open(self.audit_file, encoding="utf-8") as f:
-            for line in f:
-                event = json.loads(line)
-                if category and event.get("category") != category:
+        with self.events_file.open(encoding="utf-8") as file:
+            for line in file:
+                line = line.strip()
+                if not line:
                     continue
-                if status and event.get("status") != status:
+                try:
+                    parsed = json.loads(line)
+                    if isinstance(parsed, dict):
+                        events.append(parsed)
+                except json.JSONDecodeError:
                     continue
-                events.append(event)
         return events
 
-    def generate_nist_rmf_report(self) -> dict[str, Any]:
-        events = self.list_events()
-        categories: dict[str, int] = {}
-        statuses: dict[str, int] = {}
-        controls: dict[str, int] = {"AC-3": 0, "AU-2": 0, "AU-12": 0, "SI-4": 0}
+    def nist_rmf_summary(self) -> dict[str, Any]:
+        events = self.read_events()
+        by_category: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        control_counts = {"AU": 0, "AC": 0, "SI": 0}
+
         for event in events:
             category = str(event.get("category", "unknown"))
             status = str(event.get("status", "unknown"))
-            categories[category] = categories.get(category, 0) + 1
-            statuses[status] = statuses.get(status, 0) + 1
-            if category == "security":
-                controls["AC-3"] += 1
-                if event.get("action") == "rate_limit_check":
-                    controls["SI-4"] += 1
-            if category in {"security", "audit", "backend"}:
-                controls["AU-2"] += 1
-                controls["AU-12"] += 1
+            action = str(event.get("action", "")).lower()
+
+            by_category[category] = by_category.get(category, 0) + 1
+            by_status[status] = by_status.get(status, 0) + 1
+
+            control_counts["AU"] += 1
+            if category in {"security", "mcp"} or any(
+                token in action for token in ("access", "rbac", "deny", "allow", "rate_limit")
+            ):
+                control_counts["AC"] += 1
+            if category in {"backend", "system"} or any(
+                token in action for token in ("switch_backend", "build", "integrity", "failure")
+            ):
+                control_counts["SI"] += 1
 
         return {
-            "rmf_step": "monitor",
-            "total_events": len(events),
-            "category_counts": categories,
-            "status_counts": statuses,
-            "controls": controls,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "events_total": len(events),
+            "by_category": by_category,
+            "by_status": by_status,
+            "controls": control_counts,
         }
+
+
+def get_audit_trail(project_path: str | Path) -> AuditTrail:
+    key = str(Path(project_path).resolve())
+    if key not in _AUDIT_CACHE:
+        _AUDIT_CACHE[key] = AuditTrail(project_path)
+    return _AUDIT_CACHE[key]

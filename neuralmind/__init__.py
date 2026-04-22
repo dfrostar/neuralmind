@@ -84,6 +84,7 @@ __version__ = "0.3.4"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
+    "InMemoryEmbeddingBackend",
     "EmbeddingBackend",
     "ContextSelector",
     "AuditTrail",
