@@ -377,12 +377,13 @@ class NeuralMind:
             List of matching nodes with scores
         """
         self._ensure_built()
-        results = self.embedder.search(query, n=n, **filters)
+        where = dict(filters) if filters else None
+        results = self.embedder.search(query, n=n, where=where)
         self.audit.log_event(
             category="audit",
             action="search",
             target=self.backend_name,
-            details={"query": query, "n": n},
+            details={"query": query, "n": n, "filters": where or {}},
         )
         return results
 
