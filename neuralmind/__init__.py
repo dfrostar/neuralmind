@@ -65,6 +65,8 @@ Token Budget:
 - Leaves 95%+ context free for actual work
 """
 
+from .audit import AuditTrail
+from .backend_manager import BackendManager
 from .compressors import (
     cap_search_results,
     compress_bash,
@@ -85,6 +87,9 @@ __all__ = [
     "InMemoryEmbeddingBackend",
     "EmbeddingBackend",
     "ContextSelector",
+    "AuditTrail",
+    "BackendManager",
+    "InMemoryEmbeddingBackend",
     # Output compression (v0.2.0)
     # Brain-like learning (v0.3.0)
     "compress_bash",
