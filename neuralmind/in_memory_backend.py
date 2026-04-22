@@ -81,10 +81,12 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
         return set(re.findall(r"[a-zA-Z0-9_]+", text.lower()))
 
     def search(
-        self, query: str, n: int = 5, where: dict[str, Any] | None = None
+        self, query: str, n: int = 5, where: dict[str, Any] | None = None, **filters: Any
     ) -> list[dict[str, Any]]:
         if not self._docs:
             self.embed_nodes(force=False)
+        if filters:
+            where = {**(where or {}), **filters}
         q = self._tokens(query)
         results: list[dict[str, Any]] = []
         for node_id, (doc, meta) in self._docs.items():

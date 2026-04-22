@@ -299,7 +299,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
     actor = arguments.get("actor", "mcp-client")
-    role = arguments.get("role", "admin")
+    role = arguments.get("role", "viewer")
     project_path = arguments.get("project_path", ".")
 
     try:
