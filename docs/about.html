@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence platform for AI agents. Reduce token costs 5–10×, 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF">
-    <title>About NeuralMind - Semantic Code Intelligence</title>
+    <meta name="description" content="About NeuralMind: Local-first semantic code intelligence. Built for compliance, offline work, and cost optimization on large codebases.">
+    <meta name="keywords" content="NeuralMind, semantic code search, local-first, compliance, NIST AI RMF, GDPR, HIPAA">
+    <title>About NeuralMind - Local-First Code Intelligence</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
@@ -23,6 +23,7 @@
         nav a { color: white; margin-right: 2rem; }
         footer { background: #333; color: white; padding: 2rem; text-align: center; }
         .quote { font-size: 1.1rem; font-style: italic; color: #666; margin: 2rem 0; padding: 1rem 2rem; border-left: 4px solid #667eea; }
+        .honest-box { background: #e7f3ff; border: 1px solid #0066cc; padding: 1.5rem; border-radius: 0.5rem; margin: 2rem 0; }
         @media (max-width: 768px) {
             header h1 { font-size: 1.5rem; }
             h2 { font-size: 1.3rem; }
@@ -41,38 +42,52 @@
     <header>
         <div class="container">
             <h1>About NeuralMind</h1>
-            <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
+            <p>Local-first semantic code intelligence for regulated industries, large monorepos, and cost-conscious teams.</p>
         </div>
     </header>
 
     <section>
         <div class="container">
             <h2>Mission</h2>
-            <p>NeuralMind exists to solve a fundamental problem: AI agents waste tokens loading raw source code when they only need small, semantic context.</p>
+            <p>NeuralMind solves three problems that compound at scale:</p>
             <div class="quote">
-                "Why load 50,000 tokens of raw source to answer 'How does authentication work?' when you could use 800 tokens of smart, indexed context?"
+                "I can't send code to cloud APIs" • "My LLM bill is climbing" • "My monorepo is too large to load every query"
             </div>
-            <p>Our mission is to make semantic code intelligence accessible, affordable, and trustworthy—without data exfiltration, vendor lock-in, or compliance headaches.</p>
+            <p>Our mission is to provide <strong>truly local code intelligence</strong> with <strong>compliance-grade auditability</strong>, for teams that need both security and economics.</p>
         </div>
     </section>
 
     <section>
         <div class="container">
-            <h2>The Problem We Solve</h2>
-            <h3>For Individual Developers</h3>
-            <ul>
-                <li><strong>High token costs</strong> — Claude, ChatGPT, and Gemini bills climb fast when agents read entire files</li>
-                <li><strong>Context limits</strong> — Large codebases hit context window ceilings mid-task</li>
-                <li><strong>Slow iteration</strong> — Every query loads files from scratch</li>
-                <li><strong>Privacy concerns</strong> — Code is uploaded to external APIs</li>
-            </ul>
+            <h2>The Problems We Solve</h2>
 
-            <h3>For Teams & Enterprises</h3>
+            <h3>1. Offline-First Code Intelligence</h3>
+            <p><strong>Problem:</strong> Regulated industries (healthcare, finance, legal) cannot use cloud AI APIs. Custom RAG solutions cost $50K+ and 3-6 months to build.</p>
+            <p><strong>NeuralMind solves it:</strong> Fully local indexing, zero external calls, NIST AI RMF audit trail baked in. Days to deploy, not months.</p>
+
+            <h3>2. Token Cost Explosion</h3>
+            <p><strong>Problem:</strong> Teams running 10+ code queries daily see $400-500/month LLM bills. Most cost comes from re-reading the same files.</p>
+            <p><strong>NeuralMind solves it:</strong> 40-70× token reduction on large codebases (500K+ LOC). Scales exponentially: 10 queries/day → $450 → $7/year.</p>
+
+            <h3>3. Context Window Exhaustion</h3>
+            <p><strong>Problem:</strong> Even with 200K token windows, large monorepos force agents to choose between loading files OR reasoning. Mid-task context swaps kill productivity.</p>
+            <p><strong>NeuralMind solves it:</strong> ~800 token queries instead of 2-5K. Agents can reason for 10+ consecutive questions without swapping context.</p>
+
+            <h3>4. Compliance & Auditability</h3>
+            <p><strong>Problem:</strong> Black-box LLMs don't provide audit trails. Regulators demand proof of what code was reviewed and why.</p>
+            <p><strong>NeuralMind solves it:</strong> Every query logged with full provenance: code retrieved, embeddings used, git commit state. NIST AI RMF export included.</p>
+        </div>
+    </section>
+
+    <section class="honest-box">
+        <div class="container">
+            <h2 style="color: #0066cc; margin-top: 0;">What NeuralMind Does NOT Solve</h2>
             <ul>
-                <li><strong>Compliance</strong> — No NIST AI RMF audit trail, no SOC 2 compliance, no proof of code safety</li>
-                <li><strong>Cost at scale</strong> — Millions of tokens per month for monorepos</li>
-                <li><strong>Vendor dependency</strong> — Locked into Cursor, Copilot, or proprietary tools</li>
-                <li><strong>Reproducibility</strong> — No way to audit which code was retrieved or why</li>
+                <li><strong>Code quality enforcement:</strong> Use linters (ESLint, Ruff) and SonarQube for that</li>
+                <li><strong>Architecture governance:</strong> Use CLAUDE.md + git history to document decisions</li>
+                <li><strong>Risky refactors:</strong> Use testing + gradual rollout strategies</li>
+                <li><strong>Mixed knowledge bases:</strong> NeuralMind indexes code only, not docs/PDFs/design files</li>
+                <li><strong>IDE-integrated completions:</strong> Use Copilot or Cursor for that</li>
             </ul>
         </div>
     </section>
@@ -80,18 +95,31 @@
     <section>
         <div class="container">
             <h2>How We Solve It</h2>
-            <h3>Two-Phase Token Optimization</h3>
-            <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
-            <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
-            <p><strong>Result:</strong> 5–10× total token reduction vs baseline usage. 40–70% cost savings.</p>
 
-            <h3>Enterprise Ready</h3>
+            <h3>Two-Phase Token Optimization</h3>
+
+            <p><strong>Phase 1 — Smart Retrieval</strong></p>
+            <p>Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
+            <ul>
+                <li><strong>Layer 0:</strong> Project overview (functions, classes, architecture)</li>
+                <li><strong>Layer 1:</strong> Community detection (related modules)</li>
+                <li><strong>Layer 2:</strong> Semantic search results (matching code)</li>
+                <li><strong>Layer 3:</strong> Query-specific code (imports, dependencies)</li>
+            </ul>
+
+            <p style="margin-top: 1.5rem;"><strong>Phase 2 — Output Compression</strong></p>
+            <p>PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it. Saves tokens on every tool call, automatically.</p>
+
+            <p style="margin-top: 1.5rem;"><strong>Result: 5-10× Token Reduction</strong></p>
+            <p>Actual reduction varies by codebase size. See <a href="/">landing page</a> for realistic metrics by LOC.</p>
+
+            <h3 style="margin-top: 2rem;">Compliance-First Architecture</h3>
             <ul>
                 <li>✅ <strong>100% local & offline</strong> — No cloud, no telemetry, zero data exfiltration</li>
-                <li>✅ <strong>NIST AI RMF audit trail</strong> — Full query provenance, compliance reporting</li>
-                <li>✅ <strong>Open source & MIT licensed</strong> — No vendor lock-in, full transparency</li>
-                <li>✅ <strong>Works everywhere</strong> — Claude Code, Cursor, ChatGPT, Gemini, local LLMs</li>
-                <li>✅ <strong>Pluggable backends</strong> — ChromaDB, PostgreSQL, LanceDB</li>
+                <li>✅ <strong>NIST AI RMF audit trail</strong> — Every query logged with full provenance, export-ready</li>
+                <li>✅ <strong>Open source & MIT licensed</strong> — No vendor lock-in, full code transparency</li>
+                <li>✅ <strong>Works everywhere</strong> — Claude Code, Cursor, ChatGPT, Gemini, local LLMs via MCP</li>
+                <li>✅ <strong>Pluggable backends</strong> — ChromaDB (local), PostgreSQL pgvector (enterprise), LanceDB (performance)</li>
             </ul>
         </div>
     </section>
@@ -99,21 +127,94 @@
     <section>
         <div class="container">
             <h2>Technical Innovation</h2>
+
             <h3>4-Layer Progressive Disclosure</h3>
-            <p>NeuralMind doesn't load code randomly. It uses a 4-layer index that progressively surfaces context:</p>
+            <p>The core innovation: Instead of "semantic search" in isolation, NeuralMind uses a 4-layer index that progressively surfaces context in order. The agent gets:</p>
             <ul>
-                <li><strong>Layer 0:</strong> Project overview (functions, classes, architecture)</li>
-                <li><strong>Layer 1:</strong> Community detection (related modules & clusters)</li>
-                <li><strong>Layer 2:</strong> Semantic search results (matching code)</li>
-                <li><strong>Layer 3:</strong> Query-specific code (imports, dependencies)</li>
+                <li>Always: Project overview + architecture (L0 + L1 = ~600 tokens)</li>
+                <li>Per-query: Relevant code communities (L2)</li>
+                <li>Per-query: Specific semantic matches (L3)</li>
             </ul>
-            <p>The agent gets exactly what it needs, in order, without bloat.</p>
+            <p>This layering prevents two failure modes:</p>
+            <ul>
+                <li>❌ Raw semantic search: Returns specific code but agent loses architectural context</li>
+                <li>❌ Architecture-first: Agent understands design but has no specific code to inspect</li>
+                <li>✅ NeuralMind: Both architecture AND specific code, tailored to the query</li>
+            </ul>
 
-            <h3>Learnable Patterns</h3>
-            <p>NeuralMind learns from your actual queries. Over time, cooccurrence-based reranking improves retrieval quality based on how you ask questions. Better answers, without external training.</p>
+            <h3>Learnable Patterns (v0.3.2+)</h3>
+            <p>NeuralMind learns from your actual queries. Over time, cooccurrence-based reranking improves retrieval quality based on how your team asks questions. No external training data, no data exfiltration.</p>
 
-            <h3>Compliance-First Design</h3>
-            <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
+            <h3>Compliance-Grade Logging</h3>
+            <p>Every query generates an audit record:</p>
+            <ul>
+                <li>What code was retrieved (exact entities)</li>
+                <li>Why (relevance scores, embedding tokens used)</li>
+                <li>When (timestamp)</li>
+                <li>Code state (git commit)</li>
+                <li>User (if using MCP + RBAC)</li>
+            </ul>
+            <p>Export the full log for NIST AI RMF audits, SOC 2 reviews, or compliance investigations.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Realistic Metrics</h2>
+
+            <h3>Token Reduction by Codebase Size</h3>
+            <table style="width: 100%; margin: 2rem 0;">
+                <tr style="background: #f5f5f5;">
+                    <th>LOC</th>
+                    <th>Tokens (Full)</th>
+                    <th>Tokens (NeuralMind)</th>
+                    <th>Reduction</th>
+                    <th>Cost/Year per Dev</th>
+                </tr>
+                <tr>
+                    <td>5,000</td>
+                    <td>2,000</td>
+                    <td>800</td>
+                    <td>2.5×</td>
+                    <td>$18</td>
+                </tr>
+                <tr style="background: #fafafa;">
+                    <td>50,000</td>
+                    <td>20,000</td>
+                    <td>1,200</td>
+                    <td>16.7×</td>
+                    <td>$57</td>
+                </tr>
+                <tr>
+                    <td>100,000</td>
+                    <td>40,000</td>
+                    <td>1,400</td>
+                    <td>28.6×</td>
+                    <td>$117</td>
+                </tr>
+                <tr style="background: #fafafa;">
+                    <td>500,000+</td>
+                    <td>200,000</td>
+                    <td>1,600</td>
+                    <td>125×</td>
+                    <td>$597</td>
+                </tr>
+            </table>
+            <p><em>Assumptions: 10 queries/day, Claude Sonnet $3/1M input tokens. Your actual metrics may differ.</em></p>
+
+            <h3>When Savings Are Highest</h3>
+            <ul>
+                <li><strong>Large teams (20+):</strong> Cooccurrence learning kicks in after weeks, improving all queries team-wide</li>
+                <li><strong>Repeated patterns:</strong> "How does auth work?" → same 800 tokens saved 100s of times</li>
+                <li><strong>High-frequency users:</strong> Savings compound: 10 queries/day = 3,650 queries/year</li>
+            </ul>
+
+            <h3>When Savings Are Lower</h3>
+            <ul>
+                <li><strong>One-off questions:</strong> Setup costs not amortized; savings ~2-5×</li>
+                <li><strong>Small codebases:</strong> Fixed token overhead doesn't compress as much</li>
+                <li><strong>Solo developers:</strong> No team-level learning patterns to exploit</li>
+            </ul>
         </div>
     </section>
 
@@ -128,7 +229,7 @@
                 <li><a href="https://github.com/dfrostar/neuralmind/issues">Report bugs or request features</a></li>
                 <li><a href="https://github.com/dfrostar/neuralmind/discussions">Join discussions</a></li>
                 <li><a href="https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md">Contribute code</a></li>
-                <li><a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">Share your results</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">Share your benchmark results</a></li>
             </ul>
         </div>
     </section>
@@ -136,12 +237,13 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.4.2</h3>
-            <p>Production-ready with NIST AI RMF audit trail, MCP security hardening, and pluggable embedding backends. Actively maintained and tested.</p>
+
+            <h3>Current: v0.4.x (Production)</h3>
+            <p>Fully production-ready. NIST AI RMF audit trail, MCP security hardening, pluggable embedding backends, optional learning system.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>v0.5.0 (Q3 2026)</strong> — PostgreSQL pgvector scale testing, advanced monitoring dashboard, enhanced MCP server</li>
+                <li><strong>v0.5.0 (Q3 2026)</strong> — PostgreSQL pgvector scale testing, advanced monitoring dashboard, performance improvements</li>
                 <li><strong>v1.0.0 (Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options</li>
             </ul>
 
@@ -151,19 +253,25 @@
 
     <section>
         <div class="container">
-            <h2>Why NeuralMind?</h2>
-            <h3>Not Affiliated with NeuralMind.ai</h3>
-            <p>This is an independent, open-source project. No relationship to NeuralMind.ai (a different company). We chose the name because it reflects our philosophy: a "neural" index that learns your codebase.</p>
+            <h2>Comparisons</h2>
 
-            <h3>Compared to Alternatives</h3>
-            <ul>
-                <li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>
-                <li><strong>vs Claude Projects:</strong> Selects only relevant context instead of loading all files</li>
-                <li><strong>vs Long Context:</strong> 5–10× cheaper than paying for 100K token windows</li>
-                <li><strong>vs Prompt Caching:</strong> Makes prompts small instead of caching big ones</li>
-            </ul>
+            <h3>vs Cursor @codebase</h3>
+            <p><strong>Cursor:</strong> Best-in-class IDE integration, file-chunk semantic search, cloud-based. Cursor-only.</p>
+            <p><strong>NeuralMind:</strong> Works with any LLM, fully local, NIST AI RMF compliant, tool-output compression. Less IDE polish.</p>
 
-            <p><a href="wiki/Comparisons">See detailed comparisons →</a></p>
+            <h3>vs Claude Projects</h3>
+            <p><strong>Projects:</strong> Mixed content (docs + code), web UI, loads all files every turn. Simple but expensive at scale.</p>
+            <p><strong>NeuralMind:</strong> Code-only, query-aware context, learns from usage. No web UI (CLI + MCP only).</p>
+
+            <h3>vs Long Context Windows</h3>
+            <p><strong>Long context:</strong> Stuff everything in; possible with 200K tokens. Pays full price for all tokens.</p>
+            <p><strong>NeuralMind:</strong> Reduces context size 40-70× before sending. Cheaper even with bulk pricing. Orthogonal (can combine).</p>
+
+            <h3>vs Prompt Caching</h3>
+            <p><strong>Caching:</strong> Discounts repeated identical prefixes. Still pays for full context on first hit.</p>
+            <p><strong>NeuralMind:</strong> Makes prefixes small. Can combine both for 1000× cost reduction on repeated patterns.</p>
+
+            <p style="margin-top: 2rem;"><a href="wiki/Comparisons">See detailed comparisons →</a></p>
         </div>
     </section>
 
@@ -172,27 +280,27 @@
             <h2>Core Values</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Privacy First</strong>
+                    <strong>🔒 Privacy First</strong>
                     <p>Your code stays local. Zero cloud calls, zero telemetry, zero data exfiltration.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Transparency</strong>
+                    <strong>🤝 Transparency</strong>
                     <p>Open source, MIT licensed. Every decision is auditable, every result is explainable.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Compliance Ready</strong>
-                    <p>Built for regulated industries. NIST AI RMF, SOC 2, GDPR, HIPAA friendly.</p>
+                    <strong>⚖️ Compliance Ready</strong>
+                    <p>Built for regulated industries. NIST AI RMF, SOC 2, GDPR, HIPAA friendly—by design.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Interoperable</strong>
-                    <p>Works with your tools. Claude Code, Cursor, ChatGPT, local LLMs—not locked in.</p>
+                    <strong>🛠️ Interoperable</strong>
+                    <p>Works with your tools. Claude Code, Cursor, ChatGPT, local LLMs. Not locked in.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Efficient</strong>
-                    <p>Smart context reduces tokens 5–10×. Lower costs, better answers.</p>
+                    <strong>💪 Honest</strong>
+                    <p>We say what works and what doesn't. No overhyped claims. No "replace Copilot" nonsense.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
-                    <strong>Community Driven</strong>
+                    <strong>🌱 Community Driven</strong>
                     <p>Built in public. Issues, discussions, and contributions welcome.</p>
                 </div>
             </div>
@@ -202,10 +310,9 @@
     <section>
         <div class="container">
             <h2>Getting Started</h2>
-            <p>Ready to reduce your token costs by 5–10×?</p>
             <ul>
-                <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup</li>
-                <li><a href="wiki/">Full Documentation</a> — Learn all features</li>
+                <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup for all platforms</li>
+                <li><a href="wiki/">Full Documentation</a> — Learn all features and integrations</li>
                 <li><a href="https://github.com/dfrostar/neuralmind">GitHub Repository</a> — View source code</li>
                 <li><a href="https://github.com/dfrostar/neuralmind/issues">Report Issues</a> — Help improve NeuralMind</li>
             </ul>

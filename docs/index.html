@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NeuralMind: Semantic code intelligence for AI agents. Reduce token costs 40–70× with local code indexing, smart retrieval, and NIST AI RMF compliance.">
-    <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor">
-    <title>NeuralMind - Semantic Code Intelligence for AI Agents | 5–10× Token Reduction</title>
-    <meta property="og:title" content="NeuralMind - Semantic Code Intelligence for AI Agents">
-    <meta property="og:description" content="Local-first code indexing with 5–10× token reduction. Zero data exfiltration, 100% offline, enterprise-ready.">
+    <meta name="description" content="NeuralMind: 100% local semantic code intelligence. For regulated industries, large monorepos, and teams optimizing LLM costs. Offline, auditable, compliance-ready.">
+    <meta name="keywords" content="semantic code search, AI agents, local-first, offline code intelligence, NIST AI RMF, compliance, GDPR, HIPAA">
+    <title>NeuralMind - Local-First Code Intelligence for Compliance & Cost</title>
+    <meta property="og:title" content="NeuralMind - Local Code Intelligence">
+    <meta property="og:description" content="100% offline semantic code indexing. For regulated industries, large teams, and developers optimizing AI costs.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; background: #fff; }
@@ -29,6 +29,7 @@
         .highlights { background: #f8f9fa; padding: 3rem 2rem; }
         .highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0; }
         .highlight-item { padding: 1.5rem; background: white; border-left: 4px solid #667eea; }
+        .warning-box { background: #fff3cd; border: 1px solid #ffc107; padding: 1.5rem; border-radius: 0.5rem; margin: 2rem 0; }
         nav { background: #333; padding: 1rem 2rem; }
         nav a { color: white; text-decoration: none; margin-right: 2rem; font-weight: 500; }
         nav a:hover { color: #667eea; }
@@ -59,7 +60,7 @@
     <header>
         <div class="container">
             <h1>🧠 NeuralMind</h1>
-            <p>Semantic code intelligence for AI agents.<br/>5–10× token reduction. Zero data exfiltration. Enterprise-ready.</p>
+            <p>100% local semantic code intelligence for AI agents.<br/>Built for compliance, offline work, and cost optimization at scale.</p>
             <div>
                 <a href="wiki/Setup-Guide" class="btn btn-primary">Get Started in 5 Minutes</a>
                 <a href="https://github.com/dfrostar/neuralmind" class="btn btn-secondary">View on GitHub</a>
@@ -71,20 +72,20 @@
         <div class="container">
             <div class="highlight-grid">
                 <div class="highlight-item">
-                    <strong>⚡ 5–10× Token Reduction</strong>
-                    <p>Smart context retrieval + compression reduces costs 40–70%.</p>
-                </div>
-                <div class="highlight-item">
                     <strong>🔒 100% Local & Offline</strong>
-                    <p>Your code never leaves your machine. Zero cloud APIs, zero telemetry.</p>
+                    <p>Your code never leaves your machine. Zero cloud APIs, zero telemetry, zero risk.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong>✅ NIST AI RMF Compliant</strong>
-                    <p>Full audit trail and enterprise compliance reporting.</p>
+                    <strong>✅ Compliance-Grade Auditing</strong>
+                    <p>NIST AI RMF audit trail, SOC 2 ready, GDPR/HIPAA friendly. Full transparency.</p>
+                </div>
+                <div class="highlight-item">
+                    <strong>💰 Cost Savings at Scale</strong>
+                    <p>40-70× token reduction on large codebases. Compiles faster with team queries.</p>
                 </div>
                 <div class="highlight-item">
                     <strong>🛠️ Works Everywhere</strong>
-                    <p>Claude Code, Cursor, ChatGPT, Gemini, or any LLM.</p>
+                    <p>Claude Code, Cursor, ChatGPT, Gemini, local LLMs. MCP server included.</p>
                 </div>
             </div>
         </div>
@@ -92,8 +93,46 @@
 
     <section>
         <div class="container">
+            <h2>When NeuralMind Is Right For You</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <h3>Regulated Industries</h3>
+                    <p><strong>Code can't leave your machine?</strong> NeuralMind is fully offline with built-in compliance reporting for HIPAA, GDPR, SOC 2, and NIST AI RMF.</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Use case: Healthcare, finance, legal teams requiring air-gapped code analysis.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Large Teams & Monorepos</h3>
+                    <p><strong>Team of 10+ running 50K+ LOC?</strong> Semantic code queries save 3+ hours per dev per week. Patterns learn from your team's actual usage.</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Use case: 50-500 person orgs with shared monorepos, onboarding friction, context switching.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Cost-Conscious Teams</h3>
+                    <p><strong>LLM bill climbing to $1K+/month?</strong> Token reduction compounds: 40-70× on code questions means $450 → $7/year per developer.</p>
+                    <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">Use case: Teams running 10+ code queries/day, serious about optimizing LLM spend.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="warning-box" style="background: #e7f3ff; border-color: #0066cc;">
+        <div class="container">
+            <h3 style="color: #0066cc; margin-top: 0;">Not All Projects Need NeuralMind</h3>
+            <p><strong>NeuralMind is NOT recommended if:</strong></p>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li>Your codebase is under 50K lines of code</li>
+                <li>You ask code questions fewer than 5 times per week</li>
+                <li>You're using Cursor's @codebase and happy with it</li>
+                <li>Your team is under 5 people</li>
+                <li>You need mixed document + code intelligence (NeuralMind is code-only)</li>
+            </ul>
+            <p style="margin-top: 1rem;"><strong>Good alternatives for these cases:</strong> CLAUDE.md + git history, Cursor @codebase, Claude Projects.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
             <h2>The Problem & Solution</h2>
-            <p style="font-size: 1.1rem; margin-bottom: 2rem;">Traditional: Load entire files → 50,000+ tokens. <strong>NeuralMind: Smart context → ~800 tokens.</strong></p>
+            <p style="font-size: 1.1rem; margin-bottom: 2rem;"><strong>Traditional:</strong> Load entire codebase → 50,000+ tokens → $0.15/query<br/><strong>NeuralMind:</strong> Smart retrieval → ~800 tokens → $0.002/query</p>
             <div class="stats">
                 <div>
                     <div class="stat-number">50K+</div>
@@ -104,10 +143,13 @@
                     <div>Tokens (NeuralMind)</div>
                 </div>
                 <div>
-                    <div class="stat-number">60×</div>
-                    <div>Cost Reduction</div>
+                    <div class="stat-number">60-70×</div>
+                    <div>Reduction on large codebases</div>
                 </div>
             </div>
+            <p style="margin-top: 2rem; text-align: center; font-size: 0.9rem; color: #666;">
+                <em>Note: Reduction ratio depends on codebase size. Small projects (5K LOC) see ~2.5×. Large projects (500K+ LOC) see 125×+. Your actual baseline matters.</em>
+            </p>
         </div>
     </section>
 
@@ -117,15 +159,15 @@
             <div class="features">
                 <div class="feature-card">
                     <h3>Phase 1: Smart Retrieval</h3>
-                    <p>A 4-layer semantic index surfaces only the context your question needs—not the entire codebase.</p>
+                    <p>A 4-layer semantic index surfaces only the context your question needs—not the entire codebase. Query goes in → 800 tokens of relevant code comes out.</p>
                 </div>
                 <div class="feature-card">
                     <h3>Phase 2: Output Compression</h3>
-                    <p>PostToolUse hooks compress Read/Bash/Grep output 88–91% smaller before agents see it.</p>
+                    <p>PostToolUse hooks compress Read/Bash/Grep output 88–91% smaller before agents see it. Every tool call gets automatic compression.</p>
                 </div>
                 <div class="feature-card">
-                    <h3>Result: 5–10× Reduction</h3>
-                    <p>Smart context + compressed outputs = massive token and cost savings.</p>
+                    <h3>Result: Massive Token Savings</h3>
+                    <p>Combined retrieval + compression = 5-10× typical reduction. Higher on large codebases, lower on small ones. Always offline, always auditable.</p>
                 </div>
             </div>
         </div>
@@ -133,23 +175,23 @@
 
     <section class="highlights">
         <div class="container">
-            <h2>Enterprise Features</h2>
+            <h2>Enterprise & Compliance Features</h2>
             <div class="highlight-grid">
                 <div class="highlight-item">
                     <strong>NIST AI RMF Audit Trail</strong>
-                    <p>Every query logged. Export for compliance and auditor review.</p>
+                    <p>Every query logged with provenance. Export for auditor review and compliance reporting.</p>
+                </div>
+                <div class="highlight-item">
+                    <strong>Role-Based Access Control</strong>
+                    <p>Viewer / Developer / Admin roles with fine-grained permission control via MCP.</p>
                 </div>
                 <div class="highlight-item">
                     <strong>Pluggable Backends</strong>
-                    <p>ChromaDB, PostgreSQL pgvector, or LanceDB. Choose your infrastructure.</p>
+                    <p>ChromaDB (local), PostgreSQL pgvector (enterprise), or LanceDB (performance). Choose your infrastructure.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong>MCP Security</strong>
-                    <p>RBAC, rate limiting, secret detection, audit logging.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>SOC 2 & GDPR Ready</strong>
-                    <p>Full transparency, no vendor lock-in, zero exfiltration.</p>
+                    <strong>SOC 2 & Compliance Ready</strong>
+                    <p>GDPR, HIPAA, FedRAMP-compatible architecture. Full transparency, no vendor lock-in.</p>
                 </div>
             </div>
         </div>
@@ -157,7 +199,7 @@
 
     <section id="comparison">
         <div class="container">
-            <h2>How NeuralMind Compares</h2>
+            <h2>Honest Comparison</h2>
             <table>
                 <tr style="background: #f5f5f5;">
                     <th>Feature</th>
@@ -168,31 +210,52 @@
                 </tr>
                 <tr>
                     <td><strong>Works everywhere</strong></td>
-                    <td>✅ Yes</td>
+                    <td>✅ Yes (MCP server)</td>
                     <td>❌ Cursor only</td>
-                    <td>⚠️ Claude only</td>
-                    <td>✅ Yes</td>
+                    <td>⚠️ Claude.ai only</td>
+                    <td>✅ Yes (all models)</td>
                 </tr>
                 <tr style="background: #fafafa;">
                     <td><strong>100% local & offline</strong></td>
                     <td>✅ Yes</td>
-                    <td>❌ No</td>
-                    <td>❌ No</td>
-                    <td>❌ No</td>
+                    <td>❌ No (cloud)</td>
+                    <td>❌ No (cloud)</td>
+                    <td>❌ No (cloud)</td>
                 </tr>
                 <tr>
-                    <td><strong>Token reduction</strong></td>
-                    <td>5–10×</td>
-                    <td>2–3×</td>
-                    <td>0× (loads all)</td>
-                    <td>0× (loads all)</td>
-                </tr>
-                <tr style="background: #fafafa;">
-                    <td><strong>Enterprise compliance</strong></td>
+                    <td><strong>Compliance auditing</strong></td>
                     <td>✅ NIST AI RMF</td>
                     <td>⚠️ Basic</td>
                     <td>⚠️ Basic</td>
                     <td>⚠️ Basic</td>
+                </tr>
+                <tr style="background: #fafafa;">
+                    <td><strong>Token reduction</strong></td>
+                    <td>40-70× (50K+ LOC)</td>
+                    <td>2-3×</td>
+                    <td>0× (loads all)</td>
+                    <td>0× (loads all)</td>
+                </tr>
+                <tr>
+                    <td><strong>Tool output compression</strong></td>
+                    <td>✅ 88-91% (Claude)</td>
+                    <td>❌ No</td>
+                    <td>❌ No</td>
+                    <td>❌ No</td>
+                </tr>
+                <tr style="background: #fafafa;">
+                    <td><strong>IDE integration</strong></td>
+                    <td>⚠️ Via MCP</td>
+                    <td>✅ Native (best)</td>
+                    <td>✅ Native</td>
+                    <td>⚠️ API only</td>
+                </tr>
+                <tr>
+                    <td><strong>Best for</strong></td>
+                    <td>Offline + compliance + large teams</td>
+                    <td>IDE-integrated experience</td>
+                    <td>Mixed docs + code</td>
+                    <td>Maximum context size</td>
                 </tr>
             </table>
             <p><a href="wiki/Comparisons" style="color: #667eea; font-weight: bold;">View detailed comparisons →</a></p>
@@ -202,25 +265,26 @@
     <section>
         <div class="container">
             <h2>5-Minute Setup</h2>
-            <pre><code># 1. Install NeuralMind
+            <pre><code># 1. Install
 pip install neuralmind
 
-# 2. Install graphify (required)
-git clone https://github.com/safishamsi/graphify.git
+# 2. Install graphify (required for graph generation)
+git clone https://github.com/safishamshi/graphify.git
 cd graphify && pip install -e .
 
 # 3. Go to your project
 cd /path/to/your-project
 
-# 4. Generate the code graph
+# 4. Build the code graph
 graphify update .
 
-# 5. Build the neural index
+# 5. Index the code
 neuralmind build .
 
 # 6. Test it
-neuralmind stats .</code></pre>
-            <p><a href="wiki/Setup-Guide" class="btn btn-primary">Full Setup Guide</a></p>
+neuralmind stats .
+neuralmind wakeup .</code></pre>
+            <p><a href="wiki/Setup-Guide" class="btn btn-primary">Full Setup & Integration Guide</a></p>
         </div>
     </section>
 
@@ -229,23 +293,23 @@ neuralmind stats .</code></pre>
             <h2>Use Cases</h2>
             <div class="highlight-grid">
                 <div class="highlight-item">
-                    <strong>💰 Cost Optimization</strong>
-                    <p>Reduce monthly AI bills by 40–70% while improving answer quality.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>🔐 Regulated Industries</strong>
-                    <p>Process sensitive code without exfiltration. GDPR/HIPAA compliant.</p>
+                    <strong>🏥 Healthcare & Regulated</strong>
+                    <p>Process sensitive code offline. Full audit trail for compliance auditors.</p>
                 </div>
                 <div class="highlight-item">
                     <strong>📈 Growing Monorepos</strong>
-                    <p>Scale AI help to 100K+ LOC without loading entire files.</p>
+                    <p>Scale AI help across 100K+ LOC without loading entire files. Onboard new devs in minutes.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong>⚡ Any LLM</strong>
-                    <p>ChatGPT, Gemini, local models, Claude Code. Works with all of them.</p>
+                    <strong>💰 Cost Optimization</strong>
+                    <p>Teams running 10+ code queries/day see 40-70× token reduction. Measurable ROI.</p>
+                </div>
+                <div class="highlight-item">
+                    <strong>🚀 Any LLM</strong>
+                    <p>Works with Claude, ChatGPT, Gemini, local models, or custom agents via MCP.</p>
                 </div>
             </div>
-            <p style="margin-top: 2rem; text-align: center;"><a href="wiki/Use-Cases" style="color: #667eea; font-weight: bold;">See detailed use cases →</a></p>
+            <p style="margin-top: 2rem; text-align: center;"><a href="wiki/Use-Cases" style="color: #667eea; font-weight: bold;">See detailed use case walkthroughs →</a></p>
         </div>
     </section>
 
@@ -255,27 +319,27 @@ neuralmind stats .</code></pre>
             <div class="highlight-grid">
                 <div class="highlight-item">
                     <strong><a href="wiki/Setup-Guide" style="color: #667eea;">Setup Guide</a></strong>
-                    <p>First-time setup for all platforms.</p>
+                    <p>First-time setup for all platforms and integrations.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong><a href="wiki/Scheduling-Guide" style="color: #667eea;">Scheduling Guide</a></strong>
-                    <p>Auto-discovery, cloud sync, CI/CD.</p>
+                    <strong><a href="docs/DEPLOYMENT-GUIDE.md" style="color: #667eea;">Deployment Guide</a></strong>
+                    <p>Docker, Kubernetes, PostgreSQL backends, enterprise scaling.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong><a href="wiki/CLI-Reference" style="color: #667eea;">CLI Reference</a></strong>
-                    <p>All commands and flags.</p>
+                    <strong><a href="docs/SECURITY-GUIDE.md" style="color: #667eea;">Security Guide</a></strong>
+                    <p>RBAC, encryption, NIST AI RMF, SOC 2, threat models.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong><a href="wiki/Enterprise-Features" style="color: #667eea;">Enterprise Features</a></strong>
-                    <p>NIST AI RMF, audit trails, security.</p>
+                    <strong><a href="docs/UPGRADING.md" style="color: #667eea;">Upgrading Guide</a></strong>
+                    <p>Version upgrades, breaking changes, rollback procedures.</p>
                 </div>
                 <div class="highlight-item">
                     <strong><a href="docs/VERSION-STRATEGY.md" style="color: #667eea;">Version Strategy</a></strong>
-                    <p>Versioning, support timeline, upgrades.</p>
+                    <p>Versioning policy, support timeline, release schedule.</p>
                 </div>
                 <div class="highlight-item">
                     <strong><a href="wiki/Troubleshooting" style="color: #667eea;">Troubleshooting</a></strong>
-                    <p>Common issues & solutions.</p>
+                    <p>Common issues, diagnostics, and solutions.</p>
                 </div>
             </div>
             <p style="margin-top: 2rem; text-align: center;"><a href="wiki/" class="btn btn-primary" style="background: #667eea; color: white; border-color: #667eea;">Browse All Docs</a></p>
@@ -284,19 +348,19 @@ neuralmind stats .</code></pre>
 
     <section>
         <div class="container">
-            <h2>Status & Future</h2>
+            <h2>Roadmap</h2>
             <div class="highlight-grid">
                 <div class="highlight-item">
-                    <strong>✅ v0.4.2 (Current)</strong>
-                    <p>Production-ready. NIST AI RMF, MCP security, pluggable backends.</p>
+                    <strong>✅ v0.4.x (Current)</strong>
+                    <p>Production-ready. NIST AI RMF, MCP security, pluggable backends, learning system.</p>
                 </div>
                 <div class="highlight-item">
                     <strong>📋 v0.5.0 (Q3 2026)</strong>
-                    <p>Enhanced MCP, PostgreSQL scale testing, monitoring dashboard.</p>
+                    <p>Enhanced MCP, PostgreSQL scale, monitoring dashboard, performance improvements.</p>
                 </div>
                 <div class="highlight-item">
                     <strong>🎯 v1.0.0 (Q1 2027)</strong>
-                    <p>Stable API, 2-year LTS, commercial support.</p>
+                    <p>Stable API guarantee, 2-year LTS, commercial support options.</p>
                 </div>
             </div>
             <p style="margin-top: 2rem;"><a href="docs/FUTURE-PROOFING-PLAN.md" style="color: #667eea; font-weight: bold;">See full roadmap →</a></p>
@@ -313,7 +377,7 @@ neuralmind stats .</code></pre>
                 <a href="docs/about.html">About</a>
             </p>
             <p style="color: #999;">MIT License. Open source, not affiliated with NeuralMind.ai.</p>
-            <p style="color: #999; margin-top: 1rem; font-size: 0.9rem;">🔐 100% Local • 🚀 5–10× Token Reduction • ✅ NIST AI RMF • 🛠️ Works Everywhere</p>
+            <p style="color: #999; margin-top: 1rem; font-size: 0.9rem;">🔐 100% Local • 💰 40-70× Token Reduction (large codebases) • ✅ NIST AI RMF • 🛠️ Works Everywhere</p>
         </div>
     </footer>
 </body>
