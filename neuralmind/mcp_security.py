@@ -1,134 +1,156 @@
-"""MCP security: RBAC, rate limiting, and audit hooks."""
+"""MCP security manager with RBAC, rate limiting, and audit integration."""
 
 from __future__ import annotations
 
+import time
 from collections import defaultdict, deque
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from .audit import AuditTrail
+from .audit import AuditTrail, get_audit_trail
+from .backend_manager import load_backend_config
 
+DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
+    "admin": "*",
+    "builder": {
+        "neuralmind_wakeup",
+        "neuralmind_query",
+        "neuralmind_search",
+        "neuralmind_build",
+        "neuralmind_stats",
+        "neuralmind_benchmark",
+        "neuralmind_skeleton",
+    },
+    "reader": {
+        "neuralmind_wakeup",
+        "neuralmind_query",
+        "neuralmind_search",
+        "neuralmind_stats",
+        "neuralmind_benchmark",
+        "neuralmind_skeleton",
+    },
+}
 
-class AccessDeniedError(PermissionError):
-    """Raised when RBAC authorization fails."""
-
-
-class RateLimitExceededError(RuntimeError):
-    """Raised when a caller exceeds configured request limits."""
+_SECURITY_MANAGERS: dict[str, MCPSecurityManager] = {}
 
 
 class RBACPolicy:
-    """Role-based access control policy for MCP tools."""
+    def __init__(self, role_permissions: dict[str, set[str] | str] | None = None):
+        self.role_permissions = role_permissions or DEFAULT_ROLE_POLICY
 
-    def __init__(self, allowed_roles: dict[str, set[str]] | None = None):
-        self.allowed_roles = allowed_roles or {
-            "neuralmind_wakeup": {"viewer", "analyst", "admin"},
-            "neuralmind_query": {"viewer", "analyst", "admin"},
-            "neuralmind_search": {"viewer", "analyst", "admin"},
-            "neuralmind_stats": {"viewer", "analyst", "admin"},
-            "neuralmind_benchmark": {"analyst", "admin"},
-            "neuralmind_skeleton": {"viewer", "analyst", "admin"},
-            "neuralmind_build": {"admin"},
-        }
-
-    def authorize(self, role: str, tool_name: str) -> None:
-        allowed = self.allowed_roles.get(tool_name, {"admin"})
-        if role not in allowed:
-            raise AccessDeniedError(f"Role '{role}' is not allowed to call {tool_name}")
+    def is_allowed(self, role: str, tool_name: str) -> bool:
+        permissions = self.role_permissions.get(role, set())
+        if permissions == "*":
+            return True
+        if isinstance(permissions, set):
+            return tool_name in permissions
+        return False
 
 
 class RateLimiter:
-    """Sliding-window rate limiter keyed by actor + tool."""
+    def __init__(self, max_calls: int = 60, window_seconds: int = 60):
+        self.max_calls = max_calls
+        self.window_seconds = window_seconds
+        self._actor_request_history: dict[str, deque[float]] = defaultdict(deque)
 
-    def __init__(self, max_requests: int = 30, window_seconds: int = 60):
-        self.max_requests = max_requests
-        self.window = timedelta(seconds=window_seconds)
-        self._events: dict[str, deque[datetime]] = defaultdict(deque)
-
-    def check(self, actor: str, tool_name: str) -> None:
-        key = f"{actor}:{tool_name}"
-        now = datetime.now(timezone.utc)
-        cutoff = now - self.window
-        entries = self._events[key]
-        while entries and entries[0] < cutoff:
-            entries.popleft()
-        if len(entries) >= self.max_requests:
-            raise RateLimitExceededError(f"Rate limit exceeded for {actor} on {tool_name}")
-        entries.append(now)
+    def allow(self, actor: str) -> bool:
+        now = time.time()
+        history = self._actor_request_history[actor]
+        cutoff = now - self.window_seconds
+        while history and history[0] < cutoff:
+            history.popleft()
+        if len(history) >= self.max_calls:
+            return False
+        history.append(now)
+        return True
 
 
 class MCPSecurityManager:
-    """Central MCP security manager with audit logging."""
-
     def __init__(
         self,
-        project_path: str | Path,
+        project_path: str,
         policy: RBACPolicy | None = None,
         rate_limiter: RateLimiter | None = None,
         audit_trail: AuditTrail | None = None,
     ):
-        self.project_path = Path(project_path)
+        self.project_path = str(Path(project_path).resolve())
         self.policy = policy or RBACPolicy()
         self.rate_limiter = rate_limiter or RateLimiter()
-        self.audit = audit_trail or AuditTrail(self.project_path)
-
-    def enforce(self, actor: str, role: str, tool_name: str) -> None:
-        self.policy.authorize(role, tool_name)
-        self.audit.log_event(
-            category="security",
-            action="rbac_check",
-            actor=actor,
-            target=tool_name,
-            details={"role": role},
-        )
-        self.rate_limiter.check(actor, tool_name)
-        self.audit.log_event(
-            category="security",
-            action="rate_limit_check",
-            actor=actor,
-            target=tool_name,
-            details={"window_seconds": self.rate_limiter.window.total_seconds()},
-        )
+        self.audit = audit_trail or get_audit_trail(self.project_path)
 
     def secure_call(
         self,
         actor: str,
         role: str,
         tool_name: str,
-        action: Callable[..., Any],
-        *args,
-        **kwargs,
+        call: Callable[[], Any],
     ) -> Any:
-        try:
-            self.enforce(actor, role, tool_name)
-            result = action(*args, **kwargs)
-            self.audit.log_event(
+        if not self.policy.is_allowed(role, tool_name):
+            self.audit.append_event(
                 category="security",
-                action="tool_call",
+                action="mcp_call_denied",
                 actor=actor,
+                status="denied",
                 target=tool_name,
+                details={"reason": "rbac", "role": role},
+            )
+            raise PermissionError(f"Access denied for role '{role}' on tool '{tool_name}'")
+
+        if not self.rate_limiter.allow(actor):
+            self.audit.append_event(
+                category="security",
+                action="mcp_call_denied",
+                actor=actor,
+                status="denied",
+                target=tool_name,
+                details={"reason": "rate_limit", "role": role},
+            )
+            raise RuntimeError(f"Rate limit exceeded for actor '{actor}'")
+
+        try:
+            result = call()
+            self.audit.append_event(
+                category="security",
+                action="mcp_call",
+                actor=actor,
                 status="success",
+                target=tool_name,
+                details={"role": role},
             )
             return result
-        except (AccessDeniedError, RateLimitExceededError) as exc:
-            self.audit.log_event(
-                category="security",
-                action="tool_call",
-                actor=actor,
-                target=tool_name,
-                status="denied",
-                details={"error": str(exc)},
-            )
-            raise
         except Exception as exc:
-            self.audit.log_event(
+            self.audit.append_event(
                 category="security",
-                action="tool_call",
+                action="mcp_call",
                 actor=actor,
+                status="failure",
                 target=tool_name,
-                status="failed",
-                details={"error": str(exc)},
+                details={"role": role, "error": str(exc)},
             )
             raise
+
+
+def get_security_manager(project_path: str) -> MCPSecurityManager:
+    key = str(Path(project_path).resolve())
+    if key not in _SECURITY_MANAGERS:
+        config = load_backend_config(key)
+        security = config.get("security", {}) if isinstance(config, dict) else {}
+        role_permissions = security.get("roles") if isinstance(security, dict) else None
+        parsed_roles: dict[str, set[str] | str] | None = None
+        if isinstance(role_permissions, dict):
+            parsed_roles = {}
+            for role, permissions in role_permissions.items():
+                if permissions == "*":
+                    parsed_roles[str(role)] = "*"
+                elif isinstance(permissions, list):
+                    parsed_roles[str(role)] = {str(name) for name in permissions}
+        rate_cfg = security.get("rate_limit", {}) if isinstance(security, dict) else {}
+        max_calls = int(rate_cfg.get("max_calls", 60))
+        window_seconds = int(rate_cfg.get("window_seconds", 60))
+        _SECURITY_MANAGERS[key] = MCPSecurityManager(
+            project_path=key,
+            policy=RBACPolicy(parsed_roles) if parsed_roles else RBACPolicy(),
+            rate_limiter=RateLimiter(max_calls=max_calls, window_seconds=window_seconds),
+        )
+    return _SECURITY_MANAGERS[key]

@@ -1,9 +1,10 @@
-"""In-memory embedding backend for tests and offline backend switching."""
+"""In-memory EmbeddingBackend implementation for deterministic offline usage."""
 
 from __future__ import annotations
 
+import hashlib
 import json
-import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -11,16 +12,16 @@ from .embedding_backend import EmbeddingBackend
 
 
 class InMemoryEmbeddingBackend(EmbeddingBackend):
-    """Simple in-memory backend with lexical scoring."""
+    """A pure in-memory backend that supports backend switching and offline tests."""
 
     def __init__(self, project_path: str, db_path: str | None = None):
-        self._project_path = Path(project_path)
-        self.db_path = db_path or "in-memory"
+        self._project_path = Path(project_path).resolve()
         self.graph_path = self._project_path / "graphify-out" / "graph.json"
+        self.db_path = db_path or ":memory:"
         self.graph: dict[str, Any] = {}
         self.nodes: list[dict[str, Any]] = []
         self.edges: list[dict[str, Any]] = []
-        self._docs: dict[str, tuple[str, dict[str, Any]]] = {}
+        self._index: dict[str, dict[str, Any]] = {}
 
     @property
     def project_path(self) -> Path:
@@ -29,144 +30,209 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
     def load_graph(self) -> bool:
         if not self.graph_path.exists():
             return False
-        self.graph = json.loads(self.graph_path.read_text())
+        with self.graph_path.open(encoding="utf-8") as file:
+            self.graph = json.load(file)
         self.nodes = self.graph.get("nodes", [])
         self.edges = self.graph.get("edges", self.graph.get("links", []))
         return True
 
     def _node_to_text(self, node: dict[str, Any]) -> str:
-        return " ".join(
-            str(v)
-            for v in (
-                node.get("label", node.get("id", "")),
-                node.get("file_type", ""),
-                node.get("source_file", ""),
-                node.get("description", ""),
-            )
-            if v
-        )
+        parts = [
+            str(node.get("label", node.get("id", "unknown"))),
+            str(node.get("description", "")),
+            str(node.get("file_type", node.get("type", "unknown"))),
+            str(node.get("source_file", "")),
+        ]
+        return "\n".join(part for part in parts if part).strip()
+
+    def _node_metadata(self, node: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "label": str(node.get("label", node.get("id", "unknown"))),
+            "file_type": str(node.get("file_type", node.get("type", "unknown"))),
+            "source_file": str(node.get("source_file", "")),
+            "community": int(node.get("community", -1)),
+            "node_id": str(node.get("id", "")),
+            "embedded_at": datetime.now().isoformat(),
+        }
+
+    def _content_hash(self, text: str) -> str:
+        return hashlib.sha256(text.encode()).hexdigest()
 
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
         if not self.nodes and not self.load_graph():
-            return {"added": 0, "updated": 0, "skipped": 0}
+            return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         for node in self.nodes:
             node_id = str(node.get("id", node.get("label", "")))
             if not node_id:
                 continue
-            doc = self._node_to_text(node)
-            metadata = {
-                "label": str(node.get("label", node_id)),
-                "file_type": str(node.get("file_type", "unknown")),
-                "source_file": str(node.get("source_file", "")),
-                "community": int(node.get("community", -1)),
-                "node_id": node_id,
-            }
-            if node_id not in self._docs:
-                stats["added"] += 1
-                self._docs[node_id] = (doc, metadata)
-            elif force:
+
+            text = self._node_to_text(node)
+            content_hash = self._content_hash(text)
+            existing = self._index.get(node_id)
+
+            if existing and not force and existing.get("content_hash") == content_hash:
+                stats["skipped"] += 1
+                continue
+
+            if existing:
                 stats["updated"] += 1
-                self._docs[node_id] = (doc, metadata)
             else:
-                if self._docs[node_id][0] == doc:
-                    stats["skipped"] += 1
-                else:
-                    stats["updated"] += 1
-                    self._docs[node_id] = (doc, metadata)
+                stats["added"] += 1
+
+            self._index[node_id] = {
+                "id": node_id,
+                "document": text,
+                "terms": set(text.lower().split()),
+                "metadata": self._node_metadata(node),
+                "content_hash": content_hash,
+            }
         return stats
 
-    def _tokens(self, text: str) -> set[str]:
-        return set(re.findall(r"[a-zA-Z0-9_]+", text.lower()))
-
     def search(
-        self, query: str, n: int = 5, where: dict[str, Any] | None = None, **filters: Any
+        self,
+        query: str,
+        n: int = 5,
+        where: dict[str, Any] | None = None,
+        file_type: str | None = None,
+        community: int | None = None,
     ) -> list[dict[str, Any]]:
-        if not self._docs:
+        if not self._index:
             self.embed_nodes(force=False)
-        if filters:
-            where = {**(where or {}), **filters}
-        q = self._tokens(query)
-        results: list[dict[str, Any]] = []
-        for node_id, (doc, meta) in self._docs.items():
-            if where and any(meta.get(k) != v for k, v in where.items()):
+
+        query_terms = {part for part in query.lower().split() if part}
+        if not query_terms:
+            return []
+
+        def _calculate_term_overlap_score(doc_terms: set[str]) -> float:
+            overlap = len(query_terms & doc_terms)
+            return overlap / max(len(query_terms), 1)
+
+        def _metadata_matches_filter(metadata: dict[str, Any], rule: dict[str, Any]) -> bool:
+            for key, value in rule.items():
+                if metadata.get(key) != value:
+                    return False
+            return True
+
+        combined_where = where.copy() if isinstance(where, dict) else {}
+        if file_type is not None:
+            combined_where["file_type"] = file_type
+        if community is not None:
+            combined_where["community"] = community
+
+        def _satisfies_where_clause(metadata: dict[str, Any]) -> bool:
+            if not combined_where:
+                return True
+            if "$and" in combined_where:
+                return all(
+                    _metadata_matches_filter(metadata, rule) for rule in combined_where["$and"]
+                )
+            return _metadata_matches_filter(metadata, combined_where)
+
+        scored: list[dict[str, Any]] = []
+        for entry in self._index.values():
+            metadata = entry["metadata"]
+            if not _satisfies_where_clause(metadata):
                 continue
-            tokens = self._tokens(doc)
-            overlap = len(q & tokens)
-            if overlap == 0:
+            score = _calculate_term_overlap_score(entry["terms"])
+            if score <= 0:
                 continue
-            score = overlap / max(len(q), 1)
-            results.append(
+            scored.append(
                 {
-                    "id": node_id,
-                    "document": doc,
-                    "metadata": meta,
-                    "distance": 1 - score,
-                    "score": score,
+                    "id": entry["id"],
+                    "document": entry["document"],
+                    "metadata": metadata,
+                    "distance": round(1 - score, 6),
+                    "score": round(score, 6),
                 }
             )
-        results.sort(key=lambda x: x["score"], reverse=True)
-        return results[:n]
+
+        scored.sort(key=lambda item: item["score"], reverse=True)
+        return scored[:n]
 
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict[str, Any]:
-        nodes = [
-            {
-                "id": node_id,
-                "label": meta.get("label", node_id),
-                "file_type": meta.get("file_type", "unknown"),
-                "source_file": meta.get("source_file", ""),
+        if not self.nodes and not self.load_graph():
+            return {
+                "community": community_id,
+                "node_count": 0,
+                "nodes": [],
+                "summary": "Empty community",
             }
-            for node_id, (_, meta) in self._docs.items()
-            if int(meta.get("community", -1)) == community_id
-        ][:max_nodes]
-        if not nodes:
-            return {"community": community_id, "nodes": [], "summary": "Empty community"}
-        counts: dict[str, int] = {}
+        nodes = [node for node in self.nodes if int(node.get("community", -1)) == community_id][
+            :max_nodes
+        ]
+        file_types: dict[str, int] = {}
+        formatted_nodes: list[dict[str, Any]] = []
         for node in nodes:
-            file_type = str(node.get("file_type", "unknown"))
-            counts[file_type] = counts.get(file_type, 0) + 1
+            file_type = str(node.get("file_type", node.get("type", "unknown")))
+            file_types[file_type] = file_types.get(file_type, 0) + 1
+            formatted_nodes.append(
+                {
+                    "id": str(node.get("id", "")),
+                    "label": str(node.get("label", node.get("id", "unknown"))),
+                    "file_type": file_type,
+                    "source_file": str(node.get("source_file", "")),
+                }
+            )
+        type_summary = (
+            ", ".join(f"{count} {name}s" for name, count in file_types.items()) or "mixed"
+        )
         return {
             "community": community_id,
-            "node_count": len(nodes),
-            "type_summary": ", ".join(f"{v} {k}s" for k, v in counts.items()),
-            "nodes": nodes,
+            "node_count": len(formatted_nodes),
+            "type_summary": type_summary,
+            "nodes": formatted_nodes,
         }
 
     def get_file_nodes(self, source_file: str) -> list[dict]:
         if not self.nodes and not self.load_graph():
             return []
         normalized = str(source_file).replace("\\", "/").lstrip("./")
-        return [
-            n for n in self.nodes if str(n.get("source_file", "")).replace("\\", "/") == normalized
-        ]
+        candidates = {normalized, normalized.replace("/", "\\")}
+        try:
+            candidates.add(str(Path(source_file).resolve()))
+            candidates.add(str((self.project_path / normalized).resolve()))
+        except Exception:
+            pass
+        return [node for node in self.nodes if str(node.get("source_file", "")) in candidates]
 
     def get_file_edges(self, source_file: str, node_ids: set[str] | None = None) -> list[dict]:
         if not self.edges and not self.load_graph():
             return []
-        ids = node_ids or {str(n.get("id")) for n in self.get_file_nodes(source_file)}
+        ids = (
+            node_ids
+            if node_ids is not None
+            else {n.get("id", "") for n in self.get_file_nodes(source_file)}
+        )
+        if not ids:
+            return []
         return [
-            e
-            for e in self.edges
-            if (
-                e.get("_src") in ids
-                or e.get("_tgt") in ids
-                or e.get("source") in ids
-                or e.get("target") in ids
-            )
+            edge
+            for edge in self.edges
+            if edge.get("_src") in ids
+            or edge.get("_tgt") in ids
+            or edge.get("source") in ids
+            or edge.get("target") in ids
+            or edge.get("from") in ids
+            or edge.get("to") in ids
         ]
 
     def get_stats(self) -> dict[str, Any]:
-        communities = {int(meta.get("community", -1)) for _, meta in self._docs.values()}
+        communities = {
+            int(entry["metadata"].get("community", -1))
+            for entry in self._index.values()
+            if "metadata" in entry
+        }
         return {
-            "total_nodes": len(self._docs),
-            "communities": len([c for c in communities if c >= 0]),
+            "total_nodes": len(self._index),
+            "communities": len([community for community in communities if community >= 0]),
             "community_distribution": {},
             "db_path": self.db_path,
         }
 
     def clear(self) -> None:
-        self._docs.clear()
+        self._index.clear()
 
     def close(self) -> None:
-        return
+        self.clear()

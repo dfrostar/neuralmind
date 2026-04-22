@@ -41,11 +41,15 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import NeuralMind
+<<<<<<< HEAD
 from neuralmind.mcp_security import (
     AccessDeniedError,
     MCPSecurityManager,
     RateLimitExceededError,
 )
+=======
+from neuralmind.mcp_security import get_security_manager
+>>>>>>> origin/main
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -298,6 +302,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
+<<<<<<< HEAD
     actor = arguments.get("actor", "mcp-client")
     role = arguments.get("role", "viewer")
     project_path = arguments.get("project_path", ".")
@@ -305,6 +310,19 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     try:
         security = get_security_manager(project_path)
         result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
+=======
+    project_path_raw = arguments.get("project_path")
+    project_path = str(project_path_raw) if project_path_raw else None
+    actor = str(arguments.get("actor", "anonymous"))
+    role = str(arguments.get("role", "builder"))
+
+    try:
+        if project_path is not None:
+            security = get_security_manager(project_path)
+            result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
+        else:
+            result = handlers[name](arguments)
+>>>>>>> origin/main
         return json.dumps(result, indent=2, default=str)
     except (AccessDeniedError, RateLimitExceededError) as e:
         return json.dumps({"error": str(e), "code": "security_denied"})

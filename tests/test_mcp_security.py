@@ -1,45 +1,50 @@
-"""Tests for MCP security controls: RBAC, rate limiting, and auditing."""
+"""Tests for MCP security manager components."""
 
 import pytest
 
-from neuralmind.mcp_security import (
-    AccessDeniedError,
-    MCPSecurityManager,
-    RateLimiter,
-    RateLimitExceededError,
-)
+from neuralmind.audit import AuditTrail
+from neuralmind.mcp_security import MCPSecurityManager, RateLimiter, RBACPolicy
 
 
-def test_rbac_denies_unauthorized_role(tmp_path):
-    security = MCPSecurityManager(tmp_path)
-    with pytest.raises(AccessDeniedError):
-        security.enforce(actor="alice", role="viewer", tool_name="neuralmind_build")
+def test_rbac_policy_allows_expected_tools():
+    policy = RBACPolicy({"reader": {"neuralmind_query"}})
+    assert policy.is_allowed("reader", "neuralmind_query") is True
+    assert policy.is_allowed("reader", "neuralmind_build") is False
 
 
-def test_rbac_allows_authorized_role(tmp_path):
-    security = MCPSecurityManager(tmp_path)
-    security.enforce(actor="alice", role="admin", tool_name="neuralmind_build")
+def test_rate_limiter_enforces_sliding_window():
+    limiter = RateLimiter(max_calls=2, window_seconds=60)
+    assert limiter.allow("alice") is True
+    assert limiter.allow("alice") is True
+    assert limiter.allow("alice") is False
 
 
-def test_rate_limiter_blocks_excess_calls():
-    limiter = RateLimiter(max_requests=2, window_seconds=60)
-    limiter.check("alice", "neuralmind_query")
-    limiter.check("alice", "neuralmind_query")
-    with pytest.raises(RateLimitExceededError):
-        limiter.check("alice", "neuralmind_query")
+def test_security_manager_audits_success_and_failure(temp_project):
+    manager = MCPSecurityManager(
+        project_path=str(temp_project),
+        policy=RBACPolicy({"reader": {"neuralmind_query"}}),
+        rate_limiter=RateLimiter(max_calls=10, window_seconds=60),
+        audit_trail=AuditTrail(temp_project),
+    )
 
+    result = manager.secure_call("alice", "reader", "neuralmind_query", lambda: {"ok": True})
+    assert result == {"ok": True}
 
-def test_secure_call_logs_audit_on_success(tmp_path):
-    security = MCPSecurityManager(tmp_path)
-    value = security.secure_call("alice", "admin", "neuralmind_stats", lambda: {"ok": True})
-    assert value == {"ok": True}
-    events = security.audit.list_events(category="security")
-    assert any(e["action"] == "tool_call" and e["status"] == "success" for e in events)
+    with pytest.raises(PermissionError):
+        manager.secure_call("alice", "reader", "neuralmind_build", lambda: {"ok": True})
 
+    with pytest.raises(RuntimeError):
+        strict_limiter = RateLimiter(max_calls=1, window_seconds=60)
+        limited = MCPSecurityManager(
+            project_path=str(temp_project),
+            policy=RBACPolicy({"reader": {"neuralmind_query"}}),
+            rate_limiter=strict_limiter,
+            audit_trail=AuditTrail(temp_project),
+        )
+        limited.secure_call("bob", "reader", "neuralmind_query", lambda: {"ok": True})
+        limited.secure_call("bob", "reader", "neuralmind_query", lambda: {"ok": True})
 
-def test_secure_call_logs_audit_on_denied(tmp_path):
-    security = MCPSecurityManager(tmp_path)
-    with pytest.raises(AccessDeniedError):
-        security.secure_call("alice", "viewer", "neuralmind_build", lambda: {"ok": True})
-    events = security.audit.list_events(category="security", status="denied")
-    assert events
+    events = AuditTrail(temp_project).read_events()
+    statuses = {event["status"] for event in events}
+    assert "success" in statuses
+    assert "denied" in statuses
