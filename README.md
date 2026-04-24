@@ -367,6 +367,23 @@ Not a fit if: you need cross-repo search across a whole organization (use [Sourc
 
 ---
 
+## 🧭 What NeuralMind is *not*
+
+The "neural" in NeuralMind is metaphorical, not literal — it's a retrieval-and-compression layer for AI coding agents, nothing more. To save you a search-engine round-trip:
+
+| It is *not*… | What it actually is |
+|---|---|
+| A **biological brain simulator** (e.g. [Zae-Project/brain-emulation](https://github.com/Zae-Project/brain-emulation), Brian2, NEURON, NEST) | A vector index over your code. Brain-flavored words like `wakeup`, `memory`, `learning` describe how the *retrieval policy* behaves — there are no spiking neurons inside. |
+| A **language model** | A layer that runs *between* you and your existing model (Claude / GPT / Gemini / local). It generates nothing; it picks what to send. |
+| **AGI** or any consciousness research | A focused tool: index a repo, return ~800 tokens of relevant context per query. |
+| A **fine-tuning toolkit** | The opposite — it makes a stock model perform well on your codebase *without* fine-tuning, by sending better context. |
+| An **agent framework** (LangChain, LlamaIndex, AutoGen) | A single MCP server + CLI that any agent calls. Not a framework you assemble; a default you install. |
+| A **cloud service** | A local Python package. No telemetry, no API keys, your code stays on your machine. |
+
+If you're researching computational neuroscience, you want a real SNN simulator. If you're trying to make Claude Code, Cursor, or Cline burn fewer tokens on your repo, that's us.
+
+---
+
 ## 🏢 Enterprise Use Cases
 
 NeuralMind solves specific pain points for companies at scale:

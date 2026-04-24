@@ -72,6 +72,17 @@ Short answer: if any of these describe you, start with the [Use Cases](Use-Cases
 
 Full symptom-and-goal matrix in the main [README](../blob/main/README.md#-when-do-i-reach-for-neuralmind).
 
+### What NeuralMind is *not*
+
+Quick disambiguation for searchers who landed here from a vague "neural" or "brain" search:
+
+- **Not a brain simulator.** Projects like [Zae-Project/brain-emulation](https://github.com/Zae-Project/brain-emulation), Brian2, NEURON, and NEST simulate biological neurons. NeuralMind doesn't — it's a vector index over your code. Words like `wakeup`, `memory`, and `learning` describe retrieval behavior, not biology.
+- **Not a language model.** It runs *between* you and your existing LLM (Claude / GPT / Gemini / local). It picks what to send; the model still does the generation.
+- **Not an agent framework.** No assembly required. It's a single MCP server + CLI that any agent calls.
+- **Not a cloud service.** Local Python package. Your code never leaves your machine.
+
+If you're doing computational neuroscience, you want a real SNN simulator. If you want Claude Code / Cursor / Cline to burn fewer tokens on your repo, you're in the right place.
+
 ## Quick Start
 
 ```bash
