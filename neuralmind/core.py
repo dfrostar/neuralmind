@@ -79,11 +79,11 @@ class NeuralMind:
         # State tracking
         self._built = False
         self._build_stats: dict = {}
-        self.audit.log_event(
+        self._emit_audit(
             category="backend",
             action="initialize",
-            target=self.backend_name,
-            details={"project": self.project_path.name},
+            target=self.project_path.name,
+            details={"backend": self.backend_manager.backend_name},
         )
 
     def _emit_audit(
