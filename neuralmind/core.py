@@ -165,7 +165,6 @@ class NeuralMind:
             "db_path": final_stats.get("db_path", ""),
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
-            "backend": self.backend_name,
         }
 
         self._built = True
