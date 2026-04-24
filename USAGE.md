@@ -576,6 +576,9 @@ pip install "neuralmind[mcp]"
 | `neuralmind_wakeup` | Get project overview |
 | `neuralmind_query` | Query with natural language |
 | `neuralmind_search` | Direct semantic search |
+| `neuralmind_skeleton` | Graph-backed file view |
+| `neuralmind_recursive_query` | Decompose complex questions |
+| `neuralmind_query_docs` | Search reference documents |
 | `neuralmind_build` | Rebuild index |
 | `neuralmind_stats` | Show index statistics |
 | `neuralmind_benchmark` | Run token benchmark |
@@ -589,6 +592,64 @@ Once configured, Claude will automatically have access to your codebase context.
 - "Explain the database schema"
 
 Claude will use NeuralMind to get relevant context before answering.
+
+---
+
+## 📄 Document RAG (Reference Documents)
+
+NeuralMind can index reference documents (PDFs, DOCX, TXT, HTML) alongside your code. Documents are converted to markdown and stored in a separate ChromaDB collection.
+
+### Setup
+
+```bash
+# Install dependencies
+pip install pypdf mammoth
+
+# Convert documents to markdown
+# Place PDFs/DOCX in a folder, then:
+python -c "
+from pathlib import Path
+import subprocess
+for f in Path('~/docs/legal').expanduser().glob('*'):
+    if f.suffix in ['.pdf', '.docx', '.txt', '.html']:
+        subprocess.run(['python', 'convert_script.py', str(f)])
+"
+```
+
+### Indexing
+
+```bash
+# Build the document index
+python -m neuralmind.doc_indexer build /path/to/project
+
+# Stats
+python -m neuralmind.doc_indexer stats /path/to/project
+```
+
+### Searching
+
+Via MCP:
+```
+neuralmind_query_docs(project_path="/path/to/project", question="HIPAA requirements")
+```
+
+Via CLI:
+```bash
+python -m neuralmind.doc_indexer query /path/to/project "patient consent form"
+```
+
+### How It Works
+
+1. Documents are converted to markdown and stored in `docs/reference/`
+2. Markdown is chunked into ~1000-char segments with 200-char overlap
+3. Chunks are embedded and stored in a separate ChromaDB collection
+4. Queries search both code AND document indexes for comprehensive answers
+
+### Limitations
+
+- Document index is separate from code index (different ChromaDB collections)
+- Scanned PDFs need OCR first (`ocrmypdf` before converting)
+- Markdown files are not processed by graphify AST extraction
 
 ---
 
