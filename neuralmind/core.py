@@ -25,11 +25,7 @@ Usage:
 from datetime import datetime
 from pathlib import Path
 
-<<<<<<< HEAD
-from .audit import AuditTrail
-=======
 from .audit import get_audit_trail
->>>>>>> origin/main
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import log_query_event
@@ -45,24 +41,15 @@ class NeuralMind:
     Achieves 6-49x token reduction through progressive disclosure.
     """
 
-<<<<<<< HEAD
-=======
-    # Keep highlights compact to avoid inflating query context.
     MAX_HYBRID_HIGHLIGHT_RESULTS = 3
 
->>>>>>> origin/main
     def __init__(
         self,
         project_path: str,
         db_path: str = None,
         enable_reranking: bool = True,
-<<<<<<< HEAD
-        backend_name: str | None = None,
-        backend_config_path: str | None = None,
-=======
         backend_type: str | None = None,
         hybrid_context: bool | None = None,
->>>>>>> origin/main
     ):
         """
         Initialize NeuralMind for a project.
@@ -75,20 +62,6 @@ class NeuralMind:
         self.project_path = Path(project_path)
         self.db_path = db_path
         self.enable_reranking = enable_reranking
-<<<<<<< HEAD
-        self.backend_manager = BackendManager(str(self.project_path), db_path=db_path)
-        self.backend_config = self.backend_manager.load_config(backend_config_path)
-        self.backend_name = backend_name or self.backend_config.get("backend", {}).get(
-            "type", "graph"
-        )
-        self.hybrid_context = bool(self.backend_config.get("hybrid_context", False))
-        self.audit = AuditTrail(self.project_path)
-
-        # Initialize components
-        self.embedder = self.backend_manager.create_backend(
-            self.backend_name, options=self.backend_config.get("backend", {}).get("options", {})
-        )
-=======
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type
         )
@@ -101,7 +74,6 @@ class NeuralMind:
 
         # Initialize components
         self.embedder = self.backend_manager.backend
->>>>>>> origin/main
         self.selector: ContextSelector | None = None
 
         # State tracking
@@ -151,21 +123,12 @@ class NeuralMind:
 
         # Load graph
         if not self.embedder.load_graph():
-<<<<<<< HEAD
-            self.audit.log_event(
-                category="backend",
-                action="build",
-                status="failed",
-                target=self.backend_name,
-                details={"reason": "graph_load_failed"},
-=======
             self._emit_audit(
                 category="backend",
                 action="build",
                 status="failure",
                 target=self.project_path.name,
                 details={"backend": self.backend_manager.backend_name},
->>>>>>> origin/main
             )
             return {
                 "success": False,
@@ -202,13 +165,6 @@ class NeuralMind:
         }
 
         self._built = True
-<<<<<<< HEAD
-        self.audit.log_event(
-            category="backend",
-            action="build",
-            target=self.backend_name,
-            details={"nodes_total": self._build_stats["nodes_total"]},
-=======
         self._emit_audit(
             category="backend",
             action="build",
@@ -218,7 +174,6 @@ class NeuralMind:
                 "backend": self.backend_manager.backend_name,
                 "nodes_total": self._build_stats.get("nodes_total", 0),
             },
->>>>>>> origin/main
         )
         return self._build_stats
 
@@ -239,9 +194,6 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_wakeup_context()
-<<<<<<< HEAD
-        self.audit.log_event(category="audit", action="wakeup", target=self.backend_name)
-=======
         self._emit_audit(
             category="audit",
             action="wakeup",
@@ -249,7 +201,6 @@ class NeuralMind:
             target=self.project_path.name,
             details={"tokens": result.budget.total},
         )
->>>>>>> origin/main
         return result
 
     def query(self, question: str) -> ContextResult:
@@ -268,25 +219,6 @@ class NeuralMind:
         self._ensure_built()
         result = self.selector.get_query_context(question)
         if self.hybrid_context:
-<<<<<<< HEAD
-            highlights = self.embedder.search(question, n=DEFAULT_HYBRID_HIGHLIGHT_COUNT)
-            if highlights:
-                lines = ["", "## Hybrid Search Highlights"]
-                for item in highlights:
-                    meta = item.get("metadata", {})
-                    lines.append(
-                        f"- {meta.get('label', item.get('id', 'unknown'))} "
-                        f"({meta.get('source_file', 'unknown')})"
-                    )
-                result.context = result.context + "\n" + "\n".join(lines)
-                result.layers_used.append("Hybrid:Highlights")
-        log_query_event(self.project_path, question, result)
-        self.audit.log_event(
-            category="audit",
-            action="query",
-            target=self.backend_name,
-            details={"question": question},
-=======
             highlights = self._build_hybrid_highlights(question)
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
@@ -302,7 +234,6 @@ class NeuralMind:
                 "search_hits": result.search_hits,
                 "hybrid_context": self.hybrid_context,
             },
->>>>>>> origin/main
         )
         return result
 
@@ -492,32 +423,6 @@ class NeuralMind:
             List of matching nodes with scores
         """
         self._ensure_built()
-<<<<<<< HEAD
-        where = dict(filters) if filters else None
-        results = self.embedder.search(query, n=n, where=where)
-        self.audit.log_event(
-            category="audit",
-            action="search",
-            target=self.backend_name,
-            details={"query": query, "n": n, "filters": where or {}},
-        )
-        return results
-
-    def switch_backend(self, backend_name: str, auto_build: bool = False, **options) -> str:
-        """Switch embedding backend implementation at runtime."""
-        if hasattr(self.embedder, "close"):
-            self.embedder.close()
-        self.embedder = self.backend_manager.create_backend(backend_name, options=options)
-        self.backend_name = backend_name
-        self.selector = None
-        self._built = False
-        self.audit.log_event(
-            category="backend", action="switch", target=backend_name, details=options
-        )
-        if auto_build:
-            self.build()
-        return backend_name
-=======
         results = self.embedder.search(query, n=n, **filters)
         self._emit_audit(
             category="audit",
@@ -544,7 +449,6 @@ class NeuralMind:
         result["backend_switched_from"] = previous
         result["backend"] = self.backend_manager.backend_name
         return result
->>>>>>> origin/main
 
     def get_stats(self) -> dict:
         """
