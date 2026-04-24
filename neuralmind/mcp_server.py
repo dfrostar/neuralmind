@@ -41,7 +41,7 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import NeuralMind
-from neuralmind.mcp_security import MCPSecurityManager, get_security_manager
+from neuralmind.mcp_security import MCPSecurityManager
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
