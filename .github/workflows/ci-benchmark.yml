@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -74,7 +74,7 @@ jobs:
         run: python scripts/generate_chart.py
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-results
           path: |
@@ -106,7 +106,7 @@ jobs:
 
       - name: Post PR comment
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: neuralmind-self-benchmark
           message: ${{ steps.comment.outputs.body }}
