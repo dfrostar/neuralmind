@@ -9,8 +9,8 @@ pyyaml==6.0.1
 toml==0.10.2
 
 # Optional: MCP Server
-# Bumped from 0.1.0 to 1.23.0 to resolve GHSA-3 alerts on the MCP SDK
-# (FastMCP DoS, Streamable HTTP DoS, DNS-rebinding default).
+# Bumped from 0.1.0 to 1.23.0 to resolve three GHSA alerts on the MCP SDK:
+#   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
 mcp==1.23.0
 
 # Optional: Development & Testing
