@@ -9,12 +9,17 @@ pyyaml==6.0.1
 toml==0.10.2
 
 # Optional: MCP Server
-mcp==0.1.0
+# Bumped from 0.1.0 to 1.23.0 to resolve GHSA-3 alerts on the MCP SDK
+# (FastMCP DoS, Streamable HTTP DoS, DNS-rebinding default).
+mcp==1.23.0
 
 # Optional: Development & Testing
-pytest==7.4.3
+# pytest bumped from 7.4.3 to 9.0.3 to fix tmpdir handling vuln (CVE-2025-71176).
+# black bumped from 23.12.1 to 26.3.1 to fix ReDoS (CVE-2024-21503) and the
+# arbitrary-file-write cache vuln (GHSA-3936-cmfr-pm3m).
+pytest==9.0.3
 pytest-asyncio==0.21.1
-black==23.12.1
+black==26.3.1
 ruff==0.1.11
 mypy==1.8.0
 
