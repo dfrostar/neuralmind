@@ -80,13 +80,6 @@ class NeuralMind:
         self._built = False
         self._build_stats: dict = {}
 
-        self._emit_audit(
-            category="backend",
-            action="initialize",
-            target=self.project_path.name,
-            details={"backend": self.backend_manager.backend_name},
-        )
-
     @property
     def backend_name(self) -> str:
         return self.backend_manager.backend_name

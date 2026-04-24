@@ -41,11 +41,11 @@ except ImportError:
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import NeuralMind
-from neuralmind.mcp_security import _SECURITY_MANAGERS, get_security_manager
+from neuralmind.mcp_security import MCPSecurityManager
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
-_security_cache = _SECURITY_MANAGERS
+_security_cache: dict[str, MCPSecurityManager] = {}
 
 
 def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
@@ -56,6 +56,14 @@ def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
         if auto_build:
             _mind_cache[abs_path].build()
     return _mind_cache[abs_path]
+
+
+def get_security_manager(project_path: str) -> MCPSecurityManager:
+    """Get or create security manager for project."""
+    abs_path = str(Path(project_path).resolve())
+    if abs_path not in _security_cache:
+        _security_cache[abs_path] = MCPSecurityManager(abs_path)
+    return _security_cache[abs_path]
 
 
 def tool_wakeup(project_path: str) -> dict[str, Any]:
