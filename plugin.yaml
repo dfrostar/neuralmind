@@ -1,0 +1,6 @@
+name: "neuralmind-local"
+title: "NeuralMind (Local Development)"
+description: "A tool for AI-powered codebase analysis, installed from a local Git repository."
+version: "0.3.3"
+author: "dfrostar"
+tags: ["code", "analysis", "local"]
