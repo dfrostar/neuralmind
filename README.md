@@ -95,6 +95,12 @@ About to open a source file?
       → Only fall back to Read when you need the actual implementation body
       → Use NEURALMIND_BYPASS=1 when you truly need raw source
 
+Answering a complex, multi-part question?
+  └─► neuralmind recursive-query . "q"  (MCP: neuralmind_recursive_query)  decomposes + synthesizes
+
+Question about reference documents (PDFs, legal, clinical)?
+  └─► neuralmind query-docs . "q"       (MCP: neuralmind_query_docs)       searches doc index only
+
 Searching for a specific function/class/entity?
   └─► neuralmind search . "term"        (MCP: neuralmind_search)      ranked by semantic similarity
 
@@ -224,6 +230,8 @@ neuralmind build . --force  # full rebuild — re-embeds everything
 | `neuralmind_query` | Code question | `project_path`, `question` | L0–L3 context string, token count, reduction ratio |
 | `neuralmind_search` | Find entity | `project_path`, `query` | List of nodes with scores, file paths |
 | `neuralmind_skeleton` | Explore file | `project_path`, `file_path` | Functions + rationales + call graph + cross-file edges |
+| `neuralmind_recursive_query` | Complex question | `project_path`, `question` | Synthesized answer, sub-queries, gaps, sources |
+| `neuralmind_query_docs` | Reference docs | `project_path`, `question` | Relevant doc chunks with source files and relevance scores |
 | `neuralmind_stats` | Check status | `project_path` | Built status, node count, community count |
 | `neuralmind_build` | Rebuild index | `project_path` | Build stats dict |
 | `neuralmind_benchmark` | Measure savings | `project_path` | Per-query token counts and reduction ratios |
@@ -819,6 +827,84 @@ Returns array of:
 Returns:
 ```json
 { "file": "src/auth/handlers.py", "skeleton": "# src/auth/handlers.py ...", "chars": 620, "indexed": true }
+```
+
+#### `neuralmind_recursive_query`
+
+Recursively decompose and explore complex questions. Breaks multi-part questions into focused sub-queries, executes them, identifies gaps, and synthesizes results. Searches both code and document indexes.
+
+```json
+{
+  "project_path": "string (required)",
+  "question":     "string (required) — compound question to decompose",
+  "max_depth":    3,
+  "include_docs": true
+}
+```
+
+Returns:
+```json
+{
+  "question": "string",
+  "answer": "string — synthesized answer",
+  "sub_queries": [{"query": "string", "results": [...], "source": "string"}],
+  "depth_reached": 2,
+  "gaps_identified": ["string"],
+  "total_queries": 6,
+  "token_estimate": 4156,
+  "sources": ["file1.ts", "file2.ts", "doc.md"]
+}
+```
+
+**When to use:** Multi-faceted questions spanning multiple files or concepts, like "How does auth work and what security measures are in place?" or "What is the deployment architecture and how do Cloudflare and Render interact?"
+
+**Benchmark:** 6x more tokens than standard query, but decomposes compound questions and achieves full term coverage on 3/5 test questions. See `graphify-out/RECURSIVE_QUERY_BENCHMARK.md` after running `benchmark_report.py`.
+
+#### `neuralmind_query_docs`
+
+Search reference documents (legal, clinical, strategic PDFs/DOCX converted to markdown). NOT for code — use `neuralmind_query` for code questions.
+
+```json
+{
+  "project_path": "string (required)",
+  "question":     "string (required) — question about reference documents",
+  "n":            5
+}
+```
+
+Returns:
+```json
+{
+  "results": [
+    {
+      "content": "string — relevant text chunk",
+      "source_file": "docs/reference/filename.md",
+      "file_name": "filename.md",
+      "chunk": "3/12",
+      "relevance": 0.719
+    }
+  ],
+  "total_doc_chunks": 241,
+  "query": "string"
+}
+```
+
+**Setup:** Documents must be converted to markdown and indexed first:
+
+```bash
+# Convert documents (PDF, DOCX, TXT, HTML → .md)
+pip install pypdf mammoth
+python doc_indexer.py build /path/to/project
+
+# Or use the doc-ingest skill for batch conversion
+```
+
+**Auto-rebuild:** A git post-commit hook can rebuild the doc index when files in `docs/reference/` change.
+
+**Search reference docs via CLI:**
+```bash
+python doc_indexer.py query /path/to/project "HIPAA compliance"
+python doc_indexer.py stats /path/to/project
 ```
 
 #### `neuralmind_build`

@@ -123,6 +123,9 @@ The MCP server exposes NeuralMind's functionality as tools that AI assistants ca
 | `neuralmind_wakeup` | Get wake-up context for a project |
 | `neuralmind_query` | Query project with natural language |
 | `neuralmind_search` | Semantic search across codebase |
+| `neuralmind_skeleton` | Graph-backed file view |
+| `neuralmind_recursive_query` | Decompose and explore complex questions |
+| `neuralmind_query_docs` | Search reference documents (PDFs, DOCX) |
 | `neuralmind_build` | Build/rebuild neural index |
 | `neuralmind_stats` | Get project statistics |
 | `neuralmind_benchmark` | Run performance benchmark |
@@ -344,6 +347,24 @@ NeuralMind MCP tools follow these schemas:
   }
 }
 ```
+
+### Optional: NVIDIA NIM for LLM-Enhanced Queries
+
+NeuralMind can use NVIDIA NIM (free, 80+ models) for LLM-based question decomposition in recursive queries:
+
+```bash
+# Get free API key at https://build.nvidia.com
+export NVIDIA_API_KEY="nvapi-..."
+
+# Recursive queries will use NVIDIA for decomposition when available
+neuralmind_recursive_query(project_path=".", question="How does auth work?")
+```
+
+Base URL: `https://integrate.api.nvidia.com/v1` (OpenAI-compatible)
+Recommended models:
+- Decomposition: `google/gemma-3-4b-it` (fast)
+- Synthesis: `meta/llama-3.3-70b-instruct` (reliable)
+- Code: `qwen/qwen3-coder-480b-a35b-instruct` (specialist)
 
 ---
 
