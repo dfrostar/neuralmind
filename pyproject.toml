@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.3.4"
+version = "0.3.5"
 description = "Reduce Claude, GPT, and Gemini token costs on code questions by 40-70x. Semantic codebase indexing, MCP server, and PostToolUse compression hooks for Claude Code, Cursor, Cline, and Continue."
 readme = "README.md"
 license = "MIT"

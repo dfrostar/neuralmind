@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.3.5](https://github.com/dfrostar/neuralmind/compare/v0.3.4...v0.3.5) (2026-04-24)
+
+
+### Features
+
+* Add plugin.yaml for Agent Zero plugin compatibility ([96098ee](https://github.com/dfrostar/neuralmind/commit/96098eedeba7048af3659c3eec6d247e045126fd))
+
+
+### Bug Fixes
+
+* add backend_name property, fix exception types ([536518b](https://github.com/dfrostar/neuralmind/commit/536518bc469e15a7fcbd8e947fbe4a67d796d520))
+* add missing MCPSecurityManager import ([132ea19](https://github.com/dfrostar/neuralmind/commit/132ea19557ee0712e76af3df1958e361f7f541fd))
+* Correct auditability claims and enhance enterprise SEO ([164d41b](https://github.com/dfrostar/neuralmind/commit/164d41b99a26dde7201c0da82944f1f0722f9392))
+* remove duplicate backend key, fix import conflict ([9bed6ce](https://github.com/dfrostar/neuralmind/commit/9bed6ce6a70e0cba0891cef6371dd9f664ada935))
+* remove unreachable audit code from property ([34d6d79](https://github.com/dfrostar/neuralmind/commit/34d6d79b0f276a894b734456d8a934a0612a82ce))
+* replace audit.log_event with _emit_audit ([6e35e59](https://github.com/dfrostar/neuralmind/commit/6e35e5905a9ec3f52331c223d9d2d0666dd17445))
+* resolve merge conflict in core.py ([dbb4e82](https://github.com/dfrostar/neuralmind/commit/dbb4e8297df6072fa3f5a2063842fec39f458d8c))
+* resolve merge conflicts in mcp_server.py ([d2adc47](https://github.com/dfrostar/neuralmind/commit/d2adc47c78ec31d26e6412e3c66814950174a4c8))
+* **security:** bump mcp, black, pytest to clear 6 Dependabot alerts ([#68](https://github.com/dfrostar/neuralmind/issues/68)) ([4990a08](https://github.com/dfrostar/neuralmind/commit/4990a0803522f9e71dc74b2b69eaef5300b93a01))
+
+
+### Documentation
+
+* add benchmark proof section to Pages + wiki, commit initial chart ([f4940e6](https://github.com/dfrostar/neuralmind/commit/f4940e66cbcb68160313a9f3cd52180519ac7845))
+* Add corporate-readiness security & compliance messaging ([14444ce](https://github.com/dfrostar/neuralmind/commit/14444ceb90a0f6e4afe34cf6d23cf1fd091ce677))
+* add recursive query, document RAG, and NVIDIA NIM integration ([37f8e91](https://github.com/dfrostar/neuralmind/commit/37f8e91790c6a078bdbd4cd1e10276d6437515cf))
+* enhance security & compliance documentation for enterprises ([1430ad0](https://github.com/dfrostar/neuralmind/commit/1430ad0f0ba3bc05a3affb9b3d00679a69babbce))
+* full SEO pass — og:image, twitter cards, JSON-LD, sitemap, robots ([0f18c90](https://github.com/dfrostar/neuralmind/commit/0f18c90145a92b27d96592a55a48cbb9df03a580))
+
 ## [0.3.4] - 2026-04-20
 
 ### Documentation
