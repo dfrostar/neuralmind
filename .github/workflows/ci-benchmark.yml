@@ -31,6 +31,10 @@ jobs:
           python-version: "3.11"
           cache: pip
 
+      - name: Check for merge-conflict markers
+        run: |
+          ! git grep -nE '^(<{7}|={7}|>{7})' -- '*.py' '*.md' '*.yml' '*.yaml' '*.toml' '*.json'
+
       - name: Install package + benchmark deps
         run: |
           python -m pip install --upgrade pip
