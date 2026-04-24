@@ -83,12 +83,6 @@ class NeuralMind:
     @property
     def backend_name(self) -> str:
         return self.backend_manager.backend_name
-        self._emit_audit(
-            category="backend",
-            action="initialize",
-            target=self.project_path.name,
-            details={"backend": self.backend_manager.backend_name},
-        )
 
     def _emit_audit(
         self,
