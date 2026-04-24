@@ -80,7 +80,7 @@ from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
 
-__version__ = "0.3.4"
+__version__ = "0.3.6"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",

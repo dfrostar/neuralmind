@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.6] - 2026-04-24
+
+### Fixed
+- **Ruff lint errors that were breaking CI** — three errors introduced in the `backend_name` / `get_security_manager` merge-conflict resolution that shipped in 0.3.4:
+  - `core.py`: removed unreachable `_emit_audit` call after a `return` in the `backend_name` property (RET503)
+  - `core.py`: removed duplicate `"backend"` key in `_build_stats` dict (F601)
+  - `mcp_server.py`: removed duplicate `get_security_manager` import that shadowed the local definition (F811)
+
+### Notes
+- **Skips 0.3.5.** A `v0.3.5` git tag and GitHub Release were created on 2026-04-24 against `34d6d79` without bumping `pyproject.toml`, so the release-workflow `validate-version` gate prevented publishing to PyPI. PyPI therefore still advertises `0.3.4` despite the GitHub Release UI showing `v0.3.5`. Rather than force-push over the stale tag, this release forward-fixes the version metadata and ships `0.3.6`.
+
+---
+
 ## [0.3.4] - 2026-04-20
 
 ### Documentation
