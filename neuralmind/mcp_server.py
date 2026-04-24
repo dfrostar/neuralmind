@@ -306,7 +306,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         else:
             result = handlers[name](arguments)
         return json.dumps(result, indent=2, default=str)
-    except (AccessDeniedError, RateLimitExceededError) as e:
+    except (PermissionError, RuntimeError) as e:
         return json.dumps({"error": str(e), "code": "security_denied"})
     except Exception as e:
         return json.dumps({"error": str(e)})
