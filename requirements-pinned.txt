@@ -4,7 +4,7 @@
 # Install with: pip install -r requirements-pinned.txt
 
 # Core dependencies
-chromadb==0.4.24
+chromadb==1.5.8
 pyyaml==6.0.1
 toml==0.10.2
 
