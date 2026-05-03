@@ -191,6 +191,22 @@ def tool_synapse_decay(project_path: str) -> dict[str, Any]:
     return {"enabled": True, **store.decay()}
 
 
+def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
+    """Render the synapse store as markdown for Claude Code auto-memory.
+
+    Writes <project>/.neuralmind/SYNAPSE_MEMORY.md plus, when present,
+    ~/.claude/projects/<slug>/memory/synapse-activations.md so the
+    associations surface in agents that don't call the MCP tools.
+    """
+    from neuralmind.synapse_memory import export_synapse_memory
+
+    mind = get_mind(project_path, auto_build=False)
+    if mind.synapses is None:
+        return {"enabled": False, "written": []}
+    paths = export_synapse_memory(project_path, embedder=mind.embedder)
+    return {"enabled": True, "written": [str(p) for p in paths]}
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -353,6 +369,20 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_export_synapse_memory",
+        "description": (
+            "Render the learned synapse graph as markdown and write it to "
+            "<project>/.neuralmind/SYNAPSE_MEMORY.md and (when present) "
+            "Claude Code's auto-memory directory. Used to surface learned "
+            "associations to agents that don't call NeuralMind tools directly."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"project_path": {"type": "string"}},
+            "required": ["project_path"],
+        },
+    },
 ]
 
 
@@ -376,6 +406,9 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_synapse_stats": lambda args: tool_synapse_stats(args["project_path"]),
         "neuralmind_synapse_decay": lambda args: tool_synapse_decay(args["project_path"]),
+        "neuralmind_export_synapse_memory": lambda args: tool_export_synapse_memory(
+            args["project_path"]
+        ),
     }
 
     if name not in handlers:

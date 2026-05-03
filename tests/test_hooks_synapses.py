@@ -74,6 +74,37 @@ def test_session_start_runs_decay_tick(tmp_path):
     assert after < before
 
 
+def test_session_start_exports_synapse_memory(tmp_path, monkeypatch):
+    # Isolate HOME so we don't touch a real Claude auto-memory dir.
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+
+    store = SynapseStore(default_db_path(tmp_path))
+    store.reinforce(["a", "b"])
+
+    rc, _ = _run("session-start", {"cwd": str(tmp_path)})
+    assert rc == 0
+
+    out = tmp_path / ".neuralmind" / "SYNAPSE_MEMORY.md"
+    assert out.exists()
+    assert "Synapse Memory" in out.read_text()
+
+
+def test_session_start_export_disabled_via_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    monkeypatch.setenv("NEURALMIND_SYNAPSE_EXPORT", "0")
+
+    store = SynapseStore(default_db_path(tmp_path))
+    store.reinforce(["a", "b"])
+
+    rc, _ = _run("session-start", {"cwd": str(tmp_path)})
+    assert rc == 0
+
+    out = tmp_path / ".neuralmind" / "SYNAPSE_MEMORY.md"
+    assert not out.exists()
+
+
 def test_pre_compact_normalizes_hubs(tmp_path):
     db = default_db_path(tmp_path)
     store = SynapseStore(db)

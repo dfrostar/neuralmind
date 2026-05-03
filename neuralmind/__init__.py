@@ -79,6 +79,11 @@ from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
+from .synapse_memory import (
+    export_synapse_memory,
+    project_memory_file,
+    render_synapse_memory,
+)
 from .synapses import SynapseStore, default_db_path
 from .watcher import FileActivityWatcher
 
@@ -103,4 +108,7 @@ __all__ = [
     "SynapseStore",
     "FileActivityWatcher",
     "default_db_path",
+    "render_synapse_memory",
+    "export_synapse_memory",
+    "project_memory_file",
 ]
