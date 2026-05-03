@@ -785,6 +785,39 @@ are supported — see the upstream
 for the full schema (`command`, `args`, `env`, `url`, `headers`, `enabled`,
 per-server `tools` filtering).
 
+### OpenClaw
+
+[OpenClaw](https://github.com/openclaw/openclaw) is a personal AI assistant
+that registers MCP servers via the `openclaw mcp set` CLI command. Add
+NeuralMind:
+
+```bash
+openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path/to/project"]}'
+```
+
+Then verify and inspect:
+
+```bash
+openclaw mcp list
+openclaw mcp show neuralmind
+```
+
+Remove with `openclaw mcp unset neuralmind`. Definitions are stored under
+the `mcp.servers` key in OpenClaw's config (`~/.openclaw/openclaw.json`).
+
+If you haven't installed OpenClaw yet:
+
+```bash
+npm install -g openclaw@latest   # or: pnpm add -g openclaw@latest
+openclaw onboard --install-daemon
+```
+
+OpenClaw's MCP support covers stdio (shown above), SSE, HTTP, and
+`streamable-http` transports — see the upstream
+[MCP CLI reference](https://docs.openclaw.ai/cli/mcp) for details on
+`url`/`transport` config and the inverse direction (`openclaw mcp serve`,
+which exposes OpenClaw's own channels as an MCP server to other clients).
+
 ### MCP tool schemas
 
 #### `neuralmind_wakeup`
