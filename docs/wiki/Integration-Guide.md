@@ -129,6 +129,10 @@ The MCP server exposes NeuralMind's functionality as tools that AI assistants ca
 | `neuralmind_build` | Build/rebuild neural index |
 | `neuralmind_stats` | Get project statistics |
 | `neuralmind_benchmark` | Run performance benchmark |
+| `neuralmind_synaptic_neighbors` *(v0.4.0)* | Spreading-activation recall over the learned synapse graph; complements vector search with usage-based recall |
+| `neuralmind_synapse_stats` *(v0.4.0)* | Inspect the synapse graph: edges, LTP edges, top hubs, total weight |
+| `neuralmind_synapse_decay` *(v0.4.0)* | Manually run a decay tick (normally fired automatically by the SessionStart hook) |
+| `neuralmind_export_synapse_memory` *(v0.4.0)* | Render the synapse graph as markdown and write it to project-local memory + Claude Code's auto-memory directory when present |
 
 ### Starting the MCP Server
 

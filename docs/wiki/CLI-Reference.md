@@ -505,7 +505,16 @@ neuralmind skeleton src/auth/handlers.py --json
 
 ### install-hooks
 
-Install or uninstall Claude Code PostToolUse compression hooks that automatically compress Read/Bash/Grep output.
+Install or uninstall Claude Code lifecycle hooks. As of v0.4.0 this
+registers four event blocks (idempotent — re-running only updates the
+NeuralMind block, leaving any user hooks untouched):
+
+| Event | What runs | Purpose |
+|-------|-----------|---------|
+| `PostToolUse` | Read/Bash/Grep compressors | Token reduction on tool output |
+| `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
+| `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
+| `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
 
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
@@ -574,6 +583,55 @@ neuralmind init-hook /path/to/project
 
 ---
 
+### watch *(v0.4.0+)*
+
+Run the file activity → synapse co-activation daemon in the foreground.
+Edits to project files are debounced into batches and fed into the
+synapse store, so the v0.4.0 brain-like layer keeps learning even when
+no query runs. Periodic decay ticks age unused weights without manual
+intervention. Stops cleanly on Ctrl-C.
+
+```bash
+neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] [--quiet]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+
+#### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--debounce` | `0.75` | Seconds to coalesce rapid edits into one co-activation batch |
+| `--decay-interval` | `600` | Seconds between decay ticks; `0` disables periodic decay |
+| `--quiet` | off | Suppress per-batch logging (still prints final summary on stop) |
+
+#### Examples
+
+```bash
+# Always-on learning for the current project
+neuralmind watch &
+
+# Background it and only log the final summary
+neuralmind watch /path/to/repo --quiet &
+
+# Disable periodic decay (decay only runs from SessionStart hook)
+neuralmind watch . --decay-interval 0
+```
+
+#### Notes
+
+- Backed by `watchdog` when present, with a polling fallback when not. No mandatory new dependency.
+- Pairs with `neuralmind install-hooks` — the watcher learns from
+  edits, the lifecycle hooks learn from queries and tool calls, and the
+  same `<project>/.neuralmind/synapses.db` store is the single source of truth.
+- For "always on" across reboots, wrap in systemd, launchd, or tmux. NeuralMind deliberately doesn't self-daemonize.
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -594,6 +652,8 @@ neuralmind init-hook /path/to/project
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | Set to `0` to disable continual learning |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
+| `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
+| `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 
 ---
 
