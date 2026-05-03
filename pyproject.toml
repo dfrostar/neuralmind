@@ -83,13 +83,15 @@ requires-python = ">=3.10"
 dependencies = [
     "chromadb>=0.4.0",
     "pyyaml>=6.0",
-    "toml>=0.10"
+    "toml>=0.10",
+    "mcp>=1.23.0"
 ]
 
 [project.optional-dependencies]
-mcp = [
-    "mcp>=1.23.0"
-]
+# Kept as an empty extra so existing `pip install "neuralmind[mcp]"` commands
+# in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
+# package is now a base dependency.
+mcp = []
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
