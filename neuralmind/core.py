@@ -277,7 +277,7 @@ class NeuralMind:
         self._ensure_built()
         result = self.selector.get_query_context(question)
         if self.hybrid_context:
-            highlights = self._build_hybrid_highlights(question)
+            highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
         log_query_event(self.project_path, question, result)
@@ -299,19 +299,22 @@ class NeuralMind:
     def _reinforce_from_query(self, question: str, result: ContextResult) -> None:
         """Hebbian update: nodes co-activated by a query wire together.
 
-        Pulls top search hits for the question (cheap — already cached upstream
-        for hybrid context, otherwise a single embedder.search call) and
-        feeds their ids plus loaded community markers into the synapse store.
+        Reuses the search hits the selector already fetched for L2/L3 so
+        we don't pay for a third round trip to the embedder. Falls back
+        to a fresh search only if the result didn't surface any hits
+        (e.g. an L0/L1-only call).
         """
         store = self.synapses
         if store is None:
             return
-        try:
-            hits = self.embedder.search(question, n=6)
-        except Exception:
-            return
+        hits = result.top_search_hits
+        if not hits:
+            try:
+                hits = self.embedder.search(question, n=6)
+            except Exception:
+                return
         node_ids: list[str] = []
-        for hit in hits:
+        for hit in hits[:6]:
             nid = hit.get("id")
             if nid:
                 node_ids.append(str(nid))
@@ -323,8 +326,13 @@ class NeuralMind:
             except Exception:
                 pass
 
-    def _build_hybrid_highlights(self, question: str) -> str:
-        results = self.embedder.search(question, n=self.MAX_HYBRID_HIGHLIGHT_RESULTS)
+    def _build_hybrid_highlights(
+        self, question: str, cached_hits: list[dict] | None = None
+    ) -> str:
+        if cached_hits:
+            results = cached_hits[: self.MAX_HYBRID_HIGHLIGHT_RESULTS]
+        else:
+            results = self.embedder.search(question, n=self.MAX_HYBRID_HIGHLIGHT_RESULTS)
         if not results:
             return ""
         lines = ["## Hybrid Highlights"]

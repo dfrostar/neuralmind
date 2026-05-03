@@ -62,6 +62,7 @@ class ContextResult:
     communities_loaded: list[int] = field(default_factory=list)
     search_hits: int = 0
     reduction_ratio: float = 0.0
+    top_search_hits: list[dict] = field(default_factory=list)
 
     @property
     def tokens(self) -> int:
@@ -123,6 +124,12 @@ class ContextSelector:
         self._l1_cache: str | None = None
         self._graph_stats: dict | None = None
 
+        # Per-query search cache. Cleared at the start of each
+        # get_query_context call so layers can share one round trip
+        # to the embedder instead of three.
+        self._query_search_cache: dict[str, list[dict]] = {}
+        self._query_search_max_n = 10
+
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text."""
         return len(text) // self.CHARS_PER_TOKEN
@@ -139,6 +146,22 @@ class ContextSelector:
         if self._graph_stats is None:
             self._graph_stats = self.embedder.get_stats()
         return self._graph_stats
+
+    def _fetch_search(self, query: str, n: int) -> list[dict]:
+        """Fetch embedder search results, sharing one round trip per query.
+
+        Vector search returns a ranked list and ``n`` only truncates it,
+        so we issue one large query and slice for smaller asks. The cache
+        is cleared at the start of each get_query_context call to avoid
+        cross-query bleed.
+        """
+        cached = self._query_search_cache.get(query)
+        if cached is not None and len(cached) >= n:
+            return cached[:n]
+        fetch_n = max(n, self._query_search_max_n)
+        results = self.embedder.search(query, n=fetch_n)
+        self._query_search_cache[query] = results
+        return results[:n]
 
     def _get_reranker(self) -> SemanticReranker:
         """Lazy-load reranker with learned patterns."""
@@ -293,7 +316,7 @@ class ContextSelector:
             Tuple of (context_text, list of community IDs loaded)
         """
         # First, search to find which communities are relevant
-        search_results = self.embedder.search(query, n=5)
+        search_results = self._fetch_search(query, n=5)
 
         if not search_results:
             return "", []
@@ -360,7 +383,7 @@ class ContextSelector:
         Returns:
             Tuple of (search_results_text, number of hits)
         """
-        results = self.embedder.search(query, n=n)
+        results = self._fetch_search(query, n=n)
 
         if not results:
             return "", 0
@@ -420,6 +443,11 @@ class ContextSelector:
         communities_loaded = []
         search_hits = 0
 
+        # Drop search results from any previous call so the cache only
+        # ever holds hits relevant to this specific query.
+        if query:
+            self._query_search_cache.clear()
+
         # L0: Identity (always fast)
         if include_l0:
             l0 = self.get_l0_identity()
@@ -455,6 +483,12 @@ class ContextSelector:
         # Calculate reduction ratio
         reduction_ratio = full_codebase_tokens / budget.total if budget.total > 0 else 0
 
+        # Surface the cached search hits so downstream layers (synapses,
+        # MCP responses) can reuse them instead of re-querying the embedder.
+        top_hits: list[dict] = []
+        if query:
+            top_hits = list(self._query_search_cache.get(query, []))
+
         return ContextResult(
             context="\n".join(context_parts),
             budget=budget,
@@ -462,6 +496,7 @@ class ContextSelector:
             communities_loaded=communities_loaded,
             search_hits=search_hits,
             reduction_ratio=reduction_ratio,
+            top_search_hits=top_hits,
         )
 
     def get_wakeup_context(self) -> ContextResult:
