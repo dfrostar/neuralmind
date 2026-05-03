@@ -348,6 +348,90 @@ def cmd_skeleton(args):
         print(skeleton)
 
 
+def cmd_watch(args):
+    """Run the file watcher → synapse co-activation daemon in the foreground.
+
+    Edits to project files are debounced into batches and fed to the
+    synapse store, so the brain keeps learning even when no query runs.
+    Periodic decay ticks age unused weights without manual intervention.
+    Stops cleanly on Ctrl-C.
+    """
+    import signal
+    import time
+
+    from neuralmind.watcher import FileActivityWatcher
+
+    project_path = args.project_path or "."
+    path = Path(project_path).resolve()
+    if not path.is_dir():
+        print(f"watch failed: not a directory: {project_path}")
+        sys.exit(1)
+
+    quiet = bool(getattr(args, "quiet", False))
+    decay_interval = float(getattr(args, "decay_interval", 600))
+    debounce = float(getattr(args, "debounce", 0.75))
+
+    if not quiet:
+        print(f"NeuralMind watcher starting for: {path}")
+        print(f"  debounce: {debounce}s   decay every: {decay_interval}s")
+        print("  Ctrl-C to stop.\n")
+
+    mind = NeuralMind(str(path))
+    if mind.synapses is None:
+        print("watch failed: synapses are disabled for this NeuralMind instance.")
+        sys.exit(1)
+
+    try:
+        mind.build()
+    except Exception as exc:
+        if not quiet:
+            print(f"  warning: build skipped ({exc}); watcher will still record edits.")
+
+    activations_total = 0
+
+    def on_batch(paths: list[str]) -> None:
+        nonlocal activations_total
+        try:
+            pairs = mind.activate_files(paths)
+        except Exception:
+            pairs = 0
+        activations_total += pairs
+        if not quiet and pairs:
+            print(f"  + {len(paths)} file(s) → {pairs} synapse pair(s) reinforced")
+
+    watcher = FileActivityWatcher(path, on_batch, debounce=debounce)
+    watcher.start()
+
+    stop = {"flag": False}
+
+    def _shutdown(signum, _frame):
+        stop["flag"] = True
+
+    signal.signal(signal.SIGINT, _shutdown)
+    signal.signal(signal.SIGTERM, _shutdown)
+
+    last_decay = time.time()
+    try:
+        while not stop["flag"]:
+            time.sleep(0.5)
+            if decay_interval > 0 and time.time() - last_decay >= decay_interval:
+                try:
+                    mind.synapses.decay()
+                except Exception:
+                    pass
+                last_decay = time.time()
+                if not quiet:
+                    stats = mind.synapses.stats()
+                    print(
+                        f"  ~ decay tick — edges={stats['edges']}, "
+                        f"ltp={stats['ltp_edges']}, total_weight={stats['total_weight']:.2f}"
+                    )
+    finally:
+        watcher.stop()
+        if not quiet:
+            print(f"\nWatcher stopped. Reinforced {activations_total} synapse pair(s) total.")
+
+
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
@@ -552,6 +636,36 @@ def main():
     )
     skel_p.add_argument("--json", "-j", action="store_true")
     skel_p.set_defaults(func=cmd_skeleton)
+
+    # watch command — run the file activity → synapse co-activation daemon
+    watch_p = subparsers.add_parser(
+        "watch",
+        help="Watch the project for edits and feed co-activations into the synapse store",
+    )
+    watch_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    watch_p.add_argument(
+        "--debounce",
+        type=float,
+        default=0.75,
+        help="Seconds to wait before grouping edits into one batch (default: 0.75)",
+    )
+    watch_p.add_argument(
+        "--decay-interval",
+        type=float,
+        default=600.0,
+        help="Seconds between decay ticks; 0 disables periodic decay (default: 600)",
+    )
+    watch_p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress per-batch logging",
+    )
+    watch_p.set_defaults(func=cmd_watch)
 
     # install-hooks command — Claude Code PostToolUse integration
     hooks_p = subparsers.add_parser(
