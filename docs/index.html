@@ -60,6 +60,9 @@
         <div class="container">
             <h1>🧠 NeuralMind</h1>
             <p>Semantic code intelligence for AI agents.<br/>5–10× token reduction. Zero data exfiltration. Enterprise-ready.</p>
+            <p style="font-size: 1rem; opacity: 0.85; margin-top: 0.5rem;">
+                <strong>v0.4.0 — Brain-like synapse layer.</strong> A second brain alongside the LLM that learns associations between code from how you actually use it. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md" style="color: white; text-decoration: underline;">Release notes →</a>
+            </p>
             <div>
                 <a href="wiki/Setup-Guide" class="btn btn-primary">Get Started in 5 Minutes</a>
                 <a href="https://github.com/dfrostar/neuralmind" class="btn btn-secondary">View on GitHub</a>
@@ -124,8 +127,12 @@
                     <p>PostToolUse hooks compress Read/Bash/Grep output 88–91% smaller before agents see it.</p>
                 </div>
                 <div class="feature-card">
+                    <h3>Phase 3: Brain-like Memory <em>(v0.4.0)</em></h3>
+                    <p>A persistent weighted graph runs alongside the LLM, learning Hebbian associations between co-active code nodes. Decay prunes stale links; long-term potentiation protects frequently-used ones; spreading activation surfaces related code on every prompt — no MCP call required.</p>
+                </div>
+                <div class="feature-card">
                     <h3>Result: 5–10× Reduction</h3>
-                    <p>Smart context + compressed outputs = massive token and cost savings.</p>
+                    <p>Smart context + compressed outputs = massive token and cost savings. The brain-like layer makes retrieval get sharper the longer NeuralMind runs on a codebase.</p>
                 </div>
             </div>
         </div>
