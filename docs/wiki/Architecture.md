@@ -627,8 +627,102 @@ def expand_context(matched_nodes: List[Node], budget: int) -> List[Node]:
 
 ---
 
+## Synapse Layer (v0.4)
+
+In v0.4.0 NeuralMind grew a **second brain that runs alongside the LLM**.
+The 4-layer progressive disclosure system above is unchanged — that's the
+retrieval brain. The synapse layer adds an *associative* brain that learns
+from how the agent and the codebase actually interact, so retrieval gets
+sharper the longer the system runs.
+
+### Two-brain split
+
+| Role | Substrate | State | What it's good at |
+|------|-----------|-------|-------------------|
+| Claude / agent (cortex) | Transformer | Stateless context window | Reasoning, generation |
+| NeuralMind retrieval (4 layers) | Vector DB + graph | Static, rebuilt on `build` | Query-aware compression |
+| **NeuralMind synapses (v0.4)** | **SQLite weighted graph** | **Persistent, continuously learning** | **Usage-based associative recall** |
+
+The agent never sees the synapse weights directly. It just gets better
+context: spreading-activation neighbors injected via the
+`UserPromptSubmit` hook, plus a markdown export that lands in Claude
+Code's auto-memory directory each session.
+
+### Synapse store
+
+`neuralmind/synapses.py` — SQLite at `<project>/.neuralmind/synapses.db`.
+Stdlib only.
+
+- **Edges** are undirected, keyed by canonical `(node_a, node_b)` ordering.
+- **Reinforce** is Hebbian: every pairwise edge among co-activated nodes
+  gets a learning-rate bump, capped at 1.0.
+- **Decay** is multiplicative; weights below the prune threshold are deleted.
+- **Long-term potentiation (LTP):** edges crossing an activation count
+  threshold get a weight floor and slower decay, so frequently-used
+  associations don't get forgotten.
+- **Spreading activation** propagates a query's seed energy outward
+  through weighted edges. Hub-degree normalization scales contributions
+  from over-connected nodes so a single utility file can't dominate.
+
+### Activation channels
+
+Five paths feed the synapse store, all funnelling through `activate()`:
+
+```
+                      ┌────────────────────────┐
+                      │  SynapseStore (SQLite) │
+                      │  • reinforce()         │
+                      │  • decay()             │
+                      │  • spread()            │
+                      └──────────▲─────────────┘
+                                 │ activate()
+       ┌─────────────────────────┼─────────────────────────┐
+       │                         │                         │
+┌──────┴──────┐         ┌────────┴────────┐       ┌────────┴────────┐
+│ query()     │         │ FileActivity    │       │ Claude Code     │
+│ — Hebbian   │         │   Watcher       │       │   hooks         │
+│ on top      │         │ — co-edited     │       │ — SessionStart, │
+│ search hits │         │   files wire    │       │   UserPromptSub.│
+│             │         │   together      │       │   PreCompact    │
+└─────────────┘         └─────────────────┘       └─────────────────┘
+```
+
+### File watcher
+
+`FileActivityWatcher` (debounced, watchdog or polling) groups edits
+within a window into a single co-activation batch. `core.activate_files()`
+resolves each path to its graph node ids via the embedder and feeds the
+batch to `reinforce()`. Started by the `neuralmind watch` CLI.
+
+### Memory export
+
+`neuralmind/synapse_memory.py` renders the learned graph as markdown:
+strongest pairs (LTP-tagged), top hubs, summary stats. Writes to two
+locations:
+
+- `<project>/.neuralmind/SYNAPSE_MEMORY.md` (always)
+- `~/.claude/projects/<slug>/memory/synapse-activations.md` (when Claude Code's auto-memory directory exists)
+
+Add `@.neuralmind/SYNAPSE_MEMORY.md` to `CLAUDE.md` so the file gets
+imported into every session even when the auto-memory path doesn't apply.
+
+### Why this isn't the same as the v0.3.2 reranker
+
+- The **reranker** boosts vector-search results based on patterns found
+  in past queries. Static index, batch analysis, post-hoc re-ranking.
+- The **synapse layer** is a continuously updated weighted graph that
+  contributes its own retrieval path (spreading activation), independent
+  of vector search. Updates happen on every query, every tool call,
+  every file edit.
+
+The two are complementary: reranker re-orders the L3 hits the synapse
+layer also sees as activation seeds.
+
+---
+
 ## See Also
 
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
+- [Release Notes v0.4.0](../blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes

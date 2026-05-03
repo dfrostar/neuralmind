@@ -304,15 +304,90 @@ Learning has **zero overhead**:
 
 **Total cost:** Negligible compared to network latency of semantic search.
 
-## What's Coming (v0.4+)
+## v0.4 Synapse Layer
 
-🔜 **Feedback Signals** — Explicit ratings improve pattern accuracy
-🔜 **Conversation Memory** — Context awareness across multiple queries
-🔜 **Predictive Loading** — Anticipate needs based on current file
-🔜 **Team Learning** — Share patterns across team members
+v0.4.0 adds a second learning system that runs **in parallel with** the
+v0.3.2 cooccurrence reranker described above. They are complementary —
+read this section as "what v0.4 adds on top".
+
+### How v0.3.2 reranking and v0.4 synapses differ
+
+| Aspect | v0.3.2 reranker | v0.4 synapse layer |
+|--------|-----------------|---------------------|
+| Data structure | Cooccurrence counts in JSON (`.neuralmind/learned_patterns.json`) | Weighted graph in SQLite (`.neuralmind/synapses.db`) |
+| Update timing | Batch — runs `neuralmind learn .` after collecting events | Continuous — updates on every query, tool call, file edit |
+| What it influences | Re-orders L3 search hits | Adds a new retrieval path (spreading activation) and surfaces associations to Claude Code's auto-memory |
+| Memory model | Logged event history | Hebbian + decay + LTP (long-term potentiation) |
+| Forgets stale patterns? | No (only what you analyze) | Yes (multiplicative decay; LTP floor protects frequent associations) |
+
+In short: the **reranker** improves the ordering of vector-search hits
+based on cooccurrence patterns from the past. The **synapse layer** is
+an independent associative memory that can recall related code even when
+vector search wouldn't have found it — because the relationship isn't
+textual or graph-structural, it's *behavioral*, learned from
+co-activation.
+
+### How synapse learning happens
+
+Five activation paths, all of which strengthen pairwise edges between
+co-active nodes (Hebbian: "nodes that fire together wire together"):
+
+1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
+2. **`PostToolUse` hook** — when the agent reads/runs/searches code together.
+3. **`UserPromptSubmit` hook** — current prompt's neighbors get an activation pulse.
+4. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
+5. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
+
+### Quick start
+
+```bash
+# One-time: install the lifecycle hooks (idempotent — safe to re-run)
+neuralmind install-hooks .
+
+# Optional: always-on learning from file edits
+neuralmind watch &
+
+# That's it — the synapse store grows continuously.
+
+# Inspect what was learned
+cat .neuralmind/SYNAPSE_MEMORY.md
+```
+
+### Surface in Claude Code
+
+Each `SessionStart` re-exports the synapse memory as markdown to:
+
+- `<project>/.neuralmind/SYNAPSE_MEMORY.md` — import in `CLAUDE.md`
+  via `@.neuralmind/SYNAPSE_MEMORY.md` so it's part of every session.
+- `~/.claude/projects/<slug>/memory/synapse-activations.md` — Claude
+  Code's auto-memory directory (when present); the model picks it up
+  natively without anyone calling an MCP tool.
+
+### Privacy
+
+Local-only, project-scoped, same as the v0.3.x memory layer. No
+external services. Disable with:
+
+- `NEURALMIND_SYNAPSE_INJECT=0` — skip prompt-time recall injection
+- `NEURALMIND_SYNAPSE_EXPORT=0` — skip the auto-memory export
+- `NeuralMind(..., enable_synapses=False)` — disable the layer entirely
+- `mind.synapses.reset()` — wipe the learned graph any time
+
+### Read more
+
+- [v0.4.0 Release Notes](../blob/main/RELEASE_NOTES_v0.4.0.md) — full feature walkthrough
+- [Architecture: Synapse Layer (v0.4)](Architecture#synapse-layer-v04) — design and activation channels
+
+## What's Coming (after v0.4.0)
+
+- **Synapse import/export** — let teams share a learned brain.
+- **Quality benchmark** — measure retrieval gain with vs without synapses.
+- **Auto-watcher launch from `SessionStart`** — no manual `watch` invocation needed.
+- **Feedback signals** — explicit ratings improve pattern accuracy.
 
 ## See Also
 
 - [CLI Reference](CLI-Reference) — All commands
-- [Brain-Like Learning](../brain_like_learning.md) — Design rationale
+- [Brain-Like Learning](../brain_like_learning.md) — v0.3.x design rationale
+- [Architecture](Architecture#synapse-layer-v04) — v0.4 synapse layer architecture
 - [Troubleshooting](Troubleshooting) — Common issues

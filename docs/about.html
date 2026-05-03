@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence platform for AI agents. Reduce token costs 5–10×, 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF">
-    <title>About NeuralMind - Semantic Code Intelligence</title>
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, claude code memory">
+    <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
@@ -80,10 +80,11 @@
     <section>
         <div class="container">
             <h2>How We Solve It</h2>
-            <h3>Two-Phase Token Optimization</h3>
+            <h3>Three-Phase Architecture</h3>
             <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
             <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
-            <p><strong>Result:</strong> 5–10× total token reduction vs baseline usage. 40–70% cost savings.</p>
+            <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
+            <p><strong>Result:</strong> 5–10× total token reduction vs baseline usage. 40–70% cost savings. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
             <ul>
@@ -112,6 +113,15 @@
             <h3>Learnable Patterns</h3>
             <p>NeuralMind learns from your actual queries. Over time, cooccurrence-based reranking improves retrieval quality based on how you ask questions. Better answers, without external training.</p>
 
+            <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
+            <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>
+            <ul>
+                <li><strong>Hebbian learning</strong> — nodes that fire together wire together. Every query, tool call, and file edit reinforces the edges between co-active nodes.</li>
+                <li><strong>Synaptic decay and pruning</strong> — unused weights age out automatically. Long-term potentiation protects frequently-used connections from being forgotten.</li>
+                <li><strong>Spreading activation</strong> — when a new question arrives, NeuralMind "lights up" the relevant nodes and lets the activation propagate through the learned graph, surfacing related code that pure vector search would miss.</li>
+            </ul>
+            <p>The synapse store is local SQLite, project-scoped, and inspectable. It exports a markdown summary that Claude Code's auto-memory system loads natively, so the learned associations show up in every session — no MCP tool call required.</p>
+
             <h3>Compliance-First Design</h3>
             <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
         </div>
@@ -136,11 +146,12 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.4.2</h3>
-            <p>Production-ready with NIST AI RMF audit trail, MCP security hardening, and pluggable embedding backends. Actively maintained and tested.</p>
+            <h3>Current Release: v0.4.0 — Brain-like Synapse Layer</h3>
+            <p>Production-ready with NIST AI RMF audit trail, MCP security hardening, pluggable embedding backends, and the new brain-like synapse layer with always-on file watcher and Claude Code lifecycle hooks. Actively maintained and tested.</p>
 
             <h3>Future Releases</h3>
             <ul>
+                <li><strong>Next minor</strong> — Synapse import/export so teams can share a learned brain; benchmarks measuring retrieval quality with vs without synapses; auto-watcher launch from <code>SessionStart</code></li>
                 <li><strong>v0.5.0 (Q3 2026)</strong> — PostgreSQL pgvector scale testing, advanced monitoring dashboard, enhanced MCP server</li>
                 <li><strong>v1.0.0 (Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options</li>
             </ul>
