@@ -122,6 +122,29 @@ class NeuralMind:
         except Exception:
             return 0
 
+    def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
+        """Resolve file paths to graph node ids and feed them as one batch.
+
+        Used by the file watcher: when a cluster of files is edited together,
+        we treat them as having co-fired and let the synapse store strengthen
+        the edges between every node living in those files.
+        """
+        if not file_paths:
+            return 0
+        self._ensure_built()
+        node_ids: list[str] = []
+        for path in file_paths:
+            try:
+                for node in self.embedder.get_file_nodes(path):
+                    nid = node.get("id")
+                    if nid:
+                        node_ids.append(str(nid))
+            except Exception:
+                continue
+        if len(node_ids) < 2:
+            return 0
+        return self.activate(node_ids, strength=strength)
+
     def _emit_audit(
         self,
         category: str,

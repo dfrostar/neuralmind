@@ -151,6 +151,46 @@ def tool_skeleton(project_path: str, file_path: str) -> dict[str, Any]:
     }
 
 
+def tool_synaptic_neighbors(
+    project_path: str, query: str, depth: int = 2, top_k: int = 10
+) -> dict[str, Any]:
+    """Spreading-activation recall over the learned synapse graph.
+
+    Seeds the activation pulse at the top semantic matches for ``query``
+    and propagates through weighted edges that NeuralMind has learned
+    from co-activation. Empty list when the graph hasn't accumulated
+    edges yet — typical for the first few sessions on a project.
+    """
+    mind = get_mind(project_path)
+    ranked = mind.synaptic_neighbors(query, depth=depth, top_k=top_k)
+    return {
+        "query": query,
+        "depth": depth,
+        "neighbors": [
+            {"node_id": node_id, "activation": round(energy, 4)}
+            for node_id, energy in ranked
+        ],
+    }
+
+
+def tool_synapse_stats(project_path: str) -> dict[str, Any]:
+    """Inspect the synapse graph: edge count, LTP edges, top hubs."""
+    mind = get_mind(project_path, auto_build=False)
+    store = mind.synapses
+    if store is None:
+        return {"enabled": False}
+    return {"enabled": True, **store.stats()}
+
+
+def tool_synapse_decay(project_path: str) -> dict[str, Any]:
+    """Manually run a decay tick. Normally fired by the SessionStart hook."""
+    mind = get_mind(project_path, auto_build=False)
+    store = mind.synapses
+    if store is None:
+        return {"enabled": False}
+    return {"enabled": True, **store.decay()}
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -274,6 +314,45 @@ TOOLS = [
             "required": ["project_path", "file_path"],
         },
     },
+    {
+        "name": "neuralmind_synaptic_neighbors",
+        "description": (
+            "Spreading-activation recall over the learned synapse graph. Returns "
+            "nodes that NeuralMind has learned to associate with the query through "
+            "co-activation — complements vector search with usage-based recall."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string"},
+                "query": {"type": "string", "description": "Seed query for spreading activation"},
+                "depth": {"type": "integer", "default": 2},
+                "top_k": {"type": "integer", "default": 10},
+            },
+            "required": ["project_path", "query"],
+        },
+    },
+    {
+        "name": "neuralmind_synapse_stats",
+        "description": "Stats on the learned synapse graph: edges, LTP edges, top hubs.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"project_path": {"type": "string"}},
+            "required": ["project_path"],
+        },
+    },
+    {
+        "name": "neuralmind_synapse_decay",
+        "description": (
+            "Run one decay tick on the synapse graph. Usually fired automatically "
+            "from the SessionStart hook; exposed here for manual control."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"project_path": {"type": "string"}},
+            "required": ["project_path"],
+        },
+    },
 ]
 
 
@@ -289,6 +368,14 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
         "neuralmind_skeleton": lambda args: tool_skeleton(args["project_path"], args["file_path"]),
+        "neuralmind_synaptic_neighbors": lambda args: tool_synaptic_neighbors(
+            args["project_path"],
+            args["query"],
+            args.get("depth", 2),
+            args.get("top_k", 10),
+        ),
+        "neuralmind_synapse_stats": lambda args: tool_synapse_stats(args["project_path"]),
+        "neuralmind_synapse_decay": lambda args: tool_synapse_decay(args["project_path"]),
     }
 
     if name not in handlers:
