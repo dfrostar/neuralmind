@@ -584,7 +584,15 @@ def main():
     )
     hook_p.add_argument(
         "action",
-        choices=["compress-read", "compress-bash", "cap-search", "offload"],
+        choices=[
+            "compress-read",
+            "compress-bash",
+            "cap-search",
+            "offload",
+            "session-start",
+            "prompt-submit",
+            "pre-compact",
+        ],
     )
     hook_p.set_defaults(func=cmd_hook)
 

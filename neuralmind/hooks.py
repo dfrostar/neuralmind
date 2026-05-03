@@ -37,7 +37,13 @@ HOOK_VERSION = "1"
 
 
 def _hook_block() -> dict:
-    """Return the canonical neuralmind hook block."""
+    """Return the canonical neuralmind hook block.
+
+    PostToolUse: token-saving compressors for Read/Bash/Grep output.
+    SessionStart: warm the synapse store and run a decay tick.
+    UserPromptSubmit: inject spreading-activation neighbors as context.
+    PreCompact: normalize hubs before context shrinks.
+    """
     return {
         BLOCK_KEY: HOOK_VERSION,
         "PostToolUse": [
@@ -52,6 +58,21 @@ def _hook_block() -> dict:
             {
                 "matcher": "Grep",
                 "hooks": [{"type": "command", "command": "neuralmind _hook cap-search"}],
+            },
+        ],
+        "SessionStart": [
+            {
+                "hooks": [{"type": "command", "command": "neuralmind _hook session-start"}],
+            },
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [{"type": "command", "command": "neuralmind _hook prompt-submit"}],
+            },
+        ],
+        "PreCompact": [
+            {
+                "hooks": [{"type": "command", "command": "neuralmind _hook pre-compact"}],
             },
         ],
     }
@@ -96,7 +117,14 @@ def install_hooks(
     # Strip any prior neuralmind block by filtering hooks
     # Claude Code's schema: settings.hooks.<Event> = list of matcher blocks
     hooks = existing.get("hooks", {})
-    for event in ("PostToolUse", "PreToolUse", "Stop", "SessionStart", "UserPromptSubmit"):
+    for event in (
+        "PostToolUse",
+        "PreToolUse",
+        "Stop",
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreCompact",
+    ):
         if event not in hooks:
             continue
         if not isinstance(hooks[event], list):
@@ -119,8 +147,9 @@ def install_hooks(
 
     # Install: append our block
     block = _hook_block()
-    for event in ("PostToolUse",):  # only event we use today
-        hooks.setdefault(event, []).extend(block[event])
+    for event in ("PostToolUse", "SessionStart", "UserPromptSubmit", "PreCompact"):
+        if event in block:
+            hooks.setdefault(event, []).extend(block[event])
 
     existing["hooks"] = hooks
     path.write_text(json.dumps(existing, indent=2), encoding="utf-8")
@@ -224,7 +253,94 @@ def run_hook(action: str) -> int:
             _emit(compressed)
         return 0
 
+    if action == "session-start":
+        # Warm the synapse store and run one decay tick so weights age
+        # between sessions even when the user wasn't active.
+        cwd = payload.get("cwd") or os.getcwd()
+        store = _open_synapses(cwd)
+        if store is None:
+            return 0
+        try:
+            store.decay()
+        except Exception:
+            pass
+        return 0
+
+    if action == "prompt-submit":
+        # Inject spreading-activation neighbors for the user's prompt as
+        # additional context. Cheap: one search to seed, one spread over
+        # the synapse graph.
+        cwd = payload.get("cwd") or os.getcwd()
+        prompt = (payload.get("prompt") or "").strip()
+        if not prompt or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0":
+            return 0
+        injected = _spread_for_prompt(cwd, prompt)
+        if injected:
+            _emit_for_event("UserPromptSubmit", injected)
+        return 0
+
+    if action == "pre-compact":
+        # Before the agent compacts its context, take the chance to
+        # normalize any runaway hub nodes — keeps retrieval balanced
+        # across sessions.
+        cwd = payload.get("cwd") or os.getcwd()
+        store = _open_synapses(cwd)
+        if store is None:
+            return 0
+        try:
+            store.normalize_hubs()
+        except Exception:
+            pass
+        return 0
+
     return 0
+
+
+def _open_synapses(project_path: str):
+    """Open the synapse store for a project without forcing a build.
+
+    Hooks must stay fast and never raise — fall through to None on any
+    failure so we don't disrupt the user's session.
+    """
+    try:
+        from .synapses import SynapseStore, default_db_path
+
+        return SynapseStore(default_db_path(project_path))
+    except Exception:
+        return None
+
+
+def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
+    """Run spreading activation for a prompt and format it as injected context.
+
+    Returns an empty string when the synapse graph has no learned edges
+    yet (cold start) or when anything goes wrong — hooks must fail open.
+    """
+    try:
+        from .core import NeuralMind
+
+        mind = NeuralMind(project_path)
+        ranked = mind.synaptic_neighbors(prompt, depth=2, top_k=top_k)
+    except Exception:
+        return ""
+    if not ranked:
+        return ""
+    lines = ["## NeuralMind associative recall", ""]
+    for node_id, energy in ranked:
+        lines.append(f"- {node_id} (activation {energy:.2f})")
+    return "\n".join(lines)
+
+
+def _emit_for_event(event_name: str, content: str) -> None:
+    """Emit hookSpecificOutput for a non-PostToolUse event."""
+    response = {
+        "hookSpecificOutput": {
+            "hookEventName": event_name,
+            "additionalContext": content,
+        },
+    }
+    sys.stdout.write(json.dumps(response))
+    sys.stdout.flush()
 
 
 def _emit(transformed: str) -> None:
