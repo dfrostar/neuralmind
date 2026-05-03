@@ -84,7 +84,7 @@
             <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
             <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
             <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
-            <p><strong>Result:</strong> 5–10× total token reduction vs baseline usage. 40–70% cost savings. Retrieval that gets sharper the longer the system runs on a codebase.</p>
+            <p><strong>Result:</strong> 40–70× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 40–70% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
             <ul>
@@ -170,7 +170,7 @@
             <ul>
                 <li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>
                 <li><strong>vs Claude Projects:</strong> Selects only relevant context instead of loading all files</li>
-                <li><strong>vs Long Context:</strong> 5–10× cheaper than paying for 100K token windows</li>
+                <li><strong>vs Long Context:</strong> 40–70× cheaper per code question than paying for 100K token windows</li>
                 <li><strong>vs Prompt Caching:</strong> Makes prompts small instead of caching big ones</li>
             </ul>
 
@@ -200,7 +200,7 @@
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Efficient</strong>
-                    <p>Smart context reduces tokens 5–10×. Lower costs, better answers.</p>
+                    <p>Smart context reduces per-query tokens 40–70×. Lower costs, better answers.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Community Driven</strong>
@@ -213,7 +213,7 @@
     <section>
         <div class="container">
             <h2>Getting Started</h2>
-            <p>Ready to reduce your token costs by 5–10×?</p>
+            <p>Ready to reduce your per-query token costs by 40–70×?</p>
             <ul>
                 <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup</li>
                 <li><a href="wiki/">Full Documentation</a> — Learn all features</li>
