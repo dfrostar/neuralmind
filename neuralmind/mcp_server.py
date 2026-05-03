@@ -167,8 +167,7 @@ def tool_synaptic_neighbors(
         "query": query,
         "depth": depth,
         "neighbors": [
-            {"node_id": node_id, "activation": round(energy, 4)}
-            for node_id, energy in ranked
+            {"node_id": node_id, "activation": round(energy, 4)} for node_id, energy in ranked
         ],
     }
 

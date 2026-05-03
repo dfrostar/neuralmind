@@ -261,7 +261,7 @@ class SynapseStore:
         frontier: dict[str, float] = dict(activation)
 
         with self._connect() as conn:
-            for hop in range(depth):
+            for _hop in range(depth):
                 if not frontier:
                     break
                 next_frontier: dict[str, float] = {}
@@ -271,9 +271,7 @@ class SynapseStore:
                     degree = self._node_degree(conn, node_id)
                     if degree == 0:
                         continue
-                    hub_factor = (
-                        math.sqrt(HUB_DEGREE / degree) if degree > HUB_DEGREE else 1.0
-                    )
+                    hub_factor = math.sqrt(HUB_DEGREE / degree) if degree > HUB_DEGREE else 1.0
                     cur = conn.execute(
                         """
                         SELECT CASE WHEN node_a = ? THEN node_b ELSE node_a END AS other,
@@ -347,11 +345,8 @@ class SynapseStore:
             total_weight = conn.execute(
                 "SELECT COALESCE(SUM(weight), 0.0) FROM synapses"
             ).fetchone()[0]
-            nodes = conn.execute(
-                "SELECT COUNT(*) FROM node_activations"
-            ).fetchone()[0]
-            top_hubs = conn.execute(
-                """
+            nodes = conn.execute("SELECT COUNT(*) FROM node_activations").fetchone()[0]
+            top_hubs = conn.execute("""
                 SELECT node_id, COUNT(*) AS degree FROM (
                     SELECT node_a AS node_id FROM synapses
                     UNION ALL
@@ -360,8 +355,7 @@ class SynapseStore:
                 GROUP BY node_id
                 ORDER BY degree DESC
                 LIMIT 5
-                """
-            ).fetchall()
+                """).fetchall()
         return {
             "edges": int(edges),
             "ltp_edges": int(ltp_edges),

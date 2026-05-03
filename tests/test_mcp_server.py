@@ -154,10 +154,10 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 7 tools."""
+        """TOOLS should define 11 tools (7 retrieval + 4 v0.4 synapse tools)."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 7
+        assert len(TOOLS) == 11
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -183,5 +183,10 @@ class TestToolDefinitions:
             "neuralmind_stats",
             "neuralmind_benchmark",
             "neuralmind_skeleton",
+            # v0.4.0 synapse layer
+            "neuralmind_synaptic_neighbors",
+            "neuralmind_synapse_stats",
+            "neuralmind_synapse_decay",
+            "neuralmind_export_synapse_memory",
         }
         assert tool_names == expected

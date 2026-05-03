@@ -73,9 +73,7 @@ def _format_id(node_id: str, labels: dict[str, str]) -> str:
     return f"`{node_id}`"
 
 
-def _top_pairs(
-    db_path: Path, limit: int, min_weight: float
-) -> list[tuple[str, str, float, int]]:
+def _top_pairs(db_path: Path, limit: int, min_weight: float) -> list[tuple[str, str, float, int]]:
     """Read the top N strongest synapse pairs directly from the DB.
 
     We bypass SynapseStore's query helpers so we can grab weight +
