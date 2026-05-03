@@ -758,6 +758,33 @@ Drop a `.mcp.json` at your project root:
 }
 ```
 
+### Hermes-Agent (Nous Research)
+
+[Hermes-Agent](https://github.com/nousresearch/hermes-agent) is a self-improving
+agent framework that supports MCP servers via its YAML config. Add NeuralMind
+under the `mcp_servers` key of `~/.hermes/config.yaml`:
+
+```yaml
+mcp_servers:
+  neuralmind:
+    command: "neuralmind-mcp"
+    args: ["/absolute/path/to/project"]
+```
+
+If you haven't installed Hermes-Agent yet, the upstream installer is:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
+source ~/.bashrc
+```
+
+After editing the config, run `/reload-mcp` from the `hermes` CLI to pick up
+the new server without restarting. Both stdio (shown above) and HTTP transports
+are supported — see the upstream
+[MCP integration docs](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)
+for the full schema (`command`, `args`, `env`, `url`, `headers`, `enabled`,
+per-server `tools` filtering).
+
 ### MCP tool schemas
 
 #### `neuralmind_wakeup`
