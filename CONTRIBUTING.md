@@ -348,6 +348,42 @@ git push origin vX.Y.Z
 
 The `validate-version` gate in `release.yml` will reject the push if the tag and `pyproject.toml` version differ.
 
+### Release-please troubleshooting
+
+**Symptom: Commits land on `main` but no Release PR ever appears.**
+
+Check `git ls-remote origin 'release-please*'`. If a `release-please--branches--main`
+branch exists with the correct manifest/CHANGELOG diff, release-please is running
+fine — the failure is the PR creation step. The fix is a one-time repo setting:
+
+> Settings → Actions → General → Workflow permissions → enable
+> **"Allow GitHub Actions to create and approve pull requests"**
+
+GitHub disables this by default, and the `pull-requests: write` permission in the
+workflow YAML is silently ignored without it. After enabling, push any conventional
+commit to `main` (or re-run the most recent workflow) and the PR will appear.
+
+**Symptom: A `fix:` or `feat:` commit was merged but release-please ignored it.**
+
+Conventional Commit prefixes are case-sensitive. `Fix:` and `FIX:` are not
+recognized — only lowercase `fix:` triggers a patch bump. Same for `feat:`.
+If you see this in history, the next valid lowercase commit will sweep them
+into its release.
+
+**Symptom: A `feat:` commit was merged but release-please proposed a patch bump
+(0.x.Y → 0.x.Y+1) instead of a minor bump (0.x.Y → 0.(x+1).0).**
+
+Expected: `release-please-config.json` has `"bump-patch-for-minor-pre-major": true`,
+which forces every `feat:` to a patch bump until v1.0. To force an explicit version
+(e.g. v0.4.0), land an empty commit with the `Release-As:` footer:
+
+```bash
+git commit --allow-empty -m "chore: release as v0.4.0" -m "Release-As: 0.4.0"
+```
+
+This was used to produce v0.4.0. Future minor bumps before v1.0 need the same
+override or a config change to drop `bump-patch-for-minor-pre-major`.
+
 ## Community
 
 ### Getting Help
