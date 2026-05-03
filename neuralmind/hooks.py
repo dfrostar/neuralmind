@@ -254,8 +254,9 @@ def run_hook(action: str) -> int:
         return 0
 
     if action == "session-start":
-        # Warm the synapse store and run one decay tick so weights age
-        # between sessions even when the user wasn't active.
+        # Warm the synapse store, run one decay tick, then export the
+        # learned associations as a markdown memory file so Claude Code's
+        # auto-memory system picks it up on this very session.
         cwd = payload.get("cwd") or os.getcwd()
         store = _open_synapses(cwd)
         if store is None:
@@ -264,6 +265,13 @@ def run_hook(action: str) -> int:
             store.decay()
         except Exception:
             pass
+        if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
+            try:
+                from .synapse_memory import export_synapse_memory
+
+                export_synapse_memory(cwd)
+            except Exception:
+                pass
         return 0
 
     if action == "prompt-submit":
