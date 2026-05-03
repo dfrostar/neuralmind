@@ -546,9 +546,9 @@ Model Context Protocol (MCP) allows AI assistants to directly query external too
 
 ### Setup for Claude Desktop
 
-1. Install NeuralMind with MCP support:
+1. Install NeuralMind (the MCP server is included by default since v0.5.0):
 ```bash
-pip install "neuralmind[mcp]"
+pip install neuralmind
 ```
 
 2. Add to Claude Desktop config:
