@@ -79,6 +79,8 @@ from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
+from .synapses import SynapseStore, default_db_path
+from .watcher import FileActivityWatcher
 
 __version__ = "0.3.4"
 __all__ = [
@@ -97,4 +99,8 @@ __all__ = [
     "cap_search_results",
     "offload_if_large",
     "install_hooks",
+    # Associative synapse layer (v0.4.0)
+    "SynapseStore",
+    "FileActivityWatcher",
+    "default_db_path",
 ]

@@ -29,6 +29,7 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import log_query_event
+from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
 
@@ -50,6 +51,7 @@ class NeuralMind:
         enable_reranking: bool = True,
         backend_type: str | None = None,
         hybrid_context: bool | None = None,
+        enable_synapses: bool = True,
     ):
         """
         Initialize NeuralMind for a project.
@@ -58,6 +60,8 @@ class NeuralMind:
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
             enable_reranking: If True, apply learned patterns to rerank search results
+            enable_synapses: If True, run the associative synapse layer that
+                learns co-activation patterns across queries and tool calls.
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
@@ -80,9 +84,43 @@ class NeuralMind:
         self._built = False
         self._build_stats: dict = {}
 
+        # Associative synapse layer (lazy: only created when first used)
+        self.enable_synapses = enable_synapses
+        self._synapses: SynapseStore | None = None
+
     @property
     def backend_name(self) -> str:
         return self.backend_manager.backend_name
+
+    @property
+    def synapses(self) -> SynapseStore | None:
+        """Return the associative synapse store, creating it on first use.
+
+        Returns None when synapses are disabled. The store lives at
+        ``<project>/.neuralmind/synapses.db`` so it persists across
+        sessions and can be inspected or reset independently.
+        """
+        if not self.enable_synapses:
+            return None
+        if self._synapses is None:
+            self._synapses = SynapseStore(default_db_path(self.project_path))
+        return self._synapses
+
+    def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
+        """Feed an activation signal into the synapse layer.
+
+        Hooks (UserPromptSubmit, PostToolUse) and the file watcher call
+        this with the nodes that fired together so the synapse store can
+        reinforce their pairwise edges. Returns the number of pairs touched,
+        or 0 when synapses are disabled.
+        """
+        store = self.synapses
+        if store is None or not node_ids:
+            return 0
+        try:
+            return store.reinforce(node_ids, strength=strength)
+        except Exception:
+            return 0
 
     def _emit_audit(
         self,
@@ -220,6 +258,7 @@ class NeuralMind:
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
         log_query_event(self.project_path, question, result)
+        self._reinforce_from_query(question, result)
         self._emit_audit(
             category="audit",
             action="query",
@@ -233,6 +272,33 @@ class NeuralMind:
             },
         )
         return result
+
+    def _reinforce_from_query(self, question: str, result: ContextResult) -> None:
+        """Hebbian update: nodes co-activated by a query wire together.
+
+        Pulls top search hits for the question (cheap — already cached upstream
+        for hybrid context, otherwise a single embedder.search call) and
+        feeds their ids plus loaded community markers into the synapse store.
+        """
+        store = self.synapses
+        if store is None:
+            return
+        try:
+            hits = self.embedder.search(question, n=6)
+        except Exception:
+            return
+        node_ids: list[str] = []
+        for hit in hits:
+            nid = hit.get("id")
+            if nid:
+                node_ids.append(str(nid))
+        for comm_id in result.communities_loaded or []:
+            node_ids.append(f"community_{comm_id}")
+        if len(node_ids) >= 2:
+            try:
+                store.reinforce(node_ids)
+            except Exception:
+                pass
 
     def _build_hybrid_highlights(self, question: str) -> str:
         results = self.embedder.search(question, n=self.MAX_HYBRID_HIGHLIGHT_RESULTS)
@@ -458,7 +524,7 @@ class NeuralMind:
             return {"built": False, "project": self.project_path.name}
 
         embed_stats = self.embedder.get_stats()
-        return {
+        stats = {
             "built": True,
             "project": self.project_path.name,
             "nodes": embed_stats.get("total_nodes", 0),
@@ -466,6 +532,34 @@ class NeuralMind:
             "db_path": embed_stats.get("db_path", ""),
             "build_stats": self._build_stats,
         }
+        if self.enable_synapses:
+            try:
+                stats["synapses"] = self.synapses.stats() if self.synapses else None
+            except Exception:
+                stats["synapses"] = None
+        return stats
+
+    def synaptic_neighbors(
+        self, query: str, depth: int = 2, top_k: int = 10
+    ) -> list[tuple[str, float]]:
+        """Return nodes related to ``query`` via spreading activation.
+
+        Uses the embedder to seed an activation pulse at the top semantic
+        matches for the query, then propagates through the learned synapse
+        graph. Empty list when synapses haven't accumulated any edges yet.
+        """
+        store = self.synapses
+        if store is None:
+            return []
+        self._ensure_built()
+        try:
+            hits = self.embedder.search(query, n=4)
+        except Exception:
+            return []
+        seeds = [(str(hit["id"]), float(hit.get("score", 1.0))) for hit in hits if hit.get("id")]
+        if not seeds:
+            return []
+        return store.spread(seeds, depth=depth, top_k=top_k)
 
     def benchmark(self, sample_queries: list[str] = None) -> dict:
         """
