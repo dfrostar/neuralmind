@@ -11,7 +11,7 @@ toml==0.10.2
 # Optional: MCP Server
 # Bumped from 0.1.0 to 1.23.0 to resolve three GHSA alerts on the MCP SDK:
 #   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
-mcp==1.23.0
+mcp==1.27.0
 
 # Optional: Development & Testing
 # pytest bumped from 7.4.3 to 9.0.3 to fix tmpdir handling vuln (CVE-2025-71176).
