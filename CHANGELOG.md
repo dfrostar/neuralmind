@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.5.0] - 2026-05-03
+
+### Changed
+
+- **MCP server bundled by default.** The `mcp` package moved from the
+  `[mcp]` optional extra to a base dependency. `pip install neuralmind`
+  now ships `neuralmind-mcp` ready to run, closing the long-standing
+  "Connection closed" footgun where users followed the README Quick
+  Start, wired up an MCP host (Claude Desktop, Claude Code, Cursor,
+  Cline, Continue, Hermes-Agent, OpenClaw…), and hit an immediate
+  `import mcp` failure because the SDK was gated.
+
+### Backwards Compatibility
+
+- The `[mcp]` extra is preserved as an empty no-op. Existing
+  `pip install "neuralmind[mcp]"` commands in user docs, blog posts,
+  and CI configs keep resolving cleanly with no warnings; pip just
+  installs the base package (which now contains the MCP SDK).
+- `neuralmind[all]` continues to resolve via `[mcp,dev]` because both
+  extras still exist as keys in `pyproject.toml`.
+- No code or API changes. Anyone already on the `[mcp]` install path
+  is unaffected; anyone on the plain `pip install neuralmind` path now
+  gets MCP support out of the box.
+
+### Documentation
+
+- Document release-please troubleshooting in `CONTRIBUTING.md` — covers
+  the "no Release PR appears" GitHub setting trap (filed as #81),
+  capitalized `Fix:`/`Feat:` commits being ignored by Conventional
+  Commits parsing, and the `Release-As:` empty-commit override for
+  forcing minor bumps before v1.0.
+- Sweep the wiki (Installation, Setup-Guide, Home, Usage-Guide, FAQ),
+  `USAGE.md`, `docs/DEPLOYMENT-GUIDE.md`, `docs/VERSION-STRATEGY.md`,
+  and the landing + about pages to drop the now-stale `[mcp]` extra
+  recommendations. The intentional backwards-compat / "legacy alias"
+  notes that explain the preserved empty stub are kept.
+- Refresh the about/landing roadmap. v0.5.0 is now the bundled-MCP
+  install + the items in #78 (auto-watcher launch from `SessionStart`),
+  #79 (synapse import/export), and #80 (retrieval-quality benchmark).
+  PostgreSQL pgvector and observability dashboard moved to v0.6.0+.
+- Fix the stale "v0.4.2 (Current)" claim on `docs/index.html` (current
+  is v0.4.0 — v0.4.2 was never cut).
+
 ## [0.4.0] - 2026-05-03
 
 ### Added
