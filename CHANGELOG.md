@@ -1,5 +1,91 @@
 # Changelog
 
+## [0.4.0] - 2026-05-03
+
+### Added
+
+#### Brain-like Synapse Layer
+- **`SynapseStore`** (`neuralmind/synapses.py`) — SQLite-backed weighted
+  graph over code nodes; persists at `<project>/.neuralmind/synapses.db`.
+  - Hebbian `reinforce()` strengthens edges between co-activated nodes.
+  - Multiplicative `decay()` ages unused weights; weak edges are pruned.
+  - Long-term potentiation: edges crossing an activation threshold get
+    a weight floor and slower decay.
+  - Spreading activation `spread(seeds, depth, top_k)` for usage-based
+    recall, complementing vector search.
+  - Hub normalization prevents runaway central nodes from dominating.
+
+#### File Activity Watcher
+- **`FileActivityWatcher`** (`neuralmind/watcher.py`) — debounces edits
+  into co-activation batches; backed by `watchdog` when present, polling
+  fallback otherwise.
+- **`neuralmind watch`** CLI — foreground daemon that wires the watcher
+  into the synapse store with periodic decay ticks.
+
+#### Claude Code Lifecycle Hooks
+- `install-hooks` now registers four events instead of one:
+  - `SessionStart` — warm store, run decay tick, export memory.
+  - `UserPromptSubmit` — spread activation from prompt; inject ranked
+    neighbors as `additionalContext`.
+  - `PreCompact` — normalize hub nodes before context compaction.
+  - `PostToolUse` — (existing) Read/Bash/Grep compression.
+- Idempotent — strip + re-add for all five managed events.
+
+#### Memory Export
+- **`neuralmind/synapse_memory.py`** — renders the synapse graph as
+  markdown with strongest pairs (LTP-tagged) and top hubs.
+- Writes `<project>/.neuralmind/SYNAPSE_MEMORY.md` always; also writes
+  `~/.claude/projects/<slug>/memory/synapse-activations.md` when Claude
+  Code's auto-memory directory exists for the project.
+
+#### MCP Tools
+- `neuralmind_synaptic_neighbors(query, depth, top_k)` — spreading
+  activation recall.
+- `neuralmind_synapse_stats()` — edge counts, LTP edges, top hubs.
+- `neuralmind_synapse_decay()` — manual decay tick.
+- `neuralmind_export_synapse_memory()` — write the markdown export.
+
+#### Public API
+- `NeuralMind.activate(node_ids, strength)` — feed an activation signal
+  into the synapse layer.
+- `NeuralMind.activate_files(file_paths, strength)` — resolve paths to
+  node ids and reinforce.
+- `NeuralMind.synaptic_neighbors(query, depth, top_k)` — spreading
+  activation retrieval.
+- `NeuralMind.synapses` property — direct access to the `SynapseStore`.
+- `NeuralMind.__init__` gained `enable_synapses=True`.
+
+### Changed
+
+#### Performance
+- **3× fewer embedder round trips per query.** `ContextSelector` now
+  caches one search per query and slices results for L2, L3, hybrid
+  highlights, and synapse reinforcement.
+- `ContextResult.top_search_hits` exposes the cached hits so downstream
+  consumers reuse them instead of re-querying.
+
+#### Documentation
+- Added `CLAUDE.md` with architecture map and `@.neuralmind/SYNAPSE_MEMORY.md`
+  import for dogfooding.
+- Gitignored generated synapse artifacts (`synapses.db`, WAL/SHM,
+  `SYNAPSE_MEMORY.md`).
+
+### Environment Variables
+- `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time recall injection.
+- `NEURALMIND_SYNAPSE_EXPORT=0` — disable session-start memory export.
+
+### Tests
+- 50 new tests across the synapse layer, stdlib-only so they run
+  without the full ChromaDB dep set.
+
+### Backwards Compatibility
+- All additions are opt-in or default-on with safe behavior.
+- No migrations required. Synapse DB is created on first use.
+- `ContextResult.top_search_hits` defaults to `[]`; existing callers
+  ignore it.
+
+---
+
 ## [0.3.4] - 2026-04-20
 
 ### Documentation

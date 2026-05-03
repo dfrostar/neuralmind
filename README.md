@@ -1140,7 +1140,23 @@ neuralmind query . "question"     # get context for a specific question
 
 ---
 
-## ✨ What's New in v0.3.x
+## ✨ What's New in v0.4.0 — Brain-like Synapse Layer
+
+NeuralMind now runs as a **second brain alongside the LLM**: a
+persistent associative memory that learns continuously from how the
+agent and the codebase actually interact. See the [release notes](RELEASE_NOTES_v0.4.0.md) for the full story.
+
+| Feature | Details |
+|---------|---------|
+| **Synapse store** | SQLite-backed weighted graph; Hebbian reinforce, decay, long-term potentiation |
+| **Spreading activation** | `mind.synaptic_neighbors(query)` — usage-based recall complementing vector search |
+| **`neuralmind watch` daemon** | File edits become co-activation signals; brain learns even when no query runs |
+| **Three new Claude Code hooks** | SessionStart (decay+export), UserPromptSubmit (recall injection), PreCompact (hub normalization) |
+| **Auto-memory export** | Writes `SYNAPSE_MEMORY.md` to Claude Code's auto-memory dir so associations surface natively |
+| **Three new MCP tools** | `synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `export_synapse_memory` |
+| **3× fewer embedder calls per query** | Selector caches one search per query and slices for L2/L3/synapses |
+
+### Earlier (v0.3.x)
 
 | Feature | Version | Details |
 |---------|---------|---------|
