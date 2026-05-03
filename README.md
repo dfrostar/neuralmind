@@ -761,14 +761,41 @@ Drop a `.mcp.json` at your project root:
 ### Hermes-Agent (Nous Research)
 
 [Hermes-Agent](https://github.com/nousresearch/hermes-agent) is a self-improving
-agent framework that supports MCP servers via its YAML config. Add NeuralMind
-under the `mcp_servers` key of `~/.hermes/config.yaml`:
+agent framework that supports MCP servers. NeuralMind has been verified
+end-to-end against **Hermes-Agent v0.12.0 (build 2026.4.30)** — the agent
+discovered all 11 NeuralMind tools (4-second handshake) when registered as
+shown below.
+
+**Prerequisite:** install NeuralMind with the MCP extra. The MCP SDK is
+not part of the default install:
+
+```bash
+pip install "neuralmind[mcp]"      # not just "neuralmind"
+```
+
+**Two ways to register the server.** Both end up in `~/.hermes/config.yaml`:
+
+*Option A — CLI (recommended for first-time setup):*
+
+```bash
+hermes mcp add
+```
+
+*Option B — edit the config directly* (`~/.hermes/config.yaml`, add under
+the `mcp_servers` top-level key):
 
 ```yaml
 mcp_servers:
   neuralmind:
     command: "neuralmind-mcp"
     args: ["/absolute/path/to/project"]
+```
+
+**Verify** the server is registered and reachable:
+
+```bash
+hermes mcp list                     # neuralmind should appear, status ✓
+hermes mcp test neuralmind          # ✓ Connected, ✓ Tools discovered: 11
 ```
 
 If you haven't installed Hermes-Agent yet, the upstream installer is:
@@ -778,32 +805,43 @@ curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scri
 source ~/.bashrc
 ```
 
-After editing the config, run `/reload-mcp` from the `hermes` CLI to pick up
-the new server without restarting. Both stdio (shown above) and HTTP transports
-are supported — see the upstream
+After editing the YAML directly, run `/reload-mcp` from the running `hermes`
+CLI to pick up the change without restarting (the `hermes mcp add` flow does
+this automatically). Both stdio (shown above) and HTTP transports are
+supported — see the upstream
 [MCP integration docs](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)
 for the full schema (`command`, `args`, `env`, `url`, `headers`, `enabled`,
-per-server `tools` filtering).
+per-server `tools` filtering, `timeout`, `connect_timeout`).
 
 ### OpenClaw
 
 [OpenClaw](https://github.com/openclaw/openclaw) is a personal AI assistant
-that registers MCP servers via the `openclaw mcp set` CLI command. Add
-NeuralMind:
+that registers MCP servers via its CLI. Verified against **OpenClaw 2026.5.2** —
+`mcp set` / `mcp list` / `mcp show` round-trip the documented JSON schema
+into `~/.openclaw/openclaw.json` exactly as expected.
+
+**Prerequisite:** install NeuralMind with the MCP extra (the MCP SDK is
+not part of the default install):
+
+```bash
+pip install "neuralmind[mcp]"      # not just "neuralmind"
+```
+
+**Register** NeuralMind:
 
 ```bash
 openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path/to/project"]}'
 ```
 
-Then verify and inspect:
+**Verify** it landed:
 
 ```bash
-openclaw mcp list
-openclaw mcp show neuralmind
+openclaw mcp list                  # neuralmind should appear
+openclaw mcp show neuralmind       # echoes the JSON you stored
 ```
 
 Remove with `openclaw mcp unset neuralmind`. Definitions are stored under
-the `mcp.servers` key in OpenClaw's config (`~/.openclaw/openclaw.json`).
+the `mcp.servers` key in `~/.openclaw/openclaw.json`.
 
 If you haven't installed OpenClaw yet:
 
@@ -817,6 +855,30 @@ OpenClaw's MCP support covers stdio (shown above), SSE, HTTP, and
 [MCP CLI reference](https://docs.openclaw.ai/cli/mcp) for details on
 `url`/`transport` config and the inverse direction (`openclaw mcp serve`,
 which exposes OpenClaw's own channels as an MCP server to other clients).
+
+### Troubleshooting
+
+**"Connection closed" / "Connection failed" right after register.** Almost
+always means NeuralMind was installed without the `[mcp]` extra and
+`neuralmind-mcp` is exiting because the MCP SDK is missing. Fix:
+
+```bash
+pip install --upgrade "neuralmind[mcp]"
+```
+
+Then re-run the host's verify step (`hermes mcp test neuralmind` or
+`openclaw mcp list`).
+
+**`neuralmind-mcp: command not found`.** The package installed but the
+console script wasn't put on PATH — usually because pip installed into a
+user site-packages dir that isn't on PATH. Add `~/.local/bin` to PATH or
+reinstall in a venv where the entry point is on PATH.
+
+**The host shows neuralmind in `mcp list` but no tools when you query.**
+Run `neuralmind build /path/to/project` first — the index has to exist
+before the MCP tools can answer queries. The hooks (`SessionStart`,
+`UserPromptSubmit`, `PreCompact` from `neuralmind install-hooks`) need a
+built index too.
 
 ### MCP tool schemas
 
