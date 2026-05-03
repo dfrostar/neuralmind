@@ -53,3 +53,9 @@ tests/benchmark/multi_model.json
 tests/benchmark/multi_model.md
 tests/fixtures/sample_project/graphify-out/
 tests/fixtures/sample_project/.neuralmind/
+
+# Per-project synapse layer artifacts (generated, not source)
+.neuralmind/synapses.db
+.neuralmind/synapses.db-shm
+.neuralmind/synapses.db-wal
+.neuralmind/SYNAPSE_MEMORY.md
