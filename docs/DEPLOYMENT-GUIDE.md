@@ -150,7 +150,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN pip install neuralmind[mcp]
+RUN pip install neuralmind
 
 # Copy project
 COPY . /project
