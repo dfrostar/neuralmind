@@ -323,12 +323,18 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
 
     Returns an empty string when the synapse graph has no learned edges
     yet (cold start) or when anything goes wrong — hooks must fail open.
+    Suppresses any incidental stdout/stderr from the embedder so the
+    hook's stdout stays reserved for the JSON response we may emit.
     """
+    import contextlib
+    import io
+
     try:
         from .core import NeuralMind
 
-        mind = NeuralMind(project_path)
-        ranked = mind.synaptic_neighbors(prompt, depth=2, top_k=top_k)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            mind = NeuralMind(project_path)
+            ranked = mind.synaptic_neighbors(prompt, depth=2, top_k=top_k)
     except Exception:
         return ""
     if not ranked:

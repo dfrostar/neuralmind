@@ -18,7 +18,11 @@ class _CountingEmbedder:
 
     def __init__(self, hits=None):
         self._hits = hits or [
-            {"id": f"node_{i}", "metadata": {"label": f"node_{i}", "community": i % 3}, "score": 1.0 - i * 0.1}
+            {
+                "id": f"node_{i}",
+                "metadata": {"label": f"node_{i}", "community": i % 3},
+                "score": 1.0 - i * 0.1,
+            }
             for i in range(10)
         ]
         self.search_calls = 0
@@ -33,7 +37,10 @@ class _CountingEmbedder:
     def get_community_summary(self, community_id, max_nodes=10):
         return {
             "type_summary": "stub",
-            "nodes": [{"label": f"c{community_id}_{i}", "file_type": "function", "source_file": ""} for i in range(3)],
+            "nodes": [
+                {"label": f"c{community_id}_{i}", "file_type": "function", "source_file": ""}
+                for i in range(3)
+            ],
         }
 
     def load_graph(self):
@@ -47,9 +54,9 @@ def test_get_query_context_makes_one_search(tmp_path):
     embedder = _CountingEmbedder()
     selector = ContextSelector(embedder, str(tmp_path), enable_reranking=False)
     selector.get_query_context("How does authentication work?")
-    assert embedder.search_calls == 1, (
-        f"selector should issue exactly one search per query; saw {embedder.search_calls}"
-    )
+    assert (
+        embedder.search_calls == 1
+    ), f"selector should issue exactly one search per query; saw {embedder.search_calls}"
 
 
 def test_top_search_hits_surface_on_result(tmp_path):

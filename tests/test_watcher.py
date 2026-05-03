@@ -41,9 +41,7 @@ def test_watcher_records_edits_and_flushes_batch(tmp_path):
     target = tmp_path / "alpha.py"
     target.write_text("v0")  # exists before watcher starts
 
-    w = FileActivityWatcher(
-        tmp_path, cb, debounce=0.3, poll_interval=0.4, ignores=DEFAULT_IGNORES
-    )
+    w = FileActivityWatcher(tmp_path, cb, debounce=0.3, poll_interval=0.4, ignores=DEFAULT_IGNORES)
     w.start()
     try:
         # Give the polling backend one cycle to seed mtimes, then modify.
@@ -73,9 +71,7 @@ def test_watcher_skips_ignored_paths(tmp_path):
     junk = ignored_dir / "HEAD"
     junk.write_text("v0")
 
-    w = FileActivityWatcher(
-        tmp_path, cb, debounce=0.3, poll_interval=0.4, ignores=DEFAULT_IGNORES
-    )
+    w = FileActivityWatcher(tmp_path, cb, debounce=0.3, poll_interval=0.4, ignores=DEFAULT_IGNORES)
     w.start()
     try:
         time.sleep(0.6)

@@ -326,9 +326,7 @@ class NeuralMind:
             except Exception:
                 pass
 
-    def _build_hybrid_highlights(
-        self, question: str, cached_hits: list[dict] | None = None
-    ) -> str:
+    def _build_hybrid_highlights(self, question: str, cached_hits: list[dict] | None = None) -> str:
         if cached_hits:
             results = cached_hits[: self.MAX_HYBRID_HIGHLIGHT_RESULTS]
         else:
