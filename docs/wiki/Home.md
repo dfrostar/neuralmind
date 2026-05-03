@@ -4,6 +4,18 @@
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
+## What's New
+
+**v0.4.0 — Brain-like synapse layer.** NeuralMind now runs as a second
+brain alongside the LLM: a persistent SQLite-backed weighted graph that
+learns associations between code nodes from co-activation, decays unused
+edges, and answers via spreading activation. Includes the `neuralmind watch`
+daemon, three new Claude Code lifecycle hooks (SessionStart, UserPromptSubmit,
+PreCompact), and a memory exporter that surfaces learned associations to
+Claude Code's auto-memory system. See the [release notes](../blob/main/RELEASE_NOTES_v0.4.0.md)
+or the [Architecture](Architecture#synapse-layer-v04) and [Learning Guide](Learning-Guide#v04-synapse-layer)
+sections.
+
 ## Quick Links
 
 ### Start here
@@ -36,8 +48,9 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 | [Architecture](Architecture) | How the 4-layer progressive disclosure system works |
 | [Integration Guide](Integration-Guide) | MCP, CI/CD, VS Code, JetBrains, any-LLM piping |
 | [Scheduling Guide](Scheduling-Guide) | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
-| [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence-based reranking (v0.3.2+) |
-| [Brain-Like Learning](../blob/main/docs/brain_like_learning.md) | Design rationale for the learning system |
+| [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence reranking (v0.3.2) and brain-like synapses (v0.4.0) |
+| [Brain-Like Learning](../blob/main/docs/brain_like_learning.md) | Design rationale for the v0.3.x learning system |
+| [v0.4.0 Release Notes](../blob/main/RELEASE_NOTES_v0.4.0.md) | Brain-like synapse layer: continuous co-activation, spreading activation, lifecycle hooks |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |
 | [FAQ](FAQ) | 30+ frequently asked questions answered |
 
@@ -89,11 +102,14 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users, add the PostToolUse compression hooks:
+Claude Code users, install the lifecycle hooks (PostToolUse compression
+plus the v0.4.0 brain-like synapse hooks: SessionStart, UserPromptSubmit,
+PreCompact):
 
 ```bash
 neuralmind install-hooks .
 neuralmind init-hook .        # auto-rebuild on every git commit (optional)
+neuralmind watch &            # always-on synapse learning from file edits (optional)
 ```
 
 ## Compare to alternatives
