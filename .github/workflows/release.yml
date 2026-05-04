@@ -177,7 +177,33 @@ jobs:
           path: dist/
 
       - name: Attach dist artifacts to GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: |
-            dist/*
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          echo "Tag: ${TAG}"
+
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists — preserving title/body, attempting artifact upload."
+            if gh release upload "${TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --clobber; then
+              echo "Artifacts attached."
+            else
+              # Published Releases are immutable on this repo; there is no API path to add assets after publish.
+              echo "::warning title=GitHub Release artifacts not attached::Could not upload dist/* to ${TAG} (the Release is likely immutable). PyPI is the canonical install source: https://pypi.org/project/neuralmind/${TAG#v}/"
+            fi
+          else
+            echo "Release ${TAG} does not exist — creating with artifacts attached."
+            NOTES_FILE="RELEASE_NOTES_${TAG}.md"
+            if [ -f "${NOTES_FILE}" ]; then
+              gh release create "${TAG}" dist/* \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "${TAG}" \
+                --notes-file "${NOTES_FILE}"
+            else
+              gh release create "${TAG}" dist/* \
+                --repo "${GITHUB_REPOSITORY}" \
+                --title "${TAG}" \
+                --generate-notes
+            fi
+          fi
