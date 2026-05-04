@@ -123,6 +123,16 @@ jobs:
           import neuralmind.hooks
           "
 
+      - name: MCP bundling smoke test
+        run: |
+          source .smoke/bin/activate
+          # The whole point of v0.5.0 is that `pip install neuralmind`
+          # (no extras) gives a working MCP server out of the box.
+          # Catch packaging regressions before they ship to PyPI.
+          python -c "import mcp; import mcp.server; import mcp.types"
+          python -c "from neuralmind.mcp_server import MCP_AVAILABLE; assert MCP_AVAILABLE, 'MCP SDK not importable from base install'"
+          command -v neuralmind-mcp >/dev/null || { echo 'neuralmind-mcp not on PATH'; exit 1; }
+
       - name: CLI smoke test
         run: |
           source .smoke/bin/activate
