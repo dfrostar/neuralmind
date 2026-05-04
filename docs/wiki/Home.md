@@ -41,7 +41,7 @@ sections.
 
 | Page | Contents |
 |------|----------|
-| [Installation](Installation) | Install from PyPI; optional `[mcp]` extras |
+| [Installation](Installation) | Install from PyPI; the default install includes the MCP server |
 | [Usage Guide](Usage-Guide) | End-to-end examples for every command |
 | [CLI Reference](CLI-Reference) | All CLI commands, flags, and output shapes |
 | [API Reference](API-Reference) | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |

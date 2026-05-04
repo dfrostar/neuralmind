@@ -103,7 +103,7 @@ Or add a `.mcp.json` at your project root so Claude Code loads NeuralMind automa
 ### Claude Desktop
 
 ```bash
-pip install "neuralmind[mcp]" graphifyy
+pip install neuralmind graphifyy
 
 cd your-project
 graphify update .
@@ -137,7 +137,7 @@ Restart Claude Desktop. NeuralMind tools (`neuralmind_wakeup`, `neuralmind_query
 ### Cursor / Cline / Continue
 
 ```bash
-pip install "neuralmind[mcp]" graphifyy
+pip install neuralmind graphifyy
 
 cd your-project
 graphify update .
@@ -241,9 +241,8 @@ If `Built: False`, run `graphify update . && neuralmind build .` again.
 | Requirement | Version |
 |-------------|---------|
 | Python | 3.10 or higher |
-| NeuralMind | `pip install neuralmind` |
+| NeuralMind | `pip install neuralmind` (includes the MCP server) |
 | graphify | `pip install graphifyy` |
-| MCP support (optional) | `pip install "neuralmind[mcp]"` |
 
 > **Supported OS:** Linux, macOS, Windows 10+
 
