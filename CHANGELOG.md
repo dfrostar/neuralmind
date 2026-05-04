@@ -36,12 +36,14 @@
   and the landing + about pages to drop the now-stale `[mcp]` extra
   recommendations. The intentional backwards-compat / "legacy alias"
   notes that explain the preserved empty stub are kept.
-- Refresh the about/landing roadmap. v0.5.0 is now the bundled-MCP
-  install + the items in #78 (auto-watcher launch from `SessionStart`),
-  #79 (synapse import/export), and #80 (retrieval-quality benchmark).
-  PostgreSQL pgvector and observability dashboard moved to v0.6.0+.
+- Refresh the about/landing roadmap. v0.5.0 is described as the
+  packaging-only bundled-MCP release (matching what this entry actually
+  ships); auto-watcher launch (#78), synapse import/export (#79), and
+  retrieval-quality benchmark (#80) are listed as separate v0.5.x /
+  v0.6.0 follow-on work, not as part of v0.5.0. PostgreSQL pgvector
+  and observability dashboard remain on the v0.6.0+ track.
 - Fix the stale "v0.4.2 (Current)" claim on `docs/index.html` (current
-  is v0.4.0 — v0.4.2 was never cut).
+  was v0.4.0 — v0.4.2 was never cut).
 
 ## [0.4.0] - 2026-05-03
 
