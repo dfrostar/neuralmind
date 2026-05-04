@@ -184,26 +184,26 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           echo "Tag: ${TAG}"
 
-          # An existing Release means release-please or the UI form already ran; don't overwrite their body.
           if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists — leaving title and body untouched."
+            echo "Release ${TAG} already exists — preserving title/body, attempting artifact upload."
+            if gh release upload "${TAG}" dist/* --repo "${GITHUB_REPOSITORY}" --clobber; then
+              echo "Artifacts attached."
+            else
+              # Published Releases are immutable on this repo; there is no API path to add assets after publish.
+              echo "::warning title=GitHub Release artifacts not attached::Could not upload dist/* to ${TAG} (the Release is likely immutable). PyPI is the canonical install source: https://pypi.org/project/neuralmind/${TAG#v}/"
+            fi
           else
-            echo "Release ${TAG} does not exist — creating it."
+            echo "Release ${TAG} does not exist — creating with artifacts attached."
             NOTES_FILE="RELEASE_NOTES_${TAG}.md"
             if [ -f "${NOTES_FILE}" ]; then
-              gh release create "${TAG}" \
+              gh release create "${TAG}" dist/* \
                 --repo "${GITHUB_REPOSITORY}" \
                 --title "${TAG}" \
                 --notes-file "${NOTES_FILE}"
             else
-              gh release create "${TAG}" \
+              gh release create "${TAG}" dist/* \
                 --repo "${GITHUB_REPOSITORY}" \
                 --title "${TAG}" \
                 --generate-notes
             fi
           fi
-
-          echo "Uploading dist artifacts to ${TAG}…"
-          gh release upload "${TAG}" dist/* \
-            --repo "${GITHUB_REPOSITORY}" \
-            --clobber
