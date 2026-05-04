@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
@@ -15,6 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Tags pushed by release-please via GITHUB_TOKEN don't trigger downstream tag-push workflows;
+      # workflow_dispatch is exempt, so kick off the Release pipeline ourselves when a tag is cut.
+      - name: Trigger Release pipeline on new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run release.yml \
+            --ref "${{ steps.release.outputs.tag_name }}" \
+            --repo "${{ github.repository }}"
