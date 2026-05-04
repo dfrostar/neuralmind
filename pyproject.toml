@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.4.0"
+version = "0.5.0"
 description = "Reduce Claude, GPT, and Gemini token costs on code questions by 40-70x. Semantic codebase indexing, MCP server, and PostToolUse compression hooks for Claude Code, Cursor, Cline, and Continue."
 readme = "README.md"
 license = "MIT"
@@ -83,13 +83,15 @@ requires-python = ">=3.10"
 dependencies = [
     "chromadb>=0.4.0",
     "pyyaml>=6.0",
-    "toml>=0.10"
+    "toml>=0.10",
+    "mcp>=1.23.0"
 ]
 
 [project.optional-dependencies]
-mcp = [
-    "mcp>=1.23.0"
-]
+# Kept as an empty extra so existing `pip install "neuralmind[mcp]"` commands
+# in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
+# package is now a base dependency.
+mcp = []
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",

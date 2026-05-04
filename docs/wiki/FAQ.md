@@ -286,8 +286,8 @@ neuralmind search . "password"  # Should return no results
 ```bash
 pip install --upgrade neuralmind
 
-# Or install full extras
-pip install "neuralmind[mcp,dev]"
+# Or install with dev extras (testing/linting tools)
+pip install "neuralmind[dev]"
 ```
 
 ---

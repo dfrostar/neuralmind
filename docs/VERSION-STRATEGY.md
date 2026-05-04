@@ -59,15 +59,16 @@ docs/MIGRATIONS.md: "v0.4 → v0.5 migration guide"
 | chromadb | 0.4.0 | latest | Vector storage |
 | pyyaml | 6.0 | latest | Config parsing |
 | toml | 0.10 | latest | TOML support |
+| mcp | 1.23.0 | latest | MCP server (since v0.5.0) |
 
 ### Optional Dependencies
 
 | Extra | Package | Min Version | Use Case |
 |-------|---------|------------|----------|
-| `[mcp]` | mcp | 0.1.0 | MCP server |
 | `[dev]` | pytest | 7.0 | Testing |
 | `[dev]` | black | 23.0 | Formatting |
 | `[dev]` | ruff | 0.1.0 | Linting |
+| `[mcp]` | _(empty)_ | — | Legacy alias preserved for backwards compatibility |
 
 ### Compatibility Matrix
 

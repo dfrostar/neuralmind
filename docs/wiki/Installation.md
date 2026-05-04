@@ -62,19 +62,22 @@ neuralmind --help
 
 The recommended installation method for most users.
 
-#### Basic Installation
+#### Default Installation
 
 ```bash
 pip install neuralmind
 ```
 
-#### With MCP Server Support
+This includes everything most users need: the CLI, the semantic
+indexing layer, and the MCP server (`neuralmind-mcp`) for Claude
+Desktop, Claude Code, Cursor, Cline, Continue, Hermes-Agent,
+OpenClaw, and any other MCP-compatible client.
 
-For integration with Claude Desktop, Cursor, and other MCP-compatible tools:
-
-```bash
-pip install neuralmind[mcp]
-```
+> **Note for users upgrading from v0.4.x or earlier:** the MCP
+> server used to be gated behind an `[mcp]` extra. From v0.5.0
+> onward it ships in the base package. Existing
+> `pip install "neuralmind[mcp]"` commands still work — the `mcp`
+> extra is preserved as an empty no-op for backwards compatibility.
 
 #### With Development Tools
 
@@ -86,10 +89,10 @@ pip install neuralmind[dev]
 
 #### Full Installation
 
-All optional dependencies:
+All extras (equivalent to `[dev]` since v0.5.0):
 
 ```bash
-pip install neuralmind[mcp,dev]
+pip install neuralmind[all]
 ```
 
 ### From Source
@@ -104,8 +107,8 @@ cd neuralmind
 # Install in editable mode
 pip install -e .
 
-# Or with all extras
-pip install -e ".[mcp,dev]"
+# Or with dev tools
+pip install -e ".[dev]"
 ```
 
 ### Development Installation
@@ -140,14 +143,9 @@ pre-commit install
 | chromadb | ≥0.4.0 | Vector database for embeddings |
 | pyyaml | ≥6.0 | Configuration file parsing |
 | toml | ≥0.10 | TOML configuration file support |
+| mcp | ≥1.23.0 | Model Context Protocol server (since v0.5.0) |
 
 ### Optional Dependencies
-
-#### MCP Extra (`pip install neuralmind[mcp]`)
-
-| Package | Version | Purpose |
-|---------|---------|----------|
-| mcp | ≥0.1.0 | Model Context Protocol server |
 
 #### Dev Extra (`pip install neuralmind[dev]`)
 
@@ -157,6 +155,14 @@ pre-commit install
 | pytest-asyncio | ≥0.21.0 | Async test support |
 | black | ≥23.0 | Code formatting |
 | ruff | ≥0.1.0 | Fast linting |
+
+#### Legacy `[mcp]` extra
+
+`pip install "neuralmind[mcp]"` still resolves cleanly — the extra
+is preserved as an empty no-op so existing install commands in user
+docs, blog posts, and CI configs keep working. No reason to use it
+in new commands; `pip install neuralmind` already includes the MCP
+server.
 
 ### External Tools
 
@@ -218,8 +224,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install NeuralMind
-RUN pip install neuralmind[mcp]
+# Install NeuralMind (MCP server is bundled by default)
+RUN pip install neuralmind
 
 # Your project files
 COPY . .

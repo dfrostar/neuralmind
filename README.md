@@ -464,7 +464,8 @@ Full comparison index: [docs/comparisons/](docs/comparisons/README.md).
 ## 🚀 Quick Start (humans)
 
 ```bash
-# Install
+# Install (includes the CLI, semantic indexing, and the MCP server
+# for Claude Code, Cursor, Cline, Continue, and any MCP client)
 pip install neuralmind graphifyy
 
 # Go to your project
@@ -766,12 +767,15 @@ end-to-end against **Hermes-Agent v0.12.0 (build 2026.4.30)** — the agent
 discovered all 11 NeuralMind tools (4-second handshake) when registered as
 shown below.
 
-**Prerequisite:** install NeuralMind with the MCP extra. The MCP SDK is
-not part of the default install:
+**Prerequisite:** install NeuralMind. The MCP server (`neuralmind-mcp`)
+ships with the default install:
 
 ```bash
-pip install "neuralmind[mcp]"      # not just "neuralmind"
+pip install neuralmind
 ```
+
+> Older `pip install "neuralmind[mcp]"` commands still work — the `mcp`
+> extra is preserved as a no-op for backwards compatibility.
 
 **Two ways to register the server.** Both end up in `~/.hermes/config.yaml`:
 
@@ -820,11 +824,11 @@ that registers MCP servers via its CLI. Verified against **OpenClaw 2026.5.2** �
 `mcp set` / `mcp list` / `mcp show` round-trip the documented JSON schema
 into `~/.openclaw/openclaw.json` exactly as expected.
 
-**Prerequisite:** install NeuralMind with the MCP extra (the MCP SDK is
-not part of the default install):
+**Prerequisite:** install NeuralMind (the MCP server ships with the
+default install):
 
 ```bash
-pip install "neuralmind[mcp]"      # not just "neuralmind"
+pip install neuralmind
 ```
 
 **Register** NeuralMind:
@@ -859,11 +863,12 @@ which exposes OpenClaw's own channels as an MCP server to other clients).
 ### Troubleshooting
 
 **"Connection closed" / "Connection failed" right after register.** Almost
-always means NeuralMind was installed without the `[mcp]` extra and
-`neuralmind-mcp` is exiting because the MCP SDK is missing. Fix:
+always means an old NeuralMind install (≤ 0.4.x) where the MCP server was
+gated behind the `[mcp]` extra. From 0.5.0 onward the MCP SDK is bundled.
+Fix:
 
 ```bash
-pip install --upgrade "neuralmind[mcp]"
+pip install --upgrade neuralmind
 ```
 
 Then re-run the host's verify step (`hermes mcp test neuralmind` or
@@ -1214,7 +1219,7 @@ neuralmind build .
 | Component | Works With | Notes |
 |-----------|-----------|-------|
 | **CLI** | Any environment | Pure Python, no daemon required |
-| **MCP Server** | Claude Code, Claude Desktop, Cursor, Cline, Continue, any MCP client | `pip install "neuralmind[mcp]"` |
+| **MCP Server** | Claude Code, Claude Desktop, Cursor, Cline, Continue, any MCP client | Bundled with `pip install neuralmind` |
 | **PostToolUse Hooks** | Claude Code only | Uses Claude Code's `PostToolUse` hook system |
 | **Git hook** | Any git workflow | Appends to existing `post-commit`, idempotent |
 | **Copy-paste** | ChatGPT, Gemini, any LLM | `neuralmind wakeup . \| pbcopy` |
@@ -1240,7 +1245,7 @@ Then use MCP tools in sessions: `neuralmind_wakeup`, `neuralmind_query`, `neural
 <summary><b>Cursor / Cline / Continue</b> — MCP server</summary>
 
 ```bash
-pip install "neuralmind[mcp]" graphifyy
+pip install neuralmind graphifyy
 graphify update .
 neuralmind build .
 ```
