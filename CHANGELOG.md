@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.5.2](https://github.com/dfrostar/neuralmind/compare/v0.5.1...v0.5.2) (2026-05-06)
+
+
+### Bug Fixes
+
+* **demo:** address Copilot review — robustness + accuracy fixes ([366e8bb](https://github.com/dfrostar/neuralmind/commit/366e8bb708516c7228fea1330084ff0847568ae9))
+* **demo:** use venv interpreter, harden tokenizer fallback, real numbers ([13f7bb4](https://github.com/dfrostar/neuralmind/commit/13f7bb4f1bb5dba7388ef1e4586629826aa3cb37))
+
+
+### Documentation
+
+* add 30-second demo script and lightweight roadmap ([76d47cd](https://github.com/dfrostar/neuralmind/commit/76d47cdaeb73448fbfd435f1ce2553271d8fd08e))
+* add 30-second demo script and lightweight roadmap ([b9663b9](https://github.com/dfrostar/neuralmind/commit/b9663b9953cb520b653f572d85432fd9fd7afd35))
+* refresh benchmark chart [skip ci] ([7d3fa98](https://github.com/dfrostar/neuralmind/commit/7d3fa9854e05836a179c12614ad34ace57c16f62))
+
 ## [0.5.1](https://github.com/dfrostar/neuralmind/compare/v0.5.0...v0.5.1) (2026-05-04)
 
 
