@@ -28,15 +28,16 @@ The script creates an isolated venv, installs the deps, builds the index for the
 
 ```
   Q: How does authentication work in this codebase?
-     naive = 3,287 tok   neuralmind =  742 tok   reduction =   4.4×
+     naive = 4,736 tok   neuralmind =  829 tok   reduction =   5.7×
   Q: What are the main API endpoints?
-     naive = 3,287 tok   neuralmind =  611 tok   reduction =   5.4×
+     naive = 4,736 tok   neuralmind =  923 tok   reduction =   5.1×
   Q: Explain the billing flow from a user perspective.
-     naive = 3,287 tok   neuralmind =  698 tok   reduction =   4.7×
+     naive = 4,736 tok   neuralmind =  826 tok   reduction =   5.7×
 
-  Average reduction:   4.8×  across 3 queries
-  Avg context size:    683 tokens  (vs 3,287 naive)
-  Est. monthly saved:  ~$23.43  @ 100 queries/day on Claude 3.5 Sonnet
+  Average reduction:   5.5×  across 3 queries
+  Avg context size:    859 tokens  (vs 4,736 naive)
+  Est. monthly saved:  ~$34.89  @ 100 queries/day on Claude 3.5 Sonnet
+  Wall time:           0.85s
 ```
 
 The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks)). Once the demo convinces you, run it on your own code:

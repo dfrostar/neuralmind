@@ -108,13 +108,29 @@ def main() -> int:
 
     from neuralmind import NeuralMind
 
-    # Match the self-benchmark's tokenizer so the demo number agrees with
-    # the CI number a reader sees on PRs.
-    try:
-        enc = tiktoken.get_encoding("o200k_base")
-        enc.encode("probe")
-    except Exception:
-        enc = tiktoken.get_encoding("cl100k_base")
+    # Match the self-benchmark's tokenizer so the demo number agrees
+    # with the CI number a reader sees on PRs. Mirrors the fallback
+    # chain in tests/benchmark/run.py: tiktoken downloads its vocab
+    # from an Azure blob the first time it's used, which fails in
+    # restricted networks (corporate firewalls, air-gapped CI). Try
+    # the modern encoding first, fall back to the older one (often
+    # pre-cached), and only then bail with a clear pointer — never
+    # let an opaque tiktoken download error reach the user.
+    enc = None
+    for encoding_name in ("o200k_base", "cl100k_base"):
+        try:
+            candidate = tiktoken.get_encoding(encoding_name)
+            candidate.encode("probe")
+            enc = candidate
+            break
+        except Exception:
+            continue
+    if enc is None:
+        _die(
+            "tiktoken can't reach its vocab download endpoint.",
+            "On restricted networks, run once with internet to cache the vocab, "
+            "or use `python -m tests.benchmark.run` which has an offline fallback.",
+        )
 
     print()
     print(_hr())

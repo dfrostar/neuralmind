@@ -25,6 +25,7 @@ venv/
 ENV/
 env/
 .venv/
+.demo-venv/
 
 # ChromaDB databases
 **/neuralmind_db/
