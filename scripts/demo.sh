@@ -45,11 +45,18 @@ fi
 # shellcheck disable=SC1091
 source "${VENV}/bin/activate"
 
-# Quiet pip; we'll surface failures via set -e. Pin tiktoken loose since
-# the demo only needs len(encode(...)) which has been stable for ages.
-echo "[demo] installing dependencies (first run only, ~30s)"
-pip install --quiet --upgrade pip
-pip install --quiet -e "${REPO_ROOT}" tiktoken graphifyy
+# Marker file so re-runs skip the pip work entirely. First run takes
+# ~30s; subsequent runs that hit this branch are instant. Use the
+# venv's python explicitly via `python -m pip` rather than the bare
+# `pip` shim — `set -e` would still fire on a shadowed pip, but this
+# is one less thing that can go wrong on an oddly-configured shell.
+INSTALL_MARKER="${VENV}/.deps-installed"
+if [[ ! -f "${INSTALL_MARKER}" ]]; then
+  echo "[demo] installing dependencies (~30s, first run only)"
+  "${VENV}/bin/python" -m pip install --quiet --upgrade pip
+  "${VENV}/bin/python" -m pip install --quiet -e "${REPO_ROOT}" tiktoken graphifyy
+  touch "${INSTALL_MARKER}"
+fi
 
 if [[ ! -f "${FIXTURE}/graphify-out/graph.json" ]]; then
   echo "[demo] generating knowledge graph (graphify update)"
