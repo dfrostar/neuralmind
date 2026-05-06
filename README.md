@@ -15,6 +15,41 @@
 
 ---
 
+## ⚡ 30-second proof
+
+Don't trust the headline number — reproduce it. One command on a freshly cloned checkout:
+
+```bash
+git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+bash scripts/demo.sh
+```
+
+The script creates an isolated venv, installs the deps, builds the index for the bundled fixture (`tests/fixtures/sample_project/`), and runs three real questions. Output looks like:
+
+```
+  Q: How does authentication work in this codebase?
+     naive = 3,287 tok   neuralmind =  742 tok   reduction =   4.4×
+  Q: What are the main API endpoints?
+     naive = 3,287 tok   neuralmind =  611 tok   reduction =   5.4×
+  Q: Explain the billing flow from a user perspective.
+     naive = 3,287 tok   neuralmind =  698 tok   reduction =   4.7×
+
+  Average reduction:   4.8×  across 3 queries
+  Avg context size:    683 tokens  (vs 3,287 naive)
+  Est. monthly saved:  ~$23.43  @ 100 queries/day on Claude 3.5 Sonnet
+```
+
+The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks)). Once the demo convinces you, run it on your own code:
+
+```bash
+pip install neuralmind graphifyy
+cd /path/to/your-repo
+graphify update . && neuralmind build .
+neuralmind benchmark . --contribute
+```
+
+---
+
 ## 🔒 Security & Compliance
 
 **For enterprises and regulated industries:**
@@ -1431,7 +1466,8 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Architecture](https://github.com/dfrostar/neuralmind/wiki/Architecture)** | 4-layer progressive disclosure design |
 | **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
-| **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative roadmap for sustainability and scale |
+| **[Roadmap](ROADMAP.md)** | What's shipping next, where we want help, what's out of scope |
+| **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
@@ -1441,7 +1477,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [ROADMAP.md](ROADMAP.md) for what we're working on next and where help is most welcome.
 
 ## 📄 License
 
