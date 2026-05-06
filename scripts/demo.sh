@@ -62,5 +62,8 @@ if [[ ! -d "${FIXTURE}/graphify-out/neuralmind_db" ]]; then
 fi
 
 # Hand off to the Python script — single source of truth for the report
-# format so what a developer sees matches what CI publishes.
-exec "${PYTHON}" "${REPO_ROOT}/scripts/demo.py"
+# format so what a developer sees matches what CI publishes. Use the
+# venv interpreter explicitly: `${PYTHON}` may point at a different
+# install (e.g. when the user set PYTHON=/path/to/python to bootstrap
+# the venv), but installs landed in `${VENV}` and we must run there.
+exec "${VENV}/bin/python" "${REPO_ROOT}/scripts/demo.py"
