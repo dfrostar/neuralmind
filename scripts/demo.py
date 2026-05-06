@@ -34,8 +34,12 @@ DEMO_QUERIES: list[tuple[str, str]] = [
 ]
 
 # Claude 3.5 Sonnet input price per 1M tokens, used for the dollar
-# estimate. Matches tests/benchmark/run.py so the two reports agree.
-SONNET_PER_MTOK = 3.0
+# estimate. Mirrors the constant of the same name in
+# ``tests/benchmark/run.py`` so the demo and the CI self-benchmark
+# report agreeing dollar figures. If you change the pricing here you
+# MUST change it there too — search the repo for
+# ``CLAUDE_SONNET_INPUT_PER_MTOK`` to find both call sites.
+CLAUDE_SONNET_INPUT_PER_MTOK = 3.0
 QUERIES_PER_DAY = 100
 
 
@@ -112,10 +116,9 @@ def main() -> int:
     # with the CI number a reader sees on PRs. Mirrors the fallback
     # chain in tests/benchmark/run.py: tiktoken downloads its vocab
     # from an Azure blob the first time it's used, which fails in
-    # restricted networks (corporate firewalls, air-gapped CI). Try
-    # the modern encoding first, fall back to the older one (often
-    # pre-cached), and only then bail with a clear pointer — never
-    # let an opaque tiktoken download error reach the user.
+    # restricted networks (corporate firewalls, air-gapped CI) and on
+    # transient blob 5xx errors. Try modern → older → character-based
+    # approximation so the demo always produces a directional number.
     enc = None
     for encoding_name in ("o200k_base", "cl100k_base"):
         try:
@@ -125,11 +128,20 @@ def main() -> int:
             break
         except Exception:
             continue
+
     if enc is None:
-        _die(
-            "tiktoken can't reach its vocab download endpoint.",
-            "On restricted networks, run once with internet to cache the vocab, "
-            "or use `python -m tests.benchmark.run` which has an offline fallback.",
+        # Both tiktoken encodings unreachable — fall back to a ~4
+        # chars/token approximation. Crude but unblocks the demo on
+        # restricted networks; both sides of the comparison use the
+        # same approximation so the *ratio* stays directionally correct.
+        class _CharApproxEncoding:
+            def encode(self, text: str) -> list[int]:
+                return [0] * max(1, len(text) // 4)
+
+        enc = _CharApproxEncoding()
+        print(
+            "[demo] tiktoken vocab download blocked — using ~4 chars/token "
+            "approximation. Ratios stay directional; absolute counts are rough."
         )
 
     print()
@@ -165,8 +177,12 @@ def main() -> int:
 
     # Per-query input cost at Claude 3.5 Sonnet pricing, scaled to a
     # 100-query/day workload. Conservative — output tokens unchanged.
-    per_query_savings = (naive_total - avg_after) / 1_000_000 * SONNET_PER_MTOK
-    monthly_saved = per_query_savings * QUERIES_PER_DAY * 30
+    # Clamp at 0 because on a contrived input where retrieval renders
+    # more tokens than the naive baseline (small fixtures + heavy L1
+    # boilerplate, retrieval regression, etc.), printing a negative
+    # "saved" dollar amount is more confusing than informative.
+    per_query_savings = (naive_total - avg_after) / 1_000_000 * CLAUDE_SONNET_INPUT_PER_MTOK
+    monthly_saved = max(0.0, per_query_savings * QUERIES_PER_DAY * 30)
 
     print(_hr())
     print(f"  Average reduction:   {avg_ratio:.1f}×  across {len(rows)} queries")
