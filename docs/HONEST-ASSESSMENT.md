@@ -6,8 +6,9 @@ NeuralMind. This page is the counterpart: when NeuralMind isn't
 worth installing, what the headline numbers don't measure, and
 where the evidence is still thin. Read both before deciding.
 
-The maintainer wrote this; pull requests that sharpen the honesty
-are welcome.
+This document represents the project's stance, drafted with AI
+assistance and reviewed by the maintainer. Pull requests that
+sharpen the honesty are welcome.
 
 ---
 

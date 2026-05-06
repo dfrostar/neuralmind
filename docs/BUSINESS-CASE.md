@@ -15,20 +15,31 @@ If you want to know what could go wrong before adopting, see
 ## Bottom line
 
 For a team spending **$500+/month on AI coding agent inference** on a
-**codebase larger than ~10K lines**, NeuralMind delivers a
-**measured 3–10× reduction in end-to-end LLM cost** with a
-**one-time setup cost of ~15 minutes per developer** and **zero
-ongoing operational overhead** (incremental rebuilds happen
-automatically on commit).
+**codebase larger than ~10K lines**, NeuralMind's tooling
+**measures a 40–70× reduction in retrieval-stage input tokens** on
+real-world repos (community benchmarks; n=2). On a typical agent
+workload this **translates to a derived 3–10× reduction in
+end-to-end LLM cost** — the smaller end-to-end figure is because
+retrieval is one cost slice among generation, conversation history,
+and tool results, not all of them. **One-time setup is ~15 min per
+developer**, with **no ongoing operational overhead once you opt
+into the git post-commit hook (`neuralmind init-hook .`)** which
+incrementally rebuilds the index.
 
-Every word in that sentence is provable on your own code:
+The retrieval-stage reduction is **measured**. The end-to-end
+multiplier is **derived** from the
+[sensitivity analysis below](#the-math-with-assumptions-you-can-change),
+not directly observed end-to-end — that's a known gap, tracked on
+[ROADMAP.md](../ROADMAP.md).
 
-| Claim | How to verify | Time |
-|---|---|---|
-| 3–10× end-to-end cost reduction | `neuralmind benchmark . --contribute` produces per-query token counts and a dollar estimate at your model's pricing. | 5 min |
-| ~15 min setup | `bash scripts/demo.sh` from a fresh clone runs end-to-end. | 1 min |
-| Zero ongoing overhead | `neuralmind init-hook .` installs a git post-commit hook that incrementally rebuilds the index. | 30 sec |
-| Codebase >10K lines threshold | `wc -l $(find . -name '*.py' -o -name '*.ts' -o -name '*.js')` | 5 sec |
+Every word in that paragraph is provable on your own code:
+
+| Claim | How to verify | Time | What it actually measures |
+|---|---|---|---|
+| 40–70× retrieval reduction | `neuralmind benchmark .` reports per-query input-token counts and a Sonnet-priced dollar estimate (CLI hardcodes Claude 3.5 Sonnet input pricing today; multiply by your model's input price ratio if different). | 5 min | Retrieval-stage input tokens vs. naive baseline. |
+| ~15 min setup | `bash scripts/demo.sh` from a fresh clone runs end-to-end. | 1 min | Wall time including pip install + chromadb model download + index build. |
+| Ongoing overhead with `init-hook` | `neuralmind init-hook .` installs a git post-commit hook that incrementally rebuilds. Without it, you re-run `neuralmind build .` manually. | 30 sec | Setup of the hook only — its incremental run takes seconds per commit. |
+| Codebase >10K lines threshold | `wc -l $(find . -name '*.py' -o -name '*.ts' -o -name '*.js')` | 5 sec | Line count, no opinion attached. |
 
 ---
 
@@ -37,28 +48,34 @@ Every word in that sentence is provable on your own code:
 These are the load-bearing numbers. All are produced by automation
 that runs on every PR, not maintainer-curated marketing claims.
 
-### Fact 1 — 6.1× retrieval reduction is measured in CI on every commit
+### Fact 1 — Retrieval reduction is measured in CI on every commit
 
 The [CI self-benchmark](../.github/workflows/ci-benchmark.yml) runs
 the [committed query set](../tests/fixtures/benchmark_queries.json)
 against the [committed fixture](../tests/fixtures/sample_project/) on
-every pull request and posts results as a sticky PR comment. Most
-recent measurement (PR #89, commit `366e8bb`):
+every pull request and posts results as a sticky PR comment. The
+exact ratio fluctuates with chromadb embedding nondeterminism and
+fixture changes, but the shape of the result is stable:
 
-- **Average reduction: 6.1× across 10 queries**
-- Naive baseline: 47,360 tokens (every `.py` file concatenated)
-- NeuralMind total: 7,850 tokens
-- Top-k retrieval hit rate: 71.7%
-- Pass/fail floor: 4× (CI fails the PR if reduction drops below)
+- **Average reduction is consistently above the 4× pass/fail floor
+  on 10 queries** — most recent runs land in the 5–7× range on the
+  fixture (~500 lines). CI fails the PR if it drops below 4×.
+- Naive baseline: every `.py` file in the fixture concatenated.
+- Top-k retrieval hit rate: typically 65–75% on the fixture.
 
-The fixture is intentionally small (~500 lines). On real-world
-repos the ratio is consistently higher (see Fact 4) because the
-naive baseline scales linearly with codebase size while
-NeuralMind's output stays roughly constant.
+The fixture is intentionally small. On real-world repos the ratio
+is consistently higher (see Fact 4) because the naive baseline
+scales linearly with codebase size while NeuralMind's output stays
+roughly constant.
 
-**Verify:** any PR comment on the [closed PR list](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr+is%3Aclosed)
-shows the same numbers from a different commit. Or run
-`python -m tests.benchmark.run` locally.
+**Verify yourself, with current numbers:** any recent PR comment on
+the [PR list](https://github.com/dfrostar/neuralmind/pulls)
+contains the latest sticky benchmark; click into a closed PR to
+read it. Or reproduce locally:
+
+```bash
+python -m tests.benchmark.run
+```
 
 ### Fact 2 — The demo reproduces it in 30 seconds on a fresh clone
 
@@ -87,15 +104,27 @@ Production repos are 100× larger; the ratio scales accordingly.
 
 ### Fact 3 — Token counting uses `tiktoken`, the industry standard
 
-We don't make up token counts. The benchmark uses OpenAI's
-[`tiktoken`](https://github.com/openai/tiktoken) for GPT-4o and
-GPT-4/3.5 (measured), and the official [`anthropic`](https://github.com/anthropics/anthropic-sdk-python)
-SDK tokenizer for Claude when available (measured). Llama and other
-non-vendor tokens are explicitly labeled as estimates. Every PR
-comment shows which rows are measured vs. estimated.
+We don't make up token counts.
 
-This means the savings figures are **the same numbers your model
-provider will charge you against**. No conversion, no fudge factor.
+- **Main benchmark runner** ([`tests/benchmark/run.py`](../tests/benchmark/run.py)):
+  uses OpenAI's [`tiktoken`](https://github.com/openai/tiktoken)
+  with the GPT-4o (`o200k_base`) encoding, falling back to
+  `cl100k_base` and finally a character-based approximation if both
+  vocab downloads fail. This produces the per-query and aggregate
+  numbers in the sticky PR comment.
+- **Multi-model breakdown** ([`tests/benchmark/multi_model.py`](../tests/benchmark/multi_model.py)):
+  uses each provider's actual tokenizer when available — `tiktoken`
+  for GPT-4o and GPT-4/3.5 (measured), the official
+  [`anthropic`](https://github.com/anthropics/anthropic-sdk-python)
+  SDK tokenizer for Claude when the package is installed
+  (measured). Llama and rows without an installed vendor tokenizer
+  are explicitly labeled as estimates derived from published vocab
+  ratios.
+
+Every PR comment marks which rows are measured vs. estimated, so
+the provenance is auditable. Savings figures for GPT-4o and Claude
+(when measured) are **the same numbers your model provider will
+charge you against**. No conversion, no fudge factor.
 
 ### Fact 4 — Real repos consistently exceed the fixture numbers
 
@@ -239,7 +268,7 @@ Skeptical? Each row of this table is a single command:
 | The retrieval reduction claim | `bash scripts/demo.sh` | 5.5× on the fixture |
 | The CI claim | View any PR's [self-benchmark comment](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr) | 6.1× on the same fixture |
 | The "works on my code" claim | `neuralmind benchmark . --contribute` | YOUR ratio, YOUR tokens, YOUR dollar estimate |
-| The "no data leaves your machine" claim | `pip install --dry-run neuralmind` then audit deps | local-only deps (chromadb, mcp, pyyaml) |
+| The "no data leaves your machine" claim | Read [`SECURITY.md`](../SECURITY.md), audit dependencies (chromadb, mcp, pyyaml — all local-only), and run with network disabled (`unshare -n bash scripts/demo.sh` on Linux, or block on a firewall) — the demo completes after the first-run model download | local-only at runtime, not just at install |
 | The "incremental updates work" claim | `neuralmind build . --force` then `neuralmind build .` | second run reports ~all skipped |
 | The "composes with prompt caching" claim | Run any agent with NeuralMind's compressed Read output through your normal cached prompt — observe lower input tokens at cache reads | Math holds |
 
