@@ -51,6 +51,17 @@ neuralmind benchmark . --contribute
 
 ---
 
+## 📊 The fact-based case
+
+Two docs you should read before forming an opinion. Both are linked from this section so you can pick what you need:
+
+- **[docs/BUSINESS-CASE.md](docs/BUSINESS-CASE.md)** — the compelling pitch, with provable numbers. Every claim is a single command away from being verified on your own code. ROI math with assumptions you can change. Three concrete scenarios. Read this if you're evaluating whether to bring NeuralMind to your team.
+- **[docs/HONEST-ASSESSMENT.md](docs/HONEST-ASSESSMENT.md)** — the skeptic's companion. When NeuralMind isn't worth installing. What "40–70×" actually means (and doesn't). Where the community-benchmark sample is too small to extrapolate. Read this if you want to know what could go wrong before adopting.
+
+The headline you can stand on: **6.1× retrieval reduction is measured in CI on every commit** ([latest PR comment](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr)) and **5.5× reproduces in 30 seconds on a fresh clone** via `bash scripts/demo.sh`. Real-world repos have submitted **46–66×** but n=2 — your number comes from `neuralmind benchmark . --contribute` on your code.
+
+---
+
 ## 🔒 Security & Compliance
 
 **For enterprises and regulated industries:**
@@ -304,16 +315,18 @@ You: "How does authentication work in my codebase?"
 ✅ NeuralMind: Smart context → 766 tokens → $0.002–$0.06/query
 ```
 
-## 💰 Real Savings
+## 💰 Realistic savings
 
-| Model | Without NeuralMind | With NeuralMind | Monthly Savings |
-|-------|-------------------|-----------------|----------------|
-| Claude 3.5 Sonnet | $450/month | $7/month | **$443** |
-| GPT-4o | $750/month | $12/month | **$738** |
-| GPT-4.5 | $11,250/month | $180/month | **$11,070** |
-| Claude Opus | $2,250/month | $36/month | **$2,214** |
+The dollar figures depend on **your** workload. Run `neuralmind benchmark . --contribute` to get numbers for your codebase and query volume. Order-of-magnitude expectations:
 
-*Based on 100 queries/day. [Pricing sources](https://openrouter.ai/models)*
+| You today | NeuralMind likely saves | Setup pays back in |
+|---|---|---|
+| <$50/mo on LLM, small repo | $5–15/mo | months — probably skip |
+| $50–500/mo, 10K+ line repo | $20–200/mo | days |
+| $500–5,000/mo team workload | hundreds–thousands/mo | hours |
+| Already using prompt caching + long context | smaller marginal win | measure first |
+
+These are **directional**. The [Honest Assessment](docs/HONEST-ASSESSMENT.md) explains why retrieval-token reduction (40–70×) ≠ end-to-end cost reduction (3–10× typical), and when NeuralMind is and isn't worth installing.
 
 ---
 
@@ -386,91 +399,11 @@ See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guide
 
 ---
 
-## 👤 Who is NeuralMind for?
+## 🏢 For organizations evaluating NeuralMind
 
-| You are… | NeuralMind gives you… |
-|---|---|
-| A **Claude Code user** watching your token bill climb | PostToolUse compression on every Read/Bash/Grep + ~60× smaller query context |
-| A **Cursor user** who wants semantic retrieval outside Cursor too | CLI + MCP server that works in any agent with the same index |
-| A **Cline / Continue user** without a built-in codebase index | Drop-in MCP `neuralmind_query` and `neuralmind_skeleton` tools |
-| Running **OpenAI / Gemini / local models** | Model-agnostic context — pipe `wakeup` / `query` output into any chat |
-| A **solo developer** with a growing monorepo | Incremental rebuilds + learning that adapts to your query patterns |
-| A **team tech lead** worried about LLM spend | Measurable per-query token reduction with `neuralmind benchmark` |
-| A **security-conscious engineer** or in a **regulated industry** | 100% local, offline, no code leaves the machine |
-| A **researcher / hobbyist** exploring LLM cost optimization | Open-source reference implementation of two-phase token optimization |
+If you're building a pitch for your team — finance, healthcare, legal, government, internal-platform, or just a large engineering org with a climbing LLM bill — start with **[docs/BUSINESS-CASE.md](docs/BUSINESS-CASE.md)** for the fact-based ROI argument and **[docs/ENTERPRISE.md](docs/ENTERPRISE.md)** for the regulated/on-premise/multi-team scenarios.
 
-Not a fit if: you need cross-repo search across a whole organization (use [Sourcegraph Cody](docs/comparisons/vs-cody.md)), or you only want inline completions (use [Copilot](docs/comparisons/vs-github-copilot.md)).
-
----
-
-## 🏢 Enterprise Use Cases
-
-NeuralMind solves specific pain points for companies at scale:
-
-### Regulated Industries (Finance, Healthcare, Legal, Government)
-
-**Challenge:** AI tools can't be trusted if they can't explain decisions.
-
-**NeuralMind Solution:**
-- Every recommendation is traceable to extracted code (auditable, not guessed)
-- Works 100% on-premise — no cloud, no data transfer, zero exfiltration risk
-- Meets GDPR, HIPAA, SOC 2, and ISO 27001 requirements
-- Explainability by design — see what code fed each decision
-
-### Enterprises with Proprietary / Sensitive Code
-
-**Challenge:** Sending code to external APIs or SaaS models is a legal no-go.
-
-**NeuralMind Solution:**
-- All processing stays on your hardware or internal network
-- No ChromaDB cloud — uses local SQLite-compatible storage
-- No API keys, no authentication to external vendors
-- Process trade secrets, algorithms, and confidential code safely
-
-### Large Organizations Scaling AI Coding Assistant Spend
-
-**Challenge:** 100 developers × Claude Sonnet queries = $50K+/month LLM bill
-
-**NeuralMind Solution:**
-- 40–70× token reduction per query → cut budget by 95%+
-- Explicit benchmarking (`neuralmind benchmark`) to show ROI to finance
-- Measurable savings: baseline vs. optimized (in dollars)
-- Deploy once, benefit across all teams using the same codebase
-
-### Internal Platform Teams & Shared Infrastructure
-
-**Challenge:** Different teams query the same codebase; results are inconsistent.
-
-**NeuralMind Solution:**
-- Build the index once → share across all teams
-- Cooccurrence learning adapts to your org's query patterns (`neuralmind learn`)
-- Consistent, reproducible context for every question
-- Single source of truth for "how does this system work?"
-
-### Teams Needing Offline/Disconnected Development
-
-**Challenge:** Regulated environments, air-gapped networks, or unreliable connectivity.
-
-**NeuralMind Solution:**
-- No internet required after the initial install
-- Pre-build the index on a connected machine, ship it in source control
-- Works in submarines, rural offices, flight-mode development
-- No API rate limiting or service outages
-
----
-
-## 🤔 Why NeuralMind vs. Heuristic-Only
-
-Both approaches are valid; the tradeoff is retrieval quality vs. simplicity.
-
-| Approach | Token Reduction | Accuracy | Deps | Learns Over Time |
-|---|---|---|---|---|
-| Heuristic-only (no embeddings) | ~33x (~97% fewer tokens) | 70-80% top-5 (community baseline) | None | No |
-| NeuralMind | 40-70x | Project-dependent; evaluate against the same top-5 query set | ChromaDB | Yes (cooccurrence patterns) |
-
-NeuralMind does include a dependency (ChromaDB), but it still runs entirely offline — **no API calls, no cloud services, no data leaves your machine**.
-
-If your priority is strict zero-dependency operation, heuristic-only is the simplest path. If your priority is stronger semantic retrieval and adaptive relevance, NeuralMind is the better fit.
+Both docs ground every claim in something you can verify with one command on your own code.
 
 ---
 
@@ -1457,6 +1390,9 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 
 | Resource | Contents |
 |----------|---------|
+| **[Business Case](docs/BUSINESS-CASE.md)** | Fact-based ROI argument with provable claims, math you can plug your numbers into, and three concrete scenarios |
+| **[Honest Assessment](docs/HONEST-ASSESSMENT.md)** | Skeptic's companion — when NeuralMind isn't worth installing, what the headline numbers don't measure |
+| **[Enterprise Use Cases](docs/ENTERPRISE.md)** | Regulated industries, on-premise, multi-team — what to know before pitching internally |
 | **[Setup Guide](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)** | First-time setup for Claude Code, Claude Desktop, Cursor, any LLM |
 | **[CLI Reference](https://github.com/dfrostar/neuralmind/wiki/CLI-Reference)** | All commands and options |
 | **[Scheduling Guide](https://github.com/dfrostar/neuralmind/wiki/Scheduling-Guide)** | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
