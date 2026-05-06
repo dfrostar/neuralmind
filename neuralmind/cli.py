@@ -432,6 +432,73 @@ def cmd_watch(args):
             print(f"\nWatcher stopped. Reinforced {activations_total} synapse pair(s) total.")
 
 
+def cmd_demo(args):
+    """Run the bundled 30-second demo.
+
+    Copies the bundled sample project (with pre-built graph.json) to a
+    temp directory, builds the vector index, and runs three pre-canned
+    questions against it. Designed to work right after
+    ``pip install neuralmind`` — no git checkout, no graphify install,
+    no manual setup needed.
+    """
+    import shutil
+    import tempfile
+    from importlib import resources
+
+    from neuralmind import _demo_report
+    from neuralmind.core import NeuralMind
+
+    # Locate the bundled fixture inside the wheel via importlib.resources.
+    # ``files()`` returns a Traversable; we materialize it to a real
+    # directory on disk because ChromaDB and the embedder both expect a
+    # writable filesystem path (zipped wheels would break otherwise).
+    try:
+        bundle_root = resources.files("neuralmind") / "demo_data" / "sample_project"
+    except (ModuleNotFoundError, AttributeError) as exc:
+        print(f"demo failed: bundled demo data not found ({exc}).", file=sys.stderr)
+        sys.exit(1)
+
+    if not (bundle_root / "graphify-out" / "graph.json").is_file():
+        print(
+            "demo failed: bundled demo data is missing graphify-out/graph.json. "
+            "Reinstall neuralmind to restore it.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    keep = bool(getattr(args, "keep", False))
+    workdir = tempfile.mkdtemp(prefix="neuralmind-demo-")
+    fixture_dir = Path(workdir) / "sample_project"
+
+    try:
+        # importlib.resources.as_file gives us a real path even if the
+        # package was installed from a zip. shutil.copytree then makes a
+        # writable working copy so the build doesn't pollute site-packages.
+        with resources.as_file(bundle_root) as src:
+            shutil.copytree(src, fixture_dir)
+
+        if not args.quiet:
+            print(f"[demo] working copy: {fixture_dir}")
+            print("[demo] building vector index (one-time, ~5s)…")
+
+        mind = NeuralMind(str(fixture_dir))
+        result = mind.build(force=True)
+        if not result.get("success"):
+            print(f"demo failed during build: {result.get('error', 'unknown error')}",
+                  file=sys.stderr)
+            sys.exit(1)
+
+        _demo_report.run_demo_report(
+            fixture_dir,
+            header_label="bundled sample_project",
+        )
+    finally:
+        if keep:
+            print(f"[demo] keeping working copy at {workdir} (--keep)")
+        else:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
@@ -666,6 +733,23 @@ def main():
         help="Suppress per-batch logging",
     )
     watch_p.set_defaults(func=cmd_watch)
+
+    # demo command — runs against bundled sample_project, no git checkout needed
+    demo_p = subparsers.add_parser(
+        "demo",
+        help="Run the 30-second NeuralMind demo against the bundled sample project",
+    )
+    demo_p.add_argument(
+        "--keep",
+        action="store_true",
+        help="Keep the working copy directory after the demo finishes (for inspection)",
+    )
+    demo_p.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress preamble logging (still prints the report)",
+    )
+    demo_p.set_defaults(func=cmd_demo)
 
     # install-hooks command — Claude Code PostToolUse integration
     hooks_p = subparsers.add_parser(

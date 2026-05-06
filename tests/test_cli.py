@@ -810,3 +810,37 @@ class TestCLIInitHook:
         hook_path = hooks_dir / "post-commit"
         mode = os.stat(hook_path).st_mode
         assert mode & stat.S_IXUSR  # User execute bit set
+
+
+class TestCLIDemo:
+    """Tests for CLI demo command (bundled sample_project + graph.json)."""
+
+    def test_demo_data_bundled_with_package(self):
+        """The bundled fixture and pre-built graph.json must ship inside the
+        package — the whole point of `neuralmind demo` is that it works
+        right after `pip install neuralmind`, no git checkout needed."""
+        from importlib import resources
+
+        bundle = resources.files("neuralmind") / "demo_data" / "sample_project"
+        assert (bundle / "graphify-out" / "graph.json").is_file()
+        assert (bundle / "auth" / "handlers.py").is_file()
+        assert (bundle / "billing" / "invoices.py").is_file()
+
+    def test_cmd_demo_runs_end_to_end(self, capsys):
+        """Smoke test: demo subcommand copies the bundled fixture, builds
+        the index, runs three queries, and prints the report banner."""
+        from neuralmind.cli import cmd_demo
+
+        args = MagicMock()
+        args.keep = False
+        args.quiet = True
+
+        cmd_demo(args)
+
+        captured = capsys.readouterr()
+        assert "NeuralMind 30-second demo" in captured.out
+        assert "Average reduction:" in captured.out
+        # All three demo queries should appear in the output
+        assert "How does authentication work" in captured.out
+        assert "API endpoints" in captured.out
+        assert "billing flow" in captured.out

@@ -118,11 +118,19 @@ Issues = "https://github.com/dfrostar/neuralmind/issues"
 Changelog = "https://github.com/dfrostar/neuralmind/releases"
 
 [tool.hatch.build.targets.wheel]
+# Bundle the demo fixture (small sample project + pre-built graph.json)
+# so `pip install neuralmind && neuralmind demo` works without a git
+# checkout or graphify install. Hatch already includes Python files
+# under the package, but JSON/Markdown need an explicit pattern.
 packages = ["neuralmind"]
+include = [
+    "neuralmind/demo_data/**",
+]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "neuralmind/**/*.py",
+    "neuralmind/demo_data/**",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
