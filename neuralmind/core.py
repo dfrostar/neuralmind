@@ -29,7 +29,7 @@ from pathlib import Path
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .memory import is_memory_logging_enabled, log_query_event
+from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -253,6 +253,7 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_wakeup_context()
+        log_wakeup_event(self.project_path, result)
         self._emit_audit(
             category="audit",
             action="wakeup",

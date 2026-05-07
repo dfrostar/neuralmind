@@ -56,49 +56,83 @@ Derived signals:
 
 ## Architecture
 
-One new SQLite table next to the existing synapse store, one new
-module per subsystem, no changes to the public MCP surface.
+We do **not** need a new SQLite table — `neuralmind/memory.py` already
+exists and handles per-project + global JSONL event logging behind an
+opt-in consent sentinel. `core.NeuralMind.query()` already calls
+`log_query_event()` at `core.py:283`. D1 extends that substrate
+rather than duplicating it.
 
-### Storage: `query_events` table
+### Existing substrate (already in tree)
 
-Lives in the existing synapse DB at `<project>/.neuralmind/synapses.db`
-to share the connection / WAL setup. Schema (added via
-`CREATE TABLE IF NOT EXISTS`, no migration framework needed yet):
+`neuralmind/memory.py` provides:
 
-```sql
-CREATE TABLE IF NOT EXISTS query_events (
-  id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  ts           REAL NOT NULL,             -- unix timestamp
-  session_id   TEXT NOT NULL,             -- Claude Code session id
-  tool         TEXT NOT NULL,             -- 'wakeup' | 'query'
-  query_hash   TEXT,                      -- sha1(query text), null for wakeup
-  query_text   TEXT,                      -- truncated to 512 chars, null for wakeup
-  layers_used  TEXT,                      -- JSON array, e.g. '["L0","L1","L2"]'
-  recall_nodes TEXT,                      -- JSON array of node ids
-  community_id TEXT,                      -- primary community touched, if any
-  escalated_l3 INTEGER NOT NULL DEFAULT 0 -- 1 if L3 was used
-);
-CREATE INDEX IF NOT EXISTS idx_query_events_session ON query_events(session_id, ts);
-CREATE INDEX IF NOT EXISTS idx_query_events_community ON query_events(community_id);
-```
+- `is_memory_logging_enabled()` — gates everything on the consent
+  sentinel at `~/.neuralmind/memory_consent.json`.
+- `log_query_event(project_path, question, result)` — appends a JSON
+  line per query to both `<project>/.neuralmind/memory/query_events.jsonl`
+  and `~/.neuralmind/memory/query_events.jsonl`. Captures
+  `layers_used`, `communities_loaded`, `search_hits`, `tokens`,
+  `reduction_ratio`, `timestamp`, `query`.
+- `read_query_events(path)` — reads back the JSONL.
 
-Retention: cap at 50k rows per project, prune oldest on insert past
-threshold (cheap, no separate cron).
+This satisfies most of subsystem A and B's data needs. The privacy
+story (opt-in consent, local-first, JSONL on disk) is also already
+designed and tested.
 
-Writer: `neuralmind/query_log.py` (new). Single function
-`record_query_event(...)` — opens the existing synapse DB, inserts,
-commits. Stdlib-only, parallels `synapses.py` style.
+### What D1 adds
 
-### Hook point
+Four small gaps:
 
-`hooks.py` already registers PostToolUse hooks. Add one for
-`neuralmind_query` and `neuralmind_wakeup` that calls
-`record_query_event`. The tool's response already contains
-`layers_used` and the node ids — no change to the tool body required.
+1. **Wakeup logging.** `core.NeuralMind.wakeup()` does not currently
+   log. Add `log_wakeup_event(project_path, result, session_id)` and
+   call it from `wakeup()`. Critical for the "L0/L1 was sufficient"
+   positive signal — without wakeup events, we can't tell whether
+   the agent woke up and stopped (good) or woke up and immediately
+   queried (under-disclosure).
 
-This keeps query logging entirely in the hook layer, so users who
-disable hooks (`NEURALMIND_QUERY_LOG=0`) lose self-improvement but
-retain core behavior.
+2. **`session_id` on events.** Both `query` and `wakeup` events need
+   a session id so we can compute *intra-session* signals (re-query
+   rate, wakeup-without-followup). Source order:
+   - `CLAUDE_SESSION_ID` env var if set,
+   - else a process-lifetime uuid generated lazily (one per
+     `NeuralMind` instance).
+
+3. **Derived `escalated_l3` flag.** Trivially `"L3" in layers_used`,
+   but surface as a helper so subsystem A reads through one
+   function rather than re-implementing the predicate.
+
+4. **Aggregation helpers in `memory.py`.** Subsystem A's tuning rule
+   needs:
+   - `recent_events(path, *, since=None, window=None) -> list[dict]`
+   - `escalation_rate(events) -> float`
+   - `re_query_rate(events) -> float`
+   - `wakeup_only_rate(events) -> float`
+
+   Each is short (a few lines). They're the read-side primitives;
+   subsystem A is the only consumer. Keeping them in `memory.py`
+   (not a new module) so future readers find aggregation logic next
+   to the storage that produces it.
+
+### Tunables storage (subsystem A, later)
+
+`l2_recall_k` and `l3_escalation_threshold` will live in the
+existing `meta` table of `synapses.db` — that's already a
+key-value scratchpad and avoids introducing a third storage
+location. Subsystem C, when it lands, writes there too. (D1 does
+not touch the meta table.)
+
+### Why not hooks
+
+The plan's earlier draft proposed PostToolUse hooks on
+`neuralmind_query` / `neuralmind_wakeup`. In-process logging from
+`core.py` is strictly better:
+- The data is already structured (`ContextResult` object), no JSON
+  re-parsing.
+- `core.query()` already calls `log_query_event` — the substrate is
+  in-process.
+- Hooks would only fire when the user has Claude Code's hooks
+  installed; in-process logging works for any caller (CLI, MCP,
+  programmatic).
 
 ## Subsystem A: selector auto-tuning
 
@@ -271,28 +305,48 @@ moves scalars in the expected direction.
 
 ## D1 deliverable (detailed)
 
-In one branch, `claude/self-improvement-d1` (forked from
-`claude/plan-next-task-nwJak` once we start coding):
+Developed on `claude/plan-next-task-nwJak`. Extends the existing
+`memory.py` substrate; no new modules, no new storage backend.
 
-1. **`neuralmind/query_log.py`** — `init_schema(conn)`,
-   `record_query_event(...)`, `recent_events(window)`,
-   `prune_to(retention)`. Reuses `synapses.default_db_path()` and
-   the same connection-open helper.
-2. **Schema bootstrap** — call `init_schema` from
-   `synapses.SynapseStore.__init__` so a single open creates both
-   sets of tables. No separate migration.
-3. **Hook integration** — extend `hooks.py` PostToolUse handlers to
-   record an event after `neuralmind_query` and `neuralmind_wakeup`.
-   Read `tool_response.layers_used`, recall node ids, and escalation
-   flag. Gate behind `NEURALMIND_QUERY_LOG`.
-4. **Tests** — `tests/test_query_log.py` covering insert, JSON
-   columns, retention trim, idempotent schema creation.
-5. **No behavior change** for users with the env var unset
-   (default is on, but the table is just inert append).
+1. **Add `log_wakeup_event` to `memory.py`.** Same JSONL file as
+   query events, `event_type: "wakeup"`. Captures
+   `layers_used`, `tokens`, `timestamp`, `session_id`,
+   `project_path`. No `query` field.
 
-D1 ships nothing user-visible — purely the data layer that A, B, C
-all depend on. This is intentional: gives us a logging substrate to
-start collecting signal *while* we build A and B.
+2. **Add `session_id` to `log_query_event` and `log_wakeup_event`.**
+   Resolution: `CLAUDE_SESSION_ID` env var, else a lazy
+   process-lifetime uuid via `_current_session_id()`. Add the field
+   to events emitted by both functions.
+
+3. **Wire `core.NeuralMind.wakeup()` to call `log_wakeup_event`.**
+   One line, mirrors the existing `log_query_event` call in
+   `query()`.
+
+4. **Aggregation helpers** in `memory.py`:
+   - `recent_events(events, *, since_ts=None, last_n=None)`
+   - `escalation_rate(events)` — fraction with `"L3"` in
+     `layers_used` (query events only).
+   - `re_query_rate(events)` — fraction of query events with ≥50%
+     `communities_loaded` overlap with the previous query in the
+     same session.
+   - `wakeup_only_rate(events)` — fraction of sessions whose only
+     events are wakeups (no queries).
+
+5. **Tests** in `tests/test_memory.py` (or a sibling
+   `tests/test_memory_aggregations.py` to keep file size sane):
+   - `log_wakeup_event` writes to both project and global JSONL.
+   - `session_id` is included on both event types.
+   - `session_id` honors `CLAUDE_SESSION_ID` when set, falls back
+     to a stable process-lifetime uuid otherwise.
+   - Each aggregation helper on hand-built event streams.
+   - Existing `test_memory.py` cases still pass (no regression on
+     `log_query_event` shape — just additive field).
+
+6. **No behavior change** for users without consent. All logging
+   already gated by `is_memory_logging_enabled()`.
+
+D1 ships nothing user-visible — purely fills gaps in the data layer
+that subsystems A and B will read.
 
 ## D2 / D3 (sketch only)
 
