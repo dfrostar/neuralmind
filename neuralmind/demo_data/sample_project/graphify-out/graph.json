@@ -1,0 +1,3073 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "__init__.py",
+      "source_location": "L1",
+      "id": "init_py",
+      "community": 9,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "users/__init__.py",
+      "source_location": "L1",
+      "id": "users_init_py",
+      "community": 10,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "crud.py",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L1",
+      "id": "users_crud_py",
+      "community": 4,
+      "norm_label": "crud.py"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L12",
+      "id": "users_crud_user",
+      "community": 4,
+      "norm_label": "user"
+    },
+    {
+      "label": "create_user()",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L23",
+      "id": "users_crud_create_user",
+      "community": 4,
+      "norm_label": "create_user()"
+    },
+    {
+      "label": "get_user_by_email()",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L40",
+      "id": "users_crud_get_user_by_email",
+      "community": 4,
+      "norm_label": "get_user_by_email()"
+    },
+    {
+      "label": "get_user()",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L60",
+      "id": "users_crud_get_user",
+      "community": 4,
+      "norm_label": "get_user()"
+    },
+    {
+      "label": "update_last_login()",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L80",
+      "id": "users_crud_update_last_login",
+      "community": 3,
+      "norm_label": "update_last_login()"
+    },
+    {
+      "label": "deactivate_user()",
+      "file_type": "code",
+      "source_file": "users/crud.py",
+      "source_location": "L89",
+      "id": "users_crud_deactivate_user",
+      "community": 0,
+      "norm_label": "deactivate_user()"
+    },
+    {
+      "label": "User model + CRUD operations.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L1",
+      "id": "users_crud_rationale_1",
+      "community": 4,
+      "norm_label": "user model + crud operations."
+    },
+    {
+      "label": "Canonical user record.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L13",
+      "id": "users_crud_rationale_13",
+      "community": 4,
+      "norm_label": "canonical user record."
+    },
+    {
+      "label": "Insert a new user and return the created record.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L24",
+      "id": "users_crud_rationale_24",
+      "community": 4,
+      "norm_label": "insert a new user and return the created record."
+    },
+    {
+      "label": "Fetch a user by email, returning a raw dict (for auth hot path speed).",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L41",
+      "id": "users_crud_rationale_41",
+      "community": 4,
+      "norm_label": "fetch a user by email, returning a raw dict (for auth hot path speed)."
+    },
+    {
+      "label": "Fetch a user by primary key.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L61",
+      "id": "users_crud_rationale_61",
+      "community": 4,
+      "norm_label": "fetch a user by primary key."
+    },
+    {
+      "label": "Stamp the user's last_login timestamp.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L81",
+      "id": "users_crud_rationale_81",
+      "community": 3,
+      "norm_label": "stamp the user's last_login timestamp."
+    },
+    {
+      "label": "Soft-delete a user by flipping is_active off.",
+      "file_type": "rationale",
+      "source_file": "users/crud.py",
+      "source_location": "L90",
+      "id": "users_crud_rationale_90",
+      "community": 0,
+      "norm_label": "soft-delete a user by flipping is_active off."
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "auth/__init__.py",
+      "source_location": "L1",
+      "id": "auth_init_py",
+      "community": 11,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "jwt_utils.py",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L1",
+      "id": "auth_jwt_utils_py",
+      "community": 1,
+      "norm_label": "jwt_utils.py"
+    },
+    {
+      "label": "encode_token()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L15",
+      "id": "auth_jwt_utils_encode_token",
+      "community": 1,
+      "norm_label": "encode_token()"
+    },
+    {
+      "label": "decode_token()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L33",
+      "id": "auth_jwt_utils_decode_token",
+      "community": 1,
+      "norm_label": "decode_token()"
+    },
+    {
+      "label": "_sign()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L53",
+      "id": "auth_jwt_utils_sign",
+      "community": 1,
+      "norm_label": "_sign()"
+    },
+    {
+      "label": "_b64url()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L57",
+      "id": "auth_jwt_utils_b64url",
+      "community": 1,
+      "norm_label": "_b64url()"
+    },
+    {
+      "label": "_b64url_decode()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L61",
+      "id": "auth_jwt_utils_b64url_decode",
+      "community": 1,
+      "norm_label": "_b64url_decode()"
+    },
+    {
+      "label": "TokenExpiredError",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L66",
+      "id": "auth_jwt_utils_tokenexpirederror",
+      "community": 1,
+      "norm_label": "tokenexpirederror"
+    },
+    {
+      "label": "Exception",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "exception",
+      "community": 1,
+      "norm_label": "exception"
+    },
+    {
+      "label": "InvalidSignatureError",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L70",
+      "id": "auth_jwt_utils_invalidsignatureerror",
+      "community": 1,
+      "norm_label": "invalidsignatureerror"
+    },
+    {
+      "label": "MalformedTokenError",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L74",
+      "id": "auth_jwt_utils_malformedtokenerror",
+      "community": 1,
+      "norm_label": "malformedtokenerror"
+    },
+    {
+      "label": "JWT encode/decode helpers.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L1",
+      "id": "auth_jwt_utils_rationale_1",
+      "community": 1,
+      "norm_label": "jwt encode/decode helpers."
+    },
+    {
+      "label": "Produce a signed JWT string from a claims dict.      Expiry should be passed as",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L16",
+      "id": "auth_jwt_utils_rationale_16",
+      "community": 1,
+      "norm_label": "produce a signed jwt string from a claims dict.      expiry should be passed as"
+    },
+    {
+      "label": "Verify signature + expiry and return the claims dict.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L34",
+      "id": "auth_jwt_utils_rationale_34",
+      "community": 1,
+      "norm_label": "verify signature + expiry and return the claims dict."
+    },
+    {
+      "label": "Raised when the exp claim is in the past.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L67",
+      "id": "auth_jwt_utils_rationale_67",
+      "community": 1,
+      "norm_label": "raised when the exp claim is in the past."
+    },
+    {
+      "label": "Raised when the HMAC signature does not match.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L71",
+      "id": "auth_jwt_utils_rationale_71",
+      "community": 1,
+      "norm_label": "raised when the hmac signature does not match."
+    },
+    {
+      "label": "Raised when the token cannot be parsed.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L75",
+      "id": "auth_jwt_utils_rationale_75",
+      "community": 1,
+      "norm_label": "raised when the token cannot be parsed."
+    },
+    {
+      "label": "handlers.py",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L1",
+      "id": "auth_handlers_py",
+      "community": 3,
+      "norm_label": "handlers.py"
+    },
+    {
+      "label": "authenticate_user()",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L15",
+      "id": "auth_handlers_authenticate_user",
+      "community": 3,
+      "norm_label": "authenticate_user()"
+    },
+    {
+      "label": "verify_session()",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L37",
+      "id": "auth_handlers_verify_session",
+      "community": 0,
+      "norm_label": "verify_session()"
+    },
+    {
+      "label": "refresh_session()",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L45",
+      "id": "auth_handlers_refresh_session",
+      "community": 1,
+      "norm_label": "refresh_session()"
+    },
+    {
+      "label": "logout()",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L56",
+      "id": "auth_handlers_logout",
+      "community": 3,
+      "norm_label": "logout()"
+    },
+    {
+      "label": "verify_password()",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L65",
+      "id": "auth_handlers_verify_password",
+      "community": 3,
+      "norm_label": "verify_password()"
+    },
+    {
+      "label": "InvalidCredentialsError",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L72",
+      "id": "auth_handlers_invalidcredentialserror",
+      "community": 3,
+      "norm_label": "invalidcredentialserror"
+    },
+    {
+      "label": "InvalidTokenError",
+      "file_type": "code",
+      "source_file": "auth/handlers.py",
+      "source_location": "L76",
+      "id": "auth_handlers_invalidtokenerror",
+      "community": 1,
+      "norm_label": "invalidtokenerror"
+    },
+    {
+      "label": "Authentication handlers \u2014 login, logout, token refresh.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L1",
+      "id": "auth_handlers_rationale_1",
+      "community": 3,
+      "norm_label": "authentication handlers \u2014 login, logout, token refresh."
+    },
+    {
+      "label": "Validate credentials and issue an access + refresh token pair.      Looks the us",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L16",
+      "id": "auth_handlers_rationale_16",
+      "community": 3,
+      "norm_label": "validate credentials and issue an access + refresh token pair.      looks the us"
+    },
+    {
+      "label": "Return the user id if the access token is valid; raise if not.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L38",
+      "id": "auth_handlers_rationale_38",
+      "community": 0,
+      "norm_label": "return the user id if the access token is valid; raise if not."
+    },
+    {
+      "label": "Exchange a refresh token for a new access token.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L46",
+      "id": "auth_handlers_rationale_46",
+      "community": 1,
+      "norm_label": "exchange a refresh token for a new access token."
+    },
+    {
+      "label": "Revoke a refresh token by writing it to the revocation list.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L57",
+      "id": "auth_handlers_rationale_57",
+      "community": 3,
+      "norm_label": "revoke a refresh token by writing it to the revocation list."
+    },
+    {
+      "label": "Constant-time password verification against stored hash.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L66",
+      "id": "auth_handlers_rationale_66",
+      "community": 3,
+      "norm_label": "constant-time password verification against stored hash."
+    },
+    {
+      "label": "Raised when email or password does not match any user.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L73",
+      "id": "auth_handlers_rationale_73",
+      "community": 3,
+      "norm_label": "raised when email or password does not match any user."
+    },
+    {
+      "label": "Raised when a token is malformed, expired, or misused.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.py",
+      "source_location": "L77",
+      "id": "auth_handlers_rationale_77",
+      "community": 1,
+      "norm_label": "raised when a token is malformed, expired, or misused."
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "api/__init__.py",
+      "source_location": "L1",
+      "id": "api_init_py",
+      "community": 12,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "routes.py",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L1",
+      "id": "api_routes_py",
+      "community": 0,
+      "norm_label": "routes.py"
+    },
+    {
+      "label": "route()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L18",
+      "id": "api_routes_route",
+      "community": 0,
+      "norm_label": "route()"
+    },
+    {
+      "label": "login_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L29",
+      "id": "api_routes_login_endpoint",
+      "community": 0,
+      "norm_label": "login_endpoint()"
+    },
+    {
+      "label": "refresh_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L36",
+      "id": "api_routes_refresh_endpoint",
+      "community": 1,
+      "norm_label": "refresh_endpoint()"
+    },
+    {
+      "label": "logout_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L42",
+      "id": "api_routes_logout_endpoint",
+      "community": 3,
+      "norm_label": "logout_endpoint()"
+    },
+    {
+      "label": "create_user_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L49",
+      "id": "api_routes_create_user_endpoint",
+      "community": 0,
+      "norm_label": "create_user_endpoint()"
+    },
+    {
+      "label": "get_me_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L58",
+      "id": "api_routes_get_me_endpoint",
+      "community": 0,
+      "norm_label": "get_me_endpoint()"
+    },
+    {
+      "label": "delete_me_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L67",
+      "id": "api_routes_delete_me_endpoint",
+      "community": 0,
+      "norm_label": "delete_me_endpoint()"
+    },
+    {
+      "label": "charge_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L76",
+      "id": "api_routes_charge_endpoint",
+      "community": 0,
+      "norm_label": "charge_endpoint()"
+    },
+    {
+      "label": "refund_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L85",
+      "id": "api_routes_refund_endpoint",
+      "community": 0,
+      "norm_label": "refund_endpoint()"
+    },
+    {
+      "label": "list_invoices_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L92",
+      "id": "api_routes_list_invoices_endpoint",
+      "community": 0,
+      "norm_label": "list_invoices_endpoint()"
+    },
+    {
+      "label": "stripe_webhook_endpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.py",
+      "source_location": "L100",
+      "id": "api_routes_stripe_webhook_endpoint",
+      "community": 7,
+      "norm_label": "stripe_webhook_endpoint()"
+    },
+    {
+      "label": "HTTP route wiring for the sample web app.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L1",
+      "id": "api_routes_rationale_1",
+      "community": 0,
+      "norm_label": "http route wiring for the sample web app."
+    },
+    {
+      "label": "Minimal decorator recording a (method, path, handler) tuple.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L19",
+      "id": "api_routes_rationale_19",
+      "community": 0,
+      "norm_label": "minimal decorator recording a (method, path, handler) tuple."
+    },
+    {
+      "label": "POST /api/auth/login \u2014 returns access + refresh tokens.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L30",
+      "id": "api_routes_rationale_30",
+      "community": 0,
+      "norm_label": "post /api/auth/login \u2014 returns access + refresh tokens."
+    },
+    {
+      "label": "POST /api/auth/refresh \u2014 returns a new access token.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L37",
+      "id": "api_routes_rationale_37",
+      "community": 1,
+      "norm_label": "post /api/auth/refresh \u2014 returns a new access token."
+    },
+    {
+      "label": "POST /api/auth/logout \u2014 revokes a refresh token.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L43",
+      "id": "api_routes_rationale_43",
+      "community": 3,
+      "norm_label": "post /api/auth/logout \u2014 revokes a refresh token."
+    },
+    {
+      "label": "POST /api/users \u2014 sign-up flow.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L50",
+      "id": "api_routes_rationale_50",
+      "community": 0,
+      "norm_label": "post /api/users \u2014 sign-up flow."
+    },
+    {
+      "label": "GET /api/users/me \u2014 requires Authorization: Bearer header.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L59",
+      "id": "api_routes_rationale_59",
+      "community": 0,
+      "norm_label": "get /api/users/me \u2014 requires authorization: bearer header."
+    },
+    {
+      "label": "DELETE /api/users/me \u2014 soft-delete the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L68",
+      "id": "api_routes_rationale_68",
+      "community": 0,
+      "norm_label": "delete /api/users/me \u2014 soft-delete the authenticated user."
+    },
+    {
+      "label": "POST /api/billing/charge \u2014 charge the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L77",
+      "id": "api_routes_rationale_77",
+      "community": 0,
+      "norm_label": "post /api/billing/charge \u2014 charge the authenticated user."
+    },
+    {
+      "label": "POST /api/billing/refund \u2014 admin-only refund of a charge.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L86",
+      "id": "api_routes_rationale_86",
+      "community": 0,
+      "norm_label": "post /api/billing/refund \u2014 admin-only refund of a charge."
+    },
+    {
+      "label": "GET /api/billing/invoices \u2014 list invoices for the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L93",
+      "id": "api_routes_rationale_93",
+      "community": 0,
+      "norm_label": "get /api/billing/invoices \u2014 list invoices for the authenticated user."
+    },
+    {
+      "label": "POST /webhooks/stripe \u2014 entry point for Stripe events.",
+      "file_type": "rationale",
+      "source_file": "api/routes.py",
+      "source_location": "L101",
+      "id": "api_routes_rationale_101",
+      "community": 7,
+      "norm_label": "post /webhooks/stripe \u2014 entry point for stripe events."
+    },
+    {
+      "label": "stripe_client.py",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L1",
+      "id": "billing_stripe_client_py",
+      "community": 2,
+      "norm_label": "stripe_client.py"
+    },
+    {
+      "label": "charge_customer()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L19",
+      "id": "billing_stripe_client_charge_customer",
+      "community": 2,
+      "norm_label": "charge_customer()"
+    },
+    {
+      "label": "refund_charge()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L43",
+      "id": "billing_stripe_client_refund_charge",
+      "community": 2,
+      "norm_label": "refund_charge()"
+    },
+    {
+      "label": "verify_webhook()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L69",
+      "id": "billing_stripe_client_verify_webhook",
+      "community": 7,
+      "norm_label": "verify_webhook()"
+    },
+    {
+      "label": "handle_webhook_event()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L91",
+      "id": "billing_stripe_client_handle_webhook_event",
+      "community": 2,
+      "norm_label": "handle_webhook_event()"
+    },
+    {
+      "label": "_on_charge_succeeded()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L102",
+      "id": "billing_stripe_client_on_charge_succeeded",
+      "community": 2,
+      "norm_label": "_on_charge_succeeded()"
+    },
+    {
+      "label": "_on_charge_failed()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L110",
+      "id": "billing_stripe_client_on_charge_failed",
+      "community": 2,
+      "norm_label": "_on_charge_failed()"
+    },
+    {
+      "label": "_on_charge_refunded()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L118",
+      "id": "billing_stripe_client_on_charge_refunded",
+      "community": 2,
+      "norm_label": "_on_charge_refunded()"
+    },
+    {
+      "label": "_fake_stripe_charge()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L126",
+      "id": "billing_stripe_client_fake_stripe_charge",
+      "community": 2,
+      "norm_label": "_fake_stripe_charge()"
+    },
+    {
+      "label": "BillingError",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L131",
+      "id": "billing_stripe_client_billingerror",
+      "community": 2,
+      "norm_label": "billingerror"
+    },
+    {
+      "label": "WebhookVerificationError",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L135",
+      "id": "billing_stripe_client_webhookverificationerror",
+      "community": 7,
+      "norm_label": "webhookverificationerror"
+    },
+    {
+      "label": "Stripe integration \u2014 charges, refunds, webhook signature verification.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L1",
+      "id": "billing_stripe_client_rationale_1",
+      "community": 2,
+      "norm_label": "stripe integration \u2014 charges, refunds, webhook signature verification."
+    },
+    {
+      "label": "Create a Stripe charge and mirror it into our billing table.      Flow: validate",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L20",
+      "id": "billing_stripe_client_rationale_20",
+      "community": 2,
+      "norm_label": "create a stripe charge and mirror it into our billing table.      flow: validate"
+    },
+    {
+      "label": "Issue a full refund for a previous charge and log it.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L44",
+      "id": "billing_stripe_client_rationale_44",
+      "community": 2,
+      "norm_label": "issue a full refund for a previous charge and log it."
+    },
+    {
+      "label": "Validate a Stripe webhook signature and return the event body.      Stripe-Signa",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L70",
+      "id": "billing_stripe_client_rationale_70",
+      "community": 7,
+      "norm_label": "validate a stripe webhook signature and return the event body.      stripe-signa"
+    },
+    {
+      "label": "Dispatch a verified Stripe webhook event to the right handler.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L92",
+      "id": "billing_stripe_client_rationale_92",
+      "community": 2,
+      "norm_label": "dispatch a verified stripe webhook event to the right handler."
+    },
+    {
+      "label": "Stand-in for the real Stripe API call used in the fixture.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L127",
+      "id": "billing_stripe_client_rationale_127",
+      "community": 2,
+      "norm_label": "stand-in for the real stripe api call used in the fixture."
+    },
+    {
+      "label": "Raised when a charge or refund cannot proceed.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L132",
+      "id": "billing_stripe_client_rationale_132",
+      "community": 2,
+      "norm_label": "raised when a charge or refund cannot proceed."
+    },
+    {
+      "label": "Raised when a Stripe webhook signature does not match.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L136",
+      "id": "billing_stripe_client_rationale_136",
+      "community": 7,
+      "norm_label": "raised when a stripe webhook signature does not match."
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "billing/__init__.py",
+      "source_location": "L1",
+      "id": "billing_init_py",
+      "community": 13,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "invoices.py",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L1",
+      "id": "billing_invoices_py",
+      "community": 5,
+      "norm_label": "invoices.py"
+    },
+    {
+      "label": "create_invoice()",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L11",
+      "id": "billing_invoices_create_invoice",
+      "community": 2,
+      "norm_label": "create_invoice()"
+    },
+    {
+      "label": "send_invoice_email()",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L28",
+      "id": "billing_invoices_send_invoice_email",
+      "community": 5,
+      "norm_label": "send_invoice_email()"
+    },
+    {
+      "label": "list_user_invoices()",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L54",
+      "id": "billing_invoices_list_user_invoices",
+      "community": 0,
+      "norm_label": "list_user_invoices()"
+    },
+    {
+      "label": "_render_and_queue()",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L75",
+      "id": "billing_invoices_render_and_queue",
+      "community": 5,
+      "norm_label": "_render_and_queue()"
+    },
+    {
+      "label": "InvoiceNotFoundError",
+      "file_type": "code",
+      "source_file": "billing/invoices.py",
+      "source_location": "L80",
+      "id": "billing_invoices_invoicenotfounderror",
+      "community": 5,
+      "norm_label": "invoicenotfounderror"
+    },
+    {
+      "label": "Invoice generation and delivery.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L1",
+      "id": "billing_invoices_rationale_1",
+      "community": 5,
+      "norm_label": "invoice generation and delivery."
+    },
+    {
+      "label": "Write an invoice row and return it.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L12",
+      "id": "billing_invoices_rationale_12",
+      "community": 2,
+      "norm_label": "write an invoice row and return it."
+    },
+    {
+      "label": "Render an invoice and hand it to the email transport.      In production this wo",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L29",
+      "id": "billing_invoices_rationale_29",
+      "community": 5,
+      "norm_label": "render an invoice and hand it to the email transport.      in production this wo"
+    },
+    {
+      "label": "Return all invoices for a user, newest first.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L55",
+      "id": "billing_invoices_rationale_55",
+      "community": 0,
+      "norm_label": "return all invoices for a user, newest first."
+    },
+    {
+      "label": "Stand-in for the real mail-queue call.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L76",
+      "id": "billing_invoices_rationale_76",
+      "community": 5,
+      "norm_label": "stand-in for the real mail-queue call."
+    },
+    {
+      "label": "Raised when referencing a missing invoice.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.py",
+      "source_location": "L81",
+      "id": "billing_invoices_rationale_81",
+      "community": 5,
+      "norm_label": "raised when referencing a missing invoice."
+    },
+    {
+      "label": "__init__.py",
+      "file_type": "code",
+      "source_file": "db/__init__.py",
+      "source_location": "L1",
+      "id": "db_init_py",
+      "community": 14,
+      "norm_label": "__init__.py"
+    },
+    {
+      "label": "connection.py",
+      "file_type": "code",
+      "source_file": "db/connection.py",
+      "source_location": "L1",
+      "id": "db_connection_py",
+      "community": 8,
+      "norm_label": "connection.py"
+    },
+    {
+      "label": "get_connection()",
+      "file_type": "code",
+      "source_file": "db/connection.py",
+      "source_location": "L17",
+      "id": "db_connection_get_connection",
+      "community": 2,
+      "norm_label": "get_connection()"
+    },
+    {
+      "label": "close_all()",
+      "file_type": "code",
+      "source_file": "db/connection.py",
+      "source_location": "L32",
+      "id": "db_connection_close_all",
+      "community": 8,
+      "norm_label": "close_all()"
+    },
+    {
+      "label": "_ensure_schema()",
+      "file_type": "code",
+      "source_file": "db/connection.py",
+      "source_location": "L40",
+      "id": "db_connection_ensure_schema",
+      "community": 8,
+      "norm_label": "_ensure_schema()"
+    },
+    {
+      "label": "Database connection pool.  Uses SQLite for the fixture (zero external dependenci",
+      "file_type": "rationale",
+      "source_file": "db/connection.py",
+      "source_location": "L1",
+      "id": "db_connection_rationale_1",
+      "community": 8,
+      "norm_label": "database connection pool.  uses sqlite for the fixture (zero external dependenci"
+    },
+    {
+      "label": "Return a thread-local connection to the fixture database.      The schema is cre",
+      "file_type": "rationale",
+      "source_file": "db/connection.py",
+      "source_location": "L18",
+      "id": "db_connection_rationale_18",
+      "community": 2,
+      "norm_label": "return a thread-local connection to the fixture database.      the schema is cre"
+    },
+    {
+      "label": "Close the thread-local connection, if any.",
+      "file_type": "rationale",
+      "source_file": "db/connection.py",
+      "source_location": "L33",
+      "id": "db_connection_rationale_33",
+      "community": 8,
+      "norm_label": "close the thread-local connection, if any."
+    },
+    {
+      "label": "Create fixture tables if they don't exist yet.",
+      "file_type": "rationale",
+      "source_file": "db/connection.py",
+      "source_location": "L41",
+      "id": "db_connection_rationale_41",
+      "community": 8,
+      "norm_label": "create fixture tables if they don't exist yet."
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 6,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "NeuralMind Benchmark Fixture",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "sample_project_readme_neuralmind_benchmark_fixture",
+      "community": 6,
+      "norm_label": "neuralmind benchmark fixture"
+    },
+    {
+      "label": "Why this fixture?",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L6",
+      "id": "sample_project_readme_why_this_fixture",
+      "community": 6,
+      "norm_label": "why this fixture?"
+    },
+    {
+      "label": "Layout",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L15",
+      "id": "sample_project_readme_layout",
+      "community": 6,
+      "norm_label": "layout"
+    },
+    {
+      "label": "code:block1 (sample_project/)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "id": "sample_project_readme_codeblock_1",
+      "community": 6,
+      "norm_label": "code:block1 (sample_project/)"
+    },
+    {
+      "label": "Regenerating the knowledge graph",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L26",
+      "id": "sample_project_readme_regenerating_the_knowledge_graph",
+      "community": 6,
+      "norm_label": "regenerating the knowledge graph"
+    },
+    {
+      "label": "code:bash (pip install graphifyy)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L30",
+      "id": "sample_project_readme_codeblock_2",
+      "community": 6,
+      "norm_label": "code:bash (pip install graphifyy)"
+    }
+  ],
+  "links": [
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "db_connection_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_create_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_get_user_by_email",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L60",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_get_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_update_last_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L89",
+      "weight": 1.0,
+      "source": "users_crud_py",
+      "target": "users_crud_deactivate_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "users_crud_rationale_1",
+      "target": "users_crud_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "users_crud_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "users_crud_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "users_crud_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "users_crud_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "users_crud_create_user",
+      "target": "users_crud_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "users_crud_get_user",
+      "target": "users_crud_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "users_crud_rationale_13",
+      "target": "users_crud_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "users_crud_rationale_24",
+      "target": "users_crud_create_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "users/crud.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "users_crud_create_user",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "api_routes_create_user_endpoint",
+      "target": "users_crud_create_user"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "users_crud_rationale_41",
+      "target": "users_crud_get_user_by_email",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "users/crud.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "users_crud_get_user_by_email",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "auth_handlers_authenticate_user",
+      "target": "users_crud_get_user_by_email"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "users_crud_rationale_61",
+      "target": "users_crud_get_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "users/crud.py",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "users_crud_get_user",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L62",
+      "weight": 1.0,
+      "source": "api_routes_get_me_endpoint",
+      "target": "users_crud_get_user"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "billing_stripe_client_charge_customer",
+      "target": "users_crud_get_user"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/invoices.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "billing_invoices_send_invoice_email",
+      "target": "users_crud_get_user"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "users_crud_rationale_81",
+      "target": "users_crud_update_last_login",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "users/crud.py",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "users_crud_update_last_login",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "auth_handlers_authenticate_user",
+      "target": "users_crud_update_last_login"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.py",
+      "source_location": "L90",
+      "weight": 1.0,
+      "source": "users_crud_rationale_90",
+      "target": "users_crud_deactivate_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "users/crud.py",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "users_crud_deactivate_user",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "api_routes_delete_me_endpoint",
+      "target": "users_crud_deactivate_user"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_encode_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_decode_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_sign",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_b64url",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_b64url_decode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_tokenexpirederror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_invalidsignatureerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_py",
+      "target": "auth_jwt_utils_malformedtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_1",
+      "target": "auth_jwt_utils_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_jwt_utils_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_encode_token",
+      "target": "auth_jwt_utils_b64url",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_encode_token",
+      "target": "auth_jwt_utils_sign",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_16",
+      "target": "auth_jwt_utils_encode_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "auth_handlers_authenticate_user",
+      "target": "auth_jwt_utils_encode_token"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "auth_handlers_refresh_session",
+      "target": "auth_jwt_utils_encode_token"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_decode_token",
+      "target": "auth_jwt_utils_malformedtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_decode_token",
+      "target": "auth_jwt_utils_sign",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_decode_token",
+      "target": "auth_jwt_utils_b64url_decode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_decode_token",
+      "target": "auth_jwt_utils_invalidsignatureerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_decode_token",
+      "target": "auth_jwt_utils_tokenexpirederror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_34",
+      "target": "auth_jwt_utils_decode_token",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "auth_handlers_verify_session",
+      "target": "auth_jwt_utils_decode_token"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "auth_handlers_refresh_session",
+      "target": "auth_jwt_utils_decode_token"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_tokenexpirederror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_67",
+      "target": "auth_jwt_utils_tokenexpirederror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_invalidsignatureerror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_malformedtokenerror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "auth_handlers_invalidcredentialserror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "auth_handlers_invalidtokenerror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L131",
+      "weight": 1.0,
+      "source": "billing_stripe_client_billingerror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "billing_stripe_client_webhookverificationerror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "billing_invoices_invoicenotfounderror",
+      "target": "exception",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_71",
+      "target": "auth_jwt_utils_invalidsignatureerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.py",
+      "source_location": "L75",
+      "weight": 1.0,
+      "source": "auth_jwt_utils_rationale_75",
+      "target": "auth_jwt_utils_malformedtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "db_connection_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_authenticate_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_verify_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_refresh_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_logout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_verify_password",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_invalidcredentialserror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "auth_handlers_py",
+      "target": "auth_handlers_invalidtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_1",
+      "target": "auth_handlers_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "auth_handlers_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "auth_handlers_authenticate_user",
+      "target": "auth_handlers_invalidcredentialserror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "auth_handlers_authenticate_user",
+      "target": "auth_handlers_verify_password",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_16",
+      "target": "auth_handlers_authenticate_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "api_routes_login_endpoint",
+      "target": "auth_handlers_authenticate_user"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "auth_handlers_verify_session",
+      "target": "auth_handlers_invalidtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_38",
+      "target": "auth_handlers_verify_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "api_routes_get_me_endpoint",
+      "target": "auth_handlers_verify_session"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "api_routes_delete_me_endpoint",
+      "target": "auth_handlers_verify_session"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "api_routes_charge_endpoint",
+      "target": "auth_handlers_verify_session"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L95",
+      "weight": 1.0,
+      "source": "api_routes_list_invoices_endpoint",
+      "target": "auth_handlers_verify_session"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "auth_handlers_refresh_session",
+      "target": "auth_handlers_invalidtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_46",
+      "target": "auth_handlers_refresh_session",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "api_routes_refresh_endpoint",
+      "target": "auth_handlers_refresh_session"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_57",
+      "target": "auth_handlers_logout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "auth/handlers.py",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "auth_handlers_logout",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "api_routes_logout_endpoint",
+      "target": "auth_handlers_logout"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_66",
+      "target": "auth_handlers_verify_password",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_73",
+      "target": "auth_handlers_invalidcredentialserror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.py",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "auth_handlers_rationale_77",
+      "target": "auth_handlers_invalidtokenerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "billing_invoices_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "billing_stripe_client_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_route",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_login_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_refresh_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_logout_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_create_user_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_get_me_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L67",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_delete_me_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_charge_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L85",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_refund_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_list_invoices_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L100",
+      "weight": 1.0,
+      "source": "api_routes_py",
+      "target": "api_routes_stripe_webhook_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "api_routes_rationale_1",
+      "target": "api_routes_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "api_routes_rationale_19",
+      "target": "api_routes_route",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "api_routes_rationale_30",
+      "target": "api_routes_login_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "api_routes_rationale_37",
+      "target": "api_routes_refresh_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "api_routes_rationale_43",
+      "target": "api_routes_logout_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "api_routes_rationale_50",
+      "target": "api_routes_create_user_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "api_routes_rationale_59",
+      "target": "api_routes_get_me_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L68",
+      "weight": 1.0,
+      "source": "api_routes_rationale_68",
+      "target": "api_routes_delete_me_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "api_routes_rationale_77",
+      "target": "api_routes_charge_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "api_routes_charge_endpoint",
+      "target": "billing_stripe_client_charge_customer"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L86",
+      "weight": 1.0,
+      "source": "api_routes_rationale_86",
+      "target": "api_routes_refund_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "api_routes_refund_endpoint",
+      "target": "billing_stripe_client_refund_charge"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "api_routes_rationale_93",
+      "target": "api_routes_list_invoices_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "api_routes_list_invoices_endpoint",
+      "target": "billing_invoices_list_user_invoices"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "api_routes_rationale_101",
+      "target": "api_routes_stripe_webhook_endpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "api_routes_stripe_webhook_endpoint",
+      "target": "billing_stripe_client_verify_webhook"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "api/routes.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "api_routes_stripe_webhook_endpoint",
+      "target": "billing_stripe_client_handle_webhook_event"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "db_connection_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_invoices_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_charge_customer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_refund_charge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_verify_webhook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L91",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_handle_webhook_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_on_charge_succeeded",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L110",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_on_charge_failed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L118",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_on_charge_refunded",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L126",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_fake_stripe_charge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L131",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_billingerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L135",
+      "weight": 1.0,
+      "source": "billing_stripe_client_py",
+      "target": "billing_stripe_client_webhookverificationerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_1",
+      "target": "billing_stripe_client_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "billing_stripe_client_charge_customer",
+      "target": "billing_stripe_client_billingerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "billing_stripe_client_charge_customer",
+      "target": "billing_stripe_client_fake_stripe_charge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_20",
+      "target": "billing_stripe_client_charge_customer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "billing_stripe_client_charge_customer",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "billing_stripe_client_charge_customer",
+      "target": "billing_invoices_create_invoice"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "billing_stripe_client_refund_charge",
+      "target": "billing_stripe_client_billingerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_44",
+      "target": "billing_stripe_client_refund_charge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "billing_stripe_client_refund_charge",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "billing_stripe_client_verify_webhook",
+      "target": "billing_stripe_client_webhookverificationerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_70",
+      "target": "billing_stripe_client_verify_webhook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L95",
+      "weight": 1.0,
+      "source": "billing_stripe_client_handle_webhook_event",
+      "target": "billing_stripe_client_on_charge_succeeded",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L97",
+      "weight": 1.0,
+      "source": "billing_stripe_client_handle_webhook_event",
+      "target": "billing_stripe_client_on_charge_failed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "billing_stripe_client_handle_webhook_event",
+      "target": "billing_stripe_client_on_charge_refunded",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L92",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_92",
+      "target": "billing_stripe_client_handle_webhook_event",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "billing_stripe_client_on_charge_succeeded",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L111",
+      "weight": 1.0,
+      "source": "billing_stripe_client_on_charge_failed",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L119",
+      "weight": 1.0,
+      "source": "billing_stripe_client_on_charge_refunded",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_127",
+      "target": "billing_stripe_client_fake_stripe_charge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L132",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_132",
+      "target": "billing_stripe_client_billingerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.py",
+      "source_location": "L136",
+      "weight": 1.0,
+      "source": "billing_stripe_client_rationale_136",
+      "target": "billing_stripe_client_webhookverificationerror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "db_connection_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "billing_invoices_create_invoice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "billing_invoices_send_invoice_email",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "billing_invoices_list_user_invoices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L75",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "billing_invoices_render_and_queue",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "billing_invoices_py",
+      "target": "billing_invoices_invoicenotfounderror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_1",
+      "target": "billing_invoices_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_12",
+      "target": "billing_invoices_create_invoice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/invoices.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "billing_invoices_create_invoice",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "billing_invoices_send_invoice_email",
+      "target": "billing_invoices_invoicenotfounderror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "billing_invoices_send_invoice_email",
+      "target": "billing_invoices_render_and_queue",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_29",
+      "target": "billing_invoices_send_invoice_email",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/invoices.py",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "billing_invoices_send_invoice_email",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_55",
+      "target": "billing_invoices_list_user_invoices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "billing/invoices.py",
+      "source_location": "L56",
+      "weight": 1.0,
+      "source": "billing_invoices_list_user_invoices",
+      "target": "db_connection_get_connection"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_76",
+      "target": "billing_invoices_render_and_queue",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.py",
+      "source_location": "L81",
+      "weight": 1.0,
+      "source": "billing_invoices_rationale_81",
+      "target": "billing_invoices_invoicenotfounderror",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "db_connection_py",
+      "target": "db_connection_get_connection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "db_connection_py",
+      "target": "db_connection_close_all",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "db_connection_py",
+      "target": "db_connection_ensure_schema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "db_connection_rationale_1",
+      "target": "db_connection_py",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "db_connection_get_connection",
+      "target": "db_connection_ensure_schema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "db_connection_rationale_18",
+      "target": "db_connection_get_connection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "db_connection_rationale_33",
+      "target": "db_connection_close_all",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.py",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "db_connection_rationale_41",
+      "target": "db_connection_ensure_schema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "sample_project_readme_neuralmind_benchmark_fixture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "sample_project_readme_neuralmind_benchmark_fixture",
+      "target": "sample_project_readme_why_this_fixture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "sample_project_readme_neuralmind_benchmark_fixture",
+      "target": "sample_project_readme_layout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "sample_project_readme_neuralmind_benchmark_fixture",
+      "target": "sample_project_readme_regenerating_the_knowledge_graph",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "sample_project_readme_layout",
+      "target": "sample_project_readme_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "sample_project_readme_regenerating_the_knowledge_graph",
+      "target": "sample_project_readme_codeblock_2",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "76d47cdaeb73448fbfd435f1ce2553271d8fd08e"
+}
