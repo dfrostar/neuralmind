@@ -13,13 +13,24 @@ compliance, scale targets), see
 - **One-command demo on the bundled fixture.** `bash scripts/demo.sh`
   — proves the headline reduction claim in under a minute on real
   code. ✅ shipped.
-- **Slim the README.** Lead with the demo, push reference material into
-  `docs/`. The promise should fit on one screen.
+- **Fact-based business case + honest assessment docs.**
+  [`BUSINESS-CASE.md`](docs/BUSINESS-CASE.md) makes the compelling
+  argument with provable claims; [`HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md)
+  documents where it isn't worth installing. ✅ shipped.
+- **README slim.** Cut the inflated savings table, the duplicate
+  "who is this for" section, and the Enterprise Use Cases marketing
+  wall (moved to [`ENTERPRISE.md`](docs/ENTERPRISE.md) with honest
+  framing). ✅ shipped (first pass; further trimming possible).
 - **Seed community benchmarks with 3–5 outside submissions** so the
-  table doesn't look maintainer-only. See
+  table doesn't look maintainer-only. **Maintainer action needed:**
+  best path is running `neuralmind benchmark . --contribute` on
+  Mempalace, the cmmc20 project, and 2–3 well-known OSS Python/TS
+  repos with permission. Each seed: ~10 min wall time. See
   [`docs/community-benchmarks.json`](docs/community-benchmarks.json).
 - **Asciinema clip of the demo** embedded at the top of the README.
-  Static numbers get skimmed; a 30-second terminal recording gets watched.
+  Runbook in [`docs/RECORDING-DEMO.md`](docs/RECORDING-DEMO.md);
+  needs to be recorded by the maintainer (can't run in CI because
+  of the chromadb model download).
 
 ## Next (~1–2 quarters)
 
