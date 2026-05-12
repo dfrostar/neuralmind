@@ -829,6 +829,65 @@ OpenClaw's MCP support covers stdio (shown above), SSE, HTTP, and
 `url`/`transport` config and the inverse direction (`openclaw mcp serve`,
 which exposes OpenClaw's own channels as an MCP server to other clients).
 
+### Skill (OpenClaw, Agent Zero, Hermes, any SKILL.md host)
+
+The MCP server gives an agent the **actions**. The skill at
+[`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) gives it the
+**playbook** — when to call `neuralmind_query` vs. `neuralmind_skeleton`
+vs. `neuralmind_search`, what the outputs look like, and which env-var
+escape hatches exist. It is a portable Anthropic-style SKILL.md
+(frontmatter + markdown body) so the same file works in any host that
+implements the spec.
+
+**OpenClaw.** Drop the directory into your ClawHub local skills path, or
+ship it as part of an OpenClaw plugin by listing `skills/` in
+`openclaw.plugin.json`:
+
+```bash
+cp -r skills/neuralmind ~/.openclaw/skills/
+openclaw skills list   # neuralmind should appear
+```
+
+The skill is description-matched on triggers like "how does X work" or
+"find function Y", so you don't need to load it explicitly.
+
+**Agent Zero.** Drop the same directory into the Agent Zero skills
+folder:
+
+```bash
+cp -r skills/neuralmind /path/to/agent-zero/skills/
+```
+
+Agent Zero auto-discovers SKILL.md files by description and tag, then
+uses its `code_execution_tool` to call the MCP tools the skill names in
+its `allowed_tools` frontmatter.
+
+**Hermes-Agent.** Hermes has a first-class
+[skills system](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)
+that reads the same SKILL.md spec. Drop the directory into the
+category-organised tree:
+
+```bash
+mkdir -p ~/.hermes/skills/code-intelligence
+cp -r skills/neuralmind ~/.hermes/skills/code-intelligence/
+```
+
+Hermes loads skills on demand based on the frontmatter description, so
+no further wiring is needed. You can also publish the directory as a
+[Hermes tap](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)
+(a GitHub repo of skill directories) for one-command install across
+machines. This layers on top of the MCP integration documented in the
+[Hermes-Agent section above](#hermes-agent-nous-research) — the MCP
+server still does the work; the skill teaches Hermes when to call it.
+
+**Claude Code, Cursor.** These already have richer integrations
+(lifecycle hooks for Claude Code, MCP wiring for Cursor), so the
+skill is optional. It still works as a portable "agent operating
+manual" if you want a single file that travels with the project.
+
+The skill duplicates **none** of NeuralMind's logic — it points the
+agent at MCP tools that already exist. Edit it like documentation.
+
 ### Troubleshooting
 
 **"Connection closed" / "Connection failed" right after register.** Almost
@@ -1189,6 +1248,7 @@ neuralmind build .
 |-----------|-----------|-------|
 | **CLI** | Any environment | Pure Python, no daemon required |
 | **MCP Server** | Claude Code, Claude Desktop, Cursor, Cline, Continue, any MCP client | Bundled with `pip install neuralmind` |
+| **SKILL.md** | OpenClaw (ClawHub), Agent Zero, Hermes-Agent, any SKILL.md host | Portable agent playbook at [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) — pairs with the MCP server |
 | **PostToolUse Hooks** | Claude Code only | Uses Claude Code's `PostToolUse` hook system |
 | **Git hook** | Any git workflow | Appends to existing `post-commit`, idempotent |
 | **Copy-paste** | ChatGPT, Gemini, any LLM | `neuralmind wakeup . \| pbcopy` |

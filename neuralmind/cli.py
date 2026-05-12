@@ -484,8 +484,9 @@ def cmd_demo(args):
         mind = NeuralMind(str(fixture_dir))
         result = mind.build(force=True)
         if not result.get("success"):
-            print(f"demo failed during build: {result.get('error', 'unknown error')}",
-                  file=sys.stderr)
+            print(
+                f"demo failed during build: {result.get('error', 'unknown error')}", file=sys.stderr
+            )
             sys.exit(1)
 
         _demo_report.run_demo_report(
