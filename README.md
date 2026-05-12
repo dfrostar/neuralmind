@@ -1230,7 +1230,7 @@ neuralmind build .
 |-----------|-----------|-------|
 | **CLI** | Any environment | Pure Python, no daemon required |
 | **MCP Server** | Claude Code, Claude Desktop, Cursor, Cline, Continue, any MCP client | Bundled with `pip install neuralmind` |
-| **SKILL.md** | OpenClaw (ClawHub), Agent Zero, any SKILL.md host | Portable agent playbook at [`skills/neuralmind/`](skills/neuralmind/SKILL.md) — pairs with the MCP server |
+| **SKILL.md** | OpenClaw (ClawHub), Agent Zero, any SKILL.md host | Portable agent playbook at [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) — pairs with the MCP server |
 | **PostToolUse Hooks** | Claude Code only | Uses Claude Code's `PostToolUse` hook system |
 | **Git hook** | Any git workflow | Appends to existing `post-commit`, idempotent |
 | **Copy-paste** | ChatGPT, Gemini, any LLM | `neuralmind wakeup . \| pbcopy` |

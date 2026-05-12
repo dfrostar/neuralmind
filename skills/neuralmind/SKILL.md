@@ -39,7 +39,8 @@ runtime:
   binaries:
     - neuralmind
     - neuralmind-mcp
-  install: pip install neuralmind
+    - graphify
+  install: pip install neuralmind graphifyy
 metadata:
   complexity: low
   category: developer-tools
@@ -63,9 +64,12 @@ Before the first call in a session, confirm the index exists:
 neuralmind_stats(project_path=".")
 ```
 
-If `built: false`, the project hasn't been indexed yet. Tell the user to run:
+If `built: false`, the project hasn't been indexed yet. The build pipeline
+needs both `neuralmind` and `graphifyy` (separate package, ships the
+`graphify` CLI). Tell the user to run:
 
 ```
+pip install neuralmind graphifyy   # if either is missing
 graphify update . && neuralmind build .
 ```
 
@@ -100,33 +104,40 @@ Made code changes in this session?
 
 ## Output shape (so you know what to expect)
 
-`wakeup` / `query` returns sections like:
+`neuralmind_wakeup` and `neuralmind_query` return a **JSON object** — the
+markdown context lives in the `context` field; reduction metrics are
+separate fields. Don't try to parse `tokens` / `layers` out of the
+markdown body — read them from the envelope directly.
 
-```
-## Project: <name>
-<one-paragraph description>
-Knowledge Graph: N entities, M clusters
-
-## Architecture Overview
-### Code Clusters
-- Cluster 5 (45 entities): function — authenticate_user, hash_password, …
-- Cluster 12 (23 entities): class — UserController, AuthMiddleware, …
-
-## Relevant Code Areas      ← query only
-### Cluster 5 (relevance: 1.73)
-- authenticate_user (code) — auth.py
-- verify_token (code) — auth.py
-
-## Search Results            ← query only
-- AuthMiddleware (score: 0.91) — middleware.py
-- jwt_handler   (score: 0.85) — auth/jwt.py
-
-Tokens: 847 | 59.0x reduction | Layers: L0, L1, L2, L3
+```jsonc
+// neuralmind_query
+{
+  "context": "## Project: <name>\n<description>\nKnowledge Graph: N entities, M clusters\n\n## Architecture Overview\n### Code Clusters\n- Cluster 5 (45 entities): function — authenticate_user, …\n\n## Relevant Code Areas\n### Cluster 5 (relevance: 1.73)\n- authenticate_user (code) — auth.py\n\n## Search Results\n- AuthMiddleware (score: 0.91) — middleware.py\n",
+  "tokens": 847,
+  "reduction_ratio": 59.0,
+  "layers": ["L0", "L1", "L2", "L3"],
+  "communities_loaded": [5, 12],
+  "search_hits": 7
+}
 ```
 
-`skeleton` returns functions with line numbers, an intra-file call graph,
-and cross-file edges — without the implementation bodies. When you need a
-body, follow up with a normal file read.
+`neuralmind_wakeup` returns the same shape minus `communities_loaded`
+and `search_hits` (it doesn't load L2/L3).
+
+`neuralmind_search` returns a **list** of hits — one object per match,
+not a wrapped envelope:
+
+```jsonc
+[
+  {"id": "...", "label": "authenticate_user", "file_type": "function",
+   "source_file": "auth.py", "score": 0.92}
+]
+```
+
+`neuralmind_skeleton` returns `{"file", "skeleton", "chars", "indexed"}`;
+the `skeleton` string holds functions with line numbers, an intra-file
+call graph, and cross-file edges — without implementation bodies. When
+you need a body, follow up with a normal file read.
 
 ## Synapse layer (learned associations)
 
@@ -155,8 +166,11 @@ not for routine question-answering.
 - **Don't** loop over `neuralmind_skeleton` for every file in a directory.
   Ask one good `neuralmind_query` instead — the L2 layer surfaces the right
   files for you.
-- **Don't** suppress retrieval with `NEURALMIND_BYPASS=1` unless the user
-  has explicitly asked for raw source. The bypass is a debugging hatch.
+- **Don't** ask the user to set `NEURALMIND_BYPASS=1` unless they've
+  explicitly asked for raw tool output. The bypass disables Claude Code's
+  PostToolUse **compression** of file reads / shell output — it doesn't
+  affect retrieval through the MCP tools. The MCP `query` / `skeleton`
+  paths stay compressed either way.
 
 ## Failure modes
 
@@ -172,7 +186,9 @@ not for routine question-answering.
 
 These are set by the user, not by you. They change retrieval behavior:
 
-- `NEURALMIND_BYPASS=1` — skip compression; return raw source.
+- `NEURALMIND_BYPASS=1` — skip Claude Code's PostToolUse compression of
+  tool output (raw Read / Bash / Grep results). Does not change MCP-tool
+  behavior.
 - `NEURALMIND_SYNAPSE_INJECT=0` — disable prompt-time synapse recall.
 - `NEURALMIND_SYNAPSE_EXPORT=0` — disable markdown export of learned
   associations.
