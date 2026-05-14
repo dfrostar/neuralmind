@@ -42,6 +42,12 @@ L2_RECALL_K_MAX = 6
 WARMUP_MIN_EVENTS = 50
 FALLBACK_WINDOW = 200
 
+# Minimum events *in the tuning window* for re_query_rate to carry signal.
+# Guards the common post-tune case: the window is keyed off the last tune
+# timestamp, so right after a tune (before fresh events arrive) it is
+# empty — and an empty window must mean "hold", not "rate is 0.0".
+WINDOW_MIN_EVENTS = 20
+
 # Provisional thresholds — re_query_rate is a weak, noisy signal and these
 # bounds are unvalidated guesses. Subsystem C (eval-driven tuning) will
 # replace this hand-tuned rule with a real fitness function.
@@ -112,6 +118,16 @@ def tune_selector(project_path: str | Path, *, now: datetime | None = None) -> d
                 "new": current,
                 "reason": "warmup",
                 "events": stats["total_events"],
+                "re_query_rate": stats["re_query_rate"],
+            }
+
+        if stats["windowed_events"] < WINDOW_MIN_EVENTS:
+            return {
+                "changed": False,
+                "old": current,
+                "new": current,
+                "reason": "insufficient_recent",
+                "events": stats["windowed_events"],
                 "re_query_rate": stats["re_query_rate"],
             }
 

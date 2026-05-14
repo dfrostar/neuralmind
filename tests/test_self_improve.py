@@ -12,6 +12,7 @@ from neuralmind.self_improve import (
     L2_RECALL_K_MIN,
     META_KEY,
     META_KEY_TUNED_AT,
+    WINDOW_MIN_EVENTS,
     _decide,
     selector_report,
     tune_selector,
@@ -154,6 +155,46 @@ def test_windowing_uses_last_tuned_at_timestamp(tmp_path):
     # Window is the 40 recent high-overlap events, not all 80.
     assert result["events"] == 40
     assert result["reason"] == "raised"
+
+
+def test_empty_window_after_tune_holds_instead_of_lowering(tmp_path):
+    """Regression: right after a tune, the window (keyed off the tune
+    timestamp) is empty until fresh events arrive. An empty window is
+    'no signal' — the tuner must hold, not read re_query_rate 0.0 as a
+    reason to lower k."""
+    project = tmp_path / "project"
+    project.mkdir()
+    _write_events(project, _query_events(60, communities=[1], ts="2026-05-07T00:00:00+00:00"))
+
+    store = SynapseStore(default_db_path(project))
+    # Last tune is dated *after* every logged event → window is empty.
+    store.set_meta(META_KEY_TUNED_AT, "2026-09-01T00:00:00+00:00")
+    store.set_meta(META_KEY, "4")
+
+    result = tune_selector(project)
+    assert result["changed"] is False
+    assert result["reason"] == "insufficient_recent"
+    assert store.get_meta(META_KEY) == "4"  # untouched
+
+
+def test_insufficient_recent_events_holds(tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    # 60 total events (passes warm-up) but fewer than WINDOW_MIN_EVENTS
+    # fall inside the post-tune window.
+    old = _query_events(
+        55, session_id="old", communities=[1], ts="2026-01-01T00:00:00+00:00"
+    )
+    recent = _query_events(
+        WINDOW_MIN_EVENTS - 1, communities=[1], ts="2026-06-01T00:00:00+00:00"
+    )
+    _write_events(project, old + recent)
+    store = SynapseStore(default_db_path(project))
+    store.set_meta(META_KEY_TUNED_AT, "2026-03-01T00:00:00+00:00")
+
+    result = tune_selector(project)
+    assert result["changed"] is False
+    assert result["reason"] == "insufficient_recent"
 
 
 def test_tune_selector_fails_open_on_corrupt_events_file(tmp_path):
