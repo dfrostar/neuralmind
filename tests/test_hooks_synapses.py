@@ -105,6 +105,69 @@ def test_session_start_export_disabled_via_env(tmp_path, monkeypatch):
     assert not out.exists()
 
 
+def _write_query_events(project_path, n):
+    """Write n high-overlap query events so the tuner has warm-up data."""
+    from neuralmind.memory import project_query_events_file
+
+    path = project_query_events_file(project_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    event = {
+        "event_type": "query",
+        "timestamp": "2026-05-07T00:00:00+00:00",
+        "session_id": "s",
+        "retrieval_summary": {
+            "layers_used": ["L0:Identity", "L1:Summary", "L2:OnDemand(3 clusters)"],
+            "communities_loaded": [1, 2],
+        },
+    }
+    with path.open("w", encoding="utf-8") as f:
+        for _ in range(n):
+            f.write(json.dumps(event) + "\n")
+
+
+def test_session_start_runs_tuner_when_autotune_enabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    monkeypatch.setenv("NEURALMIND_SELECTOR_AUTOTUNE", "1")
+    _write_query_events(tmp_path, 60)  # high-overlap → tuner raises k
+
+    rc, _ = _run("session-start", {"cwd": str(tmp_path)})
+    assert rc == 0
+
+    store = SynapseStore(default_db_path(tmp_path))
+    assert store.get_meta("l2_recall_k") == "4"
+
+
+def test_session_start_skips_tuner_when_autotune_disabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    monkeypatch.delenv("NEURALMIND_SELECTOR_AUTOTUNE", raising=False)
+    _write_query_events(tmp_path, 60)
+
+    rc, _ = _run("session-start", {"cwd": str(tmp_path)})
+    assert rc == 0
+
+    store = SynapseStore(default_db_path(tmp_path))
+    assert store.get_meta("l2_recall_k") is None
+
+
+def test_session_start_survives_tuner_failure(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    monkeypatch.setenv("NEURALMIND_SELECTOR_AUTOTUNE", "1")
+
+    import neuralmind.self_improve as si
+
+    def boom(*_a, **_k):
+        raise RuntimeError("tuner exploded")
+
+    monkeypatch.setattr(si, "tune_selector", boom)
+
+    # Hook must still return 0 — tuner failures are swallowed.
+    rc, _ = _run("session-start", {"cwd": str(tmp_path)})
+    assert rc == 0
+
+
 def test_pre_compact_normalizes_hubs(tmp_path):
     db = default_db_path(tmp_path)
     store = SynapseStore(db)

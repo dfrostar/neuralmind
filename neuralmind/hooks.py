@@ -265,6 +265,15 @@ def run_hook(action: str) -> int:
             store.decay()
         except Exception:
             pass
+        # Self-improvement engine: tune the selector from logged usage.
+        # Opt-in (not the != "0" pattern) because it is net behavior change.
+        if os.environ.get("NEURALMIND_SELECTOR_AUTOTUNE") == "1":
+            try:
+                from .self_improve import tune_selector
+
+                tune_selector(cwd)
+            except Exception:
+                pass
         if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
             try:
                 from .synapse_memory import export_synapse_memory
