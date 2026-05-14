@@ -146,3 +146,28 @@ def test_decay_constant_is_sane():
     # Sanity: a single decay tick on a max-weight non-LTP edge must not
     # immediately delete it. This guards against accidental config changes.
     assert WEIGHT_CAP * (1.0 - DECAY_RATE) > PRUNE_THRESHOLD
+
+
+def test_get_meta_returns_default_when_absent(tmp_path):
+    s = _store(tmp_path)
+    assert s.get_meta("l2_recall_k") is None
+    assert s.get_meta("l2_recall_k", "3") == "3"
+
+
+def test_set_meta_then_get_meta_round_trips(tmp_path):
+    s = _store(tmp_path)
+    s.set_meta("l2_recall_k", "4")
+    assert s.get_meta("l2_recall_k") == "4"
+
+
+def test_set_meta_overwrites_existing_value(tmp_path):
+    s = _store(tmp_path)
+    s.set_meta("l2_recall_k", "4")
+    s.set_meta("l2_recall_k", "5")
+    assert s.get_meta("l2_recall_k") == "5"
+
+
+def test_set_meta_coerces_non_string_values(tmp_path):
+    s = _store(tmp_path)
+    s.set_meta("l2_recall_k", 6)
+    assert s.get_meta("l2_recall_k") == "6"

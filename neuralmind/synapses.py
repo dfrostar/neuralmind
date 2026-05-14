@@ -220,6 +220,21 @@ class SynapseStore:
             remaining = cur.fetchone()[0]
         return {"pruned": pruned, "remaining": remaining}
 
+    def get_meta(self, key: str, default: str | None = None) -> str | None:
+        """Read a value from the key-value meta table."""
+        with self._connect() as conn:
+            cur = conn.execute("SELECT value FROM meta WHERE key = ?", (key,))
+            row = cur.fetchone()
+            return row[0] if row else default
+
+    def set_meta(self, key: str, value: str) -> None:
+        """Write a value to the key-value meta table."""
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
+                (key, str(value)),
+            )
+
     def neighbors(self, node_id: str, k: int = 5) -> list[tuple[str, float]]:
         """Return the strongest neighbors of a single node."""
         with self._connect() as conn:
