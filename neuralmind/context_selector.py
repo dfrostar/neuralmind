@@ -90,7 +90,17 @@ class ContextSelector:
     # Chars per token estimate
     CHARS_PER_TOKEN = 4
 
-    def __init__(self, embedder, project_path: str = None, enable_reranking: bool = True):
+    # L2 community recall count. Default; overridden per-project by the
+    # self-improvement tuner via the constructor.
+    L2_RECALL_K_DEFAULT = 3
+
+    def __init__(
+        self,
+        embedder,
+        project_path: str = None,
+        enable_reranking: bool = True,
+        l2_recall_k: int = L2_RECALL_K_DEFAULT,
+    ):
         """
         Initialize context selector.
 
@@ -98,6 +108,8 @@ class ContextSelector:
             embedder: GraphEmbedder instance with loaded embeddings
             project_path: Path to project root (for reading metadata files)
             enable_reranking: If True, apply learned patterns to rerank L3 search results
+            l2_recall_k: Number of L2 community summaries to surface per query.
+                Tuned per-project by the self-improvement engine; clamped here.
         """
         self.embedder = embedder
         # Handle project_path - can be string, Path, or get from embedder
@@ -113,6 +125,12 @@ class ContextSelector:
             )
         else:
             self.project_path = Path.cwd()
+
+        # L2 recall count, defensively clamped against bad persisted values.
+        try:
+            self.l2_recall_k = max(1, min(int(l2_recall_k), 10))
+        except (TypeError, ValueError):
+            self.l2_recall_k = self.L2_RECALL_K_DEFAULT
 
         # Reranking configuration
         self.enable_reranking = enable_reranking
@@ -464,7 +482,7 @@ class ContextSelector:
 
         # L2: On-demand (requires query)
         if include_l2 and query:
-            l2, comms = self.get_l2_context(query)
+            l2, comms = self.get_l2_context(query, max_communities=self.l2_recall_k)
             if l2:
                 budget.l2_ondemand = self._estimate_tokens(l2)
                 context_parts.append(l2)

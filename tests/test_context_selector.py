@@ -723,3 +723,51 @@ class TestRerankerIntegration:
 
         # Should respect n parameter even after reranking
         assert hits <= 3
+
+
+class TestL2RecallKTuning:
+    """Tests for the tunable l2_recall_k parameter (self-improvement engine)."""
+
+    def test_defaults_to_three(self, mock_embedder, temp_project):
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        assert selector.l2_recall_k == 3
+
+    def test_accepts_tuned_value(self, mock_embedder, temp_project):
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), l2_recall_k=5)
+        assert selector.l2_recall_k == 5
+
+    def test_clamps_out_of_range_values(self, mock_embedder, temp_project):
+        from neuralmind.context_selector import ContextSelector
+
+        assert ContextSelector(mock_embedder, str(temp_project), l2_recall_k=99).l2_recall_k == 10
+        assert ContextSelector(mock_embedder, str(temp_project), l2_recall_k=0).l2_recall_k == 1
+
+    def test_falls_back_on_non_numeric_value(self, mock_embedder, temp_project):
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), l2_recall_k="bogus")
+        assert selector.l2_recall_k == ContextSelector.L2_RECALL_K_DEFAULT
+
+    def test_get_context_forwards_l2_recall_k_to_get_l2_context(
+        self, mock_embedder, temp_project
+    ):
+        """get_context must pass self.l2_recall_k through as max_communities."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), l2_recall_k=5)
+
+        captured = {}
+        original = selector.get_l2_context
+
+        def spy(query, max_communities=3):
+            captured["max_communities"] = max_communities
+            return original(query, max_communities=max_communities)
+
+        selector.get_l2_context = spy
+        selector.get_context(query="how does auth work", include_l3=False)
+
+        assert captured["max_communities"] == 5

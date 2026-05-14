@@ -199,9 +199,24 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Initialize selector with reranking
+        # Initialize selector with reranking. l2_recall_k is tuned per-project
+        # by the self-improvement engine and persisted in the synapse meta
+        # table; fall back to the selector default if it's absent or unreadable.
+        l2_recall_k = ContextSelector.L2_RECALL_K_DEFAULT
+        try:
+            store = self.synapses
+            if store is not None:
+                persisted = store.get_meta("l2_recall_k")
+                if persisted is not None:
+                    l2_recall_k = int(persisted)
+        except Exception:
+            l2_recall_k = ContextSelector.L2_RECALL_K_DEFAULT
+
         self.selector = ContextSelector(
-            self.embedder, str(self.project_path), enable_reranking=self.enable_reranking
+            self.embedder,
+            str(self.project_path),
+            enable_reranking=self.enable_reranking,
+            l2_recall_k=l2_recall_k,
         )
 
         # Get final stats
