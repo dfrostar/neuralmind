@@ -770,9 +770,7 @@ def main():
     )
     self_improve_sub = self_improve_p.add_subparsers(dest="self_improve_command")
     self_improve_p.set_defaults(func=lambda _a: self_improve_p.print_help())
-    si_status_p = self_improve_sub.add_parser(
-        "status", help="Show selector auto-tuning state"
-    )
+    si_status_p = self_improve_sub.add_parser("status", help="Show selector auto-tuning state")
     si_status_p.add_argument("project_path", nargs="?", default=".")
     si_status_p.add_argument("--json", "-j", action="store_true")
     si_status_p.set_defaults(func=cmd_self_improve_status)

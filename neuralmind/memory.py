@@ -308,12 +308,8 @@ def re_query_rate(events: list[dict[str, Any]]) -> float:
     for qs in queries_by_session.values():
         for i in range(1, len(qs)):
             pairs += 1
-            prev = set(
-                (qs[i - 1].get("retrieval_summary") or {}).get("communities_loaded", [])
-            )
-            cur = set(
-                (qs[i].get("retrieval_summary") or {}).get("communities_loaded", [])
-            )
+            prev = set((qs[i - 1].get("retrieval_summary") or {}).get("communities_loaded", []))
+            cur = set((qs[i].get("retrieval_summary") or {}).get("communities_loaded", []))
             denom = min(len(prev), len(cur))
             if denom == 0:
                 continue

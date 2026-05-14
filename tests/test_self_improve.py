@@ -110,9 +110,7 @@ def test_lower_path_persists_lower_k(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     # 60 queries each touching a distinct community → no overlap → rate 0.0.
-    events = [
-        _query_events(1, session_id="s", communities=[i])[0] for i in range(60)
-    ]
+    events = [_query_events(1, session_id="s", communities=[i])[0] for i in range(60)]
     _write_events(project, events)
 
     result = tune_selector(project)
@@ -182,12 +180,8 @@ def test_insufficient_recent_events_holds(tmp_path):
     project.mkdir()
     # 60 total events (passes warm-up) but fewer than WINDOW_MIN_EVENTS
     # fall inside the post-tune window.
-    old = _query_events(
-        55, session_id="old", communities=[1], ts="2026-01-01T00:00:00+00:00"
-    )
-    recent = _query_events(
-        WINDOW_MIN_EVENTS - 1, communities=[1], ts="2026-06-01T00:00:00+00:00"
-    )
+    old = _query_events(55, session_id="old", communities=[1], ts="2026-01-01T00:00:00+00:00")
+    recent = _query_events(WINDOW_MIN_EVENTS - 1, communities=[1], ts="2026-06-01T00:00:00+00:00")
     _write_events(project, old + recent)
     store = SynapseStore(default_db_path(project))
     store.set_meta(META_KEY_TUNED_AT, "2026-03-01T00:00:00+00:00")

@@ -102,9 +102,7 @@ class TestWakeupLogging:
             reduction_ratio=0.0,
         )
 
-    def test_log_wakeup_event_writes_project_and_global_jsonl(
-        self, monkeypatch, tmp_path
-    ):
+    def test_log_wakeup_event_writes_project_and_global_jsonl(self, monkeypatch, tmp_path):
         from neuralmind import memory
 
         project_path = tmp_path / "project"
@@ -255,9 +253,9 @@ class TestMemoryAggregations:
         events = [
             self._q("a", ["L0", "L1", "L2"], [1, 2]),
             self._q("a", ["L0", "L1", "L2"], [1, 2, 3]),  # 2/2 overlap → re-query
-            self._q("a", ["L0", "L1", "L2"], [9]),       # no overlap
+            self._q("a", ["L0", "L1", "L2"], [9]),  # no overlap
             self._q("b", ["L0", "L1", "L2"], [4]),
-            self._q("b", ["L0", "L1", "L2"], [4]),       # full overlap → re-query
+            self._q("b", ["L0", "L1", "L2"], [4]),  # full overlap → re-query
         ]
         # Pairs: (a:0,a:1) re-query, (a:1,a:2) not, (b:0,b:1) re-query → 2/3
         assert abs(memory.re_query_rate(events) - 2 / 3) < 1e-9
@@ -275,10 +273,10 @@ class TestMemoryAggregations:
         from neuralmind import memory
 
         events = [
-            self._w("s1"),                         # wakeup-only session
+            self._w("s1"),  # wakeup-only session
             self._w("s2"),
-            self._q("s2", ["L0", "L1"], [1]),     # s2 had a query, not wakeup-only
-            self._q("s3", ["L0"], [1]),           # no wakeup → ineligible
+            self._q("s2", ["L0", "L1"], [1]),  # s2 had a query, not wakeup-only
+            self._q("s3", ["L0"], [1]),  # no wakeup → ineligible
         ]
         # Eligible (wakeup>=1): s1, s2. Wakeup-only: s1. → 1/2
         assert abs(memory.wakeup_only_rate(events) - 0.5) < 1e-9

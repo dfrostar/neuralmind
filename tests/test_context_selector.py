@@ -752,9 +752,7 @@ class TestL2RecallKTuning:
         selector = ContextSelector(mock_embedder, str(temp_project), l2_recall_k="bogus")
         assert selector.l2_recall_k == ContextSelector.L2_RECALL_K_DEFAULT
 
-    def test_get_context_forwards_l2_recall_k_to_get_l2_context(
-        self, mock_embedder, temp_project
-    ):
+    def test_get_context_forwards_l2_recall_k_to_get_l2_context(self, mock_embedder, temp_project):
         """get_context must pass self.l2_recall_k through as max_communities."""
         from neuralmind.context_selector import ContextSelector
 
