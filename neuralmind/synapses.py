@@ -227,8 +227,8 @@ class SynapseStore:
             row = cur.fetchone()
             return row[0] if row else default
 
-    def set_meta(self, key: str, value: str) -> None:
-        """Write a value to the key-value meta table."""
+    def set_meta(self, key: str, value: object) -> None:
+        """Write a value to the key-value meta table (coerced to str)."""
         with self._connect() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",

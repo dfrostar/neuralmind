@@ -68,22 +68,26 @@ def _read_current_k(store: SynapseStore) -> int:
 def _compute(project_path: str | Path, store: SynapseStore) -> dict:
     """Shared read-side computation for both tune_selector and selector_report.
 
-    Returns the current k, the windowed re_query_rate, and the total event
-    count — without writing anything.
+    Returns the current k, the windowed re_query_rate, and the query-event
+    counts — without writing anything.
     """
     events = read_events(project_query_events_file(project_path))
-    total = len(events)
+    # The warm-up / window gates and the signal both key off *query*
+    # events only. Wakeup events share the same JSONL file but carry no
+    # re_query signal — counting them toward the thresholds would let the
+    # tuner act (and drift `l2_recall_k` down) without query evidence.
+    queries = [e for e in events if e.get("event_type") == "query"]
     current = _read_current_k(store)
 
     since = store.get_meta(META_KEY_TUNED_AT)
     if since:
-        window = recent_events(events, since_ts=since)
+        window = recent_events(queries, since_ts=since)
     else:
-        window = recent_events(events, last_n=FALLBACK_WINDOW)
+        window = recent_events(queries, last_n=FALLBACK_WINDOW)
 
     return {
         "current": current,
-        "total_events": total,
+        "total_events": len(queries),
         "windowed_events": len(window),
         "re_query_rate": re_query_rate(window),
     }

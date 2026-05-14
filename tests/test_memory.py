@@ -247,6 +247,14 @@ class TestMemoryAggregations:
         assert memory.escalation_rate([]) == 0.0
         assert memory.escalation_rate([self._w("s")]) == 0.0
 
+    def test_escalation_rate_does_not_match_l3_prefix_collision(self):
+        """The predicate must match the L3 layer exactly ("L3" or
+        "L3:..."), not any string that merely starts with "L3"."""
+        from neuralmind import memory
+
+        events = [self._q("s", ["L0:Identity", "L30:Hypothetical"], [1])]
+        assert memory.escalation_rate(events) == 0.0
+
     def test_re_query_rate_counts_high_overlap_consecutive_queries(self):
         from neuralmind import memory
 
@@ -267,6 +275,39 @@ class TestMemoryAggregations:
             self._q("a", ["L0"], [1]),
             self._q("b", ["L0"], [1]),  # different session, not a pair
         ]
+        assert memory.re_query_rate(events) == 0.0
+
+    def test_re_query_rate_excludes_empty_community_pairs(self):
+        """A pair where either query loaded no communities carries no
+        overlap signal — it must not count toward the denominator."""
+        from neuralmind import memory
+
+        events = [
+            self._q("a", ["L0", "L1", "L2"], []),  # no communities
+            self._q("a", ["L0", "L1", "L2"], [1, 2]),  # denom == 0 for this pair
+            self._q("a", ["L0", "L1", "L2"], [1, 2]),  # real pair, full overlap
+        ]
+        # Only the (a:1, a:2) pair carries signal → 1/1, not 1/2.
+        assert memory.re_query_rate(events) == 1.0
+
+    def test_re_query_rate_skips_events_without_session_id(self):
+        """Events with no session_id (pre-D1 logs) can't be ordered into
+        sessions and must be skipped, not lumped under one shared key."""
+        from neuralmind import memory
+
+        events = [
+            {
+                "event_type": "query",
+                "timestamp": "2026-05-07T00:00:00+00:00",
+                "retrieval_summary": {"communities_loaded": [1, 2]},
+            },
+            {
+                "event_type": "query",
+                "timestamp": "2026-05-07T00:01:00+00:00",
+                "retrieval_summary": {"communities_loaded": [1, 2]},
+            },
+        ]
+        # Without session_id these are not a valid consecutive pair.
         assert memory.re_query_rate(events) == 0.0
 
     def test_wakeup_only_rate(self):

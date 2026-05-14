@@ -281,7 +281,7 @@ def escalation_rate(events: list[dict[str, Any]]) -> float:
         1
         for e in queries
         if any(
-            str(layer).startswith("L3")
+            str(layer) == "L3" or str(layer).startswith("L3:")
             for layer in (e.get("retrieval_summary") or {}).get("layers_used", [])
         )
     )
@@ -300,19 +300,27 @@ def re_query_rate(events: list[dict[str, Any]]) -> float:
     for e in events:
         if e.get("event_type") != "query":
             continue
-        sid = e.get("session_id") or ""
+        sid = e.get("session_id")
+        if not sid:
+            # Pre-D1 events have no session_id. Without one we can't tell
+            # which queries were truly consecutive, so skip them rather
+            # than lumping unrelated history under a shared empty-string key.
+            continue
         queries_by_session.setdefault(sid, []).append(e)
 
     re_query_count = 0
     pairs = 0
     for qs in queries_by_session.values():
         for i in range(1, len(qs)):
-            pairs += 1
             prev = set((qs[i - 1].get("retrieval_summary") or {}).get("communities_loaded", []))
             cur = set((qs[i].get("retrieval_summary") or {}).get("communities_loaded", []))
             denom = min(len(prev), len(cur))
             if denom == 0:
+                # A pair where either query loaded no communities carries
+                # no overlap signal either way — it must not count toward
+                # the denominator, or it would deflate the rate.
                 continue
+            pairs += 1
             if len(prev & cur) / denom >= 0.5:
                 re_query_count += 1
     return (re_query_count / pairs) if pairs else 0.0

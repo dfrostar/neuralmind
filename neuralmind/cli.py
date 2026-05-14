@@ -344,8 +344,8 @@ def cmd_self_improve_status(args):
     print(f"Autotune enabled: {autotune_on} (NEURALMIND_SELECTOR_AUTOTUNE)")
     print(f"l2_recall_k: {report['l2_recall_k']}")
     print(f"Last tuned at: {report['l2_recall_k_tuned_at'] or 'never'}")
-    print(f"Events logged: {report['total_events']} (warmed up: {report['warmed_up']})")
-    print(f"Events in tuning window: {report['windowed_events']}")
+    print(f"Query events logged: {report['total_events']} (warmed up: {report['warmed_up']})")
+    print(f"Query events in tuning window: {report['windowed_events']}")
     print(f"re_query_rate: {report['re_query_rate']:.3f}")
 
 

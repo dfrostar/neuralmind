@@ -89,6 +89,30 @@ def test_warmup_gate_blocks_tuning_below_threshold(tmp_path):
     assert store.get_meta(META_KEY) is None
 
 
+def test_wakeup_events_do_not_count_toward_warmup(tmp_path):
+    """Only query events carry re_query signal — a project flooded with
+    wakeups but few queries must stay warmup-gated, not drift k down."""
+    project = tmp_path / "project"
+    project.mkdir()
+    wakeups = [
+        {
+            "event_type": "wakeup",
+            "timestamp": "2026-05-07T00:00:00+00:00",
+            "session_id": f"w{i}",
+            "retrieval_summary": {"layers_used": ["L0:Identity", "L1:Summary"]},
+        }
+        for i in range(100)
+    ]
+    queries = _query_events(10, communities=[1])  # well under WARMUP_MIN_EVENTS
+    _write_events(project, wakeups + queries)
+
+    result = tune_selector(project)
+    assert result["changed"] is False
+    assert result["reason"] == "warmup"
+    store = SynapseStore(default_db_path(project))
+    assert store.get_meta(META_KEY) is None
+
+
 def test_raise_path_persists_higher_k(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
