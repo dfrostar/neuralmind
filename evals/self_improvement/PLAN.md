@@ -1,7 +1,8 @@
 # Self-improvement engine — plan
 
-Status: proposed. Sequencing: subsystems A and B first (~2–3 days),
-then closed-loop tuning (subsystem C) once `evals/faithfulness/` lands.
+Status: D1 landed (memory substrate), D2 landed (subsystem A, scoped to
+`l2_recall_k`). Next: D3 (subsystem B, L2 summary refinement), then
+closed-loop tuning (subsystem C) once `evals/faithfulness/` lands.
 
 ## Goal
 
@@ -97,9 +98,12 @@ Four small gaps:
    - else a process-lifetime uuid generated lazily (one per
      `NeuralMind` instance).
 
-3. **Derived `escalated_l3` flag.** Trivially `"L3" in layers_used`,
-   but surface as a helper so subsystem A reads through one
-   function rather than re-implementing the predicate.
+3. **Derived `escalated_l3` flag.** Surfaced as the `escalation_rate`
+   helper so subsystem A reads through one function rather than
+   re-implementing the predicate. (D1 implemented the predicate as a
+   bare `"L3" in layers_used` membership check; that never matched —
+   real `layers_used` elements are decorated, e.g.
+   `"L3:Search(4 results)"`. D2 fixed it to match by `"L3"` prefix.)
 
 4. **Aggregation helpers in `memory.py`.** Subsystem A's tuning rule
    needs:
@@ -113,13 +117,14 @@ Four small gaps:
    (not a new module) so future readers find aggregation logic next
    to the storage that produces it.
 
-### Tunables storage (subsystem A, later)
+### Tunables storage (subsystem A)
 
-`l2_recall_k` and `l3_escalation_threshold` will live in the
-existing `meta` table of `synapses.db` — that's already a
-key-value scratchpad and avoids introducing a third storage
-location. Subsystem C, when it lands, writes there too. (D1 does
-not touch the meta table.)
+Tunables live in the existing `meta` table of `synapses.db` — already
+a key-value scratchpad, avoids a third storage location. D2 added
+`get_meta`/`set_meta` helpers and stores `l2_recall_k` +
+`l2_recall_k_tuned_at` there. An `l3_escalation_threshold` would live
+here too if/when the L3 gate is built. Subsystem C, when it lands,
+writes here as well. (D1 does not touch the meta table.)
 
 ### Why not hooks
 
@@ -134,53 +139,93 @@ The plan's earlier draft proposed PostToolUse hooks on
   installed; in-process logging works for any caller (CLI, MCP,
   programmatic).
 
-## Subsystem A: selector auto-tuning
+## Subsystem A: selector auto-tuning  (D2 — landed)
 
-Module: `neuralmind/selector_tuning.py` (new). Read-side; no LLM calls.
+Module: `neuralmind/self_improve.py`. Read-side; no LLM calls.
+
+### Scope: `l2_recall_k` only
+
+The original draft tuned **two** scalars — `l2_recall_k` and an
+`l3_escalation_threshold`. D2 ships only `l2_recall_k`.
+
+`l3_escalation_threshold` was dropped because **it does not exist**:
+L3 deep search runs unconditionally whenever there's a query
+(`context_selector.py`). Introducing a threshold below which L3 is
+*skipped* is net-new behavior, not the tuning of an existing knob —
+and skipping L3 risks correctness. That gate is **deferred** until
+`evals/faithfulness/` can validate it's safe. Until then there is no
+L3 escalation threshold to tune.
+
+A knock-on consequence: `escalation_rate` is useless as a tuning
+signal while L3 is ungated (it fires on ~every query). So D2's rule
+is driven by `re_query_rate` instead.
 
 ### What it tunes
 
-Two scalars per project, persisted in the existing `meta` table of
+One scalar per project, persisted in the existing `meta` table of
 the synapse DB:
 
-- `l2_recall_k` — how many community summaries to include in L2
-  (currently a hard-coded constant in `context_selector.py`).
-- `l3_escalation_threshold` — score below which we escalate to L3
-  deep search.
+- `l2_recall_k` — how many community summaries L2 surfaces per query
+  (was a hard-coded `3` in `context_selector.py`).
+
+`l2_recall_k_tuned_at` is also stored — an ISO timestamp of the last
+change, used both as a diagnostic and to window the tuning signal.
 
 ### Tuning rule (deliberately simple)
 
-Run once per session-end (hook into SessionEnd or recompute at
-SessionStart from accumulated `query_events`):
+Runs once per session at SessionStart, recomputed from accumulated
+`query_events`:
 
 ```
-window = last 200 query_events
-if rate(escalated_l3) > 0.4:
-    l3_escalation_threshold *= 0.95   # escalate more eagerly
-    l2_recall_k = min(l2_recall_k + 1, 12)
-elif rate(escalated_l3) < 0.1 and rate(re_query) < 0.05:
-    l3_escalation_threshold *= 1.05   # tighten
-    l2_recall_k = max(l2_recall_k - 1, 3)
+events  = project query_events
+if len(events) < 50:            hold        # warm-up gate
+window  = events since l2_recall_k_tuned_at  (else last 200)
+if len(window) < 20:            hold        # insufficient recent signal
+rate    = re_query_rate(window)
+if   rate > 0.40:  l2_recall_k = min(l2_recall_k + 1, 6)   # under-disclosing
+elif rate < 0.15:  l2_recall_k = max(l2_recall_k - 1, 2)   # over-disclosing
+else:              hold                                    # dead band
 ```
 
-Bounded, hysteretic, cheap. Nothing fancy until subsystem C exists to
-score it.
+Bounded `[2, 6]`, default `3`, single-step moves, hysteretic dead
+band. The `0.15` / `0.40` thresholds are provisional guesses —
+`re_query_rate` is a weak, noisy signal, which is exactly why the
+tuner is off by default. Subsystem C replaces the hand-tuned rule
+with an eval-driven one.
+
+`tune_selector()` never raises (fail-open — safe for the hook path).
+
+### Why window the signal
+
+The window is keyed off `l2_recall_k_tuned_at` so the tuner doesn't
+chase a distribution it just perturbed: raising `l2_recall_k` changes
+`communities_loaded`, which feeds `re_query_rate` — a self-referential
+loop. Windowing + dead band + single-step + once-per-session cadence
+dampen it. The `< 20` window guard handles the common post-tune case
+where the window is empty (no fresh events yet) — an empty window
+means "no signal, hold", not "rate is 0.0, lower it".
 
 ### Warm-up
 
-Tuner refuses to act until `query_events` has ≥50 rows. Until then,
-hard-coded defaults stand.
+Tuner refuses to act until `query_events` has ≥50 rows, and until the
+windowed slice has ≥20. Until then, the default (`3`) stands.
 
 ### Toggle
 
-`NEURALMIND_SELECTOR_AUTOTUNE=1` (default off until we've observed it
-on real traffic for a week).
+`NEURALMIND_SELECTOR_AUTOTUNE=1` (default off). Opt-in `== "1"` rather
+than the `!= "0"` pattern used elsewhere, because this is net behavior
+change. Wired into the SessionStart hook after the synapse decay tick;
+tuner failures are swallowed so the hook always exits 0.
 
 ### Read path integration
 
-`context_selector.py` reads `l2_recall_k` and `l3_escalation_threshold`
-from the meta table at construction time. One read per `get_context`
-call is fine; the values change at most once per session.
+`core.NeuralMind.build()` reads `l2_recall_k` from the synapse meta
+table (via the existing lazy `self.synapses` property) and passes it
+to the `ContextSelector` constructor, which clamps it defensively.
+Read once at construction, not per `get_context` call: the value
+changes at most once per session (in the SessionStart tuner tick), so
+a per-call DB read would be pure overhead. The read path is fully
+guarded — a missing DB falls back to the default.
 
 ## Subsystem B: L2 summary refinement
 
@@ -275,28 +320,32 @@ Goal: ship the logging on by default, tuning behaviors gated.
 
 ## Observability
 
-A small `neuralmind self-improve status` CLI subcommand prints:
+`neuralmind self-improve status [project]` (landed in D2, read-only,
+`--json` supported) prints:
 
-- query_events row count, oldest / newest timestamps
-- current `l2_recall_k`, `l3_escalation_threshold`
-- recent L3 escalation rate, re-query rate
-- pending refinement candidates and their A/B status
+- current `l2_recall_k` and when it was last tuned
+- total query_events count + whether the warm-up gate is cleared
+- events in the current tuning window
+- windowed `re_query_rate`
+- whether `NEURALMIND_SELECTOR_AUTOTUNE` is enabled
 
-Read-only. Useful for debugging and for the eventual subsystem C
-diagnosis.
+Nested under a `self-improve` parser so D3 / subsystem C can attach
+their own sub-actions. D3 will extend `status` with pending refinement
+candidates and their A/B state.
 
 ## Test strategy
 
 Tests are stdlib-only, like `tests/synapse_*` — don't drag in the
 full dep set.
 
-- `tests/test_query_log.py` — schema creation, insert, retention
-  trim, JSON round-trip.
-- `tests/test_selector_tuning.py` — synthetic event streams,
-  assert tuning rule produces expected scalar movement.
+- `tests/test_memory.py` — event schema, insert, JSON round-trip,
+  aggregation helpers (D1).
+- `tests/test_self_improve.py` — synthetic event streams; assert the
+  `_decide` rule and `tune_selector` produce expected `l2_recall_k`
+  movement, warm-up / window guards hold, fail-open on bad input (D2).
 - `tests/test_summary_refiner_logic.py` — mock the LLM call and
   ChromaDB; assert candidate is written, A/B promotion logic
-  fires correctly, cool-down respected.
+  fires correctly, cool-down respected (D3).
 
 Integration test on the bundled sample fixture
 (`neuralmind/demo_data/sample_project/`): run a synthetic session of
@@ -348,11 +397,14 @@ Developed on `claude/plan-next-task-nwJak`. Extends the existing
 D1 ships nothing user-visible — purely fills gaps in the data layer
 that subsystems A and B will read.
 
-## D2 / D3 (sketch only)
+## D2 (landed) / D3 (sketch only)
 
-- **D2:** subsystem A — `selector_tuning.py`, meta-table reads from
-  `context_selector.py`, tests, `neuralmind self-improve status`
-  subcommand stub.
+- **D2 (landed):** subsystem A — `self_improve.py` (`tune_selector`,
+  `selector_report`), `get_meta`/`set_meta` on `SynapseStore`,
+  `l2_recall_k` threaded through `core.py` → `ContextSelector`,
+  SessionStart hook integration, `neuralmind self-improve status`
+  CLI subcommand, and the D1 `escalation_rate` bug fix. Scoped to
+  `l2_recall_k`; the L3 gate is deferred (see Subsystem A).
 - **D3:** subsystem B — `summary_refiner.py`, watcher hook,
   candidate/A-B logic, mocked LLM tests. Refinement disabled by
   default.
