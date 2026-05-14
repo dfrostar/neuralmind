@@ -269,6 +269,10 @@ def escalation_rate(events: list[dict[str, Any]]) -> float:
 
     L3 is the deep-search layer; high escalation suggests L2 community
     summaries are under-recalling for the query distribution.
+
+    layers_used elements are decorated strings produced by the selector
+    (e.g. "L3:Search(4 results)"), so match by prefix rather than exact
+    membership.
     """
     queries = [e for e in events if e.get("event_type") == "query"]
     if not queries:
@@ -276,7 +280,10 @@ def escalation_rate(events: list[dict[str, Any]]) -> float:
     escalated = sum(
         1
         for e in queries
-        if "L3" in (e.get("retrieval_summary") or {}).get("layers_used", [])
+        if any(
+            str(layer).startswith("L3")
+            for layer in (e.get("retrieval_summary") or {}).get("layers_used", [])
+        )
     )
     return escalated / len(queries)
 

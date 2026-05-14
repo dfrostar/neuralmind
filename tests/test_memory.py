@@ -210,12 +210,38 @@ class TestMemoryAggregations:
         from neuralmind import memory
 
         events = [
-            self._q("s", ["L0", "L1", "L2"], [1]),
-            self._q("s", ["L0", "L1", "L2", "L3"], [1]),
-            self._q("s", ["L0", "L1", "L2", "L3"], [2]),
+            self._q("s", ["L0:Identity", "L1:Summary", "L2:OnDemand(3 clusters)"], [1]),
+            self._q(
+                "s",
+                ["L0:Identity", "L1:Summary", "L2:OnDemand(3 clusters)", "L3:Search(4 results)"],
+                [1],
+            ),
+            self._q(
+                "s",
+                ["L0:Identity", "L1:Summary", "L2:OnDemand(2 clusters)", "L3:Search(4 results)"],
+                [2],
+            ),
             self._w("s"),  # wakeups don't count
         ]
         assert abs(memory.escalation_rate(events) - 2 / 3) < 1e-9
+
+    def test_escalation_rate_matches_decorated_layer_strings(self):
+        """layers_used elements are decorated by the selector — escalation_rate
+        must match the 'L3:Search(...)' prefix, not a bare 'L3' element."""
+        from neuralmind import memory
+
+        escalated = [
+            self._q(
+                "s",
+                ["L0:Identity", "L1:Summary", "L3:Search(4 results)"],
+                [1],
+            )
+        ]
+        not_escalated = [
+            self._q("s", ["L0:Identity", "L1:Summary", "L2:OnDemand(3 clusters)"], [1])
+        ]
+        assert memory.escalation_rate(escalated) == 1.0
+        assert memory.escalation_rate(not_escalated) == 0.0
 
     def test_escalation_rate_zero_on_empty(self):
         from neuralmind import memory
