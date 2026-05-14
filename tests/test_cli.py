@@ -844,3 +844,51 @@ class TestCLIDemo:
         assert "How does authentication work" in captured.out
         assert "API endpoints" in captured.out
         assert "billing flow" in captured.out
+
+
+class TestCLISelfImprove:
+    """Tests for the self-improve status CLI command."""
+
+    def test_status_human_readable(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_self_improve_status
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.json = False
+
+        cmd_self_improve_status(args)
+
+        captured = capsys.readouterr()
+        assert "l2_recall_k: 3" in captured.out
+        assert "Autotune enabled: False" in captured.out
+        assert "never" in captured.out
+
+    def test_status_json_output(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_self_improve_status
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.json = True
+
+        cmd_self_improve_status(args)
+
+        captured = capsys.readouterr()
+        report = json.loads(captured.out)
+        assert report["l2_recall_k"] == 3
+        assert report["warmed_up"] is False
+        assert report["autotune_enabled"] is False
+
+    def test_status_reflects_tuned_value(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_self_improve_status
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        SynapseStore(default_db_path(tmp_path)).set_meta("l2_recall_k", "5")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.json = True
+
+        cmd_self_improve_status(args)
+
+        report = json.loads(capsys.readouterr().out)
+        assert report["l2_recall_k"] == 5

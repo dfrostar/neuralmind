@@ -325,6 +325,30 @@ def cmd_learn(args):
             print(f"  {pair}: {count} times")
 
 
+def cmd_self_improve_status(args):
+    """Show the self-improvement engine's current selector tuning state."""
+    import os
+
+    from .self_improve import selector_report
+
+    project_path = Path(args.project_path).resolve()
+    report = selector_report(project_path)
+    autotune_on = os.environ.get("NEURALMIND_SELECTOR_AUTOTUNE") == "1"
+
+    if args.json:
+        report["autotune_enabled"] = autotune_on
+        print(json.dumps(report, indent=2))
+        return
+
+    print(f"Project: {project_path.name}")
+    print(f"Autotune enabled: {autotune_on} (NEURALMIND_SELECTOR_AUTOTUNE)")
+    print(f"l2_recall_k: {report['l2_recall_k']}")
+    print(f"Last tuned at: {report['l2_recall_k_tuned_at'] or 'never'}")
+    print(f"Events logged: {report['total_events']} (warmed up: {report['warmed_up']})")
+    print(f"Events in tuning window: {report['windowed_events']}")
+    print(f"re_query_rate: {report['re_query_rate']:.3f}")
+
+
 def cmd_skeleton(args):
     """Return a graph-backed compact view of a file."""
     from .core import create_mind
@@ -739,6 +763,19 @@ def main():
     )
     learn_p.add_argument("project_path")
     learn_p.set_defaults(func=cmd_learn)
+
+    # Self-improvement engine — nested so future subsystems can attach here.
+    self_improve_p = subparsers.add_parser(
+        "self-improve", help="Inspect the self-improvement engine"
+    )
+    self_improve_sub = self_improve_p.add_subparsers(dest="self_improve_command")
+    self_improve_p.set_defaults(func=lambda _a: self_improve_p.print_help())
+    si_status_p = self_improve_sub.add_parser(
+        "status", help="Show selector auto-tuning state"
+    )
+    si_status_p.add_argument("project_path", nargs="?", default=".")
+    si_status_p.add_argument("--json", "-j", action="store_true")
+    si_status_p.set_defaults(func=cmd_self_improve_status)
 
     # Init-hook command
     init_parser = subparsers.add_parser(
