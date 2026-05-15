@@ -40,9 +40,10 @@
     activeCommunity: null,
     project: "",
     projectKey: "",        // absolute project path; stable across same-name repos
-    searchHitIds: null,    // Set when filter-to-search is on
+    searchHitIds: null,    // Set when filter-to-search is on (or when a replay is active)
     synapseMinWeight: 0.05, // matches server-side default; slider can raise it
     hoveredEdge: null,     // {type, e} or null
+    replayActive: null,    // the currently replayed query record, if any
     alpha: 1,
   };
 
@@ -893,6 +894,175 @@
     }, 250);
   }
 
+  /* ---------- recent queries / replay overlay ---------- */
+
+  async function refreshRecentQueries() {
+    try {
+      const res = await fetch("/api/queries?n=20");
+      const data = await res.json();
+      renderRecentQueries(data.queries || []);
+    } catch {
+      // Network errors are non-fatal — leave whatever was rendered.
+    }
+  }
+
+  function renderRecentQueries(queries) {
+    const ul = document.getElementById("replay-list");
+    const empty = document.getElementById("replay-empty");
+    ul.innerHTML = "";
+    if (!queries.length) {
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+    for (const q of queries) {
+      const li = document.createElement("li");
+      li.className = "replay-row";
+      // Treat the row as a button for assistive tech and keyboard users;
+      // <li> alone isn't focusable or activatable from the keyboard.
+      li.setAttribute("role", "button");
+      li.tabIndex = 0;
+      li.setAttribute(
+        "aria-label",
+        `Replay query: ${q.question || "(empty)"} (${(q.top_hits || []).length} hits)`
+      );
+      const qLine = document.createElement("span");
+      qLine.className = "q";
+      qLine.textContent = q.question || "(empty)";
+      const meta = document.createElement("span");
+      meta.className = "meta";
+      const ratio = document.createElement("span");
+      ratio.className = "ratio";
+      ratio.textContent = q.reduction_ratio ? `${q.reduction_ratio.toFixed(1)}×` : "";
+      const stats = document.createElement("span");
+      const hitCount = (q.top_hits || []).length;
+      stats.textContent = `${q.tokens || 0} tok · ${hitCount} hit${hitCount === 1 ? "" : "s"} · ${shortTs(q.ts)}`;
+      meta.append(ratio, stats);
+      li.append(qLine, meta);
+      if (state.replayActive && state.replayActive.ts === q.ts) {
+        li.classList.add("active");
+      }
+      const activate = () => replayQuery(q, li);
+      li.addEventListener("click", activate);
+      li.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          activate();
+        }
+      });
+      ul.appendChild(li);
+    }
+  }
+
+  function shortTs(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60) return "just now";
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return d.toLocaleDateString();
+    } catch {
+      return "";
+    }
+  }
+
+  function replayQuery(record, row) {
+    // Re-clicking the active query clears the replay.
+    if (state.replayActive && state.replayActive.ts === record.ts) {
+      clearReplay();
+      return;
+    }
+    // Cancel any in-flight semantic search so its delayed response
+    // can't overwrite the replay hit set after we set it below.
+    if (searchAbort) searchAbort.abort();
+    searchInput.value = "";
+    searchResults.innerHTML = "";
+
+    state.replayActive = record;
+    const hitIds = (record.top_hits || []).map((h) => h.id);
+    state.searchHitIds = new Set(hitIds);
+    // Auto-enable "limit graph to search hits" only when there's
+    // actually something to show — otherwise an empty hit set blanks
+    // the whole canvas and the user just sees nothing.
+    const filterToggle = document.getElementById("toggle-filter-search");
+    const shouldFilter = hitIds.length > 0;
+    filterToggle.checked = shouldFilter;
+    state.filterToSearch = shouldFilter;
+
+    document.querySelectorAll(".replay-row.active").forEach((el) =>
+      el.classList.remove("active")
+    );
+    if (row) row.classList.add("active");
+
+    renderReplayDetail(record);
+    wake();
+  }
+
+  function clearReplay() {
+    state.replayActive = null;
+    state.searchHitIds = null;
+    document.getElementById("toggle-filter-search").checked = false;
+    state.filterToSearch = false;
+    document.querySelectorAll(".replay-row.active").forEach((el) =>
+      el.classList.remove("active")
+    );
+    renderDetail(state.selected);
+    wake();
+  }
+
+  function renderReplayDetail(record) {
+    // Repurpose the detail panel to summarize the replayed query so the
+    // user sees exactly which nodes the agent received and at what cost.
+    const panel = document.getElementById("detail-panel");
+    panel.innerHTML = "<h2>Replayed query</h2>";
+
+    const q = document.createElement("p");
+    q.className = "detail-title";
+    q.textContent = record.question || "(empty)";
+    const sub = document.createElement("p");
+    sub.className = "detail-sub";
+    const layers = (record.layers_used || []).join(", ") || "—";
+    sub.textContent =
+      `${record.tokens || 0} tokens · ${
+        record.reduction_ratio ? record.reduction_ratio.toFixed(1) + "× reduction" : "no ratio"
+      } · layers: ${layers}`;
+    panel.append(q, sub);
+
+    if (record.communities_loaded && record.communities_loaded.length) {
+      const c = document.createElement("p");
+      c.className = "detail-sub";
+      c.textContent = "Communities loaded: " + record.communities_loaded.join(", ");
+      panel.appendChild(c);
+    }
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "open-btn";
+    clearBtn.textContent = "Clear replay";
+    clearBtn.addEventListener("click", clearReplay);
+    panel.appendChild(clearBtn);
+
+    const section = document.createElement("div");
+    section.className = "detail-section";
+    const h = document.createElement("h3");
+    h.textContent = `Top hits (${(record.top_hits || []).length})`;
+    section.appendChild(h);
+    const ul = document.createElement("ul");
+    for (const hit of record.top_hits || []) {
+      const node = state.nodeById.get(hit.id);
+      if (!node) continue;
+      ul.appendChild(linkRow(node, `score ${hit.score}`));
+    }
+    section.appendChild(ul);
+    panel.appendChild(section);
+  }
+
+  document
+    .getElementById("replay-refresh")
+    .addEventListener("click", refreshRecentQueries);
+
   /* ---------- toggles ---------- */
 
   const bind = (id, key) => {
@@ -1096,8 +1266,10 @@
   /* ---------- boot ---------- */
 
   resize();
-  load().catch((e) => {
-    loading.textContent = "Failed to load graph: " + e;
-  });
+  load()
+    .then(() => refreshRecentQueries())
+    .catch((e) => {
+      loading.textContent = "Failed to load graph: " + e;
+    });
   startEventStream();
 })();

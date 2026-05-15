@@ -22,13 +22,14 @@ Usage:
     print(f"Token reduction: {result.reduction_ratio:.1f}x")
 """
 
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .memory import log_query_event
+from .memory import is_memory_logging_enabled, log_query_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -281,6 +282,7 @@ class NeuralMind:
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
         log_query_event(self.project_path, question, result)
+        self._record_recent_query(question, result)
         self._reinforce_from_query(question, result)
         self._emit_audit(
             category="audit",
@@ -295,6 +297,128 @@ class NeuralMind:
             },
         )
         return result
+
+    RECENT_QUERIES_FILENAME = "recent_queries.jsonl"
+    RECENT_QUERIES_MAX = 100
+    # Trim when the log grows past ~2× the cap so compaction is rare;
+    # 4KB/line is a safe upper bound for an entry with 12 hits.
+    RECENT_QUERIES_COMPACT_BYTES = RECENT_QUERIES_MAX * 4096 * 2
+
+    def _recent_queries_path(self) -> Path:
+        return self.project_path / ".neuralmind" / self.RECENT_QUERIES_FILENAME
+
+    def _record_recent_query(self, question: str, result: ContextResult) -> None:
+        """Append the last query's retrieval state to the recent-queries log.
+
+        Powers the graph-view UI's 'Replay last query' panel: a human can
+        see which nodes the agent actually received, including ids the
+        UI can highlight on the canvas. Always on (local-only data,
+        readable only through the auth-gated server).
+
+        The hot path is an atomic single-line append (POSIX O_APPEND
+        guarantees writes < PIPE_BUF don't tear across processes), so
+        CLI and MCP-server processes can safely write to the same file
+        without losing entries. Trimming back to RECENT_QUERIES_MAX is
+        a lazy compaction step gated by file size and protected by an
+        advisory lock — see ``_compact_recent_queries``.
+
+        Gated on the same consent flag as the learning log
+        (`NEURALMIND_MEMORY`): if the user opted out of persisting
+        query text, we don't create a parallel persistence path here.
+        """
+        if not is_memory_logging_enabled():
+            return
+        try:
+            hits = []
+            for hit in (getattr(result, "top_search_hits", []) or [])[:12]:
+                meta = hit.get("metadata") or {}
+                hits.append(
+                    {
+                        "id": str(hit.get("id", "")),
+                        "label": meta.get("label", hit.get("id", "")),
+                        "source_file": meta.get("source_file", ""),
+                        "score": round(float(hit.get("score", 0.0)), 3),
+                    }
+                )
+            record = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "question": question,
+                "tokens": int(getattr(getattr(result, "budget", None), "total", 0)),
+                "reduction_ratio": round(float(getattr(result, "reduction_ratio", 0.0)), 2),
+                "layers_used": list(getattr(result, "layers_used", [])),
+                "communities_loaded": list(getattr(result, "communities_loaded", [])),
+                "top_hits": hits,
+            }
+            log_path = self._recent_queries_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            line = json.dumps(record, sort_keys=True) + "\n"
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(line)
+        except Exception:
+            # Recording must never block the actual query.
+            return
+        try:
+            self._compact_recent_queries(log_path)
+        except Exception:
+            pass
+
+    def _compact_recent_queries(self, log_path: Path) -> None:
+        """Trim the recent-queries log back to RECENT_QUERIES_MAX entries.
+
+        Only runs when the file has grown past the size threshold, so the
+        hot path stays append-only. Uses an advisory file lock on POSIX
+        so the read-truncate-rewrite isn't interleaved with another
+        process's append; on Windows the lock is best-effort and worst
+        case is a slightly oversized log file (no data loss).
+        """
+        try:
+            size = log_path.stat().st_size
+        except OSError:
+            return
+        if size <= self.RECENT_QUERIES_COMPACT_BYTES:
+            return
+        try:
+            import fcntl
+        except ImportError:
+            fcntl = None  # type: ignore[assignment]
+        with log_path.open("r+", encoding="utf-8") as f:
+            if fcntl is not None:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                except OSError:
+                    pass
+            try:
+                lines = [ln for ln in f if ln.strip()]
+                if len(lines) <= self.RECENT_QUERIES_MAX:
+                    return
+                f.seek(0)
+                f.truncate()
+                f.writelines(lines[-self.RECENT_QUERIES_MAX :])
+            finally:
+                if fcntl is not None:
+                    try:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    except OSError:
+                        pass
+
+    def recent_queries(self, n: int = 20) -> list[dict]:
+        """Return the N most-recent recorded queries, newest first."""
+        log_path = self._recent_queries_path()
+        if not log_path.exists():
+            return []
+        try:
+            with log_path.open(encoding="utf-8") as f:
+                lines = [line for line in f if line.strip()]
+        except OSError:
+            return []
+        out: list[dict] = []
+        for line in lines[-max(1, n) :]:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        out.reverse()
+        return out
 
     def _reinforce_from_query(self, question: str, result: ContextResult) -> None:
         """Hebbian update: nodes co-activated by a query wire together.
