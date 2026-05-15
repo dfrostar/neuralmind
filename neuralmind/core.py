@@ -22,7 +22,8 @@ Usage:
     print(f"Token reduction: {result.reduction_ratio:.1f}x")
 """
 
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .audit import get_audit_trail
@@ -281,6 +282,7 @@ class NeuralMind:
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
         log_query_event(self.project_path, question, result)
+        self._record_recent_query(question, result)
         self._reinforce_from_query(question, result)
         self._emit_audit(
             category="audit",
@@ -295,6 +297,75 @@ class NeuralMind:
             },
         )
         return result
+
+    RECENT_QUERIES_FILENAME = "recent_queries.jsonl"
+    RECENT_QUERIES_MAX = 100
+
+    def _recent_queries_path(self) -> Path:
+        return self.project_path / ".neuralmind" / self.RECENT_QUERIES_FILENAME
+
+    def _record_recent_query(self, question: str, result: ContextResult) -> None:
+        """Append the last query's retrieval state to the recent-queries log.
+
+        Powers the graph-view UI's 'Replay last query' panel: a human can
+        see which nodes the agent actually received, including ids the
+        UI can highlight on the canvas. Always on (local-only data,
+        readable only through the auth-gated server) and capped so the
+        file stays tiny.
+        """
+        try:
+            hits = []
+            for hit in (getattr(result, "top_search_hits", []) or [])[:12]:
+                meta = hit.get("metadata") or {}
+                hits.append(
+                    {
+                        "id": str(hit.get("id", "")),
+                        "label": meta.get("label", hit.get("id", "")),
+                        "source_file": meta.get("source_file", ""),
+                        "score": round(float(hit.get("score", 0.0)), 3),
+                    }
+                )
+            record = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "question": question,
+                "tokens": int(getattr(getattr(result, "budget", None), "total", 0)),
+                "reduction_ratio": round(float(getattr(result, "reduction_ratio", 0.0)), 2),
+                "layers_used": list(getattr(result, "layers_used", [])),
+                "communities_loaded": list(getattr(result, "communities_loaded", [])),
+                "top_hits": hits,
+            }
+            log_path = self._recent_queries_path()
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            existing: list[str] = []
+            if log_path.exists():
+                with log_path.open(encoding="utf-8") as f:
+                    existing = [line for line in f if line.strip()]
+            existing.append(json.dumps(record, sort_keys=True) + "\n")
+            existing = existing[-self.RECENT_QUERIES_MAX :]
+            with log_path.open("w", encoding="utf-8") as f:
+                f.writelines(existing)
+        except Exception:
+            # Recording must never block the actual query.
+            pass
+
+    def recent_queries(self, n: int = 20) -> list[dict]:
+        """Return the N most-recent recorded queries, newest first."""
+        log_path = self._recent_queries_path()
+        if not log_path.exists():
+            return []
+        try:
+            with log_path.open(encoding="utf-8") as f:
+                lines = [line for line in f if line.strip()]
+        except OSError:
+            return []
+        out: list[dict] = []
+        for line in lines[-max(1, n) :]:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+        out.reverse()
+        return out
 
     def _reinforce_from_query(self, question: str, result: ContextResult) -> None:
         """Hebbian update: nodes co-activated by a query wire together.
