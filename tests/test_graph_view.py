@@ -25,7 +25,7 @@ def test_synapse_edges_returns_sorted_filtered_view(tmp_path):
     assert [e[0:2] for e in heavy] == [("a", "b")]
 
 
-def test_recent_queries_records_top_hit_ids_and_caps(temp_project):
+def test_recent_queries_records_top_hit_ids_and_caps(temp_project, monkeypatch):
     mind = NeuralMind(str(temp_project), backend_type="in_memory")
     mind.build()
 
@@ -45,17 +45,47 @@ def test_recent_queries_records_top_hit_ids_and_caps(temp_project):
         for hit in rec["top_hits"]:
             assert {"id", "label", "score"} <= hit.keys()
 
-    # The log file is capped at RECENT_QUERIES_MAX entries.
+    # Lazy compaction trims the file once it crosses the byte threshold.
+    # Lower the threshold so we don't have to write a megabyte of fixture
+    # to exercise it.
     log = mind._recent_queries_path()
-    # Hand-write more than the cap and confirm trimming on next write.
     log.parent.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(NeuralMind, "RECENT_QUERIES_COMPACT_BYTES", 256)
     with log.open("a", encoding="utf-8") as f:
         for i in range(NeuralMind.RECENT_QUERIES_MAX + 25):
-            f.write(f'{{"question": "stale {i}", "ts": "2026-01-01"}}\n')
+            f.write(f'{{"question": "stale {i}", "ts": "2026-01-01T00:00:00Z"}}\n')
     mind.query("fresh")
     with log.open(encoding="utf-8") as f:
         line_count = sum(1 for line in f if line.strip())
     assert line_count == NeuralMind.RECENT_QUERIES_MAX
+    # The newest entry survived compaction.
+    assert mind.recent_queries(n=1)[0]["question"] == "fresh"
+
+
+def test_recent_queries_append_is_concurrency_safe(temp_project):
+    # Verify that two writers appending in parallel each land an entry —
+    # the previous read-modify-write implementation could have lost one
+    # of them. With single-line atomic appends both must survive.
+    import threading
+
+    mind = NeuralMind(str(temp_project), backend_type="in_memory")
+    mind.build()
+
+    barrier = threading.Barrier(8)
+
+    def fire(label):
+        barrier.wait()
+        for i in range(5):
+            mind.query(f"{label}-{i}")
+
+    threads = [threading.Thread(target=fire, args=(name,)) for name in "abcdefgh"]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    recent = mind.recent_queries(n=NeuralMind.RECENT_QUERIES_MAX)
+    assert len(recent) == 8 * 5
 
 
 def test_graph_data_shape_and_synapse_overlay(temp_project):
