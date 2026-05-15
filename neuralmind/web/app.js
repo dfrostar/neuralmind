@@ -33,6 +33,7 @@
     showSynapses: true,
     showStructural: true,
     localOnly: false,
+    localDepth: 1,
     soloCommunity: false,
     filterToSearch: false,
     showLabels: false,
@@ -203,13 +204,23 @@
     let set = null;
     if (state.localOnly && state.selected) {
       set = new Set([state.selected.id]);
-      for (const e of state.structuralEdges) {
-        if (e.s.id === state.selected.id) set.add(e.t.id);
-        if (e.t.id === state.selected.id) set.add(e.s.id);
-      }
-      for (const e of state.synapseEdges) {
-        if (e.s.id === state.selected.id) set.add(e.t.id);
-        if (e.t.id === state.selected.id) set.add(e.s.id);
+      let frontier = new Set([state.selected.id]);
+      const depth = Math.max(1, Math.min(3, state.localDepth | 0));
+      for (let hop = 0; hop < depth && frontier.size; hop++) {
+        const next = new Set();
+        const visit = (e) => {
+          if (frontier.has(e.s.id) && !set.has(e.t.id)) {
+            set.add(e.t.id);
+            next.add(e.t.id);
+          }
+          if (frontier.has(e.t.id) && !set.has(e.s.id)) {
+            set.add(e.s.id);
+            next.add(e.s.id);
+          }
+        };
+        for (const e of state.structuralEdges) visit(e);
+        for (const e of state.synapseEdges) visit(e);
+        frontier = next;
       }
     }
     if (state.soloCommunity && state.activeCommunity != null) {
@@ -916,6 +927,25 @@
     }
     wake();
   });
+
+  const depthInput = document.getElementById("local-depth");
+  const depthValue = document.getElementById("local-depth-value");
+  const depthRow = depthInput.closest(".slider-row");
+  function syncDepthEnabled() {
+    const off = !state.localOnly;
+    depthRow.classList.toggle("disabled", off);
+    // Mirror the CSS state on the input itself so keyboard / screen-reader
+    // users see the same "inert" behavior the sighted UI shows. Without
+    // this the range is still focusable + adjustable while it looks dimmed.
+    depthInput.disabled = off;
+  }
+  depthInput.addEventListener("input", () => {
+    state.localDepth = Math.max(1, Math.min(3, parseInt(depthInput.value, 10) || 1));
+    depthValue.textContent = String(state.localDepth);
+    wake();
+  });
+  document.getElementById("toggle-local").addEventListener("change", syncDepthEnabled);
+  syncDepthEnabled();
 
   document.getElementById("reset-layout").addEventListener("click", () => {
     if (!state.projectKey) return;
