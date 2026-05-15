@@ -662,6 +662,27 @@
     }
   }
 
+  /* ---------- keyboard shortcuts ---------- */
+
+  // Cmd/Ctrl-K from anywhere, '/' when no field is focused → jump to
+  // the search box (select existing text so re-typing overwrites).
+  // Esc inside the search box clears it and returns focus to the page.
+  window.addEventListener("keydown", (ev) => {
+    const t = ev.target;
+    const inField =
+      t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    const cmdK = (ev.metaKey || ev.ctrlKey) && (ev.key === "k" || ev.key === "K");
+    if (cmdK || (ev.key === "/" && !inField)) {
+      ev.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    } else if (ev.key === "Escape" && t === searchInput) {
+      searchInput.value = "";
+      searchInput.dispatchEvent(new Event("input"));
+      searchInput.blur();
+    }
+  });
+
   /* ---------- open in editor ---------- */
 
   async function openInEditor(node, statusEl, btn) {
