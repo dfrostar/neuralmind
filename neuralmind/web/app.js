@@ -932,7 +932,12 @@
   const depthValue = document.getElementById("local-depth-value");
   const depthRow = depthInput.closest(".slider-row");
   function syncDepthEnabled() {
-    depthRow.classList.toggle("disabled", !state.localOnly);
+    const off = !state.localOnly;
+    depthRow.classList.toggle("disabled", off);
+    // Mirror the CSS state on the input itself so keyboard / screen-reader
+    // users see the same "inert" behavior the sighted UI shows. Without
+    // this the range is still focusable + adjustable while it looks dimmed.
+    depthInput.disabled = off;
   }
   depthInput.addEventListener("input", () => {
     state.localDepth = Math.max(1, Math.min(3, parseInt(depthInput.value, 10) || 1));
