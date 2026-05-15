@@ -11,6 +11,8 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
+> **🆕 New in v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
+
 > **🌐 [Visit the landing page](https://dfrostar.github.io/neuralmind/) • 📖 [Read the About page](https://dfrostar.github.io/neuralmind/about.html) • ⚖️ Not affiliated with NeuralMind.ai**
 
 ---
@@ -826,6 +828,12 @@ supported — see the upstream
 for the full schema (`command`, `args`, `env`, `url`, `headers`, `enabled`,
 per-server `tools` filtering, `timeout`, `connect_timeout`).
 
+**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+the same project and any tool call from Hermes-Agent will pulse the
+corresponding nodes on the canvas. The synapse store is shared with
+Claude Code, Cursor, OpenClaw, and any other agent pointed at this
+project — see [docs/use-cases/multi-agent.md](docs/use-cases/multi-agent.md).
+
 ### OpenClaw
 
 [OpenClaw](https://github.com/openclaw/openclaw) is a personal AI assistant
@@ -855,6 +863,12 @@ openclaw mcp show neuralmind       # echoes the JSON you stored
 
 Remove with `openclaw mcp unset neuralmind`. Definitions are stored under
 the `mcp.servers` key in `~/.openclaw/openclaw.json`.
+
+**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+the same project and any tool call from OpenClaw will pulse the
+corresponding nodes on the canvas. OpenClaw and Claude Code talking
+to the same project reinforce the same synapse store — see
+[docs/use-cases/multi-agent.md](docs/use-cases/multi-agent.md).
 
 If you haven't installed OpenClaw yet:
 
@@ -1519,7 +1533,8 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Roadmap](ROADMAP.md)** | What's shipping next, where we want help, what's out of scope |
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
-| **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo |
+| **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.6.0](RELEASE_NOTES_v0.6.0.md)** | Live activity feed, cross-process JSONL bridge, pin UX, depth slider, replay overlay |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
 | **[USAGE.md](USAGE.md)** | Extended usage examples |
 

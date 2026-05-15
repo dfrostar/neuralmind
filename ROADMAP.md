@@ -8,70 +8,96 @@ For the longer-horizon engineering plan (release cadence, monitoring,
 compliance, scale targets), see
 [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md).
 
-## Now (active — v0.5.x)
+## Shipped in v0.6.0 — graph view + live activity feed
 
-The current development thread is the **graph view** (`neuralmind
-serve`), introduced in v0.5.4. We're iterating it in small,
-independently-mergeable slices — "Phase B" below — before tackling
-the bigger live-activity feed step in Phase C.
+The v0.5.x graph-view foundation is now a story you can *see*. The
+canvas pulses while the brain learns. Highlights:
 
-### Graph view — Phase B (small UX wins)
+- **Live activity feed.** `neuralmind serve` streams synapse + file
+  events over SSE while running. Affected nodes pulse on the canvas
+  in real time; a sidebar log keeps the most recent ~80 events. The
+  pitch flipped from "view your code graph" to "watch the brain
+  learning your codebase."
+- **Cross-process activity bridge.** A separate `neuralmind watch`
+  daemon (or hook-driven Claude Code session) now feeds the same live
+  feed via `<project>/.neuralmind/events.jsonl`. The in-process bus
+  stays the primary path; the JSONL is a deliberately boring side
+  channel. Opt out with `NEURALMIND_EVENT_LOG=0`.
+- **Visible pin glyph + Pin/Unpin button + Unpin-all.** Drag-to-pin
+  already saved positions; v0.6.0 surfaces it: pinned nodes get a
+  warm-colored marker, the detail panel has a Pin/Unpin toggle, and
+  the sidebar has an Unpin-all button.
+- **Cmd/Ctrl-K + `/` jump-to-search.** Focus the semantic search
+  field from anywhere; Esc clears and blurs.
+- **Local-graph depth slider.** 1–3 hops via BFS from the focused
+  node; defaults to 1 so existing behavior is unchanged.
+- **Replay-last-query overlay.** Re-highlight the L3 hits the agent
+  most recently received — closes the trust gap on retrieval.
+- **Edge tooltips + min-weight synapse slider.** Hover an edge to
+  see the relationship and weight; filter the synapse overlay to
+  hide weak edges.
+- **Docs refresh.** Roadmap, README hero, landing page, about, and
+  wiki all positioned around the graph view rather than treating it
+  as a side feature.
 
-- **Replay-last-query overlay.** Reads
-  `<project>/.neuralmind/recent_queries.jsonl`, highlights the L3
-  hits the agent received, draws a pulse from the query into them.
-  Answers "what did the agent actually see?"
-  [`#105`](https://github.com/dfrostar/neuralmind/pull/105) — green, awaiting merge.
-- **Edge tooltips + min-weight synapse slider.** Hover any edge to
-  see the relationship (`calls`, or `learned · w 0.42 · 7×`); a
-  sidebar slider hides weak synapses on dense graphs.
-  [`#106`](https://github.com/dfrostar/neuralmind/pull/106) — green, awaiting merge.
-- **Pin UX.** Drag already pins silently; add a visible pin glyph, a
-  detail-panel "Pin / Unpin" toggle, and a sidebar "Unpin all".
-  Pure frontend.
-- **Quick-switch keyboard shortcut.** Bind `Cmd/Ctrl-K` (and `/`) to
-  focus the search input from anywhere on the canvas; Esc to clear.
+No migration needed. Same ChromaDB index, same `synapses.db`, same
+hooks — `neuralmind serve` just makes everything visible.
 
-### Graph view — Phase C (the next bigger lift)
+## Now (v0.7)
 
-- **Live activity feed.** Server-sent events stream synapse
-  activations and file-watcher events into a small sidebar log so
-  you can *see* the brain learning in real time. Touches
-  `server.py`, `synapses.py`, `watcher.py`, and the frontend.
+The graph view is differentiated; the next batch tightens it.
 
-### Other in-flight maintenance
+- **Saved views.** Obsidian-style named graph filter/zoom/depth
+  combos, persisted in `localStorage`. Lets users keep "auth tour",
+  "data layer", "hot synapses" around as one-click presets.
+- **Right-click context menu on nodes.** Open-in-editor, Pin/Unpin,
+  Focus, Copy id. The detail panel has the verbs already — surface
+  them where mouse-driven users actually reach for them.
+- **PNG / SVG export.** PNG is a one-liner via `canvas.toDataURL`;
+  SVG needs a separate render path. Useful for design docs and PRs
+  about retrieval behavior.
+- **Time-based edge filter.** `synapses.last_activated` is already
+  persisted — add a slider that complements the v0.6.0 min-weight
+  slider with a "last N days" filter. Surfaces fresh vs stale
+  associations.
+- **Unify `neuralmind watch` with the in-process bus.** A single
+  `serve` + `watch` process should not need the JSONL bridge — wire
+  the daemon into `event_bus.publish()` directly when they share a
+  process, keep JSONL as the cross-process fallback.
 
-- **Seed community benchmarks with 3–5 outside submissions** so the
-  table doesn't look maintainer-only. Best path is running
-  `neuralmind benchmark . --contribute` on Mempalace, the cmmc20
-  project, and 2–3 well-known OSS Python/TS repos with permission.
-  Each seed: ~10 min wall time. See
-  [`docs/community-benchmarks.json`](docs/community-benchmarks.json).
-- **Asciinema clip of the demo** embedded at the top of the README.
-  Runbook in [`docs/RECORDING-DEMO.md`](docs/RECORDING-DEMO.md);
-  needs to be recorded by the maintainer (can't run in CI because
-  of the chromadb model download).
+## Earlier wins (pre-v0.6)
 
-### Shipped recently
+Carried forward so the trail is legible — these were the "Now"
+items before the graph view took over.
 
 - **Graph view UI base** (v0.5.4) — `neuralmind serve` ships a
   local, dependency-free Obsidian-style force-directed graph with
   the synapse overlay, backlinks, semantic quick-switch,
   open-in-editor, per-session auth token, and layout persistence.
-- **Bundled MCP server** (v0.5.0) — the `[mcp]` extra is now a no-op;
-  `pip install neuralmind` ships the MCP server by default. Closes
-  the most common install footgun.
-- **One-command demo on the bundled fixture** — `bash scripts/demo.sh`
-  proves the headline reduction claim in under a minute on real
-  code.
-- **Fact-based business case + honest assessment docs** —
+  v0.6.0 made it live.
+- **Bundled MCP server** (v0.5.0) — the `[mcp]` extra is now a
+  no-op; `pip install neuralmind` ships the MCP server by default.
+  Closes the most common install footgun.
+- **One-command demo on the bundled fixture.** `bash scripts/demo.sh`
+  reproduces the headline reduction claim in under a minute. ✅ shipped.
+- **Fact-based business case + honest assessment docs.**
   [`BUSINESS-CASE.md`](docs/BUSINESS-CASE.md) makes the compelling
-  argument with provable claims;
-  [`HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md) documents
-  where NeuralMind isn't worth installing.
-- **README slim** — moved the Enterprise wall to
-  [`ENTERPRISE.md`](docs/ENTERPRISE.md), cut the inflated savings
-  table, killed the duplicate audiences section.
+  argument with provable claims; [`HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md)
+  documents where it isn't worth installing. ✅ shipped.
+- **README slim.** Cut the inflated savings table, the duplicate
+  "who is this for" section, and the Enterprise Use Cases marketing
+  wall (moved to [`ENTERPRISE.md`](docs/ENTERPRISE.md) with honest
+  framing). ✅ shipped (first pass; further trimming possible).
+- **Seed community benchmarks with outside submissions** so the
+  table doesn't look maintainer-only. ⏳ still wanted — best path
+  is running `neuralmind benchmark . --contribute` on a handful of
+  well-known OSS repos with permission. See
+  [`docs/community-benchmarks.json`](docs/community-benchmarks.json).
+- **Asciinema clip of the demo** embedded at the top of the README.
+  ⏳ Runbook in [`docs/RECORDING-DEMO.md`](docs/RECORDING-DEMO.md);
+  needs to be recorded by the maintainer (can't run in CI because
+  of the chromadb model download). v0.6.0's pulse-rings demo is a
+  candidate second clip.
 
 ## Next (~1–2 quarters)
 

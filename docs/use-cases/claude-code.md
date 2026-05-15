@@ -67,6 +67,39 @@ Tune hook thresholds via env vars — see [PostToolUse Compression](../../README
 
 Combined retrieval + consumption reduction is typically **5–10×** vs vanilla Claude Code on the same tasks. Run `neuralmind benchmark . --json` on your repo for a concrete number.
 
+## Second screen: see what the agent is looking at (v0.6.0+)
+
+Pop a separate terminal and run:
+
+```bash
+neuralmind serve .
+```
+
+Open the URL it prints. You now have an Obsidian-style graph view
+of your codebase that updates in real time as Claude works. Every
+time Claude calls `neuralmind_query` (or any other NeuralMind tool),
+the relevant nodes **pulse** on the canvas — animated radial rings,
+color-coded by event source. The sidebar shows a rolling log of
+the most recent ~80 events.
+
+The use this unlocks is **trust-gap closure**:
+
+| You wonder… | The graph view answers in ~2 seconds |
+|---|---|
+| Is Claude looking at the right code? | Watch which nodes pulse during the prompt |
+| Did the retrieval miss something obvious? | Use the replay-last-query overlay to see the L3 hits |
+| Why did this answer feel wrong? | Pulse pattern usually shows it — wrong cluster, missing edge, unexpected hub |
+| Has the synapse layer learned anything yet? | Hover the synapse edges; weight + activation count appear |
+
+Pin the nodes you want to keep in focus (the visible pin glyph
+shows pinned state at a glance), use the depth slider (1–3 hops)
+to see how far the agent's retrieval reached, and use Cmd/Ctrl-K
+or `/` to jump-to-search from anywhere.
+
+`NEURALMIND_EVENT_LOG=0` disables the cross-process bridge if you
+prefer the in-process feed only.
+
 ---
 
-[← Back to use-case index](./README.md) · [Main README](../../README.md)
+[← Back to use-case index](./README.md) · [Main README](../../README.md) ·
+[Multi-agent: share the brain across all your tools](./multi-agent.md)

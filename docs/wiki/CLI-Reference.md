@@ -17,6 +17,8 @@ Complete command-line interface documentation for NeuralMind.
   - [skeleton](#skeleton)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
+  - [watch](#watch-v040)
+  - [serve](#serve-v054-live-feed-v060)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -632,14 +634,13 @@ neuralmind watch . --decay-interval 0
 
 ---
 
-### serve *(v0.5.4+)*
+### serve *(v0.5.4; live feed v0.6.0+)*
 
 Start the graph-view UI — a local, dependency-free, Obsidian-style
 force-directed graph over the same index and synapse store your AI
-agent queries. Renders code nodes coloured by community, structural
-edges and Hebbian synapses drawn together, plus backlinks, synaptic
-neighbours, a semantic quick-switcher, and one-click open-in-editor.
-Stops cleanly on Ctrl-C.
+agent queries. v0.6.0 made the canvas live: synapse + file events
+stream to the browser over SSE, affected nodes pulse, a sidebar log
+shows recent events. Stops cleanly on Ctrl-C.
 
 The server binds to 127.0.0.1 by default and prints a per-session
 auth-token URL on startup; pass that URL to the browser so untrusted
@@ -680,6 +681,37 @@ neuralmind serve . --port 9000 --no-browser
 neuralmind serve . --no-auth
 ```
 
+#### Live activity feed (v0.6.0+)
+
+The canvas updates in real time as the brain works:
+
+- **Synapse events** — every `SynapseStore.reinforce()` call publishes
+  a `synapse` event over the in-process event bus; the affected pair
+  of nodes pulse on the canvas.
+- **File activity events** — every coalesced edit batch from the
+  `neuralmind watch` daemon (or from Claude Code's `PostToolUse`
+  hooks) publishes a `file_activity` event; affected nodes pulse.
+- **Sidebar log** — the most recent ~80 events render as a scrolling
+  feed with timestamps. Click an entry to focus the corresponding
+  node on the canvas.
+
+#### Cross-process activity bridge (v0.6.0+)
+
+When `serve` and the activity source live in different processes —
+a separate `neuralmind watch` daemon, a Claude Code session — each
+`event_bus.publish()` call also appends a JSON line to
+`<project>/.neuralmind/events.jsonl`. The `serve` process tails that
+file in a background thread and re-emits anything it didn't
+originate. Net result: one canvas, all processes, no IPC complexity.
+
+Behaviour:
+
+- `NEURALMIND_EVENT_LOG=0` disables the writer (in-process feed
+  still works).
+- The tailer is best-effort. If the file disappears or rolls, the
+  next event re-creates it.
+- The bus stays the primary path. The JSONL is a fallback, not a queue.
+
 #### Notes
 
 - Read-only over HTTP. Edits to nodes/synapses still go through the
@@ -687,6 +719,10 @@ neuralmind serve . --no-auth
 - The `/api/open` endpoint launches `$EDITOR` against an allowlist
   pre-computed from the graph's `source_file` set, so a tampered
   client can't trick the server into opening arbitrary paths.
+- All assets in `neuralmind/web/` (HTML, JS, CSS) are read-only at
+  runtime; the server doesn't generate any of them.
+- Graph payload is cached per-session in `_Handler._graph_cache`; any
+  endpoint touching graph state respects `_graph_lock`.
 - Vanilla-JS frontend, stdlib-only HTTP server, no CDN. Safe to run
   behind a firewall.
 
@@ -714,6 +750,7 @@ neuralmind serve . --no-auth
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
+| `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 
 ---
 
