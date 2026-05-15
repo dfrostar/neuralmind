@@ -29,7 +29,7 @@ from pathlib import Path
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .memory import log_query_event
+from .memory import is_memory_logging_enabled, log_query_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -321,7 +321,13 @@ class NeuralMind:
         without losing entries. Trimming back to RECENT_QUERIES_MAX is
         a lazy compaction step gated by file size and protected by an
         advisory lock — see ``_compact_recent_queries``.
+
+        Gated on the same consent flag as the learning log
+        (`NEURALMIND_MEMORY`): if the user opted out of persisting
+        query text, we don't create a parallel persistence path here.
         """
+        if not is_memory_logging_enabled():
+            return
         try:
             hits = []
             for hit in (getattr(result, "top_search_hits", []) or [])[:12]:
