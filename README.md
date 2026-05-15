@@ -490,6 +490,14 @@ Why it matters: the agent-facing brain has always been a black box — you could
 see what NeuralMind retrieved, whether the graph was reasonable, or what the
 synapse layer had actually learned. The graph view exposes all three.
 
+**Coming next (graph-view Phase B):** a
+[replay-last-query overlay](https://github.com/dfrostar/neuralmind/pull/105)
+that highlights the L3 hits the agent received,
+[edge tooltips + a min-weight synapse slider](https://github.com/dfrostar/neuralmind/pull/106)
+answering "why are these two nodes related?", pin UX, and a
+`Cmd/Ctrl-K` quick-switch. Then Phase C: a live activity feed of
+synapse co-activations. Full plan in [ROADMAP.md](ROADMAP.md).
+
 ---
 
 ## 🔧 How It Works
@@ -1327,6 +1335,19 @@ neuralmind query . "question"     # get context for a specific question
 </details>
 
 ---
+
+## ✨ What's New in v0.5.4 — Graph view
+
+`neuralmind serve` ships in v0.5.4 — see the
+[Graph view section above](#-graph-view-neuralmind-serve). The
+**next patch release (v0.5.5)** lands graph-view Phase B: the
+replay-last-query overlay
+([#105](https://github.com/dfrostar/neuralmind/pull/105)), edge
+tooltips + min-weight synapse slider
+([#106](https://github.com/dfrostar/neuralmind/pull/106)), pin UX,
+and a `Cmd/Ctrl-K` quick-switch. Phase C after that: a live activity
+feed of synapse co-activations. Full plan in
+[ROADMAP.md](ROADMAP.md).
 
 ## ✨ What's New in v0.4.0 — Brain-like Synapse Layer
 
