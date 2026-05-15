@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NeuralMind — Graph View</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header>
+        <h1>NeuralMind</h1>
+        <span id="project-name"></span>
+      </header>
+
+      <section class="panel">
+        <input id="search" type="search" placeholder="Quick switch — semantic search…" autocomplete="off" />
+        <ul id="search-results"></ul>
+      </section>
+
+      <section class="panel">
+        <label class="toggle">
+          <input type="checkbox" id="toggle-synapses" checked />
+          Learned synapses (Hebbian)
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-structural" checked />
+          Structural edges (calls / imports)
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-local" />
+          Local graph (focus selection)
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-solo" />
+          Solo selected community
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-filter-search" />
+          Limit graph to search hits
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-labels" />
+          Always show labels
+        </label>
+        <button id="reset-layout" type="button" class="ghost">Reset saved layout</button>
+      </section>
+
+      <section class="panel" id="detail-panel">
+        <h2>Node</h2>
+        <p class="muted">Click a node to inspect its links.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Communities</h2>
+        <ul id="community-list"></ul>
+      </section>
+
+      <footer id="stats"></footer>
+    </aside>
+
+    <main id="canvas-wrap">
+      <canvas
+        id="graph"
+        role="img"
+        tabindex="0"
+        aria-label="Force-directed graph of code nodes. Use the search box, community list, and node detail panel on the left for keyboard-accessible navigation."
+      ></canvas>
+      <div id="tooltip" hidden></div>
+      <div id="loading">Building index &amp; loading graph…</div>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

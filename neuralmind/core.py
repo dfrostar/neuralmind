@@ -568,6 +568,86 @@ class NeuralMind:
                 stats["synapses"] = None
         return stats
 
+    def graph_data(self, synapse_min_weight: float = 0.05, synapse_limit: int = 2000) -> dict:
+        """Return the full code graph for the ``serve`` graph-view UI.
+
+        Combines structural edges (calls/imports from graph.json) with the
+        learned synapse overlay. Node ids are the embedder's graph ids so
+        the overlay lines up with the structural nodes. Read-only — never
+        mutates the index or the synapse store.
+        """
+        self._ensure_built()
+        raw_nodes = list(getattr(self.embedder, "nodes", []) or [])
+        raw_edges = list(getattr(self.embedder, "edges", []) or [])
+
+        nodes = []
+        for n in raw_nodes:
+            nid = str(n.get("id", n.get("label", "")))
+            if not nid:
+                continue
+            nodes.append(
+                {
+                    "id": nid,
+                    "label": n.get("label", nid),
+                    "file_type": n.get("file_type", "unknown"),
+                    "source_file": n.get("source_file", ""),
+                    "source_location": n.get("source_location", ""),
+                    "community": int(n.get("community", -1)),
+                }
+            )
+        node_ids = {n["id"] for n in nodes}
+
+        edges = []
+        for e in raw_edges:
+            src = e.get("_src") or e.get("source")
+            tgt = e.get("_tgt") or e.get("target")
+            if src not in node_ids or tgt not in node_ids:
+                continue
+            edges.append(
+                {
+                    "source": src,
+                    "target": tgt,
+                    "relation": e.get("relation", "related"),
+                }
+            )
+
+        synapses = []
+        store = self.synapses
+        if store is not None:
+            try:
+                for a, b, weight, count in store.edges(
+                    min_weight=synapse_min_weight, limit=synapse_limit
+                ):
+                    # Synapse ids can include community_* pseudo-nodes that
+                    # aren't real graph nodes — keep only edges we can draw.
+                    if a in node_ids and b in node_ids:
+                        synapses.append(
+                            {
+                                "source": a,
+                                "target": b,
+                                "weight": round(weight, 4),
+                                "activation_count": count,
+                            }
+                        )
+            except Exception:
+                pass
+
+        return {
+            "project": self.project_path.name,
+            # Full absolute path so the UI can key per-project state (e.g.
+            # saved canvas layouts) without collisions between two repos
+            # that happen to share a basename.
+            "project_path": str(self.project_path.resolve()),
+            "nodes": nodes,
+            "edges": edges,
+            "synapses": synapses,
+            "stats": {
+                "nodes": len(nodes),
+                "edges": len(edges),
+                "synapses": len(synapses),
+            },
+        }
+
     def synaptic_neighbors(
         self, query: str, depth: int = 2, top_k: int = 10
     ) -> list[tuple[str, float]]:
