@@ -435,10 +435,12 @@ def cmd_watch(args):
 def cmd_serve(args):
     """Start the local graph-view UI server.
 
-    Builds the index, then serves an Obsidian-style force-directed graph
-    of the codebase (structural edges + learned synapse overlay) with
-    backlinks, local-graph focus, a community browser, and semantic
-    quick-switch search. Read-only — never writes to the index.
+    Builds the index (writes/updates ``graphify-out/neuralmind_db/`` the
+    same way ``neuralmind build`` does), then serves an Obsidian-style
+    force-directed graph of the codebase (structural edges + learned
+    synapse overlay) with backlinks, local-graph focus, a community
+    browser, and semantic quick-switch search. The HTTP handlers
+    themselves are read-only.
     """
     from neuralmind.server import serve
 

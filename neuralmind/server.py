@@ -7,9 +7,10 @@ overlay on top. Obsidian-style: force-directed graph, backlinks panel,
 local graph, community browser, and semantic quick-switch search.
 
 No external dependencies, no CDN — the frontend is vanilla JS served
-from ``neuralmind/web/``. Everything runs against the existing index and
-``.neuralmind/synapses.db``; the server only writes when the user
-explicitly clicks "open in editor".
+from ``neuralmind/web/``. The HTTP handlers themselves are read-only,
+but ``serve()`` calls ``mind.build()`` on startup, which writes/updates
+the embedding index under ``graphify-out/neuralmind_db/`` — same
+side-effects as ``neuralmind build``.
 """
 
 from __future__ import annotations
@@ -80,7 +81,10 @@ def _editor_command(editor: str, path: str, line: int | None) -> list[str]:
     ``"code -n"`` work) and chooses a sensible jump-to-line flag for
     well-known editors. Unknown editors get the path with no line.
     """
-    parts = shlex.split(editor) if editor else []
+    # shlex defaults to POSIX rules, which strip backslashes — that
+    # mangles Windows paths like ``C:\Program Files\...\code.exe``.
+    # Fall back to the non-POSIX tokenizer on Windows so those keep working.
+    parts = shlex.split(editor, posix=(os.name != "nt")) if editor else []
     if not parts:
         return []
     name = Path(parts[0]).name.lower()
@@ -130,6 +134,13 @@ def _resolve_open_target(
 
     if not resolved.is_file():
         return None, None, f"file does not exist: {resolved}"
+
+    # Defense in depth: resolve() always returns an absolute path, but we
+    # still want to be loud if that ever stops being true — and an absolute
+    # path can't start with '-', which is what would make Popen treat it
+    # as an editor flag rather than a filename.
+    if not resolved.is_absolute() or str(resolved).startswith("-"):
+        return None, None, "refusing to open suspicious path"
 
     loc = str(node.get("source_location") or "")
     line: int | None = None
@@ -363,8 +374,8 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
         f"no graph found at {graph_path}\n"
         f"\n"
         f"NeuralMind needs a graphify build first. To generate one:\n"
-        f"  pip install graphify         # if not already installed\n"
-        f"  graphify build {project_path}\n"
+        f"  pip install graphifyy        # if not already installed\n"
+        f"  graphify update {project_path}\n"
         f"\n"
         f"Then re-run: neuralmind serve {project_path}"
     )

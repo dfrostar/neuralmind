@@ -38,11 +38,14 @@
     showLabels: false,
     activeCommunity: null,
     project: "",
+    projectKey: "",        // absolute project path; stable across same-name repos
     searchHitIds: null,    // Set when filter-to-search is on
     alpha: 1,
   };
 
-  const LS_KEY = (project) => `nm:layout:${project}`;
+  // Keying layout by the absolute project path stops two repos with the
+  // same basename from overwriting each other's pinned positions.
+  const LS_KEY = (key) => `nm:layout:${key}`;
 
   /* ---------- data loading ---------- */
 
@@ -50,11 +53,12 @@
     const res = await fetch("/api/graph");
     const data = await res.json();
     state.project = data.project || "";
+    state.projectKey = data.project_path || data.project || "";
     document.getElementById("project-name").textContent = state.project;
 
     const W = canvas.clientWidth || 800;
     const H = canvas.clientHeight || 600;
-    const saved = loadLayout(state.project);
+    const saved = loadLayout(state.projectKey);
     state.nodes = data.nodes.map((n) => {
       const pos = saved && saved[n.id];
       return {
@@ -304,10 +308,24 @@
     ctx.globalAlpha = 1;
   }
 
+  // Pause the render loop when the layout is idle so we don't spin at
+  // 60fps drawing the same static graph forever. Interactions call wake()
+  // to kick it back on.
+  let paused = false;
   function tick() {
     simulate();
     draw();
-    requestAnimationFrame(tick);
+    if (state.alpha < 0.005 && !dragNode) {
+      paused = true;
+    } else {
+      requestAnimationFrame(tick);
+    }
+  }
+  function wake() {
+    if (paused) {
+      paused = false;
+      requestAnimationFrame(tick);
+    }
   }
 
   /* ---------- canvas sizing ---------- */
@@ -320,7 +338,10 @@
     canvas.width = w * dpr;
     canvas.height = h * dpr;
   }
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", () => {
+    resize();
+    wake();
+  });
 
   /* ---------- interaction ---------- */
 
@@ -367,6 +388,7 @@
       panning = true;
     }
     last = { x: sx, y: sy };
+    wake();
   });
 
   window.addEventListener("mousemove", (ev) => {
@@ -379,11 +401,14 @@
       dragNode.x = w.x;
       dragNode.y = w.y;
       state.alpha = Math.max(state.alpha, 0.2);
+      wake();
     } else if (panning) {
       state.transform.x += sx - last.x;
       state.transform.y += sy - last.y;
+      wake();
     } else {
       const hit = nodeAt(sx, sy);
+      const hoverChanged = hit !== state.hovered;
       state.hovered = hit;
       if (hit) {
         tooltip.hidden = false;
@@ -395,6 +420,7 @@
       } else {
         tooltip.hidden = true;
       }
+      if (hoverChanged) wake();
     }
     last = { x: sx, y: sy };
   });
@@ -406,14 +432,16 @@
       if (!moved) {
         dragNode.pinned = false;
         selectNode(dragNode);
-      } else {
-        // A real drag pins the node — persist so the layout sticks.
-        saveLayout();
       }
+      // Either branch changes the pinned-set: a drag pinned the node,
+      // a click unpinned it. Persist both so refreshes match what the
+      // user just did.
+      saveLayout();
     }
     dragNode = null;
     panning = false;
     downAt = null;
+    wake();
   });
 
   canvas.addEventListener(
@@ -430,6 +458,7 @@
       t.k = Math.min(6, Math.max(0.1, t.k * factor));
       t.x = sx - wx * t.k;
       t.y = sy - wy * t.k;
+      wake();
     },
     { passive: false }
   );
@@ -440,6 +469,7 @@
     state.selected = node;
     renderDetail(node);
     syncCommunityActive();
+    wake();
   }
 
   function focusNode(node) {
@@ -449,6 +479,7 @@
     t.x = canvas.clientWidth / 2 - node.x * t.k;
     t.y = canvas.clientHeight / 2 - node.y * t.k;
     state.alpha = Math.max(state.alpha, 0.15);
+    wake();
   }
 
   function linkRow(node, meta) {
@@ -554,6 +585,7 @@
         state.activeCommunity =
           state.activeCommunity === c.id ? null : c.id;
         syncCommunityActive();
+        wake();
       });
       ul.appendChild(li);
     }
@@ -573,24 +605,40 @@
   const searchInput = document.getElementById("search");
   const searchResults = document.getElementById("search-results");
   let searchTimer = null;
+  let searchAbort = null;
 
   searchInput.addEventListener("input", () => {
     clearTimeout(searchTimer);
     const q = searchInput.value.trim();
     if (!q) {
+      // Cancel any in-flight request so a slow stale response can't
+      // overwrite the cleared state half a second later.
+      if (searchAbort) searchAbort.abort();
       searchResults.innerHTML = "";
       state.searchHitIds = null;
+      wake();
       return;
     }
     searchTimer = setTimeout(async () => {
+      if (searchAbort) searchAbort.abort();
+      searchAbort = new AbortController();
+      const mySignal = searchAbort.signal;
       try {
-        const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+        const res = await fetch(
+          "/api/search?q=" + encodeURIComponent(q),
+          { signal: mySignal }
+        );
+        if (mySignal.aborted) return;
         const data = await res.json();
+        if (mySignal.aborted) return;
         renderSearchResults(data.results || []);
         state.searchHitIds = new Set((data.results || []).map((r) => r.id));
+        wake();
       } catch (e) {
+        if (e && e.name === "AbortError") return;
         searchResults.innerHTML = "";
         state.searchHitIds = null;
+        wake();
       }
     }, 180);
   });
@@ -644,10 +692,10 @@
 
   /* ---------- layout persistence ---------- */
 
-  function loadLayout(project) {
-    if (!project) return null;
+  function loadLayout(key) {
+    if (!key) return null;
     try {
-      const raw = localStorage.getItem(LS_KEY(project));
+      const raw = localStorage.getItem(LS_KEY(key));
       if (!raw) return null;
       return JSON.parse(raw);
     } catch {
@@ -657,7 +705,7 @@
 
   let saveTimer = null;
   function saveLayout() {
-    if (!state.project) return;
+    if (!state.projectKey) return;
     clearTimeout(saveTimer);
     // Debounce — drags fire many events; we only need the resting state.
     saveTimer = setTimeout(() => {
@@ -666,7 +714,7 @@
         if (n.pinned) out[n.id] = { x: n.x, y: n.y, pinned: true };
       }
       try {
-        localStorage.setItem(LS_KEY(state.project), JSON.stringify(out));
+        localStorage.setItem(LS_KEY(state.projectKey), JSON.stringify(out));
       } catch {
         // localStorage may be full or disabled — non-critical.
       }
@@ -679,6 +727,7 @@
     const el = document.getElementById(id);
     el.addEventListener("change", () => {
       state[key] = el.checked;
+      wake();
     });
   };
   bind("toggle-synapses", "showSynapses");
@@ -689,9 +738,9 @@
   bind("toggle-labels", "showLabels");
 
   document.getElementById("reset-layout").addEventListener("click", () => {
-    if (!state.project) return;
+    if (!state.projectKey) return;
     try {
-      localStorage.removeItem(LS_KEY(state.project));
+      localStorage.removeItem(LS_KEY(state.projectKey));
     } catch {}
     for (const n of state.nodes) {
       n.pinned = false;
@@ -699,6 +748,7 @@
       n.y = canvas.clientHeight / 2 + (Math.random() - 0.5) * canvas.clientHeight * 0.8;
     }
     state.alpha = 1;
+    wake();
   });
 
   /* ---------- boot ---------- */
