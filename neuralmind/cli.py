@@ -387,10 +387,38 @@ def cmd_watch(args):
         if not quiet:
             print(f"  warning: build skipped ({exc}); watcher will still record edits.")
 
+    # Bridge synapse + file events into the project's JSONL log so that
+    # a separate `neuralmind serve` process picks them up and renders
+    # pulse rings on the canvas in real time. Best-effort: a missing
+    # `.neuralmind/` dir or NEURALMIND_EVENT_LOG=0 just leaves the
+    # daemon silent on the cross-process channel.
+    try:
+        from neuralmind.event_bus import configure_event_log
+        from neuralmind.event_log import (
+            EventLogWriter,
+            default_log_path,
+            event_log_enabled,
+        )
+
+        if event_log_enabled():
+            log_path = default_log_path(path)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            configure_event_log(EventLogWriter(log_path))
+    except Exception:
+        pass
+
     activations_total = 0
 
     def on_batch(paths: list[str]) -> None:
         nonlocal activations_total
+        # Surface the raw file edits to the cross-process bridge first
+        # so the server can echo them even if no synapse pair fires.
+        try:
+            from neuralmind.event_bus import publish as _publish
+
+            _publish("file", {"paths": list(paths), "count": len(paths)})
+        except Exception:
+            pass
         try:
             pairs = mind.activate_files(paths)
         except Exception:
