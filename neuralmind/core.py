@@ -300,6 +300,9 @@ class NeuralMind:
 
     RECENT_QUERIES_FILENAME = "recent_queries.jsonl"
     RECENT_QUERIES_MAX = 100
+    # Trim when the log grows past ~2× the cap so compaction is rare;
+    # 4KB/line is a safe upper bound for an entry with 12 hits.
+    RECENT_QUERIES_COMPACT_BYTES = RECENT_QUERIES_MAX * 4096 * 2
 
     def _recent_queries_path(self) -> Path:
         return self.project_path / ".neuralmind" / self.RECENT_QUERIES_FILENAME
@@ -310,8 +313,14 @@ class NeuralMind:
         Powers the graph-view UI's 'Replay last query' panel: a human can
         see which nodes the agent actually received, including ids the
         UI can highlight on the canvas. Always on (local-only data,
-        readable only through the auth-gated server) and capped so the
-        file stays tiny.
+        readable only through the auth-gated server).
+
+        The hot path is an atomic single-line append (POSIX O_APPEND
+        guarantees writes < PIPE_BUF don't tear across processes), so
+        CLI and MCP-server processes can safely write to the same file
+        without losing entries. Trimming back to RECENT_QUERIES_MAX is
+        a lazy compaction step gated by file size and protected by an
+        advisory lock — see ``_compact_recent_queries``.
         """
         try:
             hits = []
@@ -336,17 +345,55 @@ class NeuralMind:
             }
             log_path = self._recent_queries_path()
             log_path.parent.mkdir(parents=True, exist_ok=True)
-            existing: list[str] = []
-            if log_path.exists():
-                with log_path.open(encoding="utf-8") as f:
-                    existing = [line for line in f if line.strip()]
-            existing.append(json.dumps(record, sort_keys=True) + "\n")
-            existing = existing[-self.RECENT_QUERIES_MAX :]
-            with log_path.open("w", encoding="utf-8") as f:
-                f.writelines(existing)
+            line = json.dumps(record, sort_keys=True) + "\n"
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(line)
         except Exception:
             # Recording must never block the actual query.
+            return
+        try:
+            self._compact_recent_queries(log_path)
+        except Exception:
             pass
+
+    def _compact_recent_queries(self, log_path: Path) -> None:
+        """Trim the recent-queries log back to RECENT_QUERIES_MAX entries.
+
+        Only runs when the file has grown past the size threshold, so the
+        hot path stays append-only. Uses an advisory file lock on POSIX
+        so the read-truncate-rewrite isn't interleaved with another
+        process's append; on Windows the lock is best-effort and worst
+        case is a slightly oversized log file (no data loss).
+        """
+        try:
+            size = log_path.stat().st_size
+        except OSError:
+            return
+        if size <= self.RECENT_QUERIES_COMPACT_BYTES:
+            return
+        try:
+            import fcntl
+        except ImportError:
+            fcntl = None  # type: ignore[assignment]
+        with log_path.open("r+", encoding="utf-8") as f:
+            if fcntl is not None:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                except OSError:
+                    pass
+            try:
+                lines = [ln for ln in f if ln.strip()]
+                if len(lines) <= self.RECENT_QUERIES_MAX:
+                    return
+                f.seek(0)
+                f.truncate()
+                f.writelines(lines[-self.RECENT_QUERIES_MAX :])
+            finally:
+                if fcntl is not None:
+                    try:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    except OSError:
+                        pass
 
     def recent_queries(self, n: int = 20) -> list[dict]:
         """Return the N most-recent recorded queries, newest first."""
