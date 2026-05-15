@@ -44,6 +44,10 @@
           <input type="checkbox" id="toggle-labels" />
           Always show labels
         </label>
+        <label class="slider-toggle">
+          <span>Min synapse weight: <span id="weight-readout">0.05</span></span>
+          <input type="range" id="synapse-min-weight" min="0" max="1" step="0.05" value="0.05" aria-label="Minimum synapse weight to display" />
+        </label>
         <button id="reset-layout" type="button" class="ghost">Reset saved layout</button>
       </section>
 
