@@ -6,33 +6,52 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
-**v0.5.4 — Graph view (`neuralmind serve`).** A local,
-dependency-free, Obsidian-style force-directed graph over the same
-index your agent queries. Code nodes coloured by community;
-structural edges and Hebbian synapses drawn together; backlinks,
-synaptic neighbours, semantic quick-switch, and one-click
-open-in-editor. Per-session access token bound to 127.0.0.1 by
-default. Builds on v0.5.0's bundled MCP server and v0.4.0's
-brain-like synapse layer — no migration needed.
+### v0.6.0 — Graph view + live activity feed
 
-**Coming next.** A Phase B sequence of small graph-view UX wins —
-[replay-last-query overlay (#105)](https://github.com/dfrostar/neuralmind/pull/105),
-[edge tooltips + min-weight synapse slider (#106)](https://github.com/dfrostar/neuralmind/pull/106),
-pin UX, and a `Cmd/Ctrl-K` quick-switch shortcut — followed by
-Phase C: a live activity feed of synapse co-activations so you can
-watch the brain learning in real time. Full plan in the
-[ROADMAP](../blob/main/ROADMAP.md).
+`neuralmind serve` now streams synapse + file events to the canvas in
+real time over SSE. Affected nodes pulse as the brain works; a
+sidebar log keeps the most recent ~80 events. A cross-process JSONL
+bridge means a separate `neuralmind watch` daemon, a Claude Code
+session, or any other process feeds the same live feed via
+`<project>/.neuralmind/events.jsonl`. Pin UX (visible glyph,
+Pin/Unpin button, Unpin-all), Cmd/Ctrl-K quick-switch, a 1–3-hop
+depth slider, replay-last-query overlay, edge tooltips, and a
+min-weight synapse slider round out the release.
 
-**v0.4.0 — Brain-like synapse layer.** NeuralMind runs as a second
-brain alongside the LLM: a persistent SQLite-backed weighted graph
-that learns associations between code nodes from co-activation,
-decays unused edges, and answers via spreading activation. Includes
-the `neuralmind watch` daemon, three Claude Code lifecycle hooks
-(SessionStart, UserPromptSubmit, PreCompact), and a memory exporter
-that surfaces learned associations to Claude Code's auto-memory
-system. See the [release notes](../blob/main/RELEASE_NOTES_v0.4.0.md)
-or the [Architecture](Architecture#synapse-layer-v04) and
-[Learning Guide](Learning-Guide#v04-synapse-layer) sections.
+The pitch flipped: v0.5.4 made the brain inspectable; v0.6.0 makes
+it legible. You can sit there and **watch the hippocampus learn
+your codebase, live**.
+
+Multi-tool unlock: every agent (Claude Code, Cursor, OpenClaw,
+Hermes-Agent) talking to the same project reinforces the same
+synapse store, and the v0.6.0 canvas now shows the **union** of
+their activity. See [docs/use-cases/multi-agent.md](../blob/main/docs/use-cases/multi-agent.md).
+
+Full details: [v0.6.0 release notes](../blob/main/RELEASE_NOTES_v0.6.0.md) ·
+[Architecture: event bus + JSONL bridge](Architecture#event-bus-and-jsonl-bridge-v06) ·
+[CLI Reference: `neuralmind serve`](CLI-Reference#serve)
+
+### v0.5.4 — Graph view foundation
+
+The Obsidian-style force-directed graph that v0.6.0 made live first
+shipped in v0.5.4. Code nodes coloured by community; structural edges
+and Hebbian synapses drawn together; backlinks, synaptic neighbours,
+semantic quick-switch, and one-click open-in-editor. Per-session
+access token bound to 127.0.0.1 by default. Builds on v0.5.0's
+bundled MCP server.
+
+### v0.4.0 — Brain-like synapse layer
+
+NeuralMind runs as a second brain alongside the LLM: a persistent
+SQLite-backed weighted graph that learns associations between code
+nodes from co-activation, decays unused edges, and answers via
+spreading activation. Includes the `neuralmind watch` daemon, three
+Claude Code lifecycle hooks (SessionStart, UserPromptSubmit,
+PreCompact), and a memory exporter that surfaces learned
+associations to Claude Code's auto-memory system. See the
+[release notes](../blob/main/RELEASE_NOTES_v0.4.0.md) or the
+[Architecture](Architecture#synapse-layer-v04) and [Learning Guide](Learning-Guide#v04-synapse-layer)
+sections.
 
 ## Quick Links
 

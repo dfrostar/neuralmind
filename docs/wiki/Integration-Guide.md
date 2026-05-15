@@ -4,6 +4,7 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 
 ## Table of Contents
 
+- [How Agents Share Memory (v0.6.0+)](#how-agents-share-memory-v060)
 - [Graphify Integration](#graphify-integration)
 - [MCP Integration](#mcp-integration)
   - [Claude Desktop](#claude-desktop)
@@ -12,6 +13,78 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 - [CI/CD Integration](#cicd-integration)
 - [IDE Integration](#ide-integration)
 - [Scripting Integration](#scripting-integration)
+
+---
+
+## How Agents Share Memory (v0.6.0+)
+
+NeuralMind is the **shared associative memory layer** underneath
+whatever AI coding tools you use. If you run Claude Code for the
+day-to-day, Cursor for inline completions, OpenClaw for one-offs,
+and Hermes-Agent for planning — they all reinforce the same brain,
+and v0.6.0 makes the union of their activity visible.
+
+### The shared substrate
+
+Three pieces of local state belong to the project, not to any one
+agent:
+
+| Path | What it is | Who reads/writes |
+|------|------------|------------------|
+| `graphify-out/graph.json` | Call graph (created by `graphify`) | Read-only at NeuralMind runtime |
+| `graphify-out/neuralmind_db/` | ChromaDB vector index | `neuralmind build` writes; agents read |
+| `<project>/.neuralmind/synapses.db` | Learned synapse weights | Every MCP tool call, every `watch` event, every Claude Code hook |
+| `<project>/.neuralmind/events.jsonl` *(v0.6.0+)* | Cross-process activity stream | Every `event_bus.publish()` writes; `serve` tails |
+
+There's no per-agent partition. Claude Code's `neuralmind_query`
+and Hermes-Agent's `neuralmind_query` reinforce the exact same
+synapse edges. The brain is one brain.
+
+### Verifying the shared-brain setup
+
+```bash
+# In each agent's host (Claude Desktop, Hermes, OpenClaw, etc.),
+# the MCP server is registered with the SAME args:
+
+neuralmind-mcp /absolute/path/to/project
+
+# Verify the agent connected:
+hermes mcp test neuralmind          # if using Hermes
+openclaw mcp show neuralmind        # if using OpenClaw
+
+# Verify the synapse store is at the expected path:
+neuralmind stats .
+
+# Pop the live canvas:
+neuralmind serve .
+```
+
+Then trigger a tool call from each agent. The corresponding nodes
+should pulse on the v0.6.0 canvas regardless of which agent
+originated the call. If only some agents pulse, check that they're
+pointing at the same project root (most common bug: relative paths
+that resolve differently in different processes — always use
+absolute paths in MCP host configs).
+
+### Why this didn't work pre-v0.6.0
+
+The synapse store was already shared, but the *experience* wasn't.
+Each agent talked to the same SQLite file but you had no way to see
+the union of their activity — three tools talking to a black box.
+The v0.6.0 JSONL bridge ([`event_log.py`](../../neuralmind/event_log.py))
+solved this by routing every `event_bus.publish()` through a
+shared file that `serve` can tail. Same SQLite, plus a visible
+heartbeat.
+
+See [docs/use-cases/multi-agent.md](../../docs/use-cases/multi-agent.md)
+for a two-week walkthrough.
+
+### Opt-out
+
+`NEURALMIND_EVENT_LOG=0` disables the JSONL writer in the process
+where it's set. The in-process bus is unaffected — `serve` still
+pulses for its own activity, just not for activity from other
+processes.
 
 ---
 
