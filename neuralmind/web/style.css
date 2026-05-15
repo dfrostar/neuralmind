@@ -112,6 +112,32 @@ ul {
   cursor: pointer;
 }
 
+button.ghost, .open-btn {
+  background: var(--bg-elev);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 8px;
+}
+button.ghost:hover, .open-btn:hover {
+  background: var(--border);
+}
+button.ghost:disabled, .open-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.open-status {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.open-status.error { color: #d9694f; }
+
 .muted { color: var(--text-dim); }
 
 #detail-panel .detail-title {

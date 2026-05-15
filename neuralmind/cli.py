@@ -453,6 +453,8 @@ def cmd_serve(args):
             host=args.host,
             port=args.port,
             open_browser=not args.no_browser,
+            auth=not args.no_auth,
+            editor=args.editor,
         )
     except RuntimeError as exc:
         print(f"serve failed: {exc}")
@@ -791,6 +793,17 @@ def main():
         "--no-browser",
         action="store_true",
         help="Don't auto-open a browser window",
+    )
+    serve_p.add_argument(
+        "--no-auth",
+        action="store_true",
+        help="Disable the per-session access token. Use only on trusted hosts.",
+    )
+    serve_p.add_argument(
+        "--editor",
+        default=None,
+        help="Editor command for 'open in editor' clicks (defaults to $EDITOR/$VISUAL). "
+        "Examples: 'code', 'cursor', 'vim', 'subl', 'code -n'.",
     )
     serve_p.set_defaults(func=cmd_serve)
 

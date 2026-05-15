@@ -33,29 +33,40 @@
     showSynapses: true,
     showStructural: true,
     localOnly: false,
+    soloCommunity: false,
+    filterToSearch: false,
     showLabels: false,
     activeCommunity: null,
+    project: "",
+    searchHitIds: null,    // Set when filter-to-search is on
     alpha: 1,
   };
+
+  const LS_KEY = (project) => `nm:layout:${project}`;
 
   /* ---------- data loading ---------- */
 
   async function load() {
     const res = await fetch("/api/graph");
     const data = await res.json();
-    document.getElementById("project-name").textContent = data.project || "";
+    state.project = data.project || "";
+    document.getElementById("project-name").textContent = state.project;
 
     const W = canvas.clientWidth || 800;
     const H = canvas.clientHeight || 600;
-    state.nodes = data.nodes.map((n) => ({
-      ...n,
-      x: W / 2 + (Math.random() - 0.5) * W * 0.8,
-      y: H / 2 + (Math.random() - 0.5) * H * 0.8,
-      vx: 0,
-      vy: 0,
-      degree: 0,
-      pinned: false,
-    }));
+    const saved = loadLayout(state.project);
+    state.nodes = data.nodes.map((n) => {
+      const pos = saved && saved[n.id];
+      return {
+        ...n,
+        x: pos ? pos.x : W / 2 + (Math.random() - 0.5) * W * 0.8,
+        y: pos ? pos.y : H / 2 + (Math.random() - 0.5) * H * 0.8,
+        vx: 0,
+        vy: 0,
+        degree: 0,
+        pinned: !!(pos && pos.pinned),
+      };
+    });
     state.nodeById = new Map(state.nodes.map((n) => [n.id, n]));
 
     const resolve = (e) => {
@@ -178,15 +189,30 @@
   const nodeRadius = (n) => 3.5 + Math.sqrt(n.degree);
 
   function visibleSet() {
-    if (!state.localOnly || !state.selected) return null;
-    const set = new Set([state.selected.id]);
-    for (const e of state.structuralEdges) {
-      if (e.s.id === state.selected.id) set.add(e.t.id);
-      if (e.t.id === state.selected.id) set.add(e.s.id);
+    let set = null;
+    if (state.localOnly && state.selected) {
+      set = new Set([state.selected.id]);
+      for (const e of state.structuralEdges) {
+        if (e.s.id === state.selected.id) set.add(e.t.id);
+        if (e.t.id === state.selected.id) set.add(e.s.id);
+      }
+      for (const e of state.synapseEdges) {
+        if (e.s.id === state.selected.id) set.add(e.t.id);
+        if (e.t.id === state.selected.id) set.add(e.s.id);
+      }
     }
-    for (const e of state.synapseEdges) {
-      if (e.s.id === state.selected.id) set.add(e.t.id);
-      if (e.t.id === state.selected.id) set.add(e.s.id);
+    if (state.soloCommunity && state.activeCommunity != null) {
+      const solo = new Set(
+        state.nodes
+          .filter((n) => n.community === state.activeCommunity)
+          .map((n) => n.id)
+      );
+      set = set ? new Set([...set].filter((id) => solo.has(id))) : solo;
+    }
+    if (state.filterToSearch && state.searchHitIds) {
+      set = set
+        ? new Set([...set].filter((id) => state.searchHitIds.has(id)))
+        : new Set(state.searchHitIds);
     }
     return set;
   }
@@ -380,6 +406,9 @@
       if (!moved) {
         dragNode.pinned = false;
         selectNode(dragNode);
+      } else {
+        // A real drag pins the node — persist so the layout sticks.
+        saveLayout();
       }
     }
     dragNode = null;
@@ -469,6 +498,17 @@
       `  ·  community ${node.community}  ·  ${node.file_type}`;
     panel.append(title, sub);
 
+    if (node.source_file) {
+      const openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "open-btn";
+      openBtn.textContent = "Open in editor";
+      const status = document.createElement("span");
+      status.className = "open-status";
+      openBtn.addEventListener("click", () => openInEditor(node, status, openBtn));
+      panel.append(openBtn, status);
+    }
+
     const section = (heading, items, builder) => {
       const div = document.createElement("div");
       div.className = "detail-section" + (items.length ? "" : " empty");
@@ -539,6 +579,7 @@
     const q = searchInput.value.trim();
     if (!q) {
       searchResults.innerHTML = "";
+      state.searchHitIds = null;
       return;
     }
     searchTimer = setTimeout(async () => {
@@ -546,8 +587,10 @@
         const res = await fetch("/api/search?q=" + encodeURIComponent(q));
         const data = await res.json();
         renderSearchResults(data.results || []);
+        state.searchHitIds = new Set((data.results || []).map((r) => r.id));
       } catch (e) {
         searchResults.innerHTML = "";
+        state.searchHitIds = null;
       }
     }, 180);
   });
@@ -571,6 +614,65 @@
     }
   }
 
+  /* ---------- open in editor ---------- */
+
+  async function openInEditor(node, statusEl, btn) {
+    btn.disabled = true;
+    statusEl.textContent = "Opening…";
+    statusEl.classList.remove("error");
+    try {
+      const res = await fetch("/api/open", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: node.id }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const tail = data.line ? `:${data.line}` : "";
+        statusEl.textContent = `Opened ${data.file}${tail}`;
+      } else {
+        statusEl.classList.add("error");
+        statusEl.textContent = data.error || "Could not open file.";
+      }
+    } catch (err) {
+      statusEl.classList.add("error");
+      statusEl.textContent = "Network error: " + err;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  /* ---------- layout persistence ---------- */
+
+  function loadLayout(project) {
+    if (!project) return null;
+    try {
+      const raw = localStorage.getItem(LS_KEY(project));
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  let saveTimer = null;
+  function saveLayout() {
+    if (!state.project) return;
+    clearTimeout(saveTimer);
+    // Debounce — drags fire many events; we only need the resting state.
+    saveTimer = setTimeout(() => {
+      const out = {};
+      for (const n of state.nodes) {
+        if (n.pinned) out[n.id] = { x: n.x, y: n.y, pinned: true };
+      }
+      try {
+        localStorage.setItem(LS_KEY(state.project), JSON.stringify(out));
+      } catch {
+        // localStorage may be full or disabled — non-critical.
+      }
+    }, 250);
+  }
+
   /* ---------- toggles ---------- */
 
   const bind = (id, key) => {
@@ -582,7 +684,22 @@
   bind("toggle-synapses", "showSynapses");
   bind("toggle-structural", "showStructural");
   bind("toggle-local", "localOnly");
+  bind("toggle-solo", "soloCommunity");
+  bind("toggle-filter-search", "filterToSearch");
   bind("toggle-labels", "showLabels");
+
+  document.getElementById("reset-layout").addEventListener("click", () => {
+    if (!state.project) return;
+    try {
+      localStorage.removeItem(LS_KEY(state.project));
+    } catch {}
+    for (const n of state.nodes) {
+      n.pinned = false;
+      n.x = canvas.clientWidth / 2 + (Math.random() - 0.5) * canvas.clientWidth * 0.8;
+      n.y = canvas.clientHeight / 2 + (Math.random() - 0.5) * canvas.clientHeight * 0.8;
+    }
+    state.alpha = 1;
+  });
 
   /* ---------- boot ---------- */
 
