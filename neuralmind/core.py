@@ -636,6 +636,10 @@ class NeuralMind:
 
         return {
             "project": self.project_path.name,
+            # Full absolute path so the UI can key per-project state (e.g.
+            # saved canvas layouts) without collisions between two repos
+            # that happen to share a basename.
+            "project_path": str(self.project_path.resolve()),
             "nodes": nodes,
             "edges": edges,
             "synapses": synapses,

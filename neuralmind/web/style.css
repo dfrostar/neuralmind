@@ -187,7 +187,14 @@ button.ghost:disabled, .open-btn:disabled {
   position: relative;
   overflow: hidden;
 }
-#graph { display: block; cursor: grab; }
+#graph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  outline: none;
+}
+#graph:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
 #graph:active { cursor: grabbing; }
 
 #tooltip {

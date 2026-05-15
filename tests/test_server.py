@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -45,7 +44,11 @@ def test_ensure_graph_or_explain_missing(tmp_path):
         _ensure_graph_or_explain(tmp_path)
     msg = str(exc.value)
     assert "no graph found" in msg
-    assert "graphify build" in msg
+    # The supported graphify entrypoint is `graphify update`; the package
+    # on PyPI is `graphifyy` (yes, two y's). Lock in both so we don't
+    # quietly regress to the deprecated `graphify build` guidance.
+    assert "graphifyy" in msg
+    assert "graphify update" in msg
 
 
 def test_ensure_graph_or_explain_present(tmp_path):
