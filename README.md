@@ -456,7 +456,39 @@ neuralmind init-hook .
 neuralmind wakeup .
 neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
+
+# Or browse it: Obsidian-style graph view of your codebase + learned synapses
+neuralmind serve .
 ```
+
+---
+
+## 🕸️ Graph view (`neuralmind serve`)
+
+`neuralmind serve` opens a local web UI that makes the same index your AI agent
+queries inspectable by a human. Same ChromaDB index, same `synapses.db`, just
+made navigable.
+
+- **Force-directed graph** of code nodes coloured by community.
+- **Structural edges** (calls / imports) layered with the **Hebbian synapse overlay** —
+  edges thicken as the brain learns which nodes co-activate.
+- **Backlinks, outgoing links, and synaptic neighbours** for any node you click,
+  Obsidian-style.
+- **Semantic quick-switcher** — type a phrase, jump to the node.
+- **Open in editor** — click a node, opens `$EDITOR` (or `--editor code`/`cursor`/
+  `vim`/`subl`/`idea`) at the right file and line.
+- **Local-first**: stdlib HTTP server, vanilla-JS canvas, no CDN, per-session
+  access token bound to 127.0.0.1 by default.
+
+```bash
+neuralmind serve .                       # opens http://127.0.0.1:8765/?token=…
+neuralmind serve . --editor "code -n"    # override the editor
+neuralmind serve . --no-auth             # skip the token (trusted hosts only)
+```
+
+Why it matters: the agent-facing brain has always been a black box — you couldn't
+see what NeuralMind retrieved, whether the graph was reasonable, or what the
+synapse layer had actually learned. The graph view exposes all three.
 
 ---
 
