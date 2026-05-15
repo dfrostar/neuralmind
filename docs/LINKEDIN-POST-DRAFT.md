@@ -1,5 +1,172 @@
 # LinkedIn post draft — NeuralMind progress update
 
+Two sets of drafts. The **v0.6.0 launch drafts** are the current
+batch — post one of them the moment v0.6.0 is on PyPI. The
+**earlier drafts** below are the previous progress update; kept for
+reference and as a backbone if you want to combine.
+
+---
+
+## v0.6.0 launch drafts
+
+The pitch frame: **"we built the hippocampus, you can watch it
+learn."** Pair every draft with the 60-second screencast clip
+([`SCREENCAST-v0.6.0.md`](SCREENCAST-v0.6.0.md)) — the pulse-rings
+visual is the asset that makes this post land. Don't post the v0.6.0
+variants without it.
+
+### Draft v0.6.0–A — short, dev-honest (recommended for first post)
+
+> NeuralMind v0.6.0 is out today.
+>
+> Short version: the brain is now visible.
+>
+> NeuralMind has been an associative memory layer for AI coding
+> agents since v0.4 — a persistent weighted graph that learns
+> which code nodes fire together, decays the rest, and spreads
+> activation on every prompt so the agent gets better context the
+> longer it runs on your codebase.
+>
+> The honest problem with that pitch: nobody could see it working.
+> "The agent has a learning memory" is a claim. "Install this and
+> trust me" is not a demo.
+>
+> So in 0.6.0, `neuralmind serve` got a live activity feed.
+> Synapse and file events stream to the canvas over SSE. When
+> Claude (or any agent) calls a tool, the relevant nodes pulse.
+> When you save a file in your editor, the corresponding node
+> pulses. You can sit there and watch the hippocampus learn your
+> codebase in real time.
+>
+> Plus a JSONL cross-process bridge that means if you run Claude
+> Code, Cursor, OpenClaw, and Hermes-Agent all against the same
+> project — they reinforce the same brain, and the graph view
+> shows the union of their activity. NeuralMind becomes the shared
+> memory substrate underneath the polyglot agent stack.
+>
+> The headline measurable claim is unchanged: 40–70× per-query
+> token reduction on real codebases, ~3–10× end-to-end on a
+> typical agent workload, measured every commit in CI, reproducible
+> in 30 seconds on a fresh clone.
+>
+> What's new is that the abstraction now has a window.
+>
+> [VIDEO: 60-second clip — terminal demo + graph view + pulse rings]
+>
+> github.com/dfrostar/neuralmind
+>
+> #ClaudeCode #Cursor #AIEngineering #OpenSource #DeveloperTools
+
+### Draft v0.6.0–B — feature-tour, scannable
+
+> NeuralMind v0.6.0 ships today. What's new:
+>
+> → **Live activity feed.** `neuralmind serve` streams synapse +
+>   file events over SSE. Affected nodes pulse on the canvas in
+>   real time. Sidebar log shows the most recent ~80 events.
+>
+> → **Cross-process JSONL bridge.** A `neuralmind watch` daemon, a
+>   Claude Code session, an OpenClaw call — all in different
+>   processes — feed the same live feed via
+>   `.neuralmind/events.jsonl`. One canvas, every agent.
+>
+> → **Pin UX.** Drag-to-pin already saved positions; v0.6.0 adds a
+>   visible pin glyph, a Pin/Unpin button in the detail panel, and
+>   an Unpin-all sidebar action.
+>
+> → **Quick-switch.** Cmd/Ctrl-K and `/` jump to semantic search
+>   from anywhere. Esc clears.
+>
+> → **Local-graph depth slider.** 1–3 hops via BFS from the focused
+>   node. Default 1, so existing behavior is unchanged.
+>
+> → **Replay-last-query overlay.** Re-highlight the L3 hits the
+>   agent most recently received. Closes the "is the agent looking
+>   at the right code" trust gap in a 2-second visual.
+>
+> → **Edge tooltips + min-weight synapse slider.** Hover any edge
+>   for relationship + weight; filter out low-weight noise.
+>
+> The measurable claim is unchanged from v0.5: 40–70× per-query
+> retrieval reduction on real repos, ~3–10× end-to-end, verifiable
+> in 30 seconds with `bash scripts/demo.sh` on a fresh clone.
+>
+> What v0.6.0 changes is that the *learning* is now visible. You
+> can see the brain working.
+>
+> [VIDEO: 60-second pulse-rings clip]
+>
+> github.com/dfrostar/neuralmind
+
+### Draft v0.6.0–C — narrative / founder voice
+
+> Three months ago I posted about NeuralMind, the open-source
+> context engine I've been building for AI coding agents. The
+> story then was a number: 40–70× per-query token reduction. Real,
+> measurable, reproducible on a fresh clone. But also a little
+> dry.
+>
+> The story today, with v0.6.0, is something I can actually show
+> you.
+>
+> NeuralMind isn't just a retrieval index. Since v0.4, it's an
+> associative memory layer — a persistent graph that learns which
+> pieces of code your agent uses together. Edges strengthen with
+> co-activation, decay if unused, get protected from decay once
+> they're frequently-used. Spreading activation surfaces related
+> code on every prompt. It's a small, local hippocampus that runs
+> alongside the LLM cortex.
+>
+> The honest problem was: you couldn't see it work. We had tests.
+> We had benchmarks. But the experience was a black box that you
+> had to trust would get smarter.
+>
+> v0.6.0 ends that. `neuralmind serve` now streams a live activity
+> feed. Every time the agent uses a code node, that node pulses on
+> the graph. Every time you save a file, the corresponding node
+> pulses. You can sit there and watch the brain learn your
+> codebase.
+>
+> It's the moment that flips "code RAG" into "associative memory
+> for your codebase." It's also the moment when, if you're running
+> Claude Code in one terminal and OpenClaw in another, you can see
+> them reinforcing the *same* brain — because v0.6.0 also adds a
+> cross-process JSONL bridge so every agent talking to the project
+> contributes to one canvas.
+>
+> If you've been watching your Claude or Cursor bill climb, or
+> you've noticed your AI tools "forgetting" your codebase between
+> sessions: this is for you.
+>
+> [VIDEO: 60-second clip]
+>
+> Free, MIT, fully local. github.com/dfrostar/neuralmind
+
+### Choosing between A / B / C
+
+- **A** is the safest. Short, technical, honest about limitations,
+  works on any LinkedIn network. Default pick.
+- **B** has the highest information density and scans best for
+  engineering audiences. Good if your network skews scanners.
+- **C** is the highest-engagement candidate but only if you have
+  an audience that engages with longer-form / story-driven posts.
+  Higher variance.
+
+### Common across all three
+
+- **The video is non-optional.** Without the pulse-rings clip, all
+  three drafts collapse back into the existing v0.5 progress
+  update — same number, different words. The clip is what makes
+  v0.6.0 a separate post worth posting.
+- **The honest end-to-end caveat ("3–10× end-to-end") is in A and
+  B but not C.** That's deliberate — C is narrative, not spec
+  sheet. If you post C, link to `docs/HONEST-ASSESSMENT.md` in the
+  first comment so the caveat is reachable.
+
+---
+
+## Earlier drafts (pre-v0.6.0 — kept for reference)
+
 Three drafts at different lengths and tones. Pick one, edit to
 match your voice, post.
 

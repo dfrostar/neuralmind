@@ -86,6 +86,24 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 - Fully local, no data leaves your machine
 - Works with any model — OpenAI, Google, Anthropic, Ollama, vLLM, anything
 
+## Graph view works with any LLM (v0.6.0+)
+
+The graph view (`neuralmind serve`) is agent-agnostic — it doesn't
+care which chat window you're piping context into. If you use
+ChatGPT, Gemini, or a local model:
+
+1. `neuralmind serve .` in a terminal.
+2. Browser shows the live graph.
+3. Run `neuralmind query . "..."` in a second terminal — its
+   nodes pulse on the canvas as the query executes, even though
+   ChatGPT itself never called NeuralMind directly.
+4. Pipe the CLI output into your chat window.
+
+The pulse-rings feed reflects every CLI call, every `neuralmind
+watch` daemon event, and every file edit — regardless of which
+LLM you ultimately send the context to. The trust-gap closure
+benefit (see [claude-code.md](./claude-code.md#second-screen-see-what-the-agent-is-looking-at-v060)) applies anywhere you're using NeuralMind retrieval.
+
 ## Pro tip: system prompt pattern
 
 Generate context once at the start of a long session:

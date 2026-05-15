@@ -74,6 +74,30 @@ A one-page summary template:
 - **Adapt to workflow:** enable memory (TTY prompt) + periodically `neuralmind learn .` to rerank by actual query patterns.
 - **Model changes:** run `neuralmind benchmark` again when you switch models — absolute dollar savings scale with input price.
 
+## Debugging cost spikes with the graph view (v0.6.0+)
+
+If a query returns 5K tokens when you'd expect 800, you used to be
+debugging by reading log files. v0.6.0 makes it visual.
+
+1. `neuralmind serve .` in a separate terminal.
+2. Run the offending query.
+3. In the detail panel, click **Replay last query**.
+
+The graph view highlights the L3 hits the agent received. The
+diagnosis is usually obvious from the pulse pattern — a stale
+cluster boundary that grabbed too many nodes, a missing structural
+edge that forced the retriever wider, or an unexpected hub node
+pulling in unrelated context. Fix the underlying issue (rebuild the
+index, update `CLAUDE.md`, or tune the cluster boundary) and the
+next replay shows a tighter result.
+
+The pulse-rings live feed is also useful during normal use: if
+you notice the canvas going *quiet* during sessions you'd expect
+to be busy, that's a signal the agent isn't actually using
+NeuralMind retrieval (maybe the MCP server isn't wired up, or the
+hooks didn't install). A visual heartbeat is faster than checking
+a log.
+
 ## What this doesn't fix
 
 - **Output tokens** — NeuralMind reduces input context, not model output length. Pair with prompt instructions to keep responses concise.

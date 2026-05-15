@@ -720,6 +720,133 @@ layer also sees as activation seeds.
 
 ---
 
+## Event Bus and JSONL Bridge (v0.6)
+
+v0.6.0 added a third structural piece: an **event bus** that turns
+"the brain is learning" from a claim into a visible, real-time
+signal. The bus and its cross-process counterpart (the JSONL
+bridge) are how `neuralmind serve` knows when to pulse a node on
+the canvas.
+
+### Why an event bus
+
+Pre-v0.6.0, the synapse store reinforced on every co-activation but
+the experience was invisible. You had to refresh the graph view to
+see a state change. We wanted the canvas to feel like a heartbeat
+monitor — pulse the instant a node lights up — so we needed a
+push-based notification path from the model layer to the UI.
+
+We considered three options:
+
+| Option | Verdict |
+|---|---|
+| Polling — UI re-reads `synapses.db` every N ms | Wasteful; introduces lag proportional to N |
+| WebSocket | More than we need; adds a real dependency surface |
+| **In-process event bus + SSE** | Stdlib-only, push-based, O(1) when nobody's listening |
+
+We picked the third option. `event_bus.py` is a tiny pub/sub
+singleton accessed via `get_event_bus()`. `SynapseStore.reinforce()`
+publishes a `synapse` event after every pair-touching call;
+`FileActivityWatcher` publishes a `file_activity` event after every
+coalesced batch. `serve`'s `/api/events` endpoint subscribes and
+forwards to the browser as a long-lived Server-Sent Events stream.
+
+### Two-brain diagram, refreshed
+
+```
+                       ┌──────────────────────────────┐
+                       │  Browser canvas              │
+                       │  • pulse rings               │
+                       │  • sidebar event log         │
+                       └─────────────▲────────────────┘
+                                     │ SSE: /api/events
+                       ┌─────────────┴────────────────┐
+                       │  EventBus (event_bus.py)     │
+                       │  • publish() is O(1) when    │
+                       │    no subscribers + no       │
+                       │    JSONL writer configured   │
+                       └─────▲──────────────────▲─────┘
+                             │                  │ tail
+        ┌────────────────────┼─────┐  ┌─────────┴───────────┐
+        │                          │  │ events.jsonl bridge │
+┌───────┴─────────┐  ┌─────────────┴┐ │ (event_log.py)      │
+│ SynapseStore    │  │ FileActivity │ │ ─ writer: appends   │
+│ .reinforce()    │  │ Watcher      │ │   on publish        │
+│ publishes       │  │ publishes    │ │ ─ tailer: re-emits  │
+│ "synapse" event │  │ "file_       │ │   foreign events    │
+└─────────────────┘  │  activity"   │ └─────────────────────┘
+                     │  events      │
+                     └──────────────┘
+```
+
+### Why the JSONL bridge
+
+The in-process bus is great when `serve` and the activity source
+share a Python process. The common real-world case is *not* that:
+you run `neuralmind serve` in one terminal, `neuralmind watch` in
+another, and a Claude Code session in a third — three processes,
+three sources of brain activity, one canvas you'd like to show all
+of them.
+
+`event_log.py` is the deliberately boring side channel that makes
+this work:
+
+- Every `event_bus.publish()` call appends one JSON line to
+  `<project>/.neuralmind/events.jsonl`.
+- The `serve` process tails that file in a background thread, drops
+  events it originated itself (deduped by event id), and republishes
+  the rest into its local bus.
+- `NEURALMIND_EVENT_LOG=0` disables the writer for opt-out. The
+  in-process bus is unaffected.
+
+The design choice worth stating: the JSONL is a **fallback, not a
+queue**. The bus is the primary path; the file is best-effort and
+reconstructs itself if it disappears or rolls. We deliberately did
+not build a real IPC mechanism — sockets, gRPC, named pipes —
+because the cost/benefit didn't justify it. JSONL is observable
+with `tail -f` and survives process restarts. Good enough.
+
+### What this unlocks: the multi-agent shared brain
+
+Pre-v0.6.0, every agent talking to a project reinforced the same
+`synapses.db` but you couldn't see it. The synapse store was
+shared; the *experience* wasn't. Three tools talking to a black
+box.
+
+In v0.6.0, the JSONL bridge makes the union visible. Claude Code,
+Cursor, OpenClaw, and Hermes-Agent all publish to
+`events.jsonl`; `neuralmind serve` aggregates them into one canvas.
+Every tool call from any agent pulses the corresponding nodes. The
+brain isn't just learning your codebase; it's learning across every
+tool you use, and you can finally see the union.
+
+See [`docs/use-cases/multi-agent.md`](../../docs/use-cases/multi-agent.md)
+for the day-by-day walkthrough.
+
+### Files
+
+- [`neuralmind/event_bus.py`](../../neuralmind/event_bus.py) —
+  pub/sub singleton, `get_event_bus()` accessor, `Event` dataclass.
+  No external deps.
+- [`neuralmind/event_log.py`](../../neuralmind/event_log.py) —
+  JSONL writer + tailer for the cross-process bridge. No external
+  deps.
+- `tests/test_event_bus.py`, `tests/test_event_log.py` — stdlib-only
+  tests; they lock in that `reinforce()` and the watcher publish
+  the right events, and that the tailer dedupes correctly.
+
+### Performance footprint
+
+- `event_bus.publish()` is O(1) when there are **no** subscribers
+  AND **no** writer configured — emit-points cost nothing on
+  headless servers or CLI-only runs.
+- With the writer enabled, each publish is one `fcntl`-locked
+  `write()` on the JSONL file. Measured overhead on a 2026 dev
+  laptop: ~50 µs/event.
+- The tailer is one background thread per `serve` process.
+
+---
+
 ## See Also
 
 - [API Reference](API-Reference.md) - Python API documentation
