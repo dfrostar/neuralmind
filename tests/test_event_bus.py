@@ -54,18 +54,20 @@ def test_close_unsubscribes():
     assert bus.publish("x") == 0
 
 
-def test_full_queue_drops_events_without_blocking_producer():
+def test_full_queue_drops_oldest_so_subscribers_see_freshest():
     bus = EventBus(max_queue=3)
     sub = bus.subscribe()
     try:
         for i in range(10):
             bus.publish("burst", {"i": i})
-        # First three filled the queue; remaining seven were dropped at the source.
+        # Live-feed semantics: when a slow subscriber falls behind, the bus
+        # evicts oldest events so the queue always reflects the most recent
+        # activity. Three slots survive (i=7,8,9), seven were dropped.
         assert sub.dropped == 7
         drained = []
         for _ in range(3):
             drained.append(sub.get(timeout=0.5))
-        assert [e["i"] for e in drained] == [0, 1, 2]
+        assert [e["i"] for e in drained] == [7, 8, 9]
     finally:
         sub.close()
 
@@ -117,3 +119,41 @@ def test_concurrent_publish_and_subscribe_stays_consistent():
     # drain finishes early, but every received event should be well-formed.
     assert all(ev["type"] == "p" for ev in received)
     assert all("ts" in ev for ev in received)
+
+
+def test_synapse_store_reinforce_publishes_event(tmp_path):
+    """SynapseStore.reinforce() should fan-out a `synapse` event with the
+    triggering node ids and pair count. Locks in the wiring so the live
+    activity feed can't silently regress to a quiet bus.
+    """
+    from neuralmind.synapses import SynapseStore
+
+    store = SynapseStore(tmp_path / "syn.db")
+    bus = get_event_bus()
+    sub = bus.subscribe()
+    try:
+        pairs = store.reinforce(["alpha", "beta", "gamma"], strength=1.0)
+        assert pairs == 3
+
+        ev = sub.get(timeout=1.0)
+        assert ev is not None
+        assert ev["type"] == "synapse"
+        assert ev["pair_count"] == 3
+        assert sorted(ev["nodes"]) == ["alpha", "beta", "gamma"]
+        assert ev["strength"] == 1.0
+    finally:
+        sub.close()
+
+
+def test_synapse_store_reinforce_swallows_publish_errors(tmp_path, monkeypatch):
+    """A flaky event bus must not break the underlying database write."""
+    from neuralmind import event_bus as bus_mod
+    from neuralmind.synapses import SynapseStore
+
+    def boom(*_a, **_kw):
+        raise RuntimeError("bus exploded")
+
+    monkeypatch.setattr(bus_mod, "publish", boom)
+    store = SynapseStore(tmp_path / "syn2.db")
+    # Should not raise — reinforce returns the pair count regardless.
+    assert store.reinforce(["x", "y"], strength=1.0) == 1

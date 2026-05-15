@@ -28,6 +28,7 @@ class Subscription:
     def __init__(self, bus: EventBus, maxsize: int = DEFAULT_QUEUE_SIZE):
         self._queue: Queue[dict[str, Any]] = Queue(maxsize=maxsize)
         self._bus = bus
+        self._drop_lock = threading.Lock()
         self.dropped = 0
 
     def get(self, timeout: float | None = None) -> dict[str, Any] | None:
@@ -41,9 +42,24 @@ class Subscription:
         self._bus._unsubscribe(self)
 
     def _offer(self, event: dict[str, Any]) -> None:
+        # Live feeds care more about fresh state than complete history, so when
+        # a slow consumer fills the queue we drop the oldest item before
+        # enqueuing the new one. Concurrent producers can race on the
+        # get-then-put sequence; we just retry once, then count the drop.
+        try:
+            self._queue.put_nowait(event)
+            return
+        except Full:
+            pass
+        try:
+            self._queue.get_nowait()
+        except Empty:
+            pass
         try:
             self._queue.put_nowait(event)
         except Full:
+            pass
+        with self._drop_lock:
             self.dropped += 1
 
 
