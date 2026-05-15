@@ -18,8 +18,8 @@ the bigger live-activity feed step in Phase C.
 ### Graph view — Phase B (small UX wins)
 
 - **Replay-last-query overlay.** Reads
-  `~/.neuralmind/memory/query_events.jsonl`, highlights the L3 hits
-  the agent received, draws a pulse from the query into them.
+  `<project>/.neuralmind/recent_queries.jsonl`, highlights the L3
+  hits the agent received, draws a pulse from the query into them.
   Answers "what did the agent actually see?"
   [`#105`](https://github.com/dfrostar/neuralmind/pull/105) — green, awaiting merge.
 - **Edge tooltips + min-weight synapse slider.** Hover any edge to
