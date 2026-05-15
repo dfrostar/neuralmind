@@ -373,16 +373,21 @@ into its release.
 **Symptom: A `feat:` commit was merged but release-please proposed a patch bump
 (0.x.Y → 0.x.Y+1) instead of a minor bump (0.x.Y → 0.(x+1).0).**
 
-Expected: `release-please-config.json` has `"bump-patch-for-minor-pre-major": true`,
-which forces every `feat:` to a patch bump until v1.0. To force an explicit version
-(e.g. v0.4.0), land an empty commit with the `Release-As:` footer:
+Check `release-please-config.json` for `"bump-patch-for-minor-pre-major": true`.
+If it's set, every `feat:` is forced to a patch bump until v1.0 — regardless
+of the conventional-commit type. The flag was dropped before v0.6.0 so this
+should no longer be the default; if you see it again in the config, removing
+it restores the standard pre-1.0 behavior (`feat:` → minor, `fix:` → patch,
+`feat!:` → minor, capped at 0.x by `bump-minor-pre-major`).
+
+To pin a specific version regardless of commit history, land an empty commit
+with the `Release-As:` footer:
 
 ```bash
-git commit --allow-empty -m "chore: release as v0.4.0" -m "Release-As: 0.4.0"
+git commit --allow-empty -m "chore: release as v0.6.0" -m "Release-As: 0.6.0"
 ```
 
-This was used to produce v0.4.0. Future minor bumps before v1.0 need the same
-override or a config change to drop `bump-patch-for-minor-pre-major`.
+This was used to produce v0.4.0 before the config was sorted out.
 
 ## Community
 
