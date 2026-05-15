@@ -112,6 +112,26 @@ ul {
   cursor: pointer;
 }
 
+.slider-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px;
+  font-size: 12px;
+}
+.slider-toggle input[type="range"] { width: 100%; accent-color: var(--accent-warm); }
+.slider-toggle #weight-readout {
+  color: var(--accent-warm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+#tooltip .tt-edge {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 button.ghost, .open-btn {
   background: var(--bg-elev);
   color: var(--text);
