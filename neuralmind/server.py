@@ -317,6 +317,16 @@ class _Handler(BaseHTTPRequestHandler):
             )
         elif route == "/api/events":
             self._stream_events(new_cookie)
+        elif route == "/api/queries":
+            raw_n = (parse_qs(parsed.query).get("n") or ["20"])[0]
+            try:
+                n = max(1, min(int(raw_n), 50))
+            except ValueError:
+                n = 20
+            self._send_json(
+                {"queries": type(self).mind.recent_queries(n=n)},
+                set_cookie=new_cookie,
+            )
         else:
             self.send_error(404)
 

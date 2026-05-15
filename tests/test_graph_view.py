@@ -25,6 +25,39 @@ def test_synapse_edges_returns_sorted_filtered_view(tmp_path):
     assert [e[0:2] for e in heavy] == [("a", "b")]
 
 
+def test_recent_queries_records_top_hit_ids_and_caps(temp_project):
+    mind = NeuralMind(str(temp_project), backend_type="in_memory")
+    mind.build()
+
+    # Run a few queries; each one should be appended.
+    mind.query("authentication flow")
+    mind.query("billing tasks")
+
+    recent = mind.recent_queries(n=5)
+    assert len(recent) == 2
+    # Newest first.
+    assert recent[0]["question"] == "billing tasks"
+    assert recent[1]["question"] == "authentication flow"
+
+    # Every record carries the fields the UI consumes.
+    for rec in recent:
+        assert {"ts", "question", "tokens", "reduction_ratio", "top_hits"} <= rec.keys()
+        for hit in rec["top_hits"]:
+            assert {"id", "label", "score"} <= hit.keys()
+
+    # The log file is capped at RECENT_QUERIES_MAX entries.
+    log = mind._recent_queries_path()
+    # Hand-write more than the cap and confirm trimming on next write.
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8") as f:
+        for i in range(NeuralMind.RECENT_QUERIES_MAX + 25):
+            f.write(f'{{"question": "stale {i}", "ts": "2026-01-01"}}\n')
+    mind.query("fresh")
+    with log.open(encoding="utf-8") as f:
+        line_count = sum(1 for line in f if line.strip())
+    assert line_count == NeuralMind.RECENT_QUERIES_MAX
+
+
 def test_graph_data_shape_and_synapse_overlay(temp_project):
     mind = NeuralMind(str(temp_project), backend_type="in_memory")
     mind.build()
