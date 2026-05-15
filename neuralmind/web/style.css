@@ -126,6 +126,31 @@ ul {
   font-variant-numeric: tabular-nums;
 }
 
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 4px 22px;
+}
+.slider-row.disabled { opacity: 0.4; }
+.slider-row.disabled input { pointer-events: none; }
+.slider-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  min-width: 36px;
+}
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.slider-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 14px;
+  text-align: right;
+}
+
 #tooltip .tt-edge {
   display: block;
   font-size: 11px;
