@@ -29,6 +29,12 @@ from urllib.parse import parse_qs, urlparse
 
 from .core import NeuralMind
 from .event_bus import get_event_bus
+from .event_log import (
+    EventLogTailer,
+    EventLogWriter,
+    default_log_path,
+    event_log_enabled,
+)
 
 WEB_DIR = Path(__file__).parent / "web"
 
@@ -483,6 +489,46 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     raise RuntimeError(msg)
 
 
+def _start_event_log_bridge(mind: NeuralMind):
+    """Wire the cross-process JSONL bridge for the running server.
+
+    Configures a writer on the in-process bus so any synapse / file
+    event published here also lands on disk, and spins up a tailer that
+    re-publishes events written by *other* processes (e.g. a separate
+    ``neuralmind watch`` daemon, or hook-driven Claude Code sessions).
+
+    Self-emitted lines are skipped by ``_pid`` so the tailer can't loop.
+    Returns ``(writer, tailer)`` or ``(None, None)`` when disabled.
+    """
+    if not event_log_enabled():
+        return None, None
+
+    log_path = default_log_path(mind.project_path)
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return None, None
+
+    bus = get_event_bus()
+    writer = EventLogWriter(log_path)
+    bus.configure_event_log(writer)
+
+    self_pid = os.getpid()
+
+    def on_external(event: dict) -> None:
+        if event.get("_pid") == self_pid:
+            return
+        bus._fanout_only(event)
+
+    tailer = EventLogTailer(log_path, on_external)
+    try:
+        tailer.start()
+    except Exception:
+        bus.configure_event_log(None)
+        return None, None
+    return writer, tailer
+
+
 def _start_activity_watcher(mind: NeuralMind):
     """Spin up the file-activity watcher that feeds the live event stream.
 
@@ -544,6 +590,7 @@ def serve(
     # leak a running watcher thread; only spin the watcher up once we
     # know the server is going to run.
     httpd = ThreadingHTTPServer((host, port), _Handler)
+    log_writer, log_tailer = _start_event_log_bridge(mind)
     watcher = _start_activity_watcher(mind)
     base = f"http://{host}:{port}/"
     landing = f"{base}?token={token}" if token else base
@@ -579,4 +626,11 @@ def serve(
                 watcher.stop()
             except Exception:
                 pass
+        if log_tailer is not None:
+            try:
+                log_tailer.stop()
+            except Exception:
+                pass
+        if log_writer is not None:
+            get_event_bus().configure_event_log(None)
         httpd.server_close()
