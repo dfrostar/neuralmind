@@ -4,6 +4,21 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g., v0.5.3). The tag MUST already exist in the repo.'
+        required: true
+        type: string
+
+# RELEASE_TAG is the canonical "what are we releasing" value for every job
+# below. On a tag push (github.ref_name == 'v0.5.3') it derives from the
+# ref; on manual workflow_dispatch it comes from the user-supplied input.
+# This lets us recover when release-please cuts a tag with GITHUB_TOKEN
+# (which doesn't fire push:tags workflows) by re-running this workflow
+# manually against the existing tag — see issue #98.
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   validate-version:
@@ -11,11 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Check tag matches pyproject.toml version
         run: |
           set -euo pipefail
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          TAG_VERSION="${RELEASE_TAG#v}"
           PKG_VERSION="$(python - <<'EOF'
           import re, sys
           content = open("pyproject.toml").read()
@@ -41,6 +58,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -61,6 +80,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -116,7 +137,7 @@ jobs:
       - name: Smoke test published package from PyPI
         run: |
           set -euo pipefail
-          VERSION="${GITHUB_REF#refs/tags/v}"
+          VERSION="${RELEASE_TAG#v}"
           echo "Testing neuralmind==${VERSION}"
           sleep 30
           python -m venv .venv
@@ -169,6 +190,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Download build artifacts
         uses: actions/download-artifact@v8
@@ -181,7 +204,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF#refs/tags/}"
+          TAG="${RELEASE_TAG}"
           echo "Tag: ${TAG}"
 
           if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
