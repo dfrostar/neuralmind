@@ -99,6 +99,36 @@ def _editor_command(editor: str, path: str, line: int | None) -> list[str]:
     return base + [path]
 
 
+def _compute_allowed_open_paths(mind: NeuralMind) -> set[str]:
+    """Pre-compute the set of absolute path strings ``/api/open`` may launch.
+
+    Built once from local graph data (not HTTP input), so a hit in this
+    set is positive proof that a path is safe to pass to ``Popen``. The
+    handler does an explicit membership check against this set right
+    before spawning the editor — a redundant defense layer on top of
+    ``_resolve_open_target``'s path checks, and one that taint trackers
+    recognize as sanitization.
+    """
+    project_root = Path(mind.project_path).resolve()
+    allowed: set[str] = set()
+    for node in getattr(mind.embedder, "nodes", []) or []:
+        src = node.get("source_file") or ""
+        if not src:
+            continue
+        candidate = Path(src)
+        if not candidate.is_absolute():
+            candidate = project_root / candidate
+        try:
+            resolved = candidate.resolve()
+            resolved.relative_to(project_root)
+        except (ValueError, OSError):
+            continue
+        s = str(resolved)
+        if resolved.is_file() and resolved.is_absolute() and not s.startswith("-"):
+            allowed.add(s)
+    return allowed
+
+
 def _resolve_open_target(mind: NeuralMind, node_id: str) -> tuple[Path | None, int | None, str]:
     """Map a node id to (absolute file path under project, line, label).
 
@@ -154,6 +184,7 @@ class _Handler(BaseHTTPRequestHandler):
     mind: NeuralMind | None = None
     auth_token: str | None = None  # None disables auth
     editor: str | None = None
+    allowed_open_paths: set[str] = set()
     _graph_cache: dict | None = None
     _graph_lock = threading.Lock()
 
@@ -317,7 +348,21 @@ class _Handler(BaseHTTPRequestHandler):
                 )
                 return
 
-            argv = _editor_command(editor, str(path), line)
+            # Allowlist check: only paths the server pre-validated at
+            # startup (from local graph data, not HTTP input) may be
+            # passed to Popen. Layered with the checks in
+            # _resolve_open_target so a regression in either one fails
+            # closed.
+            safe_path = str(path)
+            if safe_path not in cls.allowed_open_paths:
+                self._send_json(
+                    {"ok": False, "error": "path not in open allowlist"},
+                    status=400,
+                    set_cookie=new_cookie,
+                )
+                return
+
+            argv = _editor_command(editor, safe_path, line)
             if not argv or not shutil.which(argv[0]):
                 self._send_json(
                     {
@@ -397,6 +442,7 @@ def serve(
     _Handler.mind = mind
     _Handler.auth_token = token
     _Handler.editor = editor or os.environ.get("EDITOR") or os.environ.get("VISUAL")
+    _Handler.allowed_open_paths = _compute_allowed_open_paths(mind)
     _Handler._graph_cache = None
 
     httpd = ThreadingHTTPServer((host, port), _Handler)
