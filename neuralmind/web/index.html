@@ -60,7 +60,14 @@
       <section class="panel" id="activity-panel">
         <h2>
           Activity
-          <span id="activity-status" class="activity-status" title="Live stream status">·</span>
+          <span
+            id="activity-status"
+            class="activity-status"
+            role="status"
+            aria-live="polite"
+            aria-label="Live stream status: connecting"
+            title="Live stream status: connecting"
+          >·</span>
         </h2>
         <ul id="event-log" aria-live="polite"></ul>
       </section>

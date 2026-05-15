@@ -530,9 +530,11 @@ def serve(
     _Handler.allowed_open_paths = _compute_allowed_open_paths(mind)
     _Handler._graph_cache = None
 
-    watcher = _start_activity_watcher(mind)
-
+    # Bind the listening socket first so a port-in-use failure doesn't
+    # leak a running watcher thread; only spin the watcher up once we
+    # know the server is going to run.
     httpd = ThreadingHTTPServer((host, port), _Handler)
+    watcher = _start_activity_watcher(mind)
     base = f"http://{host}:{port}/"
     landing = f"{base}?token={token}" if token else base
     stats = mind.graph_data()["stats"]

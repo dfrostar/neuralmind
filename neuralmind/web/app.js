@@ -321,7 +321,18 @@
   // 60fps drawing the same static graph forever. Interactions and
   // incoming activity pulses call wake() to kick it back on.
   let paused = false;
+  function sweepPulses() {
+    // Evict expired entries even for hidden nodes, otherwise filters
+    // (local-graph, solo-community, search) could leave the pulse map
+    // permanently non-empty and the render loop would never re-pause.
+    if (!pulses.size) return;
+    const now = performance.now();
+    for (const [id, exp] of pulses) {
+      if (exp <= now) pulses.delete(id);
+    }
+  }
   function tick() {
+    sweepPulses();
     simulate();
     draw();
     if (state.alpha < 0.005 && !dragNode && pulses.size === 0) {
@@ -840,23 +851,27 @@
     setTimeout(() => li.classList.remove("fresh"), 1200);
   }
 
+  function setStreamStatus(kind, message) {
+    eventStatus.classList.toggle("live", kind === "live");
+    eventStatus.classList.toggle("dead", kind === "dead");
+    eventStatus.title = message;
+    // Update the screen-reader announcement too so the live/disconnected
+    // state isn't conveyed by color alone.
+    eventStatus.setAttribute("aria-label", message);
+  }
+
   function startEventStream() {
     if (typeof EventSource === "undefined") {
-      eventStatus.classList.add("dead");
-      eventStatus.title = "Live stream not supported in this browser";
+      setStreamStatus("dead", "Live stream not supported in this browser");
       return;
     }
     const es = new EventSource("/api/events");
     es.onopen = () => {
-      eventStatus.classList.add("live");
-      eventStatus.classList.remove("dead");
-      eventStatus.title = "Live stream connected";
+      setStreamStatus("live", "Live stream connected");
     };
     es.onerror = () => {
       // EventSource auto-reconnects; just mark the status until then.
-      eventStatus.classList.remove("live");
-      eventStatus.classList.add("dead");
-      eventStatus.title = "Live stream disconnected; will retry";
+      setStreamStatus("dead", "Live stream disconnected; will retry");
     };
     es.onmessage = (m) => {
       let ev;
