@@ -202,6 +202,56 @@ button.ghost:disabled, .open-btn:disabled {
   line-height: 1.6;
 }
 
+#activity-panel h2 { display: flex; align-items: center; gap: 6px; }
+.activity-status {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  text-indent: -9999px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.activity-status.live { background: #5fb37a; }
+.activity-status.dead { background: #d9694f; }
+
+#event-log {
+  max-height: 220px;
+  overflow-y: auto;
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+#event-log:empty::after {
+  content: "Waiting for synapse / file events…";
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.event-row {
+  display: flex;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: default;
+  align-items: baseline;
+}
+.event-row.fresh { background: rgba(224, 164, 88, 0.10); }
+.event-time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.event-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.event-synapse .event-label { color: var(--synapse); }
+.event-file .event-label { color: var(--text); }
+.event-hello .event-label, .event-system .event-label { color: var(--text-dim); }
+
 #canvas-wrap {
   flex: 1;
   position: relative;

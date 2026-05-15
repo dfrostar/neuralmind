@@ -22,13 +22,18 @@ import shlex
 import shutil
 import subprocess
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .core import NeuralMind
+from .event_bus import get_event_bus
 
 WEB_DIR = Path(__file__).parent / "web"
+
+SSE_HEARTBEAT_SECONDS = 20.0
+SSE_POLL_INTERVAL = 1.0
 
 _CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -310,8 +315,55 @@ class _Handler(BaseHTTPRequestHandler):
                 {"query": query, "results": _search(type(self).mind, query)},
                 set_cookie=new_cookie,
             )
+        elif route == "/api/events":
+            self._stream_events(new_cookie)
         else:
             self.send_error(404)
+
+    def _stream_events(self, new_cookie: str | None) -> None:
+        """Stream live synapse + file events as Server-Sent Events.
+
+        Long-lived response. Subscribes to the process-wide event bus,
+        emits each event as ``data: {...}\\n\\n``, and sends a comment
+        heartbeat periodically so idle connections aren't reaped by
+        proxies / load balancers.
+        """
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        # Tell nginx / other reverse proxies not to buffer the stream.
+        self.send_header("X-Accel-Buffering", "no")
+        if new_cookie:
+            self.send_header(
+                "Set-Cookie",
+                f"{_AUTH_COOKIE}={new_cookie}; Path=/; HttpOnly; SameSite=Strict",
+            )
+        self.end_headers()
+
+        bus = get_event_bus()
+        sub = bus.subscribe()
+        try:
+            self._sse_send({"type": "hello", "ts": time.time()})
+            last_heartbeat = time.time()
+            while True:
+                event = sub.get(timeout=SSE_POLL_INTERVAL)
+                if event is not None:
+                    self._sse_send(event)
+                now = time.time()
+                if now - last_heartbeat >= SSE_HEARTBEAT_SECONDS:
+                    self.wfile.write(b": hb\n\n")
+                    self.wfile.flush()
+                    last_heartbeat = now
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass
+        finally:
+            sub.close()
+
+    def _sse_send(self, event: dict) -> None:
+        payload = "data: " + json.dumps(event) + "\n\n"
+        self.wfile.write(payload.encode("utf-8"))
+        self.wfile.flush()
 
     def do_POST(self) -> None:  # noqa: N802 - http.server API
         parsed = urlparse(self.path)
@@ -421,6 +473,39 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     raise RuntimeError(msg)
 
 
+def _start_activity_watcher(mind: NeuralMind):
+    """Spin up the file-activity watcher that feeds the live event stream.
+
+    Returns the watcher (so ``serve()`` can stop it on shutdown) or
+    ``None`` if the watcher could not start — the graph view still works
+    without it, the stream is just quiet.
+    """
+    try:
+        from .watcher import FileActivityWatcher
+    except Exception:
+        return None
+
+    bus = get_event_bus()
+
+    def on_batch(paths: list[str]) -> None:
+        # Surface the raw file edit immediately so the UI can log it
+        # even when nothing maps to a graph node.
+        bus.publish("file", {"paths": list(paths), "count": len(paths)})
+        # Reinforce synapses for any nodes in those files — that call
+        # itself publishes a "synapse" event when pairs were touched.
+        try:
+            mind.activate_files(paths)
+        except Exception:
+            pass
+
+    try:
+        watcher = FileActivityWatcher(str(mind.project_path), on_batch)
+        watcher.start()
+        return watcher
+    except Exception:
+        return None
+
+
 def serve(
     project_path: str,
     host: str = "127.0.0.1",
@@ -445,7 +530,11 @@ def serve(
     _Handler.allowed_open_paths = _compute_allowed_open_paths(mind)
     _Handler._graph_cache = None
 
+    # Bind the listening socket first so a port-in-use failure doesn't
+    # leak a running watcher thread; only spin the watcher up once we
+    # know the server is going to run.
     httpd = ThreadingHTTPServer((host, port), _Handler)
+    watcher = _start_activity_watcher(mind)
     base = f"http://{host}:{port}/"
     landing = f"{base}?token={token}" if token else base
     stats = mind.graph_data()["stats"]
@@ -475,4 +564,9 @@ def serve(
     except KeyboardInterrupt:
         print("\nStopping NeuralMind graph view.")
     finally:
+        if watcher is not None:
+            try:
+                watcher.stop()
+            except Exception:
+                pass
         httpd.server_close()
