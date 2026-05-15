@@ -1,15 +1,22 @@
-"""Tests for the local graph-view server (auth, editor open, first-run)."""
+"""Tests for the local graph-view server (auth, editor open, first-run, SSE)."""
 
 from __future__ import annotations
 
+import http.client
+import json
+import threading
+import time
+from http.server import ThreadingHTTPServer
 from types import SimpleNamespace
 
 import pytest
 
+from neuralmind.event_bus import publish
 from neuralmind.server import (
     _compute_allowed_open_paths,
     _editor_command,
     _ensure_graph_or_explain,
+    _Handler,
     _resolve_open_target,
 )
 
@@ -122,6 +129,67 @@ def test_resolve_open_target_no_source_file(tmp_path):
     path, line, reason = _resolve_open_target(mind, "n1")
     assert path is None
     assert reason == "node has no source file"
+
+
+def _run_handler_server():
+    """Spin up a ThreadingHTTPServer bound to ephemeral port; returns (server, thread, port)."""
+    # SSE handler reads from the event bus and ignores `mind` / open paths,
+    # so a minimal stub keeps the handler attributes well-formed for class init.
+    _Handler.mind = None
+    _Handler.auth_token = None
+    _Handler.editor = None
+    _Handler.allowed_open_paths = set()
+    _Handler._graph_cache = None
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    return httpd, thread, httpd.server_address[1]
+
+
+def test_sse_endpoint_streams_published_events():
+    httpd, thread, port = _run_handler_server()
+    try:
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request("GET", "/api/events")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        assert resp.getheader("Content-Type", "").startswith("text/event-stream")
+
+        # Give the handler a tick to subscribe before we publish.
+        for _ in range(40):
+            time.sleep(0.025)
+            from neuralmind.event_bus import get_event_bus
+
+            if get_event_bus().subscriber_count() >= 1:
+                break
+        publish("synapse", {"nodes": ["a", "b"], "pair_count": 1, "strength": 1.0})
+
+        deadline = time.time() + 5.0
+        events: list[dict] = []
+        buf = b""
+        while time.time() < deadline and len(events) < 2:
+            chunk = resp.fp.readline()
+            if not chunk:
+                break
+            buf += chunk
+            if buf.endswith(b"\n"):
+                for line in buf.splitlines():
+                    if line.startswith(b"data: "):
+                        try:
+                            events.append(json.loads(line[6:].decode("utf-8")))
+                        except ValueError:
+                            pass
+                buf = b""
+
+        types = [e["type"] for e in events]
+        assert "hello" in types
+        assert any(e.get("type") == "synapse" and e.get("pair_count") == 1 for e in events)
+        conn.close()
+    finally:
+        httpd.shutdown()
+        thread.join(timeout=2.0)
+        httpd.server_close()
 
 
 def test_allowed_open_paths_only_includes_in_project_files(tmp_path):
