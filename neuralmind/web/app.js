@@ -298,6 +298,15 @@
         ctx.strokeStyle = "#fff";
         ctx.stroke();
       }
+      const pulse = pulseAmount(n.id);
+      if (pulse > 0) {
+        ctx.globalAlpha = pulse * 0.8;
+        ctx.lineWidth = 2 / t.k;
+        ctx.strokeStyle = "#e0a458";
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r + 5 + 6 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+      }
       if (state.showLabels || n === focus || n === state.selected) {
         ctx.globalAlpha = dim ? 0.4 : 1;
         ctx.fillStyle = "#d6d7da";
@@ -309,13 +318,13 @@
   }
 
   // Pause the render loop when the layout is idle so we don't spin at
-  // 60fps drawing the same static graph forever. Interactions call wake()
-  // to kick it back on.
+  // 60fps drawing the same static graph forever. Interactions and
+  // incoming activity pulses call wake() to kick it back on.
   let paused = false;
   function tick() {
     simulate();
     draw();
-    if (state.alpha < 0.005 && !dragNode) {
+    if (state.alpha < 0.005 && !dragNode && pulses.size === 0) {
       paused = true;
     } else {
       requestAnimationFrame(tick);
@@ -751,10 +760,123 @@
     wake();
   });
 
+  /* ---------- live activity stream ---------- */
+
+  // nodeId → pulse-end timestamp (performance.now() units). The render
+  // loop reads pulseAmount(id) ∈ [0,1] each frame; entries are evicted
+  // once expired so an idle graph can pause animation.
+  const PULSE_MS = 1400;
+  const pulses = new Map();
+  function pulseAmount(id) {
+    const exp = pulses.get(id);
+    if (!exp) return 0;
+    const now = performance.now();
+    if (exp <= now) {
+      pulses.delete(id);
+      return 0;
+    }
+    return (exp - now) / PULSE_MS;
+  }
+  function triggerPulses(ids) {
+    if (!Array.isArray(ids) || !ids.length) return;
+    const exp = performance.now() + PULSE_MS;
+    let any = false;
+    for (const id of ids) {
+      if (state.nodeById.has(id)) {
+        pulses.set(id, exp);
+        any = true;
+      }
+    }
+    if (any) wake();
+  }
+
+  const eventLog = document.getElementById("event-log");
+  const eventStatus = document.getElementById("activity-status");
+  const MAX_LOG_ROWS = 80;
+
+  function formatEventTime(ts) {
+    const d = ts ? new Date(ts * 1000) : new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  function describeEvent(ev) {
+    if (ev.type === "synapse") {
+      const n = ev.nodes ? ev.nodes.length : 0;
+      const p = ev.pair_count || 0;
+      return `synapse · ${p} pair${p === 1 ? "" : "s"} on ${n} node${n === 1 ? "" : "s"}`;
+    }
+    if (ev.type === "file") {
+      const c = ev.count || (ev.paths ? ev.paths.length : 0);
+      const first = ev.paths && ev.paths[0] ? shortPath(ev.paths[0]) : "";
+      return c <= 1 && first
+        ? `file · ${first}`
+        : `file · ${c} edit${c === 1 ? "" : "s"}` + (first ? ` (${first}…)` : "");
+    }
+    if (ev.type === "hello") return "stream connected";
+    return ev.type;
+  }
+
+  function shortPath(p) {
+    const parts = String(p).split("/");
+    return parts.length <= 2 ? p : parts.slice(-2).join("/");
+  }
+
+  function appendEvent(ev) {
+    const li = document.createElement("li");
+    li.className = "event-row fresh event-" + (ev.type || "system");
+    const time = document.createElement("span");
+    time.className = "event-time";
+    time.textContent = formatEventTime(ev.ts);
+    const label = document.createElement("span");
+    label.className = "event-label";
+    label.textContent = describeEvent(ev);
+    li.append(time, label);
+    eventLog.prepend(li);
+    while (eventLog.children.length > MAX_LOG_ROWS) {
+      eventLog.removeChild(eventLog.lastChild);
+    }
+    // Fade the "fresh" highlight after a beat so newer rows still stand out.
+    setTimeout(() => li.classList.remove("fresh"), 1200);
+  }
+
+  function startEventStream() {
+    if (typeof EventSource === "undefined") {
+      eventStatus.classList.add("dead");
+      eventStatus.title = "Live stream not supported in this browser";
+      return;
+    }
+    const es = new EventSource("/api/events");
+    es.onopen = () => {
+      eventStatus.classList.add("live");
+      eventStatus.classList.remove("dead");
+      eventStatus.title = "Live stream connected";
+    };
+    es.onerror = () => {
+      // EventSource auto-reconnects; just mark the status until then.
+      eventStatus.classList.remove("live");
+      eventStatus.classList.add("dead");
+      eventStatus.title = "Live stream disconnected; will retry";
+    };
+    es.onmessage = (m) => {
+      let ev;
+      try {
+        ev = JSON.parse(m.data);
+      } catch {
+        return;
+      }
+      appendEvent(ev);
+      if (ev.type === "synapse" && Array.isArray(ev.nodes)) {
+        triggerPulses(ev.nodes);
+      }
+    };
+  }
+
   /* ---------- boot ---------- */
 
   resize();
   load().catch((e) => {
     loading.textContent = "Failed to load graph: " + e;
   });
+  startEventStream();
 })();
