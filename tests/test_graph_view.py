@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from neuralmind.core import NeuralMind
 from neuralmind.synapses import SynapseStore
 
@@ -26,6 +28,11 @@ def test_synapse_edges_returns_sorted_filtered_view(tmp_path):
 
 
 def test_recent_queries_records_top_hit_ids_and_caps(temp_project, monkeypatch):
+    # The replay log gates on the same consent flag as the learning log,
+    # which defaults to off in tests — force it on so the recording
+    # actually happens.
+    monkeypatch.setattr("neuralmind.core.is_memory_logging_enabled", lambda: True)
+
     mind = NeuralMind(str(temp_project), backend_type="in_memory")
     mind.build()
 
@@ -39,9 +46,18 @@ def test_recent_queries_records_top_hit_ids_and_caps(temp_project, monkeypatch):
     assert recent[0]["question"] == "billing tasks"
     assert recent[1]["question"] == "authentication flow"
 
-    # Every record carries the fields the UI consumes.
+    # Every record carries every field the UI consumes — including the
+    # `layers_used` and `communities_loaded` shown in the replay detail.
     for rec in recent:
-        assert {"ts", "question", "tokens", "reduction_ratio", "top_hits"} <= rec.keys()
+        assert {
+            "ts",
+            "question",
+            "tokens",
+            "reduction_ratio",
+            "layers_used",
+            "communities_loaded",
+            "top_hits",
+        } <= rec.keys()
         for hit in rec["top_hits"]:
             assert {"id", "label", "score"} <= hit.keys()
 
@@ -56,18 +72,24 @@ def test_recent_queries_records_top_hit_ids_and_caps(temp_project, monkeypatch):
             f.write(f'{{"question": "stale {i}", "ts": "2026-01-01T00:00:00Z"}}\n')
     mind.query("fresh")
     with log.open(encoding="utf-8") as f:
-        line_count = sum(1 for line in f if line.strip())
-    assert line_count == NeuralMind.RECENT_QUERIES_MAX
-    # The newest entry survived compaction.
-    assert mind.recent_queries(n=1)[0]["question"] == "fresh"
+        lines = [line for line in f if line.strip()]
+    assert len(lines) == NeuralMind.RECENT_QUERIES_MAX
+    # Compaction must keep the newest records (including this turn's
+    # "fresh" query) and drop the earliest stale records — not the other
+    # way around.
+    questions = [json.loads(line)["question"] for line in lines]
+    assert questions[-1] == "fresh"
+    assert "stale 0" not in questions
+    assert "stale 1" not in questions
 
 
-def test_recent_queries_append_is_concurrency_safe(temp_project):
+def test_recent_queries_append_is_concurrency_safe(temp_project, monkeypatch):
     # Verify that two writers appending in parallel each land an entry —
     # the previous read-modify-write implementation could have lost one
     # of them. With single-line atomic appends both must survive.
     import threading
 
+    monkeypatch.setattr("neuralmind.core.is_memory_logging_enabled", lambda: True)
     mind = NeuralMind(str(temp_project), backend_type="in_memory")
     mind.build()
 
@@ -86,6 +108,18 @@ def test_recent_queries_append_is_concurrency_safe(temp_project):
 
     recent = mind.recent_queries(n=NeuralMind.RECENT_QUERIES_MAX)
     assert len(recent) == 8 * 5
+
+
+def test_recent_queries_respects_memory_consent_optout(temp_project, monkeypatch):
+    # Users who opted out of query logging must not get a parallel
+    # persistence path through the replay log — gating the recorder on
+    # the same consent flag closes that loophole.
+    monkeypatch.setattr("neuralmind.core.is_memory_logging_enabled", lambda: False)
+    mind = NeuralMind(str(temp_project), backend_type="in_memory")
+    mind.build()
+    mind.query("would normally be recorded")
+    assert mind.recent_queries() == []
+    assert not mind._recent_queries_path().exists()
 
 
 def test_graph_data_shape_and_synapse_overlay(temp_project):

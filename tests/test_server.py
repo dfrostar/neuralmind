@@ -6,6 +6,8 @@ import http.client
 import json
 import threading
 import time
+import urllib.request
+from contextlib import contextmanager
 from http.server import ThreadingHTTPServer
 from types import SimpleNamespace
 
@@ -119,6 +121,81 @@ def test_resolve_open_target_unknown_node(tmp_path):
     path, line, reason = _resolve_open_target(mind, "missing")
     assert path is None
     assert reason == "unknown node id"
+
+
+@contextmanager
+def _running_server(mind, **handler_overrides):
+    """Start a real ThreadingHTTPServer in a background thread for endpoint tests.
+
+    The handler is global state, so each test must restore the class attrs
+    it touches when it tears the server down.
+    """
+    original = {
+        "mind": _Handler.mind,
+        "auth_token": _Handler.auth_token,
+        "editor": _Handler.editor,
+        "allowed_open_paths": _Handler.allowed_open_paths,
+        "_graph_cache": _Handler._graph_cache,
+    }
+    _Handler.mind = mind
+    _Handler.auth_token = None  # No auth in these tests; auth path covered elsewhere.
+    _Handler.editor = None
+    _Handler.allowed_open_paths = set()
+    _Handler._graph_cache = None
+    for k, v in handler_overrides.items():
+        setattr(_Handler, k, v)
+
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)
+    port = httpd.server_address[1]
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        thread.join(timeout=2)
+        for k, v in original.items():
+            setattr(_Handler, k, v)
+
+
+def test_api_queries_returns_recent_records_newest_first(tmp_path):
+    queries_payload = [
+        {"ts": "2026-05-15T01:00:00Z", "question": "older", "tokens": 100, "top_hits": []},
+        {"ts": "2026-05-15T02:00:00Z", "question": "newer", "tokens": 200, "top_hits": []},
+    ]
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: queries_payload[-n:][::-1])
+
+    with _running_server(fake_mind) as base:
+        with urllib.request.urlopen(base + "/api/queries?n=5", timeout=5) as resp:
+            data = json.loads(resp.read())
+        assert [q["question"] for q in data["queries"]] == ["newer", "older"]
+
+
+def test_api_queries_clamps_and_defaults_bad_n(tmp_path):
+    captured: dict = {}
+
+    def fake_recent(n=20):
+        captured["n"] = n
+        return []
+
+    fake_mind = SimpleNamespace(recent_queries=fake_recent)
+
+    with _running_server(fake_mind) as base:
+        # Bad value should fall back to the default n=20.
+        with urllib.request.urlopen(base + "/api/queries?n=notanumber", timeout=5) as resp:
+            json.loads(resp.read())
+        assert captured["n"] == 20
+
+        # Huge value should clamp down to 50.
+        with urllib.request.urlopen(base + "/api/queries?n=99999", timeout=5) as resp:
+            json.loads(resp.read())
+        assert captured["n"] == 50
+
+        # Zero or negative clamps up to 1.
+        with urllib.request.urlopen(base + "/api/queries?n=0", timeout=5) as resp:
+            json.loads(resp.read())
+        assert captured["n"] == 1
 
 
 def test_resolve_open_target_no_source_file(tmp_path):

@@ -918,6 +918,14 @@
     for (const q of queries) {
       const li = document.createElement("li");
       li.className = "replay-row";
+      // Treat the row as a button for assistive tech and keyboard users;
+      // <li> alone isn't focusable or activatable from the keyboard.
+      li.setAttribute("role", "button");
+      li.tabIndex = 0;
+      li.setAttribute(
+        "aria-label",
+        `Replay query: ${q.question || "(empty)"} (${(q.top_hits || []).length} hits)`
+      );
       const qLine = document.createElement("span");
       qLine.className = "q";
       qLine.textContent = q.question || "(empty)";
@@ -934,7 +942,14 @@
       if (state.replayActive && state.replayActive.ts === q.ts) {
         li.classList.add("active");
       }
-      li.addEventListener("click", () => replayQuery(q, li));
+      const activate = () => replayQuery(q, li);
+      li.addEventListener("click", activate);
+      li.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          activate();
+        }
+      });
       ul.appendChild(li);
     }
   }
@@ -959,14 +974,22 @@
       clearReplay();
       return;
     }
+    // Cancel any in-flight semantic search so its delayed response
+    // can't overwrite the replay hit set after we set it below.
+    if (searchAbort) searchAbort.abort();
+    searchInput.value = "";
+    searchResults.innerHTML = "";
+
     state.replayActive = record;
-    state.searchHitIds = new Set((record.top_hits || []).map((h) => h.id));
-    // Auto-enable "limit graph to search hits" so the replay actually
-    // filters the canvas — otherwise the highlight is invisible against
-    // a busy graph.
+    const hitIds = (record.top_hits || []).map((h) => h.id);
+    state.searchHitIds = new Set(hitIds);
+    // Auto-enable "limit graph to search hits" only when there's
+    // actually something to show — otherwise an empty hit set blanks
+    // the whole canvas and the user just sees nothing.
     const filterToggle = document.getElementById("toggle-filter-search");
-    filterToggle.checked = true;
-    state.filterToSearch = true;
+    const shouldFilter = hitIds.length > 0;
+    filterToggle.checked = shouldFilter;
+    state.filterToSearch = shouldFilter;
 
     document.querySelectorAll(".replay-row.active").forEach((el) =>
       el.classList.remove("active")
