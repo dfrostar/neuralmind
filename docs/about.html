@@ -80,10 +80,11 @@
     <section>
         <div class="container">
             <h2>How We Solve It</h2>
-            <h3>Three-Phase Architecture</h3>
+            <h3>Four-Phase Architecture</h3>
             <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
             <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
             <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
+            <p><strong>Phase 4 — Graph View <em>(new)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. The brain stops being a black box — you can finally see what it retrieved and what it has learned.</p>
             <p><strong>Result:</strong> 40–70× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 40–70% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
@@ -122,6 +123,10 @@
             </ul>
             <p>The synapse store is local SQLite, project-scoped, and inspectable. It exports a markdown summary that Claude Code's auto-memory system loads natively, so the learned associations show up in every session — no MCP tool call required.</p>
 
+            <h3>Graph View — <code>neuralmind serve</code> <em>(new)</em></h3>
+            <p>The agent-facing brain is now also a human-facing tool. A stdlib HTTP server renders a force-directed graph of the entire codebase in the browser — structural edges (calls and imports) drawn together with the learned synapse overlay, where edge thickness encodes weight. Each node has Obsidian-style backlinks and outgoing-links panels, a "synaptic neighbours" list with weights and activation counts, and a one-click "open in editor" button (smart support for VS Code, Cursor, vim, sublime, JetBrains). A semantic quick-switcher lets you type a phrase and jump straight to the matching node. Zero CDN dependencies; per-session access token bound to 127.0.0.1.</p>
+            <p>Why it matters: NeuralMind's retrieval used to be a black box — the agent claimed to use it, but you couldn't see what was found, what was missed, or whether the synapse layer was actually learning. The graph view exposes the whole index so retrievals are inspectable, debuggable, and trustable.</p>
+
             <h3>Compliance-First Design</h3>
             <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
         </div>
@@ -146,14 +151,14 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.4.0 — Brain-like Synapse Layer</h3>
-            <p>Production-ready with NIST AI RMF audit trail, MCP security hardening, pluggable embedding backends, and the new brain-like synapse layer with always-on file watcher and Claude Code lifecycle hooks. Actively maintained and tested.</p>
+            <h3>Current Release: v0.6.0 — Graph View</h3>
+            <p>Adds <code>neuralmind serve</code>: a local, dependency-free, Obsidian-style graph view over the existing index and synapse store. Code nodes coloured by community; structural edges and Hebbian synapses drawn together; backlinks, synaptic neighbours, semantic quick-switch, and one-click open-in-editor. Builds on v0.5.x's bundled MCP server and v0.4.0's brain-like synapse layer — no migration needed.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>v0.5.0 (Next)</strong> — MCP server bundled in the default install (no more <code>[mcp]</code> extra trap). Packaging-only release: the public API, CLI, MCP tools, hooks, and on-disk state are unchanged from v0.4.0.</li>
-                <li><strong>v0.5.x / v0.6.0</strong> — Auto-watcher launch from <code>SessionStart</code> (<a href="https://github.com/dfrostar/neuralmind/issues/78">#78</a>); synapse import/export so teams can share a learned brain (<a href="https://github.com/dfrostar/neuralmind/issues/79">#79</a>); benchmarks measuring retrieval quality with vs without synapses (<a href="https://github.com/dfrostar/neuralmind/issues/80">#80</a>); PostgreSQL pgvector scale testing; advanced observability dashboard; expanded backend ecosystem</li>
-                <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options</li>
+                <li><strong>v0.6.x</strong> — Live activity feed of synapse co-activations (the brain learning in real time), edge tooltips that explain "why are these two nodes related?", and a "replay last query" overlay that highlights the L3 hits the agent received.</li>
+                <li><strong>v0.7.0</strong> — Auto-watcher launch from <code>SessionStart</code> (<a href="https://github.com/dfrostar/neuralmind/issues/78">#78</a>); synapse import/export so teams can share a learned brain (<a href="https://github.com/dfrostar/neuralmind/issues/79">#79</a>); benchmarks measuring retrieval quality with vs without synapses (<a href="https://github.com/dfrostar/neuralmind/issues/80">#80</a>); PostgreSQL pgvector scale testing; expanded backend ecosystem.</li>
+                <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 
             <p><a href="../docs/FUTURE-PROOFING-PLAN.md">See the full roadmap →</a></p>
