@@ -27,9 +27,11 @@ and the file activity watcher.
 - `neuralmind/synapses.py` — SQLite-backed Hebbian synapse store
 - `neuralmind/synapse_memory.py` — markdown export to Claude Code memory
 - `neuralmind/watcher.py` — file activity → synapse co-activation
+- `neuralmind/event_bus.py` — process-local pub/sub for live activity events
+- `neuralmind/server.py` — local graph-view HTTP server + `/api/events` SSE
 - `neuralmind/hooks.py` — Claude Code hook registration + runtime
 - `neuralmind/mcp_server.py` — MCP tools for any agent
-- `neuralmind/cli.py` — `neuralmind {build,query,watch,install-hooks,…}`
+- `neuralmind/cli.py` — `neuralmind {build,query,watch,serve,install-hooks,…}`
 
 ## Local conventions
 
