@@ -295,6 +295,28 @@ class SynapseStore:
         ranked = sorted(activation.items(), key=lambda x: x[1], reverse=True)
         return ranked[:top_k]
 
+    def edges(
+        self, min_weight: float = 0.0, limit: int = 2000
+    ) -> list[tuple[str, str, float, int]]:
+        """Return synapse edges as (node_a, node_b, weight, activation_count).
+
+        Strongest first. Used by the graph-view UI to overlay learned
+        associations on top of the structural code graph, and is a
+        convenient read-only view for inspection.
+        """
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                SELECT node_a, node_b, weight, activation_count
+                FROM synapses
+                WHERE weight >= ?
+                ORDER BY weight DESC
+                LIMIT ?
+                """,
+                (min_weight, limit),
+            )
+            return [(r[0], r[1], float(r[2]), int(r[3])) for r in cur.fetchall()]
+
     def normalize_hubs(self, max_degree: int = HUB_DEGREE) -> int:
         """Trim weights on nodes that have grown into runaway hubs.
 

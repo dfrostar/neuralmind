@@ -432,6 +432,36 @@ def cmd_watch(args):
             print(f"\nWatcher stopped. Reinforced {activations_total} synapse pair(s) total.")
 
 
+def cmd_serve(args):
+    """Start the local graph-view UI server.
+
+    Builds the index, then serves an Obsidian-style force-directed graph
+    of the codebase (structural edges + learned synapse overlay) with
+    backlinks, local-graph focus, a community browser, and semantic
+    quick-switch search. Read-only — never writes to the index.
+    """
+    from neuralmind.server import serve
+
+    project_path = args.project_path or "."
+    path = Path(project_path)
+    if not path.is_dir():
+        print(f"serve failed: not a directory: {project_path}")
+        sys.exit(1)
+    try:
+        serve(
+            str(path),
+            host=args.host,
+            port=args.port,
+            open_browser=not args.no_browser,
+        )
+    except RuntimeError as exc:
+        print(f"serve failed: {exc}")
+        sys.exit(1)
+    except OSError as exc:
+        print(f"serve failed: could not bind {args.host}:{args.port} ({exc})")
+        sys.exit(1)
+
+
 def cmd_demo(args):
     """Run the bundled 30-second demo.
 
@@ -734,6 +764,35 @@ def main():
         help="Suppress per-batch logging",
     )
     watch_p.set_defaults(func=cmd_watch)
+
+    # serve command — local graph-view UI (Obsidian-style)
+    serve_p = subparsers.add_parser(
+        "serve",
+        help="Start the local graph-view UI (Obsidian-style graph of your code + synapses)",
+    )
+    serve_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    serve_p.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind (default: 127.0.0.1)",
+    )
+    serve_p.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Port to bind (default: 8765)",
+    )
+    serve_p.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Don't auto-open a browser window",
+    )
+    serve_p.set_defaults(func=cmd_serve)
 
     # demo command — runs against bundled sample_project, no git checkout needed
     demo_p = subparsers.add_parser(

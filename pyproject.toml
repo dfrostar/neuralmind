@@ -125,12 +125,14 @@ Changelog = "https://github.com/dfrostar/neuralmind/releases"
 packages = ["neuralmind"]
 include = [
     "neuralmind/demo_data/**",
+    "neuralmind/web/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
     "neuralmind/**/*.py",
     "neuralmind/demo_data/**",
+    "neuralmind/web/**",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
