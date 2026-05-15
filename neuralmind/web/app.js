@@ -40,8 +40,15 @@
     project: "",
     projectKey: "",        // absolute project path; stable across same-name repos
     searchHitIds: null,    // Set when filter-to-search is on
+    synapseMinWeight: 0.05, // matches server-side default; slider can raise it
+    hoveredEdge: null,     // {type, e} or null
     alpha: 1,
   };
+
+  // O(E) edge hover scales fine for typical projects (low thousands of
+  // edges); switch off above this to keep mousemove cheap on huge graphs.
+  const EDGE_HOVER_CAP = 8000;
+  const EDGE_HOVER_RADIUS = 4; // CSS pixels
 
   // Keying layout by the absolute project path stops two repos with the
   // same basename from overwriting each other's pinned positions.
@@ -266,7 +273,9 @@
 
     // synapse overlay
     if (state.showSynapses) {
+      const minW = state.synapseMinWeight;
       for (const e of state.synapseEdges) {
+        if (e.weight < minW) continue;
         if (!isVisible(e.s) || !isVisible(e.t)) continue;
         const lit =
           focus && (e.s.id === focus.id || e.t.id === focus.id);
@@ -355,6 +364,60 @@
     y: (sy - state.transform.y) / state.transform.k,
   });
 
+  function distSqPointToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) {
+      const ex = px - ax;
+      const ey = py - ay;
+      return ex * ex + ey * ey;
+    }
+    let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    const ex = px - cx;
+    const ey = py - cy;
+    return ex * ex + ey * ey;
+  }
+
+  // Find the visible edge nearest to the world-space point, or null. We
+  // walk both structural and synapse arrays and keep the closest hit
+  // within the (zoom-scaled) hover radius.
+  function edgeAt(wx, wy) {
+    const vis = visibleSet();
+    const isVisible = (n) => !vis || vis.has(n.id);
+    const radius = EDGE_HOVER_RADIUS / state.transform.k;
+    const radiusSq = radius * radius;
+
+    const totalEdges = state.structuralEdges.length + state.synapseEdges.length;
+    if (totalEdges > EDGE_HOVER_CAP) return null;
+
+    let bestEdge = null;
+    let bestType = null;
+    let bestDist = Infinity;
+
+    const consider = (e, type, weightGuard) => {
+      if (weightGuard && e.weight < state.synapseMinWeight) return;
+      if (!isVisible(e.s) || !isVisible(e.t)) return;
+      const d = distSqPointToSegment(wx, wy, e.s.x, e.s.y, e.t.x, e.t.y);
+      if (d < bestDist && d <= radiusSq) {
+        bestDist = d;
+        bestEdge = e;
+        bestType = type;
+      }
+    };
+
+    if (state.showStructural) {
+      for (const e of state.structuralEdges) consider(e, "structural", false);
+    }
+    if (state.showSynapses) {
+      for (const e of state.synapseEdges) consider(e, "synapse", true);
+    }
+    return bestEdge ? { type: bestType, e: bestEdge } : null;
+  }
+
   function nodeAt(sx, sy) {
     const w = toWorld(sx, sy);
     let best = null;
@@ -411,14 +474,43 @@
       const hoverChanged = hit !== state.hovered;
       state.hovered = hit;
       if (hit) {
+        // Node hover takes precedence; clear any edge hover.
+        if (state.hoveredEdge) state.hoveredEdge = null;
         tooltip.hidden = false;
+        tooltip.innerHTML = "";
         tooltip.textContent = hit.source_file
           ? `${hit.label}  —  ${hit.source_file}`
           : hit.label;
         tooltip.style.left = sx + 12 + "px";
         tooltip.style.top = sy + 12 + "px";
       } else {
-        tooltip.hidden = true;
+        const w = toWorld(sx, sy);
+        const edge = edgeAt(w.x, w.y);
+        const edgeChanged =
+          (edge && (!state.hoveredEdge || state.hoveredEdge.e !== edge.e)) ||
+          (!edge && state.hoveredEdge);
+        state.hoveredEdge = edge;
+        if (edge) {
+          tooltip.hidden = false;
+          tooltip.innerHTML = "";
+          const e = edge.e;
+          const head = document.createElement("span");
+          const arrow = edge.type === "structural" ? "→" : "↔";
+          head.textContent = `${e.s.label} ${arrow} ${e.t.label}`;
+          const detail = document.createElement("span");
+          detail.className = "tt-edge";
+          if (edge.type === "structural") {
+            detail.textContent = `structural · ${e.relation || "related"}`;
+          } else {
+            detail.textContent = `learned · w ${e.weight.toFixed(2)} · ${e.activation_count}×`;
+          }
+          tooltip.append(head, detail);
+          tooltip.style.left = sx + 12 + "px";
+          tooltip.style.top = sy + 12 + "px";
+        } else {
+          tooltip.hidden = true;
+        }
+        if (edgeChanged) wake();
       }
       if (hoverChanged) wake();
     }
@@ -736,6 +828,25 @@
   bind("toggle-solo", "soloCommunity");
   bind("toggle-filter-search", "filterToSearch");
   bind("toggle-labels", "showLabels");
+
+  const weightSlider = document.getElementById("synapse-min-weight");
+  const weightReadout = document.getElementById("weight-readout");
+  weightSlider.addEventListener("input", () => {
+    const v = parseFloat(weightSlider.value);
+    state.synapseMinWeight = isFinite(v) ? v : 0;
+    weightReadout.textContent = state.synapseMinWeight.toFixed(2);
+    // If the currently-hovered edge fell below the threshold, drop it
+    // so the tooltip doesn't stay stuck on an invisible line.
+    if (
+      state.hoveredEdge &&
+      state.hoveredEdge.type === "synapse" &&
+      state.hoveredEdge.e.weight < state.synapseMinWeight
+    ) {
+      state.hoveredEdge = null;
+      tooltip.hidden = true;
+    }
+    wake();
+  });
 
   document.getElementById("reset-layout").addEventListener("click", () => {
     if (!state.projectKey) return;
