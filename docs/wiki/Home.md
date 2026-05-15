@@ -6,15 +6,33 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
-**v0.4.0 — Brain-like synapse layer.** NeuralMind now runs as a second
-brain alongside the LLM: a persistent SQLite-backed weighted graph that
-learns associations between code nodes from co-activation, decays unused
-edges, and answers via spreading activation. Includes the `neuralmind watch`
-daemon, three new Claude Code lifecycle hooks (SessionStart, UserPromptSubmit,
-PreCompact), and a memory exporter that surfaces learned associations to
-Claude Code's auto-memory system. See the [release notes](../blob/main/RELEASE_NOTES_v0.4.0.md)
-or the [Architecture](Architecture#synapse-layer-v04) and [Learning Guide](Learning-Guide#v04-synapse-layer)
-sections.
+**v0.5.4 — Graph view (`neuralmind serve`).** A local,
+dependency-free, Obsidian-style force-directed graph over the same
+index your agent queries. Code nodes coloured by community;
+structural edges and Hebbian synapses drawn together; backlinks,
+synaptic neighbours, semantic quick-switch, and one-click
+open-in-editor. Per-session access token bound to 127.0.0.1 by
+default. Builds on v0.5.0's bundled MCP server and v0.4.0's
+brain-like synapse layer — no migration needed.
+
+**Coming next.** A Phase B sequence of small graph-view UX wins —
+[replay-last-query overlay (#105)](https://github.com/dfrostar/neuralmind/pull/105),
+[edge tooltips + min-weight synapse slider (#106)](https://github.com/dfrostar/neuralmind/pull/106),
+pin UX, and a `Cmd/Ctrl-K` quick-switch shortcut — followed by
+Phase C: a live activity feed of synapse co-activations so you can
+watch the brain learning in real time. Full plan in the
+[ROADMAP](../blob/main/ROADMAP.md).
+
+**v0.4.0 — Brain-like synapse layer.** NeuralMind runs as a second
+brain alongside the LLM: a persistent SQLite-backed weighted graph
+that learns associations between code nodes from co-activation,
+decays unused edges, and answers via spreading activation. Includes
+the `neuralmind watch` daemon, three Claude Code lifecycle hooks
+(SessionStart, UserPromptSubmit, PreCompact), and a memory exporter
+that surfaces learned associations to Claude Code's auto-memory
+system. See the [release notes](../blob/main/RELEASE_NOTES_v0.4.0.md)
+or the [Architecture](Architecture#synapse-layer-v04) and
+[Learning Guide](Learning-Guide#v04-synapse-layer) sections.
 
 ## Quick Links
 

@@ -112,6 +112,51 @@ ul {
   cursor: pointer;
 }
 
+.slider-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0 2px;
+  font-size: 12px;
+}
+.slider-toggle input[type="range"] { width: 100%; accent-color: var(--accent-warm); }
+.slider-toggle #weight-readout {
+  color: var(--accent-warm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 4px 22px;
+}
+.slider-row.disabled { opacity: 0.4; }
+.slider-row.disabled input { pointer-events: none; }
+.slider-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  min-width: 36px;
+}
+.slider-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.slider-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  min-width: 14px;
+  text-align: right;
+}
+
+#tooltip .tt-edge {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
 button.ghost, .open-btn {
   background: var(--bg-elev);
   color: var(--text);
@@ -129,6 +174,13 @@ button.ghost:disabled, .open-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.button-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.button-row > button { margin-top: 8px; }
 
 .open-status {
   display: block;

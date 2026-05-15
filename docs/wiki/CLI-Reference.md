@@ -632,6 +632,66 @@ neuralmind watch . --decay-interval 0
 
 ---
 
+### serve *(v0.5.4+)*
+
+Start the graph-view UI — a local, dependency-free, Obsidian-style
+force-directed graph over the same index and synapse store your AI
+agent queries. Renders code nodes coloured by community, structural
+edges and Hebbian synapses drawn together, plus backlinks, synaptic
+neighbours, a semantic quick-switcher, and one-click open-in-editor.
+Stops cleanly on Ctrl-C.
+
+The server binds to 127.0.0.1 by default and prints a per-session
+auth-token URL on startup; pass that URL to the browser so untrusted
+local processes can't read your graph.
+
+```bash
+neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [--no-auth]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+
+#### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--port` | `8765` | TCP port to bind to |
+| `--no-browser` | off | Don't auto-open a browser tab on startup |
+| `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
+| `--no-auth` | off | Disable the per-session auth token. Only use on a trusted host. |
+
+#### Examples
+
+```bash
+# Run against the current project
+neuralmind serve .
+
+# Custom editor for the "open in editor" button
+neuralmind serve . --editor "code -n"
+
+# Pick a different port and skip the browser
+neuralmind serve . --port 9000 --no-browser
+
+# Skip auth for a kiosk / trusted local host
+neuralmind serve . --no-auth
+```
+
+#### Notes
+
+- Read-only over HTTP. Edits to nodes/synapses still go through the
+  regular CLI and MCP tools; the UI only inspects.
+- The `/api/open` endpoint launches `$EDITOR` against an allowlist
+  pre-computed from the graph's `source_file` set, so a tampered
+  client can't trick the server into opening arbitrary paths.
+- Vanilla-JS frontend, stdlib-only HTTP server, no CDN. Safe to run
+  behind a firewall.
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
