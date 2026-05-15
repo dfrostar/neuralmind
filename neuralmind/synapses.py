@@ -158,6 +158,22 @@ class SynapseStore:
                 conn.execute("ROLLBACK")
                 raise
 
+        if pairs:
+            # Best-effort: never let the graph-view stream break a real write.
+            try:
+                from .event_bus import publish as _publish
+
+                _publish(
+                    "synapse",
+                    {
+                        "nodes": list(ids),
+                        "pair_count": len(pairs),
+                        "strength": float(strength),
+                    },
+                )
+            except Exception:
+                pass
+
         return len(pairs)
 
     def decay(self, now: float | None = None) -> dict:
