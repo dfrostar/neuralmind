@@ -93,6 +93,38 @@ neuralmind learn .
 
 Future queries get a `+0.3` rerank boost on modules that historically cooccur with your team's queries. Over a few weeks, retrieval starts to anticipate what you mean.
 
+## Always-on activity tracking (v0.6.0+)
+
+For monorepos that get touched by multiple agents and multiple
+developers across the day, run a long-lived `neuralmind watch`
+daemon next to your normal workflow:
+
+```bash
+# Terminal 1: live graph in browser
+neuralmind serve .
+
+# Terminal 2: always-on synapse learning from file edits
+neuralmind watch . --quiet &
+```
+
+The v0.6.0 cross-process JSONL bridge means `serve` and `watch`
+share a live feed even though they're separate processes. Every
+file save anywhere in the monorepo coalesces into a co-activation
+event; the corresponding nodes pulse on the canvas; the synapse
+store reinforces.
+
+After a week of normal team use, the pulse pattern on the canvas
+visibly concentrates around the parts of the monorepo currently
+under active development. Stale subtrees fade. "Synapse density
+over the last week" becomes a real, observable property of the
+graph — useful for onboarding ("here's what we've actually been
+working on"), for refactor planning ("here's the hot path
+nobody's touched in a month"), and for retrieval-quality
+debugging ("this cluster is over-represented, let me dial it back").
+
+`NEURALMIND_EVENT_LOG=0` disables the bridge if you don't need it.
+
 ---
 
-[← Back to use-case index](./README.md) · [Main README](../../README.md)
+[← Back to use-case index](./README.md) · [Main README](../../README.md) ·
+[Multi-agent: shared brain across tools](./multi-agent.md)

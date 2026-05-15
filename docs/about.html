@@ -46,6 +46,31 @@
     </header>
 
     <section>
+        <div class="container" id="whats-new-v060">
+            <h2>What's New in v0.6.0 — see the brain learning, live</h2>
+            <p><strong>The pitch flipped.</strong> v0.5.4 made the brain inspectable. v0.6.0 makes it <em>legible</em>. <code>neuralmind serve</code> now streams a live activity feed: synapse + file events pulse across the canvas in real time as the agent and the codebase interact. The graph stops being a static map and becomes a window into the hippocampus learning your codebase.</p>
+            <div class="quote">
+                "You can sit there, in real time, and watch the hippocampus learn your codebase. That's the moment when 'code RAG' turns into 'associative memory for your codebase.'"
+            </div>
+            <h3>Headline changes</h3>
+            <ul>
+                <li><strong>Live activity feed</strong> — <code>/api/events</code> SSE stream subscribed to the in-process event bus. Affected nodes pulse on the canvas; sidebar log shows the most recent ~80 events.</li>
+                <li><strong>Cross-process activity bridge</strong> — a separate <code>neuralmind watch</code> daemon, or a hook-driven Claude Code session in another process, feeds the same live feed via <code>&lt;project&gt;/.neuralmind/events.jsonl</code>. The in-process bus stays the primary path; the JSONL is a deliberately boring side channel. Opt out with <code>NEURALMIND_EVENT_LOG=0</code>.</li>
+                <li><strong>Pin UX</strong> — visible pin glyph on every pinned node, Pin/Unpin toggle in the detail panel, Unpin-all sidebar button.</li>
+                <li><strong>Quick-switch shortcuts</strong> — <code>Cmd/Ctrl-K</code> and <code>/</code> jump-to-search from anywhere; <code>Esc</code> clears and blurs.</li>
+                <li><strong>Local-graph depth slider</strong> — 1–3 hops via BFS from the focused node; defaults to 1 so existing behavior is unchanged.</li>
+                <li><strong>Replay-last-query overlay</strong> — re-highlight the L3 hits the agent most recently received. Closes the trust gap on retrieval in a 2-second visual.</li>
+                <li><strong>Edge tooltips + min-weight synapse slider</strong> — hover an edge to see relationship and weight; filter low-weight synapses.</li>
+                <li><strong>Docs refresh</strong> — ROADMAP, README hero, landing page, about page, and wiki all reframed around the graph view as a second pillar alongside the 40–70× reduction.</li>
+            </ul>
+            <h3>The shared-brain unlock</h3>
+            <p>The cross-process JSONL bridge means that if you run Claude Code, Cursor, OpenClaw, and Hermes-Agent against the same project — they reinforce the same synapse store, and the v0.6.0 graph view shows the <em>union</em> of their activity. Pre-v0.6.0, the synapse store was shared but the experience wasn't — three tools talking to a black box. Now the brain is visibly one brain. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/multi-agent.md">multi-agent walkthrough</a>.</p>
+            <p>No migration: same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. Upgrade is <code>pip install --upgrade neuralmind</code>. Then <code>neuralmind serve</code> and save a file — that's the demo and the verification in one motion.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.0.md">Full v0.6.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container">
             <h2>Mission</h2>
             <p>NeuralMind exists to solve a fundamental problem: AI agents waste tokens loading raw source code when they only need small, semantic context.</p>
@@ -84,7 +109,7 @@
             <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
             <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
             <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
-            <p><strong>Phase 4 — Graph View <em>(new)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. The brain stops being a black box — you can finally see what it retrieved and what it has learned.</p>
+            <p><strong>Phase 4 — Graph View <em>(v0.5.4, made live in v0.6.0)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. <strong>v0.6.0 adds a live activity feed</strong> — synapse and file events pulse on the canvas in real time, with a cross-process JSONL bridge that lets Claude Code, Cursor, OpenClaw, and Hermes-Agent all feed the same canvas. The brain stops being a black box — you can finally watch what it's learning, live.</p>
             <p><strong>Result:</strong> 40–70× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 40–70% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
@@ -123,9 +148,10 @@
             </ul>
             <p>The synapse store is local SQLite, project-scoped, and inspectable. It exports a markdown summary that Claude Code's auto-memory system loads natively, so the learned associations show up in every session — no MCP tool call required.</p>
 
-            <h3>Graph View — <code>neuralmind serve</code> <em>(new)</em></h3>
+            <h3>Graph View — <code>neuralmind serve</code> <em>(v0.5.4, made live in v0.6.0)</em></h3>
             <p>The agent-facing brain is now also a human-facing tool. A stdlib HTTP server renders a force-directed graph of the entire codebase in the browser — structural edges (calls and imports) drawn together with the learned synapse overlay, where edge thickness encodes weight. Each node has Obsidian-style backlinks and outgoing-links panels, a "synaptic neighbours" list with weights and activation counts, and a one-click "open in editor" button (smart support for VS Code, Cursor, vim, sublime, JetBrains). A semantic quick-switcher lets you type a phrase and jump straight to the matching node. Zero CDN dependencies; per-session access token bound to 127.0.0.1.</p>
-            <p>Why it matters: NeuralMind's retrieval used to be a black box — the agent claimed to use it, but you couldn't see what was found, what was missed, or whether the synapse layer was actually learning. The graph view exposes the whole index so retrievals are inspectable, debuggable, and trustable.</p>
+            <p><strong>v0.6.0 adds a live activity feed.</strong> The server now exposes a long-lived <code>/api/events</code> SSE stream subscribed to an in-process event bus. Every <code>SynapseStore.reinforce()</code> call and every coalesced file-edit batch publishes an event; affected nodes pulse on the canvas with short animated radial rings, and a sidebar log shows the most recent ~80 events. A cross-process JSONL bridge (<code>&lt;project&gt;/.neuralmind/events.jsonl</code>) lets a separate <code>neuralmind watch</code> daemon, a Claude Code session, an OpenClaw call, or any other process feed the same canvas. One canvas, every agent. Opt out with <code>NEURALMIND_EVENT_LOG=0</code>.</p>
+            <p>Why it matters: pre-v0.6.0 the graph view was inspectable but static — you had to refresh to see new state. With the live feed, you can sit there in real time and watch the hippocampus learn your codebase. "The agent has a learning memory" stops being a claim and becomes a visual.</p>
 
             <h3>Compliance-First Design</h3>
             <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
@@ -151,13 +177,13 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.5.4 — Graph View</h3>
-            <p>Adds <code>neuralmind serve</code>: a local, dependency-free, Obsidian-style graph view over the existing index and synapse store. Code nodes coloured by community; structural edges and Hebbian synapses drawn together; backlinks, synaptic neighbours, semantic quick-switch, and one-click open-in-editor. Builds on v0.5.x's bundled MCP server and v0.4.0's brain-like synapse layer — no migration needed.</p>
+            <h3>Current Release: v0.6.0 — Live Activity Feed</h3>
+            <p>Builds on v0.5.4's graph view. <code>neuralmind serve</code> now streams synapse + file events to the canvas in real time over SSE — affected nodes pulse, a sidebar log shows the most recent ~80 events. A cross-process JSONL bridge means a separate <code>neuralmind watch</code> daemon, or a hook-driven Claude Code session, feeds the same live feed via <code>&lt;project&gt;/.neuralmind/events.jsonl</code>. Pin UX, Cmd/Ctrl-K quick-switch, a 1–3-hop depth slider, replay-last-query overlay, edge tooltips, and a min-weight synapse slider round out the release. No migration — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.0.md">v0.6.0 release notes</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>v0.5.5 (next patch release)</strong> — Graph-view Phase B: a <a href="https://github.com/dfrostar/neuralmind/pull/105">"replay last query" overlay</a> highlighting the L3 hits the agent received, <a href="https://github.com/dfrostar/neuralmind/pull/106">edge tooltips + a min-weight synapse slider</a> answering "why are these two nodes related?" on hover, plus pin UX and a <code>Cmd/Ctrl-K</code> quick-switch shortcut. <strong>Phase C</strong> after: a live activity feed of synapse co-activations so you can watch the brain learning in real time.</li>
-                <li><strong>Later</strong> — Auto-watcher launch from <code>SessionStart</code> (<a href="https://github.com/dfrostar/neuralmind/issues/78">#78</a>); synapse import/export so teams can share a learned brain (<a href="https://github.com/dfrostar/neuralmind/issues/79">#79</a>); benchmarks measuring retrieval quality with vs without synapses (<a href="https://github.com/dfrostar/neuralmind/issues/80">#80</a>); PostgreSQL pgvector scale testing; expanded backend ecosystem.</li>
+                <li><strong>v0.7 (next)</strong> — Saved named graph views (Obsidian-style filter/zoom/depth combos, localStorage-backed), right-click context menu on nodes, PNG/SVG canvas export, time-based edge filter (complements v0.6.0's min-weight slider), and unifying the <code>neuralmind watch</code> daemon with the in-process bus so a single-process serve+watch stays unified without the JSONL bridge.</li>
+                <li><strong>Later</strong> — Synapse import/export so teams can share a learned brain (<a href="https://github.com/dfrostar/neuralmind/issues/79">#79</a>); benchmarks measuring retrieval quality with vs without synapses (<a href="https://github.com/dfrostar/neuralmind/issues/80">#80</a>); PostgreSQL pgvector scale testing; expanded backend ecosystem.</li>
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 

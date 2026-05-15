@@ -263,7 +263,69 @@ jobs:
 
 ---
 
-### Use Case 6: IDE Integration (MCP Server)
+### Use Case 6: Watch the brain learn (v0.6.0+)
+
+**When**: You want a "second screen" for your AI coding session — a
+live view of which parts of your codebase the agent is using, in
+real time, as it works.
+
+**How**:
+
+```bash
+# Terminal A — your normal Claude Code (or Cursor, OpenClaw, etc.) session
+claude-code   # work as usual
+
+# Terminal B — the live graph view
+neuralmind serve .
+
+# Terminal C — always-on synapse learning from file edits
+neuralmind watch . --quiet &
+```
+
+Open the URL `neuralmind serve` prints in your browser. The graph
+view is now alive:
+
+- **Every time your agent calls `neuralmind_query`** (or any other
+  NeuralMind MCP tool), the affected nodes pulse on the canvas with
+  short animated radial rings.
+- **Every time you save a file in your editor**, the corresponding
+  node pulses (because the `watch` daemon coalesces edits into
+  co-activation events).
+- **The sidebar log** shows the most recent ~80 events with
+  timestamps. Click an entry to focus the corresponding node.
+
+**The three-terminal walkthrough:**
+
+1. Open Claude Code (terminal A) and ask "how does authentication
+   work in this codebase?"
+2. Switch to terminal B's browser tab — the auth-cluster nodes are
+   pulsing as the agent calls `neuralmind_query`.
+3. In your editor, open `src/auth/handlers.py`, add a comment, save.
+4. Switch back to the browser — the corresponding node pulses
+   within ~1s.
+5. The synapse store has now reinforced the edges between auth
+   handlers and whatever else the agent looked at. Next session,
+   asking about auth will surface this file faster.
+
+**Benefit**: trust-gap closure. "Is the agent looking at the right
+code?" becomes a 2-second visual answer. When retrieval feels
+wrong, the **Replay last query** action in the detail panel
+re-highlights the L3 hits the agent actually received — usually the
+diagnosis is obvious from the pulse pattern.
+
+**Multi-agent unlock**: the v0.6.0 cross-process JSONL bridge
+(`<project>/.neuralmind/events.jsonl`) means *every* agent talking
+to the same project (Claude Code, Cursor, OpenClaw, Hermes-Agent)
+feeds the same canvas. See
+[multi-agent use-case page](../blob/main/docs/use-cases/multi-agent.md).
+
+**Opt out**: set `NEURALMIND_EVENT_LOG=0` to disable the JSONL
+writer (you still get the in-process feed for the agent running
+`serve` itself).
+
+---
+
+### Use Case 7: IDE Integration (MCP Server)
 
 **When**: Direct AI integration in Claude Desktop or Cursor
 

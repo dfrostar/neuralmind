@@ -313,6 +313,77 @@ pip install "neuralmind[dev]"
 
 ---
 
+### "Why does my `serve` canvas stay quiet when I edit files?" *(v0.6.0+)*
+
+You ran `neuralmind serve`, opened the graph view, edited a file in
+your editor — and no node pulsed. The live feed (v0.6.0) depends on
+two paths working: the in-process event bus, and the cross-process
+JSONL bridge. When the canvas is silent, one of these is the
+culprit. Check in this order:
+
+1. **`.neuralmind/` directory exists in the project root.** The
+   JSONL bridge writes to `<project>/.neuralmind/events.jsonl`,
+   which the watcher and `serve` both need to find. If the directory
+   doesn't exist (fresh clone, or you blew it away):
+
+   ```bash
+   neuralmind build .   # creates .neuralmind/ alongside graphify-out/
+   ```
+
+2. **`NEURALMIND_EVENT_LOG` is not set to `0`.** This env var
+   disables the JSONL writer. If it's set in your shell config or
+   the parent process of either `serve` or `watch`, the in-process
+   feed still works for the *same* process but cross-process events
+   never reach the canvas.
+
+   ```bash
+   env | grep NEURALMIND_EVENT_LOG   # should be empty or =1
+   unset NEURALMIND_EVENT_LOG        # clear it if set
+   ```
+
+3. **Both processes target the same project root.** A common gotcha:
+   `neuralmind serve` was started from `~/projects/foo` and
+   `neuralmind watch` from `~/projects/foo/src/`. They write to
+   *different* `.neuralmind/events.jsonl` files and never see each
+   other. Run both from the project root, or pass an explicit
+   `project_path`:
+
+   ```bash
+   neuralmind serve /abs/path/to/project &
+   neuralmind watch /abs/path/to/project &
+   ```
+
+4. **The file watcher is actually running.** If you're relying on
+   Claude Code's `PostToolUse` hooks for file events, those only
+   fire on tool calls — they won't see your manual editor saves.
+   For editor-driven pulses, start `neuralmind watch` separately:
+
+   ```bash
+   neuralmind watch . --quiet &
+   ```
+
+5. **The browser tab actually has the SSE stream open.** Open the
+   browser devtools network tab and look for a long-lived request
+   to `/api/events`. If it's missing or 404, refresh the page; if it
+   401s, your token expired (re-open the URL `serve` printed).
+
+6. **The synapse store is being reinforced.** If no agent is
+   calling `neuralmind_query` or any other NeuralMind MCP tool, the
+   synapse store has nothing to publish — the canvas pulses only
+   when something actually happens. Trigger one manually:
+
+   ```bash
+   neuralmind query . "test query"
+   ```
+
+   You should see a pulse within ~1s.
+
+If the canvas still stays quiet after all six, that's a bug — open
+an issue with the output of `neuralmind stats .` and a
+description of what you tried.
+
+---
+
 ### "MCP server won't start"
 
 ```bash
