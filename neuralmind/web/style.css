@@ -150,6 +150,13 @@ button.ghost:disabled, .open-btn:disabled {
   cursor: not-allowed;
 }
 
+.button-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.button-row > button { margin-top: 8px; }
+
 .open-status {
   display: block;
   margin-top: 6px;

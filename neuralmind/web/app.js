@@ -316,6 +316,18 @@
         ctx.arc(n.x, n.y, r + 5 + 6 * pulse, 0, Math.PI * 2);
         ctx.stroke();
       }
+      if (n.pinned) {
+        // Pin glyph: small warm dot at top-right, zoom-stable.
+        const off = r * 0.72;
+        const pr = 2.4 / t.k;
+        ctx.beginPath();
+        ctx.arc(n.x + off, n.y - off, pr, 0, Math.PI * 2);
+        ctx.fillStyle = "#e0a458";
+        ctx.fill();
+        ctx.lineWidth = 0.8 / t.k;
+        ctx.strokeStyle = "#1a1b1e";
+        ctx.stroke();
+      }
       if (state.showLabels || n === focus || n === state.selected) {
         ctx.globalAlpha = dim ? 0.4 : 1;
         ctx.fillStyle = "#d6d7da";
@@ -641,6 +653,22 @@
       `  ·  community ${node.community}  ·  ${node.file_type}`;
     panel.append(title, sub);
 
+    const pinBtn = document.createElement("button");
+    pinBtn.type = "button";
+    pinBtn.className = "open-btn";
+    const refreshPinLabel = () => {
+      pinBtn.textContent = node.pinned ? "Unpin" : "Pin";
+    };
+    refreshPinLabel();
+    pinBtn.addEventListener("click", () => {
+      node.pinned = !node.pinned;
+      refreshPinLabel();
+      saveLayout();
+      if (!node.pinned) state.alpha = Math.max(state.alpha, 0.3);
+      wake();
+    });
+    panel.append(pinBtn);
+
     if (node.source_file) {
       const openBtn = document.createElement("button");
       openBtn.type = "button";
@@ -900,6 +928,22 @@
       n.y = canvas.clientHeight / 2 + (Math.random() - 0.5) * canvas.clientHeight * 0.8;
     }
     state.alpha = 1;
+    if (state.selected) renderDetail(state.selected);
+    wake();
+  });
+
+  document.getElementById("unpin-all").addEventListener("click", () => {
+    let any = false;
+    for (const n of state.nodes) {
+      if (n.pinned) {
+        n.pinned = false;
+        any = true;
+      }
+    }
+    if (!any) return;
+    saveLayout();
+    state.alpha = Math.max(state.alpha, 0.6);
+    if (state.selected) renderDetail(state.selected);
     wake();
   });
 
