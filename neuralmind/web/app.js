@@ -33,6 +33,7 @@
     showSynapses: true,
     showStructural: true,
     localOnly: false,
+    localDepth: 1,
     soloCommunity: false,
     filterToSearch: false,
     showLabels: false,
@@ -40,8 +41,15 @@
     project: "",
     projectKey: "",        // absolute project path; stable across same-name repos
     searchHitIds: null,    // Set when filter-to-search is on
+    synapseMinWeight: 0.05, // matches server-side default; slider can raise it
+    hoveredEdge: null,     // {type, e} or null
     alpha: 1,
   };
+
+  // O(E) edge hover scales fine for typical projects (low thousands of
+  // edges); switch off above this to keep mousemove cheap on huge graphs.
+  const EDGE_HOVER_CAP = 8000;
+  const EDGE_HOVER_RADIUS = 4; // CSS pixels
 
   // Keying layout by the absolute project path stops two repos with the
   // same basename from overwriting each other's pinned positions.
@@ -196,13 +204,23 @@
     let set = null;
     if (state.localOnly && state.selected) {
       set = new Set([state.selected.id]);
-      for (const e of state.structuralEdges) {
-        if (e.s.id === state.selected.id) set.add(e.t.id);
-        if (e.t.id === state.selected.id) set.add(e.s.id);
-      }
-      for (const e of state.synapseEdges) {
-        if (e.s.id === state.selected.id) set.add(e.t.id);
-        if (e.t.id === state.selected.id) set.add(e.s.id);
+      let frontier = new Set([state.selected.id]);
+      const depth = Math.max(1, Math.min(3, state.localDepth | 0));
+      for (let hop = 0; hop < depth && frontier.size; hop++) {
+        const next = new Set();
+        const visit = (e) => {
+          if (frontier.has(e.s.id) && !set.has(e.t.id)) {
+            set.add(e.t.id);
+            next.add(e.t.id);
+          }
+          if (frontier.has(e.t.id) && !set.has(e.s.id)) {
+            set.add(e.s.id);
+            next.add(e.s.id);
+          }
+        };
+        for (const e of state.structuralEdges) visit(e);
+        for (const e of state.synapseEdges) visit(e);
+        frontier = next;
       }
     }
     if (state.soloCommunity && state.activeCommunity != null) {
@@ -266,7 +284,9 @@
 
     // synapse overlay
     if (state.showSynapses) {
+      const minW = state.synapseMinWeight;
       for (const e of state.synapseEdges) {
+        if (e.weight < minW) continue;
         if (!isVisible(e.s) || !isVisible(e.t)) continue;
         const lit =
           focus && (e.s.id === focus.id || e.t.id === focus.id);
@@ -305,6 +325,18 @@
         ctx.strokeStyle = "#e0a458";
         ctx.beginPath();
         ctx.arc(n.x, n.y, r + 5 + 6 * pulse, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (n.pinned) {
+        // Pin glyph: small warm dot at top-right, zoom-stable.
+        const off = r * 0.72;
+        const pr = 2.4 / t.k;
+        ctx.beginPath();
+        ctx.arc(n.x + off, n.y - off, pr, 0, Math.PI * 2);
+        ctx.fillStyle = "#e0a458";
+        ctx.fill();
+        ctx.lineWidth = 0.8 / t.k;
+        ctx.strokeStyle = "#1a1b1e";
         ctx.stroke();
       }
       if (state.showLabels || n === focus || n === state.selected) {
@@ -375,6 +407,60 @@
     y: (sy - state.transform.y) / state.transform.k,
   });
 
+  function distSqPointToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) {
+      const ex = px - ax;
+      const ey = py - ay;
+      return ex * ex + ey * ey;
+    }
+    let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const cx = ax + t * dx;
+    const cy = ay + t * dy;
+    const ex = px - cx;
+    const ey = py - cy;
+    return ex * ex + ey * ey;
+  }
+
+  // Find the visible edge nearest to the world-space point, or null. We
+  // walk both structural and synapse arrays and keep the closest hit
+  // within the (zoom-scaled) hover radius.
+  function edgeAt(wx, wy) {
+    const vis = visibleSet();
+    const isVisible = (n) => !vis || vis.has(n.id);
+    const radius = EDGE_HOVER_RADIUS / state.transform.k;
+    const radiusSq = radius * radius;
+
+    const totalEdges = state.structuralEdges.length + state.synapseEdges.length;
+    if (totalEdges > EDGE_HOVER_CAP) return null;
+
+    let bestEdge = null;
+    let bestType = null;
+    let bestDist = Infinity;
+
+    const consider = (e, type, weightGuard) => {
+      if (weightGuard && e.weight < state.synapseMinWeight) return;
+      if (!isVisible(e.s) || !isVisible(e.t)) return;
+      const d = distSqPointToSegment(wx, wy, e.s.x, e.s.y, e.t.x, e.t.y);
+      if (d < bestDist && d <= radiusSq) {
+        bestDist = d;
+        bestEdge = e;
+        bestType = type;
+      }
+    };
+
+    if (state.showStructural) {
+      for (const e of state.structuralEdges) consider(e, "structural", false);
+    }
+    if (state.showSynapses) {
+      for (const e of state.synapseEdges) consider(e, "synapse", true);
+    }
+    return bestEdge ? { type: bestType, e: bestEdge } : null;
+  }
+
   function nodeAt(sx, sy) {
     const w = toWorld(sx, sy);
     let best = null;
@@ -431,14 +517,43 @@
       const hoverChanged = hit !== state.hovered;
       state.hovered = hit;
       if (hit) {
+        // Node hover takes precedence; clear any edge hover.
+        if (state.hoveredEdge) state.hoveredEdge = null;
         tooltip.hidden = false;
+        tooltip.innerHTML = "";
         tooltip.textContent = hit.source_file
           ? `${hit.label}  —  ${hit.source_file}`
           : hit.label;
         tooltip.style.left = sx + 12 + "px";
         tooltip.style.top = sy + 12 + "px";
       } else {
-        tooltip.hidden = true;
+        const w = toWorld(sx, sy);
+        const edge = edgeAt(w.x, w.y);
+        const edgeChanged =
+          (edge && (!state.hoveredEdge || state.hoveredEdge.e !== edge.e)) ||
+          (!edge && state.hoveredEdge);
+        state.hoveredEdge = edge;
+        if (edge) {
+          tooltip.hidden = false;
+          tooltip.innerHTML = "";
+          const e = edge.e;
+          const head = document.createElement("span");
+          const arrow = edge.type === "structural" ? "→" : "↔";
+          head.textContent = `${e.s.label} ${arrow} ${e.t.label}`;
+          const detail = document.createElement("span");
+          detail.className = "tt-edge";
+          if (edge.type === "structural") {
+            detail.textContent = `structural · ${e.relation || "related"}`;
+          } else {
+            detail.textContent = `learned · w ${e.weight.toFixed(2)} · ${e.activation_count}×`;
+          }
+          tooltip.append(head, detail);
+          tooltip.style.left = sx + 12 + "px";
+          tooltip.style.top = sy + 12 + "px";
+        } else {
+          tooltip.hidden = true;
+        }
+        if (edgeChanged) wake();
       }
       if (hoverChanged) wake();
     }
@@ -548,6 +663,22 @@
       (node.source_location ? `  ·  ${node.source_location}` : "") +
       `  ·  community ${node.community}  ·  ${node.file_type}`;
     panel.append(title, sub);
+
+    const pinBtn = document.createElement("button");
+    pinBtn.type = "button";
+    pinBtn.className = "open-btn";
+    const refreshPinLabel = () => {
+      pinBtn.textContent = node.pinned ? "Unpin" : "Pin";
+    };
+    refreshPinLabel();
+    pinBtn.addEventListener("click", () => {
+      node.pinned = !node.pinned;
+      refreshPinLabel();
+      saveLayout();
+      if (!node.pinned) state.alpha = Math.max(state.alpha, 0.3);
+      wake();
+    });
+    panel.append(pinBtn);
 
     if (node.source_file) {
       const openBtn = document.createElement("button");
@@ -682,6 +813,27 @@
     }
   }
 
+  /* ---------- keyboard shortcuts ---------- */
+
+  // Cmd/Ctrl-K from anywhere, '/' when no field is focused → jump to
+  // the search box (select existing text so re-typing overwrites).
+  // Esc inside the search box clears it and returns focus to the page.
+  window.addEventListener("keydown", (ev) => {
+    const t = ev.target;
+    const inField =
+      t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    const cmdK = (ev.metaKey || ev.ctrlKey) && (ev.key === "k" || ev.key === "K");
+    if (cmdK || (ev.key === "/" && !inField)) {
+      ev.preventDefault();
+      searchInput.focus();
+      searchInput.select();
+    } else if (ev.key === "Escape" && t === searchInput) {
+      searchInput.value = "";
+      searchInput.dispatchEvent(new Event("input"));
+      searchInput.blur();
+    }
+  });
+
   /* ---------- open in editor ---------- */
 
   async function openInEditor(node, statusEl, btn) {
@@ -757,6 +909,44 @@
   bind("toggle-filter-search", "filterToSearch");
   bind("toggle-labels", "showLabels");
 
+  const weightSlider = document.getElementById("synapse-min-weight");
+  const weightReadout = document.getElementById("weight-readout");
+  weightSlider.addEventListener("input", () => {
+    const v = parseFloat(weightSlider.value);
+    state.synapseMinWeight = isFinite(v) ? v : 0;
+    weightReadout.textContent = state.synapseMinWeight.toFixed(2);
+    // If the currently-hovered edge fell below the threshold, drop it
+    // so the tooltip doesn't stay stuck on an invisible line.
+    if (
+      state.hoveredEdge &&
+      state.hoveredEdge.type === "synapse" &&
+      state.hoveredEdge.e.weight < state.synapseMinWeight
+    ) {
+      state.hoveredEdge = null;
+      tooltip.hidden = true;
+    }
+    wake();
+  });
+
+  const depthInput = document.getElementById("local-depth");
+  const depthValue = document.getElementById("local-depth-value");
+  const depthRow = depthInput.closest(".slider-row");
+  function syncDepthEnabled() {
+    const off = !state.localOnly;
+    depthRow.classList.toggle("disabled", off);
+    // Mirror the CSS state on the input itself so keyboard / screen-reader
+    // users see the same "inert" behavior the sighted UI shows. Without
+    // this the range is still focusable + adjustable while it looks dimmed.
+    depthInput.disabled = off;
+  }
+  depthInput.addEventListener("input", () => {
+    state.localDepth = Math.max(1, Math.min(3, parseInt(depthInput.value, 10) || 1));
+    depthValue.textContent = String(state.localDepth);
+    wake();
+  });
+  document.getElementById("toggle-local").addEventListener("change", syncDepthEnabled);
+  syncDepthEnabled();
+
   document.getElementById("reset-layout").addEventListener("click", () => {
     if (!state.projectKey) return;
     try {
@@ -768,6 +958,22 @@
       n.y = canvas.clientHeight / 2 + (Math.random() - 0.5) * canvas.clientHeight * 0.8;
     }
     state.alpha = 1;
+    if (state.selected) renderDetail(state.selected);
+    wake();
+  });
+
+  document.getElementById("unpin-all").addEventListener("click", () => {
+    let any = false;
+    for (const n of state.nodes) {
+      if (n.pinned) {
+        n.pinned = false;
+        any = true;
+      }
+    }
+    if (!any) return;
+    saveLayout();
+    state.alpha = Math.max(state.alpha, 0.6);
+    if (state.selected) renderDetail(state.selected);
     wake();
   });
 
