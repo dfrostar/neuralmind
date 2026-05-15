@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from neuralmind.server import (
+    _compute_allowed_open_paths,
     _editor_command,
     _ensure_graph_or_explain,
     _resolve_open_target,
@@ -121,3 +122,30 @@ def test_resolve_open_target_no_source_file(tmp_path):
     path, line, reason = _resolve_open_target(mind, "n1")
     assert path is None
     assert reason == "node has no source file"
+
+
+def test_allowed_open_paths_only_includes_in_project_files(tmp_path):
+    # In-project file -> allowed; missing/outside files -> excluded.
+    keep = tmp_path / "auth" / "handlers.py"
+    keep.parent.mkdir(parents=True)
+    keep.write_text("x")
+
+    outside = tmp_path.parent / "evil.py"
+    outside.write_text("x")
+
+    try:
+        mind = SimpleNamespace(
+            project_path=tmp_path,
+            embedder=SimpleNamespace(
+                nodes=[
+                    {"id": "ok", "source_file": "auth/handlers.py"},
+                    {"id": "missing", "source_file": "auth/missing.py"},
+                    {"id": "escape", "source_file": str(outside)},
+                    {"id": "blank", "source_file": ""},
+                ]
+            ),
+        )
+        allowed = _compute_allowed_open_paths(mind)
+        assert allowed == {str(keep.resolve())}
+    finally:
+        outside.unlink()
