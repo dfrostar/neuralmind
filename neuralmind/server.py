@@ -46,9 +46,7 @@ def _build_graph_payload(mind: NeuralMind) -> dict:
     for node in data["nodes"]:
         cid = node.get("community", -1)
         counts[cid] = counts.get(cid, 0) + 1
-    data["communities"] = [
-        {"id": cid, "size": size} for cid, size in sorted(counts.items())
-    ]
+    data["communities"] = [{"id": cid, "size": size} for cid, size in sorted(counts.items())]
     return data
 
 
@@ -101,9 +99,7 @@ def _editor_command(editor: str, path: str, line: int | None) -> list[str]:
     return base + [path]
 
 
-def _resolve_open_target(
-    mind: NeuralMind, node_id: str
-) -> tuple[Path | None, int | None, str]:
+def _resolve_open_target(mind: NeuralMind, node_id: str) -> tuple[Path | None, int | None, str]:
     """Map a node id to (absolute file path under project, line, label).
 
     Returns ``(None, None, reason)`` if the node is unknown, has no
@@ -198,9 +194,7 @@ class _Handler(BaseHTTPRequestHandler):
 
         return False, None
 
-    def _send_json(
-        self, payload: dict, status: int = 200, set_cookie: str | None = None
-    ) -> None:
+    def _send_json(self, payload: dict, status: int = 200, set_cookie: str | None = None) -> None:
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")

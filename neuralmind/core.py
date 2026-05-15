@@ -568,9 +568,7 @@ class NeuralMind:
                 stats["synapses"] = None
         return stats
 
-    def graph_data(
-        self, synapse_min_weight: float = 0.05, synapse_limit: int = 2000
-    ) -> dict:
+    def graph_data(self, synapse_min_weight: float = 0.05, synapse_limit: int = 2000) -> dict:
         """Return the full code graph for the ``serve`` graph-view UI.
 
         Combines structural edges (calls/imports from graph.json) with the
