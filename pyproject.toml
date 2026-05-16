@@ -64,7 +64,15 @@ keywords = [
     "skeleton-view",
     "output-compression",
     "developer-tools",
-    "developer-productivity"
+    "developer-productivity",
+    "graph-view",
+    "code-graph",
+    "obsidian-style",
+    "synapse-layer",
+    "hebbian-learning",
+    "code-visualization",
+    "force-directed-graph",
+    "neuralmind-serve"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
