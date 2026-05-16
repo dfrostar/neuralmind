@@ -8,6 +8,7 @@ See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflo
 
 ## Table of Contents
 
+- [Install — pick your path](#install--pick-your-path)
 - [30-Second Setup](#30-second-setup)
 - [Choose Your Workflow](#choose-your-workflow)
 - [Platform Setup](#platform-setup)
@@ -21,22 +22,46 @@ See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflo
 
 ---
 
-## 30-Second Setup
+## Install — pick your path
+
+NeuralMind installs five ways. They all deliver the same package; pick
+the one that fits your existing tooling.
+
+| Method | Command | When to pick |
+|---|---|---|
+| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. |
+| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. |
+| **Docker** | `docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind neuralmind --help` | Containerized — no Python on the host. |
+| **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Contributing or hacking. |
+
+Pros and cons of each path, including persistence and PATH behavior:
+[Install paths walkthrough](../use-cases/install-paths.md).
+
+**Verify any install:**
 
 ```bash
-# 1. Install NeuralMind and graphify
-pip install neuralmind graphifyy
+python -c "import neuralmind; print(neuralmind.__version__)"
+neuralmind --help
+```
 
-# 2. Go to your project
+---
+
+## 30-Second Setup
+
+Once installed (any path above):
+
+```bash
+# 1. Go to your project
 cd /path/to/your-project
 
-# 3. Generate the knowledge graph
+# 2. Generate the knowledge graph
 graphify update .
 
-# 4. Build the neural index
+# 3. Build the neural index
 neuralmind build .
 
-# 5. Test it
+# 4. Test it
 neuralmind wakeup .
 ```
 

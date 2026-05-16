@@ -434,9 +434,33 @@ Full comparison index: [docs/comparisons/](docs/comparisons/README.md).
 
 ## 🚀 Quick Start (humans)
 
+### Install — pick your path
+
+NeuralMind installs five ways. The CLI, semantic indexing, and the MCP
+server (for Claude Code, Cursor, Cline, Continue, and any MCP client)
+come in every path.
+
+| Method | Command | When to pick |
+|---|---|---|
+| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. Recommended if you want `neuralmind` available everywhere. |
+| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. ~10× faster install than pip. |
+| **Docker** | `docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind neuralmind --help` | Containerized — no Python on the host. Image built from the `Dockerfile` in this repo; auto-published to GHCR in a later release. |
+| **From source** | `git clone … && pip install -e .` | Hacking on NeuralMind itself. |
+
+**Verify install** (works for every path):
+
 ```bash
-# Install (includes the CLI, semantic indexing, and the MCP server
-# for Claude Code, Cursor, Cline, Continue, and any MCP client)
+python -c "import neuralmind; print(neuralmind.__version__)"
+neuralmind --help
+```
+
+Walkthrough with pros/cons of each path: [docs/use-cases/install-paths.md](docs/use-cases/install-paths.md).
+
+### Index a project
+
+```bash
+# Use whichever install method above
 pip install neuralmind graphifyy
 
 # Go to your project

@@ -15,6 +15,7 @@ Aider builds a concise, tree-sitter-derived map of your repository — a ranked 
 | Tool-output compression | None | Read/Bash/Grep PostToolUse hooks |
 | Learns from usage | No | Yes — cooccurrence-based reranking |
 | Languages | Whatever tree-sitter supports | Same (via graphify) |
+| Install methods | `pip install aider-chat` + LLM API key | `pip` / `pipx` / `uv` / Docker / source — no API key required for the local index |
 
 ## When to pick which
 
