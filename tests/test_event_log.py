@@ -154,6 +154,39 @@ def test_tailer_skips_malformed_lines(tmp_path):
     assert [ev.get("i") for ev in received] == [1, 2]
 
 
+def test_tailer_recovers_from_rotation_without_dropping_prewritten_lines(tmp_path):
+    """Rotation race: lines already in the new file when rotation is
+    detected must still be delivered. Reopening at EOF would skip them
+    until the next write — silent event loss for the live activity feed
+    (#115)."""
+    log = tmp_path / "events.jsonl"
+    log.touch()
+    received: list[dict] = []
+    tailer = EventLogTailer(log, received.append, poll_interval=0.05)
+    tailer.start()
+    try:
+        time.sleep(0.15)  # let tailer seek-to-end on the original (empty) file
+        # logrotate-style rename + write to the NEW file before the tailer's
+        # next poll runs. These lines must not be skipped.
+        rotated = tmp_path / "events.jsonl.1"
+        log.rename(rotated)
+        with open(log, "wb") as fh:
+            fh.write(b'{"type": "prewritten", "i": 0}\n')
+            fh.write(b'{"type": "prewritten", "i": 1}\n')
+            fh.write(b'{"type": "prewritten", "i": 2}\n')
+        deadline = time.time() + 3.0
+        while (
+            time.time() < deadline
+            and sum(1 for ev in received if ev.get("type") == "prewritten") < 3
+        ):
+            time.sleep(0.05)
+    finally:
+        tailer.stop(timeout=2.0)
+
+    prewritten = [ev for ev in received if ev.get("type") == "prewritten"]
+    assert [ev["i"] for ev in prewritten] == [0, 1, 2]
+
+
 def test_tailer_recovers_from_rotation(tmp_path):
     """logrotate-style rename + new file: inode changes, tailer resumes."""
     log = tmp_path / "events.jsonl"
