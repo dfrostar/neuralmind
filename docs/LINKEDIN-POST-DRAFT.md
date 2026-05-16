@@ -1,9 +1,116 @@
 # LinkedIn post draft — NeuralMind progress update
 
-Two sets of drafts. The **v0.6.0 launch drafts** are the current
-batch — post one of them the moment v0.6.0 is on PyPI. The
-**earlier drafts** below are the previous progress update; kept for
-reference and as a backbone if you want to combine.
+Three sets of drafts. The **v0.6.1 launch drafts** are the current
+batch — post one of them the moment v0.6.1 is on PyPI. The
+**v0.6.0 launch drafts** below were the previous progress update.
+The **earlier drafts** below those are the v0.5-era progress update;
+kept for reference and as a backbone if you want to combine.
+
+---
+
+## v0.6.1 launch drafts
+
+The pitch frame: **"NeuralMind installs wherever you work."** This
+is the "second progress update" after v0.6.0 — same project, but
+broader distribution. Five install paths (pip / pipx / uv / Docker /
+source), each verifiable in one line. Audience is Python developers
+and AI-tooling early adopters: people who already have an opinion
+about pipx vs uv and will share install-method posts in their own
+networks.
+
+Pair every draft with the v0.6.1 screencast clip
+([`SCREENCAST-v0.6.1.md`](SCREENCAST-v0.6.1.md)) — the
+`pipx install neuralmind` → `docker run …` → both-canvases-side-by-side
+visual is what makes "installs anywhere" land as a *thing*, not just
+a list. Don't post the v0.6.1 variants without it.
+
+### Draft v0.6.1–A — feature-tour, scannable (recommended)
+
+> NeuralMind v0.6.1 ships today. The theme: **installs wherever you work.**
+>
+> → **`pip install neuralmind`** — the default. Works in any venv.
+>
+> → **`pipx install neuralmind`** — global CLI, isolated env. `neuralmind`
+>   on PATH from any directory without activating anything.
+>
+> → **`uv pip install neuralmind`** — ~10× faster than pip, same wheel.
+>
+> → **`docker run ghcr.io/dfrostar/neuralmind …`** — containerized.
+>   No Python on the host.
+>
+> → **From source** — `git clone && pip install -e .` for contributors.
+>
+> All five paths deliver the same package: the `neuralmind` CLI, the
+> `neuralmind-mcp` server (for Claude Code, Cursor, Cline, Continue,
+> and any MCP client), and the live graph view from v0.6.0.
+>
+> Smoke test, identical for every path:
+>
+>   `python -c "import neuralmind; print(neuralmind.__version__)"`
+>   `neuralmind --help`
+>
+> Why this matters: v0.6.0 made the brain visible. v0.6.1 makes it
+> reachable from any workflow — corporate Python that still mandates
+> pip, the uv-native indie stack, the Dockerized CI pipeline, the
+> pipx-managed dev box. NeuralMind shouldn't lose to "installing it
+> is annoying."
+>
+> The measurable claim is unchanged: 40–70× per-query token reduction
+> on real codebases, reproducible in 30 seconds on a fresh clone with
+> `bash scripts/demo.sh`.
+>
+> [VIDEO: 60-second clip — pipx install + docker run + both canvases pulsing]
+>
+> github.com/dfrostar/neuralmind
+>
+> #ClaudeCode #Cursor #AIEngineering #OpenSource #DeveloperTools #Python
+
+### Draft v0.6.1–B — short, dev-honest
+
+> NeuralMind v0.6.1 is out today.
+>
+> No new features in the brain. Five new ways to install it.
+>
+> `pip`, `pipx`, `uv`, Docker, source. Same package, same CLI, same MCP
+> server, same Obsidian-style live graph view. The one in your active
+> venv, the one on your global PATH, the one in your CI image, the
+> one in your air-gapped network — same `neuralmind`.
+>
+> Smoke test is identical for every path:
+>
+>   `python -c "import neuralmind; print(neuralmind.__version__)"`
+>   `neuralmind --help`
+>
+> v0.6.0 was about the brain becoming visible (the live activity
+> feed, the pulse rings). v0.6.1 is about the brain becoming
+> reachable. The headline number hasn't changed (40–70× per-query
+> token reduction; verifiable in 30 seconds on a fresh clone via
+> `bash scripts/demo.sh`). What's changed is who can get to it.
+>
+> [VIDEO: 60-second install-anywhere clip]
+>
+> Free, MIT, fully local. github.com/dfrostar/neuralmind
+
+### Choosing between A / B
+
+- **A** is the default. Scannable, lists all five paths with the
+  micro-benefit of each, names the audience. Good for the engineering
+  network.
+- **B** is shorter and more declarative. Pick if your network skews
+  busy / mobile-first / non-technical-tooling-people.
+
+### Common across both
+
+- **The video is still non-optional.** "Five install paths" reads as
+  marketing copy without the visual of two terminals (`pipx` and
+  `docker run`) producing the same `neuralmind serve` canvas. That
+  side-by-side is the proof.
+- **Don't lead with the keyword bump.** PyPI keyword changes matter
+  for discoverability but they're internal plumbing — the post is
+  about the install experience.
+- **Phase 2 (v0.7 "Always-On") is the next post.** systemd / launchd
+  / Aider / `/healthz`. Different audience (ops / SREs). Don't try
+  to cram it into the v0.6.1 post.
 
 ---
 
