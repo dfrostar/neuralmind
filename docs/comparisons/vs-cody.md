@@ -16,6 +16,7 @@ Sourcegraph Cody is a code AI assistant backed by Sourcegraph's server-side code
 | Tool-output compression | No | Yes (PostToolUse hooks) |
 | License | Proprietary (open-core) | MIT |
 | Best fit | Large orgs with many repos | Individual developers + single-repo teams |
+| Install methods | Sourcegraph server + Cody editor extension | `pip` / `pipx` / `uv` / Docker / source — no server to run |
 
 ## When to pick which
 
