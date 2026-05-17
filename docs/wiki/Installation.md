@@ -6,16 +6,47 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 
 ## Table of Contents
 
+- [Install — pick your path](#install--pick-your-path) *(new in v0.6.1)*
 - [System Requirements](#system-requirements)
 - [Quick Install](#quick-install)
 - [Installation Methods](#installation-methods)
   - [From PyPI](#from-pypi)
+  - [pipx](#pipx)
+  - [uv](#uv)
+  - [Docker](#docker)
   - [From Source](#from-source)
   - [Development Installation](#development-installation)
 - [Dependencies](#dependencies)
 - [Platform-Specific Instructions](#platform-specific-instructions)
 - [Verification](#verification)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## Install — pick your path
+
+*New in [v0.6.1](../../blob/main/RELEASE_NOTES_v0.6.1.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
+
+| Method | Command | When to pick |
+|---|---|---|
+| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. |
+| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. |
+| **Docker** | `docker build -t neuralmind:dev . && docker run --rm -v "$PWD:/project:ro" neuralmind:dev neuralmind --help` | Containerized — no Python on the host. **Build locally for now**; GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release. |
+| **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Hacking on NeuralMind itself. |
+
+**Verify any install:**
+
+```bash
+neuralmind --help     # works for every path
+
+# For pip / uv / source (a Python env where neuralmind is importable):
+python -c "import neuralmind; print(neuralmind.__version__)"
+```
+
+Full walkthrough with pros and cons of each path: [Install paths](../../blob/main/docs/use-cases/install-paths.md).
+
+The sections below remain the deep reference — system requirements, dependency tables, platform-specific notes, and troubleshooting.
 
 ---
 
@@ -33,9 +64,9 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 ### Software Prerequisites
 
 1. **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/)
-2. **pip**: Usually included with Python
+2. **pip** (or [pipx](https://pipx.pypa.io/) / [uv](https://docs.astral.sh/uv/)): Usually included with Python
 3. **git** (optional): For source installation
-4. **graphify**: For generating knowledge graphs from codebases
+4. **graphify**: For generating knowledge graphs from codebases (installed alongside NeuralMind in every path above)
 
 ---
 
@@ -54,13 +85,15 @@ pip install graphifyy
 neuralmind --help
 ```
 
+> **Prefer one of the other four install paths?** See the [install matrix](#install--pick-your-path) above.
+
 ---
 
 ## Installation Methods
 
 ### From PyPI
 
-The recommended installation method for most users.
+The default installation method.
 
 #### Default Installation
 
@@ -93,6 +126,57 @@ All extras (equivalent to `[dev]` since v0.5.0):
 
 ```bash
 pip install neuralmind[all]
+```
+
+### pipx
+
+[pipx](https://pipx.pypa.io/) installs each Python application in its own dedicated venv and exposes the entry points on your PATH globally. `neuralmind` and `neuralmind-mcp` are then available from any directory without activating anything.
+
+```bash
+pipx install neuralmind
+pipx inject neuralmind graphifyy
+```
+
+**Trade-off:** because pipx isolates the package, `import neuralmind` from your project's own Python won't work. If you also script against the Python API, use `pip` in a project venv instead.
+
+### uv
+
+[uv](https://docs.astral.sh/uv/) is Astral's Rust-based Python package manager — significantly faster installs, drop-in for pip, compatible venvs.
+
+```bash
+uv pip install neuralmind graphifyy
+```
+
+For a `uv`-managed project:
+
+```bash
+uv add neuralmind graphifyy
+```
+
+### Docker
+
+The repo ships a multi-stage `Dockerfile` in the root. Build it locally for now — the GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release.
+
+```bash
+# Build
+docker build -t neuralmind:dev .
+
+# Run the MCP server against the current directory (read-only mount)
+docker run --rm -i \
+  -v "$PWD:/project:ro" \
+  neuralmind:dev neuralmind-mcp /project
+
+# Run the graph view on http://localhost:8765
+docker run --rm -p 8765:8765 \
+  -v "$PWD:/project:ro" \
+  neuralmind:dev \
+  neuralmind serve /project --host 0.0.0.0 --no-auth
+```
+
+To persist the index between runs, mount the project directory read-write so `.neuralmind/` and `graphify-out/` land on the host:
+
+```bash
+docker run --rm -v "$PWD:/project" neuralmind:dev neuralmind build /project
 ```
 
 ### From Source
@@ -219,13 +303,17 @@ pip install neuralmind
 
 ### Docker
 
+Use the repo's [`Dockerfile`](../../blob/main/Dockerfile) — multi-stage, non-root, transitive deps pre-wheeled in the builder stage so the runtime image doesn't need a C toolchain. See the [Docker section above](#docker) for the build and run commands, or the [install-paths walkthrough](../../blob/main/docs/use-cases/install-paths.md#4-docker--no-python-on-the-host) for persistence and security notes.
+
+If you want a minimal app-style Dockerfile for embedding NeuralMind inside another image:
+
 ```dockerfile
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install NeuralMind (MCP server is bundled by default)
-RUN pip install neuralmind
+# Install NeuralMind (MCP server is bundled by default) + graph builder
+RUN pip install --no-cache-dir neuralmind graphifyy
 
 # Your project files
 COPY . .
@@ -240,11 +328,12 @@ CMD ["neuralmind-mcp"]
 ### Check Installation
 
 ```bash
-# Check CLI is available
+# Check CLI is available — works for every install path
 neuralmind --help
 
-# Check version
-python -c "import neuralmind; print('NeuralMind installed successfully')"
+# Check version — pip / uv / source paths only
+# (pipx isolates the package in its own venv; Docker runs in-container)
+python -c "import neuralmind; print(neuralmind.__version__)"
 ```
 
 ### Verify Dependencies

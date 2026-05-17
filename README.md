@@ -11,7 +11,9 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **🆕 New in v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
+> **🆕 New in v0.6.1** — **Install anywhere.** Five install paths now in the README: `pip`, `pipx`, `uv`, Docker, and source. Same package every path; smoke-test verified. [Release notes](RELEASE_NOTES_v0.6.1.md) · [Install matrix ↓](#install--pick-your-path)
+>
+> **v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
 
 > **🌐 [Visit the landing page](https://dfrostar.github.io/neuralmind/) • 📖 [Read the About page](https://dfrostar.github.io/neuralmind/about.html) • ⚖️ Not affiliated with NeuralMind.ai**
 
@@ -434,10 +436,37 @@ Full comparison index: [docs/comparisons/](docs/comparisons/README.md).
 
 ## 🚀 Quick Start (humans)
 
+### Install — pick your path
+
+NeuralMind installs five ways. The CLI, semantic indexing, and the MCP
+server (for Claude Code, Cursor, Cline, Continue, and any MCP client)
+come in every path.
+
+| Method | Command | When to pick |
+|---|---|---|
+| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. Recommended if you want `neuralmind` available everywhere. |
+| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. ~10× faster install than pip. |
+| **Docker** | `docker build -t neuralmind:dev . && docker run --rm -v "$PWD:/project:ro" neuralmind:dev neuralmind --help` | Containerized — no Python on the host. **Build locally for now** — the GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release. |
+| **From source** | `git clone … && pip install -e .` | Hacking on NeuralMind itself. |
+
+**Verify install:**
+
 ```bash
-# Install (includes the CLI, semantic indexing, and the MCP server
-# for Claude Code, Cursor, Cline, Continue, and any MCP client)
-pip install neuralmind graphifyy
+neuralmind --help     # works for every install path
+
+# For pip / uv / source (a Python env where neuralmind is importable):
+python -c "import neuralmind; print(neuralmind.__version__)"
+```
+
+The `python -c` line is skipped for pipx and Docker — pipx isolates the package in its own venv, and Docker doesn't expose the in-container Python.
+
+Walkthrough with pros/cons of each path: [docs/use-cases/install-paths.md](docs/use-cases/install-paths.md).
+
+### Index a project
+
+```bash
+# Install via any path above, then:
 
 # Go to your project
 cd your-project
@@ -882,6 +911,58 @@ OpenClaw's MCP support covers stdio (shown above), SSE, HTTP, and
 [MCP CLI reference](https://docs.openclaw.ai/cli/mcp) for details on
 `url`/`transport` config and the inverse direction (`openclaw mcp serve`,
 which exposes OpenClaw's own channels as an MCP server to other clients).
+
+### Agent Zero
+
+[Agent Zero](https://github.com/agent0ai/agent-zero) is a self-organising
+AI agent framework with first-class MCP support — both as a client (it
+consumes MCP servers) and as a server (it exposes its own tools to other
+MCP clients). NeuralMind plugs in via the standard MCP client path.
+
+**Prerequisite:** install NeuralMind (the MCP server ships with the
+default install):
+
+```bash
+pip install neuralmind
+```
+
+**Register** NeuralMind via Agent Zero's Web UI:
+
+1. Open Agent Zero → **Settings → MCP/A2A → External MCP Servers → Open**
+2. Paste this into the JSON editor:
+
+```json
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": ["/absolute/path/to/your-project"]
+    }
+  }
+}
+```
+
+3. Click **Apply now**. Agent Zero discovers NeuralMind's tools at
+   handshake and registers them into the normal tool registry.
+
+The schema is the standard MCP `command` / `args` / `env` shape — see
+the upstream [MCP setup guide](https://github.com/agent0ai/agent-zero/blob/main/docs/guides/mcp-setup.md)
+for HTTP/SSE transports, OAuth, and per-server tool filtering.
+
+If you haven't installed Agent Zero yet, the upstream README has the
+Docker and Python install paths.
+
+**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+the same project and any tool call from Agent Zero will pulse the
+corresponding nodes on the canvas. The synapse store is shared with
+Claude Code, Cursor, Cline, Continue, OpenClaw, Hermes-Agent, and any
+other agent pointed at this project — see
+[docs/use-cases/multi-agent.md](docs/use-cases/multi-agent.md).
+
+> **Coming soon — one-click install.** NeuralMind is being submitted to
+> the [`agent0ai/a0-plugins`](https://github.com/agent0ai/a0-plugins)
+> registry so users can discover and install it from inside Agent Zero's
+> Plugin Hub. The manual JSON path above continues to work either way.
 
 ### Skill (OpenClaw, Agent Zero, Hermes, any SKILL.md host)
 
@@ -1534,6 +1615,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.6.1](RELEASE_NOTES_v0.6.1.md)** | Install anywhere — `pip` / `pipx` / `uv` / Docker / source, Dockerfile, event-log rotation fix |
 | **[Release Notes v0.6.0](RELEASE_NOTES_v0.6.0.md)** | Live activity feed, cross-process JSONL bridge, pin UX, depth slider, replay overlay |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
 | **[USAGE.md](USAGE.md)** | Extended usage examples |

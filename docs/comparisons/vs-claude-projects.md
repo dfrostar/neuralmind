@@ -17,6 +17,7 @@ Claude Projects is Anthropic's feature for attaching a persistent set of files (
 | Tool-output compression | No | Yes |
 | Offline | No | Yes |
 | Model choice | Claude only | Any model |
+| Install methods | Claude.ai web account | `pip` / `pipx` / `uv` / Docker / source — fully local |
 
 ## When to pick which
 

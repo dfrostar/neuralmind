@@ -172,6 +172,23 @@ def test_api_queries_returns_recent_records_newest_first(tmp_path):
         assert [q["question"] for q in data["queries"]] == ["newer", "older"]
 
 
+def test_api_queries_defaults_n_to_20_when_omitted(tmp_path):
+    """No ?n= → recent_queries(n=20). Locks in the route's documented
+    default so future query-string parsing changes can't drift it (#116)."""
+    captured: dict = {}
+
+    def fake_recent(n=20):
+        captured["n"] = n
+        return []
+
+    fake_mind = SimpleNamespace(recent_queries=fake_recent)
+
+    with _running_server(fake_mind) as base:
+        with urllib.request.urlopen(base + "/api/queries", timeout=5) as resp:
+            json.loads(resp.read())
+        assert captured["n"] == 20
+
+
 def test_api_queries_clamps_and_defaults_bad_n(tmp_path):
     captured: dict = {}
 
