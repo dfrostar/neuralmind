@@ -8,7 +8,7 @@ For the longer-horizon engineering plan (release cadence, monitoring,
 compliance, scale targets), see
 [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md).
 
-## Shipped in v0.6.1 — install anywhere
+## Shipped in v0.7.0 — install anywhere
 
 Distribution release, not a features release. The brain is the same;
 the matrix of ways to reach it widened.
@@ -33,7 +33,7 @@ the matrix of ways to reach it widened.
   for `/api/queries`.
 
 No migration. Same `graph.json`, same `synapses.db`, same hooks. See
-[v0.6.1 release notes](RELEASE_NOTES_v0.6.1.md) and the
+[v0.7.0 release notes](RELEASE_NOTES_v0.7.0.md) and the
 [install-paths walkthrough](docs/use-cases/install-paths.md) for the
 full surface.
 
@@ -93,9 +93,9 @@ synapse-graph viewer in A0's web UI) is a follow-up if the
 basic MCP listing draws users. Few hundred lines of Python against
 [A0's plugin API](https://www.agent-zero.ai/p/docs/plugins/).
 
-## Now (v0.7) — Always-On
+## Now (v0.8) — Always-On
 
-Distribution is sorted (v0.6.1); the next batch makes `neuralmind
+Distribution is sorted (v0.7.0); the next batch makes `neuralmind
 watch` and `neuralmind serve` first-class production processes.
 Tracking issue: [#119](https://github.com/dfrostar/neuralmind/issues/119).
 
@@ -114,11 +114,11 @@ Tracking issue: [#119](https://github.com/dfrostar/neuralmind/issues/119).
 - **`docs/use-cases/always-on.md`** — walkthrough per platform with
   verification steps.
 
-## Then (v0.7.x) — Enterprise-Ready
+## Then (v0.8.x) — Enterprise-Ready
 
 Tracking issue: [#120](https://github.com/dfrostar/neuralmind/issues/120).
 
-- **GHCR auto-build of the v0.6.1 Dockerfile** on tag push —
+- **GHCR auto-build of the v0.7.0 Dockerfile** on tag push —
   multi-platform (`linux/amd64`, `linux/arm64`).
 - **Air-gapped install doc** — PyPI mirror + ChromaDB embedding
   model pre-download script.
@@ -129,10 +129,10 @@ Tracking issue: [#120](https://github.com/dfrostar/neuralmind/issues/120).
   [SECURITY-GUIDE](docs/SECURITY-GUIDE.md) and
   [ENTERPRISE](docs/ENTERPRISE.md).
 
-## Graph-view backlog (v0.7 or later)
+## Graph-view backlog (v0.8 or later)
 
-Frontend wins carried forward from the pre-v0.6.1 plan. Could roll
-into v0.7 if there's appetite, or stay queued.
+Frontend wins carried forward from the pre-v0.7.0 plan. Could roll
+into v0.8 if there's appetite, or stay queued.
 
 - **Saved views.** Obsidian-style named graph filter/zoom/depth
   combos, persisted in `localStorage`. Lets users keep "auth tour",
