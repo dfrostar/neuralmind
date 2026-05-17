@@ -6,11 +6,11 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
-### v0.6.1 — Install anywhere
+### v0.7.0 — Install anywhere
 
 NeuralMind now installs five ways: `pip`, `pipx`, `uv`, Docker, and source. Same package, same CLI, same MCP server, same graph view — every path. The Quick Start matrix lives at the top of the [Installation](Installation) page and the [README](../blob/main/README.md#install--pick-your-path); the repo's root [`Dockerfile`](../blob/main/Dockerfile) is multi-stage, non-root, and pre-wheels every transitive dep so the runtime image doesn't need a C toolchain. PyPI keywords got a long-overdue refresh too, so search ranking for `graph-view`, `hebbian-learning`, and friends finally matches the v0.6.0 product copy.
 
-Also in v0.6.1: a P2 fix in the JSONL bridge (rotation race that could drop events under logrotate/copytruncate) and a test-coverage gap on `/api/queries`. Full details: [v0.6.1 release notes](../blob/main/RELEASE_NOTES_v0.6.1.md) · [Install paths walkthrough](../blob/main/docs/use-cases/install-paths.md).
+Also in v0.7.0: a P2 fix in the JSONL bridge (rotation race that could drop events under logrotate/copytruncate) and a test-coverage gap on `/api/queries`. Full details: [v0.7.0 release notes](../blob/main/RELEASE_NOTES_v0.7.0.md) · [Install paths walkthrough](../blob/main/docs/use-cases/install-paths.md).
 
 ### v0.6.0 — Graph view + live activity feed
 
@@ -84,7 +84,7 @@ sections.
 
 | Page | Contents |
 |------|----------|
-| [Installation](Installation) | `pip` / `pipx` / `uv` / Docker / source — pick your path (v0.6.1) |
+| [Installation](Installation) | `pip` / `pipx` / `uv` / Docker / source — pick your path (v0.7.0) |
 | [Usage Guide](Usage-Guide) | End-to-end examples for every command |
 | [CLI Reference](CLI-Reference) | All CLI commands, flags, and output shapes |
 | [API Reference](API-Reference) | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |

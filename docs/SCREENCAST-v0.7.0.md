@@ -1,7 +1,7 @@
-# 60-second screencast script — NeuralMind v0.6.1
+# 60-second screencast script — NeuralMind v0.7.0
 
 Three beats. Sixty seconds total. The job of this clip is to flip
-the v0.6.1 pitch from a list of five install commands into a single
+the v0.7.0 pitch from a list of five install commands into a single
 visual claim: **same canvas, every install path.**
 
 The previous release's screencast
@@ -105,7 +105,7 @@ visual proof.
 **Text overlay (timed to the first pulse):**
 
 > Same brain. Whichever way you install.
-> NeuralMind v0.6.1 — `pip` / `pipx` / `uv` / Docker / source.
+> NeuralMind v0.7.0 — `pip` / `pipx` / `uv` / Docker / source.
 
 **End frame (last 3 seconds):**
 
@@ -133,8 +133,8 @@ Static frame. NeuralMind logo bottom-left. URL bottom-right:
 - **Don't post without the v0.6.0 screencast having landed first.**
   Beat 3's payoff depends on the viewer already knowing what the
   pulse-rings mean. If your audience is new to NeuralMind, either
-  splice in 5s from the v0.6.0 clip or skip the v0.6.1 screencast
-  and post the v0.6.0 one again with the v0.6.1 LinkedIn copy.
+  splice in 5s from the v0.6.0 clip or skip the v0.7.0 screencast
+  and post the v0.6.0 one again with the v0.7.0 LinkedIn copy.
 
 ## Recording checklist
 
@@ -165,7 +165,7 @@ Static frame. NeuralMind logo bottom-left. URL bottom-right:
 ## Distribution
 
 - LinkedIn — native video upload preferred over embed. Use the
-  Draft v0.6.1–A caption from
+  Draft v0.7.0–A caption from
   [`LINKEDIN-POST-DRAFT.md`](LINKEDIN-POST-DRAFT.md).
 - X / Twitter — 60s fits in a single tweet. Lead with the
   two-canvases thumbnail.
@@ -175,4 +175,4 @@ Static frame. NeuralMind logo bottom-left. URL bottom-right:
   cleanly; show it as a separate animated PNG/GIF or as the full
   60s embed on the release page.
 - Blog / about page — embed the full 60s in the "What's new in
-  v0.6.1" callout.
+  v0.7.0" callout.

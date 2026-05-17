@@ -1,4 +1,4 @@
-# The honest take on NeuralMind v0.6.1
+# The honest take on NeuralMind v0.7.0
 
 *Mixed developer-experience and skeptic's-view source for the
 NotebookLM video. Day-in-the-life walkthrough plus the things to
@@ -6,7 +6,7 @@ push back on.*
 
 ---
 
-Here's how a v0.6.1 install actually goes, told straight, on a
+Here's how a v0.7.0 install actually goes, told straight, on a
 machine that already has Python and Docker installed.
 
 You land on the README from a link in someone's LinkedIn post.
@@ -23,7 +23,7 @@ opens to a graph view. Total time from clicking the LinkedIn link
 to seeing the graph: maybe four minutes. Most of it was the
 `graphify update` step on a real codebase.
 
-That's the experience the v0.6.1 release is designed to produce. If
+That's the experience the v0.7.0 release is designed to produce. If
 you're an experienced developer with a clean Python install, that
 flow works. The release-cycle bet is that this flow is enough
 better than the v0.6.0 flow — which was "you have one option, hope
@@ -37,20 +37,20 @@ Now the honest pushback.
 The first thing to push back on is the framing. "Install five ways"
 sounds, on its face, like a meaningful product improvement. It
 isn't. It's PR work. The package itself is unchanged. If you read
-the v0.6.1 release notes hoping for a smarter synapse layer or a
+the v0.7.0 release notes hoping for a smarter synapse layer or a
 better graph view, you'll come away disappointed. The argument for
 shipping it as its own version isn't that there's new product
 value; it's that the v0.6.0 install story was a real conversion
 leak and fixing it as its own beat makes both the v0.6.0 launch
-moment and the v0.7 launch moment land cleaner. If you don't buy
-that argument, v0.6.1 looks like a marketing release with a version
+moment and the v0.8 launch moment land cleaner. If you don't buy
+that argument, v0.7.0 looks like a marketing release with a version
 number. That's a fair criticism. You should weigh it.
 
 The second is the Dockerfile. We shipped the Dockerfile but not
 the auto-publish to a registry. The README's `docker run
 ghcr.io/dfrostar/neuralmind` command works only after you've
 manually built and pushed that image — which the maintainer hasn't
-done as of v0.6.1. Until the GHCR auto-publish lands in v0.7.x,
+done as of v0.7.0. Until the GHCR auto-publish lands in v0.8.x,
 "run it in Docker" means "build the image yourself first." That's
 documented honestly, but it does mean the Docker line in the matrix
 is more aspirational than the other four. We considered hiding the
@@ -81,12 +81,12 @@ in a project venv is still the right answer.
 The fifth is what didn't change. The graph view is still single-user
 and single-host. The MCP server still requires a `project_path`
 argument from every client (we have an issue to make that
-inferrable from cwd, but it's not in v0.6.1). The audit log still
+inferrable from cwd, but it's not in v0.7.0). The audit log still
 writes to local SQLite, not to a remote backend. The benchmark
 suite still ships with the 500-line fixture and produces the same
 five-point-something-x reduction it produced before. None of that
 is broken; none of it is improved. If those were the things you
-were waiting for, v0.6.1 isn't your release.
+were waiting for, v0.7.0 isn't your release.
 
 And the sixth: the install-paths page makes a sales pitch ("`pipx`
 for always on PATH") that is, in fairness, what we'd say to any
@@ -96,7 +96,7 @@ preference; if you don't, just run `pip install neuralmind
 graphifyy` in whatever environment you already have open and
 you're done.
 
-When is v0.6.1 actually worth installing over v0.6.0? When you're
+When is v0.7.0 actually worth installing over v0.6.0? When you're
 on a machine where `pip install` was failing for some environmental
 reason and one of the other paths fixes it. When you want the CLI
 on global PATH and didn't realize pipx was an option. When you've
@@ -104,12 +104,12 @@ been waiting to put NeuralMind in your CI image and didn't want to
 write the Dockerfile yourself. Otherwise: upgrading is fine,
 upgrading is approximately zero work, and there's no urgency.
 
-The thing the v0.6.1 release is genuinely good for is being able to
+The thing the v0.7.0 release is genuinely good for is being able to
 send a colleague the README link and not having to explain how to
 install Python tools. That's the small, real, measurable thing it
 buys. If your team has been blocked at the install step, this fixes
-it. If your team hasn't, you can wait for v0.7 and the always-on
+it. If your team hasn't, you can wait for v0.8 and the always-on
 story.
 
-The brain in v0.6.1 is the same brain you had a week ago. There
+The brain in v0.7.0 is the same brain you had a week ago. There
 are just more doors into the room.
