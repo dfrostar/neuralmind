@@ -13,8 +13,10 @@ threading a session token.
 
 Distribution (v0.7.0) made NeuralMind reachable. Always-on (v0.8.0)
 makes it persistent — the synapse store accumulates 24/7 whether
-you're at the keyboard or not, and the graph view canvas is always at
-`http://127.0.0.1:8765/`.
+you're at the keyboard or not, and the graph view is always listening
+on `127.0.0.1:8765`. The canvas still requires the per-session auth
+token by default (pass `--no-auth` in the templates to disable it on
+trusted hosts, or read the tokenized URL out of the service logs).
 
 No migration. Same `graph.json`, same `synapses.db`, same hooks. New
 files are additive; existing CLI behaviour is unchanged.
@@ -33,8 +35,10 @@ files are additive; existing CLI behaviour is unchanged.
   the file watcher. Restart-on-failure, SIGTERM-clean shutdown, basic
   hardening (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`).
 - **`scripts/systemd/neuralmind-serve.service`** — same for the graph
-  view, plus an `ExecStartPost` that polls `/healthz` for up to 5
-  seconds before declaring the unit ready.
+  view, plus an `ExecStartPost` that polls `/healthz` for up to 60
+  seconds before declaring the unit ready. The window allows for
+  `neuralmind serve`'s on-startup index build on first run or large
+  projects.
 - **`scripts/launchd/com.neuralmind.watch.plist`** — macOS user agent.
   `RunAtLoad` + `KeepAlive` + `ThrottleInterval` so a crash loop
   doesn't burn CPU.
@@ -105,21 +109,36 @@ pip install --upgrade neuralmind     # or pipx upgrade neuralmind / uv pip insta
 neuralmind serve . &
 curl -fsS http://127.0.0.1:8765/healthz
 # {"status": "ok", "version": "0.8.0"}
+```
 
-# Linux: install + verify systemd units
+The `scripts/` directory isn't packaged in the wheel — pip / pipx /
+uv / Docker users fetch the templates directly from GitHub:
+
+```bash
+# Linux: install + verify systemd units (no repo checkout needed)
 mkdir -p ~/.config/systemd/user
-cp scripts/systemd/neuralmind-{watch,serve}.service ~/.config/systemd/user/
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/systemd/neuralmind-watch.service \
+  -o ~/.config/systemd/user/neuralmind-watch.service
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/systemd/neuralmind-serve.service \
+  -o ~/.config/systemd/user/neuralmind-serve.service
 # edit WorkingDirectory in both, then:
 systemctl --user daemon-reload
 systemctl --user enable --now neuralmind-watch neuralmind-serve
 systemctl --user status neuralmind-watch neuralmind-serve
 
-# macOS: install + verify launchd plists
-cp scripts/launchd/com.neuralmind.{watch,serve}.plist ~/Library/LaunchAgents/
+# macOS: install + verify launchd plists (no repo checkout needed)
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/launchd/com.neuralmind.watch.plist \
+  -o ~/Library/LaunchAgents/com.neuralmind.watch.plist
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/launchd/com.neuralmind.serve.plist \
+  -o ~/Library/LaunchAgents/com.neuralmind.serve.plist
 # edit WorkingDirectory + log paths, then:
-launchctl load -w ~/Library/LaunchAgents/com.neuralmind.{watch,serve}.plist
+launchctl load -w ~/Library/LaunchAgents/com.neuralmind.watch.plist
+launchctl load -w ~/Library/LaunchAgents/com.neuralmind.serve.plist
 launchctl list | grep com.neuralmind
 ```
+
+If you have a repo checkout, `cp scripts/systemd/...` / `cp scripts/launchd/...`
+work as drop-in equivalents for the `curl` lines above.
 
 Full per-platform walkthrough in
 [`docs/use-cases/always-on.md`](docs/use-cases/always-on.md).

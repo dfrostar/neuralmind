@@ -187,10 +187,18 @@ def test_healthz_does_not_require_auth(tmp_path):
 
 
 def test_healthz_sets_no_cookie(tmp_path):
-    """/healthz should not start a session — no Set-Cookie header.
-    Avoids polluting the cookie jar of monitoring clients."""
+    """/healthz must not start a session — no Set-Cookie header. Covers
+    both auth-disabled and auth-enabled paths so a regression that
+    starts a cookie only when auth is configured can't slip through."""
     fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+
+    # Auth disabled.
     with _running_server(fake_mind) as base:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.getheader("Set-Cookie") is None
+
+    # Auth enabled — /healthz must still skip the cookie path entirely.
+    with _running_server(fake_mind, auth_token="secret-token") as base:
         with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
             assert resp.getheader("Set-Cookie") is None
 
