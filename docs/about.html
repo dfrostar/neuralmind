@@ -46,6 +46,30 @@
     </header>
 
     <section>
+        <div class="container" id="whats-new-v061">
+            <h2>What's New in v0.6.1 — install anywhere</h2>
+            <p><strong>Distribution release, not a features release.</strong> The brain is the same brain. What changed is how many ways you can install it.</p>
+            <h3>Five install paths</h3>
+            <ul>
+                <li><strong><code>pip install neuralmind graphifyy</code></strong> — the default. Works in any venv.</li>
+                <li><strong><code>pipx install neuralmind</code></strong> — global CLI, isolated env. <code>neuralmind</code> on PATH everywhere without activation.</li>
+                <li><strong><code>uv pip install neuralmind graphifyy</code></strong> — ~10× faster than pip, same wheel.</li>
+                <li><strong><code>docker build -t neuralmind:dev .</code></strong> — multi-stage Dockerfile in the repo root, non-root runtime, transitive deps pre-wheeled in the builder. GHCR auto-publish lands in a later release; build locally for now.</li>
+                <li><strong>From source</strong> — for contributors.</li>
+            </ul>
+            <p>All five paths deliver the same package: the <code>neuralmind</code> CLI, the <code>neuralmind-mcp</code> server (for Claude Code, Cursor, Cline, Continue, and any MCP client), and the live graph view from v0.6.0. Smoke test is identical: <code>neuralmind --help</code> works everywhere; <code>python -c "import neuralmind"</code> works for pip / uv / source paths.</p>
+            <h3>Also in v0.6.1</h3>
+            <ul>
+                <li><strong>PyPI keywords refresh</strong> — eight additions matching v0.6.0 product copy (<code>graph-view</code>, <code>hebbian-learning</code>, <code>force-directed-graph</code>, …) so PyPI search ranking finally matches what we ship.</li>
+                <li><strong>JSONL bridge rotation fix (#115)</strong> — P2 correctness bug from Codex review. The event-log tailer now reopens rotated files from offset 0, preserving the recovery state across failed open attempts. Silent event loss under <code>logrotate</code>/<code>copytruncate</code> is fixed.</li>
+                <li><strong><code>/api/queries</code> test coverage (#116)</strong> — the replay-last-query route is now in the automated regression suite.</li>
+            </ul>
+            <p>No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. Upgrade is whatever your install path's <code>--upgrade</code> equivalent is.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.1.md">Full v0.6.1 release notes →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md">Install paths walkthrough →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v060">
             <h2>What's New in v0.6.0 — see the brain learning, live</h2>
             <p><strong>The pitch flipped.</strong> v0.5.4 made the brain inspectable. v0.6.0 makes it <em>legible</em>. <code>neuralmind serve</code> now streams a live activity feed: synapse + file events pulse across the canvas in real time as the agent and the codebase interact. The graph stops being a static map and becomes a window into the hippocampus learning your codebase.</p>

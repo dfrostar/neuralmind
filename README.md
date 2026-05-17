@@ -11,7 +11,9 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **🆕 New in v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
+> **🆕 New in v0.6.1** — **Install anywhere.** Five install paths now in the README: `pip`, `pipx`, `uv`, Docker, and source. Same package every path; smoke-test verified. [Release notes](RELEASE_NOTES_v0.6.1.md) · [Install matrix ↓](#install--pick-your-path)
+>
+> **v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
 
 > **🌐 [Visit the landing page](https://dfrostar.github.io/neuralmind/) • 📖 [Read the About page](https://dfrostar.github.io/neuralmind/about.html) • ⚖️ Not affiliated with NeuralMind.ai**
 
@@ -1561,6 +1563,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.6.1](RELEASE_NOTES_v0.6.1.md)** | Install anywhere — `pip` / `pipx` / `uv` / Docker / source, Dockerfile, event-log rotation fix |
 | **[Release Notes v0.6.0](RELEASE_NOTES_v0.6.0.md)** | Live activity feed, cross-process JSONL bridge, pin UX, depth slider, replay overlay |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |
 | **[USAGE.md](USAGE.md)** | Extended usage examples |
