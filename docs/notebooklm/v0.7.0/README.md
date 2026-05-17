@@ -48,11 +48,11 @@ Together they cover the *why*, the *what*, and the *should you*.
   bullet lists past a sentence or two.
 - The three docs deliberately overlap a little. Don't dedupe.
 - If you change product positioning, update all three.
-- **Don't oversell.** v0.7.0 adds install paths, not features.
-  Calling it a "major release" or a "new chapter" is the trap to
-  avoid — it makes the v0.7 release ("Always-On") harder to land
-  later. Frame v0.7.0 as a clean, small, distribution-focused
-  patch.
+- **Don't oversell.** v0.7.0 adds install paths and an Agent Zero
+  integration, not new product surface. Calling it a "major release"
+  or a "new chapter" is the trap to avoid — it makes the v0.8
+  release ("Always-On") harder to land later. Frame v0.7.0 as a
+  clean, distribution-focused minor release.
 
 ## Suggested prompts for NotebookLM
 

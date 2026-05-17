@@ -108,9 +108,9 @@ a list. Don't post the v0.7.0 variants without it.
 - **Don't lead with the keyword bump.** PyPI keyword changes matter
   for discoverability but they're internal plumbing — the post is
   about the install experience.
-- **Phase 2 (v0.7 "Always-On") is the next post.** systemd / launchd
-  / Aider / `/healthz`. Different audience (ops / SREs). Don't try
-  to cram it into the v0.7.0 post.
+- **Phase 2 (v0.8 "Always-On") is the next post.** systemd / launchd
+  / `/healthz`. Different audience (ops / SREs). Don't try to cram it
+  into the v0.7.0 post.
 
 ---
 
