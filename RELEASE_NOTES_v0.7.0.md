@@ -1,4 +1,4 @@
-# NeuralMind v0.6.1 — install anywhere
+# NeuralMind v0.7.0 — install anywhere
 
 **Release Date:** May 2026
 
@@ -11,7 +11,7 @@ repo root, a PyPI keyword refresh, a P2 fix in the JSONL event log,
 and a closed test-coverage gap on `/api/queries`.
 
 No new product features. The brain is the same brain. v0.6.0 made
-it visible; v0.6.1 makes it reachable.
+it visible; v0.7.0 makes it reachable.
 
 No migration. Same `graph.json`, same `synapses.db`, same hooks. If
 you're on v0.6.0 and your install path is fine, upgrading is
@@ -102,7 +102,7 @@ addressed in this release.
 ### `test(server)`: `/api/queries` regression coverage — #116
 
 The replay-last-query route added in PR #105 was hand-tested for
-happy-path / clamping / bad-input. v0.6.1 adds the no-`?n=` →
+happy-path / clamping / bad-input. v0.7.0 adds the no-`?n=` →
 default 20 case explicitly so the documented default can't drift on
 a future query-string parsing change.
 
@@ -121,16 +121,16 @@ Smoke against this release on each install path:
 
 ```bash
 # pip
-pip install neuralmind==0.6.1 graphifyy
+pip install neuralmind==0.7.0 graphifyy
 neuralmind --help
 
 # pipx
-pipx install neuralmind==0.6.1
+pipx install neuralmind==0.7.0
 pipx inject neuralmind graphifyy
 neuralmind --help
 
 # uv
-uv pip install neuralmind==0.6.1 graphifyy
+uv pip install neuralmind==0.7.0 graphifyy
 neuralmind --help
 
 # Docker
@@ -151,19 +151,19 @@ persistence trade-offs).
 
 ## What's next
 
-v0.7 — **Always-On.** systemd / launchd templates, a `/healthz`
+v0.8 — **Always-On.** systemd / launchd templates, a `/healthz`
 endpoint for `neuralmind serve`, Aider MCP integration, Windows
 Task Scheduler doc polish. Tracking issue: [#119](https://github.com/dfrostar/neuralmind/issues/119).
 
-v0.7.x — **Enterprise-Ready.** GHCR / Docker Hub auto-build,
+v0.8.x — **Enterprise-Ready.** GHCR / Docker Hub auto-build,
 air-gapped install doc, SBOM publication on tagged releases, a
 consolidated compliance one-pager. Tracking issue: [#120](https://github.com/dfrostar/neuralmind/issues/120).
 
 ## Thanks
 
-Most of the v0.6.1 work was surface-area: bringing existing
+Most of the v0.7.0 work was surface-area: bringing existing
 documentation up to "five install paths" consistency, drafting a
 container image that matches the rest of the project's
 local-first / non-root / no-network-at-runtime conventions, and
 landing the two deferred review-feedback patches the v0.6.0 merge
-train held back. Small release. Sets up the v0.7 always-on story.
+train held back. Small release. Sets up the v0.8 always-on story.

@@ -1,11 +1,11 @@
-# What shipped in NeuralMind v0.6.1
+# What shipped in NeuralMind v0.7.0
 
 *Neutral third-person technical source for the NotebookLM video.
 Concrete feature-by-feature breakdown of every change.*
 
 ---
 
-NeuralMind v0.6.1 is a distribution release. It does not add product
+NeuralMind v0.7.0 is a distribution release. It does not add product
 features, change the synapse model, or alter the graph view
 rendering. It expands install coverage, ships a container image
 source, and lands the two non-blocking review-feedback patches the
@@ -40,8 +40,8 @@ documented usage patterns are mounting the host project read-only
 into `/project` and running either `neuralmind-mcp /project` for
 the MCP server or `neuralmind serve /project --host 0.0.0.0
 --no-auth` for the graph view bound to the host port. The
-auto-publish of this image to GHCR is deferred to v0.7.x (Phase 3,
-Enterprise-Ready); for v0.6.1, the Dockerfile is committed and
+auto-publish of this image to GHCR is deferred to v0.8.x (Phase 3,
+Enterprise-Ready); for v0.7.0, the Dockerfile is committed and
 users build the image locally. The pull command in the README
 documents the eventual GHCR tag so the README doesn't have to
 change again when the auto-publish lands.
@@ -78,20 +78,20 @@ all three are delivered.
 Issue 116 was a Copilot-flagged test coverage gap on the
 /api/queries server route added in PR 105. The route was
 hand-tested for happy path, clamping, and bad-input defaulting in
-the original PR; v0.6.1 adds the explicit no-argument case
+the original PR; v0.7.0 adds the explicit no-argument case
 (`GET /api/queries` with no `n` parameter must default to 20) that
 the existing parametrized tests didn't cover directly. The existing
 two tests already cover happy-path and clamping behaviour, so the
 116 work is small.
 
-The marketing artifacts shipped with v0.6.1 are scoped to drafting
+The marketing artifacts shipped with v0.7.0 are scoped to drafting
 only — the maintainer's approval is required before any are
 published. A new LinkedIn drafts block in `docs/LINKEDIN-POST-DRAFT.md`
 covers two voices (feature-tour scannable and short
-dev-honest). A new screencast script in `docs/SCREENCAST-v0.6.1.md`
+dev-honest). A new screencast script in `docs/SCREENCAST-v0.7.0.md`
 covers a sixty-second three-beat video: pipx install, docker run,
 both-canvases-pulsing side by side. A new NotebookLM source pack in
-`docs/notebooklm/v0.6.1/` follows the v0.6.0 three-document
+`docs/notebooklm/v0.7.0/` follows the v0.6.0 three-document
 structure for AI-generated video and podcast overviews.
 
 There are no breaking changes. The Python API is unchanged. CLI
@@ -102,9 +102,9 @@ projects continue to work. The minimum supported Python remains
 3.10. The dependency floor for the chromadb, pyyaml, toml, and mcp
 packages is unchanged.
 
-The next release in the published roadmap is v0.7 — the "Always-On"
+The next release in the published roadmap is v0.8 — the "Always-On"
 release covering systemd and launchd templates, the `/healthz`
 endpoint for `neuralmind serve`, the Aider MCP integration, and the
-Windows Task Scheduler documentation polish. v0.6.1 sets up that
+Windows Task Scheduler documentation polish. v0.7.0 sets up that
 release by ensuring the install story is robust before the always-on
 story extends it.
