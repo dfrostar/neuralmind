@@ -32,7 +32,7 @@ the one that fits your existing tooling.
 | **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
 | **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. |
 | **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. |
-| **Docker** | `docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind neuralmind --help` | Containerized — no Python on the host. |
+| **Docker** | `docker build -t neuralmind:dev . && docker run --rm -v "$PWD:/project:ro" neuralmind:dev neuralmind --help` | Containerized — no Python on the host. **Build locally for now**; GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release. |
 | **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Contributing or hacking. |
 
 Pros and cons of each path, including persistence and PATH behavior:

@@ -445,23 +445,26 @@ come in every path.
 | **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
 | **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. Recommended if you want `neuralmind` available everywhere. |
 | **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. ~10× faster install than pip. |
-| **Docker** | `docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind neuralmind --help` | Containerized — no Python on the host. Image built from the `Dockerfile` in this repo; auto-published to GHCR in a later release. |
+| **Docker** | `docker build -t neuralmind:dev . && docker run --rm -v "$PWD:/project:ro" neuralmind:dev neuralmind --help` | Containerized — no Python on the host. **Build locally for now** — the GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release. |
 | **From source** | `git clone … && pip install -e .` | Hacking on NeuralMind itself. |
 
-**Verify install** (works for every path):
+**Verify install:**
 
 ```bash
+neuralmind --help     # works for every install path
+
+# For pip / uv / source (a Python env where neuralmind is importable):
 python -c "import neuralmind; print(neuralmind.__version__)"
-neuralmind --help
 ```
+
+The `python -c` line is skipped for pipx and Docker — pipx isolates the package in its own venv, and Docker doesn't expose the in-container Python.
 
 Walkthrough with pros/cons of each path: [docs/use-cases/install-paths.md](docs/use-cases/install-paths.md).
 
 ### Index a project
 
 ```bash
-# Use whichever install method above
-pip install neuralmind graphifyy
+# Install via any path above, then:
 
 # Go to your project
 cd your-project
