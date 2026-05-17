@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+NeuralMind file-watch daemon — macOS launchd user agent.
+
+Keeps `neuralmind watch` running across logins and crashes. Coalesces
+file edits into synapse + file_activity events that the always-on
+`neuralmind serve` graph view pulses on.
+
+Install (user scope — no sudo needed):
+  cp scripts/launchd/com.neuralmind.watch.plist ~/Library/LaunchAgents/
+  # Edit WorkingDirectory and the ProgramArguments path below to point
+  # at your project, then:
+  launchctl load -w ~/Library/LaunchAgents/com.neuralmind.watch.plist
+
+Verify:
+  launchctl list | grep com.neuralmind.watch     # should show PID + status
+  tail -f ~/Library/Logs/neuralmind-watch.out.log
+
+Stop / unload:
+  launchctl unload -w ~/Library/LaunchAgents/com.neuralmind.watch.plist
+
+This is a TEMPLATE — change WorkingDirectory and the project path in
+ProgramArguments. The two log paths under ~/Library/Logs are created
+automatically by launchd.
+
+Docs: https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.neuralmind.watch</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/neuralmind</string>
+    <string>watch</string>
+    <string>.</string>
+    <string>--quiet</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/your-project</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/neuralmind-watch.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/neuralmind-watch.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+    <!--
+    <key>NEURALMIND_EVENT_LOG</key>
+    <string>1</string>
+    -->
+  </dict>
+</dict>
+</plist>

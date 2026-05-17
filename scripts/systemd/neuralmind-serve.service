@@ -1,0 +1,50 @@
+# NeuralMind graph-view server — user-scope systemd unit.
+#
+# Keeps `neuralmind serve` reachable across reboots. The graph view is
+# bound to 127.0.0.1 by default; the unit below exposes only loopback.
+# Set --host 0.0.0.0 in ExecStart only if you understand the security
+# implications (see docs/SECURITY-GUIDE.md).
+#
+# Install (user scope — no root needed):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/neuralmind-serve.service ~/.config/systemd/user/
+#   # Edit WorkingDirectory and the --port flag below if needed, then:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now neuralmind-serve
+#
+# Verify:
+#   systemctl --user status neuralmind-serve
+#   curl -fsS http://127.0.0.1:8765/healthz
+#   journalctl --user -u neuralmind-serve -f
+#
+# Stop / disable:
+#   systemctl --user disable --now neuralmind-serve
+#
+# This is a TEMPLATE — change WorkingDirectory and ExecStart to your
+# project. The graph view embeds a per-session auth token in URLs.
+
+[Unit]
+Description=NeuralMind graph-view server
+Documentation=https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/your-project
+ExecStart=/usr/local/bin/neuralmind serve . --port 8765
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8765/healthz >/dev/null && exit 0; sleep 0.25; done; exit 1'
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-write
+
+# Environment=NEURALMIND_EVENT_LOG=1
+
+[Install]
+WantedBy=default.target

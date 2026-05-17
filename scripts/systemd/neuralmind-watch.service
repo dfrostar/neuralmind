@@ -1,0 +1,52 @@
+# NeuralMind file-watch daemon — user-scope systemd unit.
+#
+# Keeps `neuralmind watch` running across reboots and crashes. Coalesces
+# file edits into synapse + file_activity events that the always-on
+# `neuralmind serve` graph view pulses on.
+#
+# Install (user scope — no root needed):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/neuralmind-watch.service ~/.config/systemd/user/
+#   # Edit WorkingDirectory below to your project path, then:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now neuralmind-watch
+#
+# Verify:
+#   systemctl --user status neuralmind-watch
+#   journalctl --user -u neuralmind-watch -f
+#
+# Stop / disable:
+#   systemctl --user disable --now neuralmind-watch
+#
+# This is a TEMPLATE — change WorkingDirectory and ExecStart to point
+# at your project. Multiple projects? Copy the file with a suffix:
+#   cp neuralmind-watch.service ~/.config/systemd/user/neuralmind-watch@.service
+# and use the @<project> instance form.
+
+[Unit]
+Description=NeuralMind file watcher (synapse activity capture)
+Documentation=https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/your-project
+ExecStart=/usr/local/bin/neuralmind watch . --quiet
+Restart=on-failure
+RestartSec=5
+# `neuralmind watch` is a long-running poll loop; SIGTERM is enough.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Hardening — adjust if you mount your project on a read-only filesystem.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-write
+
+# Environment toggles (see neuralmind docs):
+# Environment=NEURALMIND_EVENT_LOG=1
+# Environment=NEURALMIND_SYNAPSE_INJECT=1
+
+[Install]
+WantedBy=default.target
