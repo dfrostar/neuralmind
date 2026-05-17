@@ -912,6 +912,58 @@ OpenClaw's MCP support covers stdio (shown above), SSE, HTTP, and
 `url`/`transport` config and the inverse direction (`openclaw mcp serve`,
 which exposes OpenClaw's own channels as an MCP server to other clients).
 
+### Agent Zero
+
+[Agent Zero](https://github.com/agent0ai/agent-zero) is a self-organising
+AI agent framework with first-class MCP support — both as a client (it
+consumes MCP servers) and as a server (it exposes its own tools to other
+MCP clients). NeuralMind plugs in via the standard MCP client path.
+
+**Prerequisite:** install NeuralMind (the MCP server ships with the
+default install):
+
+```bash
+pip install neuralmind
+```
+
+**Register** NeuralMind via Agent Zero's Web UI:
+
+1. Open Agent Zero → **Settings → MCP/A2A → External MCP Servers → Open**
+2. Paste this into the JSON editor:
+
+```json
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": ["/absolute/path/to/your-project"]
+    }
+  }
+}
+```
+
+3. Click **Apply now**. Agent Zero discovers NeuralMind's tools at
+   handshake and registers them into the normal tool registry.
+
+The schema is the standard MCP `command` / `args` / `env` shape — see
+the upstream [MCP setup guide](https://github.com/agent0ai/agent-zero/blob/main/docs/guides/mcp-setup.md)
+for HTTP/SSE transports, OAuth, and per-server tool filtering.
+
+If you haven't installed Agent Zero yet, the upstream README has the
+Docker and Python install paths.
+
+**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+the same project and any tool call from Agent Zero will pulse the
+corresponding nodes on the canvas. The synapse store is shared with
+Claude Code, Cursor, Cline, Continue, OpenClaw, Hermes-Agent, and any
+other agent pointed at this project — see
+[docs/use-cases/multi-agent.md](docs/use-cases/multi-agent.md).
+
+> **Coming soon — one-click install.** NeuralMind is being submitted to
+> the [`agent0ai/a0-plugins`](https://github.com/agent0ai/a0-plugins)
+> registry so users can discover and install it from inside Agent Zero's
+> Plugin Hub. The manual JSON path above continues to work either way.
+
 ### Skill (OpenClaw, Agent Zero, Hermes, any SKILL.md host)
 
 The MCP server gives an agent the **actions**. The skill at
