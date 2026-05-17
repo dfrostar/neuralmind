@@ -38,11 +38,13 @@ RestartSec=5
 KillSignal=SIGTERM
 TimeoutStopSec=10
 
-# Hardening
+# Hardening. See neuralmind-watch.service for the rationale on
+# ReadWritePaths=%h (ProtectHome doesn't accept "read-write" — valid
+# values are true/false/read-only/tmpfs).
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=read-write
+ReadWritePaths=%h
 
 # Environment=NEURALMIND_EVENT_LOG=1
 
