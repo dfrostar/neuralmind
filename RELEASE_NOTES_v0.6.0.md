@@ -151,9 +151,14 @@ Open `neuralmind serve` and the live feed is on by default.
   unchanged.
 - **Python**: 3.10, 3.11, 3.12 all pass CI.
 
-## What's next (v0.7 candidates)
+## What's next (graph-view follow-ups)
 
-Tracked in [`ROADMAP.md`](ROADMAP.md) under "Now (v0.7)":
+> Note (updated post-v0.7.0): v0.7.0 ended up being the "Install
+> Anywhere" release; v0.8 is "Always-On". The graph-view backlog
+> below moved to ROADMAP's [`Graph-view backlog (v0.8 or later)`](ROADMAP.md#graph-view-backlog-v08-or-later)
+> section.
+
+Originally tracked in [`ROADMAP.md`](ROADMAP.md) under "Now (v0.7)":
 
 - **Saved views.** Obsidian-style named filter/zoom/depth presets,
   persisted in `localStorage`.

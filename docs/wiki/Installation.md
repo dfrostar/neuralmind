@@ -6,7 +6,7 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 
 ## Table of Contents
 
-- [Install — pick your path](#install--pick-your-path) *(new in v0.6.1)*
+- [Install — pick your path](#install--pick-your-path) *(new in v0.7.0)*
 - [System Requirements](#system-requirements)
 - [Quick Install](#quick-install)
 - [Installation Methods](#installation-methods)
@@ -25,7 +25,7 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 
 ## Install — pick your path
 
-*New in [v0.6.1](../../blob/main/RELEASE_NOTES_v0.6.1.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
+*New in [v0.7.0](../../blob/main/RELEASE_NOTES_v0.7.0.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
 
 | Method | Command | When to pick |
 |---|---|---|

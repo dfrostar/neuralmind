@@ -1,14 +1,14 @@
 # LinkedIn post draft — NeuralMind progress update
 
-Three sets of drafts. The **v0.6.1 launch drafts** are the current
-batch — post one of them the moment v0.6.1 is on PyPI. The
+Three sets of drafts. The **v0.7.0 launch drafts** are the current
+batch — post one of them the moment v0.7.0 is on PyPI. The
 **v0.6.0 launch drafts** below were the previous progress update.
 The **earlier drafts** below those are the v0.5-era progress update;
 kept for reference and as a backbone if you want to combine.
 
 ---
 
-## v0.6.1 launch drafts
+## v0.7.0 launch drafts
 
 The pitch frame: **"NeuralMind installs wherever you work."** This
 is the "second progress update" after v0.6.0 — same project, but
@@ -18,15 +18,15 @@ and AI-tooling early adopters: people who already have an opinion
 about pipx vs uv and will share install-method posts in their own
 networks.
 
-Pair every draft with the v0.6.1 screencast clip
-([`SCREENCAST-v0.6.1.md`](SCREENCAST-v0.6.1.md)) — the
+Pair every draft with the v0.7.0 screencast clip
+([`SCREENCAST-v0.7.0.md`](SCREENCAST-v0.7.0.md)) — the
 `pipx install neuralmind` → `docker run …` → both-canvases-side-by-side
 visual is what makes "installs anywhere" land as a *thing*, not just
-a list. Don't post the v0.6.1 variants without it.
+a list. Don't post the v0.7.0 variants without it.
 
-### Draft v0.6.1–A — feature-tour, scannable (recommended)
+### Draft v0.7.0–A — feature-tour, scannable (recommended)
 
-> NeuralMind v0.6.1 ships today. The theme: **installs wherever you work.**
+> NeuralMind v0.7.0 ships today. The theme: **installs wherever you work.**
 >
 > → **`pip install neuralmind`** — the default. Works in any venv.
 >
@@ -49,7 +49,7 @@ a list. Don't post the v0.6.1 variants without it.
 >   `python -c "import neuralmind; print(neuralmind.__version__)"`
 >   `neuralmind --help`
 >
-> Why this matters: v0.6.0 made the brain visible. v0.6.1 makes it
+> Why this matters: v0.6.0 made the brain visible. v0.7.0 makes it
 > reachable from any workflow — corporate Python that still mandates
 > pip, the uv-native indie stack, the Dockerized CI pipeline, the
 > pipx-managed dev box. NeuralMind shouldn't lose to "installing it
@@ -65,9 +65,9 @@ a list. Don't post the v0.6.1 variants without it.
 >
 > #ClaudeCode #Cursor #AIEngineering #OpenSource #DeveloperTools #Python
 
-### Draft v0.6.1–B — short, dev-honest
+### Draft v0.7.0–B — short, dev-honest
 
-> NeuralMind v0.6.1 is out today.
+> NeuralMind v0.7.0 is out today.
 >
 > No new features in the brain. Five new ways to install it.
 >
@@ -82,7 +82,7 @@ a list. Don't post the v0.6.1 variants without it.
 >   `neuralmind --help`
 >
 > v0.6.0 was about the brain becoming visible (the live activity
-> feed, the pulse rings). v0.6.1 is about the brain becoming
+> feed, the pulse rings). v0.7.0 is about the brain becoming
 > reachable. The headline number hasn't changed (40–70× per-query
 > token reduction; verifiable in 30 seconds on a fresh clone via
 > `bash scripts/demo.sh`). What's changed is who can get to it.
@@ -108,9 +108,9 @@ a list. Don't post the v0.6.1 variants without it.
 - **Don't lead with the keyword bump.** PyPI keyword changes matter
   for discoverability but they're internal plumbing — the post is
   about the install experience.
-- **Phase 2 (v0.7 "Always-On") is the next post.** systemd / launchd
-  / Aider / `/healthz`. Different audience (ops / SREs). Don't try
-  to cram it into the v0.6.1 post.
+- **Phase 2 (v0.8 "Always-On") is the next post.** systemd / launchd
+  / `/healthz`. Different audience (ops / SREs). Don't try to cram it
+  into the v0.7.0 post.
 
 ---
 
