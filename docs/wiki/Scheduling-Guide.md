@@ -90,22 +90,27 @@ register two At-Logon scheduled tasks so the watcher and graph view come
 back automatically after every reboot or crash.
 
 ```powershell
-# Always-on synapse watcher
+# Always-on synapse watcher.
+# ExecutionTimeLimit = 0 disables Task Scheduler's default 72-hour cap,
+# which would otherwise stop a continuously-running task.
 Register-ScheduledTask -TaskName "NeuralMind-Watch" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
     -Argument "watch C:\path\to\your-project --quiet") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
 
-# Always-on graph view (http://127.0.0.1:8765/)
+# Always-on graph view (tokenized URL printed to the task's stdout).
+# --no-browser stops it from spawning a browser on every login.
 Register-ScheduledTask -TaskName "NeuralMind-Serve" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
-    -Argument "serve C:\path\to\your-project --port 8765") `
+    -Argument "serve C:\path\to\your-project --port 8765 --no-browser") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
 
 # Verify both

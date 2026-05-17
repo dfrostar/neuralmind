@@ -11,6 +11,9 @@
 #   systemctl --user daemon-reload
 #   systemctl --user enable --now neuralmind-watch
 #
+# For reboot survival without logging in, enable lingering once:
+#   sudo loginctl enable-linger "$USER"
+#
 # Verify:
 #   systemctl --user status neuralmind-watch
 #   journalctl --user -u neuralmind-watch -f
@@ -19,9 +22,11 @@
 #   systemctl --user disable --now neuralmind-watch
 #
 # This is a TEMPLATE — change WorkingDirectory and ExecStart to point
-# at your project. Multiple projects? Copy the file with a suffix:
-#   cp neuralmind-watch.service ~/.config/systemd/user/neuralmind-watch@.service
-# and use the @<project> instance form.
+# at your project. Multiple projects? Copy the file once per project
+# with a distinct name (e.g. neuralmind-watch-projA.service,
+# neuralmind-watch-projB.service) and edit each one's WorkingDirectory.
+# This template doesn't use systemd's %i instance suffix; convert it
+# yourself if you want one unit file with @<project> instance support.
 
 [Unit]
 Description=NeuralMind file watcher (synapse activity capture)

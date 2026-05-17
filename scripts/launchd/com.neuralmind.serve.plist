@@ -3,8 +3,12 @@
 NeuralMind graph-view server — macOS launchd user agent.
 
 Keeps `neuralmind serve` reachable across logins. Bound to 127.0.0.1
-by default. Use `--host 0.0.0.0` only if you understand the security
-implications (see docs/SECURITY-GUIDE.md).
+by default. To bind a non-loopback address, edit ProgramArguments and
+use the host override from `neuralmind serve` `'help'`; read
+docs/SECURITY-GUIDE.md first.
+
+(Avoid double hyphens in this XML comment block — they are forbidden
+by the XML spec and break plutil and launchctl load.)
 
 Install (user scope — no sudo needed):
   cp scripts/launchd/com.neuralmind.serve.plist ~/Library/LaunchAgents/
@@ -38,6 +42,7 @@ Docs: https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.
     <string>.</string>
     <string>--port</string>
     <string>8765</string>
+    <string>--no-browser</string>
   </array>
 
   <key>WorkingDirectory</key>

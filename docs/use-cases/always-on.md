@@ -9,6 +9,31 @@ Three platforms, same shape: pick the template, point it at your
 project, enable it. The templates live in [`scripts/systemd/`](../../scripts/systemd/)
 and [`scripts/launchd/`](../../scripts/launchd/) in this repo.
 
+### No checkout? Fetch the templates directly
+
+The PyPI wheel doesn't include the repo's `scripts/` directory — it
+ships only the importable `neuralmind` package. If you installed via
+`pip` / `pipx` / `uv` / Docker, pull the templates straight from
+GitHub:
+
+```bash
+# Linux — systemd
+mkdir -p ~/.config/systemd/user
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/systemd/neuralmind-watch.service \
+  -o ~/.config/systemd/user/neuralmind-watch.service
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/systemd/neuralmind-serve.service \
+  -o ~/.config/systemd/user/neuralmind-serve.service
+
+# macOS — launchd
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/launchd/com.neuralmind.watch.plist \
+  -o ~/Library/LaunchAgents/com.neuralmind.watch.plist
+curl -fsSL https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/launchd/com.neuralmind.serve.plist \
+  -o ~/Library/LaunchAgents/com.neuralmind.serve.plist
+```
+
+The `cp scripts/...` commands below assume you have a repo checkout —
+substitute one of the `curl` lines above if you don't.
+
 NeuralMind ships a `/healthz` endpoint on the graph-view server
 (`GET /healthz` → `{"status": "ok", "version": "..."}`, no auth). The
 systemd unit uses it in `ExecStartPost` to fail fast if `serve` didn't
@@ -41,7 +66,12 @@ systemctl --user enable --now neuralmind-serve
 # 4. Verify both are up and /healthz responds
 systemctl --user status neuralmind-watch neuralmind-serve
 curl -fsS http://127.0.0.1:8765/healthz
-# {"status": "ok", "version": "0.7.0"}
+# {"status": "ok", "version": "0.8.0"}
+
+# The graph view canvas itself requires the per-session token. The
+# tokenized URL prints to journalctl on every startup:
+journalctl --user -u neuralmind-serve | grep -F "http://127.0.0.1:8765/"
+# (or pass --no-auth in ExecStart if you understand the implications)
 
 # 5. Tail logs
 journalctl --user -u neuralmind-watch -f
@@ -114,27 +144,31 @@ rm ~/Library/LaunchAgents/com.neuralmind.{watch,serve}.plist
 
 Run-at-startup tasks for `neuralmind watch` and `neuralmind serve`.
 
-The [Scheduling Guide](../wiki/Scheduling-Guide.md#always-on-neuralmind-watch--neuralmind-serve)
+The [Scheduling Guide](../wiki/Scheduling-Guide.md#always-on-neuralmind-watch--neuralmind-serve-v08)
 has the full PowerShell script + Task Scheduler GUI walkthrough.
 Short version:
 
 ```powershell
-# Register the always-on watcher (replaces the file polling daemon)
+# Register the always-on watcher (replaces the file polling daemon).
+# ExecutionTimeLimit = 0 disables Task Scheduler's default 72-hour cap.
 Register-ScheduledTask -TaskName "NeuralMind-Watch" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
     -Argument "watch C:\path\to\your-project --quiet") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
 
-# Register the always-on graph view
+# Register the always-on graph view. --no-browser keeps it from
+# spawning a browser on every login.
 Register-ScheduledTask -TaskName "NeuralMind-Serve" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
-    -Argument "serve C:\path\to\your-project --port 8765") `
+    -Argument "serve C:\path\to\your-project --port 8765 --no-browser") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
     -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
 
 # Verify
@@ -149,15 +183,23 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/healthz
 If you run NeuralMind via the repo-root Dockerfile, add a `HEALTHCHECK`
 that probes `/healthz`:
 
+The repo-root `Dockerfile` is `python:slim`-based and does not
+include `curl`. Use a stdlib Python probe instead so the HEALTHCHECK
+works without adding a package:
+
 ```dockerfile
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:8765/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+  CMD python -c "import urllib.request, sys; r = urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=2); sys.exit(0 if r.status == 200 else 1)" || exit 1
 ```
 
+`--start-period=60s` matches the systemd template's readiness window
+— `neuralmind serve` builds the embedding index before binding the
+HTTP socket, and first runs on large projects can take a while.
+
 The shipped Dockerfile doesn't bake this in by default because the
-default container command is `neuralmind --help`, not `serve`. Add the
-directive in your downstream image when you do run `serve` as the
-container entrypoint.
+default container command is `neuralmind --help`, not `serve`. Add
+the directive in your downstream image when you do run `serve` as
+the container entrypoint.
 
 ---
 
