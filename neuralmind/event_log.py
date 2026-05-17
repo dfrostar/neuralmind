@@ -147,11 +147,16 @@ class EventLogTailer:
         while not self._stop.is_set():
             if fh is None:
                 fh, state = self._open_at_start() if reopen_at_start else self._open_at_end()
-                reopen_at_start = False
                 if fh is None:
+                    # Open failed (commonly: the rename-then-create gap
+                    # during rotation). Keep ``reopen_at_start`` set so
+                    # the next successful open still seeks to offset 0
+                    # — otherwise we'd silently fall back to EOF and
+                    # drop any lines already in the new file.
                     if self._stop.wait(self._poll_interval):
                         return
                     continue
+                reopen_at_start = False
                 inode = state[0] if state else None
                 buf = b""
             # Detect rotation/truncation: inode change or size shrink.
@@ -165,8 +170,13 @@ class EventLogTailer:
                     reopen_at_start = True
                     continue
             except OSError:
+                # File vanished — typically the rename-then-create gap
+                # during rotation. Same recovery as the inode-change
+                # path: next successful reopen must seek to 0.
                 fh.close()
                 fh = None
+                inode = None
+                reopen_at_start = True
                 continue
 
             chunk = fh.read(8192)
