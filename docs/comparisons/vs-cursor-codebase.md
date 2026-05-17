@@ -15,6 +15,7 @@ Cursor's `@codebase` feature indexes your repository and injects relevant chunks
 | Tool-output compression | None | PostToolUse hooks compress Read/Bash/Grep results |
 | Offline | No (Cursor cloud) | Yes — nothing leaves your machine |
 | Cost | Bundled in Cursor subscription | Free, local |
+| Install methods | Paid Mac/Windows/Linux IDE installer | `pip` / `pipx` / `uv` / Docker / source — runs anywhere Python does |
 | Adapts to you | No | Yes — `neuralmind learn` discovers cooccurrence patterns |
 
 ## When to pick which
