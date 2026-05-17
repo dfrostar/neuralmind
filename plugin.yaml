@@ -1,6 +1,19 @@
-name: "neuralmind-local"
-title: "NeuralMind (Local Development)"
-description: "A tool for AI-powered codebase analysis, installed from a local Git repository."
-version: "0.3.3"
-author: "dfrostar"
-tags: ["code", "analysis", "local"]
+# Plugin manifest for Agent Zero's a0-plugins registry.
+# The `name` field must match the folder we submit to
+# https://github.com/agent0ai/a0-plugins (lowercase, alphanumerics +
+# underscores only). Keep this file in the repo root so the registry's
+# validator can find it.
+name: neuralmind
+title: NeuralMind
+description: >-
+  Semantic code intelligence for AI agents — 40-70× per-query token
+  reduction. Local synapse layer that learns code associations from
+  co-activation. MCP server with live Obsidian-style graph view.
+author: dfrostar
+license: MIT
+tags:
+  - mcp
+  - code
+  - context
+  - local-first
+  - rag

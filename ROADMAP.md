@@ -72,6 +72,27 @@ canvas pulses while the brain learns. Highlights:
 No migration needed. Same ChromaDB index, same `synapses.db`, same
 hooks — `neuralmind serve` just makes everything visible.
 
+## Ecosystem — hub & registry listings
+
+Distribution-channel work that runs in parallel with feature releases.
+Investigated 2026-05-16: only **Agent Zero** publishes a public plugin
+registry; **OpenClaw** and **Hermes-Agent** are config-only (already
+documented in the README integration blocks).
+
+- **Agent Zero** ([`agent0ai/a0-plugins`](https://github.com/agent0ai/a0-plugins))
+  — draft listing ready at
+  [`docs/integration-submissions/agent-zero/index.yaml`](docs/integration-submissions/agent-zero/index.yaml).
+  Cross-repo PR pending maintainer go-ahead.
+- **Anthropic MCP server registry** — worth a sweep when it stabilises;
+  no firm submission process today.
+- **`punkpeye/awesome-mcp-servers`** — community awesome-list, low
+  effort, drive-by visibility.
+
+Richer **Agent Zero plugin** (UI surface, settings panel, embedded
+synapse-graph viewer in A0's web UI) is a follow-up if the
+basic MCP listing draws users. Few hundred lines of Python against
+[A0's plugin API](https://www.agent-zero.ai/p/docs/plugins/).
+
 ## Now (v0.7) — Always-On
 
 Distribution is sorted (v0.6.1); the next batch makes `neuralmind
