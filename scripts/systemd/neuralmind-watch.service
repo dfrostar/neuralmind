@@ -38,11 +38,16 @@ RestartSec=5
 KillSignal=SIGTERM
 TimeoutStopSec=10
 
-# Hardening — adjust if you mount your project on a read-only filesystem.
+# Hardening. ProtectSystem=strict makes /, /usr, /boot, /etc read-only;
+# `neuralmind watch` only needs to write under the project's .neuralmind/
+# state directory, which we allowlist explicitly via ReadWritePaths.
+# (ProtectHome only accepts true/false/read-only/tmpfs — we don't set it
+# here so $HOME stays writable; the explicit ReadWritePaths is what
+# actually documents intent.)
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=read-write
+ReadWritePaths=%h
 
 # Environment toggles (see neuralmind docs):
 # Environment=NEURALMIND_EVENT_LOG=1
