@@ -16,5 +16,24 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v5
         with:
+          # Token override so the tag push triggers downstream workflows.
+          # GitHub deliberately suppresses workflow-from-workflow triggers
+          # when the actor is GITHUB_TOKEN (anti-infinite-loop guard), so
+          # tags release-please creates with the default token never fire
+          # release.yml — which means the PyPI publish never runs without
+          # a manual `gh workflow run release.yml` dispatch.
+          #
+          # Set `RELEASE_PLEASE_TOKEN` as a repo secret (a classic PAT
+          # from a maintainer account, or a fine-grained PAT, with
+          # `contents:write` + `pull_requests:write` on this repo). When
+          # the secret is present, this `token:` override picks it up;
+          # when it isn't, `secrets.RELEASE_PLEASE_TOKEN` evaluates to
+          # empty and the action falls back to GITHUB_TOKEN — so adding
+          # the secret is a zero-risk follow-up.
+          #
+          # Tracked in #98. Long-term, a GitHub App is more durable
+          # (no per-human-account expiry, survives maintainer turnover);
+          # PAT is the 10-minute option that unblocks publishing.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
