@@ -46,6 +46,16 @@ def _hook_block() -> dict:
     """
     return {
         BLOCK_KEY: HOOK_VERSION,
+        # PostToolUse matchers below. Compatibility note for
+        # Claude Code v2.1.117+ (April 2026): on *native* macOS/Linux
+        # builds the standalone Grep + Glob tools were folded into
+        # Bash (searches now invoke embedded bfs/ugrep, no separate
+        # tool round-trip). The Grep matcher entry stays — it's
+        # still active on Windows + npm-installed Claude Code, and
+        # the Bash matcher below catches any rerouted search
+        # invocations on native builds, so end-to-end coverage is
+        # preserved either way.
+        # See: https://github.com/anthropics/claude-agent-sdk-typescript/issues/301
         "PostToolUse": [
             {
                 "matcher": "Read",
