@@ -32,7 +32,7 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 | **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
 | **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. |
 | **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. |
-| **Docker** | `docker build -t neuralmind:dev . && docker run --rm -v "$PWD:/project:ro" neuralmind:dev neuralmind --help` | Containerized — no Python on the host. **Build locally for now**; GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release. |
+| **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest && docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind:latest neuralmind --help` | Containerized — no Python on the host. Multi-platform (`linux/amd64` + `linux/arm64`); auto-published to GHCR on every release since v0.9.0. |
 | **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Hacking on NeuralMind itself. |
 
 **Verify any install:**
@@ -155,28 +155,35 @@ uv add neuralmind graphifyy
 
 ### Docker
 
-The repo ships a multi-stage `Dockerfile` in the root. Build it locally for now — the GHCR auto-publish (`ghcr.io/dfrostar/neuralmind`) lands in a later release.
+Pull from GHCR (auto-published since v0.9.0, multi-platform `linux/amd64` + `linux/arm64`):
 
 ```bash
-# Build
-docker build -t neuralmind:dev .
+docker pull ghcr.io/dfrostar/neuralmind:latest
+# or pin a specific version
+docker pull ghcr.io/dfrostar/neuralmind:v0.9.0
 
-# Run the MCP server against the current directory (read-only mount)
+# Run the MCP server. `neuralmind-mcp` ignores any CLI args; each MCP
+# tool call (neuralmind_wakeup, neuralmind_query, …) carries its own
+# `project_path` argument that the client passes in. The mount below
+# just exposes the project tree so those tool calls can find the path.
 docker run --rm -i \
   -v "$PWD:/project:ro" \
-  neuralmind:dev neuralmind-mcp /project
+  ghcr.io/dfrostar/neuralmind:latest neuralmind-mcp
 
 # Run the graph view on http://localhost:8765
 docker run --rm -p 8765:8765 \
   -v "$PWD:/project:ro" \
-  neuralmind:dev \
+  ghcr.io/dfrostar/neuralmind:latest \
   neuralmind serve /project --host 0.0.0.0 --no-auth
 ```
+
+> **Local build** — if you want to build the image yourself from the repo's `Dockerfile`:
+> `docker build -t neuralmind:dev .` then substitute `neuralmind:dev` for `ghcr.io/dfrostar/neuralmind:latest` in the commands above.
 
 To persist the index between runs, mount the project directory read-write so `.neuralmind/` and `graphify-out/` land on the host:
 
 ```bash
-docker run --rm -v "$PWD:/project" neuralmind:dev neuralmind build /project
+docker run --rm -v "$PWD:/project" ghcr.io/dfrostar/neuralmind:latest neuralmind build /project
 ```
 
 ### From Source
