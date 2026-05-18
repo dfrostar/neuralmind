@@ -162,10 +162,13 @@ docker pull ghcr.io/dfrostar/neuralmind:latest
 # or pin a specific version
 docker pull ghcr.io/dfrostar/neuralmind:v0.9.0
 
-# Run the MCP server against the current directory (read-only mount)
+# Run the MCP server. `neuralmind-mcp` ignores any CLI args; each MCP
+# tool call (neuralmind_wakeup, neuralmind_query, …) carries its own
+# `project_path` argument that the client passes in. The mount below
+# just exposes the project tree so those tool calls can find the path.
 docker run --rm -i \
   -v "$PWD:/project:ro" \
-  ghcr.io/dfrostar/neuralmind:latest neuralmind-mcp /project
+  ghcr.io/dfrostar/neuralmind:latest neuralmind-mcp
 
 # Run the graph view on http://localhost:8765
 docker run --rm -p 8765:8765 \

@@ -14,7 +14,7 @@ No production code changes — pure CI + docs. Full details: [v0.9.0 release not
 
 ### v0.8.0 — Always-On
 
-`neuralmind watch` and `neuralmind serve` are first-class production processes now. Committed [systemd](../blob/main/scripts/systemd/), [launchd](../blob/main/scripts/launchd/), and Windows Task Scheduler templates keep both running across reboots and crashes. `neuralmind serve` exposes a `/healthz` endpoint (unauthenticated, returns `{"status":"ok","version":"…"}`) for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes. Cross-platform walkthrough at [`docs/use-cases/always-on.md`](../blob/main/docs/use-cases/always-on.md).
+`neuralmind watch` and `neuralmind serve` are first-class production processes now. Committed [systemd](../blob/main/scripts/systemd/) and [launchd](../blob/main/scripts/launchd/) templates, plus a Windows Task Scheduler walkthrough in the [Scheduling Guide](Scheduling-Guide#always-on-neuralmind-watch--neuralmind-serve-v08), keep both running across reboots and crashes. `neuralmind serve` exposes a `/healthz` endpoint (unauthenticated, returns `{"status":"ok","version":"…"}`) for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes. Cross-platform walkthrough at [`docs/use-cases/always-on.md`](../blob/main/docs/use-cases/always-on.md).
 
 Distribution (v0.7.0) made NeuralMind reachable. Always-on (v0.8.0) makes it persistent — the synapse store accumulates 24/7 whether you're at the keyboard or not. Full details: [v0.8.0 release notes](../blob/main/RELEASE_NOTES_v0.8.0.md).
 
