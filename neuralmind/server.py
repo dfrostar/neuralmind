@@ -304,6 +304,16 @@ class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - http.server API
         parsed = urlparse(self.path)
         route = parsed.path
+
+        # /healthz is intentionally unauthenticated so Docker HEALTHCHECK
+        # and systemd ExecStartPost can probe a fresh container without
+        # threading a session token. Returns nothing sensitive.
+        if route == "/healthz":
+            from . import __version__
+
+            self._send_json({"status": "ok", "version": __version__})
+            return
+
         ok, new_cookie = self._check_auth(parsed)
         if not ok:
             self._deny(route)

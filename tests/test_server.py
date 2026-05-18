@@ -159,6 +159,50 @@ def _running_server(mind, **handler_overrides):
             setattr(_Handler, k, v)
 
 
+def test_healthz_returns_ok_and_version(tmp_path):
+    """/healthz returns 200 with status=ok and the package version.
+    Docker HEALTHCHECK and systemd ExecStartPost rely on this shape."""
+    import neuralmind
+
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+    with _running_server(fake_mind) as base:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+            assert resp.getheader("Content-Type", "").startswith("application/json")
+            data = json.loads(resp.read())
+    assert data == {"status": "ok", "version": neuralmind.__version__}
+
+
+def test_healthz_does_not_require_auth(tmp_path):
+    """/healthz must bypass the session-token gate so a fresh container
+    can be probed by Docker HEALTHCHECK without threading auth."""
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+    # Set a real auth token; any other route would 401/302 without the
+    # token cookie. /healthz must succeed anyway.
+    with _running_server(fake_mind, auth_token="secret-token") as base:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.status == 200
+            data = json.loads(resp.read())
+    assert data["status"] == "ok"
+
+
+def test_healthz_sets_no_cookie(tmp_path):
+    """/healthz must not start a session — no Set-Cookie header. Covers
+    both auth-disabled and auth-enabled paths so a regression that
+    starts a cookie only when auth is configured can't slip through."""
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+
+    # Auth disabled.
+    with _running_server(fake_mind) as base:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.getheader("Set-Cookie") is None
+
+    # Auth enabled — /healthz must still skip the cookie path entirely.
+    with _running_server(fake_mind, auth_token="secret-token") as base:
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as resp:
+            assert resp.getheader("Set-Cookie") is None
+
+
 def test_api_queries_returns_recent_records_newest_first(tmp_path):
     queries_payload = [
         {"ts": "2026-05-15T01:00:00Z", "question": "older", "tokens": 100, "top_hits": []},
