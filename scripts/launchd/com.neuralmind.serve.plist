@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+NeuralMind graph-view server — macOS launchd user agent.
+
+Keeps `neuralmind serve` reachable across logins. Bound to 127.0.0.1
+by default. To bind a non-loopback address, edit ProgramArguments and
+use the host override from `neuralmind serve` `'help'`; read
+docs/SECURITY-GUIDE.md first.
+
+(Avoid double hyphens in this XML comment block — they are forbidden
+by the XML spec and break plutil and launchctl load.)
+
+Install (user scope — no sudo needed):
+  cp scripts/launchd/com.neuralmind.serve.plist ~/Library/LaunchAgents/
+  # Edit WorkingDirectory and the project path below, then:
+  launchctl load -w ~/Library/LaunchAgents/com.neuralmind.serve.plist
+
+Verify:
+  launchctl list | grep com.neuralmind.serve
+  curl -fsS http://127.0.0.1:8765/healthz
+  tail -f ~/Library/Logs/neuralmind-serve.out.log
+
+Stop / unload:
+  launchctl unload -w ~/Library/LaunchAgents/com.neuralmind.serve.plist
+
+This is a TEMPLATE — change WorkingDirectory and the project path in
+ProgramArguments. The two log paths under ~/Library/Logs are created
+automatically by launchd.
+
+Docs: https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.neuralmind.serve</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/neuralmind</string>
+    <string>serve</string>
+    <string>.</string>
+    <string>--port</string>
+    <string>8765</string>
+    <string>--no-browser</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USERNAME/your-project</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+    <key>Crashed</key>
+    <true/>
+  </dict>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/neuralmind-serve.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/YOUR_USERNAME/Library/Logs/neuralmind-serve.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+</dict>
+</plist>

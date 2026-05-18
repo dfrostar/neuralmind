@@ -1,0 +1,62 @@
+# NeuralMind file-watch daemon — user-scope systemd unit.
+#
+# Keeps `neuralmind watch` running across reboots and crashes. Coalesces
+# file edits into synapse + file_activity events that the always-on
+# `neuralmind serve` graph view pulses on.
+#
+# Install (user scope — no root needed):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/neuralmind-watch.service ~/.config/systemd/user/
+#   # Edit WorkingDirectory below to your project path, then:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now neuralmind-watch
+#
+# For reboot survival without logging in, enable lingering once:
+#   sudo loginctl enable-linger "$USER"
+#
+# Verify:
+#   systemctl --user status neuralmind-watch
+#   journalctl --user -u neuralmind-watch -f
+#
+# Stop / disable:
+#   systemctl --user disable --now neuralmind-watch
+#
+# This is a TEMPLATE — change WorkingDirectory and ExecStart to point
+# at your project. Multiple projects? Copy the file once per project
+# with a distinct name (e.g. neuralmind-watch-projA.service,
+# neuralmind-watch-projB.service) and edit each one's WorkingDirectory.
+# This template doesn't use systemd's %i instance suffix; convert it
+# yourself if you want one unit file with @<project> instance support.
+
+[Unit]
+Description=NeuralMind file watcher (synapse activity capture)
+Documentation=https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/your-project
+ExecStart=/usr/local/bin/neuralmind watch . --quiet
+Restart=on-failure
+RestartSec=5
+# `neuralmind watch` is a long-running poll loop; SIGTERM is enough.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Hardening. ProtectSystem=strict makes /, /usr, /boot, /etc read-only;
+# `neuralmind watch` only needs to write under the project's .neuralmind/
+# state directory, which we allowlist explicitly via ReadWritePaths.
+# (ProtectHome only accepts true/false/read-only/tmpfs — we don't set it
+# here so $HOME stays writable; the explicit ReadWritePaths is what
+# actually documents intent.)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h
+
+# Environment toggles (see neuralmind docs):
+# Environment=NEURALMIND_EVENT_LOG=1
+# Environment=NEURALMIND_SYNAPSE_INJECT=1
+
+[Install]
+WantedBy=default.target

@@ -80,6 +80,61 @@ Linux/macOS:
 
 ## Windows Task Scheduler
 
+### Always-on `neuralmind watch` + `neuralmind serve` *(v0.8)*
+
+The Linux/macOS analogues live in [`scripts/systemd/`](../../scripts/systemd/)
+and [`scripts/launchd/`](../../scripts/launchd/); the full cross-platform
+walkthrough is at
+[`docs/use-cases/always-on.md`](../use-cases/always-on.md). On Windows,
+register two At-Logon scheduled tasks so the watcher and graph view come
+back automatically after every reboot or crash.
+
+```powershell
+# Always-on synapse watcher.
+# ExecutionTimeLimit = 0 disables Task Scheduler's default 72-hour cap,
+# which would otherwise stop a continuously-running task.
+Register-ScheduledTask -TaskName "NeuralMind-Watch" `
+  -Action (New-ScheduledTaskAction `
+    -Execute "neuralmind" `
+    -Argument "watch C:\path\to\your-project --quiet") `
+  -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+  -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
+    -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
+
+# Always-on graph view (tokenized URL printed to the task's stdout).
+# --no-browser stops it from spawning a browser on every login.
+Register-ScheduledTask -TaskName "NeuralMind-Serve" `
+  -Action (New-ScheduledTaskAction `
+    -Execute "neuralmind" `
+    -Argument "serve C:\path\to\your-project --port 8765 --no-browser") `
+  -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
+  -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
+    -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
+    -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1))
+
+# Verify both
+Get-ScheduledTask NeuralMind-*
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/healthz
+# StatusCode 200, JSON body: {"status": "ok", "version": "0.8.0"}
+```
+
+`Invoke-WebRequest` calls the unauthenticated `/healthz` endpoint that
+shipped in v0.8 — the same probe Docker `HEALTHCHECK` and Linux
+`systemd ExecStartPost` use.
+
+Stop and remove:
+
+```powershell
+Unregister-ScheduledTask -TaskName NeuralMind-Watch -Confirm:$false
+Unregister-ScheduledTask -TaskName NeuralMind-Serve -Confirm:$false
+```
+
+The Recurring Audit / Benchmark schedule below remains the right shape
+for the *batch* job (run nightly, log to a file, exit). Use that for
+periodic CI-style audits; use the always-on tasks above for the live
+synapse + graph view.
+
 ### PowerShell Script (Recommended)
 
 **Step 1: Create the script** at a persistent location like `C:\scripts\run-neuralmind.ps1`:

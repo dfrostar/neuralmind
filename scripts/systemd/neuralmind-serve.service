@@ -1,0 +1,62 @@
+# NeuralMind graph-view server — user-scope systemd unit.
+#
+# Keeps `neuralmind serve` reachable across reboots. The graph view is
+# bound to 127.0.0.1 by default; the unit below exposes only loopback.
+# To bind a non-loopback address, edit ExecStart — see
+# docs/SECURITY-GUIDE.md before doing so.
+#
+# Install (user scope — no root needed):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/systemd/neuralmind-serve.service ~/.config/systemd/user/
+#   # Edit WorkingDirectory and the port flag below if needed, then:
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now neuralmind-serve
+#
+# For reboot survival without logging in, enable lingering once:
+#   sudo loginctl enable-linger "$USER"
+#
+# Verify:
+#   systemctl --user status neuralmind-serve
+#   curl -fsS http://127.0.0.1:8765/healthz
+#   journalctl --user -u neuralmind-serve -f
+#   # The full tokenized URL prints to journalctl on startup;
+#   # `neuralmind serve` requires the per-session token by default.
+#
+# Stop / disable:
+#   systemctl --user disable --now neuralmind-serve
+#
+# This is a TEMPLATE — change WorkingDirectory and ExecStart to your
+# project. The graph view embeds a per-session auth token in URLs.
+
+[Unit]
+Description=NeuralMind graph-view server
+Documentation=https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/your-project
+ExecStart=/usr/local/bin/neuralmind serve . --port 8765 --no-browser
+# Readiness probe — gives `neuralmind serve` up to 60 seconds to come
+# up. `serve` builds the embedding index before binding the HTTP
+# socket; first runs and large projects can take a while. Remove this
+# line if you're on a tight-startup-window deploy and prefer to let
+# the unit report ready immediately.
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 240); do curl -fsS http://127.0.0.1:8765/healthz >/dev/null && exit 0; sleep 0.25; done; exit 1'
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Hardening. See neuralmind-watch.service for the rationale on
+# ReadWritePaths=%h (ProtectHome doesn't accept "read-write" — valid
+# values are true/false/read-only/tmpfs).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h
+
+# Environment=NEURALMIND_EVENT_LOG=1
+
+[Install]
+WantedBy=default.target
