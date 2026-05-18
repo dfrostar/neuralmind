@@ -1,0 +1,82 @@
+name: SBOM
+
+# Generate a Software Bill of Materials for every tagged release and
+# attach it to the GitHub Release as `neuralmind-vX.Y.Z.sbom.json`
+# (CycloneDX JSON). Covers the project + every transitive runtime dep
+# (chromadb, mcp, pyyaml, toml, plus their transitives).
+#
+# Tracks issue #120. Uses Anchore's syft via the official action so the
+# SBOM format is consistent with what most enterprise scanners ingest
+# (Grype, Trivy, Dependency-Track, etc.).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to generate SBOM for (e.g., v0.9.0).'
+        required: true
+        type: string
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  sbom:
+    name: Generate + attach SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to upload to the GitHub Release
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install project (so syft sees the full dep tree)
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Generate SBOM (CycloneDX JSON) with syft
+        uses: anchore/sbom-action@v0
+        with:
+          # Scan the active Python environment for the full transitive
+          # dep tree rather than just the source directory's manifests.
+          path: ${{ env.pythonLocation }}
+          format: cyclonedx-json
+          output-file: neuralmind-${{ env.RELEASE_TAG }}.sbom.json
+          # Don't auto-attach — we do that ourselves below so the asset
+          # name matches the documented "neuralmind-vX.Y.Z.sbom.json" shape.
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attach SBOM to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG}"
+          ASSET="neuralmind-${TAG}.sbom.json"
+          if ! gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "::warning title=Release not found yet::${TAG} doesn't exist; release.yml usually creates it. Skipping upload — re-run this workflow once the release exists."
+            exit 0
+          fi
+          if gh release upload "${TAG}" "${ASSET}" --repo "${GITHUB_REPOSITORY}" --clobber; then
+            echo "SBOM attached as ${ASSET}"
+          else
+            echo "::warning title=SBOM upload failed::Release ${TAG} may be immutable. SBOM is in the workflow artifacts."
+          fi
+
+      - name: Upload SBOM as workflow artifact (fallback if release attach fails)
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ env.RELEASE_TAG }}
+          path: neuralmind-${{ env.RELEASE_TAG }}.sbom.json
+          retention-days: 90
