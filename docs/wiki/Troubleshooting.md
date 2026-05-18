@@ -327,17 +327,34 @@ graphify update /path
 neuralmind benchmark .
 ```
 
-If the reduction ratio dropped sharply vs. your last run (and you didn't change your project), the hook layer may have regressed. Then check `~/.claude/settings.json` to confirm NeuralMind's PostToolUse block is still present:
+If the reduction ratio dropped sharply vs. your last run (and you didn't change your project), the hook layer may have regressed. Then check both possible settings files — `install-hooks` defaults to **project scope** (`<project>/.claude/settings.json`), and `--global` writes to `~/.claude/settings.json`. NeuralMind hook blocks are identified by the `neuralmind _hook ...` command embedded in each block (not by a metadata field). One-liner that scans both:
 
 ```bash
-python -c "import json; cfg = json.load(open('$HOME/.claude/settings.json')); \
-  print('NeuralMind hooks installed:', '_neuralmind_v' in str(cfg.get('hooks', {})))"
+python - <<'PY'
+import json, os
+from pathlib import Path
+
+paths = [Path(".claude/settings.json"), Path.home() / ".claude/settings.json"]
+for p in paths:
+    if not p.exists():
+        print(f"{p}: not present")
+        continue
+    cfg = json.loads(p.read_text())
+    hits = []
+    for event, blocks in (cfg.get("hooks") or {}).items():
+        for b in blocks or []:
+            for h in b.get("hooks") or []:
+                if "neuralmind _hook" in (h.get("command") or ""):
+                    hits.append(f"{event}/{b.get('matcher', '*')}")
+    print(f"{p}: {hits if hits else 'no neuralmind hooks'}")
+PY
 ```
 
-**Fix**: if the block is missing, reinstall:
+**Fix**: if neither path lists any blocks, reinstall — match the scope you originally used:
 
 ```bash
-neuralmind install-hooks .
+neuralmind install-hooks .              # project scope (default)
+neuralmind install-hooks . --global     # ~/.claude/settings.json
 ```
 
 If the block is present but the benchmark still looks off, open an issue with the Claude Code version (`claude --version`) and the `neuralmind benchmark .` output — the matcher list may need an update.
