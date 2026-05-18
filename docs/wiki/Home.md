@@ -6,6 +6,18 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
+### v0.9.0 — Enterprise-Ready
+
+Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](../blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](../blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and `ENTERPRISE.md`, with a "how to verify yourself" command for every claim.
+
+No production code changes — pure CI + docs. Full details: [v0.9.0 release notes](../blob/main/RELEASE_NOTES_v0.9.0.md).
+
+### v0.8.0 — Always-On
+
+`neuralmind watch` and `neuralmind serve` are first-class production processes now. Committed [systemd](../blob/main/scripts/systemd/) and [launchd](../blob/main/scripts/launchd/) templates, plus a Windows Task Scheduler walkthrough in the [Scheduling Guide](Scheduling-Guide#always-on-neuralmind-watch--neuralmind-serve-v08), keep both running across reboots and crashes. `neuralmind serve` exposes a `/healthz` endpoint (unauthenticated, returns `{"status":"ok","version":"…"}`) for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes. Cross-platform walkthrough at [`docs/use-cases/always-on.md`](../blob/main/docs/use-cases/always-on.md).
+
+Distribution (v0.7.0) made NeuralMind reachable. Always-on (v0.8.0) makes it persistent — the synapse store accumulates 24/7 whether you're at the keyboard or not. Full details: [v0.8.0 release notes](../blob/main/RELEASE_NOTES_v0.8.0.md).
+
 ### v0.7.0 — Install anywhere
 
 NeuralMind now installs five ways: `pip`, `pipx`, `uv`, Docker, and source. Same package, same CLI, same MCP server, same graph view — every path. The Quick Start matrix lives at the top of the [Installation](Installation) page and the [README](../blob/main/README.md#install--pick-your-path); the repo's root [`Dockerfile`](../blob/main/Dockerfile) is multi-stage, non-root, and pre-wheels every transitive dep so the runtime image doesn't need a C toolchain. PyPI keywords got a long-overdue refresh too, so search ranking for `graph-view`, `hebbian-learning`, and friends finally matches the v0.6.0 product copy.
