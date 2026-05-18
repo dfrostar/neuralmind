@@ -8,6 +8,58 @@ For the longer-horizon engineering plan (release cadence, monitoring,
 compliance, scale targets), see
 [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md).
 
+## Shipped in v0.9.0 — enterprise-ready
+
+Phase 3 of the release arc. Turn the v0.6.0 → v0.7.0 → v0.8.0
+foundation into something a CTO, security team, or regulated-industry
+operator can actually adopt.
+
+- **GHCR auto-build.** Every tagged release publishes
+  `ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, multi-platform
+  (`linux/amd64` + `linux/arm64`). `:latest` excludes pre-release
+  tags. Workflow:
+  [`docker-publish.yml`](.github/workflows/docker-publish.yml).
+- **CycloneDX SBOM** attached to every release as
+  `neuralmind-vX.Y.Z.sbom.json`. Workflow:
+  [`sbom.yml`](.github/workflows/sbom.yml).
+- **Air-gapped install walkthrough** —
+  [`docs/use-cases/air-gapped.md`](docs/use-cases/air-gapped.md).
+  Bundle-and-sneakernet pattern for PyPI wheels + ChromaDB ONNX model
+  cache, with the Docker variant via `docker save`.
+- **Compliance one-pager** —
+  [`docs/COMPLIANCE-SUMMARY.md`](docs/COMPLIANCE-SUMMARY.md).
+  Consolidates NIST AI RMF + SOC 2 + GDPR claims with a "how to
+  verify yourself" command for every claim.
+
+No production code changes — pure CI + docs. See
+[v0.9.0 release notes](RELEASE_NOTES_v0.9.0.md).
+
+## Shipped in v0.8.0 — always-on
+
+`neuralmind watch` and `neuralmind serve` are first-class production
+processes now. The synapse store accumulates 24/7 whether you're at
+the keyboard or not, and the graph view is always listening.
+
+- **Service templates.**
+  [`scripts/systemd/neuralmind-{watch,serve}.service`](scripts/systemd/)
+  user-scope units with hardening; matching macOS
+  [`scripts/launchd/com.neuralmind.{watch,serve}.plist`](scripts/launchd/)
+  user agents with `RunAtLoad` + `KeepAlive`; Windows Task Scheduler
+  section in [`wiki/Scheduling-Guide.md`](docs/wiki/Scheduling-Guide.md).
+- **`/healthz` endpoint** on `neuralmind serve` — unauthenticated,
+  returns `{"status":"ok","version":"..."}` for Docker `HEALTHCHECK`
+  + systemd `ExecStartPost`.
+- **Cross-platform walkthrough** at
+  [`docs/use-cases/always-on.md`](docs/use-cases/always-on.md) —
+  Linux / macOS / Windows / Docker with install + verify + uninstall
+  + troubleshooting.
+
+Aider integration block deferred — current Aider stable has no
+MCP-client support per docs check 2026-05-17. Adds when upstream
+lands it.
+
+See [v0.8.0 release notes](RELEASE_NOTES_v0.8.0.md).
+
 ## Shipped in v0.7.0 — install anywhere
 
 Distribution release, not a features release. The brain is the same;
@@ -93,46 +145,46 @@ synapse-graph viewer in A0's web UI) is a follow-up if the
 basic MCP listing draws users. Few hundred lines of Python against
 [A0's plugin API](https://www.agent-zero.ai/p/docs/plugins/).
 
-## Now (v0.8) — Always-On
+## Now — marketing rollout for v0.7/v0.8/v0.9
 
-Distribution is sorted (v0.7.0); the next batch makes `neuralmind
-watch` and `neuralmind serve` first-class production processes.
-Tracking issue: [#119](https://github.com/dfrostar/neuralmind/issues/119).
+The three shipped releases above each have a deferred marketing pass.
+Code + structural docs are done; the LinkedIn / NotebookLM / screencast
+artifacts are drafted for v0.7 and pending for v0.8 + v0.9.
 
-- **systemd / launchd templates.** Committed `scripts/systemd/` and
-  `scripts/launchd/` service / plist files for `watch` and `serve`
-  with install instructions inline.
-- **Windows Task Scheduler doc note.** Build on
-  [`wiki/Scheduling-Guide.md`](docs/wiki/Scheduling-Guide.md)'s
-  existing Task Scheduler section with NeuralMind-specific commands.
-- **`/healthz` endpoint** on `neuralmind serve` — small JSON `{status:
-  "ok", version: …}` for Docker `HEALTHCHECK` and systemd
-  `ExecStartPost`.
-- **Aider MCP integration.** Verify Aider's stdio MCP support, then
-  add an integration block to the README — same shape as the
-  Hermes-Agent / OpenClaw / Claude Code blocks.
-- **`docs/use-cases/always-on.md`** — walkthrough per platform with
-  verification steps.
+- **v0.7 marketing** — LinkedIn drafts at
+  [`docs/LINKEDIN-POST-DRAFT.md`](docs/LINKEDIN-POST-DRAFT.md),
+  NotebookLM pack at [`docs/notebooklm/v0.7.0/`](docs/notebooklm/v0.7.0/),
+  screencast script at
+  [`docs/SCREENCAST-v0.7.0.md`](docs/SCREENCAST-v0.7.0.md). Awaiting
+  maintainer approval to publish.
+- **v0.8 marketing** — LinkedIn draft + NotebookLM pack +
+  screencast script for "Always-On" (audience: ops/SREs). Not yet
+  drafted.
+- **v0.9 marketing** — LinkedIn for CTOs/security, NotebookLM
+  enterprise pack, screencast showing the GHCR pull + SBOM ingestion
+  flow, optional Hacker News submission ("Show HN: NeuralMind 0.9 —
+  local AI code memory, now containerized + SBOM"). Not yet drafted.
 
-## Then (v0.8.x) — Enterprise-Ready
+## Next (post-marketing)
 
-Tracking issue: [#120](https://github.com/dfrostar/neuralmind/issues/120).
+- **Agent Zero `a0-plugins` listing** — draft at
+  [`docs/integration-submissions/agent-zero/index.yaml`](docs/integration-submissions/agent-zero/index.yaml).
+  Cross-repo PR pending.
+- **`RELEASE_PLEASE_TOKEN` PAT secret** — the workflow change shipped
+  in v0.8.0 (#126) is in place; needs the maintainer to add the PAT
+  secret to make every future tag auto-publish to PyPI without manual
+  `gh workflow run release.yml` dispatch (#98).
+- **`punkpeye/awesome-mcp-servers`** — community awesome-list, low
+  effort, drive-by visibility.
+- **GitHub App** for release automation (long-term variant of #98) —
+  more durable than a maintainer PAT, survives turnover.
+- **Optional cosign image signing** on the GHCR images — provenance
+  attestation for the enterprise pitch.
 
-- **GHCR auto-build of the v0.7.0 Dockerfile** on tag push —
-  multi-platform (`linux/amd64`, `linux/arm64`).
-- **Air-gapped install doc** — PyPI mirror + ChromaDB embedding
-  model pre-download script.
-- **SBOM publication** on tagged releases via `cyclonedx-py` or
-  `syft`.
-- **`docs/COMPLIANCE-SUMMARY.md`** — one-pager consolidating NIST AI
-  RMF + SOC 2 + GDPR claims scattered across
-  [SECURITY-GUIDE](docs/SECURITY-GUIDE.md) and
-  [ENTERPRISE](docs/ENTERPRISE.md).
+## Graph-view backlog (v0.10+ or later)
 
-## Graph-view backlog (v0.8 or later)
-
-Frontend wins carried forward from the pre-v0.7.0 plan. Could roll
-into v0.8 if there's appetite, or stay queued.
+Frontend wins carried forward from the pre-v0.7.0 plan. Not currently
+prioritised; could roll into a future graph-view focused release.
 
 - **Saved views.** Obsidian-style named graph filter/zoom/depth
   combos, persisted in `localStorage`. Lets users keep "auth tour",

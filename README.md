@@ -11,7 +11,11 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **🆕 New in v0.7.0** — **Install anywhere.** Five install paths now in the README: `pip`, `pipx`, `uv`, Docker, and source. Same package every path; smoke-test verified. [Release notes](RELEASE_NOTES_v0.7.0.md) · [Install matrix ↓](#install--pick-your-path)
+> **🆕 New in v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
+>
+> **v0.8.0** — **Always-On.** `neuralmind watch` + `neuralmind serve` run as first-class services with [committed systemd / launchd / Windows Task Scheduler templates](docs/use-cases/always-on.md) + a `/healthz` endpoint for Docker HEALTHCHECK and systemd ExecStartPost probes. [Release notes](RELEASE_NOTES_v0.8.0.md)
+>
+> **v0.7.0** — **Install anywhere.** Five install paths now in the README: `pip`, `pipx`, `uv`, Docker, and source. Same package every path; smoke-test verified. [Release notes](RELEASE_NOTES_v0.7.0.md) · [Install matrix ↓](#install--pick-your-path)
 >
 > **v0.6.0** — Obsidian-style graph view with a **live activity feed**. `neuralmind serve` streams synapse + file events to the canvas in real time, so you can *watch the brain learning your codebase*. [Release notes](RELEASE_NOTES_v0.6.0.md) · [Graph view section ↓](#-graph-view-neuralmind-serve)
 
@@ -1615,6 +1619,8 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.9.0](RELEASE_NOTES_v0.9.0.md)** | Enterprise-Ready — GHCR auto-build, CycloneDX SBOM, air-gapped install walkthrough, compliance one-pager |
+| **[Release Notes v0.8.0](RELEASE_NOTES_v0.8.0.md)** | Always-On — systemd / launchd / Windows Task Scheduler templates, `/healthz` endpoint |
 | **[Release Notes v0.7.0](RELEASE_NOTES_v0.7.0.md)** | Install anywhere — `pip` / `pipx` / `uv` / Docker / source, Dockerfile, event-log rotation fix |
 | **[Release Notes v0.6.0](RELEASE_NOTES_v0.6.0.md)** | Live activity feed, cross-process JSONL bridge, pin UX, depth slider, replay overlay |
 | **[Comparisons](docs/comparisons/README.md)** | NeuralMind vs. Cursor, Copilot, Cody, Aider, Claude Projects, LangChain, long context, prompt caching, RAG, tree-sitter |

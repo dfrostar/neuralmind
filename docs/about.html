@@ -46,6 +46,37 @@
     </header>
 
     <section>
+        <div class="container" id="whats-new-v090">
+            <h2>What's New in v0.9.0 — enterprise-ready</h2>
+            <p><strong>Phase 3 of the release arc.</strong> Turn the v0.6.0 → v0.7.0 → v0.8.0 foundation into something a CTO, security team, or regulated-industry operator can actually adopt.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>GHCR auto-build.</strong> Every tagged release publishes <code>ghcr.io/dfrostar/neuralmind:vX.Y.Z</code> and <code>:latest</code>, multi-platform (<code>linux/amd64</code> + <code>linux/arm64</code>), non-root runtime, transitive deps pre-wheeled. <code>:latest</code> only moves for stable tags — pre-release tags like <code>v1.0.0-rc1</code> are excluded from the floating tag.</li>
+                <li><strong>SBOM</strong> (CycloneDX JSON) attached to every release as <code>neuralmind-vX.Y.Z.sbom.json</code> — ingestible by Grype, Trivy, Dependency-Track, and most enterprise SCA scanners.</li>
+                <li><strong>Air-gapped install walkthrough</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md">docs/use-cases/air-gapped.md</a>) — bundle-and-sneakernet for environments with no outbound network at install time.</li>
+                <li><strong>Compliance one-pager</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md">docs/COMPLIANCE-SUMMARY.md</a>) — NIST AI RMF + SOC 2 + GDPR claims consolidated for procurement review, with a "how to verify yourself" command for every claim.</li>
+            </ul>
+            <p>No production code changes — pure CI + docs. No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md">Full v0.9.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v080">
+            <h2>What's New in v0.8.0 — always-on</h2>
+            <p><strong><code>neuralmind watch</code> and <code>neuralmind serve</code> are first-class production processes now.</strong> The synapse store accumulates 24/7 whether you're at the keyboard or not, and the graph view is always listening on <code>127.0.0.1:8765</code>.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Service templates.</strong> <code>scripts/systemd/neuralmind-{watch,serve}.service</code> (user-scope units, hardened), <code>scripts/launchd/com.neuralmind.{watch,serve}.plist</code> (macOS user agents with <code>RunAtLoad</code> + <code>KeepAlive</code>), Windows Task Scheduler section in the Scheduling Guide.</li>
+                <li><strong><code>/healthz</code> endpoint</strong> on <code>neuralmind serve</code> — unauthenticated, returns <code>{"status":"ok","version":"..."}</code>. Designed for Docker <code>HEALTHCHECK</code> and systemd <code>ExecStartPost</code> probes so a fresh container can be checked without threading a session token.</li>
+                <li><strong>Cross-platform always-on walkthrough</strong> at <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md">docs/use-cases/always-on.md</a> covering Linux (systemd), macOS (launchd), Windows (Task Scheduler), and Docker (<code>HEALTHCHECK</code>) with install + verify + uninstall + troubleshooting.</li>
+            </ul>
+            <p>The canvas still requires the per-session auth token by default; pass <code>--no-auth</code> in the templates or read the tokenized URL from the service logs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md">Full v0.8.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v070">
             <h2>What's New in v0.7.0 — install anywhere</h2>
             <p><strong>Distribution release, not a features release.</strong> The brain is the same brain. What changed is how many ways you can install it.</p>
