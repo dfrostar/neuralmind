@@ -313,6 +313,41 @@ graphify update /path
 
 ---
 
+## Hook Issues (Claude Code)
+
+### Verify hooks are still firing after a Claude Code update
+
+**Symptoms**: After updating Claude Code itself (not NeuralMind), tool-output token counts feel higher than they used to, or the compression noted in `neuralmind benchmark` doesn't match what you observe in Claude Code's actual usage.
+
+**Cause**: Claude Code's hook matcher names and tool dispatch path can change between versions. The most notable change so far: **v2.1.117 (April 2026)** folded the standalone `Grep`/`Glob` tools into `Bash` on native macOS/Linux builds. Our installed-hooks still cover that case (the `Bash` matcher catches the rerouted searches), but it's a useful health check after any Claude Code upgrade.
+
+**Diagnosis** — run the benchmark:
+
+```bash
+neuralmind benchmark .
+```
+
+If the reduction ratio dropped sharply vs. your last run (and you didn't change your project), the hook layer may have regressed. Then check `~/.claude/settings.json` to confirm NeuralMind's PostToolUse block is still present:
+
+```bash
+python -c "import json; cfg = json.load(open('$HOME/.claude/settings.json')); \
+  print('NeuralMind hooks installed:', '_neuralmind_v' in str(cfg.get('hooks', {})))"
+```
+
+**Fix**: if the block is missing, reinstall:
+
+```bash
+neuralmind install-hooks .
+```
+
+If the block is present but the benchmark still looks off, open an issue with the Claude Code version (`claude --version`) and the `neuralmind benchmark .` output — the matcher list may need an update.
+
+### PostToolUse scope — what NeuralMind compresses
+
+NeuralMind's hooks compress the output of Claude Code's built-in tools (`Read`, `Bash`, `Grep`, plus rerouted searches on v2.1.117+ native builds). They do **not** compress responses from third-party MCP servers — MCP tool calls match on `mcp__<server>__<tool>` patterns, which NeuralMind's installed block deliberately doesn't subscribe to (we don't know what those MCP tools return or whether compression would be safe). If a third-party MCP server is dominating your token bill, that compression is a separate problem from what `install-hooks` solves.
+
+---
+
 ## MCP Issues
 
 ### "MCP server failed to start"

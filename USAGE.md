@@ -508,6 +508,8 @@ echo "✅ Maintenance complete!"
 
 ## ROI Calculator
 
+> **Honest framing:** the dollar figures in this section are **best-case project-side projections**, not independently audited cost studies. They assume every query loads ~50,000 tokens of context without NeuralMind and ~800 tokens with it — true for the "loading-the-codebase-to-answer" pattern this tool was built for, generous if your real workload mixes in queries that don't touch source files. Match the line that fits your usage; treat anything beyond that as upper-bound. For the skeptic's read on what these numbers mean (and don't), see [`docs/HONEST-ASSESSMENT.md`](docs/HONEST-ASSESSMENT.md).
+
 ### Cost Comparison by Model
 
 | Model | Input Price | Without NeuralMind | With NeuralMind | Per-Query Savings |
