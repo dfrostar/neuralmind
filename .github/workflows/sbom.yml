@@ -64,14 +64,30 @@ jobs:
           set -euo pipefail
           TAG="${RELEASE_TAG}"
           ASSET="neuralmind-${TAG}.sbom.json"
+
+          # release.yml runs in parallel with this workflow on the same
+          # tag push and creates the GitHub Release as one of its later
+          # jobs (after publish-pypi + smoke-test-pypi). Poll for up to
+          # ~6 minutes so the SBOM lands on the release on first publish
+          # without needing a manual re-run.
+          deadline=$(( $(date +%s) + 360 ))
+          while [ "$(date +%s)" -lt "${deadline}" ]; do
+            if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              break
+            fi
+            echo "Release ${TAG} not yet visible — waiting 20s for release.yml to create it"
+            sleep 20
+          done
+
           if ! gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            echo "::warning title=Release not found yet::${TAG} doesn't exist; release.yml usually creates it. Skipping upload — re-run this workflow once the release exists."
+            echo "::warning title=Release not found after polling::${TAG} doesn't exist after 6 min. Skipping upload — re-run this workflow once the release exists. SBOM preserved as workflow artifact below."
             exit 0
           fi
+
           if gh release upload "${TAG}" "${ASSET}" --repo "${GITHUB_REPOSITORY}" --clobber; then
             echo "SBOM attached as ${ASSET}"
           else
-            echo "::warning title=SBOM upload failed::Release ${TAG} may be immutable. SBOM is in the workflow artifacts."
+            echo "::warning title=SBOM upload failed::Release ${TAG} may be immutable. SBOM preserved as workflow artifact below."
           fi
 
       - name: Upload SBOM as workflow artifact (fallback if release attach fails)

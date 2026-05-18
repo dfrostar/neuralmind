@@ -23,9 +23,9 @@ walkthrough covers both.
 # On a connected machine, with the same Python version as the target:
 pip download neuralmind graphifyy --dest ./offline-bundle
 python -c "from chromadb.utils import embedding_functions as ef; \
-  ef.DefaultEmbeddingFunction()()"        # warm the model cache
+  ef.DefaultEmbeddingFunction()(['warm'])"        # warm the model cache
 tar czf neuralmind-offline.tgz ./offline-bundle \
-  ~/.cache/chroma/onnx_models
+  -C ~/.cache/chroma onnx_models
 # Move the tarball to the air-gapped machine, then:
 tar xzf neuralmind-offline.tgz
 pip install --no-index --find-links offline-bundle neuralmind graphifyy
