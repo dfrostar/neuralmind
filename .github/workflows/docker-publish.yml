@@ -1,0 +1,100 @@
+name: Docker Publish (GHCR)
+
+# Auto-build the repo-root Dockerfile and push to GHCR on every tag push.
+# Tracks issue #120. The image lives at:
+#   ghcr.io/dfrostar/neuralmind:vX.Y.Z
+#   ghcr.io/dfrostar/neuralmind:latest
+#
+# Multi-platform (linux/amd64 + linux/arm64). GITHUB_TOKEN has GHCR write
+# access on private GitHub-hosted runners with the `packages: write`
+# permission below — no separate registry login required.
+#
+# Triggered on the same `v*` tag push that fires release.yml, so the
+# image lands alongside the PyPI publish without a separate dispatch.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build the image for (e.g., v0.9.0).'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build-and-push:
+    name: Build + push multi-platform image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # for cosign/sigstore in a later iteration
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up QEMU (cross-arch emulation for arm64 builds on amd64 runners)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build + push (linux/amd64 + linux/arm64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.title=NeuralMind
+            org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 40-70× token reduction.
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.RELEASE_TAG }}
+            org.opencontainers.image.licenses=MIT
+          # Use the GitHub Actions cache so subsequent builds reuse layers
+          # across releases instead of rebuilding the wheel pre-download
+          # from scratch every time.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  verify-pull:
+    name: Verify image pulls + neuralmind --help works
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull + smoke-test the image
+        run: |
+          set -euo pipefail
+          IMAGE="${REGISTRY}/${IMAGE_NAME}:${RELEASE_TAG}"
+          echo "Pulling ${IMAGE}"
+          docker pull "${IMAGE}"
+          echo "Running neuralmind --help"
+          docker run --rm "${IMAGE}" neuralmind --help
