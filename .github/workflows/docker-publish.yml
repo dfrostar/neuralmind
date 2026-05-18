@@ -3,7 +3,7 @@ name: Docker Publish (GHCR)
 # Auto-build the repo-root Dockerfile and push to GHCR on every tag push.
 # Tracks issue #120. The image lives at:
 #   ghcr.io/dfrostar/neuralmind:vX.Y.Z
-#   ghcr.io/dfrostar/neuralmind:latest
+#   ghcr.io/dfrostar/neuralmind:latest        (stable tags only)
 #
 # Multi-platform (linux/amd64 + linux/arm64). GITHUB_TOKEN has GHCR write
 # access on private GitHub-hosted runners with the `packages: write`
@@ -11,6 +11,13 @@ name: Docker Publish (GHCR)
 #
 # Triggered on the same `v*` tag push that fires release.yml, so the
 # image lands alongside the PyPI publish without a separate dispatch.
+#
+# Tag/label generation uses docker/metadata-action so:
+#   - the image name is lowercased (GHCR rejects uppercase, and a
+#     future repo rename or fork with mixed case wouldn't fail the push)
+#   - `:latest` only moves for non-pre-release tags (vX.Y.Z without a
+#     `-rc1` / `-beta1` suffix), preventing pre-release images from
+#     becoming the default `:latest` that `docker pull` resolves to.
 
 on:
   push:
@@ -36,6 +43,9 @@ jobs:
       contents: read
       packages: write
       id-token: write   # for cosign/sigstore in a later iteration
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -54,6 +64,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract image metadata (lowercased name + smart tagging)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # type=ref,event=tag → :v0.9.0 from the pushed tag
+          # type=raw,latest → :latest only when the tag has no `-`
+          #   suffix (excludes v0.10.0-rc1, v1.0.0-beta1, etc.).
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
+          labels: |
+            org.opencontainers.image.title=NeuralMind
+            org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 40-70× token reduction.
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.RELEASE_TAG }}
+            org.opencontainers.image.licenses=MIT
+          flavor: |
+            latest=false
+
       - name: Build + push (linux/amd64 + linux/arm64)
         uses: docker/build-push-action@v6
         with:
@@ -61,16 +91,9 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.RELEASE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          labels: |
-            org.opencontainers.image.title=NeuralMind
-            org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 40-70× token reduction.
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.version=${{ env.RELEASE_TAG }}
-            org.opencontainers.image.licenses=MIT
-          # Use the GitHub Actions cache so subsequent builds reuse layers
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # GitHub Actions cache so subsequent builds reuse layers
           # across releases instead of rebuilding the wheel pre-download
           # from scratch every time.
           cache-from: type=gha
@@ -90,10 +113,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull + smoke-test the image
+      - name: Pull + smoke-test the version-tagged image
+        env:
+          IMAGE_TAGS: ${{ needs.build-and-push.outputs.tags }}
         run: |
           set -euo pipefail
-          IMAGE="${REGISTRY}/${IMAGE_NAME}:${RELEASE_TAG}"
+          # The version-tagged ref is always the first line; :latest may
+          # or may not be present (only on stable releases).
+          IMAGE="$(printf '%s\n' "${IMAGE_TAGS}" | head -n1)"
           echo "Pulling ${IMAGE}"
           docker pull "${IMAGE}"
           echo "Running neuralmind --help"
