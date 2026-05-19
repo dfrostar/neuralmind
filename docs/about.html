@@ -85,7 +85,7 @@
                 <li><strong><code>pip install neuralmind graphifyy</code></strong> — the default. Works in any venv.</li>
                 <li><strong><code>pipx install neuralmind</code></strong> — global CLI, isolated env. <code>neuralmind</code> on PATH everywhere without activation.</li>
                 <li><strong><code>uv pip install neuralmind graphifyy</code></strong> — ~10× faster than pip, same wheel.</li>
-                <li><strong><code>docker build -t neuralmind:dev .</code></strong> — multi-stage Dockerfile in the repo root, non-root runtime, transitive deps pre-wheeled in the builder. GHCR auto-publish lands in a later release; build locally for now.</li>
+                <li><strong><code>docker build -t neuralmind:dev .</code></strong> — multi-stage Dockerfile in the repo root, non-root runtime, transitive deps pre-wheeled in the builder. <em>(GHCR auto-publish landed in v0.9.0 — see the v0.9.0 section above for the <code>docker pull ghcr.io/dfrostar/neuralmind</code> path.)</em></li>
                 <li><strong>From source</strong> — for contributors.</li>
             </ul>
             <p>All five paths deliver the same package: the <code>neuralmind</code> CLI, the <code>neuralmind-mcp</code> server (for Claude Code, Cursor, Cline, Continue, and any MCP client), and the live graph view from v0.6.0. Smoke test is identical: <code>neuralmind --help</code> works everywhere; <code>python -c "import neuralmind"</code> works for pip / uv / source paths.</p>

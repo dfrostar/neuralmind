@@ -525,13 +525,13 @@ Why it matters: the agent-facing brain has always been a black box — you could
 see what NeuralMind retrieved, whether the graph was reasonable, or what the
 synapse layer had actually learned. The graph view exposes all three.
 
-**Coming next (graph-view Phase B):** a
-[replay-last-query overlay](https://github.com/dfrostar/neuralmind/pull/105)
-that highlights the L3 hits the agent received,
-[edge tooltips + a min-weight synapse slider](https://github.com/dfrostar/neuralmind/pull/106)
-answering "why are these two nodes related?", pin UX, and a
-`Cmd/Ctrl-K` quick-switch. Then Phase C: a live activity feed of
-synapse co-activations. Full plan in [ROADMAP.md](ROADMAP.md).
+**Now live in the graph view** (as of v0.9.0): replay-last-query
+overlay, edge tooltips + min-weight synapse slider, pin UX,
+`Cmd/Ctrl-K` quick-switch, local-graph depth slider, and the live
+activity feed of synapse co-activations + file edits. Plus
+`/healthz` for Docker / systemd monitoring (v0.8.0+), GHCR
+auto-built container image (v0.9.0+), and a CycloneDX SBOM on every
+release. Full roadmap of what's next in [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -861,7 +861,7 @@ supported — see the upstream
 for the full schema (`command`, `args`, `env`, `url`, `headers`, `enabled`,
 per-server `tools` filtering, `timeout`, `connect_timeout`).
 
-**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+**The live graph view (v0.6.0+) works identically here.** Run `neuralmind serve` in
 the same project and any tool call from Hermes-Agent will pulse the
 corresponding nodes on the canvas. The synapse store is shared with
 Claude Code, Cursor, OpenClaw, and any other agent pointed at this
@@ -897,7 +897,7 @@ openclaw mcp show neuralmind       # echoes the JSON you stored
 Remove with `openclaw mcp unset neuralmind`. Definitions are stored under
 the `mcp.servers` key in `~/.openclaw/openclaw.json`.
 
-**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+**The live graph view (v0.6.0+) works identically here.** Run `neuralmind serve` in
 the same project and any tool call from OpenClaw will pulse the
 corresponding nodes on the canvas. OpenClaw and Claude Code talking
 to the same project reinforce the same synapse store — see
@@ -956,7 +956,7 @@ for HTTP/SSE transports, OAuth, and per-server tool filtering.
 If you haven't installed Agent Zero yet, the upstream README has the
 Docker and Python install paths.
 
-**v0.6.0 graph view works identically here.** Run `neuralmind serve` in
+**The live graph view (v0.6.0+) works identically here.** Run `neuralmind serve` in
 the same project and any tool call from Agent Zero will pulse the
 corresponding nodes on the canvas. The synapse store is shared with
 Claude Code, Cursor, Cline, Continue, OpenClaw, Hermes-Agent, and any
