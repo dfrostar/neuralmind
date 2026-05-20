@@ -723,3 +723,334 @@ class TestRerankerIntegration:
 
         # Should respect n parameter even after reranking
         assert hits <= 3
+
+
+class TestSynapseBoost:
+    """L3 retrieval consults the live synapse graph (seed-based spread)."""
+
+    @staticmethod
+    def _four_hit_embedder(mock_embedder):
+        """Override the mock so search returns four ordered, distinct hits.
+
+        With the default SYNAPSE_SEED_K=3 the top three are spread seeds
+        (and seeds are excluded from boosting), so ``node_low`` is the only
+        result eligible for a synapse boost.
+        """
+        mock_embedder.search.return_value = [
+            {
+                "id": "node_top",
+                "document": "top hit",
+                "metadata": {"label": "top", "file_type": "function", "community": 1},
+                "distance": 0.10,
+                "score": 0.90,
+            },
+            {
+                "id": "node_mid",
+                "document": "middle hit",
+                "metadata": {"label": "mid", "file_type": "function", "community": 1},
+                "distance": 0.40,
+                "score": 0.60,
+            },
+            {
+                "id": "node_seed3",
+                "document": "third seed hit",
+                "metadata": {"label": "seed3", "file_type": "function", "community": 1},
+                "distance": 0.45,
+                "score": 0.55,
+            },
+            {
+                "id": "node_low",
+                "document": "low hit",
+                "metadata": {"label": "low", "file_type": "function", "community": 2},
+                "distance": 0.50,
+                "score": 0.50,
+            },
+        ]
+        return mock_embedder
+
+    def test_boost_promotes_associated_hit(self, mock_embedder, temp_project):
+        """A strongly co-activated lower hit is reordered above higher ones."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # node_low (0.50) is the learned neighbor of the seeds; a 0.3 * 1.0
+        # boost lifts it to 0.80, above node_mid (0.60) and node_seed3 (0.55).
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4
+        # node_low should now outrank node_mid in the rendered output.
+        assert text.index("**low**") < text.index("**mid**")
+        assert "synapse" in text
+
+    def test_seeds_are_passed_from_top_hits(self, mock_embedder, temp_project):
+        """Spread is seeded from the top SYNAPSE_SEED_K hit ids, not the tail."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        captured = {}
+
+        def recall(seeds):
+            captured["seeds"] = list(seeds)
+            return []
+
+        selector.synapse_recall = recall
+        selector.get_l3_search("query", n=4)
+
+        assert captured["seeds"] == ["node_top", "node_mid", "node_seed3"]
+
+    def test_no_recall_is_noop(self, mock_embedder, temp_project):
+        """Without a recall callable, ordering and labels are unchanged."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # synapse_recall defaults to None.
+
+        text, _ = selector.get_l3_search("query", n=4)
+
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+        assert "synapse" not in text
+
+    def test_cold_graph_is_noop(self, mock_embedder, temp_project):
+        """Empty recall (cold graph) leaves results byte-identical."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: []
+
+        text, _ = selector.get_l3_search("query", n=4)
+
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+        assert "synapse" not in text
+
+    def test_kill_switch_disables_boost(self, mock_embedder, temp_project, monkeypatch):
+        """NEURALMIND_SYNAPSE_INJECT=0 turns the boost off even when wired."""
+        from neuralmind.context_selector import ContextSelector
+
+        monkeypatch.setenv("NEURALMIND_SYNAPSE_INJECT", "0")
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+
+        text, _ = selector.get_l3_search("query", n=4)
+
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+        assert "synapse" not in text
+
+    def test_boost_does_not_mutate_cached_results(self, mock_embedder, temp_project):
+        """Boosting must not compound or contaminate the cached vector hits."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # node_low is present and a non-seed, so path (a) boosts it.
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+
+        text_first, _ = selector.get_l3_search("query", n=4)
+        text_second, _ = selector.get_l3_search("query", n=4)
+
+        # Idempotent: a second call yields identical output (no compounding).
+        assert text_first == text_second
+        # Cached dicts keep their original vector scores, uncontaminated.
+        cached = selector._query_search_cache["query"]
+        low = next(r for r in cached if r["id"] == "node_low")
+        assert low["score"] == 0.50
+        assert "_synapse_boost" not in low
+
+    def test_pull_in_degrades_without_id_lookup(self, mock_embedder, temp_project):
+        """If the embedder lacks get_nodes_by_ids, pull-in is skipped, not fatal."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        mock_embedder.get_nodes_by_ids = None  # backend without id lookup
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("node_absent", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        # No crash, no displacement — boost-only fallback.
+        assert hits == 4
+        assert "[recalled]" not in text
+
+    def test_recall_exception_is_swallowed(self, mock_embedder, temp_project):
+        """A failing recall callable must not break retrieval."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+
+        def boom(seeds):
+            raise RuntimeError("synapse store unavailable")
+
+        selector.synapse_recall = boom
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+
+    def test_pulls_in_absent_neighbor_budget_neutral(self, mock_embedder, temp_project):
+        """A co-activated absent node displaces the weakest hit, count fixed."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        mock_embedder.get_nodes_by_ids.return_value = [
+            {
+                "id": "node_absent",
+                "document": "recalled function",
+                "metadata": {
+                    "label": "recalled_fn",
+                    "file_type": "function",
+                    "source_file": "assoc.py",
+                },
+            }
+        ]
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("node_absent", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        # Count unchanged: recalled_fn entered, the weakest hit ("low") left.
+        assert hits == 4
+        assert "recalled_fn" in text
+        assert "[recalled]" in text
+        assert "**low**" not in text
+        mock_embedder.get_nodes_by_ids.assert_called_once_with(["node_absent"])
+
+    def test_pull_in_respects_energy_threshold(self, mock_embedder, temp_project):
+        """A weakly co-activated absent node is not pulled in."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # Below SYNAPSE_PULL_IN_MIN_ENERGY (0.15).
+        selector.synapse_recall = lambda seeds: [("node_absent", 0.05)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4
+        assert "[recalled]" not in text
+        mock_embedder.get_nodes_by_ids.assert_not_called()
+
+    def test_pull_in_respects_max_cap(self, mock_embedder, temp_project):
+        """No more than SYNAPSE_PULL_IN_MAX neighbors are pulled in."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        captured = {}
+
+        def get_nodes_by_ids(ids):
+            captured["ids"] = list(ids)
+            return [
+                {"id": i, "document": i, "metadata": {"label": i, "file_type": "function"}}
+                for i in ids
+            ]
+
+        mock_embedder.get_nodes_by_ids.side_effect = get_nodes_by_ids
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [
+            ("absent_a", 0.9),
+            ("absent_b", 0.8),
+            ("absent_c", 0.7),
+        ]
+
+        _, hits = selector.get_l3_search("query", n=4)
+
+        # Count stays 4: two weakest hits displaced by the two highest-energy
+        # neighbors (cap), absent_c left out by SYNAPSE_PULL_IN_MAX.
+        assert hits == 4
+        assert captured["ids"] == ["absent_a", "absent_b"]
+
+    def test_community_pseudo_node_not_pulled_into_l3(self, mock_embedder, temp_project):
+        """community_<id> recall nodes feed L2, never get fetched as L3 nodes."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("community_9", 1.0)]
+
+        _, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4
+        mock_embedder.get_nodes_by_ids.assert_not_called()
+
+
+class TestSynapseCommunityBoost:
+    """L2 community selection consults the synapse graph, budget-neutral (PR2)."""
+
+    @staticmethod
+    def _two_community_embedder(mock_embedder):
+        """Vector hits across a strong community (1) and a weak one (2)."""
+        mock_embedder.search.return_value = [
+            {
+                "id": "hit_a",
+                "document": "strong",
+                "metadata": {"label": "a", "file_type": "function", "community": 1},
+                "distance": 0.1,
+                "score": 0.90,
+            },
+            {
+                "id": "hit_b",
+                "document": "weak",
+                "metadata": {"label": "b", "file_type": "function", "community": 2},
+                "distance": 0.9,
+                "score": 0.10,
+            },
+        ]
+        return mock_embedder
+
+    def test_recalled_community_displaces_weaker(self, mock_embedder, temp_project):
+        """A co-activated community wins a slot from a weaker vector one."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._two_community_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # community_9: score 1.0 * 0.3 = 0.30 > community 2's 0.10.
+        selector.synapse_recall = lambda seeds: [("community_9", 1.0)]
+
+        _, communities = selector.get_l2_context("query")
+
+        # Count unchanged (2): 9 entered, the weaker community 2 dropped out.
+        assert len(communities) == 2
+        assert 9 in communities
+        assert 2 not in communities
+
+    def test_recall_cannot_grow_community_count(self, mock_embedder, temp_project):
+        """When vector finds one community, recall can't add a second slot."""
+        from neuralmind.context_selector import ContextSelector
+
+        # Default mock: two hits, both community 1 -> one vector community.
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("community_9", 1.0)]
+
+        _, communities = selector.get_l2_context("query")
+
+        assert len(communities) == 1
+
+    def test_no_recall_leaves_communities_unchanged(self, mock_embedder, temp_project):
+        """Without recall, only vector-hit communities are loaded."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._two_community_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+
+        _, communities = selector.get_l2_context("query")
+
+        assert set(communities) == {1, 2}
+
+    def test_malformed_community_node_ignored(self, mock_embedder, temp_project):
+        """A non-integer community_<x> recall id is skipped, not fatal."""
+        from neuralmind.context_selector import ContextSelector
+
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("community_abc", 1.0)]
+
+        # Should not raise; community list is just the vector-hit ones.
+        _, communities = selector.get_l2_context("query")
+
+        assert isinstance(communities, list)
