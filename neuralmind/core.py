@@ -203,6 +203,9 @@ class NeuralMind:
         self.selector = ContextSelector(
             self.embedder, str(self.project_path), enable_reranking=self.enable_reranking
         )
+        # Let L3 retrieval consult the live synapse graph (seed-based spread,
+        # no extra embedder round trip — the seeds are hits already fetched).
+        self.selector.synapse_recall = self._recall_for_selection
 
         # Get final stats
         final_stats = self.embedder.get_stats()
@@ -771,6 +774,23 @@ class NeuralMind:
                 "synapses": len(synapses),
             },
         }
+
+    def _recall_for_selection(
+        self, seed_ids: list[str], depth: int = 2, top_k: int = 8
+    ) -> list[tuple[str, float]]:
+        """Seed-based spreading activation for the context selector.
+
+        Takes node ids the selector already fetched (so no second embedder
+        round trip) and returns their learned synapse neighbors. Empty on a
+        cold graph or when synapses are unavailable.
+        """
+        store = self.synapses
+        if store is None or not seed_ids:
+            return []
+        try:
+            return store.spread(seed_ids, depth=depth, top_k=top_k)
+        except Exception:
+            return []
 
     def synaptic_neighbors(
         self, query: str, depth: int = 2, top_k: int = 10
