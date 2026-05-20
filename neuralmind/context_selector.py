@@ -18,6 +18,7 @@ Token Budget Management:
 - Reduction ratio: 30-50x typical
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -90,6 +91,12 @@ class ContextSelector:
     # Chars per token estimate
     CHARS_PER_TOKEN = 4
 
+    # Synapse-driven recall (see _apply_synapse_boost): number of top hits used
+    # to seed spreading activation, and how strongly learned co-activation
+    # nudges a result's relevance score.
+    SYNAPSE_SEED_K = 3
+    SYNAPSE_BOOST_WEIGHT = 0.3
+
     def __init__(self, embedder, project_path: str = None, enable_reranking: bool = True):
         """
         Initialize context selector.
@@ -118,6 +125,12 @@ class ContextSelector:
         self.enable_reranking = enable_reranking
         self._reranker: SemanticReranker | None = None
         self._context_modules: list[str] = []
+
+        # Optional seed-based synapse recall, injected by NeuralMind.build().
+        # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, energy]].
+        # Left None here so a selector built without a synapse store (or on a
+        # cold graph) behaves exactly as it did before this layer existed.
+        self.synapse_recall = None
 
         # Cache for layer content
         self._l0_cache: str | None = None
@@ -375,6 +388,46 @@ class ContextSelector:
         context = self._truncate_to_tokens("\n".join(parts), self.L2_MAX_TOKENS)
         return context, loaded_communities
 
+    def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
+        """Re-rank L3 hits using learned synapse co-activation.
+
+        Seeds spreading activation from the top hits, then boosts any other
+        result the synapse graph activates — surfacing nodes the agent keeps
+        using together even when pure vector similarity ranks them lower.
+
+        No-op (returns ``results`` unchanged) when recall isn't wired, the
+        kill switch is set, or the graph is cold — so cold-start behavior is
+        byte-identical to a build without a synapse store.
+        """
+        if not self.synapse_recall or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0":
+            return results
+
+        seeds = [r["id"] for r in results[: self.SYNAPSE_SEED_K] if r.get("id")]
+        if not seeds:
+            return results
+
+        try:
+            energy = dict(self.synapse_recall(seeds))
+        except Exception:
+            return results
+        if not energy:
+            return results
+
+        seed_set = set(seeds)
+        boosted = False
+        for r in results:
+            nid = r.get("id")
+            if nid in seed_set or nid not in energy:
+                continue
+            boost = self.SYNAPSE_BOOST_WEIGHT * energy[nid]
+            r["score"] = r.get("score", 0.0) + boost
+            r["_synapse_boost"] = boost
+            boosted = True
+
+        if boosted:
+            results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
+        return results
+
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
@@ -394,18 +447,26 @@ class ContextSelector:
             if reranker.enabled:
                 results = reranker.rerank(results, context_modules=self._context_modules)
 
+        # Fold in the live synapse graph: results the agent has historically
+        # co-activated with this query's top hits get a relevance nudge, so
+        # learned association — not just vector similarity — shapes ranking.
+        results = self._apply_synapse_boost(results)
+
         parts = ["## Search Results", ""]
 
         for i, result in enumerate(results, 1):
             meta = result.get("metadata", {})
             score = result.get("score", 0)
             boost = result.get("_reranker_boost", 0.0)
+            synapse = result.get("_synapse_boost", 0.0)
 
-            # Show boost in label if applied
+            # Show boosts in label if applied
             boost_label = f" (+{boost:.2f} boost)" if boost > 0 else ""
+            synapse_label = f" (+{synapse:.2f} synapse)" if synapse > 0 else ""
 
             parts.append(
-                f"{i}. **{meta.get('label', 'unknown')}** (score: {score:.2f}{boost_label})"
+                f"{i}. **{meta.get('label', 'unknown')}** "
+                f"(score: {score:.2f}{boost_label}{synapse_label})"
             )
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
