@@ -459,6 +459,10 @@ class ContextSelector:
         if not energy:
             return results
 
+        # Work on shallow copies: _fetch_search caches and reuses these dicts,
+        # so mutating score in place would compound across calls and corrupt
+        # the cached vector scores. Copies keep the boost idempotent.
+        results = [dict(r) for r in results]
         seed_set = set(seeds)
         present = {r.get("id") for r in results}
 
@@ -479,6 +483,12 @@ class ContextSelector:
         # (b) Swap the weakest vector hits for the strongest absent neighbors.
         #     Displacement keeps the result count fixed, so the token budget
         #     is unchanged — we trade the least-relevant hits, not add to them.
+        #     Requires the embedder to support id lookup; if it doesn't (e.g. a
+        #     backend without get_nodes_by_ids), degrade to boost-only.
+        get_nodes_by_ids = getattr(self.embedder, "get_nodes_by_ids", None)
+        if not callable(get_nodes_by_ids):
+            return results
+
         candidates = sorted(
             (
                 (nid, e)
@@ -498,7 +508,7 @@ class ContextSelector:
         if num_swap <= 0:
             return results
         energy_by_id = dict(candidates[:num_swap])
-        fetched = self.embedder.get_nodes_by_ids(list(energy_by_id))
+        fetched = get_nodes_by_ids(list(energy_by_id))
         if not fetched:
             return results
 
