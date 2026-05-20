@@ -30,6 +30,7 @@ Run locally:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import time
 from collections.abc import Iterable
@@ -331,6 +332,80 @@ def memory_stats() -> dict:
     }
 
 
+# ----------------------------------------------------------- phase 3 (synapses)
+
+# Realistic "files edited together in one session" groups. The point is to
+# teach the synapse graph cross-cutting associations a *textual* search
+# wouldn't recover: users/crud.py and db/connection.py are hubs touched
+# alongside almost every feature, even though the words "authentication" or
+# "billing" never appear in them. A query like "how does auth work?" should,
+# once the graph is warm, surface users/crud.py via the learned edge.
+SYNAPSE_SESSIONS = [
+    ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"],
+    ["billing/stripe_client.py", "billing/invoices.py", "users/crud.py"],
+    ["api/routes.py", "users/crud.py"],
+    ["users/crud.py", "db/connection.py"],
+    ["billing/stripe_client.py", "db/connection.py"],
+]
+SYNAPSE_SESSION_REPEATS = 8
+
+
+def seed_synapses(nm: NeuralMind) -> int:
+    """Reinforce co-editing sessions directly into the synapse store.
+
+    Uses ``activate_files`` (the same entry point the file watcher calls)
+    so we exercise the real reinforcement path, not a test shim. Returns
+    the synapse edge count after seeding.
+    """
+    for _ in range(SYNAPSE_SESSION_REPEATS):
+        for session in SYNAPSE_SESSIONS:
+            nm.activate_files(session)
+    store = nm.synapses
+    return store.stats().get("edges", 0) if store else 0
+
+
+def run_synapse_phase(
+    nm: NeuralMind,
+    queries: list[dict],
+    naive_total: int,
+    inject: bool,
+) -> PhaseResult:
+    """Measure the query set with synapse recall toggled on or off.
+
+    Reads through ``selector.get_query_context`` rather than ``nm.query``
+    so measurement doesn't reinforce the graph mid-run — the only thing
+    that differs between the two passes is NEURALMIND_SYNAPSE_INJECT.
+    """
+    prev = os.environ.get("NEURALMIND_SYNAPSE_INJECT")
+    os.environ["NEURALMIND_SYNAPSE_INJECT"] = "1" if inject else "0"
+    try:
+        result = PhaseResult(phase="synapse-on" if inject else "synapse-off")
+        enc = _enc()
+        for q in queries:
+            ctx = nm.selector.get_query_context(q["question"])
+            after_tokens = len(enc.encode(ctx.context))
+            hits = top_k_modules(ctx.context)
+            result.queries.append(
+                QueryResult(
+                    id=q["id"],
+                    question=q["question"],
+                    shape=q["shape"],
+                    naive_tokens=naive_total,
+                    neuralmind_tokens=after_tokens,
+                    reduction_ratio=naive_total / max(after_tokens, 1),
+                    expected_modules=q["expected_modules"],
+                    hit_modules=hits,
+                    top_k_hit_rate=hit_rate(q["expected_modules"], hits),
+                )
+            )
+        return result
+    finally:
+        if prev is None:
+            os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+        else:
+            os.environ["NEURALMIND_SYNAPSE_INJECT"] = prev
+
+
 # --------------------------------------------------------------- report writer
 
 
@@ -350,7 +425,14 @@ def _dollars_saved(naive_tokens: int, neuralmind_tokens: int, queries_per_day: i
     return per_query_savings * queries_per_day * 30
 
 
-def write_results(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
+def write_results(
+    phase1: PhaseResult,
+    phase2: PhaseResult,
+    mem: dict,
+    synapse_off: PhaseResult,
+    synapse_on: PhaseResult,
+    synapse_edges: int,
+) -> None:
     """Write the JSON payload consumed by the chart script and CI."""
     payload = {
         "version": 1,
@@ -368,6 +450,16 @@ def write_results(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
             "uplift_reduction_ratio": phase2.avg_reduction - phase1.avg_reduction,
             "uplift_hit_rate": phase2.avg_hit_rate - phase1.avg_hit_rate,
         },
+        "phase3_synapse": {
+            "synapse_edges": synapse_edges,
+            "off_avg_reduction_ratio": synapse_off.avg_reduction,
+            "off_avg_top_k_hit_rate": synapse_off.avg_hit_rate,
+            "on_avg_reduction_ratio": synapse_on.avg_reduction,
+            "on_avg_top_k_hit_rate": synapse_on.avg_hit_rate,
+            "uplift_hit_rate": synapse_on.avg_hit_rate - synapse_off.avg_hit_rate,
+            "reduction_delta": synapse_on.avg_reduction - synapse_off.avg_reduction,
+            "queries": [asdict(q) for q in synapse_on.queries],
+        },
         "memory": mem,
         "regression_floor": REDUCTION_FLOOR,
         "pass": phase1.avg_reduction >= REDUCTION_FLOOR,
@@ -384,7 +476,14 @@ def write_results(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
     RESULTS_PATH.write_text(json.dumps(payload, indent=2))
 
 
-def write_report(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
+def write_report(
+    phase1: PhaseResult,
+    phase2: PhaseResult,
+    mem: dict,
+    synapse_off: PhaseResult,
+    synapse_on: PhaseResult,
+    synapse_edges: int,
+) -> None:
     """Write the human-readable Markdown report posted as a PR comment."""
     status = "PASS" if phase1.avg_reduction >= REDUCTION_FLOOR else "FAIL"
     savings = _dollars_saved(
@@ -429,6 +528,22 @@ def write_report(phase1: PhaseResult, phase2: PhaseResult, mem: dict) -> None:
         "Note: uplift numbers on a 500-line fixture are intentionally modest — the point is to",
         "verify the learning mechanism persists and applies. On real production repos the lift",
         "is larger; this test only catches regressions in persistence.",
+        "",
+        "### Phase 3 — Synapse recall A/B (same warm graph, recall off vs on)",
+        "",
+        f"- Synapse edges after seeding co-editing sessions: `{synapse_edges}`",
+        f"- Top-k hit rate: **{_fmt_pct(synapse_off.avg_hit_rate)}** off → "
+        f"**{_fmt_pct(synapse_on.avg_hit_rate)}** on "
+        f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.1f} points)",
+        f"- Reduction ratio: **{synapse_off.avg_reduction:.1f}×** off → "
+        f"**{synapse_on.avg_reduction:.1f}×** on "
+        f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
+        "budget-neutral by design)",
+        "",
+        "This isolates the Hebbian synapse layer from the `learned_patterns` reranker in",
+        "Phase 2. The hit-rate delta shows associative recall surfacing co-edited modules a",
+        "purely textual search ranks lower; the near-zero reduction delta confirms it does so",
+        "without spending extra tokens (recalled nodes displace the weakest hits, not add to them).",
         "",
         "### Assumptions",
         "",
@@ -478,8 +593,18 @@ def main() -> int:
     phase2 = run_phase(nm, queries, naive_total, phase_name="warm")
     mem = memory_stats()
 
-    write_results(phase1, phase2, mem)
-    write_report(phase1, phase2, mem)
+    # Phase 3 — synapse recall A/B. Reinforce co-editing sessions, then
+    # measure the same queries with synapse recall off vs on. Isolates the
+    # synapse layer (Phase 2's lift also includes the learned_patterns
+    # reranker), and verifies the boost is budget-neutral (reduction holds).
+    reset_memory()
+    nm = NeuralMind(str(FIXTURE_DIR))
+    synapse_edges = seed_synapses(nm)
+    synapse_off = run_synapse_phase(nm, queries, naive_total, inject=False)
+    synapse_on = run_synapse_phase(nm, queries, naive_total, inject=True)
+
+    write_results(phase1, phase2, mem, synapse_off, synapse_on, synapse_edges)
+    write_report(phase1, phase2, mem, synapse_off, synapse_on, synapse_edges)
 
     print(
         f"Phase 1: {phase1.avg_reduction:.1f}× reduction, "
@@ -490,6 +615,13 @@ def main() -> int:
         f"Phase 2: {phase2.avg_reduction:.1f}× reduction, "
         f"{phase2.avg_hit_rate * 100:.0f}% top-k hit rate "
         f"(Δ {phase2.avg_reduction - phase1.avg_reduction:+.2f}×)"
+    )
+    print(
+        f"Phase 3: synapse off {synapse_off.avg_hit_rate * 100:.0f}% → "
+        f"on {synapse_on.avg_hit_rate * 100:.0f}% hit rate "
+        f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.0f}pts), "
+        f"reduction {synapse_off.avg_reduction:.1f}× → {synapse_on.avg_reduction:.1f}×, "
+        f"{synapse_edges} edges"
     )
     print(f"Memory: {mem['events_logged']} events, {mem['patterns_learned']} patterns")
 
