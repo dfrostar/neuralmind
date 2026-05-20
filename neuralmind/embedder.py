@@ -357,6 +357,33 @@ class GraphEmbedder(EmbeddingBackend):
             )
         ]
 
+    def get_nodes_by_ids(self, node_ids: list[str]) -> list[dict]:
+        """Fetch indexed nodes by id, shaped like ``search`` results.
+
+        Used to pull synapse-recalled neighbors into L3 even when vector
+        search didn't surface them. Missing ids are skipped; ``score`` is
+        omitted (callers supply their own relevance for appended nodes).
+        """
+        if not node_ids:
+            return []
+        try:
+            fetched = self.collection.get(ids=list(node_ids), include=["documents", "metadatas"])
+        except Exception:
+            return []
+        out = []
+        ids = fetched.get("ids") or []
+        docs = fetched.get("documents") or []
+        metas = fetched.get("metadatas") or []
+        for i, node_id in enumerate(ids):
+            out.append(
+                {
+                    "id": node_id,
+                    "document": docs[i] if i < len(docs) else "",
+                    "metadata": metas[i] if i < len(metas) else {},
+                }
+            )
+        return out
+
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict:
         """
         Get a summary of nodes in a community for context injection.
