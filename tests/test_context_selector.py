@@ -842,6 +842,41 @@ class TestSynapseBoost:
         assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
         assert "synapse" not in text
 
+    def test_boost_does_not_mutate_cached_results(self, mock_embedder, temp_project):
+        """Boosting must not compound or contaminate the cached vector hits."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        # node_low is present and a non-seed, so path (a) boosts it.
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+
+        text_first, _ = selector.get_l3_search("query", n=4)
+        text_second, _ = selector.get_l3_search("query", n=4)
+
+        # Idempotent: a second call yields identical output (no compounding).
+        assert text_first == text_second
+        # Cached dicts keep their original vector scores, uncontaminated.
+        cached = selector._query_search_cache["query"]
+        low = next(r for r in cached if r["id"] == "node_low")
+        assert low["score"] == 0.50
+        assert "_synapse_boost" not in low
+
+    def test_pull_in_degrades_without_id_lookup(self, mock_embedder, temp_project):
+        """If the embedder lacks get_nodes_by_ids, pull-in is skipped, not fatal."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        mock_embedder.get_nodes_by_ids = None  # backend without id lookup
+        selector = ContextSelector(mock_embedder, str(temp_project), enable_reranking=False)
+        selector.synapse_recall = lambda seeds: [("node_absent", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        # No crash, no displacement — boost-only fallback.
+        assert hits == 4
+        assert "[recalled]" not in text
+
     def test_recall_exception_is_swallowed(self, mock_embedder, temp_project):
         """A failing recall callable must not break retrieval."""
         from neuralmind.context_selector import ContextSelector
