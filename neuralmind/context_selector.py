@@ -91,11 +91,15 @@ class ContextSelector:
     # Chars per token estimate
     CHARS_PER_TOKEN = 4
 
-    # Synapse-driven recall (see _apply_synapse_boost): number of top hits used
-    # to seed spreading activation, and how strongly learned co-activation
-    # nudges a result's relevance score.
+    # Synapse-driven recall (see _apply_synapse_boost / get_l2_context):
+    # number of top hits used to seed spreading activation, how strongly
+    # learned co-activation nudges relevance, the cap on neighbors pulled
+    # into L3 that vector search missed, and the minimum activation an
+    # absent neighbor needs before it's worth pulling in.
     SYNAPSE_SEED_K = 3
     SYNAPSE_BOOST_WEIGHT = 0.3
+    SYNAPSE_PULL_IN_MAX = 2
+    SYNAPSE_PULL_IN_MIN_ENERGY = 0.15
 
     def __init__(self, embedder, project_path: str = None, enable_reranking: bool = True):
         """
@@ -355,9 +359,20 @@ class ContextSelector:
             if comm >= 0:
                 community_scores[comm] = community_scores.get(comm, 0) + score
 
+        # Pull communities the agent has historically co-activated with these
+        # hits into contention, even when this query's vector matches alone
+        # wouldn't have surfaced them. Reinforcement records community_<id>
+        # pseudo-nodes, so spreading activation can return them directly.
+        # Budget-neutral: a co-activated community can win a slot by
+        # outscoring a vector one, but it can't grow how many we load — the
+        # cap stays at what vector search alone would have surfaced.
+        vector_community_count = len(community_scores)
+        self._boost_communities_from_synapses(search_results, community_scores)
+        community_budget = min(max_communities, vector_community_count)
+
         # Get top communities
         top_communities = sorted(community_scores.items(), key=lambda x: x[1], reverse=True)[
-            :max_communities
+            :community_budget
         ]
 
         if not top_communities:
@@ -388,32 +403,67 @@ class ContextSelector:
         context = self._truncate_to_tokens("\n".join(parts), self.L2_MAX_TOKENS)
         return context, loaded_communities
 
+    def _synapse_disabled(self) -> bool:
+        """True when synapse recall isn't wired or the kill switch is set."""
+        return not self.synapse_recall or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0"
+
+    def _recall_energy(self, seeds: list[str]) -> dict[str, float]:
+        """Spread from ``seeds`` and return {node_id: activation}, or {}."""
+        if not seeds:
+            return {}
+        try:
+            return dict(self.synapse_recall(seeds))
+        except Exception:
+            return {}
+
+    def _boost_communities_from_synapses(
+        self, search_results: list[dict], community_scores: dict[int, float]
+    ) -> None:
+        """Add co-activated communities' energy into ``community_scores``.
+
+        Mutates ``community_scores`` in place. No-op when recall is disabled
+        or the graph is cold, so cold-start L2 selection is unchanged.
+        """
+        if self._synapse_disabled():
+            return
+        seeds = [r["id"] for r in search_results[: self.SYNAPSE_SEED_K] if r.get("id")]
+        for node_id, energy in self._recall_energy(seeds).items():
+            if not node_id.startswith("community_"):
+                continue
+            try:
+                comm = int(node_id[len("community_") :])
+            except ValueError:
+                continue
+            community_scores[comm] = (
+                community_scores.get(comm, 0.0) + energy * self.SYNAPSE_BOOST_WEIGHT
+            )
+
     def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
         """Re-rank L3 hits using learned synapse co-activation.
 
-        Seeds spreading activation from the top hits, then boosts any other
-        result the synapse graph activates — surfacing nodes the agent keeps
-        using together even when pure vector similarity ranks them lower.
+        Budget-neutral: never grows the result count. Seeds spreading
+        activation from the top hits, then (a) boosts and reorders results
+        the graph activates and (b) swaps the weakest vector hits for
+        strongly co-activated neighbors vector search missed — surfacing
+        nodes the agent keeps using together without spending extra tokens.
 
         No-op (returns ``results`` unchanged) when recall isn't wired, the
         kill switch is set, or the graph is cold — so cold-start behavior is
         byte-identical to a build without a synapse store.
         """
-        if not self.synapse_recall or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0":
+        if self._synapse_disabled():
             return results
 
         seeds = [r["id"] for r in results[: self.SYNAPSE_SEED_K] if r.get("id")]
-        if not seeds:
-            return results
-
-        try:
-            energy = dict(self.synapse_recall(seeds))
-        except Exception:
-            return results
+        energy = self._recall_energy(seeds)
         if not energy:
             return results
 
         seed_set = set(seeds)
+        present = {r.get("id") for r in results}
+
+        # (a) Boost results already present that the graph co-activates,
+        #     then reorder by score. Token-neutral (same nodes).
         boosted = False
         for r in results:
             nid = r.get("id")
@@ -423,10 +473,42 @@ class ContextSelector:
             r["score"] = r.get("score", 0.0) + boost
             r["_synapse_boost"] = boost
             boosted = True
-
         if boosted:
             results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
-        return results
+
+        # (b) Swap the weakest vector hits for the strongest absent neighbors.
+        #     Displacement keeps the result count fixed, so the token budget
+        #     is unchanged — we trade the least-relevant hits, not add to them.
+        candidates = sorted(
+            (
+                (nid, e)
+                for nid, e in energy.items()
+                if nid not in present
+                and not nid.startswith("community_")
+                and e >= self.SYNAPSE_PULL_IN_MIN_ENERGY
+            ),
+            key=lambda x: x[1],
+            reverse=True,
+        )[: self.SYNAPSE_PULL_IN_MAX]
+        if not candidates:
+            return results
+
+        # Keep at least one vector hit; only displace as many as we can fetch.
+        num_swap = min(len(candidates), max(0, len(results) - 1))
+        if num_swap <= 0:
+            return results
+        energy_by_id = dict(candidates[:num_swap])
+        fetched = self.embedder.get_nodes_by_ids(list(energy_by_id))
+        if not fetched:
+            return results
+
+        kept = results[: len(results) - len(fetched)]
+        for node in fetched:
+            boost = self.SYNAPSE_BOOST_WEIGHT * energy_by_id.get(node.get("id"), 0.0)
+            node["score"] = boost
+            node["_synapse_boost"] = boost
+            node["_synapse_recalled"] = True
+        return kept + fetched
 
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
@@ -463,9 +545,10 @@ class ContextSelector:
             # Show boosts in label if applied
             boost_label = f" (+{boost:.2f} boost)" if boost > 0 else ""
             synapse_label = f" (+{synapse:.2f} synapse)" if synapse > 0 else ""
+            recalled_label = " [recalled]" if result.get("_synapse_recalled") else ""
 
             parts.append(
-                f"{i}. **{meta.get('label', 'unknown')}** "
+                f"{i}. **{meta.get('label', 'unknown')}**{recalled_label} "
                 f"(score: {score:.2f}{boost_label}{synapse_label})"
             )
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
