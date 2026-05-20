@@ -1147,6 +1147,29 @@
     wake();
   });
 
+  document.getElementById("export-png").addEventListener("click", () => {
+    // The on-screen canvas is transparent (it clearRect()s each frame and
+    // lets the page --bg show through), so a raw toDataURL would save a
+    // see-through PNG. Compose it onto an opaque fill matching the UI bg.
+    const out = document.createElement("canvas");
+    out.width = canvas.width;
+    out.height = canvas.height;
+    const octx = out.getContext("2d");
+    const bg = getComputedStyle(document.documentElement)
+      .getPropertyValue("--bg")
+      .trim();
+    octx.fillStyle = bg || "#1a1b1e";
+    octx.fillRect(0, 0, out.width, out.height);
+    octx.drawImage(canvas, 0, 0);
+
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+    const name = (state.project || "graph").replace(/[^\w.-]+/g, "_");
+    const a = document.createElement("a");
+    a.download = `neuralmind-${name}-${stamp}.png`;
+    a.href = out.toDataURL("image/png");
+    a.click();
+  });
+
   /* ---------- live activity stream ---------- */
 
   // nodeId → pulse-end timestamp (performance.now() units). The render
