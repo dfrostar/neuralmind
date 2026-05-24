@@ -30,9 +30,7 @@ import time
 from pathlib import Path
 
 CACHE_FILENAME = "last_output.json"
-DEFAULT_MAX_BYTES = int(
-    os.environ.get("NEURALMIND_OUTPUT_CACHE_MAX", str(2 * 1024 * 1024))
-)
+DEFAULT_MAX_BYTES = int(os.environ.get("NEURALMIND_OUTPUT_CACHE_MAX", str(2 * 1024 * 1024)))
 
 
 def cache_path(project_path: str | Path) -> Path:
@@ -51,11 +49,7 @@ def _truncate_keep_ends(text: str, budget: int) -> str:
     head = text[:keep]
     tail = text[-(budget - keep) :]
     dropped = len(text) - len(head) - len(tail)
-    return (
-        head
-        + f"\n\n[... {dropped} bytes elided by output cache ...]\n\n"
-        + tail
-    )
+    return head + f"\n\n[... {dropped} bytes elided by output cache ...]\n\n" + tail
 
 
 def write_last_output(
@@ -102,9 +96,7 @@ def write_last_output(
         target = cache_path(project_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write: temp-file in same dir, then rename.
-        fd, tmp = tempfile.mkstemp(
-            prefix=".last_output.", suffix=".tmp", dir=str(target.parent)
-        )
+        fd, tmp = tempfile.mkstemp(prefix=".last_output.", suffix=".tmp", dir=str(target.parent))
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(payload, f)

@@ -115,9 +115,7 @@ def compress_bash(stdout: str, stderr: str, exit_code: int = 0) -> str:
                 emitted_stderr.append(line)
                 seen.add(line)
 
-    dropped_summary = _summarize_dropped(
-        stdout_lines, emitted_stdout, stderr_lines, emitted_stderr
-    )
+    dropped_summary = _summarize_dropped(stdout_lines, emitted_stdout, stderr_lines, emitted_stderr)
     size_hint = f"{len(stdout)} B stdout"
     if stderr:
         size_hint += f" + {len(stderr)} B stderr"
@@ -184,9 +182,7 @@ def _summarize_dropped(
     cats: Counter[str] = Counter()
     for line, n in dropped_counts.items():
         cats[_categorize_line(line)] += n
-    cat_str = ", ".join(
-        f"{n} {label}" for label, n in cats.most_common() if n
-    )
+    cat_str = ", ".join(f"{n} {label}" for label, n in cats.most_common() if n)
 
     # Repeated-line detection — surface only patterns that show up 5+
     # times since that's where dedup meaningfully shrinks reader load.

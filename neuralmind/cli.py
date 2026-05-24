@@ -591,11 +591,7 @@ def cmd_last(args):
         return
 
     ts = data.get("ts", 0)
-    when = (
-        datetime.datetime.fromtimestamp(ts).isoformat(timespec="seconds")
-        if ts
-        else "unknown"
-    )
+    when = datetime.datetime.fromtimestamp(ts).isoformat(timespec="seconds") if ts else "unknown"
     print(f"# cached: {when}   exit={data.get('exit_code', 0)}")
     if data.get("command"):
         print(f"# command: {data['command']}")
