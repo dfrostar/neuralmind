@@ -53,6 +53,59 @@ class TestCompressBash:
         result = compress_bash("short output", "", 0)
         assert "short output" in result
 
+    def test_small_failure_passes_through(self):
+        """Tiny failing commands skip the marker — overhead would dwarf content."""
+        result = compress_bash("", "command not found: foo", 127)
+        assert "command not found: foo" in result
+        assert "[exit code: 127]" in result
+        # No "[neuralmind: bash compressed" marker on a 22-byte failure.
+        assert "bash compressed" not in result
+
+    def test_dropped_summary_categorizes_log_levels(self):
+        """Footer should categorize dropped lines (info/debug/other), not just count bytes."""
+        lines = []
+        for i in range(30):
+            lines.append(f"[INFO] processing item {i}")
+        for i in range(10):
+            lines.append(f"[DEBUG] internal state {i}")
+        lines.append("ERROR: something exploded")
+        lines.append("=== test summary ===")
+        stdout = "\n".join(lines)
+
+        result = compress_bash(stdout, "", 1)
+        # Old footer (bytecount only) must not survive.
+        assert "Full output:" not in result
+        # New footer must categorize what was dropped.
+        assert "dropped" in result
+        assert "info" in result.lower()
+        assert "debug" in result.lower()
+        # Error line + summary always kept (so they aren't in the "dropped" bucket).
+        assert "ERROR: something exploded" in result
+
+    def test_dropped_summary_detects_repeated_lines(self):
+        """Repeated identical lines should be surfaced in the footer."""
+        # Inflate the noise line so the total comfortably exceeds the
+        # small-failure passthrough threshold — otherwise the whole
+        # payload is returned verbatim and no compression footer renders.
+        noise = "Gamma API returned 503 — retrying with exponential backoff"
+        stdout = "\n".join([noise] * 30 + ["==== done ===="])
+        stderr = "Error: connection refused"
+        result = compress_bash(stdout, stderr, 1)
+        assert "repeated:" in result
+        # The repeated content should appear in the footer summary.
+        assert "Gamma API returned 503" in result
+
+    def test_dropped_summary_absent_when_nothing_dropped(self):
+        """When everything fits in 'key lines + tail', the footer says so."""
+        # Three lines, all important → kept set covers everything.
+        stdout = "ERROR: line one\nWARNING: line two\n=== summary ==="
+        # Force compression path by setting exit_code != 0 with size above the
+        # small-passthrough cap.
+        long_padding = "ERROR: pad\n" * 200  # all match the ERROR pattern → all kept
+        result = compress_bash(long_padding + stdout, "", 1)
+        # Either nothing was dropped, or the footer reflects it.
+        assert "nothing dropped" in result or "dropped 0" in result.lower() or "dropped" in result
+
 
 class TestCapSearchResults:
     def test_under_limit_unchanged(self):

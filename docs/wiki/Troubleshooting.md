@@ -313,6 +313,58 @@ graphify update /path
 
 ---
 
+## Hook Issues (Claude Code)
+
+### Verify hooks are still firing after a Claude Code update
+
+**Symptoms**: After updating Claude Code itself (not NeuralMind), tool-output token counts feel higher than they used to, or the compression noted in `neuralmind benchmark` doesn't match what you observe in Claude Code's actual usage.
+
+**Cause**: Claude Code's hook matcher names and tool dispatch path can change between versions. The most notable change so far: **v2.1.117 (April 2026)** folded the standalone `Grep`/`Glob` tools into `Bash` on native macOS/Linux builds. Our installed-hooks still cover that case (the `Bash` matcher catches the rerouted searches), but it's a useful health check after any Claude Code upgrade.
+
+**Diagnosis** — run the benchmark:
+
+```bash
+neuralmind benchmark .
+```
+
+If the reduction ratio dropped sharply vs. your last run (and you didn't change your project), the hook layer may have regressed. Then check both possible settings files — `install-hooks` defaults to **project scope** (`<project>/.claude/settings.json`), and `--global` writes to `~/.claude/settings.json`. NeuralMind hook blocks are identified by the `neuralmind _hook ...` command embedded in each block (not by a metadata field). One-liner that scans both:
+
+```bash
+python - <<'PY'
+import json, os
+from pathlib import Path
+
+paths = [Path(".claude/settings.json"), Path.home() / ".claude/settings.json"]
+for p in paths:
+    if not p.exists():
+        print(f"{p}: not present")
+        continue
+    cfg = json.loads(p.read_text())
+    hits = []
+    for event, blocks in (cfg.get("hooks") or {}).items():
+        for b in blocks or []:
+            for h in b.get("hooks") or []:
+                if "neuralmind _hook" in (h.get("command") or ""):
+                    hits.append(f"{event}/{b.get('matcher', '*')}")
+    print(f"{p}: {hits if hits else 'no neuralmind hooks'}")
+PY
+```
+
+**Fix**: if neither path lists any blocks, reinstall — match the scope you originally used:
+
+```bash
+neuralmind install-hooks .              # project scope (default)
+neuralmind install-hooks . --global     # ~/.claude/settings.json
+```
+
+If the block is present but the benchmark still looks off, open an issue with the Claude Code version (`claude --version`) and the `neuralmind benchmark .` output — the matcher list may need an update.
+
+### PostToolUse scope — what NeuralMind compresses
+
+NeuralMind's hooks compress the output of Claude Code's built-in tools (`Read`, `Bash`, `Grep`, plus rerouted searches on v2.1.117+ native builds). They do **not** compress responses from third-party MCP servers — MCP tool calls match on `mcp__<server>__<tool>` patterns, which NeuralMind's installed block deliberately doesn't subscribe to (we don't know what those MCP tools return or whether compression would be safe). If a third-party MCP server is dominating your token bill, that compression is a separate problem from what `install-hooks` solves.
+
+---
+
 ## MCP Issues
 
 ### "MCP server failed to start"

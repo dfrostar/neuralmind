@@ -29,6 +29,9 @@ from pathlib import Path
 # Size thresholds (tunable via env vars for tests and power users)
 BASH_TAIL_LINES = int(os.environ.get("NEURALMIND_BASH_TAIL", "3"))
 BASH_MAX_CHARS = int(os.environ.get("NEURALMIND_BASH_MAX_CHARS", "3000"))
+# Failing commands under this size pass through verbatim — the ~200 byte
+# compression marker would dwarf the actual output and add only noise.
+BASH_SMALL_PASSTHROUGH = int(os.environ.get("NEURALMIND_BASH_SMALL", "500"))
 SEARCH_MAX_MATCHES = int(os.environ.get("NEURALMIND_SEARCH_MAX", "25"))
 OFFLOAD_THRESHOLD = int(os.environ.get("NEURALMIND_OFFLOAD_THRESHOLD", "15000"))
 
@@ -54,19 +57,24 @@ def compress_bash(stdout: str, stderr: str, exit_code: int = 0) -> str:
     """Compress verbose bash output to errors + tail summary.
 
     Strategy:
-    1. If exit_code == 0 and both streams are short → no compression
-    2. Otherwise: extract every ERROR/WARNING/summary line
-    3. Append the last N lines verbatim (usually the "FAILED" summary)
-    4. Prefix with exit code + pointer to bypass for full output
+    1. Small + successful → pass through unchanged (no marker, no noise).
+    2. Small + failing → pass through verbatim with exit code framing.
+       Adding a 200-byte compression marker to a 50-byte failure is pure
+       noise and obscures the real output.
+    3. Otherwise: extract every ERROR/WARNING/summary line, append the
+       last N lines verbatim (usually the "FAILED" summary), and emit a
+       footer that *categorizes* what was dropped so the reader can
+       judge whether ``neuralmind last`` is worth running.
 
     Never drops stderr; always includes full exit context.
     """
     total_chars = len(stdout) + len(stderr)
     if total_chars <= BASH_MAX_CHARS and exit_code == 0:
-        # Small + successful: no need to compress
+        return _format_bash(stdout, stderr, exit_code)
+    if total_chars <= BASH_SMALL_PASSTHROUGH:
+        # Tiny failures: marker overhead would dwarf the content.
         return _format_bash(stdout, stderr, exit_code)
 
-    # Extract important lines from each stream
     def _important_lines(text: str) -> list[str]:
         lines = text.splitlines()
         keep: list[str] = []
@@ -75,35 +83,118 @@ def compress_bash(stdout: str, stderr: str, exit_code: int = 0) -> str:
                 keep.append(line)
         return keep
 
+    stdout_lines = stdout.splitlines() if stdout else []
+    stderr_lines = stderr.splitlines() if stderr else []
+
     stdout_important = _important_lines(stdout)
     stderr_important = _important_lines(stderr)
+    stdout_tail = stdout_lines[-BASH_TAIL_LINES:] if stdout_lines else []
+    stderr_tail = stderr_lines[-BASH_TAIL_LINES:] if stderr_lines else []
 
-    # Always include the tail — summary lines often appear only at the end
-    stdout_tail = stdout.splitlines()[-BASH_TAIL_LINES:] if stdout else []
-    stderr_tail = stderr.splitlines()[-BASH_TAIL_LINES:] if stderr else []
-
+    # Emit (important + tail) deduped, preserving order. Track the
+    # multiset of lines actually emitted so the dropped-summary can
+    # subtract correctly — a line that appeared 30× in the original but
+    # was emitted once is "29 dropped", not "0 dropped".
     parts: list[str] = [f"[neuralmind: bash compressed, exit={exit_code}]"]
+    emitted_stdout: list[str] = []
     if stdout_important or stdout_tail:
         parts.append("# stdout (key lines + tail):")
-        # Dedupe while preserving order
         seen: set[str] = set()
         for line in stdout_important + stdout_tail:
             if line not in seen:
                 parts.append(line)
+                emitted_stdout.append(line)
                 seen.add(line)
+    emitted_stderr: list[str] = []
     if stderr_important or stderr_tail:
         parts.append("# stderr (key lines + tail):")
         seen = set()
         for line in stderr_important + stderr_tail:
             if line not in seen:
                 parts.append(line)
+                emitted_stderr.append(line)
                 seen.add(line)
 
-    parts.append(
-        f"[Full output: {len(stdout)} bytes stdout + {len(stderr)} bytes stderr. "
-        "Re-run with NEURALMIND_BYPASS=1 env var to see everything.]"
-    )
+    dropped_summary = _summarize_dropped(stdout_lines, emitted_stdout, stderr_lines, emitted_stderr)
+    size_hint = f"{len(stdout)} B stdout"
+    if stderr:
+        size_hint += f" + {len(stderr)} B stderr"
+    if dropped_summary:
+        parts.append(
+            f"[neuralmind: dropped {dropped_summary} · {size_hint} total · "
+            "`neuralmind last` for cached raw · NEURALMIND_BYPASS=1 to disable]"
+        )
+    else:
+        parts.append(
+            f"[neuralmind: nothing dropped · {size_hint} total · "
+            "`neuralmind last` for cached raw · NEURALMIND_BYPASS=1 to disable]"
+        )
     return "\n".join(parts)
+
+
+# Common log-level prefixes used by node/winston, python logging, rust env_logger,
+# go-kit, structured loggers, etc. Kept conservative — we only want confident
+# matches so the categorized summary stays accurate.
+_LOG_LEVEL_PATTERNS = [
+    ("debug", re.compile(r"^\s*(\[?\s*(DEBUG|TRACE|debug|trace)\b|\w*\s+debug:)")),
+    ("info", re.compile(r"^\s*(\[?\s*(INFO|info)\b|\w*\s+info:)")),
+    ("warn", re.compile(r"^\s*\[?\s*(WARN(ING)?|warn(ing)?)\b")),
+]
+
+
+def _categorize_line(line: str) -> str:
+    """Return a short label for a dropped line — one of debug/info/warn/blank/other."""
+    if not line.strip():
+        return "blank"
+    for label, pattern in _LOG_LEVEL_PATTERNS:
+        if pattern.search(line):
+            return label
+    return "other"
+
+
+def _summarize_dropped(
+    stdout_lines: list[str],
+    emitted_stdout: list[str],
+    stderr_lines: list[str],
+    emitted_stderr: list[str],
+) -> str:
+    """Categorize what got dropped from a compressed stream.
+
+    Returns a compact human-readable string like:
+        "12 lines (8 info, 4 other); repeated: 5× 'Gamma API error 503'"
+
+    Empty string means nothing was dropped (every occurrence in the
+    original streams was emitted exactly once or more).
+    """
+    from collections import Counter
+
+    original_counts: Counter[str] = Counter(stdout_lines) + Counter(stderr_lines)
+    emitted_counts: Counter[str] = Counter(emitted_stdout) + Counter(emitted_stderr)
+
+    # Diff with multiplicity: lines kept once but originally repeated N times
+    # still contribute (N-1) to the dropped tally — that's the user-visible
+    # information loss from dedup, not just literal omission.
+    dropped_counts = original_counts - emitted_counts
+    if not dropped_counts:
+        return ""
+
+    total_dropped = sum(dropped_counts.values())
+    cats: Counter[str] = Counter()
+    for line, n in dropped_counts.items():
+        cats[_categorize_line(line)] += n
+    cat_str = ", ".join(f"{n} {label}" for label, n in cats.most_common() if n)
+
+    # Repeated-line detection — surface only patterns that show up 5+
+    # times since that's where dedup meaningfully shrinks reader load.
+    nonblank = {ln.strip(): n for ln, n in dropped_counts.items() if ln.strip()}
+    repeated = sorted(nonblank.items(), key=lambda kv: -kv[1])[:2]
+    repeated = [(t, n) for t, n in repeated if n >= 5]
+
+    summary = f"{total_dropped} lines ({cat_str})"
+    if repeated:
+        rep_str = "; ".join(f"{n}× {text[:50]!r}" for text, n in repeated)
+        summary += f"; repeated: {rep_str}"
+    return summary
 
 
 def _format_bash(stdout: str, stderr: str, exit_code: int) -> str:
