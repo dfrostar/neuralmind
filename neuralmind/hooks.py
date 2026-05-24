@@ -231,6 +231,17 @@ def run_hook(action: str) -> int:
         exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
         if not (stdout or stderr):
             return 0
+        # Stash raw output before compression so `neuralmind last` can
+        # recover the dropped middle without paying re-run cost. Fail
+        # open: a cache write failure must never break the hook.
+        try:
+            from .output_cache import write_last_output
+
+            cwd = payload.get("cwd") or os.getcwd()
+            command = tool_input.get("command") or ""
+            write_last_output(cwd, stdout, stderr, exit_code, command=command)
+        except Exception:
+            pass
         compressed = compress_bash(stdout, stderr, exit_code)
         _emit(compressed)
         return 0

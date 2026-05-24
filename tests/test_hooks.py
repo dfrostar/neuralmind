@@ -213,3 +213,30 @@ class TestRunHook:
         captured = io.StringIO()
         monkeypatch.setattr(sys, "stdout", captured)
         assert run_hook("nonsense-action") == 0
+
+    def test_compress_bash_populates_recovery_cache(self, monkeypatch, tmp_path):
+        """The compress-bash hook stashes raw output to .neuralmind/last_output.json.
+
+        This is what makes `neuralmind last` work — without the side-effect
+        write, agents lose the dropped middle the moment the hook returns.
+        """
+        from neuralmind.output_cache import read_last_output
+
+        verbose_line = "tests/test_module.py::test_function PASSED"
+        payload = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "pytest -v"},
+            "tool_response": {
+                "stdout": "\n".join([verbose_line] * 100) + "\n===== 100 passed =====",
+                "stderr": "",
+                "exit_code": 0,
+            },
+            "cwd": str(tmp_path),
+        }
+        self._invoke("compress-bash", payload, monkeypatch)
+        cached = read_last_output(tmp_path)
+        assert cached is not None
+        # Raw output preserved verbatim — that's the whole point of the cache.
+        assert cached["stdout"].count(verbose_line) == 100
+        assert cached["command"] == "pytest -v"
+        assert cached["exit_code"] == 0
