@@ -52,7 +52,7 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up QEMU (cross-arch emulation for arm64 builds on amd64 runners)
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
