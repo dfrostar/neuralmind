@@ -72,7 +72,10 @@ keywords = [
     "hebbian-learning",
     "code-visualization",
     "force-directed-graph",
-    "neuralmind-serve"
+    "neuralmind-serve",
+    "tool-output-recovery",
+    "bash-output-cache",
+    "agent-ergonomics"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

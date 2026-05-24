@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it, plus an Obsidian-style graph view that makes the index inspectable. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it, an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -44,6 +44,23 @@
             <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
         </div>
     </header>
+
+    <section>
+        <div class="container" id="whats-new-v0100">
+            <h2>What's New in v0.10.0 — agent ergonomics</h2>
+            <p><strong>Three friction-removing changes to the PostToolUse Bash compressor</strong> — the surface AI coding agents see on every shell call. Built from real session feedback where the previous footer forced a second query round-trip just to recover dropped middle content.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Content-aware compression footer.</strong> Replaces the old <code>[Full output: 4298 bytes...]</code> message with a categorized breakdown: <code>dropped 23 lines (12 info, 8 debug, 3 other); repeated: 5× 'Gamma API error 503'</code>. Agents can judge whether the dropped middle was log noise or a buried error <em>without re-running the command</em>.</li>
+                <li><strong><code>neuralmind last</code></strong> — new CLI that prints the raw pre-compression output. The PostToolUse hook stashes every Bash result to <code>&lt;project&gt;/.neuralmind/last_output.json</code> (single-slot, 2 MB cap, atomic temp-file + rename writes). Turns <code>NEURALMIND_BYPASS=1</code> from a re-run-from-scratch escape hatch into a free lookup — meaningful on <code>npm test</code> (~28s) and non-deterministic network calls.</li>
+                <li><strong>Small-failure passthrough.</strong> A failing 50-byte command no longer gets buried under a 200-byte compression marker. Outputs under <code>NEURALMIND_BASH_SMALL</code> (default 500 chars) pass through verbatim with just exit-code framing, even on non-zero exit.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The PostToolUse compressor is the <em>most-visible</em> surface NeuralMind exposes — the agent sees it on every Bash call. v0.10.0 converts the common "I need to see the dropped middle" friction from a re-run loop into a single cache lookup, and turns the footer text itself into actionable messaging: concrete benefit visible, concrete affordance, clear escape hatch.</p>
+            <p>No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. The new cache file is additive; disable via <code>NEURALMIND_OUTPUT_CACHE=0</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md">Full v0.10.0 release notes →</a></p>
+        </div>
+    </section>
 
     <section>
         <div class="container" id="whats-new-v090">

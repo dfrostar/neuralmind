@@ -562,6 +562,51 @@ def cmd_demo(args):
             shutil.rmtree(workdir, ignore_errors=True)
 
 
+def cmd_last(args):
+    """Print the most recent cached bash output (recovery without re-running).
+
+    Whenever NeuralMind's PostToolUse hook compresses a Bash output, it
+    stashes the raw stdout/stderr to ``.neuralmind/last_output.json``.
+    This command surfaces that cache so an agent can fetch the dropped
+    middle on demand instead of re-running an expensive command with
+    NEURALMIND_BYPASS=1.
+    """
+    import datetime
+
+    from .output_cache import cache_path, read_last_output
+
+    project_path = args.project_path or "."
+    data = read_last_output(project_path)
+    if data is None:
+        print(
+            "No cached output found at "
+            f"{cache_path(project_path)}.\n"
+            "Run a Bash tool call through Claude Code first — the "
+            "PostToolUse hook will populate the cache."
+        )
+        sys.exit(1)
+
+    if args.json:
+        print(json.dumps(data, indent=2))
+        return
+
+    ts = data.get("ts", 0)
+    when = datetime.datetime.fromtimestamp(ts).isoformat(timespec="seconds") if ts else "unknown"
+    print(f"# cached: {when}   exit={data.get('exit_code', 0)}")
+    if data.get("command"):
+        print(f"# command: {data['command']}")
+    print()
+    stdout = data.get("stdout") or ""
+    stderr = data.get("stderr") or ""
+    if stdout:
+        print(stdout.rstrip())
+    if stderr:
+        if stdout:
+            print()
+        print("[stderr]")
+        print(stderr.rstrip())
+
+
 def cmd_install_hooks(args):
     """Install or remove Claude Code PostToolUse hooks."""
     from .hooks import install_hooks
@@ -853,6 +898,21 @@ def main():
         help="Suppress preamble logging (still prints the report)",
     )
     demo_p.set_defaults(func=cmd_demo)
+
+    # last command — recovery cache for the most recent compressed bash output
+    last_p = subparsers.add_parser(
+        "last",
+        help="Print the last bash output the PostToolUse hook cached "
+        "(recover dropped content without re-running)",
+    )
+    last_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root containing .neuralmind/last_output.json (default: current dir)",
+    )
+    last_p.add_argument("--json", "-j", action="store_true")
+    last_p.set_defaults(func=cmd_last)
 
     # install-hooks command — Claude Code PostToolUse integration
     hooks_p = subparsers.add_parser(

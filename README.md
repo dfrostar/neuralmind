@@ -11,7 +11,9 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **🆕 New in v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
+> **🆕 New in v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
+>
+> **v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
 >
 > **v0.8.0** — **Always-On.** `neuralmind watch` + `neuralmind serve` run as first-class services with [committed systemd + launchd templates](docs/use-cases/always-on.md) + a Windows Task Scheduler walkthrough in the [Scheduling Guide](docs/wiki/Scheduling-Guide.md) + a `/healthz` endpoint for Docker HEALTHCHECK and systemd ExecStartPost probes. [Release notes](RELEASE_NOTES_v0.8.0.md)
 >
@@ -259,9 +261,47 @@ If `neuralmind install-hooks` has been run for this project (check for `.claude/
 
 **This is fully automatic — you do not need to call any extra tools.**
 
-To bypass compression for a single command (e.g., when you need the full file body):
+#### What the agent actually sees on a compressed Bash call *(v0.10.0+)*
+
+After every Bash call, NeuralMind appends a content-aware footer so
+the agent can tell at a glance *what was dropped* — not just how
+many bytes:
+
+```
+[neuralmind: dropped 23 lines (12 info, 8 debug, 3 other);
+ repeated: 5× 'Gamma API error 503'  ·  4298 B stdout total  ·
+ `neuralmind last` for cached raw  ·  NEURALMIND_BYPASS=1 to disable]
+```
+
+This lets the agent judge whether the dropped middle was log noise
+(safe to ignore) or a buried error (worth recovering). No second
+query needed to find out.
+
+#### Recovery without re-running *(v0.10.0+)*
+
+Every compressed Bash call also stashes its raw stdout/stderr to
+`<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap,
+atomic writes). Recover it with:
+
+```bash
+neuralmind last           # human-readable raw output
+neuralmind last --json    # full payload (ts, command, exit, stdout, stderr)
+```
+
+This turns `NEURALMIND_BYPASS=1` from a re-run-from-scratch cost
+into a free lookup — meaningful on `npm test` (~28s),
+non-deterministic API calls, or any destructive command that can't
+be re-run safely.
+
+To bypass compression on a future command (the new full output goes
+into the cache instead of being summarized):
 ```bash
 NEURALMIND_BYPASS=1 <your command>
+```
+
+To disable the recovery cache entirely:
+```bash
+export NEURALMIND_OUTPUT_CACHE=0
 ```
 
 ---
@@ -1619,6 +1659,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.10.0](RELEASE_NOTES_v0.10.0.md)** | Agent Ergonomics — content-aware compression footer, `neuralmind last` recovery cache, small-failure passthrough |
 | **[Release Notes v0.9.0](RELEASE_NOTES_v0.9.0.md)** | Enterprise-Ready — GHCR auto-build, CycloneDX SBOM, air-gapped install walkthrough, compliance one-pager |
 | **[Release Notes v0.8.0](RELEASE_NOTES_v0.8.0.md)** | Always-On — systemd + launchd templates, Windows Task Scheduler walkthrough, `/healthz` endpoint |
 | **[Release Notes v0.7.0](RELEASE_NOTES_v0.7.0.md)** | Install anywhere — `pip` / `pipx` / `uv` / Docker / source, Dockerfile, event-log rotation fix |

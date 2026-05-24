@@ -15,6 +15,7 @@ Complete command-line interface documentation for NeuralMind.
   - [stats](#stats)
   - [learn](#learn)
   - [skeleton](#skeleton)
+  - [last](#last-v0100)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
   - [watch](#watch-v040)
@@ -505,6 +506,59 @@ neuralmind skeleton src/auth/handlers.py --json
 
 ---
 
+### last *(v0.10.0+)*
+
+Print the most recent Bash output the PostToolUse hook cached, so an
+agent can recover the dropped middle without re-running the command.
+
+Every time the `compress-bash` hook fires, it stashes the raw
+pre-compression stdout/stderr to
+`<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap,
+atomic temp-file + rename writes). `neuralmind last` surfaces it.
+
+```bash
+neuralmind last [project_path] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root containing `.neuralmind/last_output.json` (default: current directory) |
+| `--json`, `-j` | No | Emit the full payload as JSON (timestamp, command, exit code, stdout, stderr) |
+
+#### Examples
+
+```bash
+# Human-readable: what the agent would have seen pre-compression.
+neuralmind last
+
+# Full JSON payload — useful for scripted recovery flows.
+neuralmind last --json
+
+# When no cache exists yet (no Bash call has fired the hook).
+neuralmind last
+# → "No cached output found at <path>. Run a Bash tool call through Claude Code first…"
+# → exits with status 1
+```
+
+#### Exit codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Cache present and printed |
+| `1` | No cache exists (no recent Bash call) |
+
+#### When to use
+
+| Scenario | Recovery cost without `last` | With `last` |
+|----------|------------------------------|-------------|
+| Inspecting compressed `npm test` middle | Re-run (~28s) | Free lookup |
+| Reading dropped log lines from a non-deterministic API call | Re-run + likely different output | Free lookup, identical bytes |
+| Reading dropped output from a destructive command | Re-run impossible | Free lookup |
+
+---
+
 ### install-hooks
 
 Install or uninstall Claude Code lifecycle hooks. As of v0.4.0 this
@@ -751,6 +805,11 @@ Behaviour:
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
+| `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
+| `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
+| `NEURALMIND_BASH_SMALL` | `500` | *(v0.10.0+)* Threshold below which failing Bash outputs pass through verbatim (no compression marker). Tunable to suit your noise tolerance. |
+| `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which successful Bash outputs get compressed. |
+| `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines always kept verbatim in compressed Bash output. |
 
 ---
 
