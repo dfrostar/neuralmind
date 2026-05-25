@@ -69,11 +69,15 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # type=ref,event=tag → :v0.9.0 from the pushed tag
-          # type=raw,latest → :latest only when the tag has no `-`
-          #   suffix (excludes v0.10.0-rc1, v1.0.0-beta1, etc.).
+          # type=raw,value=${{ env.RELEASE_TAG }} → :v0.9.0 from RELEASE_TAG.
+          # This works for BOTH push:tag (RELEASE_TAG = github.ref_name)
+          # AND workflow_dispatch (RELEASE_TAG = inputs.tag). The earlier
+          # `type=ref,event=tag` form only fired on push:tag, so workflow-
+          # dispatched runs produced only `:latest` with no version tag.
+          # type=raw,latest → :latest only when the tag has no `-` suffix
+          # (excludes v0.10.0-rc1, v1.0.0-beta1, etc.).
           tags: |
-            type=ref,event=tag
+            type=raw,value=${{ env.RELEASE_TAG }}
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
             org.opencontainers.image.title=NeuralMind
