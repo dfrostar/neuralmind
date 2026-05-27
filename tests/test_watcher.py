@@ -89,3 +89,33 @@ def test_stop_is_idempotent(tmp_path):
     w.start()
     w.stop()
     w.stop()  # second stop must not raise
+
+
+def test_flush_delivers_batch_sorted_by_timestamp(tmp_path):
+    """The flush loop must order ready paths by edit timestamp, not dict-
+    insertion order. A file that was touched then re-touched should appear
+    at its latest position so the directional transition recorder sees the
+    actual chronological order. (v0.11.0+)"""
+    received: list[list[str]] = []
+
+    def cb(paths):
+        received.append(list(paths))
+
+    w = FileActivityWatcher(tmp_path, cb, debounce=0.1, poll_interval=10.0)
+    # Seed _pending with out-of-order timestamps: A was inserted first but
+    # has the LATER timestamp (simulating a re-touch); B inserted second but
+    # earlier ts. Chronological order is [B, A].
+    now = time.time()
+    w._pending = {"A": now - 1.0, "B": now - 2.0}
+    w.start()
+    try:
+        deadline = time.time() + 2.0
+        while time.time() < deadline and not received:
+            time.sleep(0.05)
+    finally:
+        w.stop()
+
+    assert received, "flush did not fire"
+    # First (and likely only) batch should be sorted by timestamp ascending:
+    # B (older ts) before A (newer ts), not dict insertion order [A, B].
+    assert received[0] == ["B", "A"], f"expected chronological order [B, A], got {received[0]}"

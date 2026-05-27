@@ -7,11 +7,15 @@
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Exfiltration-brightgreen.svg)](#-security--compliance)
 [![Offline](https://img.shields.io/badge/Offline-100%25-blue.svg)](#-security--compliance)
 
-**Semantic code intelligence for AI coding agents — smart context retrieval + tool-output compression in one package.**
+**Persistent memory for AI coding agents.**
 
-> NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
+> Your AI coding agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. The memory persists across sessions and surfaces automatically. No MCP tool call required: NeuralMind writes a `SYNAPSE_MEMORY.md` file that Claude Code loads on every session start, so the agent boots with what it's learned about your code already in context.
 
-> **🆕 New in v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
+> Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
+
+> **🆕 New in v0.11.0** — **Directional Synapses.** The brain-like layer now learns *what comes next*, not just *what goes together*. A new `synapse_transitions` table records ordered `(from_node, to_node)` observations every time the watcher flushes a batch, so the agent can ask `neuralmind next <file>` (or call the `neuralmind_next_likely` MCP tool) and get a probability distribution over what's typically edited after that file. Additive — the existing undirected synapse graph keeps doing its job. [Release notes](RELEASE_NOTES_v0.11.0.md)
+>
+> **v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
 >
 > **v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
 >
@@ -25,16 +29,32 @@
 
 ---
 
-## ⚡ 30-second proof
+## 🧠 What changes when an agent has memory
 
-Don't trust the headline number — reproduce it. One command on a freshly cloned checkout:
+Three concrete behaviors appear once the synapse layer has watched a few coding sessions on your project. None of them require the agent to call extra tools — the memory primes the model on session start and surfaces predictions automatically.
+
+| Without NeuralMind | With NeuralMind |
+|---|---|
+| Every session, the agent starts cold. You re-explain your auth flow, your billing module, your naming convention. | Session starts with `SYNAPSE_MEMORY.md` already in context: *"strongest associations: `middleware.py` ↔ `handlers.py` ↔ `session.py` — auth flow. Hub: `middleware.py`."* The agent boots knowing the shape of your code. |
+| Agent finishes editing `payment_service.py`, asks "anything else?" | Agent: *"after `payment_service.py` you usually update `webhook_handler.py` (45%) and the test file (28%) — want me to do those too?"* Learned from your edit history, no manual hint needed. *(v0.11.0+)* |
+| `npm test` floods the conversation with 800 lines. Agent re-reads 50K tokens. | Hook auto-summarizes Bash output to errors + repeated-line patterns + last 3 lines. `neuralmind last` recovers the raw cache when needed. *(v0.10.0+)* |
+
+The brain layer learns continuously from how you actually work — file co-edits via a watcher daemon, query intent from MCP calls, tool-use patterns from PostToolUse hooks. Decays unused associations like a real brain so stale knowledge doesn't crowd out current patterns.
+
+This is not "another RAG tool." It's the memory layer that everything else assumes the agent already has.
+
+---
+
+## ⚡ 30-second proof — see the memory work
+
+The clearest evidence the memory is working is the measurable side effect: the agent stops re-loading context it already understood. Reproduce it on a freshly cloned checkout:
 
 ```bash
 git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 bash scripts/demo.sh
 ```
 
-The script creates an isolated venv, installs the deps, builds the index for the bundled fixture (`tests/fixtures/sample_project/`), and runs three real questions. Output looks like:
+The script creates an isolated venv, installs the deps, builds the index for the bundled fixture (`tests/fixtures/sample_project/`), and runs three real questions. Each question loads only the relevant code instead of the whole repo — exactly the kind of context-economy a senior engineer applies without thinking. Output looks like:
 
 ```
   Q: How does authentication work in this codebase?
@@ -306,6 +326,45 @@ export NEURALMIND_OUTPUT_CACHE=0
 
 ---
 
+### Predict the next file *(v0.11.0+)*
+
+After `neuralmind watch` has been running for a handful of sessions, the
+synapse layer learns directional edit patterns — not just *what files
+go together* but *what file usually follows what*. Ask it directly:
+
+```bash
+$ neuralmind next . src/auth/handlers.py
+After src/auth/handlers.py:
+   45.2%  tests/test_auth.py
+   28.4%  src/auth/middleware.py
+   12.1%  docs/auth.md
+    8.3%  src/auth/__init__.py
+    6.0%  src/main.py
+```
+
+The same prediction is available three ways depending on who's asking:
+
+| Surface | How an agent reaches it | Where it's read |
+|---------|------------------------|-----------------|
+| **MCP tool** `neuralmind_next_likely` | Cursor / Cline / Continue / any MCP client | After editing a file, prefetch the likely next one |
+| **CLI** `neuralmind next <dir> <file>` | Shell, scripts, status lines | Quick lookup or piping into a fzf picker |
+| **Auto-memory** `SYNAPSE_MEMORY.md` | Claude Code (loads on session start, no user action) | "What typically comes next" section primes the model with the top transitions before any tool call |
+
+**Why this matters for agents:** the auto-memory section is the single
+highest-leverage surface — Claude Code sees `SYNAPSE_MEMORY.md` on
+every session start without anyone asking. An agent priming on
+"after `src/auth/handlers.py`, the human usually opens
+`tests/test_auth.py`" can proactively offer to update the test, rather
+than waiting to be asked. Zero user prompts; the prediction is just
+in context.
+
+The transition signal needs a long observation window to converge
+(N files edited together yield only N-1 ordered pairs), so running
+the watcher as a service via the [always-on guide](docs/use-cases/always-on.md)
+shortens time-to-useful-predictions from weeks to days.
+
+---
+
 ### After making code changes
 
 The index does **not** auto-update unless a git post-commit hook was installed with `neuralmind init-hook .`. After significant code changes, rebuild manually:
@@ -411,8 +470,11 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 
 | What you notice | Reach for | Why it fixes it |
 |---|---|---|
+| Agent starts every session not knowing my codebase | `neuralmind install-hooks .` + `neuralmind watch .` | `SYNAPSE_MEMORY.md` auto-loads on session start with learned associations + transitions |
+| I keep telling the agent "after you edit X, also update Y" | `neuralmind watch .` *(v0.11.0+)* | Directional transitions learn the pattern; agent proactively suggests the follow-up |
+| Multi-agent setup (Claude Code + Cursor + Cline) — each one has its own context | NeuralMind MCP server | Shared synapse store; learning from one agent benefits the others |
 | Claude Code hits context limits mid-task | `neuralmind install-hooks .` | Auto-compresses Read/Bash/Grep **before** the agent sees them (~88–91%) |
-| My monthly LLM bill is climbing | `neuralmind query` + hooks | 40–70× fewer tokens per code question |
+| My monthly LLM bill is climbing | `neuralmind query` + hooks | 40–70× fewer tokens per code question; 5–10× per session combined |
 | I start every session re-pasting project structure | `neuralmind wakeup .` | ~400 tokens of orientation; pipe into any chat |
 | Agent reads a 2,000-line file to answer about one function | `neuralmind skeleton <file>` | Functions + call graph, no body; ~88% cheaper than `Read` |
 | `grep` floods the agent with hundreds of matches | `neuralmind install-hooks .` | Caps at 25 matches with "N more hidden" pointer |
@@ -425,7 +487,9 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 
 | If your goal is… | Do this | Expected outcome |
 |---|---|---|
-| **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | 5–10× total reduction vs baseline agent |
+| **Give the agent persistent memory** of your codebase | `install-hooks` + `neuralmind watch .` | `SYNAPSE_MEMORY.md` primes the agent every session — associations + transitions learned from how you actually work |
+| **Predict the next file** the agent should open | `install-hooks` + `neuralmind watch .` *(v0.11.0+)* | After observing edit patterns, agent surfaces "after X, you usually edit Y (45%)" without being asked |
+| **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | 5–10× total reduction (the measurable side effect of better memory) |
 | **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
 | **Keep all code local** (no SaaS, no telemetry) | Default install — no extra config | 100% offline; nothing leaves the machine |
 | **Work across Claude + GPT + Gemini** with one index | Build once, pipe output into any model | Same context quality, model-agnostic |
@@ -441,7 +505,7 @@ You **probably don't need NeuralMind** if:
 - You don't use an AI coding agent.
 - You only want inline completions — use [Copilot](docs/comparisons/vs-github-copilot.md) or [Cursor](docs/comparisons/vs-cursor-codebase.md) directly.
 
-You **almost certainly want NeuralMind** if any row above describes a recurring frustration, or if your LLM bill has crossed the point where a 40–70× reduction is worth 5 minutes of setup.
+You **almost certainly want NeuralMind** if your AI coding agent feels amnesiac — it doesn't remember what it learned about your code, doesn't predict what you'll need next, doesn't carry context between sessions. The brain layer is what closes that gap. The token-savings are the receipts.
 
 See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guides matched to your situation.
 
@@ -1503,6 +1567,7 @@ agent and the codebase actually interact. See the [release notes](RELEASE_NOTES_
 | **Auto-memory export** | Writes `SYNAPSE_MEMORY.md` to Claude Code's auto-memory dir so associations surface natively |
 | **Three new MCP tools** | `synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `export_synapse_memory` |
 | **3× fewer embedder calls per query** | Selector caches one search per query and slices for L2/L3/synapses |
+| **Directional transitions** *(v0.11.0+)* | Parallel `synapse_transitions` table tracks ordered `(from, to)` observations; `next_likely(node)` returns probability distribution over what follows; new `neuralmind next` CLI + `neuralmind_next_likely` MCP tool |
 
 ### Earlier (v0.3.x)
 
@@ -1659,6 +1724,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.11.0](RELEASE_NOTES_v0.11.0.md)** | Directional Synapses — `synapse_transitions` table, `next_likely()` API, `neuralmind next` CLI, `neuralmind_next_likely` MCP tool |
 | **[Release Notes v0.10.0](RELEASE_NOTES_v0.10.0.md)** | Agent Ergonomics — content-aware compression footer, `neuralmind last` recovery cache, small-failure passthrough |
 | **[Release Notes v0.9.0](RELEASE_NOTES_v0.9.0.md)** | Enterprise-Ready — GHCR auto-build, CycloneDX SBOM, air-gapped install walkthrough, compliance one-pager |
 | **[Release Notes v0.8.0](RELEASE_NOTES_v0.8.0.md)** | Always-On — systemd + launchd templates, Windows Task Scheduler walkthrough, `/healthz` endpoint |

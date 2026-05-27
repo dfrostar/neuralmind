@@ -160,3 +160,51 @@ def test_export_overwrites_on_repeat_call(tmp_path, monkeypatch):
     export_synapse_memory(tmp_path)
     second = project_memory_file(tmp_path).read_text()
     assert second != first
+
+
+# ---------------------------------------------------------------------------
+# Directional transitions in the memory export (v0.11.0+)
+# ---------------------------------------------------------------------------
+
+
+def test_render_includes_transition_section_when_present(tmp_path):
+    store = SynapseStore(default_db_path(tmp_path))
+    # 3 observations of a->b, 1 of a->c — both above min_prob default 0.15.
+    for _ in range(3):
+        store.record_sequence(["src/auth.py", "tests/test_auth.py"])
+    store.record_sequence(["src/auth.py", "src/middleware.py"])
+
+    text = render_synapse_memory(tmp_path)
+    assert "What typically comes next" in text
+    assert "After " in text
+    # Probabilities surface as percentages, with directional arrow.
+    assert "75% →" in text or "75 % →" in text
+    assert "tests/test_auth.py" in text
+    assert "src/middleware.py" in text
+
+
+def test_render_omits_transition_section_when_no_transitions(tmp_path):
+    store = SynapseStore(default_db_path(tmp_path))
+    store.reinforce(["a", "b"])  # undirected only
+    text = render_synapse_memory(tmp_path)
+    assert "What typically comes next" not in text
+
+
+def test_render_filters_low_probability_transitions(tmp_path):
+    store = SynapseStore(default_db_path(tmp_path))
+    # 20 observations of a->b, 1 of a->c. P(c|a) ~ 0.048, below default 0.15.
+    for _ in range(20):
+        store.record_sequence(["a", "b"])
+    store.record_sequence(["a", "c"])
+    text = render_synapse_memory(tmp_path)
+    assert "What typically comes next" in text
+    assert "`b`" in text
+    # 'c' is below the noise floor and should not be surfaced.
+    assert "`c`" not in text
+
+
+def test_render_includes_transition_count_in_header(tmp_path):
+    store = SynapseStore(default_db_path(tmp_path))
+    store.record_sequence(["a", "b", "c"])
+    text = render_synapse_memory(tmp_path)
+    assert "Directional transitions: 2" in text
