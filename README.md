@@ -308,6 +308,45 @@ export NEURALMIND_OUTPUT_CACHE=0
 
 ---
 
+### Predict the next file *(v0.11.0+)*
+
+After `neuralmind watch` has been running for a handful of sessions, the
+synapse layer learns directional edit patterns — not just *what files
+go together* but *what file usually follows what*. Ask it directly:
+
+```bash
+$ neuralmind next . src/auth/handlers.py
+After src/auth/handlers.py:
+   45.2%  tests/test_auth.py
+   28.4%  src/auth/middleware.py
+   12.1%  docs/auth.md
+    8.3%  src/auth/__init__.py
+    6.0%  src/main.py
+```
+
+The same prediction is available three ways depending on who's asking:
+
+| Surface | How an agent reaches it | Where it's read |
+|---------|------------------------|-----------------|
+| **MCP tool** `neuralmind_next_likely` | Cursor / Cline / Continue / any MCP client | After editing a file, prefetch the likely next one |
+| **CLI** `neuralmind next <dir> <file>` | Shell, scripts, status lines | Quick lookup or piping into a fzf picker |
+| **Auto-memory** `SYNAPSE_MEMORY.md` | Claude Code (loads on session start, no user action) | "What typically comes next" section primes the model with the top transitions before any tool call |
+
+**Why this matters for agents:** the auto-memory section is the single
+highest-leverage surface — Claude Code sees `SYNAPSE_MEMORY.md` on
+every session start without anyone asking. An agent priming on
+"after `src/auth/handlers.py`, the human usually opens
+`tests/test_auth.py`" can proactively offer to update the test, rather
+than waiting to be asked. Zero user prompts; the prediction is just
+in context.
+
+The transition signal needs a long observation window to converge
+(N files edited together yield only N-1 ordered pairs), so running
+the watcher as a service via the [always-on guide](docs/use-cases/always-on.md)
+shortens time-to-useful-predictions from weeks to days.
+
+---
+
 ### After making code changes
 
 The index does **not** auto-update unless a git post-commit hook was installed with `neuralmind init-hook .`. After significant code changes, rebuild manually:

@@ -26,6 +26,11 @@ existing undirected graph keeps doing its job; the new
 - **`neuralmind_next_likely` MCP tool.** Same capability via MCP so
   Cursor / Cline / Continue / any MCP client can prefetch context
   the agent is likely to ask about next.
+- **Auto-memory surface.** The `SYNAPSE_MEMORY.md` file that Claude
+  Code loads on every session start now includes a "What typically
+  comes next" section with the top transitions. The directional signal
+  is in the agent's context *without anyone asking* — no MCP tool
+  call, no CLI invocation, just primed knowledge the model can act on.
 
 No migration. The new table is created on first connection; existing
 `synapses.db` files keep working untouched. Disable the new signal by
@@ -199,11 +204,6 @@ Each of these would deserve its own ship:
   transition stream could discover "modes" (debugging vs feature-add
   vs refactor) without labels, then condition L0/L1/L2/L3 context
   selection on inferred mode. Speculative but interesting.
-- **Transition surface in synapse memory.** The
-  `<project>/.neuralmind/SYNAPSE_MEMORY.md` export still shows only
-  the undirected edges. A "what typically follows what" section in
-  the same export would surface the directional signal to agents
-  that don't call the MCP tool.
 
 ---
 
