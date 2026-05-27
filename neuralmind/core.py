@@ -129,10 +129,26 @@ class NeuralMind:
         Used by the file watcher: when a cluster of files is edited together,
         we treat them as having co-fired and let the synapse store strengthen
         the edges between every node living in those files.
+
+        Two parallel updates run from one call:
+
+        - Undirected co-activation across every node inside the touched
+          files (the existing Hebbian signal).
+        - Directional file-level transitions (``A -> B``) for each
+          consecutive pair in ``file_paths``, so callers can ask
+          ``next_likely(file)`` for what typically follows. *(v0.11.0+)*
         """
         if not file_paths:
             return 0
         self._ensure_built()
+
+        store = self.synapses
+        if store is not None and len(file_paths) >= 2:
+            try:
+                store.record_sequence(file_paths, strength=strength)
+            except Exception:
+                pass
+
         node_ids: list[str] = []
         for path in file_paths:
             try:

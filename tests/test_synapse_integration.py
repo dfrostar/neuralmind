@@ -59,6 +59,10 @@ class _FakeMind:
     def activate_files(self, file_paths, strength=1.0):
         if not file_paths:
             return 0
+        # v0.11.0+: record directional file-level transitions in parallel
+        # with undirected node co-activation.
+        if self._store is not None and len(file_paths) >= 2:
+            self._store.record_sequence(file_paths, strength=strength)
         node_ids = []
         for path in file_paths:
             for node in self.embedder.get_file_nodes(path):
@@ -122,3 +126,66 @@ def test_repeat_co_activation_strengthens_pair(tmp_path):
     mind.activate_files(["x.py", "y.py"])
     second = dict(store.neighbors("x"))["y"]
     assert second > first
+
+
+# ---------------------------------------------------------------------------
+# Directional transition wire-up (v0.11.0+)
+# ---------------------------------------------------------------------------
+
+
+def test_activate_files_records_directional_file_transitions(tmp_path):
+    """activate_files must record the file-path sequence as directional
+    transitions in addition to the existing undirected node co-activation."""
+    embedder = _FakeEmbedder(
+        file_to_nodes={
+            "auth.py": [{"id": "n1"}],
+            "session.py": [{"id": "n2"}],
+            "tests.py": [{"id": "n3"}],
+        }
+    )
+    store = SynapseStore(default_db_path(tmp_path))
+    mind = _FakeMind(tmp_path, embedder, store)
+
+    mind.activate_files(["auth.py", "session.py", "tests.py"])
+
+    # Two ordered transitions recorded at file granularity:
+    # auth.py -> session.py and session.py -> tests.py.
+    after_auth = dict(store.next_likely("auth.py"))
+    after_session = dict(store.next_likely("session.py"))
+    assert after_auth == {"session.py": 1.0}
+    assert after_session == {"tests.py": 1.0}
+    # The reverse direction is not recorded — transitions are directional.
+    assert store.next_likely("tests.py") == []
+
+
+def test_activate_files_repeated_sequences_shift_probabilities(tmp_path):
+    """A→B observed three times, A→C once should produce P(B|A)=0.75,
+    P(C|A)=0.25 — the same normalization the next_likely API guarantees."""
+    embedder = _FakeEmbedder(
+        file_to_nodes={
+            "a.py": [{"id": "a"}],
+            "b.py": [{"id": "b"}],
+            "c.py": [{"id": "c"}],
+        }
+    )
+    store = SynapseStore(default_db_path(tmp_path))
+    mind = _FakeMind(tmp_path, embedder, store)
+
+    for _ in range(3):
+        mind.activate_files(["a.py", "b.py"])
+    mind.activate_files(["a.py", "c.py"])
+
+    after_a = dict(store.next_likely("a.py"))
+    assert abs(after_a["b.py"] - 0.75) < 1e-9
+    assert abs(after_a["c.py"] - 0.25) < 1e-9
+
+
+def test_activate_files_single_path_records_no_transitions(tmp_path):
+    """A single-file batch has no consecutive pairs, so no transitions are
+    recorded even though co-activation may still fire (intra-file)."""
+    embedder = _FakeEmbedder(file_to_nodes={"a.py": [{"id": "a1"}, {"id": "a2"}]})
+    store = SynapseStore(default_db_path(tmp_path))
+    mind = _FakeMind(tmp_path, embedder, store)
+
+    mind.activate_files(["a.py"])
+    assert store.stats()["transitions"] == 0

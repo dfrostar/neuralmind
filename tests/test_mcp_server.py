@@ -150,14 +150,106 @@ class TestToolStats:
             assert "error" in result
 
 
+class TestToolNextLikely:
+    """Tests for tool_next_likely() — the v0.11.0 directional-transition handler."""
+
+    def test_handler_returns_predicted_successors(self, temp_project):
+        """tool_next_likely surfaces probabilities from SynapseStore.next_likely."""
+        from neuralmind.mcp_server import tool_next_likely
+
+        with patch("neuralmind.mcp_server.get_mind") as mock_get:
+            mock_store = MagicMock()
+            mock_store.next_likely.return_value = [
+                ("tests/test_auth.py", 0.6),
+                ("src/auth/middleware.py", 0.4),
+            ]
+            mock_mind = MagicMock()
+            mock_mind.synapses = mock_store
+            mock_get.return_value = mock_mind
+
+            result = tool_next_likely(str(temp_project), "src/auth/handlers.py", top_k=2)
+
+        assert result["enabled"] is True
+        assert result["from_node"] == "src/auth/handlers.py"
+        assert result["next"] == [
+            {"to_node": "tests/test_auth.py", "probability": 0.6},
+            {"to_node": "src/auth/middleware.py", "probability": 0.4},
+        ]
+        mock_store.next_likely.assert_called_once_with("src/auth/handlers.py", top_k=2)
+
+    def test_handler_disabled_when_synapses_off(self, temp_project):
+        """tool_next_likely returns enabled:False when the store is disabled."""
+        from neuralmind.mcp_server import tool_next_likely
+
+        with patch("neuralmind.mcp_server.get_mind") as mock_get:
+            mock_mind = MagicMock()
+            mock_mind.synapses = None
+            mock_get.return_value = mock_mind
+
+            result = tool_next_likely(str(temp_project), "anything.py")
+
+        assert result == {"enabled": False, "from_node": "anything.py", "next": []}
+
+    def test_handler_unknown_node_returns_empty_next(self, temp_project):
+        """tool_next_likely with no recorded transitions returns enabled:True and empty next."""
+        from neuralmind.mcp_server import tool_next_likely
+
+        with patch("neuralmind.mcp_server.get_mind") as mock_get:
+            mock_store = MagicMock()
+            mock_store.next_likely.return_value = []
+            mock_mind = MagicMock()
+            mock_mind.synapses = mock_store
+            mock_get.return_value = mock_mind
+
+            result = tool_next_likely(str(temp_project), "unknown.py")
+
+        assert result == {"enabled": True, "from_node": "unknown.py", "next": []}
+
+    def test_dispatcher_routes_to_handler(self, temp_project):
+        """handle_tool_call routes neuralmind_next_likely to tool_next_likely.
+
+        The synapse-family tools default to admin-only per the RBAC policy
+        (same as neuralmind_synapse_stats/decay/etc.), so this dispatcher
+        test sets role='admin' explicitly. The default 'builder' role is
+        denied by design.
+        """
+        with patch("neuralmind.mcp_server.tool_next_likely") as mock_tool:
+            mock_tool.return_value = {"enabled": True, "from_node": "x", "next": []}
+            result = handle_tool_call(
+                "neuralmind_next_likely",
+                {
+                    "project_path": str(temp_project),
+                    "from_node": "x",
+                    "top_k": 3,
+                    "role": "admin",
+                },
+            )
+            data = json.loads(result)
+            assert data == {"enabled": True, "from_node": "x", "next": []}
+            mock_tool.assert_called_once_with(str(temp_project), "x", 3)
+
+    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
+        """Confirm the synapse-family default: 'builder' role can't call
+        neuralmind_next_likely. Matches the pre-existing behavior for
+        neuralmind_synapse_stats/decay/synaptic_neighbors. If you want
+        builders to call this tool, extend the role policy explicitly."""
+        result = handle_tool_call(
+            "neuralmind_next_likely",
+            {"project_path": str(temp_project), "from_node": "x"},
+        )
+        data = json.loads(result)
+        assert data.get("code") == "security_denied"
+
+
 class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 11 tools (7 retrieval + 4 v0.4 synapse tools)."""
+        """TOOLS should define 12 tools (7 retrieval + 4 v0.4 synapse +
+        1 v0.11 directional-transition tool)."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 11
+        assert len(TOOLS) == 12
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -188,5 +280,7 @@ class TestToolDefinitions:
             "neuralmind_synapse_stats",
             "neuralmind_synapse_decay",
             "neuralmind_export_synapse_memory",
+            # v0.11.0 directional transitions
+            "neuralmind_next_likely",
         }
         assert tool_names == expected

@@ -283,6 +283,31 @@ def cmd_stats(args):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
 
 
+def cmd_next(args):
+    """Show what typically follows a node (file path or node id) in the
+    learned directional-transition graph."""
+    mind = NeuralMind(args.project_path)
+    store = mind.synapses
+    ranked = store.next_likely(args.from_node, top_k=args.n) if store else []
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "from_node": args.from_node,
+                    "next": [{"to_node": to_node, "probability": prob} for to_node, prob in ranked],
+                },
+                indent=2,
+            )
+        )
+        return
+    if not ranked:
+        print(f"No learned transitions from {args.from_node!r} yet.")
+        return
+    print(f"After {args.from_node}:")
+    for to_node, prob in ranked:
+        print(f"  {prob * 100:5.1f}%  {to_node}")
+
+
 def cmd_learn(args):
     project_path = Path(args.project_path).resolve()
     if memory.is_learning_disabled():
@@ -784,6 +809,20 @@ def main():
     )
     learn_p.add_argument("project_path")
     learn_p.set_defaults(func=cmd_learn)
+
+    # Next-likely — directional transition recall (v0.11.0+)
+    next_p = subparsers.add_parser(
+        "next",
+        help="Show what typically follows a node in the learned transition graph",
+    )
+    next_p.add_argument("project_path")
+    next_p.add_argument(
+        "from_node",
+        help="Source node (file path or node id) to predict successors for",
+    )
+    next_p.add_argument("--n", type=int, default=5, help="Top-N successors to return")
+    next_p.add_argument("--json", "-j", action="store_true")
+    next_p.set_defaults(func=cmd_next)
 
     # Init-hook command
     init_parser = subparsers.add_parser(

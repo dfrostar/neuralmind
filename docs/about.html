@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it, an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -44,6 +44,23 @@
             <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
         </div>
     </header>
+
+    <section>
+        <div class="container" id="whats-new-v0110">
+            <h2>What's New in v0.11.0 — directional synapses</h2>
+            <p><strong>The brain-like layer now learns <em>what comes next</em>, not just <em>what goes together</em>.</strong> The Hebbian co-activation signal that's powered NeuralMind since v0.4.0 has always been symmetric: nodes that fire together wire together, no ordering. v0.11.0 adds a parallel directional signal — after touching file A, you typically touch file B with probability p.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Directional transitions.</strong> A new <code>synapse_transitions(from_node, to_node, weight, count)</code> table tracks ordered observations. Same Hebbian + decay machinery as the undirected synapses, but with directionality preserved. The file watcher records transitions automatically every time it flushes a batch — sorted by edit timestamp so re-touched files appear at their latest position, not their first.</li>
+                <li><strong><code>next_likely(node)</code> API.</strong> Returns the probability distribution over what typically follows a given file or node. Probabilities normalize to 1.0 across all outgoing transitions. Callable from Python (<code>mind.synapses.next_likely(path)</code>), the CLI (<code>neuralmind next . path/to/file.py</code>), or via the new <code>neuralmind_next_likely</code> MCP tool from Cursor / Cline / Continue / any MCP client.</li>
+                <li><strong>Decay knobs tuned for sequential signal.</strong> Transitions decay slower (<code>TRANSITION_DECAY_RATE = 0.01</code> vs <code>DECAY_RATE = 0.02</code> for the undirected edges) because sequential signals are rarer per session — you might edit ten files together but only get nine ordered pairs between them, so they need to accumulate for longer before being trusted.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The existing undirected synapse graph answers <em>association</em>: "given this file, what other files belong to the same thought?" Directional transitions split that signal into <em>before</em> (prefetch this file's skeleton when the implementation file is loaded) and <em>after</em> (remind the agent to update this when the implementation changes). Same source data — every <code>activate_files</code> call writes to both the undirected and directional tables — two views.</p>
+            <p>No migration. The new table is created on first connection. Existing co-activation edges in <code>synapses.db</code> are untouched. Disable by ignoring the new API — the watcher still records transitions in the background, but if nothing reads them, they just sit there decaying like any other edge.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md">Full v0.11.0 release notes →</a></p>
+        </div>
+    </section>
 
     <section>
         <div class="container" id="whats-new-v0100">

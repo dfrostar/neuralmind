@@ -24,6 +24,8 @@ from .synapses import LTP_THRESHOLD, SynapseStore, default_db_path
 
 DEFAULT_TOP_PAIRS = 25
 DEFAULT_TOP_HUBS = 8
+DEFAULT_TOP_TRANSITIONS = 15
+DEFAULT_TRANSITION_MIN_PROB = 0.15
 DEFAULT_MIN_WEIGHT = 0.05
 PROJECT_MEMORY_FILENAME = "SYNAPSE_MEMORY.md"
 CLAUDE_AUTO_FILENAME = "synapse-activations.md"
@@ -102,6 +104,67 @@ def _top_pairs(db_path: Path, limit: int, min_weight: float) -> list[tuple[str, 
         return []
 
 
+def _top_transition_groups(
+    db_path: Path, limit: int, min_prob: float
+) -> list[tuple[str, list[tuple[str, float, int]]]]:
+    """Read the strongest directional transitions, grouped by ``from_node``.
+
+    Returns ``[(from_node, [(to_node, probability, count), ...]), ...]``
+    where each from_node has its top successors. ``limit`` caps the
+    number of *groups* (from_nodes), not the total rows. Successors with
+    probability below ``min_prob`` are dropped — they're noise in the
+    auto-memory surface.
+
+    The auto-memory file lives in agent context every session; we want
+    the LLM to see "after touching A, you usually touch B" with enough
+    signal-to-noise that it can use it. Including 0.05-probability tails
+    would crowd that out.
+    """
+    if not db_path.exists():
+        return []
+    try:
+        conn = sqlite3.connect(db_path, timeout=2.0)
+        try:
+            cur = conn.execute(
+                """
+                SELECT from_node FROM synapse_transitions
+                GROUP BY from_node
+                ORDER BY MAX(weight) DESC, SUM(weight) DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            from_nodes = [row[0] for row in cur.fetchall()]
+            if not from_nodes:
+                return []
+            groups: list[tuple[str, list[tuple[str, float, int]]]] = []
+            for from_node in from_nodes:
+                cur = conn.execute(
+                    """
+                    SELECT to_node, weight, count FROM synapse_transitions
+                    WHERE from_node = ?
+                    ORDER BY weight DESC
+                    """,
+                    (from_node,),
+                )
+                rows = cur.fetchall()
+                total = sum(float(w) for _, w, _ in rows)
+                if total <= 0.0:
+                    continue
+                successors: list[tuple[str, float, int]] = []
+                for to_node, weight, count in rows:
+                    prob = float(weight) / total
+                    if prob >= min_prob:
+                        successors.append((to_node, prob, int(count)))
+                if successors:
+                    groups.append((from_node, successors))
+            return groups
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return []
+
+
 def _resolve_labels(node_ids: list[str], embedder) -> dict[str, str]:
     """Best-effort lookup of human-readable labels for a list of node ids.
 
@@ -132,6 +195,8 @@ def render_synapse_memory(
     top_pairs: int = DEFAULT_TOP_PAIRS,
     top_hubs: int = DEFAULT_TOP_HUBS,
     min_weight: float = DEFAULT_MIN_WEIGHT,
+    top_transitions: int = DEFAULT_TOP_TRANSITIONS,
+    transition_min_prob: float = DEFAULT_TRANSITION_MIN_PROB,
 ) -> str:
     """Render the synapse memory file as a markdown string.
 
@@ -149,8 +214,13 @@ def render_synapse_memory(
         pair_node_ids.extend((a, b))
     hubs = stats.get("top_hubs", [])[:top_hubs]
     hub_ids = [nid for nid, _ in hubs]
+    transitions = _top_transition_groups(db_path, top_transitions, transition_min_prob)
+    transition_node_ids: list[str] = []
+    for from_node, successors in transitions:
+        transition_node_ids.append(from_node)
+        transition_node_ids.extend(t for t, _, _ in successors)
 
-    labels = _resolve_labels(list(set(pair_node_ids + hub_ids)), embedder)
+    labels = _resolve_labels(list(set(pair_node_ids + hub_ids + transition_node_ids)), embedder)
 
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     lines: list[str] = [
@@ -162,6 +232,7 @@ def render_synapse_memory(
         f"- Edges learned: {stats['edges']} ({stats['ltp_edges']} long-term)",
         f"- Total synapse weight: {stats['total_weight']:.2f}",
         f"- Active nodes: {stats['nodes']}",
+        f"- Directional transitions: {stats.get('transitions', 0)}",
         "",
         "These associations were learned by NeuralMind from how the agent and",
         "the codebase have actually been used together. Treat them as a hint",
@@ -193,6 +264,23 @@ def render_synapse_memory(
             lines.append(f"- {_format_id(node_id, labels)} — {degree} connections")
         lines.append("")
 
+    if transitions:
+        lines.append("## What typically comes next *(v0.11.0+)*")
+        lines.append("")
+        lines.append(
+            "Directional transitions learned from edit-order, not just"
+            " co-occurrence. Useful for predicting which file or node the"
+            " human is likely to touch after the current one — e.g., if you"
+            " just helped them edit the file on the left, the files on the"
+            " right are the most common follow-ups."
+        )
+        lines.append("")
+        for from_node, successors in transitions:
+            lines.append(f"- After {_format_id(from_node, labels)}:")
+            for to_node, prob, count in successors:
+                lines.append(f"  - {prob * 100:.0f}% → {_format_id(to_node, labels)} ({count}×)")
+        lines.append("")
+
     return "\n".join(lines)
 
 
@@ -203,6 +291,8 @@ def export_synapse_memory(
     top_pairs: int = DEFAULT_TOP_PAIRS,
     top_hubs: int = DEFAULT_TOP_HUBS,
     min_weight: float = DEFAULT_MIN_WEIGHT,
+    top_transitions: int = DEFAULT_TOP_TRANSITIONS,
+    transition_min_prob: float = DEFAULT_TRANSITION_MIN_PROB,
     write_claude_auto_memory: bool = True,
 ) -> list[Path]:
     """Render the synapse memory and write it to disk.
@@ -223,6 +313,8 @@ def export_synapse_memory(
             top_pairs=top_pairs,
             top_hubs=top_hubs,
             min_weight=min_weight,
+            top_transitions=top_transitions,
+            transition_min_prob=transition_min_prob,
         )
     except Exception:
         return written

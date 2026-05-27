@@ -14,6 +14,8 @@ Complete Python API documentation for NeuralMind.
   - [GraphEmbedder](#graphembedder)
 - [Context Selector Module](#context-selector-module)
   - [ContextSelector](#contextselector)
+- [Synapse Module *(v0.4+, directional v0.11+)*](#synapse-module-v04-directional-v011)
+  - [SynapseStore](#synapsestore)
 - [Exceptions](#exceptions)
 - [Type Hints](#type-hints)
 - [Examples](#examples)
@@ -593,6 +595,166 @@ class ContextSelector:
         Returns:
             ContextResult with optimized context
         """
+```
+
+---
+
+## Synapse Module *(v0.4+, directional v0.11+)*
+
+The synapse layer is a brain-like associative memory that runs alongside
+the LLM. Two parallel signals:
+
+- **Undirected co-activation** *(v0.4+)* — symmetric Hebbian edges over
+  nodes that fire together. Powers spreading-activation recall.
+- **Directional transitions** *(v0.11+)* — ordered `(from_node, to_node)`
+  observations. Answers "what typically follows what." Surfaces as
+  `next_likely()`, the `neuralmind next` CLI, the
+  `neuralmind_next_likely` MCP tool, and the "What typically comes next"
+  section of the auto-generated `SYNAPSE_MEMORY.md`.
+
+```python
+from neuralmind import SynapseStore, default_db_path
+
+store = SynapseStore(default_db_path("/path/to/repo"))
+```
+
+### SynapseStore
+
+SQLite-backed weighted graph at `<project>/.neuralmind/synapses.db`.
+Safe to construct lazily and share across hooks; each call opens a
+short-lived connection so the file watcher and MCP server can both
+write without pinning a handle.
+
+#### Constructor
+
+```python
+SynapseStore(db_path: str | Path)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `db_path` | `str \| Path` | Path to the SQLite file. Parent dirs are created. |
+
+#### Methods — undirected co-activation *(v0.4+)*
+
+```python
+def reinforce(
+    node_ids: Iterable[str],
+    strength: float = 1.0,
+    now: float | None = None,
+) -> int
+```
+
+Hebbian update: bumps weights on every pairwise edge among
+`node_ids`. Self-pairs and duplicates ignored. Returns the number
+of pairs touched.
+
+```python
+def neighbors(node_id: str, k: int = 5) -> list[tuple[str, float]]
+```
+
+Top-k strongest undirected neighbors.
+
+```python
+def spread(
+    seeds: Iterable[tuple[str, float]] | Iterable[str],
+    depth: int = 2,
+    top_k: int = 12,
+) -> list[tuple[str, float]]
+```
+
+Spreading activation over the undirected graph. Returns `(node, activation)`
+pairs ranked by accumulated energy, with hub normalization to prevent
+runaway central nodes from dominating.
+
+#### Methods — directional transitions *(v0.11+)*
+
+```python
+def record_sequence(
+    ordered_ids: Iterable[str],
+    strength: float = 1.0,
+    now: float | None = None,
+) -> int
+```
+
+Record an ordered sequence as directional transitions. For each
+consecutive distinct pair `(a, b)`, bump the `a -> b` weight. Self-
+transitions and consecutive duplicates are collapsed. The store accepts
+any string keys — file paths, node ids, route names — callers pick
+the granularity.
+
+Returns the number of transition rows touched.
+
+```python
+def next_likely(
+    from_node: str,
+    top_k: int = 5,
+) -> list[tuple[str, float]]
+```
+
+Returns the top successors of `from_node` as `(to_node, probability)`
+pairs. Probabilities normalize over **all** outgoing transitions from
+`from_node` and sum to 1.0 across the full distribution (the returned
+top-k may sum to less).
+
+Returns `[]` when `from_node` has no recorded transitions.
+
+```python
+def transitions(
+    from_node: str | None = None,
+    min_weight: float = 0.0,
+    limit: int = 2000,
+) -> list[tuple[str, str, float, int]]
+```
+
+Raw read-only listing of `(from, to, weight, count)` rows. Strongest
+first. Filter by `from_node` for a single source, omit for the full
+table. Used by the graph-view UI to overlay directional edges.
+
+#### Methods — lifecycle
+
+```python
+def decay(now: float | None = None) -> dict
+```
+
+Multiplicatively shrink all weights — undirected and transitions both.
+Returns counts of decayed and pruned edges for each signal:
+
+```python
+{
+    "pruned": int,                  # undirected edges pruned
+    "remaining": int,               # undirected edges remaining
+    "pruned_transitions": int,      # transitions pruned (v0.11+)
+    "remaining_transitions": int,   # transitions remaining (v0.11+)
+}
+```
+
+```python
+def stats() -> dict
+def reset() -> None
+def normalize_hubs(max_degree: int = 50) -> int
+def edges(min_weight: float = 0.0, limit: int = 2000) -> list[tuple[str, str, float, int]]
+```
+
+#### Example: directional prediction
+
+```python
+from neuralmind import SynapseStore, default_db_path
+
+store = SynapseStore(default_db_path("/path/to/repo"))
+
+# Record several editing sessions — record_sequence captures only
+# *consecutive* pairs, so [A, B, C] records A->B and B->C, not A->C.
+for _ in range(3):
+    store.record_sequence(["src/auth/handlers.py", "tests/test_auth.py"])
+store.record_sequence(["src/auth/handlers.py", "src/auth/middleware.py"])
+
+# Predict what follows handlers.py
+for to_node, prob in store.next_likely("src/auth/handlers.py"):
+    print(f"{prob*100:5.1f}%  {to_node}")
+# Output:
+#  75.0%  tests/test_auth.py
+#  25.0%  src/auth/middleware.py
 ```
 
 ---

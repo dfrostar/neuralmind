@@ -90,10 +90,15 @@ class FileActivityWatcher:
             time.sleep(self.debounce / 2)
             cutoff = time.time() - self.debounce
             with self._lock:
-                ready = [p for p, ts in self._pending.items() if ts <= cutoff]
-                for p in ready:
+                ready_pairs = [(p, ts) for p, ts in self._pending.items() if ts <= cutoff]
+                for p, _ in ready_pairs:
                     self._pending.pop(p, None)
-            if ready:
+            if ready_pairs:
+                # Sort by timestamp so directional transitions reflect the
+                # actual edit order rather than dict-insertion order — a
+                # re-touched file should appear at its latest timestamp.
+                ready_pairs.sort(key=lambda kv: kv[1])
+                ready = [p for p, _ in ready_pairs]
                 try:
                     self.callback(ready)
                 except Exception:

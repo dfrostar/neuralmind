@@ -52,6 +52,25 @@ Returns the function list, rationales, call graph, and cross-file edges — ~88%
 | `npm test` dumps 800 lines into the agent | Hook keeps errors + last 3 lines (~91% smaller) |
 | `grep -r "foo"` floods with 200 matches | Capped at 25 with "N more hidden" pointer |
 | Every commit drifts the index | `post-commit` hook rebuilds incrementally |
+| "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
+
+## Predict the next file *(v0.11.0+)*
+
+Once `neuralmind watch` has been running for a few sessions, the
+directional synapse layer accumulates ordered `(from_file, to_file)`
+transitions and the agent can ask:
+
+```bash
+$ neuralmind next . src/auth/handlers.py
+After src/auth/handlers.py:
+   45.2%  tests/test_auth.py
+   28.4%  src/auth/middleware.py
+   12.1%  docs/auth.md
+```
+
+Same data via the `neuralmind_next_likely` MCP tool — Claude Code
+can call it right after finishing edits in one file to surface the
+files you usually touch next, no manual prompt needed.
 
 ## Escape hatches
 

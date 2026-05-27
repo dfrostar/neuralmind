@@ -14,6 +14,7 @@ Complete command-line interface documentation for NeuralMind.
   - [benchmark](#benchmark)
   - [stats](#stats)
   - [learn](#learn)
+  - [next](#next-v0110)
   - [skeleton](#skeleton)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
@@ -467,6 +468,60 @@ After collecting 5–10 queries, this command:
 4. Future queries automatically apply boosted reranking
 
 **Note:** Learning must be enabled (not blocked by `NEURALMIND_LEARNING=0`).
+
+---
+
+### next *(v0.11.0+)*
+
+Predict what typically follows a node (file path or node id) in the
+learned **directional transition** graph. Pairs with the
+`record_sequence` calls the file watcher runs automatically on every
+batched flush.
+
+```bash
+neuralmind next <project_path> <from_node> [--n 5] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+| `from_node` | Yes | Source node — usually a file path; can be any string the transition recorder has seen |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--n` | `5` | Top-N successors to return |
+| `--json`, `-j` | False | Output as JSON |
+
+#### Examples
+
+```bash
+# What do I usually edit after the auth handlers?
+neuralmind next . src/auth/handlers.py
+
+# JSON for scripting
+neuralmind next . src/auth/handlers.py --n 10 --json
+```
+
+Sample output:
+
+```
+After src/auth/handlers.py:
+   45.2%  tests/test_auth.py
+   28.4%  src/auth/middleware.py
+   12.1%  docs/auth.md
+    8.3%  src/auth/__init__.py
+    6.0%  src/main.py
+```
+
+The same capability is exposed via MCP as `neuralmind_next_likely`
+and via Python as `SynapseStore.next_likely(from_node, top_k=5)`. The
+file watcher must have been running at some point for this to return
+results — fresh installs need a few sessions before the transition
+graph accumulates signal.
 
 ---
 

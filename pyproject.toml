@@ -75,7 +75,10 @@ keywords = [
     "neuralmind-serve",
     "tool-output-recovery",
     "bash-output-cache",
-    "agent-ergonomics"
+    "agent-ergonomics",
+    "directional-transitions",
+    "next-file-prediction",
+    "associative-memory"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
