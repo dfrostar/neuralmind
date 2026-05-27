@@ -379,8 +379,7 @@ class SynapseStore:
             return []
         with self._connect() as conn:
             cur = conn.execute(
-                "SELECT COALESCE(SUM(weight), 0.0) FROM synapse_transitions "
-                "WHERE from_node = ?",
+                "SELECT COALESCE(SUM(weight), 0.0) FROM synapse_transitions WHERE from_node = ?",
                 (from_node,),
             )
             total = float(cur.fetchone()[0])
@@ -432,9 +431,7 @@ class SynapseStore:
                     """,
                     (min_weight, limit),
                 )
-            return [
-                (r[0], r[1], float(r[2]), int(r[3])) for r in cur.fetchall()
-            ]
+            return [(r[0], r[1], float(r[2]), int(r[3])) for r in cur.fetchall()]
 
     def _node_degree(self, conn: sqlite3.Connection, node_id: str) -> int:
         cur = conn.execute(
@@ -594,9 +591,7 @@ class SynapseStore:
                 ORDER BY degree DESC
                 LIMIT 5
                 """).fetchall()
-            transitions = conn.execute(
-                "SELECT COUNT(*) FROM synapse_transitions"
-            ).fetchone()[0]
+            transitions = conn.execute("SELECT COUNT(*) FROM synapse_transitions").fetchone()[0]
             transition_weight = conn.execute(
                 "SELECT COALESCE(SUM(weight), 0.0) FROM synapse_transitions"
             ).fetchone()[0]

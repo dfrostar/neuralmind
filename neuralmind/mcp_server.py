@@ -181,9 +181,7 @@ def tool_synapse_stats(project_path: str) -> dict[str, Any]:
     return {"enabled": True, **store.stats()}
 
 
-def tool_next_likely(
-    project_path: str, from_node: str, top_k: int = 5
-) -> dict[str, Any]:
+def tool_next_likely(project_path: str, from_node: str, top_k: int = 5) -> dict[str, Any]:
     """Predict what typically follows ``from_node`` from learned
     directional transitions.
 
@@ -200,10 +198,7 @@ def tool_next_likely(
     return {
         "enabled": True,
         "from_node": from_node,
-        "next": [
-            {"to_node": to_node, "probability": round(prob, 4)}
-            for to_node, prob in ranked
-        ],
+        "next": [{"to_node": to_node, "probability": round(prob, 4)} for to_node, prob in ranked],
     }
 
 

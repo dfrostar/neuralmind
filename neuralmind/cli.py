@@ -294,10 +294,7 @@ def cmd_next(args):
             json.dumps(
                 {
                     "from_node": args.from_node,
-                    "next": [
-                        {"to_node": to_node, "probability": prob}
-                        for to_node, prob in ranked
-                    ],
+                    "next": [{"to_node": to_node, "probability": prob} for to_node, prob in ranked],
                 },
                 indent=2,
             )
