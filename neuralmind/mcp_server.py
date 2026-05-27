@@ -181,6 +181,32 @@ def tool_synapse_stats(project_path: str) -> dict[str, Any]:
     return {"enabled": True, **store.stats()}
 
 
+def tool_next_likely(
+    project_path: str, from_node: str, top_k: int = 5
+) -> dict[str, Any]:
+    """Predict what typically follows ``from_node`` from learned
+    directional transitions.
+
+    Returns ``(to_node, probability)`` pairs normalized over all outgoing
+    transitions from ``from_node``. ``from_node`` is whatever string the
+    transition recorder used — file paths from the watcher, node ids
+    from direct calls. Empty when the node has no recorded transitions.
+    """
+    mind = get_mind(project_path, auto_build=False)
+    store = mind.synapses
+    if store is None:
+        return {"enabled": False, "from_node": from_node, "next": []}
+    ranked = store.next_likely(from_node, top_k=top_k)
+    return {
+        "enabled": True,
+        "from_node": from_node,
+        "next": [
+            {"to_node": to_node, "probability": round(prob, 4)}
+            for to_node, prob in ranked
+        ],
+    }
+
+
 def tool_synapse_decay(project_path: str) -> dict[str, Any]:
     """Manually run a decay tick. Normally fired by the SessionStart hook."""
     mind = get_mind(project_path, auto_build=False)
@@ -369,6 +395,27 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_next_likely",
+        "description": (
+            "Predict what typically follows a node (file path or node id) from "
+            "learned directional transitions. Returns successors ranked by "
+            "probability, normalized over all outgoing transitions. Useful for "
+            "prefetching context the agent is likely to ask about next."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string"},
+                "from_node": {
+                    "type": "string",
+                    "description": "Source node (file path or node id) to look up successors for.",
+                },
+                "top_k": {"type": "integer", "default": 5},
+            },
+            "required": ["project_path", "from_node"],
+        },
+    },
+    {
         "name": "neuralmind_export_synapse_memory",
         "description": (
             "Render the learned synapse graph as markdown and write it to "
@@ -405,6 +452,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_synapse_stats": lambda args: tool_synapse_stats(args["project_path"]),
         "neuralmind_synapse_decay": lambda args: tool_synapse_decay(args["project_path"]),
+        "neuralmind_next_likely": lambda args: tool_next_likely(
+            args["project_path"],
+            args["from_node"],
+            args.get("top_k", 5),
+        ),
         "neuralmind_export_synapse_memory": lambda args: tool_export_synapse_memory(
             args["project_path"]
         ),

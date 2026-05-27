@@ -11,7 +11,9 @@
 
 > NeuralMind turns a code repository into a queryable neural index. AI agents use it to answer code questions in ~800 tokens instead of loading 50,000+ tokens of raw source.
 
-> **🆕 New in v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
+> **🆕 New in v0.11.0** — **Directional Synapses.** The brain-like layer now learns *what comes next*, not just *what goes together*. A new `synapse_transitions` table records ordered `(from_node, to_node)` observations every time the watcher flushes a batch, so the agent can ask `neuralmind next <file>` (or call the `neuralmind_next_likely` MCP tool) and get a probability distribution over what's typically edited after that file. Additive — the existing undirected synapse graph keeps doing its job. [Release notes](RELEASE_NOTES_v0.11.0.md)
+>
+> **v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
 >
 > **v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
 >
@@ -1503,6 +1505,7 @@ agent and the codebase actually interact. See the [release notes](RELEASE_NOTES_
 | **Auto-memory export** | Writes `SYNAPSE_MEMORY.md` to Claude Code's auto-memory dir so associations surface natively |
 | **Three new MCP tools** | `synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `export_synapse_memory` |
 | **3× fewer embedder calls per query** | Selector caches one search per query and slices for L2/L3/synapses |
+| **Directional transitions** *(v0.11.0+)* | Parallel `synapse_transitions` table tracks ordered `(from, to)` observations; `next_likely(node)` returns probability distribution over what follows; new `neuralmind next` CLI + `neuralmind_next_likely` MCP tool |
 
 ### Earlier (v0.3.x)
 
@@ -1659,6 +1662,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.11.0](RELEASE_NOTES_v0.11.0.md)** | Directional Synapses — `synapse_transitions` table, `next_likely()` API, `neuralmind next` CLI, `neuralmind_next_likely` MCP tool |
 | **[Release Notes v0.10.0](RELEASE_NOTES_v0.10.0.md)** | Agent Ergonomics — content-aware compression footer, `neuralmind last` recovery cache, small-failure passthrough |
 | **[Release Notes v0.9.0](RELEASE_NOTES_v0.9.0.md)** | Enterprise-Ready — GHCR auto-build, CycloneDX SBOM, air-gapped install walkthrough, compliance one-pager |
 | **[Release Notes v0.8.0](RELEASE_NOTES_v0.8.0.md)** | Always-On — systemd + launchd templates, Windows Task Scheduler walkthrough, `/healthz` endpoint |

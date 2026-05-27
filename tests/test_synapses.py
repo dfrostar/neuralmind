@@ -8,6 +8,8 @@ from neuralmind.synapses import (
     LTP_FLOOR,
     LTP_THRESHOLD,
     PRUNE_THRESHOLD,
+    TRANSITION_DECAY_RATE,
+    TRANSITION_PRUNE_THRESHOLD,
     WEIGHT_CAP,
     SynapseStore,
 )
@@ -146,3 +148,105 @@ def test_decay_constant_is_sane():
     # Sanity: a single decay tick on a max-weight non-LTP edge must not
     # immediately delete it. This guards against accidental config changes.
     assert WEIGHT_CAP * (1.0 - DECAY_RATE) > PRUNE_THRESHOLD
+
+
+# ---------------------------------------------------------------------------
+# Directional transitions (v0.11.0+)
+# ---------------------------------------------------------------------------
+
+
+def test_record_sequence_creates_directional_edges(tmp_path):
+    s = _store(tmp_path)
+    pairs = s.record_sequence(["a", "b", "c"])
+    # 3-node ordered sequence → 2 consecutive pairs
+    assert pairs == 2
+    # next_likely returns successors with normalized probabilities
+    nxt = dict(s.next_likely("a"))
+    assert "b" in nxt
+    assert abs(sum(nxt.values()) - 1.0) < 1e-9
+    # 'c' is not a successor of 'a' (only consecutive pairs count)
+    assert "c" not in nxt
+
+
+def test_record_sequence_is_directional(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["a", "b"])
+    # a -> b recorded; the reverse is not
+    assert dict(s.next_likely("a")) == {"b": 1.0}
+    assert s.next_likely("b") == []
+
+
+def test_record_sequence_skips_self_transitions(tmp_path):
+    s = _store(tmp_path)
+    # Consecutive duplicates should be collapsed.
+    pairs = s.record_sequence(["a", "a", "a", "b", "b", "c"])
+    assert pairs == 2
+    nxt = dict(s.next_likely("a"))
+    assert nxt == {"b": 1.0}
+
+
+def test_next_likely_probabilities_normalize(tmp_path):
+    s = _store(tmp_path)
+    # 'a' transitions to 'b' three times and to 'c' once.
+    for _ in range(3):
+        s.record_sequence(["a", "b"])
+    s.record_sequence(["a", "c"])
+    nxt = dict(s.next_likely("a"))
+    assert abs(nxt["b"] - 0.75) < 1e-9
+    assert abs(nxt["c"] - 0.25) < 1e-9
+
+
+def test_next_likely_unknown_node_returns_empty(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["a", "b"])
+    assert s.next_likely("unknown") == []
+
+
+def test_transitions_filters_by_source(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["a", "b", "c"])
+    all_rows = s.transitions()
+    from_a = s.transitions(from_node="a")
+    assert len(all_rows) == 2
+    assert len(from_a) == 1
+    assert from_a[0][:2] == ("a", "b")
+
+
+def test_transition_decay_prunes_weak_transitions(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["weak_a", "weak_b"])  # one observation
+    # Many decay ticks should drop it below TRANSITION_PRUNE_THRESHOLD.
+    for _ in range(500):
+        s.decay()
+    assert s.next_likely("weak_a") == []
+
+
+def test_stats_reports_transition_counts(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["a", "b", "c"])
+    stats = s.stats()
+    assert stats["transitions"] == 2
+    assert stats["transition_weight"] > 0.0
+
+
+def test_reset_clears_transitions(tmp_path):
+    s = _store(tmp_path)
+    s.record_sequence(["a", "b"])
+    s.reset()
+    assert s.next_likely("a") == []
+    assert s.stats()["transitions"] == 0
+
+
+def test_transition_decay_constant_is_sane():
+    # A single decay tick on a single-observation transition must not
+    # immediately delete it.
+    assert (1.0 - TRANSITION_DECAY_RATE) > TRANSITION_PRUNE_THRESHOLD
+
+
+def test_persistence_carries_transitions(tmp_path):
+    db = tmp_path / "synapses.db"
+    s1 = SynapseStore(db)
+    s1.record_sequence(["x", "y", "z"])
+    s2 = SynapseStore(db)
+    assert dict(s2.next_likely("x")) == {"y": 1.0}
+    assert dict(s2.next_likely("y")) == {"z": 1.0}

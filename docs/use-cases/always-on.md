@@ -5,6 +5,15 @@
 > of only while you're actively coding, and the graph view canvas is
 > always at `http://127.0.0.1:8765/` when you want to look at it.
 
+> **Why always-on matters more in v0.11.0+.** The directional
+> transition signal (`neuralmind next <file>`, `neuralmind_next_likely`
+> MCP tool) needs a long observation window to converge — you might
+> edit ten files together but only get nine ordered pairs between them,
+> so transitions accumulate slower than co-activation. Running the
+> watcher as a service means every edit during deep-work sessions feeds
+> the transition graph, not just the edits that happen while a query
+> is open.
+
 Three platforms, same shape: pick the template, point it at your
 project, enable it. The templates live in [`scripts/systemd/`](../../scripts/systemd/)
 and [`scripts/launchd/`](../../scripts/launchd/) in this repo.
