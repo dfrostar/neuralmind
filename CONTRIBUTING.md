@@ -74,28 +74,53 @@ source venv/bin/activate  # Linux/macOS
 # 5. Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# 6. Install pre-commit hooks
-pre-commit install
-
-# 7. Verify setup
+# 6. Verify setup
 pytest tests/ -v
 ```
+
+> Note: there's no `pre-commit` config in this repo — Lint runs in CI
+> via `black --check` + `ruff check`. To replicate locally before
+> pushing: `black neuralmind/ tests/ && ruff check neuralmind/ tests/`.
 
 ### Project Structure
 
 ```
 neuralmind/
-├── neuralmind/          # Main package
-│   ├── __init__.py      # Package exports
-│   ├── core.py          # NeuralMind class
-│   ├── embedder.py      # GraphEmbedder
-│   ├── context_selector.py  # ContextSelector
-│   ├── cli.py           # CLI interface
-│   └── mcp_server.py    # MCP server
-├── tests/               # Test suite
-├── docs/                # Documentation
-├── .github/             # GitHub configuration
-├── pyproject.toml       # Project configuration
+├── neuralmind/                  # Main package
+│   ├── __init__.py              # Package exports
+│   ├── core.py                  # NeuralMind orchestrator (public API)
+│   ├── embedder.py              # GraphEmbedder — graph → ChromaDB embeddings
+│   ├── context_selector.py      # L0/L1/L2/L3 progressive disclosure
+│   ├── synapses.py              # SQLite-backed Hebbian + directional graph (v0.4 + v0.11)
+│   ├── synapse_memory.py        # Markdown export → Claude Code auto-memory
+│   ├── watcher.py               # File activity → synapse co-activation + transitions
+│   ├── compressors.py           # PostToolUse compressors (Read/Bash/Grep)
+│   ├── output_cache.py          # Recovery cache for `neuralmind last` (v0.10+)
+│   ├── reranker.py              # Cooccurrence reranker (deprecation tracked in #143)
+│   ├── memory.py                # Query/event log + learned-patterns scaffold
+│   ├── event_bus.py             # In-process pub/sub for live activity events
+│   ├── event_log.py             # Cross-process JSONL bridge (v0.6+)
+│   ├── server.py                # Graph-view HTTP + /api/events SSE
+│   ├── hooks.py                 # Claude Code hook registration + runtime
+│   ├── mcp_server.py            # MCP tools surface
+│   ├── mcp_security.py          # RBAC + audit-trail integration
+│   ├── audit.py                 # Audit log writer
+│   ├── backend_manager.py       # Pluggable embedding backend (Chroma / in-memory)
+│   ├── embedding_backend.py     # Backend abstraction
+│   ├── in_memory_backend.py     # Test-only backend
+│   ├── local_client.py          # Local-only MCP client helper
+│   ├── config.py                # Config loader
+│   ├── cli.py                   # `neuralmind` CLI entry point
+│   ├── demo_data/               # Bundled fixture for `neuralmind demo`
+│   └── web/                     # Graph-view canvas assets
+├── tests/                       # Test suite (stdlib-only synapse tests)
+├── docs/                        # README, wiki, use-cases, comparisons, landing pages
+├── .github/                     # Workflows, dependabot, release-please config
+├── scripts/                     # Demo + systemd/launchd templates
+├── skills/                      # Reusable agent skills
+├── pyproject.toml               # Project config (managed by release-please)
+├── CLAUDE.md                    # Codebase-wide instructions for AI coding agents
+├── CHANGELOG.md                 # Auto-written by release-please (do not edit)
 └── README.md
 ```
 
@@ -391,18 +416,24 @@ This was used to produce v0.4.0 before the config was sorted out.
 
 ## Community
 
-### Getting Help
+### Where to post — quick triage
 
-- **GitHub Issues**: Bug reports and feature requests
-- **GitHub Discussions**: Questions and ideas
-- **Pull Requests**: Code contributions
+| You want to… | Use |
+|---|---|
+| Report a bug or unexpected behavior | [Issues](https://github.com/dfrostar/neuralmind/issues/new) |
+| Ask "how do I…" / "why doesn't X work" | [Discussions → Q&A](https://github.com/dfrostar/neuralmind/discussions/categories/q-a) |
+| Suggest a feature or "what if NeuralMind could…" | [Discussions → Ideas](https://github.com/dfrostar/neuralmind/discussions/categories/ideas) |
+| Show how you use NeuralMind | [Discussions → Show and tell](https://github.com/dfrostar/neuralmind/discussions/categories/show-and-tell) |
+| Send code | Pull request (this file is your guide) |
+| Report a security vulnerability | [GitHub Security Advisories](https://github.com/dfrostar/neuralmind/security/advisories/new) or `darren.frost@gmail.com` — **not** a public Issue. See [SECURITY.md](SECURITY.md). |
+
+Each Discussions category has a pre-filled template — use it. It makes triage faster and the answer better.
 
 ### Recognition
 
 Contributors are recognized in:
-- Release notes
-- Contributors section (future)
-- GitHub contributors page
+- The squash-merge commit message and the auto-generated CHANGELOG entry (release-please attributes commit authors)
+- The GitHub contributors page
 
 ---
 
