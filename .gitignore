@@ -61,3 +61,14 @@ tests/fixtures/sample_project/.neuralmind/
 .neuralmind/synapses.db-shm
 .neuralmind/synapses.db-wal
 .neuralmind/SYNAPSE_MEMORY.md
+
+# GitHub Actions runner log fragments occasionally land at the repo root
+# matching job names (Build Package/, Lint/, Test (Python 3.x)/, Type Check/)
+# with a single system.txt inside. They were committed once around v0.4.0;
+# guard against recurrence.
+/Build Package/
+/Lint/
+/Test (Python 3.10)/
+/Test (Python 3.11)/
+/Test (Python 3.12)/
+/Type Check/

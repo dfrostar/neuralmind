@@ -15,11 +15,19 @@ NeuralMind is designed with **enterprise security as a first-class concern**:
 
 ## Supported Versions
 
-We release patches for security vulnerabilities in the following versions:
+Security fixes target the latest released minor version. Older 0.x
+minors are unsupported once a newer minor ships — the practical
+guidance is "stay on latest." Because NeuralMind is local-first with
+no exfiltration surface, the patch urgency for older versions is
+typically low.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| Version | Status              | Notes                                        |
+| ------- | ------------------- | -------------------------------------------- |
+| 0.11.x  | :white_check_mark:  | Current release; fixes land here.            |
+| 0.10.x  | :warning:           | Critical fixes only.                         |
+| ≤ 0.9.x | :x:                 | Unsupported — `pip install --upgrade neuralmind`. |
+
+The supported window will widen when we tag v1.0.0.
 
 ## Reporting a Vulnerability
 
@@ -37,8 +45,9 @@ Instead, please report them via one of these methods:
    - Fill in the details
 
 2. **Email**
-   - Send details to the project maintainers
-   - Include "SECURITY" in the subject line
+   - `darren.frost@gmail.com` with `[SECURITY] neuralmind:` in the subject
+   - PGP not currently offered; if you need it, GitHub Security Advisories
+     is the encrypted path.
 
 ### What to Include
 
@@ -73,22 +82,29 @@ Please include the following information:
 
 NeuralMind processes code from your projects. Here's what you should know:
 
-1. **Local Processing**: All embeddings are generated and stored locally using ChromaDB
-2. **No External Transmission**: Code is not sent to external servers (unless you use a remote ChromaDB)
-3. **Storage Location**: Database files are stored in `graphify-out/neuralmind_db/`
+1. **Local Processing.** All embeddings are generated and stored locally using ChromaDB. The Hebbian synapse layer (v0.4+) and the directional transitions table (v0.11+) are SQLite-backed and also local.
+2. **No External Transmission.** Code is not sent to external servers (unless you point ChromaDB at a remote backend yourself).
+3. **Storage Locations.**
+   - Vector index: `<project>/graphify-out/neuralmind_db/`
+   - Synapse store + transitions: `<project>/.neuralmind/synapses.db`
+   - Auto-memory file consumed by Claude Code: `<project>/.neuralmind/SYNAPSE_MEMORY.md`
+   - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes)
+   - Event log for the graph-view stream (v0.6+): `<project>/.neuralmind/events.jsonl`
+4. **What gets persisted.** Edge weights, transition counts, and the most recent Bash command's stdout/stderr (the latter capped). Source code itself is not duplicated into these files — only references (node ids, file paths).
 
 ### Best Practices for Enterprise Deployments
 
 **For individuals:**
-1. Ensure the neural index files have appropriate permissions:
+1. Ensure both index and synapse-state directories have appropriate permissions:
    ```bash
-   # Set restrictive permissions on database
-   chmod 700 graphify-out/neuralmind_db/
+   chmod 700 graphify-out/neuralmind_db/      # ChromaDB vector index
+   chmod 700 .neuralmind/                      # synapse store + memory + caches
    ```
 
-2. Add the database to `.gitignore`:
+2. Both directories are already in the bundled `.gitignore`, but confirm if you forked or copied this project's `.gitignore` selectively:
    ```
    graphify-out/neuralmind_db/
+   .neuralmind/
    ```
 
 **For enterprise/shared environments:**
@@ -120,17 +136,34 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 ### Known Security Considerations
 
-1. **ChromaDB**: We rely on ChromaDB for vector storage. Monitor their security advisories.
+1. **ChromaDB.** We rely on ChromaDB for vector storage. Monitor their security advisories.
 
-2. **MCP Server**: If using the MCP server, be aware:
-   - It runs locally by default
-   - Ensure firewall rules if exposing to network
-   - Consider authentication if in shared environments
+2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`), be aware:
+   - It runs locally over stdio by default — no network port is opened.
+   - RBAC is enabled by default with three roles: `admin` (all tools), `builder` (retrieval tools — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`), `reader` (read-only retrieval). The synapse-family tools (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`, `export_synapse_memory`) are **admin-only by default**.
+   - If you customize the role policy in `neuralmind/mcp_security.py`, audit it the same way you would any access-control change.
+   - Audit events are written to `<project>/.neuralmind/audit.jsonl` on every tool call.
 
-3. **Dependencies**: Keep dependencies updated:
+3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.
+   - Hooks are installed by explicit user action (`neuralmind install-hooks`) — never silently.
+   - The Bash compression hook reads stdout/stderr and writes a single-slot recovery cache locally. It does not exfiltrate; it does not modify the agent's command.
+   - `NEURALMIND_BYPASS=1` disables compression for a single command; `NEURALMIND_OUTPUT_CACHE=0` disables the cache entirely.
+   - The synapse memory export (v0.4+) writes the per-project `SYNAPSE_MEMORY.md` and, when present, mirrors it into Claude Code's auto-memory directory at `~/.claude/projects/<slug>/memory/`. Disable via `NEURALMIND_SYNAPSE_EXPORT=0`.
+
+4. **File watcher (`neuralmind watch`).** Watches the project tree and records file co-edits as synapse activations.
+   - Honors `.gitignore`-style ignore patterns (`.git`, `.neuralmind`, `__pycache__`, `node_modules`, build dirs).
+   - Records file *paths* and *order*, not file contents.
+   - When run as a service via systemd/launchd templates ([always-on guide](docs/use-cases/always-on.md)), it runs under your user account with the user-level scope you grant.
+
+5. **Graph view server (`neuralmind serve`).** Binds to `127.0.0.1` by default. If you expose it on a network interface, add a reverse proxy with auth in front. The `/healthz` endpoint is intentionally unauthenticated for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes.
+
+6. **Directional transitions (v0.11+).** The `synapse_transitions` table records `(from_node, to_node)` pairs derived from the watcher's edit order. The data shape is the same as the existing undirected synapses; the same local-only / no-exfiltration guarantees apply.
+
+7. **Dependencies.** Keep them updated:
    ```bash
    pip install --upgrade neuralmind
    ```
+   CycloneDX SBOM is attached to every release ([air-gapped install walkthrough](docs/use-cases/air-gapped.md)).
 
 ---
 
@@ -236,4 +269,4 @@ We thank all security researchers who help keep NeuralMind and its users safe.
 
 ---
 
-_This security policy is subject to change. Last updated: 2026_
+_This security policy is subject to change. Last updated: 2026-05-28 (v0.11.0 — covers PostToolUse hooks, MCP RBAC defaults, directional transitions, recovery cache, watcher trust model)._
