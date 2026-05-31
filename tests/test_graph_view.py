@@ -113,6 +113,7 @@ def test_recent_queries_append_is_concurrency_safe(temp_project, monkeypatch):
 
 def test_synapse_store_is_initialized_once_under_concurrency(temp_project, monkeypatch):
     timeout_s = 1.0
+    thread_count = 8
     created: list[str] = []
     started = threading.Event()
     release = threading.Event()
@@ -127,14 +128,14 @@ def test_synapse_store_is_initialized_once_under_concurrency(temp_project, monke
     monkeypatch.setattr("neuralmind.core.SynapseStore", MockSlowSynapseStore)
     mind = NeuralMind(str(temp_project), backend_type="in_memory")
 
-    barrier = threading.Barrier(8)
+    barrier = threading.Barrier(thread_count)
     stores = []
 
     def get_store():
         barrier.wait()
         stores.append(mind.synapses)
 
-    threads = [threading.Thread(target=get_store) for _ in range(8)]
+    threads = [threading.Thread(target=get_store) for _ in range(thread_count)]
     for t in threads:
         t.start()
     assert started.wait(timeout=timeout_s)
