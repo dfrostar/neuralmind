@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 
 from neuralmind.core import NeuralMind
 from neuralmind.synapses import SynapseStore
@@ -108,6 +110,34 @@ def test_recent_queries_append_is_concurrency_safe(temp_project, monkeypatch):
 
     recent = mind.recent_queries(n=NeuralMind.RECENT_QUERIES_MAX)
     assert len(recent) == 8 * 5
+
+
+def test_synapse_store_is_initialized_once_under_concurrency(temp_project, monkeypatch):
+    created: list[str] = []
+
+    class SlowSynapseStore:
+        def __init__(self, db_path):
+            created.append(str(db_path))
+            time.sleep(0.02)
+
+    monkeypatch.setattr("neuralmind.core.SynapseStore", SlowSynapseStore)
+    mind = NeuralMind(str(temp_project), backend_type="in_memory")
+
+    barrier = threading.Barrier(8)
+    stores = []
+
+    def get_store():
+        barrier.wait()
+        stores.append(mind.synapses)
+
+    threads = [threading.Thread(target=get_store) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(created) == 1
+    assert len({id(store) for store in stores}) == 1
 
 
 def test_recent_queries_respects_memory_consent_optout(temp_project, monkeypatch):
