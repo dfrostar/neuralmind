@@ -52,7 +52,7 @@ class _CountingEmbedder:
 
 def test_get_query_context_makes_one_search(tmp_path):
     embedder = _CountingEmbedder()
-    selector = ContextSelector(embedder, str(tmp_path), enable_reranking=False)
+    selector = ContextSelector(embedder, str(tmp_path))
     selector.get_query_context("How does authentication work?")
     assert (
         embedder.search_calls == 1
@@ -61,7 +61,7 @@ def test_get_query_context_makes_one_search(tmp_path):
 
 def test_top_search_hits_surface_on_result(tmp_path):
     embedder = _CountingEmbedder()
-    selector = ContextSelector(embedder, str(tmp_path), enable_reranking=False)
+    selector = ContextSelector(embedder, str(tmp_path))
     result = selector.get_query_context("any prompt")
     assert isinstance(result.top_search_hits, list)
     assert len(result.top_search_hits) > 0
@@ -72,7 +72,7 @@ def test_top_search_hits_surface_on_result(tmp_path):
 
 def test_cache_clears_between_queries(tmp_path):
     embedder = _CountingEmbedder()
-    selector = ContextSelector(embedder, str(tmp_path), enable_reranking=False)
+    selector = ContextSelector(embedder, str(tmp_path))
     selector.get_query_context("first")
     selector.get_query_context("second")
     # One per query — never zero, never bleed-through.
@@ -81,7 +81,7 @@ def test_cache_clears_between_queries(tmp_path):
 
 def test_wakeup_does_not_search(tmp_path):
     embedder = _CountingEmbedder()
-    selector = ContextSelector(embedder, str(tmp_path), enable_reranking=False)
+    selector = ContextSelector(embedder, str(tmp_path))
     selector.get_wakeup_context()
     # Wakeup is L0 + L1 only; no query, so no search.
     assert embedder.search_calls == 0

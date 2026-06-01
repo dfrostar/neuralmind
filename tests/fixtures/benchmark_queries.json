@@ -63,7 +63,7 @@
     }
   ],
   "learning_seed": {
-    "_comment": "Queries used to seed the memory log before Phase 2 (learning uplift). Heavier on auth + billing than on users, to create a realistic cooccurrence signal the reranker can exploit.",
+    "_comment": "Queries used to seed the memory log before Phase 2 (warm-cache control). Heavier on auth + billing than on users to mirror a realistic editing history.",
     "history": [
       "How does the JWT token get signed?",
       "Where is password hashing done?",

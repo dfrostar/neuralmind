@@ -49,7 +49,6 @@ class NeuralMind:
         self,
         project_path: str,
         db_path: str = None,
-        enable_reranking: bool = True,
         backend_type: str | None = None,
         hybrid_context: bool | None = None,
         enable_synapses: bool = True,
@@ -60,13 +59,11 @@ class NeuralMind:
         Args:
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
-            enable_reranking: If True, apply learned patterns to rerank search results
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
-        self.enable_reranking = enable_reranking
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type
         )
@@ -215,10 +212,8 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Initialize selector with reranking
-        self.selector = ContextSelector(
-            self.embedder, str(self.project_path), enable_reranking=self.enable_reranking
-        )
+        # Initialize selector
+        self.selector = ContextSelector(self.embedder, str(self.project_path))
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
         self.selector.synapse_recall = self._recall_for_selection

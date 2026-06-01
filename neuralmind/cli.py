@@ -308,48 +308,6 @@ def cmd_next(args):
         print(f"  {prob * 100:5.1f}%  {to_node}")
 
 
-def cmd_learn(args):
-    project_path = Path(args.project_path).resolve()
-    if memory.is_learning_disabled():
-        print("Learning is disabled (NEURALMIND_LEARNING=0). No-op.")
-        return
-
-    # Count events
-    events_file = memory.project_query_events_file(project_path)
-    project_event_count = memory.count_events(events_file)
-
-    if project_event_count == 0:
-        print(f"No query events found for {project_path}")
-        print("Events are logged automatically when you query the codebase.")
-        return
-
-    # Read and analyze events
-    events = memory.read_query_events(events_file)
-    if not events:
-        print("No queryable events found in memory.")
-        return
-
-    # Build patterns
-    print(f"Analyzing {len(events)} query events...")
-    index = memory.build_cooccurrence_index(events)
-
-    # Write patterns
-    patterns_file = memory.write_learned_patterns(project_path, index)
-
-    # Report results
-    print(f"✓ Learned {index['metadata']['patterns_learned']} cooccurrence patterns")
-    print(f"✓ Patterns saved to {patterns_file}")
-    print("✓ Next query will apply learned patterns for improved retrieval")
-
-    # Show top patterns
-    cooccurrence = index["cooccurrence"]
-    if cooccurrence:
-        print("\nTop cooccurrence patterns:")
-        sorted_pairs = sorted(cooccurrence.items(), key=lambda x: x[1], reverse=True)
-        for pair, count in sorted_pairs[:5]:
-            print(f"  {pair}: {count} times")
-
-
 def cmd_skeleton(args):
     """Return a graph-backed compact view of a file."""
     from .core import create_mind
@@ -803,12 +761,6 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
-
-    learn_p = subparsers.add_parser(
-        "learn", help="Run continual learning scaffold (safe no-op for MVP)"
-    )
-    learn_p.add_argument("project_path")
-    learn_p.set_defaults(func=cmd_learn)
 
     # Next-likely — directional transition recall (v0.11.0+)
     next_p = subparsers.add_parser(

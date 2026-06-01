@@ -302,7 +302,7 @@ def reset_memory() -> None:
 
 
 def memory_stats() -> dict:
-    """Read the memory log and learned patterns for the report."""
+    """Read the query-event memory log for the report."""
     mem_dir = FIXTURE_DIR / ".neuralmind"
     events_path = mem_dir / "memory" / "query_events.jsonl"
     patterns_path = mem_dir / "learned_patterns.json"
@@ -540,10 +540,10 @@ def write_report(
         f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
         "budget-neutral by design)",
         "",
-        "This isolates the Hebbian synapse layer from the `learned_patterns` reranker in",
-        "Phase 2. The hit-rate delta shows associative recall surfacing co-edited modules a",
-        "purely textual search ranks lower; the near-zero reduction delta confirms it does so",
-        "without spending extra tokens (recalled nodes displace the weakest hits, not add to them).",
+        "This isolates the Hebbian synapse layer's contribution. The hit-rate delta shows",
+        "associative recall surfacing co-edited modules a purely textual search ranks lower;",
+        "the near-zero reduction delta confirms it does so without spending extra tokens",
+        "(recalled nodes displace the weakest hits, not add to them).",
         "",
         "### Assumptions",
         "",
@@ -574,29 +574,22 @@ def main() -> int:
     phase1 = run_phase(nm, queries, naive_total, phase_name="cold")
     phase1_seconds = time.time() - t0
 
-    # Phase 2 — seed memory with a realistic history, learn, re-run.
+    # Phase 2 — seed the event log with a realistic history and re-run.
+    # This used to also build the learned_patterns reranker and measure its
+    # lift; that reranker was removed (#143) after A/B showed it was inert
+    # and runtime-superseded by the synapse layer. The synapse lift is now
+    # isolated cleanly in Phase 3 below. Phase 2 remains as a warm-cache
+    # control with a populated event log.
     reset_memory()
     nm = NeuralMind(str(FIXTURE_DIR))
     seed_memory(nm, seed)
-
-    # Run `neuralmind learn` programmatically against the fixture. This
-    # mirrors what the CLI does in cmd_learn; we inline it here to avoid
-    # spawning a subprocess just to read/write four files.
-    events_file = memory.project_query_events_file(FIXTURE_DIR)
-    events = memory.read_query_events(events_file)
-    if events:
-        index = memory.build_cooccurrence_index(events)
-        memory.write_learned_patterns(str(FIXTURE_DIR), index)
-    # If events is empty, skip — memory_stats() in the report will show
-    # events_logged=0 and make the reason obvious.
 
     phase2 = run_phase(nm, queries, naive_total, phase_name="warm")
     mem = memory_stats()
 
     # Phase 3 — synapse recall A/B. Reinforce co-editing sessions, then
     # measure the same queries with synapse recall off vs on. Isolates the
-    # synapse layer (Phase 2's lift also includes the learned_patterns
-    # reranker), and verifies the boost is budget-neutral (reduction holds).
+    # synapse layer and verifies the boost is budget-neutral (reduction holds).
     reset_memory()
     nm = NeuralMind(str(FIXTURE_DIR))
     synapse_edges = seed_synapses(nm)
