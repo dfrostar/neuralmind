@@ -1,6 +1,6 @@
 """Self-benchmark runner for NeuralMind.
 
-Two phases:
+Phases:
 
 Phase 1 — Reduction.
     For each query in the committed set, measure tokens with and without
@@ -9,12 +9,16 @@ Phase 1 — Reduction.
     concatenated). The "after" is ``NeuralMind.query(q).budget.total``.
     Emit per-query + aggregate numbers.
 
-Phase 2 — Learning uplift.
-    Run the same queries cold (no memory), then seed the memory log with
-    a realistic query history, run ``neuralmind learn``, and re-run the
-    queries. Report the change in reduction ratio and top-k retrieval
-    accuracy. On a 500-line fixture the delta is modest by design; the
-    point is to show the mechanism *works*, not to fake a huge number.
+Phase 2 — Warm-cache control.
+    Re-run the same queries after seeding the event log with a realistic
+    query history. With the ``learned_patterns`` reranker removed (#143),
+    this no longer measures a learning uplift — it's a warm-cache control
+    whose numbers should track Phase 1. The synapse layer's contribution
+    is isolated separately in Phase 3.
+
+Phase 3 — Synapse recall A/B.
+    Reinforce co-editing sessions, then run the same queries with synapse
+    recall off vs on to isolate the Hebbian layer's hit-rate lift.
 
 Outputs:
     - tests/benchmark/results.json  (structured, consumed by chart + CI)
@@ -516,18 +520,17 @@ def write_report(
 
     lines += [
         "",
-        "### Phase 2 — Learning uplift",
+        "### Phase 2 — Warm-cache control (event log seeded)",
         "",
         f"- Memory events logged: `{mem['events_logged']}`",
-        f"- Learned patterns: `{mem['patterns_learned']}`",
-        f"- Reduction ratio after `neuralmind learn`: **{phase2.avg_reduction:.1f}×** "
+        f"- Reduction ratio: **{phase2.avg_reduction:.1f}×** "
         f"(Δ {phase2.avg_reduction - phase1.avg_reduction:+.2f}× vs. cold)",
-        f"- Top-k hit rate after learning: **{_fmt_pct(phase2.avg_hit_rate)}** "
+        f"- Top-k hit rate: **{_fmt_pct(phase2.avg_hit_rate)}** "
         f"(Δ {(phase2.avg_hit_rate - phase1.avg_hit_rate) * 100:+.1f} points vs. cold)",
         "",
-        "Note: uplift numbers on a 500-line fixture are intentionally modest — the point is to",
-        "verify the learning mechanism persists and applies. On real production repos the lift",
-        "is larger; this test only catches regressions in persistence.",
+        "Note: the `learned_patterns` reranker was removed (#143), so Phase 2 no longer measures",
+        "a learning uplift — it's a warm-cache control and these numbers should track Phase 1.",
+        "The synapse layer's contribution is isolated in Phase 3 below.",
         "",
         "### Phase 3 — Synapse recall A/B (same warm graph, recall off vs on)",
         "",
@@ -616,7 +619,7 @@ def main() -> int:
         f"reduction {synapse_off.avg_reduction:.1f}× → {synapse_on.avg_reduction:.1f}×, "
         f"{synapse_edges} edges"
     )
-    print(f"Memory: {mem['events_logged']} events, {mem['patterns_learned']} patterns")
+    print(f"Memory: {mem['events_logged']} events logged")
 
     return 0 if phase1.avg_reduction >= REDUCTION_FLOOR else 1
 
