@@ -70,7 +70,7 @@ The script creates an isolated venv, installs the deps, builds the index for the
   Wall time:           0.85s
 ```
 
-The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks)). Once the demo convinces you, run it on your own code:
+The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks) · [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/)). Once the demo convinces you, run it on your own code:
 
 ```bash
 pip install neuralmind graphifyy
@@ -1606,7 +1606,7 @@ Real-world numbers submitted by users. Your code never leaves your machine — y
 | cmmc20 | JavaScript | 241 | 341 | 739 | **65.6×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
 | mempalace | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
 
-_2 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands._
+_2 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + by-language charts._
 <!-- COMMUNITY-BENCHMARKS:END -->
 
 **Submit yours:**
