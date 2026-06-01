@@ -61,7 +61,6 @@ ChromaDB pulls its embedding model on first use — download it in advance or po
 
 ```bash
 export NEURALMIND_MEMORY=0
-export NEURALMIND_LEARNING=0
 ```
 
 Or decline the TTY consent prompt the first time `neuralmind query` runs. No events are logged.
@@ -73,7 +72,7 @@ Every action is a local file operation — easy to log via existing endpoint mon
 - Knowledge graph: `graphify-out/graph.json`
 - Vector store: `graphify-out/neuralmind_db/`
 - Query events (only if opted in): `.neuralmind/memory/query_events.jsonl`
-- Learned patterns (only after `neuralmind learn`): `.neuralmind/learned_patterns.json`
+- Learned associations (synapse layer): `.neuralmind/synapses.db`
 
 Delete any of these at any time — nothing persists outside your project.
 

@@ -306,9 +306,9 @@ pip install "neuralmind[dev]"
    # Good: "How does user authentication work?"
    ```
 
-3. **Enable learning** — NeuralMind improves with use
+3. **Enable learning** — NeuralMind improves with use via the synapse layer
    ```bash
-   neuralmind learn .
+   neuralmind install-hooks .
    ```
 
 ---

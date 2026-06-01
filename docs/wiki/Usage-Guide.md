@@ -355,7 +355,7 @@ writer (you still get the in-process feed for the agent running
 | `neuralmind query . "..."` | Query with natural language | Daily usage |
 | `neuralmind wakeup .` | Get project overview | Start new AI conversations |
 | `neuralmind search . "..."` | Direct semantic search | Find specific code entities |
-| `neuralmind learn .` | **NEW** Analyze query patterns → improve ranking | After collecting queries |
+| `neuralmind install-hooks .` | Wire up the synapse layer's lifecycle hooks | Once per project |
 | `neuralmind benchmark .` | Measure token reduction | Verify cost savings |
 | `neuralmind stats .` | Show index statistics | Check index health |
 
@@ -422,41 +422,41 @@ neuralmind search . "database models"
 
 **When to use**: When you want to find specific code entities quickly.
 
-#### `neuralmind learn` (v0.3.2+)
+#### `neuralmind install-hooks`
 
-Analyzes your query history to discover module relationships and improve ranking.
+Wires up the synapse layer — NeuralMind's automatic, always-on learning
+system — so retrieval improves as you and your agent use the codebase. No
+manual analysis step is required.
 
 ```bash
-# After collecting queries, analyze patterns
-neuralmind learn .
+# Install the Claude Code lifecycle hooks (idempotent)
+neuralmind install-hooks .
 
-# Example output:
-# Analyzing 8 query events...
-# ✓ Learned 12 cooccurrence patterns
-# ✓ Patterns saved to .neuralmind/learned_patterns.json
-# ✓ Next query will apply learned patterns for improved retrieval
-# 
-# Top cooccurrence patterns:
-#   community_0|community_1: 5 times
-#   community_1|community_2: 4 times
-#   community_0|community_2: 3 times
+# Optional: always-on learning from file edits
+neuralmind watch . --quiet &
 ```
 
 **What it does**:
-- Reads query events from `.neuralmind/memory/query_events.jsonl`
-- Finds which code modules appear together in successful queries
-- Saves patterns to `.neuralmind/learned_patterns.json`
-- On next query, automatically boosts related modules in search results
+- Registers the `SessionStart`, `UserPromptSubmit`, `PreCompact`, and
+  `PostToolUse` hooks so co-activation is captured automatically
+- Each query, tool call, and (with `watch`) file edit strengthens the edges
+  between co-active code nodes (Hebbian learning)
+- Unused associations decay over time; frequently used ones are protected
+- Learned associations are exported to `.neuralmind/SYNAPSE_MEMORY.md` for
+  your agent to pick up each session
 
-**When to use**: After 5-10 queries have been logged to build meaningful patterns. Run weekly for continuous improvement.
+**When to use**: Once per project. After that, learning happens in the
+background — the more you work in the codebase, the better recall gets.
 
 **How it improves retrieval**:
-- Example: If you frequently query about "auth" + "validation" together
-- System learns this pattern (cooccurrence score: high)
-- Next time you ask about auth, validation automatically gets boosted in results
+- Example: If you frequently work in "auth" and "validation" together
+- The synapse layer wires those nodes together from co-activation
+- Next time auth is in context, validation surfaces via spreading activation
 - Better relevance = smaller context needed = more token savings
 
-**Privacy**: 100% local analysis. No data sent anywhere. Patterns file is just JSON in your project.
+**Privacy**: 100% local. No data sent anywhere. The graph lives in
+`.neuralmind/synapses.db` in your project. See the
+[Learning Guide](Learning-Guide) for full details.
 
 #### `neuralmind benchmark`
 

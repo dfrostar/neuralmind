@@ -13,7 +13,6 @@ Complete command-line interface documentation for NeuralMind.
   - [search](#search)
   - [benchmark](#benchmark)
   - [stats](#stats)
-  - [learn](#learn)
   - [next](#next-v0110)
   - [skeleton](#skeleton)
   - [last](#last-v0100)
@@ -440,37 +439,6 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 
 ---
 
-### learn
-
-Analyze query history to discover cooccurrence patterns and improve future search relevance.
-
-```bash
-neuralmind learn <project_path>
-```
-
-#### Arguments
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `project_path` | Yes | Path to project root |
-
-#### Examples
-
-```bash
-neuralmind learn .
-neuralmind learn /path/to/project
-```
-
-After collecting 5–10 queries, this command:
-1. Reads `.neuralmind/memory/query_events.jsonl`
-2. Finds which modules frequently appear together
-3. Saves patterns to `.neuralmind/learned_patterns.json`
-4. Future queries automatically apply boosted reranking
-
-**Note:** Learning must be enabled (not blocked by `NEURALMIND_LEARNING=0`).
-
----
-
 ### next *(v0.11.0+)*
 
 Predict what typically follows a node (file path or node id) in the
@@ -855,7 +823,6 @@ Behaviour:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
-| `NEURALMIND_LEARNING` | `1` | Set to `0` to disable continual learning |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |

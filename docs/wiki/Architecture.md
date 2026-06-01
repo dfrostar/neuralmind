@@ -706,17 +706,13 @@ locations:
 Add `@.neuralmind/SYNAPSE_MEMORY.md` to `CLAUDE.md` so the file gets
 imported into every session even when the auto-memory path doesn't apply.
 
-### Why this isn't the same as the v0.3.2 reranker
+### What makes the synapse layer distinct
 
-- The **reranker** boosts vector-search results based on patterns found
-  in past queries. Static index, batch analysis, post-hoc re-ranking.
-- The **synapse layer** is a continuously updated weighted graph that
-  contributes its own retrieval path (spreading activation), independent
-  of vector search. Updates happen on every query, every tool call,
-  every file edit.
-
-The two are complementary: reranker re-orders the L3 hits the synapse
-layer also sees as activation seeds.
+The synapse layer is a continuously updated weighted graph that
+contributes its own retrieval path (spreading activation), independent
+of vector search. Updates happen on every query, every tool call, and
+every file edit — so the L3 hits it sees as activation seeds feed
+straight back into the associative graph that recall draws on.
 
 ---
 

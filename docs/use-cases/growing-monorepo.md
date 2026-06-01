@@ -85,13 +85,13 @@ Watch `total_nodes` and `communities` — sudden drops mean something went wrong
 
 ## Enable learning
 
-Query patterns in a large repo often cluster around hot paths (auth, billing, search). Enable memory (TTY prompt) and run weekly:
+Query patterns in a large repo often cluster around hot paths (auth, billing, search). Enable memory (TTY prompt) and install the lifecycle hooks once:
 
 ```bash
-neuralmind learn .
+neuralmind install-hooks .
 ```
 
-Future queries get a `+0.3` rerank boost on modules that historically cooccur with your team's queries. Over a few weeks, retrieval starts to anticipate what you mean.
+From there the synapse layer learns continuously: modules that historically co-activate with your team's queries wire together, and recall is biased toward them automatically. Over a few weeks, retrieval starts to anticipate what you mean — no manual step required.
 
 ## Always-on activity tracking (v0.6.0+)
 

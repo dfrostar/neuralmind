@@ -13,7 +13,7 @@ Aider builds a concise, tree-sitter-derived map of your repository — a ranked 
 | Output | Ranked signatures injected every turn | On-demand progressive layers (wakeup / query / skeleton) |
 | Host | Aider CLI only | Any MCP agent + CLI + copy-paste to any LLM |
 | Tool-output compression | None | Read/Bash/Grep PostToolUse hooks |
-| Learns from usage | No | Yes — cooccurrence-based reranking |
+| Learns from usage | No | Yes — automatic, decay-based synapse layer |
 | Languages | Whatever tree-sitter supports | Same (via graphify) |
 | Install methods | `pip install aider-chat` + LLM API key | `pip` / `pipx` / `uv` / Docker / source — no API key required for the local index |
 
