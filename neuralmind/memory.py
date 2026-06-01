@@ -20,10 +20,6 @@ def is_memory_disabled() -> bool:
     return _is_disabled("NEURALMIND_MEMORY")
 
 
-def is_learning_disabled() -> bool:
-    return _is_disabled("NEURALMIND_LEARNING")
-
-
 def global_root() -> Path:
     return Path.home() / ".neuralmind"
 
