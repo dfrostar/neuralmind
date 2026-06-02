@@ -13,6 +13,7 @@ Complete command-line interface documentation for NeuralMind.
   - [search](#search)
   - [benchmark](#benchmark)
   - [stats](#stats)
+  - [doctor](#doctor-v0120)
   - [learn](#learn)
   - [next](#next-v0110)
   - [skeleton](#skeleton)
@@ -436,6 +437,66 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 - Last Build: 2024-01-15 14:30:22
 - Build Duration: 8.3s
 - Embedding Model: all-MiniLM-L6-v2
+```
+
+---
+
+### doctor *(v0.12.0+)*
+
+Diagnose a project's NeuralMind setup and print an actionable fix for
+anything that isn't wired up. Read-only — it never builds or mutates
+state.
+
+```bash
+neuralmind doctor [project_path] [--json]
+```
+
+**Arguments:**
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project root to inspect |
+| `--json`, `-j` | No | `false` | Emit machine-readable JSON |
+
+**Checks:** code graph, semantic index, synapse memory, MCP server,
+Claude Code hooks, and query-memory consent. Each reports `ok`, `warn`
+(optional/learned-over-time), or `fail` (setup incomplete).
+
+**Exit codes:** `0` when no check failed (warnings allowed), `1` when any
+check **failed** — so you can gate a CI step or an agent's provisioning on
+`neuralmind doctor`.
+
+**Example:**
+
+```bash
+neuralmind doctor .
+```
+
+```
+NeuralMind doctor — /path/to/project
+============================================================
+  [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
+  [ ok ] Semantic index: 1240 nodes embedded (chromadb backend)
+  [warn] Synapse memory: no synapses.db yet (nothing learned)
+         -> It populates automatically as you query and edit the codebase.
+  [ ok ] MCP server: MCP SDK importable (neuralmind-mcp ready)
+  [warn] Claude Code hooks: not installed
+         -> Install them: neuralmind install-hooks
+  [ ok ] Query memory: enabled (logging queries for learning)
+============================================================
+```
+
+JSON output (`--json`) is stable for scripting and agent consumption:
+
+```json
+{
+  "status": "fail",
+  "checks": [
+    {"name": "Code graph", "status": "fail",
+     "detail": "not found at /repo/graphify-out/graph.json",
+     "fix": "Generate it: graphify update /repo"}
+  ]
+}
 ```
 
 ---

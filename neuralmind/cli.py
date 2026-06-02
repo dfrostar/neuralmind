@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import memory
-from neuralmind.core import NeuralMind, create_mind
+from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 
 
 def cmd_build(args):
@@ -281,6 +281,40 @@ def cmd_stats(args):
         print(f"Built: {stats.get('built')}")
         if stats.get("built"):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
+
+
+def cmd_doctor(args):
+    """Diagnose a project's NeuralMind setup and print actionable fixes."""
+    from neuralmind import doctor
+
+    checks = doctor.run_diagnostics(args.project_path)
+    status = doctor.overall_status(checks)
+
+    if args.json:
+        print(
+            json.dumps(
+                {"status": status, "checks": [c.to_dict() for c in checks]},
+                indent=2,
+            )
+        )
+    else:
+        markers = {doctor.OK: "[ ok ]", doctor.WARN: "[warn]", doctor.FAIL: "[FAIL]"}
+        print(f"NeuralMind doctor — {Path(args.project_path).resolve()}")
+        print("=" * 60)
+        for c in checks:
+            print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
+            if c.fix and c.status != doctor.OK:
+                print(f"         -> {c.fix}")
+        print("=" * 60)
+        summary = {
+            doctor.OK: "All checks passed.",
+            doctor.WARN: "Up and running; optional pieces are missing (see above).",
+            doctor.FAIL: "Setup incomplete — run the fixes above, then re-check.",
+        }
+        print(summary.get(status, ""))
+
+    if status == doctor.FAIL:
+        sys.exit(1)
 
 
 def cmd_next(args):
@@ -799,6 +833,14 @@ def main():
     search_p.add_argument("--json", "-j", action="store_true")
     search_p.set_defaults(func=cmd_search)
 
+    doctor_p = subparsers.add_parser(
+        "doctor",
+        help="Diagnose install health (graph, index, hooks, MCP, synapses)",
+    )
+    doctor_p.add_argument("project_path", nargs="?", default=".")
+    doctor_p.add_argument("--json", "-j", action="store_true")
+    doctor_p.set_defaults(func=cmd_doctor)
+
     stats_p = subparsers.add_parser("stats", help="Show index statistics")
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
@@ -1000,7 +1042,14 @@ def main():
     if args.command is None:
         parser.print_help()
         sys.exit(1)
-    args.func(args)
+    try:
+        args.func(args)
+    except GraphNotBuiltError as e:
+        # Turn the "no graph yet" failure into a readable setup hint instead
+        # of a stack trace. `neuralmind doctor` gives the full picture.
+        print(f"\n{e}\n", file=sys.stderr)
+        print("Run `neuralmind doctor` to check your setup.", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -36,6 +36,15 @@ from .synapses import SynapseStore, default_db_path
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
 
 
+class GraphNotBuiltError(RuntimeError):
+    """Raised when a query is attempted before the code graph/index exists.
+
+    Carries an actionable, multi-line message naming the exact commands to
+    run, so the failure reads as a setup hint instead of an opaque
+    ``AttributeError`` from a half-initialised instance.
+    """
+
+
 class NeuralMind:
     """
     Adaptive Neural Knowledge System.
@@ -260,9 +269,28 @@ class NeuralMind:
         return self._build_stats
 
     def _ensure_built(self):
-        """Ensure the system is built before queries."""
+        """Ensure the system is built before queries.
+
+        Raises GraphNotBuiltError with an actionable message when the build
+        can't produce a usable selector — almost always a missing code
+        graph on a fresh project.
+        """
         if not self._built or self.selector is None:
-            self.build()
+            result = self.build()
+            if self.selector is None:
+                graph_path = self.project_path / "graphify-out" / "graph.json"
+                if not graph_path.exists():
+                    raise GraphNotBuiltError(
+                        f"No code graph found at {graph_path}.\n"
+                        f"Generate it, then build the index:\n"
+                        f"  graphify update {self.project_path}\n"
+                        f"  neuralmind build {self.project_path}"
+                    )
+                raise GraphNotBuiltError(
+                    result.get("error", "Failed to build the NeuralMind index.")
+                    if isinstance(result, dict)
+                    else "Failed to build the NeuralMind index."
+                )
 
     def wakeup(self) -> ContextResult:
         """

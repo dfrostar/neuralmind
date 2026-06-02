@@ -141,6 +141,19 @@ For pipx (no shared Python env), drop the `python -c` line and run
 just `neuralmind --version` once that subcommand ships, or
 `neuralmind --help`.
 
+Then, from inside a project, run the **install doctor** (v0.12.0+) to
+confirm every piece is wired up — code graph, semantic index, synapse
+memory, MCP server, Claude Code hooks, query memory — and get the exact
+fix for anything that isn't:
+
+```bash
+neuralmind doctor .
+```
+
+It exits non-zero when a check fails, so a provisioning script or CI step
+can gate on it (`neuralmind doctor . && neuralmind wakeup .`). Add
+`--json` for a machine-readable snapshot an agent can parse.
+
 ---
 
 ## Which one should *you* pick?
