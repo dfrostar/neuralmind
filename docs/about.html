@@ -4,8 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
+      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 40–70× token reduction, an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
+      "author": { "@type": "Person", "name": "Darren Frost" },
+      "about": "AI coding agents, semantic code intelligence, token optimization",
+      "url": "https://dfrostar.github.io/neuralmind/about.html",
+      "isPartOf": {
+        "@type": "SoftwareApplication",
+        "name": "NeuralMind",
+        "applicationCategory": "DeveloperApplication",
+        "softwareVersion": "0.12.0"
+      }
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
@@ -44,6 +61,22 @@
             <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
         </div>
     </header>
+
+    <section>
+        <div class="container" id="whats-new-v0120">
+            <h2>What's New in v0.12.0 — install doctor</h2>
+            <p><strong>One command tells you exactly what's wired up and what isn't.</strong> NeuralMind has accumulated moving parts — a code graph, a semantic index, a synapse memory db, Claude Code hooks, an MCP server, a query-memory consent flag. When one isn't in place, the old symptom was a stack trace or a silent no-op. v0.12.0 makes the setup legible.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind doctor</code>.</strong> Inspects the install and reports each piece with a status (<code>ok</code> / <code>warn</code> / <code>fail</code>) and the exact command to fix it. Read-only — it never builds or mutates state. Exits non-zero when a check <em>fails</em> (graph/index missing) so you can gate a CI step or an agent's provisioning on it.</li>
+                <li><strong><code>--json</code> output.</strong> A stable, machine-readable snapshot of every check, for scripting and agent consumption. An agent provisioning its own environment can run <code>neuralmind doctor --json</code> as a pre-flight check before issuing queries.</li>
+                <li><strong>Friendlier "graph not built" error.</strong> Querying a project before its code graph exists used to raise an opaque <code>AttributeError</code>. It now raises a clear, actionable message naming the two commands to run (<code>graphify update</code>, then <code>neuralmind build</code>) and points you at <code>neuralmind doctor</code>.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Most NeuralMind support friction is setup friction: a piece isn't installed, and the failure doesn't say which one. <code>doctor</code> turns "it doesn't work" into a checklist with fixes — for the human dropped into a fresh clone, and for the agent that has to verify its own environment before relying on the tool. No new dependencies, no behavior change for working installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md">Full v0.12.0 release notes →</a></p>
+        </div>
+    </section>
 
     <section>
         <div class="container" id="whats-new-v0110">

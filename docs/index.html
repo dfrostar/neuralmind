@@ -4,10 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="NeuralMind: Semantic code intelligence for AI agents. Reduce token costs 40–70× with local code indexing, a brain-like synapse layer that learns from co-activation and directional file-to-file transitions, an Obsidian-style graph view, and PostToolUse hooks that compress tool output and let agents recover dropped middle content without re-running. NIST AI RMF compliant.">
-    <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor, MCP server, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, synapse layer, Hebbian learning, directional transitions, transition matrix, next-file prediction, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks">
+    <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor, MCP server, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, synapse layer, Hebbian learning, directional transitions, transition matrix, next-file prediction, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding">
     <title>NeuralMind - Semantic Code Intelligence for AI Agents | 40–70× Token Reduction</title>
     <meta property="og:title" content="NeuralMind - Semantic Code Intelligence for AI Agents">
     <meta property="og:description" content="Local-first code indexing with 40–70× per-query token reduction (50K → ~800 tokens). Zero data exfiltration, 100% offline, enterprise-ready.">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "NeuralMind",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Linux, macOS, Windows",
+      "description": "Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent.",
+      "url": "https://dfrostar.github.io/neuralmind/",
+      "downloadUrl": "https://pypi.org/project/neuralmind/",
+      "softwareVersion": "0.12.0",
+      "license": "https://opensource.org/licenses/MIT",
+      "programmingLanguage": "Python",
+      "operatingSystemRequirements": "Python 3.10+",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "author": { "@type": "Person", "name": "Darren Frost" }
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; background: #fff; }
@@ -62,10 +80,10 @@
             <h1>🧠 NeuralMind</h1>
             <p>Semantic code intelligence for AI agents.<br/>40–70× token reduction. Zero data exfiltration. Enterprise-ready.</p>
             <p style="font-size: 1rem; opacity: 0.85; margin-top: 0.5rem;">
-                <strong>🆕 v0.11.0 — Directional Synapses.</strong> The brain-like layer now learns <em>what comes next</em>, not just what goes together. New <code>synapse_transitions</code> table records ordered <code>(from, to)</code> observations; <code>neuralmind next &lt;file&gt;</code> returns a probability distribution over likely successors. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md" style="color: white; text-decoration: underline;">Release notes →</a> · <a href="about.html#whats-new-v0110" style="color: white; text-decoration: underline;">Summary →</a>
+                <strong>🆕 v0.12.0 — Install Doctor.</strong> One command — <code>neuralmind doctor</code> — inspects your setup (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query memory) and prints each piece with a status and the exact fix. Exits non-zero on a real failure (gate CI on it); <code>--json</code> for agents. Querying before the graph exists now reads as a setup hint, not a stack trace. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md" style="color: white; text-decoration: underline;">Release notes →</a> · <a href="about.html#whats-new-v0120" style="color: white; text-decoration: underline;">Summary →</a>
             </p>
             <p style="font-size: 0.9rem; opacity: 0.75; margin-top: 0.25rem;">
-                Earlier: <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md" style="color: white; text-decoration: underline;">v0.10.0 agent ergonomics (categorized footer + <code>neuralmind last</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md" style="color: white; text-decoration: underline;">v0.9.0 enterprise-ready (GHCR/SBOM/air-gapped)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md" style="color: white; text-decoration: underline;">v0.8.0 always-on (systemd/launchd/healthz)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md" style="color: white; text-decoration: underline;">v0.7.0 install anywhere</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md" style="color: white; text-decoration: underline;">v0.4.0 brain-like synapse layer</a>.
+                Earlier: <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md" style="color: white; text-decoration: underline;">v0.11.0 directional synapses (<code>neuralmind next</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md" style="color: white; text-decoration: underline;">v0.10.0 agent ergonomics (categorized footer + <code>neuralmind last</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md" style="color: white; text-decoration: underline;">v0.9.0 enterprise-ready (GHCR/SBOM/air-gapped)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md" style="color: white; text-decoration: underline;">v0.8.0 always-on (systemd/launchd/healthz)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md" style="color: white; text-decoration: underline;">v0.7.0 install anywhere</a>.
             </p>
             <div>
                 <a href="wiki/Setup-Guide" class="btn btn-primary">Get Started in 5 Minutes</a>
