@@ -101,9 +101,10 @@ jobs:
           # Fail fast on metadata problems here, before the publish job
           # uploads to PyPI. twine's validation is backed by `packaging`;
           # the runner's preinstalled packaging can lag behind the
-          # Metadata-Version hatchling emits (2.5), so upgrade it alongside
-          # twine so the validator recognises current metadata.
-          pip install --upgrade twine packaging
+          # Metadata-Version hatchling emits (2.5). packaging >= 26.0 is the
+          # first release that recognises Metadata-Version 2.5; pin the floor
+          # rather than upgrading to latest to keep releases reproducible.
+          pip install twine "packaging>=26"
           twine check dist/*
 
       - name: Store build artifacts
