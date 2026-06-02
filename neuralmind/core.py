@@ -23,6 +23,7 @@ Usage:
 """
 
 import json
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,6 +89,7 @@ class NeuralMind:
         # Associative synapse layer (lazy: only created when first used)
         self.enable_synapses = enable_synapses
         self._synapses: SynapseStore | None = None
+        self._synapses_lock = threading.Lock()
 
     @property
     def backend_name(self) -> str:
@@ -104,7 +106,9 @@ class NeuralMind:
         if not self.enable_synapses:
             return None
         if self._synapses is None:
-            self._synapses = SynapseStore(default_db_path(self.project_path))
+            with self._synapses_lock:
+                if self._synapses is None:
+                    self._synapses = SynapseStore(default_db_path(self.project_path))
         return self._synapses
 
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
