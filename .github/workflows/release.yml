@@ -96,6 +96,16 @@ jobs:
       - name: Build package
         run: python -m build
 
+      - name: Check package
+        run: |
+          # Fail fast on metadata problems here, before the publish job
+          # uploads to PyPI. twine's validation is backed by `packaging`;
+          # the runner's preinstalled packaging can lag behind the
+          # Metadata-Version hatchling emits (2.5), so upgrade it alongside
+          # twine so the validator recognises current metadata.
+          pip install --upgrade twine packaging
+          twine check dist/*
+
       - name: Store build artifacts
         uses: actions/upload-artifact@v7
         with:
