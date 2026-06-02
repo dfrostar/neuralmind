@@ -159,7 +159,14 @@ jobs:
 
       - name: Check package
         run: |
-          pip install twine
+          # twine's metadata validation is backed by `packaging`. The runner's
+          # preinstalled packaging lags behind the Metadata-Version that
+          # hatchling now emits (2.5), so `twine check` fails with
+          # "Invalid distribution metadata: '2.5' is not a valid metadata
+          # version". packaging >= 26.0 is the first release that recognises
+          # Metadata-Version 2.5; pin the floor rather than upgrading to
+          # latest so the job stays reproducible.
+          pip install twine "packaging>=26"
           twine check dist/*
 
       - name: Upload build artifacts
