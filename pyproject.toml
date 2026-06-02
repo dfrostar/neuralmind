@@ -78,7 +78,10 @@ keywords = [
     "agent-ergonomics",
     "directional-transitions",
     "next-file-prediction",
-    "associative-memory"
+    "associative-memory",
+    "health-check",
+    "install-doctor",
+    "agent-onboarding"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
