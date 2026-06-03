@@ -10,6 +10,9 @@ turns a strategy decision ("both audiences, staged; focus on evals, graphify
 decoupling, host resilience, and proactive/cross-agent memory") into a sequenced,
 parallelizable feature map with acceptance criteria and suggested agent roles.
 
+**Tracked work:** v0.13 tracking issue #171 · faithfulness harness #172 ·
+polyglot fixtures #173 · CI gating #174 · shared-memory design #175.
+
 ---
 
 ## 0. The decision this plan encodes
@@ -18,7 +21,7 @@ parallelizable feature map with acceptance criteria and suggested agent roles.
 |---|---|---|
 | Primary user | **Both, staged** | Local-first core quality **first**; enterprise lane runs **behind** it, gated on real multi-user demand. |
 | Focus pillars | **All four**: evals · decouple graphify · host resilience · proactive/cross-agent memory | Sequenced across four releases, not crammed into one. |
-| Shared/team memory | **Undecided — argue both** | A dedicated decision gate (§6). It is the *fork* that determines whether the enterprise lane is even coherent. |
+| Shared/team memory | **Decided: YES — recommended shape** (opt-in committed team baseline that a private personal layer overlays) | Driven by cost reduction compounding across a team. This **un-gates the enterprise lane** (§5) and **shapes the v0.16 portable format** (§4). Design issue tracked separately; see §6 for the resolved decision. |
 
 **One-line strategy:** *Prove the memory makes answers better, then make the
 pipeline that produces it swappable and durable, then make the memory proactive
@@ -181,21 +184,34 @@ entries. **Do not edit `CHANGELOG.md`** — release-please owns it.
 - **Cross-agent portability:** define a portable memory export/import format so one
   learned synapse map serves Claude Code + Cursor + Cline + Continue. This is the
   durable wedge: **no single host will build cross-host memory**, because each only
-  optimizes itself.
+  optimizes itself. **Per the §6 decision, design this format for two layers from
+  day one:** a committed, reviewable *team baseline* and a private, uncommitted
+  *personal overlay* — the personal layer overlays the baseline, never replaces it,
+  so personal memory stays sharp and private while the team map is diffable and
+  decays on its own clock. Getting the two-layer shape into the format now avoids a
+  v0.17 migration.
 
 ---
 
 ## 5. Enterprise lane (staged, behind the fork)
+
+**Update (§6 resolved → shared memory is a YES):** the multi-user surface is now
+on the roadmap, so the enterprise lane is **un-gated** — but it still *sequences
+after* shared memory lands, not before. Build governance for the surface once the
+surface exists, not in anticipation.
 
 Ships **only** the slices that are coherent for a local-first tool, and only when
 they ride on something else:
 - **v0.13:** secret-scanning of indexed code (block API keys/secrets from being
   embedded) — small, honest, protects a real local risk. Folds into the eval/build
   path.
-- **Deferred behind §6:** RBAC, SAML/OAuth, TLS, encrypt-at-rest, 7-year audit
-  retention, FIPS. These only make sense once there is a **multi-user surface**,
-  which only shared memory creates. Building them before that is the mismatch §1
-  describes.
+- **Sequenced after shared memory (no longer "deferred indefinitely"):** RBAC,
+  audit trail for the *shared* layer, secret-scanning of committed synapses.
+  These become **non-theater** the moment a committed team baseline exists — now
+  there's a real multi-writer surface to govern. TLS/encrypt-at-rest/SAML/FIPS
+  remain low-priority for a local + git-committed model (the transport is git, the
+  review is the PR) until/unless a networked sync surface is ever added — which is
+  explicitly **not** planned.
 - **Keep regardless:** dependency pinning + compatibility matrix, SBOM (shipped),
   signed releases.
 
@@ -203,9 +219,17 @@ they ride on something else:
 
 ## 6. Decision gate — committable team/shared memory (argue both)
 
-This is the fork that decides whether the enterprise lane is real. Resolve it
-**before v0.16** (it changes the portable-format design) and **before any further
-enterprise investment.**
+> **DECISION (resolved): YES — build it, in the recommended shape below.**
+> Rationale: cost reduction compounds across a team (one developer's learned map
+> accelerates everyone's agent), and it's the gap no single host's native memory
+> will fill. This **un-gates the enterprise lane** (§5) and means the v0.16
+> portable format must be designed for the team-baseline + private-overlay model
+> from the start, not retrofitted. Design tracked as a dedicated GitHub issue.
+> The for/against below is retained as the design brief — the "against" points are
+> now *constraints the design must satisfy*, not reasons to decline.
+
+This was the fork that decided whether the enterprise lane is real. It changes the
+portable-format design (§4, v0.16) and the enterprise sequencing (§5).
 
 ### The case FOR (it could be the biggest differentiator)
 - **No host will build it.** Cross-developer shared memory is exactly the gap
