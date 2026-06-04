@@ -66,14 +66,24 @@ export function verifyWebhook(payload: string, signatureHeader: string): Record<
   const parts = Object.fromEntries(signatureHeader.split(",").map((p) => p.split("=", 2)));
   const timestamp = Number(parts.t);
   const signature = parts.v1;
+  // A malformed header (missing t/v1) must surface as WebhookVerificationError,
+  // not a downstream TypeError from Number(undefined)/Buffer.from(undefined).
+  if (!signature || Number.isNaN(timestamp)) {
+    throw new WebhookVerificationError("malformed signature header");
+  }
 
   if (Math.abs(Date.now() / 1000 - timestamp) > WEBHOOK_TOLERANCE_SEC) {
     throw new WebhookVerificationError("timestamp outside tolerance");
   }
 
   const signedPayload = `${timestamp}.${payload}`;
-  const expected = createHmac("sha256", STRIPE_WEBHOOK_SECRET).update(signedPayload).digest("hex");
-  if (!timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+  const expected = Buffer.from(
+    createHmac("sha256", STRIPE_WEBHOOK_SECRET).update(signedPayload).digest("hex"),
+  );
+  const provided = Buffer.from(signature);
+  // timingSafeEqual throws on unequal-length buffers; length-check first so a
+  // bad signature is reported as a mismatch rather than throwing a TypeError.
+  if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
     throw new WebhookVerificationError("signature mismatch");
   }
   return JSON.parse(payload);

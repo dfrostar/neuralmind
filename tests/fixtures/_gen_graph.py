@@ -59,12 +59,56 @@ def _def_line(source_path: Path, name: str) -> int:
     return 1
 
 
+def _call_line(source_path: Path, callee: str, start_line: int) -> int | None:
+    """Find the 1-based line at/after ``start_line`` where ``callee`` is invoked.
+
+    Derives the edge's ``source_location`` from the *real* source (rather than
+    a hand-maintained number that silently goes stale when the fixture is
+    edited), starting the scan at the caller's definition so an unrelated call
+    of the same function elsewhere isn't picked up. Returns ``None`` if no call
+    site is found so the caller can fall back to the spec's hint.
+    """
+    base = callee.rstrip("()")
+    lines = source_path.read_text().splitlines()
+    pat = re.compile(rf"\b{re.escape(base)}\s*\(")
+    for i in range(max(start_line, 1), len(lines) + 1):
+        if pat.search(lines[i - 1]):
+            return i
+    return None
+
+
+def _import_line(source_path: Path, dst: str) -> int | None:
+    """Find the 1-based line that imports module ``dst`` from ``source_path``.
+
+    Handles both TS (``import ... from "../db/connection"`` — matched by the
+    file basename) and Go (grouped ``import (`` block referencing the package
+    directory, e.g. ``"example.com/sample/db"`` — matched by the parent dir).
+    Returns ``None`` if no import line is found.
+    """
+    dst_p = Path(dst)
+    candidates = {dst_p.stem, dst_p.parent.name}
+    quoted = re.compile(r"""['"]([^'"]+)['"]""")
+    in_block = False
+    for i, line in enumerate(source_path.read_text().splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("import ("):
+            in_block = True
+        if in_block or stripped.startswith("import") or "from" in line:
+            for path in quoted.findall(line):
+                if path.rstrip("/").rsplit("/", 1)[-1] in candidates:
+                    return i
+        if in_block and stripped == ")":
+            in_block = False
+    return None
+
+
 def make_graph(spec: dict, fixture_dir: Path) -> dict:
     nodes: list[dict] = []
     links: list[dict] = []
 
     file_ids: dict[str, str] = {}
     symbol_ids: dict[tuple[str, str], str] = {}
+    symbol_lines: dict[tuple[str, str], int] = {}
 
     # 1. file + symbol + rationale nodes
     for f in spec["files"]:
@@ -103,6 +147,11 @@ def make_graph(spec: dict, fixture_dir: Path) -> dict:
             sid = f"{fid}_{sym['name'].lower().rstrip('()')}"
             symbol_ids[(src, sym["name"])] = sid
             line = _def_line(fixture_dir / src, sym["name"])
+            if line == 1 and sym.get("line"):
+                # _def_line couldn't locate it (e.g. an interface method with
+                # no def keyword); fall back to the spec's hand-authored hint.
+                line = sym["line"]
+            symbol_lines[(src, sym["name"])] = line
             loc = f"L{line}"
             nodes.append(
                 {
@@ -151,14 +200,16 @@ def make_graph(spec: dict, fixture_dir: Path) -> dict:
                 }
             )
 
-    # 2. imports_from links (file -> file)
+    # 2. imports_from links (file -> file). Location derived from the real
+    #    source; the spec's number is only a fallback if it can't be found.
     for imp in spec["imports"]:
         src, line, dst = imp
+        derived = _import_line(fixture_dir / src, dst)
         links.append(
             _link(
                 "imports_from",
                 src,
-                f"L{line}",
+                f"L{derived if derived is not None else line}",
                 file_ids[src],
                 file_ids[dst],
                 context="import",
@@ -166,16 +217,20 @@ def make_graph(spec: dict, fixture_dir: Path) -> dict:
             )
         )
 
-    # 3. calls links (symbol -> symbol)
+    # 3. calls links (symbol -> symbol). Location derived from the real source,
+    #    scanning from the caller's definition; spec number is a fallback.
     for call in spec["calls"]:
         src_file, line, caller, callee_file, callee = call
         sid = symbol_ids[(src_file, caller)]
         tid = symbol_ids[(callee_file, callee)]
+        derived = _call_line(
+            fixture_dir / src_file, callee, symbol_lines.get((src_file, caller), 1)
+        )
         links.append(
             _link(
                 "calls",
                 src_file,
-                f"L{line}",
+                f"L{derived if derived is not None else line}",
                 sid,
                 tid,
                 context="call",

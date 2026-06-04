@@ -26,7 +26,10 @@ export function decodeToken(token: string): Record<string, unknown> {
 
   const signingInput = `${headerB64}.${payloadB64}`;
   const expected = sign(signingInput);
-  if (!timingSafeEqual(expected, b64urlDecode(sigB64))) {
+  const actual = b64urlDecode(sigB64);
+  // timingSafeEqual throws on unequal-length buffers, so a malformed
+  // signature must be length-checked first to surface as InvalidSignatureError.
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
     throw new InvalidSignatureError("signature mismatch");
   }
 
