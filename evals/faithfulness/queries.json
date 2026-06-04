@@ -22,7 +22,7 @@
       "expected_modules": ["auth/jwt_utils.py"],
       "expected_facts": [
         {"id": "jwt-hs256", "fact": "tokens are signed with HMAC-SHA256 (HS256)", "aliases": ["HS256", "HMAC", "hmac.new", "sha256", "hashlib.sha256"]},
-        {"id": "jwt-three-segments", "fact": "the token is split into three dot-separated segments: header, payload, signature", "aliases": ["3 segments", "three segments", "header.payload.signature", "split"]},
+        {"id": "jwt-three-segments", "fact": "the token is split into three dot-separated segments: header, payload, signature", "aliases": ["3 segments", "three segments", "header.payload.signature"]},
         {"id": "jwt-constant-time", "fact": "the signature is compared in constant time with hmac.compare_digest", "aliases": ["compare_digest", "constant time", "constant-time"]},
         {"id": "jwt-invalid-signature", "fact": "InvalidSignatureError is raised on a signature mismatch", "aliases": ["InvalidSignatureError", "signature mismatch"]},
         {"id": "jwt-expiry-check", "fact": "the exp claim is checked and TokenExpiredError is raised when expired", "aliases": ["TokenExpiredError", "exp", "expired", "expiry"]}
@@ -86,7 +86,7 @@
       "shape": "focused",
       "expected_modules": ["api/routes.py"],
       "expected_facts": [
-        {"id": "route-decorator-registers", "fact": "a @route(method, path) decorator records a (method, path, handler) tuple", "aliases": ["@route", "route decorator", "decorator", "method, path, handler", "tuple"]},
+        {"id": "route-decorator-registers", "fact": "a @route(method, path) decorator records a (method, path, handler) tuple", "aliases": ["@route", "route decorator", "method, path, handler"]},
         {"id": "route-registry", "fact": "registered routes are appended to a module-level ROUTES list", "aliases": ["ROUTES", "ROUTES list", "append"]}
       ]
     },
@@ -118,7 +118,7 @@
       "expected_modules": ["users/crud.py", "db/connection.py"],
       "expected_facts": [
         {"id": "user-table", "fact": "users are stored in a users table", "aliases": ["users table", "CREATE TABLE", "users"]},
-        {"id": "user-columns", "fact": "the user record has id, email, password_hash, created_at, last_login, and is_active fields", "aliases": ["password_hash", "is_active", "last_login", "created_at", "email", "id"]},
+        {"id": "user-columns", "fact": "the user record has id, email, password_hash, created_at, last_login, and is_active fields", "aliases": ["password_hash", "is_active", "last_login", "created_at", "users.id", "users.email"]},
         {"id": "user-soft-delete", "fact": "users are soft-deleted by flipping the is_active flag rather than being removed", "aliases": ["soft-delete", "soft delete", "is_active", "deactivate_user"]}
       ]
     },
@@ -173,7 +173,7 @@
       "shape": "focused",
       "expected_modules": ["billing/stripe_client.py"],
       "expected_facts": [
-        {"id": "wsig-header-format", "fact": "the Stripe-Signature header is parsed for a timestamp (t) and signature (v1)", "aliases": ["Stripe-Signature", "t=", "v1=", "timestamp", "signature header"]},
+        {"id": "wsig-header-format", "fact": "the Stripe-Signature header is parsed for a timestamp (t) and signature (v1)", "aliases": ["Stripe-Signature", "v1=", "timestamp", "signature header"]},
         {"id": "wsig-hmac", "fact": "an HMAC-SHA256 of 'timestamp.payload' is computed with the webhook secret", "aliases": ["hmac", "sha256", "STRIPE_WEBHOOK_SECRET", "signed_payload", "hexdigest"]},
         {"id": "wsig-error", "fact": "a mismatch raises WebhookVerificationError", "aliases": ["WebhookVerificationError", "signature mismatch", "outside tolerance"]}
       ]

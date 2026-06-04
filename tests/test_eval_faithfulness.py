@@ -59,6 +59,7 @@ class LoadQuerySetTests(unittest.TestCase):
 
     def test_unsupported_version_rejected(self) -> None:
         import json
+        import os
         import tempfile
 
         bad = {
@@ -76,8 +77,11 @@ class LoadQuerySetTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
             json.dump(bad, fh)
             path = fh.name
-        with self.assertRaises(ValueError):
-            load_query_set(path)
+        try:
+            with self.assertRaises(ValueError):
+                load_query_set(path)
+        finally:
+            os.unlink(path)
 
 
 class OfflineRecallTests(unittest.TestCase):
@@ -131,6 +135,28 @@ class OfflineRecallTests(unittest.TestCase):
         half = "the fixture uses SQLite"
         mean = self.judge.mean_recall([(self.query, full), (self.query, half)])
         self.assertAlmostEqual(mean, 0.75)
+
+    def test_short_alias_does_not_match_inside_words(self) -> None:
+        # A two-letter alias must not match *inside* an unrelated word
+        # (e.g. "id" inside "valid") — that would inflate the CI-gate recall.
+        q = Query(
+            id="boundary",
+            question="?",
+            expected_facts=(ExpectedFact("f-id", "the record has an id column", ("id",)),),
+        )
+        self.assertEqual(self.judge.fact_recall(q, "the token is valid and invalid").matched, 0)
+        # but it still matches as a standalone token.
+        self.assertEqual(self.judge.fact_recall(q, "the record id is a primary key").matched, 1)
+
+    def test_ultra_short_alias_is_ignored(self) -> None:
+        # A single-character needle (e.g. an alias like "t=" → "t") is too
+        # noisy to be a reliable match and is skipped entirely.
+        q = Query(
+            id="tiny",
+            question="?",
+            expected_facts=(ExpectedFact("f-t", "the header carries a t field", ("t=",)),),
+        )
+        self.assertEqual(self.judge.fact_recall(q, "there is a t value here").matched, 0)
 
     def test_e1_3_methods_are_stubbed(self) -> None:
         with self.assertRaises(NotImplementedError):

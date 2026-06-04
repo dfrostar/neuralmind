@@ -98,32 +98,57 @@ def load_query_set(path: str | os.PathLike[str] | None = None) -> QuerySet:
     if version != SCHEMA_VERSION:
         raise ValueError(f"unsupported schema_version {version!r}; runner expects {SCHEMA_VERSION}")
 
+    fixture = raw.get("fixture")
+    if not isinstance(fixture, str) or not fixture.strip():
+        raise ValueError(
+            "query set is missing a non-empty 'fixture' (path to the gold-fact source)"
+        )
+
+    raw_queries = raw.get("queries")
+    if not isinstance(raw_queries, list):
+        raise ValueError("'queries' must be a list")
+
     queries: list[Query] = []
     seen_ids: set[str] = set()
-    for entry in raw.get("queries", []):
-        qid = entry["id"]
+    for i, entry in enumerate(raw_queries):
+        if not isinstance(entry, dict):
+            raise ValueError(f"queries[{i}] must be an object, got {type(entry).__name__}")
+
+        qid = entry.get("id")
+        if not isinstance(qid, str) or not qid.strip():
+            raise ValueError(f"queries[{i}] is missing a non-empty string 'id'")
         if qid in seen_ids:
             raise ValueError(f"duplicate query id: {qid!r}")
         seen_ids.add(qid)
 
+        question = entry.get("question")
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError(f"query {qid!r} is missing a non-empty 'question'")
+
+        modules = entry.get("expected_modules")
+        if not isinstance(modules, list) or not modules:
+            raise ValueError(f"query {qid!r} needs a non-empty 'expected_modules' list")
+
         facts: list[ExpectedFact] = []
         for f in entry.get("expected_facts", []):
-            facts.append(
-                ExpectedFact(
-                    id=f["id"],
-                    fact=f["fact"],
-                    aliases=tuple(f.get("aliases", [])),
-                )
-            )
+            if not isinstance(f, dict):
+                raise ValueError(f"query {qid!r} has a non-object entry in 'expected_facts'")
+            fid = f.get("id")
+            ftext = f.get("fact")
+            if not isinstance(fid, str) or not fid.strip():
+                raise ValueError(f"query {qid!r} has an expected_fact missing a non-empty 'id'")
+            if not isinstance(ftext, str) or not ftext.strip():
+                raise ValueError(f"fact {fid!r} in query {qid!r} is missing non-empty 'fact' text")
+            facts.append(ExpectedFact(id=fid, fact=ftext, aliases=tuple(f.get("aliases", []))))
         if not facts:
             raise ValueError(f"query {qid!r} has no expected_facts")
 
         queries.append(
             Query(
                 id=qid,
-                question=entry["question"],
+                question=question,
                 expected_facts=tuple(facts),
-                expected_modules=tuple(entry.get("expected_modules", [])),
+                expected_modules=tuple(modules),
                 shape=entry.get("shape", ""),
             )
         )
@@ -133,7 +158,7 @@ def load_query_set(path: str | os.PathLike[str] | None = None) -> QuerySet:
 
     return QuerySet(
         schema_version=version,
-        fixture=raw.get("fixture", ""),
+        fixture=fixture,
         queries=queries,
     )
 
@@ -149,6 +174,20 @@ def _normalize(text: str) -> str:
     ``hmac compare digest`` or ``HMAC.compare_digest()``.
     """
     return " ".join(_WORD_RE.findall(text.lower()))
+
+
+def _phrase_in(answer_norm: str, needle_norm: str) -> bool:
+    """Whole-word/phrase containment over already-normalized token strings.
+
+    Both arguments are space-delimited normalized tokens. Padding with
+    spaces makes the check token-boundary aware so a short needle like
+    ``id`` or ``t`` can't match *inside* an unrelated word (``valid``,
+    ``not``) and silently inflate the CI-gating recall score. Multi-word
+    needles still match as a contiguous phrase.
+    """
+    if not needle_norm:
+        return False
+    return f" {needle_norm} " in f" {answer_norm} "
 
 
 @dataclass
@@ -182,10 +221,21 @@ class OfflineJudge:
     """
 
     def fact_matched(self, fact: ExpectedFact, answer_norm: str) -> FactResult:
-        """Does ``answer_norm`` (already normalized) express ``fact``?"""
+        """Does ``answer_norm`` (already normalized) express ``fact``?
+
+        Matching is token/phrase-boundary aware (see ``_phrase_in``) and
+        rejects needles that collapse to a single ultra-short token (e.g.
+        an alias like ``t=`` → ``t``), which are too noisy to trust as the
+        CI-gating recall signal.
+        """
         for surface in fact.surfaces():
             needle = _normalize(surface)
-            if needle and needle in answer_norm:
+            if not needle:
+                continue
+            tokens = needle.split()
+            if len(tokens) == 1 and len(tokens[0]) < 2:
+                continue
+            if _phrase_in(answer_norm, needle):
                 return FactResult(fact.id, matched=True, matched_on=surface)
         return FactResult(fact.id, matched=False)
 

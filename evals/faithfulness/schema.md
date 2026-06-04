@@ -20,7 +20,7 @@ This file is the gold standard the offline judge scores answers against.
 | `id` | string | yes | Stable, unique slug. Used as the report key — **never renumber**; add new ids instead. |
 | `question` | string | yes | The natural-language query posed to the answerer. |
 | `shape` | string | no | Retrieval shape hint reused from `tests/fixtures/benchmark_queries.json`: `focused`, `cross-file`, or `identity`. |
-| `expected_modules` | string[] | yes | Repo-relative module paths a correct, grounded answer should cite. Feeds the citation/grounding-rate dimension (E1.3). |
+| `expected_modules` | string[] | yes | Module paths a correct, grounded answer should cite, **relative to the `fixture` directory** (e.g. `auth/handlers.py`, i.e. `<fixture>/auth/handlers.py`) — matching how `tests/benchmark/run.py` extracts hits via `p.relative_to(FIXTURE_DIR)`. Feeds the citation/grounding-rate dimension (E1.3). |
 | `expected_facts` | object[] | yes | The rubric: key facts a correct answer must contain. Recall over these is the headline metric. |
 
 ## Fact object (`expected_facts[]`)
