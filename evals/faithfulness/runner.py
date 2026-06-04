@@ -96,9 +96,7 @@ def load_query_set(path: str | os.PathLike[str] | None = None) -> QuerySet:
 
     version = raw.get("schema_version")
     if version != SCHEMA_VERSION:
-        raise ValueError(
-            f"unsupported schema_version {version!r}; runner expects {SCHEMA_VERSION}"
-        )
+        raise ValueError(f"unsupported schema_version {version!r}; runner expects {SCHEMA_VERSION}")
 
     queries: list[Query] = []
     seen_ids: set[str] = set()

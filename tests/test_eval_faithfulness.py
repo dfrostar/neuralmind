@@ -73,9 +73,7 @@ class LoadQuerySetTests(unittest.TestCase):
                 }
             ],
         }
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".json", delete=False, encoding="utf-8"
-        ) as fh:
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
             json.dump(bad, fh)
             path = fh.name
         with self.assertRaises(ValueError):
