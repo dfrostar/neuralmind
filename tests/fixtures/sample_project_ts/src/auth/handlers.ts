@@ -1,6 +1,6 @@
 // Authentication handlers — login, logout, token refresh.
 
-import { createHmac, timingSafeEqual } from "crypto";
+import { scryptSync, timingSafeEqual } from "crypto";
 
 import { getConnection } from "../db/connection";
 import { getUserByEmail, updateLastLogin } from "../users/crud";
@@ -62,11 +62,16 @@ export function logout(refreshToken: string): void {
   ]);
 }
 
-/** Constant-time password verification against stored hash. */
+/**
+ * Constant-time password verification against a stored scrypt hash.
+ * Stored format is "saltHex:keyHex"; scrypt is a deliberately expensive KDF.
+ */
 export function verifyPassword(plain: string, hashed: string): boolean {
-  const a = createHmac("sha256", "pepper").update(plain).digest();
-  const b = createHmac("sha256", "pepper").update(hashed).digest();
-  return timingSafeEqual(a, b);
+  const [saltHex, keyHex] = hashed.split(":");
+  const salt = Buffer.from(saltHex, "hex");
+  const expected = Buffer.from(keyHex, "hex");
+  const derived = scryptSync(plain, salt, expected.length);
+  return timingSafeEqual(derived, expected);
 }
 
 /** Raised when email or password does not match any user. */

@@ -137,9 +137,7 @@ def make_graph(spec: dict, fixture_dir: Path) -> dict:
                 )
 
     # error base node shared target of inherits (like Python fixture's "exception")
-    base_targets = {
-        l["target"] for l in links if l["relation"] == "inherits"
-    }
+    base_targets = {lk["target"] for lk in links if lk["relation"] == "inherits"}
     for bt in sorted(base_targets):
         if not any(n["id"] == bt for n in nodes):
             nodes.append(

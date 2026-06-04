@@ -41,7 +41,15 @@ TOP_LEVEL_KEYS = {
     "hyperedges",
     "built_at_commit",
 }
-NODE_KEYS = {"label", "file_type", "source_file", "source_location", "id", "community", "norm_label"}
+NODE_KEYS = {
+    "label",
+    "file_type",
+    "source_file",
+    "source_location",
+    "id",
+    "community",
+    "norm_label",
+}
 LINK_REQUIRED = {
     "relation",
     "confidence",
