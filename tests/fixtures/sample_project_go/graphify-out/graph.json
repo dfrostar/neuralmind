@@ -1,0 +1,1864 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "connection.go",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L1",
+      "id": "db_connection_go",
+      "community": 1,
+      "norm_label": "connection.go"
+    },
+    {
+      "label": "Package db provides the fixture's database connection pool.",
+      "file_type": "rationale",
+      "source_file": "db/connection.go",
+      "source_location": "L1",
+      "id": "db_connection_go_rationale_1",
+      "community": 1,
+      "norm_label": "package db provides the fixture's database connection pool."
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L14",
+      "id": "db_connection_go_connection",
+      "community": 1,
+      "norm_label": "connection"
+    },
+    {
+      "label": "Minimal connection interface used by the fixture.",
+      "file_type": "rationale",
+      "source_file": "db/connection.go",
+      "source_location": "L14",
+      "id": "db_connection_go_connection_rationale",
+      "community": 1,
+      "norm_label": "minimal connection interface used by the fixture."
+    },
+    {
+      "label": "GetConnection()",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L28",
+      "id": "db_connection_go_getconnection",
+      "community": 1,
+      "norm_label": "getconnection()"
+    },
+    {
+      "label": "Return a process-wide connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "db/connection.go",
+      "source_location": "L28",
+      "id": "db_connection_go_getconnection_rationale",
+      "community": 1,
+      "norm_label": "return a process-wide connection to the fixture database."
+    },
+    {
+      "label": "Execute()",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L38",
+      "id": "db_connection_go_execute",
+      "community": 1,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "Run a statement and return rows plus the last inserted id.",
+      "file_type": "rationale",
+      "source_file": "db/connection.go",
+      "source_location": "L38",
+      "id": "db_connection_go_execute_rationale",
+      "community": 1,
+      "norm_label": "run a statement and return rows plus the last inserted id."
+    },
+    {
+      "label": "Close()",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L48",
+      "id": "db_connection_go_close",
+      "community": 1,
+      "norm_label": "close()"
+    },
+    {
+      "label": "ensureSchema()",
+      "file_type": "code",
+      "source_file": "db/connection.go",
+      "source_location": "L55",
+      "id": "db_connection_go_ensureschema",
+      "community": 1,
+      "norm_label": "ensureschema()"
+    },
+    {
+      "label": "Create fixture tables if they don't exist yet.",
+      "file_type": "rationale",
+      "source_file": "db/connection.go",
+      "source_location": "L55",
+      "id": "db_connection_go_ensureschema_rationale",
+      "community": 1,
+      "norm_label": "create fixture tables if they don't exist yet."
+    },
+    {
+      "label": "crud.go",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L1",
+      "id": "users_crud_go",
+      "community": 2,
+      "norm_label": "crud.go"
+    },
+    {
+      "label": "Package users provides the user model and CRUD operations.",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L1",
+      "id": "users_crud_go_rationale_1",
+      "community": 2,
+      "norm_label": "package users provides the user model and crud operations."
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L11",
+      "id": "users_crud_go_user",
+      "community": 2,
+      "norm_label": "user"
+    },
+    {
+      "label": "Canonical user record.",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L11",
+      "id": "users_crud_go_user_rationale",
+      "community": 2,
+      "norm_label": "canonical user record."
+    },
+    {
+      "label": "CreateUser()",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L21",
+      "id": "users_crud_go_createuser",
+      "community": 2,
+      "norm_label": "createuser()"
+    },
+    {
+      "label": "Insert a new user and return the created record.",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L21",
+      "id": "users_crud_go_createuser_rationale",
+      "community": 2,
+      "norm_label": "insert a new user and return the created record."
+    },
+    {
+      "label": "GetUserByEmail()",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L37",
+      "id": "users_crud_go_getuserbyemail",
+      "community": 2,
+      "norm_label": "getuserbyemail()"
+    },
+    {
+      "label": "Fetch a user by email (auth hot path).",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L37",
+      "id": "users_crud_go_getuserbyemail_rationale",
+      "community": 2,
+      "norm_label": "fetch a user by email (auth hot path)."
+    },
+    {
+      "label": "GetUser()",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L50",
+      "id": "users_crud_go_getuser",
+      "community": 2,
+      "norm_label": "getuser()"
+    },
+    {
+      "label": "Fetch a user by primary key.",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L50",
+      "id": "users_crud_go_getuser_rationale",
+      "community": 2,
+      "norm_label": "fetch a user by primary key."
+    },
+    {
+      "label": "UpdateLastLogin()",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L63",
+      "id": "users_crud_go_updatelastlogin",
+      "community": 2,
+      "norm_label": "updatelastlogin()"
+    },
+    {
+      "label": "DeactivateUser()",
+      "file_type": "code",
+      "source_file": "users/crud.go",
+      "source_location": "L69",
+      "id": "users_crud_go_deactivateuser",
+      "community": 2,
+      "norm_label": "deactivateuser()"
+    },
+    {
+      "label": "Soft-delete a user by flipping is_active off.",
+      "file_type": "rationale",
+      "source_file": "users/crud.go",
+      "source_location": "L69",
+      "id": "users_crud_go_deactivateuser_rationale",
+      "community": 2,
+      "norm_label": "soft-delete a user by flipping is_active off."
+    },
+    {
+      "label": "jwt_utils.go",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L1",
+      "id": "auth_jwtutils_go",
+      "community": 3,
+      "norm_label": "jwt_utils.go"
+    },
+    {
+      "label": "Package auth provides JWT encode/decode helpers and auth handlers.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L1",
+      "id": "auth_jwtutils_go_rationale_1",
+      "community": 3,
+      "norm_label": "package auth provides jwt encode/decode helpers and auth handlers."
+    },
+    {
+      "label": "EncodeToken()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L29",
+      "id": "auth_jwtutils_go_encodetoken",
+      "community": 3,
+      "norm_label": "encodetoken()"
+    },
+    {
+      "label": "Produce a signed JWT string from a claims map.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L29",
+      "id": "auth_jwtutils_go_encodetoken_rationale",
+      "community": 3,
+      "norm_label": "produce a signed jwt string from a claims map."
+    },
+    {
+      "label": "DecodeToken()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L42",
+      "id": "auth_jwtutils_go_decodetoken",
+      "community": 3,
+      "norm_label": "decodetoken()"
+    },
+    {
+      "label": "Verify signature + expiry and return the claims map.",
+      "file_type": "rationale",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L42",
+      "id": "auth_jwtutils_go_decodetoken_rationale",
+      "community": 3,
+      "norm_label": "verify signature + expiry and return the claims map."
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L70",
+      "id": "auth_jwtutils_go_sign",
+      "community": 3,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "handlers.go",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L1",
+      "id": "auth_handlers_go",
+      "community": 3,
+      "norm_label": "handlers.go"
+    },
+    {
+      "label": "Authentication handlers \u2014 login, logout, token refresh.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L1",
+      "id": "auth_handlers_go_rationale_1",
+      "community": 3,
+      "norm_label": "authentication handlers \u2014 login, logout, token refresh."
+    },
+    {
+      "label": "AuthenticateUser()",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L28",
+      "id": "auth_handlers_go_authenticateuser",
+      "community": 3,
+      "norm_label": "authenticateuser()"
+    },
+    {
+      "label": "Validate credentials and issue an access + refresh token pair.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L28",
+      "id": "auth_handlers_go_authenticateuser_rationale",
+      "community": 3,
+      "norm_label": "validate credentials and issue an access + refresh token pair."
+    },
+    {
+      "label": "VerifySession()",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L51",
+      "id": "auth_handlers_go_verifysession",
+      "community": 3,
+      "norm_label": "verifysession()"
+    },
+    {
+      "label": "Return the user id if the access token is valid.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L51",
+      "id": "auth_handlers_go_verifysession_rationale",
+      "community": 3,
+      "norm_label": "return the user id if the access token is valid."
+    },
+    {
+      "label": "RefreshSession()",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L63",
+      "id": "auth_handlers_go_refreshsession",
+      "community": 3,
+      "norm_label": "refreshsession()"
+    },
+    {
+      "label": "Exchange a refresh token for a new access token.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L63",
+      "id": "auth_handlers_go_refreshsession_rationale",
+      "community": 3,
+      "norm_label": "exchange a refresh token for a new access token."
+    },
+    {
+      "label": "Logout()",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L77",
+      "id": "auth_handlers_go_logout",
+      "community": 3,
+      "norm_label": "logout()"
+    },
+    {
+      "label": "Revoke a refresh token by writing it to the revocation list.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L77",
+      "id": "auth_handlers_go_logout_rationale",
+      "community": 3,
+      "norm_label": "revoke a refresh token by writing it to the revocation list."
+    },
+    {
+      "label": "VerifyPassword()",
+      "file_type": "code",
+      "source_file": "auth/handlers.go",
+      "source_location": "L83",
+      "id": "auth_handlers_go_verifypassword",
+      "community": 3,
+      "norm_label": "verifypassword()"
+    },
+    {
+      "label": "Constant-time password verification against stored hash.",
+      "file_type": "rationale",
+      "source_file": "auth/handlers.go",
+      "source_location": "L83",
+      "id": "auth_handlers_go_verifypassword_rationale",
+      "community": 3,
+      "norm_label": "constant-time password verification against stored hash."
+    },
+    {
+      "label": "invoices.go",
+      "file_type": "code",
+      "source_file": "billing/invoices.go",
+      "source_location": "L1",
+      "id": "billing_invoices_go",
+      "community": 4,
+      "norm_label": "invoices.go"
+    },
+    {
+      "label": "Package billing provides invoice generation and Stripe integration.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.go",
+      "source_location": "L1",
+      "id": "billing_invoices_go_rationale_1",
+      "community": 4,
+      "norm_label": "package billing provides invoice generation and stripe integration."
+    },
+    {
+      "label": "CreateInvoice()",
+      "file_type": "code",
+      "source_file": "billing/invoices.go",
+      "source_location": "L16",
+      "id": "billing_invoices_go_createinvoice",
+      "community": 4,
+      "norm_label": "createinvoice()"
+    },
+    {
+      "label": "Write an invoice row and return it.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.go",
+      "source_location": "L16",
+      "id": "billing_invoices_go_createinvoice_rationale",
+      "community": 4,
+      "norm_label": "write an invoice row and return it."
+    },
+    {
+      "label": "SendInvoiceEmail()",
+      "file_type": "code",
+      "source_file": "billing/invoices.go",
+      "source_location": "L35",
+      "id": "billing_invoices_go_sendinvoiceemail",
+      "community": 4,
+      "norm_label": "sendinvoiceemail()"
+    },
+    {
+      "label": "Render an invoice and hand it to the email transport.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.go",
+      "source_location": "L35",
+      "id": "billing_invoices_go_sendinvoiceemail_rationale",
+      "community": 4,
+      "norm_label": "render an invoice and hand it to the email transport."
+    },
+    {
+      "label": "ListUserInvoices()",
+      "file_type": "code",
+      "source_file": "billing/invoices.go",
+      "source_location": "L52",
+      "id": "billing_invoices_go_listuserinvoices",
+      "community": 4,
+      "norm_label": "listuserinvoices()"
+    },
+    {
+      "label": "Return all invoices for a user, newest first.",
+      "file_type": "rationale",
+      "source_file": "billing/invoices.go",
+      "source_location": "L52",
+      "id": "billing_invoices_go_listuserinvoices_rationale",
+      "community": 4,
+      "norm_label": "return all invoices for a user, newest first."
+    },
+    {
+      "label": "renderAndQueue()",
+      "file_type": "code",
+      "source_file": "billing/invoices.go",
+      "source_location": "L73",
+      "id": "billing_invoices_go_renderandqueue",
+      "community": 4,
+      "norm_label": "renderandqueue()"
+    },
+    {
+      "label": "stripe_client.go",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L1",
+      "id": "billing_stripeclient_go",
+      "community": 4,
+      "norm_label": "stripe_client.go"
+    },
+    {
+      "label": "Stripe integration \u2014 charges, refunds, webhook signature verification.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L1",
+      "id": "billing_stripeclient_go_rationale_1",
+      "community": 4,
+      "norm_label": "stripe integration \u2014 charges, refunds, webhook signature verification."
+    },
+    {
+      "label": "ChargeCustomer()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L34",
+      "id": "billing_stripeclient_go_chargecustomer",
+      "community": 4,
+      "norm_label": "chargecustomer()"
+    },
+    {
+      "label": "Create a Stripe charge and mirror it into our billing table.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L34",
+      "id": "billing_stripeclient_go_chargecustomer_rationale",
+      "community": 4,
+      "norm_label": "create a stripe charge and mirror it into our billing table."
+    },
+    {
+      "label": "RefundCharge()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L53",
+      "id": "billing_stripeclient_go_refundcharge",
+      "community": 4,
+      "norm_label": "refundcharge()"
+    },
+    {
+      "label": "Issue a full refund for a previous charge and log it.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L53",
+      "id": "billing_stripeclient_go_refundcharge_rationale",
+      "community": 4,
+      "norm_label": "issue a full refund for a previous charge and log it."
+    },
+    {
+      "label": "VerifyWebhook()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L71",
+      "id": "billing_stripeclient_go_verifywebhook",
+      "community": 4,
+      "norm_label": "verifywebhook()"
+    },
+    {
+      "label": "Validate a Stripe webhook signature and return the event body.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L71",
+      "id": "billing_stripeclient_go_verifywebhook_rationale",
+      "community": 4,
+      "norm_label": "validate a stripe webhook signature and return the event body."
+    },
+    {
+      "label": "HandleWebhookEvent()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L102",
+      "id": "billing_stripeclient_go_handlewebhookevent",
+      "community": 4,
+      "norm_label": "handlewebhookevent()"
+    },
+    {
+      "label": "Dispatch a verified Stripe webhook event to the right handler.",
+      "file_type": "rationale",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L102",
+      "id": "billing_stripeclient_go_handlewebhookevent_rationale",
+      "community": 4,
+      "norm_label": "dispatch a verified stripe webhook event to the right handler."
+    },
+    {
+      "label": "fakeStripeCharge()",
+      "file_type": "code",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L123",
+      "id": "billing_stripeclient_go_fakestripecharge",
+      "community": 4,
+      "norm_label": "fakestripecharge()"
+    },
+    {
+      "label": "routes.go",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L1",
+      "id": "api_routes_go",
+      "community": 5,
+      "norm_label": "routes.go"
+    },
+    {
+      "label": "Package api wires HTTP routes for the sample web app.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L1",
+      "id": "api_routes_go_rationale_1",
+      "community": 5,
+      "norm_label": "package api wires http routes for the sample web app."
+    },
+    {
+      "label": "LoginEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L37",
+      "id": "api_routes_go_loginendpoint",
+      "community": 5,
+      "norm_label": "loginendpoint()"
+    },
+    {
+      "label": "POST /api/auth/login \u2014 returns access + refresh tokens.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L37",
+      "id": "api_routes_go_loginendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/auth/login \u2014 returns access + refresh tokens."
+    },
+    {
+      "label": "RefreshEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L42",
+      "id": "api_routes_go_refreshendpoint",
+      "community": 5,
+      "norm_label": "refreshendpoint()"
+    },
+    {
+      "label": "POST /api/auth/refresh \u2014 returns a new access token.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L42",
+      "id": "api_routes_go_refreshendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/auth/refresh \u2014 returns a new access token."
+    },
+    {
+      "label": "LogoutEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L47",
+      "id": "api_routes_go_logoutendpoint",
+      "community": 5,
+      "norm_label": "logoutendpoint()"
+    },
+    {
+      "label": "POST /api/auth/logout \u2014 revokes a refresh token.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L47",
+      "id": "api_routes_go_logoutendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/auth/logout \u2014 revokes a refresh token."
+    },
+    {
+      "label": "CreateUserEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L53",
+      "id": "api_routes_go_createuserendpoint",
+      "community": 5,
+      "norm_label": "createuserendpoint()"
+    },
+    {
+      "label": "POST /api/users \u2014 sign-up flow.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L53",
+      "id": "api_routes_go_createuserendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/users \u2014 sign-up flow."
+    },
+    {
+      "label": "GetMeEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L59",
+      "id": "api_routes_go_getmeendpoint",
+      "community": 5,
+      "norm_label": "getmeendpoint()"
+    },
+    {
+      "label": "GET /api/users/me \u2014 requires Authorization: Bearer header.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L59",
+      "id": "api_routes_go_getmeendpoint_rationale",
+      "community": 5,
+      "norm_label": "get /api/users/me \u2014 requires authorization: bearer header."
+    },
+    {
+      "label": "DeleteMeEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L69",
+      "id": "api_routes_go_deletemeendpoint",
+      "community": 5,
+      "norm_label": "deletemeendpoint()"
+    },
+    {
+      "label": "DELETE /api/users/me \u2014 soft-delete the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L69",
+      "id": "api_routes_go_deletemeendpoint_rationale",
+      "community": 5,
+      "norm_label": "delete /api/users/me \u2014 soft-delete the authenticated user."
+    },
+    {
+      "label": "ChargeEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L79",
+      "id": "api_routes_go_chargeendpoint",
+      "community": 5,
+      "norm_label": "chargeendpoint()"
+    },
+    {
+      "label": "POST /api/billing/charge \u2014 charge the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L79",
+      "id": "api_routes_go_chargeendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/billing/charge \u2014 charge the authenticated user."
+    },
+    {
+      "label": "RefundEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L88",
+      "id": "api_routes_go_refundendpoint",
+      "community": 5,
+      "norm_label": "refundendpoint()"
+    },
+    {
+      "label": "POST /api/billing/refund \u2014 admin-only refund of a charge.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L88",
+      "id": "api_routes_go_refundendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /api/billing/refund \u2014 admin-only refund of a charge."
+    },
+    {
+      "label": "ListInvoicesEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L93",
+      "id": "api_routes_go_listinvoicesendpoint",
+      "community": 5,
+      "norm_label": "listinvoicesendpoint()"
+    },
+    {
+      "label": "GET /api/billing/invoices \u2014 list invoices for the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L93",
+      "id": "api_routes_go_listinvoicesendpoint_rationale",
+      "community": 5,
+      "norm_label": "get /api/billing/invoices \u2014 list invoices for the authenticated user."
+    },
+    {
+      "label": "StripeWebhookEndpoint()",
+      "file_type": "code",
+      "source_file": "api/routes.go",
+      "source_location": "L102",
+      "id": "api_routes_go_stripewebhookendpoint",
+      "community": 5,
+      "norm_label": "stripewebhookendpoint()"
+    },
+    {
+      "label": "POST /webhooks/stripe \u2014 entry point for Stripe events.",
+      "file_type": "rationale",
+      "source_file": "api/routes.go",
+      "source_location": "L102",
+      "id": "api_routes_go_stripewebhookendpoint_rationale",
+      "community": 5,
+      "norm_label": "post /webhooks/stripe \u2014 entry point for stripe events."
+    }
+  ],
+  "links": [
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "db_connection_go_rationale_1",
+      "target": "db_connection_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "db_connection_go",
+      "target": "db_connection_go_connection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "db_connection_go_connection_rationale",
+      "target": "db_connection_go_connection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "db_connection_go",
+      "target": "db_connection_go_getconnection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "db_connection_go_getconnection_rationale",
+      "target": "db_connection_go_getconnection",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "db_connection_go",
+      "target": "db_connection_go_execute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "db_connection_go_execute_rationale",
+      "target": "db_connection_go_execute",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "db_connection_go",
+      "target": "db_connection_go_close",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "db_connection_go",
+      "target": "db_connection_go_ensureschema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "db/connection.go",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "db_connection_go_ensureschema_rationale",
+      "target": "db_connection_go_ensureschema",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "users_crud_go_rationale_1",
+      "target": "users_crud_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "users_crud_go_user_rationale",
+      "target": "users_crud_go_user",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_createuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "users_crud_go_createuser_rationale",
+      "target": "users_crud_go_createuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_getuserbyemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "users_crud_go_getuserbyemail_rationale",
+      "target": "users_crud_go_getuserbyemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_getuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L50",
+      "weight": 1.0,
+      "source": "users_crud_go_getuser_rationale",
+      "target": "users_crud_go_getuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_updatelastlogin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "users_crud_go_deactivateuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "users_crud_go_deactivateuser_rationale",
+      "target": "users_crud_go_deactivateuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go_rationale_1",
+      "target": "auth_jwtutils_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go",
+      "target": "auth_jwtutils_go_encodetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go_encodetoken_rationale",
+      "target": "auth_jwtutils_go_encodetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go",
+      "target": "auth_jwtutils_go_decodetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go_decodetoken_rationale",
+      "target": "auth_jwtutils_go_decodetoken",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/jwt_utils.go",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "auth_jwtutils_go",
+      "target": "auth_jwtutils_go_sign",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "auth_handlers_go_rationale_1",
+      "target": "auth_handlers_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "auth_handlers_go_authenticateuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "auth_handlers_go_authenticateuser_rationale",
+      "target": "auth_handlers_go_authenticateuser",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "auth_handlers_go_verifysession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "auth_handlers_go_verifysession_rationale",
+      "target": "auth_handlers_go_verifysession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "auth_handlers_go_refreshsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L63",
+      "weight": 1.0,
+      "source": "auth_handlers_go_refreshsession_rationale",
+      "target": "auth_handlers_go_refreshsession",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "auth_handlers_go_logout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "auth_handlers_go_logout_rationale",
+      "target": "auth_handlers_go_logout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "auth_handlers_go_verifypassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L83",
+      "weight": 1.0,
+      "source": "auth_handlers_go_verifypassword_rationale",
+      "target": "auth_handlers_go_verifypassword",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "billing_invoices_go_rationale_1",
+      "target": "billing_invoices_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "billing_invoices_go_createinvoice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "billing_invoices_go_createinvoice_rationale",
+      "target": "billing_invoices_go_createinvoice",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "billing_invoices_go_sendinvoiceemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "billing_invoices_go_sendinvoiceemail_rationale",
+      "target": "billing_invoices_go_sendinvoiceemail",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "billing_invoices_go_listuserinvoices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "billing_invoices_go_listuserinvoices_rationale",
+      "target": "billing_invoices_go_listuserinvoices",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "billing_invoices_go_renderandqueue",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_rationale_1",
+      "target": "billing_stripeclient_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "billing_stripeclient_go_chargecustomer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_chargecustomer_rationale",
+      "target": "billing_stripeclient_go_chargecustomer",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "billing_stripeclient_go_refundcharge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_refundcharge_rationale",
+      "target": "billing_stripeclient_go_refundcharge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "billing_stripeclient_go_verifywebhook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L71",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_verifywebhook_rationale",
+      "target": "billing_stripeclient_go_verifywebhook",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "billing_stripeclient_go_handlewebhookevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_handlewebhookevent_rationale",
+      "target": "billing_stripeclient_go_handlewebhookevent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L123",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "billing_stripeclient_go_fakestripecharge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "api_routes_go_rationale_1",
+      "target": "api_routes_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_loginendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "api_routes_go_loginendpoint_rationale",
+      "target": "api_routes_go_loginendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_refreshendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "api_routes_go_refreshendpoint_rationale",
+      "target": "api_routes_go_refreshendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_logoutendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L47",
+      "weight": 1.0,
+      "source": "api_routes_go_logoutendpoint_rationale",
+      "target": "api_routes_go_logoutendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_createuserendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L53",
+      "weight": 1.0,
+      "source": "api_routes_go_createuserendpoint_rationale",
+      "target": "api_routes_go_createuserendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_getmeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "api_routes_go_getmeendpoint_rationale",
+      "target": "api_routes_go_getmeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_deletemeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "api_routes_go_deletemeendpoint_rationale",
+      "target": "api_routes_go_deletemeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_chargeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L79",
+      "weight": 1.0,
+      "source": "api_routes_go_chargeendpoint_rationale",
+      "target": "api_routes_go_chargeendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_refundendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "api_routes_go_refundendpoint_rationale",
+      "target": "api_routes_go_refundendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_listinvoicesendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "api_routes_go_listinvoicesendpoint_rationale",
+      "target": "api_routes_go_listinvoicesendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "api_routes_go_stripewebhookendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "api_routes_go_stripewebhookendpoint_rationale",
+      "target": "api_routes_go_stripewebhookendpoint",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "users/crud.go",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "users_crud_go",
+      "target": "db_connection_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "db_connection_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "auth_handlers_go",
+      "target": "users_crud_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "db_connection_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "billing_invoices_go",
+      "target": "users_crud_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "db_connection_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go",
+      "target": "users_crud_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "auth_handlers_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "billing_invoices_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "api/routes.go",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "api_routes_go",
+      "target": "users_crud_go",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "auth_handlers_go_authenticateuser",
+      "target": "users_crud_go_getuserbyemail",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "auth_handlers_go_authenticateuser",
+      "target": "users_crud_go_updatelastlogin",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "auth_handlers_go_authenticateuser",
+      "target": "auth_jwtutils_go_encodetoken",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "auth_handlers_go_verifysession",
+      "target": "auth_jwtutils_go_decodetoken",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "auth_handlers_go_refreshsession",
+      "target": "auth_jwtutils_go_decodetoken",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "auth/handlers.go",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "auth_handlers_go_logout",
+      "target": "db_connection_go_getconnection",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_chargecustomer",
+      "target": "users_crud_go_getuser",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "billing/stripe_client.go",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "billing_stripeclient_go_chargecustomer",
+      "target": "billing_invoices_go_createinvoice",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "billing/invoices.go",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "billing_invoices_go_sendinvoiceemail",
+      "target": "users_crud_go_getuser",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "api_routes_go_loginendpoint",
+      "target": "auth_handlers_go_authenticateuser",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L51",
+      "weight": 1.0,
+      "source": "api_routes_go_createuserendpoint",
+      "target": "users_crud_go_createuser",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "api_routes_go_getmeendpoint",
+      "target": "auth_handlers_go_verifysession",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L61",
+      "weight": 1.0,
+      "source": "api_routes_go_getmeendpoint",
+      "target": "users_crud_go_getuser",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "api_routes_go_chargeendpoint",
+      "target": "billing_stripeclient_go_chargecustomer",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L86",
+      "weight": 1.0,
+      "source": "api_routes_go_refundendpoint",
+      "target": "billing_stripeclient_go_refundcharge",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "api_routes_go_listinvoicesendpoint",
+      "target": "billing_invoices_go_listuserinvoices",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L102",
+      "weight": 1.0,
+      "source": "api_routes_go_stripewebhookendpoint",
+      "target": "billing_stripeclient_go_verifywebhook",
+      "confidence_score": 0.8
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "source_file": "api/routes.go",
+      "source_location": "L103",
+      "weight": 1.0,
+      "source": "api_routes_go_stripewebhookendpoint",
+      "target": "billing_stripeclient_go_handlewebhookevent",
+      "confidence_score": 0.8
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}
