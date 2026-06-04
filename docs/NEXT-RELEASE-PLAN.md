@@ -92,6 +92,7 @@ can read as a fitness function.
 | E1.2 A/B answer generation | For each query, generate an answer **with** NeuralMind context vs **without** (naive baseline). Pluggable answerer. | Two answer sets produced deterministically given a fixed answerer. |
 | E1.3 Judge — two modes | **Offline mode (default, local-first):** heuristic scoring — expected-fact recall, citation/grounding rate, contradiction check. **API mode (opt-in):** LLM-as-judge for nuanced scoring, clearly flagged as leaving the machine. | Offline mode runs with zero network. API mode is opt-in via env var and documented as non-local. |
 | E1.4 Report | `neuralmind eval` prints faithfulness delta (with vs without), grounding rate, and per-query breakdown; `--json` for machines. | Stable schema; mirrors `doctor --json` ergonomics. |
+| E1.5 Onboarding-lift eval | Measure cold agent **+ team baseline** vs cold agent **alone** on faithfulness/recall. This is the fitness test that gates the shared-memory build (#175): build with confidence if the lift is real and large, reconsider if marginal. | A reported "onboarding lift" metric; #175 design is signed off against it, not on assertion. |
 
 > **Local-first tension to resolve in E1.3 (flag for PM):** a good faithfulness
 > judge usually wants a strong LLM, which conflicts with the 100%-local promise.
@@ -259,6 +260,24 @@ portable-format design (§4, v0.16) and the enterprise sequencing (§5).
 - **Quality dilution.** Per-developer memory is sharp because it's personal; shared
   memory optimizes for the team-average codebase tour, which may help nobody
   specifically.
+
+### Sequencing — measure before you build (the sign-off gate)
+The use-case analysis supports YES, but the value is currently **assumed, not
+measured** — the same gap `HONEST-ASSESSMENT.md` flags everywhere else. The
+headline ("a day-1 agent is meaningfully more useful with the team baseline") is
+testable with the v0.13 harness. **The shared-memory *build* is therefore gated on
+a measured onboarding-lift eval** (task E1.5, #172): cold agent + team baseline vs
+cold agent alone, scored on faithfulness/recall.
+- **#171 evals → measure the lift → then lock #175's design.** Sign off on data,
+  not assertion.
+- If the lift is real and large: build the design below with confidence.
+- If it's marginal on the fixtures: you've avoided the project's hardest design
+  work (merge/decay/privacy) before sinking weeks into it.
+
+This also de-risks the "thin value" cases the analysis surfaced — solo/tiny teams
+(no compounding), heavily-siloed teams (disjoint personal maps), and the risk that
+shared memory faithfully amplifies existing tech-debt coupling. The eval will show
+whether the lift survives those conditions on representative fixtures.
 
 ### Recommended framing for the decision
 Treat it as **opt-in, additive, and read-mostly**: a *committed, reviewed*
