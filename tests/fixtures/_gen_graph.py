@@ -31,6 +31,7 @@ on ``source_file`` strings matching the gold modules, which this guarantees.
 
 Run:  python tests/fixtures/_gen_graph.py
 """
+
 from __future__ import annotations
 
 import json
@@ -51,9 +52,7 @@ def _def_line(source_path: Path, name: str) -> int:
     """
     base = name.rstrip("()")
     lines = source_path.read_text().splitlines()
-    pat = re.compile(
-        rf"\b(?:function|interface|class|func|type)\b[^\n]*\b{re.escape(base)}\b"
-    )
+    pat = re.compile(rf"\b(?:function|interface|class|func|type)\b[^\n]*\b{re.escape(base)}\b")
     for i, line in enumerate(lines, 1):
         if pat.search(line):
             return i
@@ -235,10 +234,16 @@ TS_SPEC = {
             "rationale": "Database connection pool for the fixture.",
             "symbols": [
                 {"name": "Connection", "rationale": "Minimal connection interface."},
-                {"name": "getConnection()", "rationale": "Return a process-wide connection to the fixture database."},
+                {
+                    "name": "getConnection()",
+                    "rationale": "Return a process-wide connection to the fixture database.",
+                },
                 {"name": "closeAll()", "line": 30},
                 {"name": "createConnection()", "line": 37},
-                {"name": "ensureSchema()", "rationale": "Create fixture tables if they don't exist yet."},
+                {
+                    "name": "ensureSchema()",
+                    "rationale": "Create fixture tables if they don't exist yet.",
+                },
             ],
         },
         {
@@ -248,11 +253,17 @@ TS_SPEC = {
             "rationale": "User model + CRUD operations.",
             "symbols": [
                 {"name": "User", "rationale": "Canonical user record."},
-                {"name": "createUser()", "rationale": "Insert a new user and return the created record."},
+                {
+                    "name": "createUser()",
+                    "rationale": "Insert a new user and return the created record.",
+                },
                 {"name": "getUserByEmail()", "rationale": "Fetch a user by email (auth hot path)."},
                 {"name": "getUser()", "rationale": "Fetch a user by primary key."},
                 {"name": "updateLastLogin()", "line": 60},
-                {"name": "deactivateUser()", "rationale": "Soft-delete a user by flipping isActive off."},
+                {
+                    "name": "deactivateUser()",
+                    "rationale": "Soft-delete a user by flipping isActive off.",
+                },
             ],
         },
         {
@@ -261,8 +272,14 @@ TS_SPEC = {
             "community": 3,
             "rationale": "JWT encode/decode helpers.",
             "symbols": [
-                {"name": "encodeToken()", "rationale": "Produce a signed JWT string from a claims object."},
-                {"name": "decodeToken()", "rationale": "Verify signature + expiry and return the claims object."},
+                {
+                    "name": "encodeToken()",
+                    "rationale": "Produce a signed JWT string from a claims object.",
+                },
+                {
+                    "name": "decodeToken()",
+                    "rationale": "Verify signature + expiry and return the claims object.",
+                },
                 {"name": "sign()", "line": 44},
                 {"name": "TokenExpiredError", "inherits": "Error"},
                 {"name": "InvalidSignatureError", "inherits": "Error"},
@@ -275,11 +292,26 @@ TS_SPEC = {
             "community": 3,
             "rationale": "Authentication handlers — login, logout, token refresh.",
             "symbols": [
-                {"name": "authenticateUser()", "rationale": "Validate credentials and issue an access + refresh token pair."},
-                {"name": "verifySession()", "rationale": "Return the user id if the access token is valid."},
-                {"name": "refreshSession()", "rationale": "Exchange a refresh token for a new access token."},
-                {"name": "logout()", "rationale": "Revoke a refresh token by writing it to the revocation list."},
-                {"name": "verifyPassword()", "rationale": "Constant-time password verification against stored hash."},
+                {
+                    "name": "authenticateUser()",
+                    "rationale": "Validate credentials and issue an access + refresh token pair.",
+                },
+                {
+                    "name": "verifySession()",
+                    "rationale": "Return the user id if the access token is valid.",
+                },
+                {
+                    "name": "refreshSession()",
+                    "rationale": "Exchange a refresh token for a new access token.",
+                },
+                {
+                    "name": "logout()",
+                    "rationale": "Revoke a refresh token by writing it to the revocation list.",
+                },
+                {
+                    "name": "verifyPassword()",
+                    "rationale": "Constant-time password verification against stored hash.",
+                },
                 {"name": "InvalidCredentialsError", "inherits": "Error"},
                 {"name": "InvalidTokenError", "inherits": "Error"},
             ],
@@ -291,8 +323,14 @@ TS_SPEC = {
             "rationale": "Invoice generation and delivery.",
             "symbols": [
                 {"name": "createInvoice()", "rationale": "Write an invoice row and return it."},
-                {"name": "sendInvoiceEmail()", "rationale": "Render an invoice and hand it to the email transport."},
-                {"name": "listUserInvoices()", "rationale": "Return all invoices for a user, newest first."},
+                {
+                    "name": "sendInvoiceEmail()",
+                    "rationale": "Render an invoice and hand it to the email transport.",
+                },
+                {
+                    "name": "listUserInvoices()",
+                    "rationale": "Return all invoices for a user, newest first.",
+                },
                 {"name": "renderAndQueue()", "line": 76},
                 {"name": "InvoiceNotFoundError", "inherits": "Error"},
             ],
@@ -303,10 +341,22 @@ TS_SPEC = {
             "community": 4,
             "rationale": "Stripe integration — charges, refunds, webhook signature verification.",
             "symbols": [
-                {"name": "chargeCustomer()", "rationale": "Create a Stripe charge and mirror it into our billing table."},
-                {"name": "refundCharge()", "rationale": "Issue a full refund for a previous charge and log it."},
-                {"name": "verifyWebhook()", "rationale": "Validate a Stripe webhook signature and return the event body."},
-                {"name": "handleWebhookEvent()", "rationale": "Dispatch a verified Stripe webhook event to the right handler."},
+                {
+                    "name": "chargeCustomer()",
+                    "rationale": "Create a Stripe charge and mirror it into our billing table.",
+                },
+                {
+                    "name": "refundCharge()",
+                    "rationale": "Issue a full refund for a previous charge and log it.",
+                },
+                {
+                    "name": "verifyWebhook()",
+                    "rationale": "Validate a Stripe webhook signature and return the event body.",
+                },
+                {
+                    "name": "handleWebhookEvent()",
+                    "rationale": "Dispatch a verified Stripe webhook event to the right handler.",
+                },
                 {"name": "fakeStripeCharge()", "line": 105},
                 {"name": "BillingError", "inherits": "Error"},
                 {"name": "WebhookVerificationError", "inherits": "Error"},
@@ -318,16 +368,43 @@ TS_SPEC = {
             "community": 5,
             "rationale": "HTTP route wiring for the sample web app.",
             "symbols": [
-                {"name": "loginEndpoint()", "rationale": "POST /api/auth/login — returns access + refresh tokens."},
-                {"name": "refreshEndpoint()", "rationale": "POST /api/auth/refresh — returns a new access token."},
-                {"name": "logoutEndpoint()", "rationale": "POST /api/auth/logout — revokes a refresh token."},
+                {
+                    "name": "loginEndpoint()",
+                    "rationale": "POST /api/auth/login — returns access + refresh tokens.",
+                },
+                {
+                    "name": "refreshEndpoint()",
+                    "rationale": "POST /api/auth/refresh — returns a new access token.",
+                },
+                {
+                    "name": "logoutEndpoint()",
+                    "rationale": "POST /api/auth/logout — revokes a refresh token.",
+                },
                 {"name": "createUserEndpoint()", "rationale": "POST /api/users — sign-up flow."},
-                {"name": "getMeEndpoint()", "rationale": "GET /api/users/me — requires Authorization: Bearer header."},
-                {"name": "deleteMeEndpoint()", "rationale": "DELETE /api/users/me — soft-delete the authenticated user."},
-                {"name": "chargeEndpoint()", "rationale": "POST /api/billing/charge — charge the authenticated user."},
-                {"name": "refundEndpoint()", "rationale": "POST /api/billing/refund — admin-only refund of a charge."},
-                {"name": "listInvoicesEndpoint()", "rationale": "GET /api/billing/invoices — list invoices for the authenticated user."},
-                {"name": "stripeWebhookEndpoint()", "rationale": "POST /webhooks/stripe — entry point for Stripe events."},
+                {
+                    "name": "getMeEndpoint()",
+                    "rationale": "GET /api/users/me — requires Authorization: Bearer header.",
+                },
+                {
+                    "name": "deleteMeEndpoint()",
+                    "rationale": "DELETE /api/users/me — soft-delete the authenticated user.",
+                },
+                {
+                    "name": "chargeEndpoint()",
+                    "rationale": "POST /api/billing/charge — charge the authenticated user.",
+                },
+                {
+                    "name": "refundEndpoint()",
+                    "rationale": "POST /api/billing/refund — admin-only refund of a charge.",
+                },
+                {
+                    "name": "listInvoicesEndpoint()",
+                    "rationale": "GET /api/billing/invoices — list invoices for the authenticated user.",
+                },
+                {
+                    "name": "stripeWebhookEndpoint()",
+                    "rationale": "POST /webhooks/stripe — entry point for Stripe events.",
+                },
             ],
         },
     ],
@@ -348,23 +425,65 @@ TS_SPEC = {
     ],
     "calls": [
         ("src/auth/handlers.ts", 22, "authenticateUser()", "src/users/crud.ts", "getUserByEmail()"),
-        ("src/auth/handlers.ts", 29, "authenticateUser()", "src/users/crud.ts", "updateLastLogin()"),
+        (
+            "src/auth/handlers.ts",
+            29,
+            "authenticateUser()",
+            "src/users/crud.ts",
+            "updateLastLogin()",
+        ),
         ("src/auth/handlers.ts", 31, "authenticateUser()", "src/auth/jwtUtils.ts", "encodeToken()"),
         ("src/auth/handlers.ts", 40, "verifySession()", "src/auth/jwtUtils.ts", "decodeToken()"),
         ("src/auth/handlers.ts", 49, "refreshSession()", "src/auth/jwtUtils.ts", "decodeToken()"),
         ("src/auth/handlers.ts", 60, "logout()", "src/db/connection.ts", "getConnection()"),
         ("src/billing/stripeClient.ts", 24, "chargeCustomer()", "src/users/crud.ts", "getUser()"),
-        ("src/billing/stripeClient.ts", 37, "chargeCustomer()", "src/billing/invoices.ts", "createInvoice()"),
+        (
+            "src/billing/stripeClient.ts",
+            37,
+            "chargeCustomer()",
+            "src/billing/invoices.ts",
+            "createInvoice()",
+        ),
         ("src/billing/invoices.ts", 42, "sendInvoiceEmail()", "src/users/crud.ts", "getUser()"),
         ("src/api/routes.ts", 36, "loginEndpoint()", "src/auth/handlers.ts", "authenticateUser()"),
         ("src/api/routes.ts", 56, "createUserEndpoint()", "src/users/crud.ts", "createUser()"),
         ("src/api/routes.ts", 64, "getMeEndpoint()", "src/auth/handlers.ts", "verifySession()"),
         ("src/api/routes.ts", 65, "getMeEndpoint()", "src/users/crud.ts", "getUser()"),
-        ("src/api/routes.ts", 82, "chargeEndpoint()", "src/billing/stripeClient.ts", "chargeCustomer()"),
-        ("src/api/routes.ts", 86, "refundEndpoint()", "src/billing/stripeClient.ts", "refundCharge()"),
-        ("src/api/routes.ts", 97, "listInvoicesEndpoint()", "src/billing/invoices.ts", "listUserInvoices()"),
-        ("src/api/routes.ts", 105, "stripeWebhookEndpoint()", "src/billing/stripeClient.ts", "verifyWebhook()"),
-        ("src/api/routes.ts", 106, "stripeWebhookEndpoint()", "src/billing/stripeClient.ts", "handleWebhookEvent()"),
+        (
+            "src/api/routes.ts",
+            82,
+            "chargeEndpoint()",
+            "src/billing/stripeClient.ts",
+            "chargeCustomer()",
+        ),
+        (
+            "src/api/routes.ts",
+            86,
+            "refundEndpoint()",
+            "src/billing/stripeClient.ts",
+            "refundCharge()",
+        ),
+        (
+            "src/api/routes.ts",
+            97,
+            "listInvoicesEndpoint()",
+            "src/billing/invoices.ts",
+            "listUserInvoices()",
+        ),
+        (
+            "src/api/routes.ts",
+            105,
+            "stripeWebhookEndpoint()",
+            "src/billing/stripeClient.ts",
+            "verifyWebhook()",
+        ),
+        (
+            "src/api/routes.ts",
+            106,
+            "stripeWebhookEndpoint()",
+            "src/billing/stripeClient.ts",
+            "handleWebhookEvent()",
+        ),
     ],
 }
 
@@ -378,11 +497,23 @@ GO_SPEC = {
             "community": 1,
             "rationale": "Package db provides the fixture's database connection pool.",
             "symbols": [
-                {"name": "Connection", "rationale": "Minimal connection interface used by the fixture."},
-                {"name": "GetConnection()", "rationale": "Return a process-wide connection to the fixture database."},
-                {"name": "Execute()", "rationale": "Run a statement and return rows plus the last inserted id."},
+                {
+                    "name": "Connection",
+                    "rationale": "Minimal connection interface used by the fixture.",
+                },
+                {
+                    "name": "GetConnection()",
+                    "rationale": "Return a process-wide connection to the fixture database.",
+                },
+                {
+                    "name": "Execute()",
+                    "rationale": "Run a statement and return rows plus the last inserted id.",
+                },
                 {"name": "Close()", "line": 47},
-                {"name": "ensureSchema()", "rationale": "Create fixture tables if they don't exist yet."},
+                {
+                    "name": "ensureSchema()",
+                    "rationale": "Create fixture tables if they don't exist yet.",
+                },
             ],
         },
         {
@@ -392,11 +523,17 @@ GO_SPEC = {
             "rationale": "Package users provides the user model and CRUD operations.",
             "symbols": [
                 {"name": "User", "rationale": "Canonical user record."},
-                {"name": "CreateUser()", "rationale": "Insert a new user and return the created record."},
+                {
+                    "name": "CreateUser()",
+                    "rationale": "Insert a new user and return the created record.",
+                },
                 {"name": "GetUserByEmail()", "rationale": "Fetch a user by email (auth hot path)."},
                 {"name": "GetUser()", "rationale": "Fetch a user by primary key."},
                 {"name": "UpdateLastLogin()", "line": 63},
-                {"name": "DeactivateUser()", "rationale": "Soft-delete a user by flipping is_active off."},
+                {
+                    "name": "DeactivateUser()",
+                    "rationale": "Soft-delete a user by flipping is_active off.",
+                },
             ],
         },
         {
@@ -405,8 +542,14 @@ GO_SPEC = {
             "community": 3,
             "rationale": "Package auth provides JWT encode/decode helpers and auth handlers.",
             "symbols": [
-                {"name": "EncodeToken()", "rationale": "Produce a signed JWT string from a claims map."},
-                {"name": "DecodeToken()", "rationale": "Verify signature + expiry and return the claims map."},
+                {
+                    "name": "EncodeToken()",
+                    "rationale": "Produce a signed JWT string from a claims map.",
+                },
+                {
+                    "name": "DecodeToken()",
+                    "rationale": "Verify signature + expiry and return the claims map.",
+                },
                 {"name": "sign()", "line": 66},
             ],
         },
@@ -416,11 +559,26 @@ GO_SPEC = {
             "community": 3,
             "rationale": "Authentication handlers — login, logout, token refresh.",
             "symbols": [
-                {"name": "AuthenticateUser()", "rationale": "Validate credentials and issue an access + refresh token pair."},
-                {"name": "VerifySession()", "rationale": "Return the user id if the access token is valid."},
-                {"name": "RefreshSession()", "rationale": "Exchange a refresh token for a new access token."},
-                {"name": "Logout()", "rationale": "Revoke a refresh token by writing it to the revocation list."},
-                {"name": "VerifyPassword()", "rationale": "Constant-time password verification against stored hash."},
+                {
+                    "name": "AuthenticateUser()",
+                    "rationale": "Validate credentials and issue an access + refresh token pair.",
+                },
+                {
+                    "name": "VerifySession()",
+                    "rationale": "Return the user id if the access token is valid.",
+                },
+                {
+                    "name": "RefreshSession()",
+                    "rationale": "Exchange a refresh token for a new access token.",
+                },
+                {
+                    "name": "Logout()",
+                    "rationale": "Revoke a refresh token by writing it to the revocation list.",
+                },
+                {
+                    "name": "VerifyPassword()",
+                    "rationale": "Constant-time password verification against stored hash.",
+                },
             ],
         },
         {
@@ -430,8 +588,14 @@ GO_SPEC = {
             "rationale": "Package billing provides invoice generation and Stripe integration.",
             "symbols": [
                 {"name": "CreateInvoice()", "rationale": "Write an invoice row and return it."},
-                {"name": "SendInvoiceEmail()", "rationale": "Render an invoice and hand it to the email transport."},
-                {"name": "ListUserInvoices()", "rationale": "Return all invoices for a user, newest first."},
+                {
+                    "name": "SendInvoiceEmail()",
+                    "rationale": "Render an invoice and hand it to the email transport.",
+                },
+                {
+                    "name": "ListUserInvoices()",
+                    "rationale": "Return all invoices for a user, newest first.",
+                },
                 {"name": "renderAndQueue()", "line": 74},
             ],
         },
@@ -441,10 +605,22 @@ GO_SPEC = {
             "community": 4,
             "rationale": "Stripe integration — charges, refunds, webhook signature verification.",
             "symbols": [
-                {"name": "ChargeCustomer()", "rationale": "Create a Stripe charge and mirror it into our billing table."},
-                {"name": "RefundCharge()", "rationale": "Issue a full refund for a previous charge and log it."},
-                {"name": "VerifyWebhook()", "rationale": "Validate a Stripe webhook signature and return the event body."},
-                {"name": "HandleWebhookEvent()", "rationale": "Dispatch a verified Stripe webhook event to the right handler."},
+                {
+                    "name": "ChargeCustomer()",
+                    "rationale": "Create a Stripe charge and mirror it into our billing table.",
+                },
+                {
+                    "name": "RefundCharge()",
+                    "rationale": "Issue a full refund for a previous charge and log it.",
+                },
+                {
+                    "name": "VerifyWebhook()",
+                    "rationale": "Validate a Stripe webhook signature and return the event body.",
+                },
+                {
+                    "name": "HandleWebhookEvent()",
+                    "rationale": "Dispatch a verified Stripe webhook event to the right handler.",
+                },
                 {"name": "fakeStripeCharge()", "line": 119},
             ],
         },
@@ -454,16 +630,43 @@ GO_SPEC = {
             "community": 5,
             "rationale": "Package api wires HTTP routes for the sample web app.",
             "symbols": [
-                {"name": "LoginEndpoint()", "rationale": "POST /api/auth/login — returns access + refresh tokens."},
-                {"name": "RefreshEndpoint()", "rationale": "POST /api/auth/refresh — returns a new access token."},
-                {"name": "LogoutEndpoint()", "rationale": "POST /api/auth/logout — revokes a refresh token."},
+                {
+                    "name": "LoginEndpoint()",
+                    "rationale": "POST /api/auth/login — returns access + refresh tokens.",
+                },
+                {
+                    "name": "RefreshEndpoint()",
+                    "rationale": "POST /api/auth/refresh — returns a new access token.",
+                },
+                {
+                    "name": "LogoutEndpoint()",
+                    "rationale": "POST /api/auth/logout — revokes a refresh token.",
+                },
                 {"name": "CreateUserEndpoint()", "rationale": "POST /api/users — sign-up flow."},
-                {"name": "GetMeEndpoint()", "rationale": "GET /api/users/me — requires Authorization: Bearer header."},
-                {"name": "DeleteMeEndpoint()", "rationale": "DELETE /api/users/me — soft-delete the authenticated user."},
-                {"name": "ChargeEndpoint()", "rationale": "POST /api/billing/charge — charge the authenticated user."},
-                {"name": "RefundEndpoint()", "rationale": "POST /api/billing/refund — admin-only refund of a charge."},
-                {"name": "ListInvoicesEndpoint()", "rationale": "GET /api/billing/invoices — list invoices for the authenticated user."},
-                {"name": "StripeWebhookEndpoint()", "rationale": "POST /webhooks/stripe — entry point for Stripe events."},
+                {
+                    "name": "GetMeEndpoint()",
+                    "rationale": "GET /api/users/me — requires Authorization: Bearer header.",
+                },
+                {
+                    "name": "DeleteMeEndpoint()",
+                    "rationale": "DELETE /api/users/me — soft-delete the authenticated user.",
+                },
+                {
+                    "name": "ChargeEndpoint()",
+                    "rationale": "POST /api/billing/charge — charge the authenticated user.",
+                },
+                {
+                    "name": "RefundEndpoint()",
+                    "rationale": "POST /api/billing/refund — admin-only refund of a charge.",
+                },
+                {
+                    "name": "ListInvoicesEndpoint()",
+                    "rationale": "GET /api/billing/invoices — list invoices for the authenticated user.",
+                },
+                {
+                    "name": "StripeWebhookEndpoint()",
+                    "rationale": "POST /webhooks/stripe — entry point for Stripe events.",
+                },
             ],
         },
     ],
@@ -487,7 +690,13 @@ GO_SPEC = {
         ("auth/handlers.go", 61, "RefreshSession()", "auth/jwt_utils.go", "DecodeToken()"),
         ("auth/handlers.go", 74, "Logout()", "db/connection.go", "GetConnection()"),
         ("billing/stripe_client.go", 33, "ChargeCustomer()", "users/crud.go", "GetUser()"),
-        ("billing/stripe_client.go", 44, "ChargeCustomer()", "billing/invoices.go", "CreateInvoice()"),
+        (
+            "billing/stripe_client.go",
+            44,
+            "ChargeCustomer()",
+            "billing/invoices.go",
+            "CreateInvoice()",
+        ),
         ("billing/invoices.go", 43, "SendInvoiceEmail()", "users/crud.go", "GetUser()"),
         ("api/routes.go", 35, "LoginEndpoint()", "auth/handlers.go", "AuthenticateUser()"),
         ("api/routes.go", 51, "CreateUserEndpoint()", "users/crud.go", "CreateUser()"),
@@ -495,9 +704,27 @@ GO_SPEC = {
         ("api/routes.go", 61, "GetMeEndpoint()", "users/crud.go", "GetUser()"),
         ("api/routes.go", 80, "ChargeEndpoint()", "billing/stripe_client.go", "ChargeCustomer()"),
         ("api/routes.go", 86, "RefundEndpoint()", "billing/stripe_client.go", "RefundCharge()"),
-        ("api/routes.go", 93, "ListInvoicesEndpoint()", "billing/invoices.go", "ListUserInvoices()"),
-        ("api/routes.go", 102, "StripeWebhookEndpoint()", "billing/stripe_client.go", "VerifyWebhook()"),
-        ("api/routes.go", 103, "StripeWebhookEndpoint()", "billing/stripe_client.go", "HandleWebhookEvent()"),
+        (
+            "api/routes.go",
+            93,
+            "ListInvoicesEndpoint()",
+            "billing/invoices.go",
+            "ListUserInvoices()",
+        ),
+        (
+            "api/routes.go",
+            102,
+            "StripeWebhookEndpoint()",
+            "billing/stripe_client.go",
+            "VerifyWebhook()",
+        ),
+        (
+            "api/routes.go",
+            103,
+            "StripeWebhookEndpoint()",
+            "billing/stripe_client.go",
+            "HandleWebhookEvent()",
+        ),
     ],
 }
 
