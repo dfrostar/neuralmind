@@ -6,7 +6,43 @@ move any of these forward are very welcome — see
 
 For the longer-horizon engineering plan (release cadence, monitoring,
 compliance, scale targets), see
-[`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md).
+[`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). For the
+sequenced feature map of the next arc, see
+[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md).
+
+## Next — v0.13 → v0.16 (the eval-first arc)
+
+The spine is *measure, then change, then measure again.* Full detail,
+epics, and acceptance criteria in
+[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md); tracked in
+issues [#171](https://github.com/dfrostar/neuralmind/issues/171)–[#175](https://github.com/dfrostar/neuralmind/issues/175).
+
+| Release | Theme | What it does |
+|---|---|---|
+| **v0.13** | **Measure** | CI-gated faithfulness + retrieval-quality eval harness (100%-local offline judge; opt-in API judge). Polyglot TS/Go fixtures. The fitness function everything else depends on. |
+| **v0.14** | **Decouple** | A `GraphSource` adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness. Reduces the single-graph-backend dependency, widens language coverage. |
+| **v0.15** | **Endure** | Host-capabilities adapter + integration-contract tests pinning Claude Code hook / MCP behaviour, so upstream drift is a one-adapter swap. |
+| **v0.16** | **Anticipate** | Promote directional "what you edit next" recall to first-class; ship a portable cross-agent memory format. |
+
+**Team/shared memory — approved in principle, gated on measurement.**
+An opt-in, git-committed team baseline (reviewed in PRs, no SaaS) overlaid
+by each developer's private personal layer. Its day-one onboarding lift is
+*measured* by the v0.13 harness before the design is locked — see
+[#175](https://github.com/dfrostar/neuralmind/issues/175). This is what
+un-gates an honest enterprise lane: the compliance surface (RBAC, audit
+of the shared layer) sequences *after* a real multi-writer surface exists,
+not in anticipation of one.
+
+## Shipped since v0.9.0
+
+- **v0.12.0 — install doctor.** `neuralmind doctor` inspects an install
+  and reports each piece with a status + exact fix; friendlier first-run
+  error. See [v0.12.0 release notes](RELEASE_NOTES_v0.12.0.md).
+- **v0.11.0 — directional synapses.** The brain layer learns *what comes
+  next*, not just *what goes together* (`neuralmind next`,
+  `neuralmind_next_likely`). See [v0.11.0 release notes](RELEASE_NOTES_v0.11.0.md).
+- **v0.10.0 — agent ergonomics.** PostToolUse Bash footer reports what was
+  dropped; `neuralmind last` recovers it. See [v0.10.0 release notes](RELEASE_NOTES_v0.10.0.md).
 
 ## Shipped in v0.9.0 — enterprise-ready
 

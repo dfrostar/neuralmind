@@ -63,6 +63,23 @@
     </header>
 
     <section>
+        <div class="container" id="whats-next">
+            <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
+            <p><strong>A staged plan, not yet shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the next arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
+            <h3>The arc (v0.13 → v0.16)</h3>
+            <ul>
+                <li><strong>v0.13 — Measure.</strong> A CI-gated evaluation harness that answers the question we've been honest about not yet measuring: does the memory make the agent's answers <em>better</em>, not just shorter? Faithfulness + retrieval-quality scoring, with a 100%-local offline judge by default (an LLM-as-judge mode is strictly opt-in). Polyglot TypeScript + Go fixtures so quality claims stop being Python-only.</li>
+                <li><strong>v0.14 — Decouple.</strong> A graph-source adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness — reducing the single dependency on one graph backend and widening language coverage.</li>
+                <li><strong>v0.15 — Endure.</strong> A host-capabilities adapter plus integration-contract tests that pin NeuralMind against the behaviour it relies on (Claude Code hooks, the MCP spec), so an upstream change is a one-adapter swap, not a rewrite.</li>
+                <li><strong>v0.16 — Anticipate.</strong> Promote directional "what you edit next" recall to a first-class agent surface, and ship a portable memory format so one learned map serves Claude Code, Cursor, Cline, and Continue.</li>
+            </ul>
+            <h3>A decision we've made for the team story</h3>
+            <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0120">
             <h2>What's New in v0.12.0 — install doctor</h2>
             <p><strong>One command tells you exactly what's wired up and what isn't.</strong> NeuralMind has accumulated moving parts — a code graph, a semantic index, a synapse memory db, Claude Code hooks, an MCP server, a query-memory consent flag. When one isn't in place, the old symptom was a stack trace or a silent no-op. v0.12.0 makes the setup legible.</p>
