@@ -86,7 +86,10 @@ keywords = [
     "faithfulness-eval",
     "retrieval-quality",
     "polyglot-fixtures",
-    "offline-eval"
+    "offline-eval",
+    "neuralmind-eval",
+    "answer-faithfulness",
+    "faithfulness-delta"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

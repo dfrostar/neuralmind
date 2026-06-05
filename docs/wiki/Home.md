@@ -6,6 +6,10 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
+### v0.14.0 — Measure faithfulness
+
+`neuralmind eval` turns "does the memory make answers *better*, not just shorter?" into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline (a **faithfulness delta**), plus grounding and contradiction checks. 100% local by default (`--json` and `--selfcheck` too); the LLM-as-judge is opt-in. The first release where you can measure *answer quality*, not just token reduction. Full details: [v0.14.0 release notes](../blob/main/RELEASE_NOTES_v0.14.0.md).
+
 ### v0.13.0 — Measurement foundation
 
 The scaffolding to *prove* the memory helps, not just claim it: a 100%-local **faithfulness eval** (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer), **polyglot retrieval fixtures (TypeScript + Go)** so quality is measured beyond Python, and a written documentation process. No runtime change to your install — this is the fitness function the eval-first roadmap (v0.13→v0.16) builds on. The full `neuralmind eval` report is the next increment. Full details: [v0.13.0 release notes](../blob/main/RELEASE_NOTES_v0.13.0.md).
