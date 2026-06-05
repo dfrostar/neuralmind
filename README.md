@@ -13,15 +13,15 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.14.0** — **Measure faithfulness.** A new contributor/CI command — `neuralmind eval` — turns *"does the memory actually help?"* into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a naive baseline **at the same token budget** (a faithfulness delta, plus grounding and contradiction checks). 100% local by default; the LLM-as-judge is opt-in. Run it from a **source checkout** — the `evals/` gold set ships with the repo, not the pip wheel. The first release where you can measure *answer quality*, not just token reduction. [Release notes](RELEASE_NOTES_v0.14.0.md)
+> **🆕 New in v0.15.0** — **No graphify needed.** NeuralMind now ships a built-in **tree-sitter** graph backend, so `pip install neuralmind && neuralmind build .` *just works* — no second, external tool to install first. A real graphify graph still takes priority where one exists, so nothing changes for existing setups. And the swap is **proven at parity, not asserted**: a new CI gate builds the reference fixture with *both* backends and fails if the built-in one drifts outside tolerance of graphify on token reduction or answer faithfulness. The graph *producer* is now pluggable behind a `graph.json` seam — the foundation for multi-language and optional LSP/SCIP precision. [Release notes](RELEASE_NOTES_v0.15.0.md)
+>
+> **v0.14.0** — **Measure faithfulness.** A new contributor/CI command — `neuralmind eval` — turns *"does the memory actually help?"* into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a naive baseline **at the same token budget** (a faithfulness delta, plus grounding and contradiction checks). 100% local by default; the LLM-as-judge is opt-in. [Release notes](RELEASE_NOTES_v0.14.0.md)
 >
 > **v0.13.0** — **Measurement foundation.** The offline faithfulness dataset + expected-fact-recall scorer and polyglot (TypeScript + Go) retrieval fixtures that `neuralmind eval` is built on. [Release notes](RELEASE_NOTES_v0.13.0.md)
 >
 > **v0.12.0** — **Install Doctor.** One command — `neuralmind doctor` — inspects your setup (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query-memory consent) and prints each piece with a status and the exact command to fix it. Exits non-zero on a real failure so you can gate CI or an agent's setup step on it; `--json` gives a stable machine-readable snapshot. [Release notes](RELEASE_NOTES_v0.12.0.md)
 >
 > **v0.11.0** — **Directional Synapses.** The brain-like layer now learns *what comes next*, not just *what goes together*. A new `synapse_transitions` table records ordered `(from_node, to_node)` observations every time the watcher flushes a batch, so the agent can ask `neuralmind next <file>` (or call the `neuralmind_next_likely` MCP tool) and get a probability distribution over what's typically edited after that file. Additive — the existing undirected synapse graph keeps doing its job. [Release notes](RELEASE_NOTES_v0.11.0.md)
->
-> **v0.10.0** — **Agent Ergonomics.** The PostToolUse Bash footer now tells the agent *what was dropped* (categorized line counts + repeated-line detection), not just how many bytes. New `neuralmind last` CLI recovers the dropped middle without re-running the command, fed by an atomic cache the hook writes to `<project>/.neuralmind/last_output.json`. Tiny failing commands no longer get buried under marker overhead. [Release notes](RELEASE_NOTES_v0.10.0.md)
 >
 > **v0.9.0** — **Enterprise-Ready.** GHCR auto-built multi-platform container image (`docker pull ghcr.io/dfrostar/neuralmind:latest`), CycloneDX SBOM attached to every release, [air-gapped install walkthrough](docs/use-cases/air-gapped.md), and a [compliance one-pager](docs/COMPLIANCE-SUMMARY.md) consolidating NIST AI RMF + SOC 2 + GDPR claims. [Release notes](RELEASE_NOTES_v0.9.0.md)
 >
@@ -79,11 +79,14 @@ The script creates an isolated venv, installs the deps, builds the index for the
 The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks) · [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/)). Once the demo convinces you, run it on your own code:
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind          # built-in tree-sitter backend — no graphify needed (v0.15.0+)
 cd /path/to/your-repo
-graphify update . && neuralmind build .
+neuralmind build .
 neuralmind benchmark . --contribute
 ```
+
+> Prefer graphify's richer graph? Install it and it takes priority automatically:
+> `pip install neuralmind graphifyy && graphify update . && neuralmind build .`
 
 ---
 
@@ -448,9 +451,9 @@ These are **directional**. The [Honest Assessment](docs/HONEST-ASSESSMENT.md) ex
 > NeuralMind [benchmarks itself in CI](#-benchmarks) on every PR. But your codebase isn't our fixture. The only way to know what it does for **you** is to measure it on **your code**.
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind        # built-in tree-sitter backend — no graphify needed (v0.15.0+)
 cd /path/to/your-project
-graphify update . && neuralmind build .
+neuralmind build .
 neuralmind benchmark .
 ```
 
@@ -647,9 +650,11 @@ synapse co-activations. Full plan in [ROADMAP.md](ROADMAP.md).
 
 ## 🔧 How It Works
 
-NeuralMind wraps a graphify knowledge graph (`graphify-out/graph.json`) in a ChromaDB vector store.
-When you query it, a 4-layer progressive disclosure system loads only the context relevant to
-your question.
+NeuralMind wraps a knowledge graph (`graphify-out/graph.json`) in a ChromaDB vector store.
+Since **v0.15.0** that graph is produced by a **built-in tree-sitter backend** when no graphify
+output exists, so `neuralmind build .` works with no external tool; a real graphify graph still
+takes priority where present. When you query it, a 4-layer progressive disclosure system loads
+only the context relevant to your question.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -668,10 +673,12 @@ your question.
 Total: ~800–1,100 tokens vs 50,000+ for the full codebase
 ```
 
-**Prerequisites:** NeuralMind requires `graphify update .` to have been run first. This produces:
+**Prerequisites (v0.15.0+):** none beyond `pip install neuralmind` — the bundled
+tree-sitter backend generates `graphify-out/graph.json` automatically on first
+`neuralmind build .`. Installing graphify is optional and, where present, takes priority. Either way you end up with:
 
-- `graphify-out/graph.json` — the knowledge graph (required)
-- `graphify-out/GRAPH_REPORT.md` — architecture summary (enriches L1, optional)
+- `graphify-out/graph.json` — the knowledge graph (auto-generated by the built-in backend, or by `graphify update .`)
+- `graphify-out/GRAPH_REPORT.md` — architecture summary (enriches L1, optional; graphify only)
 - `graphify-out/neuralmind_db/` — ChromaDB vector store (created by `neuralmind build`)
 
 ---
@@ -1680,7 +1687,7 @@ Long context makes it *possible* to stuff a whole repo in; it does not make it *
 
 ### Does it support my language?
 
-Any language [graphify](https://github.com/dfrostar/graphify) supports (Python, JavaScript/TypeScript, and others via tree-sitter). NeuralMind consumes `graphify-out/graph.json` — if graphify can index it, NeuralMind can query it.
+The **built-in tree-sitter backend** (v0.15.0+) indexes **Python** today, with TypeScript + Go next behind the same seam. For broader coverage, install [graphify](https://github.com/dfrostar/graphify) — any language it supports works, since NeuralMind consumes `graphify-out/graph.json` and graphify takes priority where present. Either producer feeds the same retrieval pipeline.
 
 ### What is the difference between `wakeup`, `query`, and `skeleton`?
 
@@ -1694,7 +1701,7 @@ When `neuralmind install-hooks .` has been run, Claude Code invokes NeuralMind *
 
 ### Can I use NeuralMind without a knowledge graph?
 
-No — the knowledge graph (`graphify-out/graph.json`) is the source of truth. Run `graphify update .` first, then `neuralmind build .`.
+The knowledge graph (`graphify-out/graph.json`) is the source of truth — but as of **v0.15.0** you no longer need a separate tool to produce it. `neuralmind build .` generates it automatically with the bundled tree-sitter backend. Installing graphify is optional and takes priority where present.
 
 ### Does it auto-update when I change code?
 
@@ -1730,6 +1737,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.15.0](RELEASE_NOTES_v0.15.0.md)** | Built-in tree-sitter graph backend — `neuralmind build` works with no graphify install; graphify still takes priority where present; backend swap proven at parity by a new CI gate (reduction + faithfulness within tolerance) |
 | **[Release Notes v0.14.0](RELEASE_NOTES_v0.14.0.md)** | `neuralmind eval` — measure answer faithfulness (expected-fact recall vs a matched-budget naive baseline) with grounding + contradiction checks and `--json`; 100% local by default |
 | **[Release Notes v0.13.0](RELEASE_NOTES_v0.13.0.md)** | Measurement foundation — offline faithfulness eval (query + gold-fact dataset, expected-fact-recall scorer), polyglot retrieval fixtures (TypeScript + Go), and a standard documentation process |
 | **[Release Notes v0.12.0](RELEASE_NOTES_v0.12.0.md)** | Install Doctor — `neuralmind doctor` health checks (graph, index, synapses, MCP, hooks, memory), `--json` output, friendlier "graph not built" error |

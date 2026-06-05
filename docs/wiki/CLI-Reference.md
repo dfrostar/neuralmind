@@ -102,9 +102,19 @@ neuralmind build /path/to/project --force
 
 #### Prerequisites
 
-Before running `build`, ensure:
-1. Graphify has been run on the project: `graphify update /path/to/project`
-2. The file `graphify-out/graph.json` exists in the project directory
+**As of v0.15.0, none beyond `pip install neuralmind`.** When no
+`graphify-out/graph.json` exists, `build` auto-generates one with the bundled
+**tree-sitter backend** (`neuralmind/graphgen.py`) and prints:
+
+```
+[neuralmind] generated code graph via the built-in tree-sitter backend → graphify-out/graph.json
+```
+
+Backend precedence:
+1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
+2. Otherwise the **built-in tree-sitter backend** generates the graph (Python today; TS/Go behind the `SUPPORTED_SUFFIXES` seam next).
+3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
+4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 
 ---
 
@@ -963,6 +973,10 @@ Behaviour:
 | `NEURALMIND_BASH_MAX_CHARS` | `3000` | Threshold above which successful Bash outputs get compressed. |
 | `NEURALMIND_BASH_TAIL` | `3` | Number of tail lines always kept verbatim in compressed Bash output. |
 | `NEURALMIND_EVAL_LLM_JUDGE` | `0` | *(v0.13.0+)* Opt-in LLM-as-judge mode for the offline faithfulness eval harness (`evals/faithfulness/`). Off by default and **never** the CI gate; when set, the runner prints a notice that answers + gold facts would be sent to a third-party API. The default judge is the zero-network offline expected-fact-recall scorer. |
+| `NEURALMIND_PARITY_REDUCTION_TOL` | `0.25` | *(v0.15.0+)* Backend parity gate (`evals/parity/run.py`): max fraction the built-in backend's mean token reduction may sit below graphify's (0.25 = within 25%). |
+| `NEURALMIND_PARITY_FAITHFULNESS_TOL` | `0.10` | *(v0.15.0+)* Backend parity gate: max absolute points the built-in backend's faithfulness delta / fact recall may sit below graphify's (0.10 = 10 points). |
+| `NEURALMIND_PARITY_REDUCTION_FLOOR` | `4.0` | *(v0.15.0+)* Backend parity gate: absolute minimum mean reduction the built-in backend must clear, independent of graphify (mirrors the self-benchmark floor). |
+| `NEURALMIND_PARITY_FAITHFULNESS_FLOOR` | `0.0` | *(v0.15.0+)* Backend parity gate: absolute minimum faithfulness delta the built-in backend must clear (mirrors the eval gate — smart selection ≥ matched-budget naive truncation). |
 
 ---
 
