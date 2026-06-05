@@ -61,6 +61,35 @@ jobs:
           graphify update tests/fixtures/sample_project
           neuralmind build tests/fixtures/sample_project --force
 
+      - name: Faithfulness eval (A/B) gate
+        # Reuses the index built above to run the real with-NeuralMind vs
+        # matched-budget naive A/B and gate on the measured fact-recall delta.
+        # The benchmark answers "how many tokens?"; this answers "are the right
+        # facts still in the context?" — the honesty half of the story.
+        run: |
+          python -m evals.faithfulness.runner --run --json | tee eval_faithfulness.json
+          python - <<'PY'
+          import json
+          d = json.load(open("eval_faithfulness.json"))
+          nm, naive = d["nm_mean_recall"], d["naive_mean_recall"]
+          delta = d["faithfulness_delta"]
+          print(
+              f"[eval] fact-recall  NeuralMind {nm:.3f}  vs  "
+              f"naive(matched-budget) {naive:.3f}  ->  delta {delta:+.3f}  "
+              f"over {d['n_queries']} queries"
+          )
+          # Gate: NeuralMind's *selected* context must not carry fewer gold
+          # facts than dumb truncation of the whole repo to the same token
+          # budget. A negative delta means retrieval regressed below a naive
+          # baseline — that's the failure we want CI to catch. Floor at 0 is
+          # deliberately conservative on this tiny fixture; tighten once we
+          # have a stable measured distribution.
+          assert delta >= 0.0, (
+              f"faithfulness regression: NeuralMind recall {nm:.3f} < "
+              f"naive {naive:.3f} (delta {delta:+.3f})"
+          )
+          PY
+
       - name: Run benchmark (Phase 1 + Phase 2)
         id: bench
         run: |
