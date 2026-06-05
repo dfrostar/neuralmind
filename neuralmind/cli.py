@@ -317,6 +317,45 @@ def cmd_doctor(args):
         sys.exit(1)
 
 
+def cmd_eval(args):
+    """Run the faithfulness eval: does NeuralMind's selected context contain
+    more gold facts than a matched-budget naive baseline?
+
+    Self-evaluates against the committed reference fixture + gold-fact set,
+    which ship with the *source* repository (the ``evals/`` package), so this
+    is a quality self-test like ``neuralmind benchmark`` — not a per-repo
+    command. The A/B needs the retrieval stack + a built index; ``--selfcheck``
+    validates the gold set and offline scorer with no heavy deps.
+    """
+    try:
+        from evals.faithfulness import harness, runner
+    except ImportError:
+        print(
+            "neuralmind eval runs against the faithfulness gold set that ships "
+            "with the source repository (the `evals/` package), not the installed "
+            "wheel. Clone the repo and run "
+            "`python -m evals.faithfulness.runner --run` from its root.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    if args.selfcheck:
+        sys.exit(runner.main(["--selfcheck"]))
+
+    try:
+        report = harness.run_and_report(args.project_path)
+    except RuntimeError as exc:
+        print(f"faithfulness A/B unavailable: {exc}", file=sys.stderr)
+        print(
+            "The A/B needs the retrieval stack + a built index. Use `--selfcheck` "
+            "to validate the gold set + offline scorer only.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    print(harness.render_json(report) if args.json else harness.render_markdown(report))
+
+
 def cmd_next(args):
     """Show what typically follows a node (file path or node id) in the
     learned directional-transition graph."""
@@ -845,6 +884,24 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    eval_p = subparsers.add_parser(
+        "eval",
+        help="Run the faithfulness eval (NeuralMind vs naive baseline) on the reference fixture",
+    )
+    eval_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=None,
+        help="Project to evaluate (default: the committed gold-set fixture)",
+    )
+    eval_p.add_argument("--json", "-j", action="store_true")
+    eval_p.add_argument(
+        "--selfcheck",
+        action="store_true",
+        help="Validate the gold set + offline scorer only (no retrieval deps)",
+    )
+    eval_p.set_defaults(func=cmd_eval)
 
     learn_p = subparsers.add_parser(
         "learn", help="Run continual learning scaffold (safe no-op for MVP)"

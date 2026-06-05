@@ -14,6 +14,7 @@ Complete command-line interface documentation for NeuralMind.
   - [benchmark](#benchmark)
   - [stats](#stats)
   - [doctor](#doctor-v0120)
+  - [eval](#eval-v0140)
   - [learn](#learn)
   - [next](#next-v0110)
   - [skeleton](#skeleton)
@@ -498,6 +499,41 @@ JSON output (`--json`) is stable for scripting and agent consumption:
   ]
 }
 ```
+
+---
+
+### eval *(v0.14.0+)*
+
+Run the **faithfulness eval**: does NeuralMind's selected context contain
+more gold facts than a *matched-budget* naive baseline? It self-evaluates
+against the committed reference fixture + gold-fact set (which ship with the
+source repository), so — like `neuralmind benchmark` — it's a quality
+self-test, not a per-repo command.
+
+```bash
+neuralmind eval [project_path] [--json] [--selfcheck]
+```
+
+**Arguments:**
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | the gold-set fixture | Project to evaluate |
+| `--json`, `-j` | No | `false` | Emit the report as JSON |
+| `--selfcheck` | No | `false` | Validate the gold set + offline scorer only (no retrieval deps) |
+
+**What it reports:** the **faithfulness delta** — mean expected-fact recall of
+NeuralMind's context minus the naive baseline's, at a matched per-query token
+budget — plus grounding rate, contradiction rate, and a per-query breakdown.
+A positive delta means smart selection beats dumb truncation at equal token
+cost. The default judge is 100% offline; an opt-in LLM-as-judge sits behind
+`NEURALMIND_EVAL_LLM_JUDGE=1` and is never the default or the CI gate.
+
+**Requirements:** the A/B needs the retrieval stack (chromadb) and a built
+index; without them it degrades with an actionable message. `--selfcheck`
+needs neither. From an installed wheel (where the `evals/` package isn't
+bundled), run it from a source checkout instead:
+`python -m evals.faithfulness.runner --run`.
 
 ---
 
