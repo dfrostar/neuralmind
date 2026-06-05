@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/dfrostar/neuralmind/compare/v0.15.0...v0.16.0) (2026-06-05)
+
+
+### Features
+
+* **backend:** multi-language built-in backend — TypeScript + Go extractors ([#189](https://github.com/dfrostar/neuralmind/issues/189)) ([2dfc255](https://github.com/dfrostar/neuralmind/commit/2dfc255a2171ee91b1fe7555de6b89dc904a985e))
+
 ## [0.15.0](https://github.com/dfrostar/neuralmind/compare/v0.14.0...v0.15.0) (2026-06-05)
 
 
