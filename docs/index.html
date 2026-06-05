@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NeuralMind: Semantic code intelligence for AI agents. Reduce token costs 40–70× with local code indexing, a brain-like synapse layer that learns from co-activation and directional file-to-file transitions, an Obsidian-style graph view, and PostToolUse hooks that compress tool output and let agents recover dropped middle content without re-running. NIST AI RMF compliant.">
-    <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor, MCP server, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, synapse layer, Hebbian learning, directional transitions, transition matrix, next-file prediction, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding">
+    <meta name="description" content="NeuralMind: Semantic code intelligence for AI agents. Reduce token costs 40–70× with local code indexing, a brain-like synapse layer that learns from co-activation and directional file-to-file transitions, an Obsidian-style graph view, and PostToolUse hooks that compress tool output and let agents recover dropped middle content without re-running. Now with a 100%-local faithfulness-evaluation harness and polyglot (TypeScript + Go) retrieval fixtures. NIST AI RMF compliant.">
+    <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor, MCP server, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, synapse layer, Hebbian learning, directional transitions, transition matrix, next-file prediction, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph">
     <title>NeuralMind - Semantic Code Intelligence for AI Agents | 40–70× Token Reduction</title>
     <meta property="og:title" content="NeuralMind - Semantic Code Intelligence for AI Agents">
     <meta property="og:description" content="Local-first code indexing with 40–70× per-query token reduction (50K → ~800 tokens). Zero data exfiltration, 100% offline, enterprise-ready.">
@@ -18,7 +18,7 @@
       "description": "Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent.",
       "url": "https://dfrostar.github.io/neuralmind/",
       "downloadUrl": "https://pypi.org/project/neuralmind/",
-      "softwareVersion": "0.12.0",
+      "softwareVersion": "0.13.0",
       "license": "https://opensource.org/licenses/MIT",
       "programmingLanguage": "Python",
       "operatingSystemRequirements": "Python 3.10+",
@@ -80,10 +80,10 @@
             <h1>🧠 NeuralMind</h1>
             <p>Semantic code intelligence for AI agents.<br/>40–70× token reduction. Zero data exfiltration. Enterprise-ready.</p>
             <p style="font-size: 1rem; opacity: 0.85; margin-top: 0.5rem;">
-                <strong>🆕 v0.12.0 — Install Doctor.</strong> One command — <code>neuralmind doctor</code> — inspects your setup (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query memory) and prints each piece with a status and the exact fix. Exits non-zero on a real failure (gate CI on it); <code>--json</code> for agents. Querying before the graph exists now reads as a setup hint, not a stack trace. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md" style="color: white; text-decoration: underline;">Release notes →</a> · <a href="about.html#whats-new-v0120" style="color: white; text-decoration: underline;">Summary →</a>
+                <strong>🆕 v0.13.0 — Measurement foundation.</strong> The scaffolding to <em>prove</em> the memory helps, not just claim it: a 100%-local <strong>faithfulness eval</strong> (a query + gold-fact dataset and an offline expected-fact-recall scorer) and <strong>polyglot retrieval fixtures (TypeScript + Go)</strong> so quality is measured beyond Python — plus a written documentation process. No runtime change to your install. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md" style="color: white; text-decoration: underline;">Release notes →</a> · <a href="about.html#whats-new-v0130" style="color: white; text-decoration: underline;">Summary →</a>
             </p>
             <p style="font-size: 0.9rem; opacity: 0.75; margin-top: 0.25rem;">
-                Earlier: <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md" style="color: white; text-decoration: underline;">v0.11.0 directional synapses (<code>neuralmind next</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md" style="color: white; text-decoration: underline;">v0.10.0 agent ergonomics (categorized footer + <code>neuralmind last</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md" style="color: white; text-decoration: underline;">v0.9.0 enterprise-ready (GHCR/SBOM/air-gapped)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md" style="color: white; text-decoration: underline;">v0.8.0 always-on (systemd/launchd/healthz)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md" style="color: white; text-decoration: underline;">v0.7.0 install anywhere</a>.
+                Earlier: <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md" style="color: white; text-decoration: underline;">v0.12.0 install doctor</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md" style="color: white; text-decoration: underline;">v0.11.0 directional synapses (<code>neuralmind next</code>)</a> ·<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md" style="color: white; text-decoration: underline;">v0.10.0 agent ergonomics (categorized footer + <code>neuralmind last</code>)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md" style="color: white; text-decoration: underline;">v0.9.0 enterprise-ready (GHCR/SBOM/air-gapped)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md" style="color: white; text-decoration: underline;">v0.8.0 always-on (systemd/launchd/healthz)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md" style="color: white; text-decoration: underline;">v0.7.0 install anywhere</a>.
             </p>
             <div>
                 <a href="wiki/Setup-Guide" class="btn btn-primary">Get Started in 5 Minutes</a>
@@ -320,12 +320,12 @@ neuralmind stats .</code></pre>
             <h2>Status & Future</h2>
             <div class="highlight-grid">
                 <div class="highlight-item">
-                    <strong>✅ v0.12.0 (Current)</strong>
-                    <p><code>neuralmind doctor</code> — one command inspects your install (code graph, semantic index, synapse memory, MCP server, Claude Code hooks) and prints each piece with a status and the exact fix. Stacks on v0.11's directional synapses, v0.10's agent ergonomics, and the v0.6 graph view.</p>
+                    <strong>✅ v0.13.0 (Current) — Measure (foundation)</strong>
+                    <p>The measurement foundation: a 100%-local <strong>faithfulness eval</strong> (a query + gold-fact dataset and an offline expected-fact-recall scorer) and <strong>polyglot TypeScript + Go retrieval fixtures</strong>, plus a written documentation process. The full <code>neuralmind eval</code> report is the next increment — this ships the dataset and the scorer it runs on.</p>
                 </div>
                 <div class="highlight-item">
-                    <strong>📋 v0.13 (Next) — Measure</strong>
-                    <p>A CI-gated evaluation harness that proves the memory makes answers <em>better</em>, not just shorter: faithfulness + retrieval-quality scoring with a 100%-local offline judge, plus polyglot TypeScript + Go fixtures. The fitness function the rest of the roadmap builds on.</p>
+                    <strong>📋 Next — finish the eval harness</strong>
+                    <p>A/B answer generation (with NeuralMind context vs a naive baseline), the full offline judge (recall + grounding + contradiction), and a <code>neuralmind eval</code> report: faithfulness delta, grounding rate, and a per-query breakdown. Builds straight on v0.13.0's foundation. (v0.12.0 shipped <code>neuralmind doctor</code>.)</p>
                 </div>
                 <div class="highlight-item">
                     <strong>🎯 v0.14 → v0.16</strong>
