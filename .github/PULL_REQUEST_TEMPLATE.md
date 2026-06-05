@@ -33,7 +33,7 @@ Please describe the tests that you ran to verify your changes.
 
 ## Documentation & discoverability
 
-Per the [Documentation Process](../docs/DOCUMENTATION-PROCESS.md). Required when
+Per the [Documentation Process](/dfrostar/neuralmind/blob/main/docs/DOCUMENTATION-PROCESS.md). Required when
 this PR adds/changes a CLI command, MCP tool, hook, env var, agent-visible
 behavior, or a visible fix. Tick **N/A** for pure internal refactors.
 

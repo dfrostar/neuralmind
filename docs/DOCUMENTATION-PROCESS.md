@@ -38,11 +38,11 @@ internal refactors are exempt (note that in the PR).
 | 2 | **`README.md`** | Bump the top banner; demote the previous version into the history trail; add a row to the release-notes table; update any in-context sections the change touches. | Show what the agent sees, not just what the code does. |
 | 3 | **`docs/index.html`** | Top banner block + earlier-releases trail + the **Status & Future** block (keep "Current/Next" honest). | Landing page — highest first-impression value. |
 | 4 | **`docs/about.html`** | New "What's New in v<X.Y.Z>" section *above* the prior one. Never delete old sections — demote them. | Forward-looking direction goes in the "Where NeuralMind is going next" section. |
-| 5 | **`docs/wiki/*.md` + `docs/use-cases/*.md`** | New commands/env vars in `CLI-Reference.md`; update touched use-cases AND add a new walkthrough if the change unlocks a new workflow. | **The wiki auto-syncs** from `docs/wiki/**` to the live GitHub Wiki via `sync-wiki.yml` on merge to `main` — edit the source, never the live wiki. |
+| 5 | **`docs/wiki/*.md` + `docs/use-cases/*.md`** | New commands/env vars in `CLI-Reference.md`; update touched use-cases AND add a new walkthrough if the change unlocks a new workflow. | **The wiki auto-syncs** from `docs/wiki/**` to the live GitHub Wiki via `.github/workflows/sync-wiki.yml` on merge to `main` — edit the source, never the live wiki. |
 
-**Do NOT edit `CHANGELOG.md`** — release-please owns it and writes it from the
-`feat:`/`fix:` commit body. Do NOT hand-bump `pyproject.toml` /
-`.release-please-manifest.json` versions.
+**Do NOT edit `CHANGELOG.md`** — release-please owns it and generates each
+entry from the `feat:`/`fix:` Conventional Commit *subject line*. Do NOT
+hand-bump `pyproject.toml` / `.release-please-manifest.json` versions.
 
 ---
 
