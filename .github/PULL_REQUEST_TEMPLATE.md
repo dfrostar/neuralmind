@@ -31,6 +31,21 @@ Please describe the tests that you ran to verify your changes.
 * **Operating System**: 
 * **Test command**: `pytest tests/ -v`
 
+## Documentation & discoverability
+
+Per the [Documentation Process](/dfrostar/neuralmind/blob/main/docs/DOCUMENTATION-PROCESS.md). Required when
+this PR adds/changes a CLI command, MCP tool, hook, env var, agent-visible
+behavior, or a visible fix. Tick **N/A** for pure internal refactors.
+
+- [ ] N/A — internal-only change, no user-facing surface
+- [ ] Docs answer *"what does the user/agent now see?"* (not just what the code does)
+- [ ] `README.md` updated (banner/sections) if user-facing
+- [ ] `docs/index.html` + `docs/about.html` updated if user-facing (incl. the **Status & Future** block — keep "Current/Next" honest)
+- [ ] `docs/wiki/*.md` (e.g. `CLI-Reference.md`) updated for new commands/env vars — syncs to the live wiki automatically
+- [ ] Use-case walkthrough updated/added if a workflow was unlocked
+- [ ] SEO refreshed (keywords / meta / sitemap) if a new noun entered the product surface
+- [ ] I did **not** edit `CHANGELOG.md` or hand-bump the `pyproject.toml` version (release-please owns these)
+
 ## Checklist
 
 - [ ] My code follows the style guidelines of this project

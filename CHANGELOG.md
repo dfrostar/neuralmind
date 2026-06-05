@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.13.0](https://github.com/dfrostar/neuralmind/compare/v0.12.0...v0.13.0) (2026-06-05)
+
+
+### Features
+
+* **evals:** faithfulness eval foundation — query+gold-fact set + offline judge skeleton (E1.1) ([#177](https://github.com/dfrostar/neuralmind/issues/177)) ([90be7aa](https://github.com/dfrostar/neuralmind/commit/90be7aa80c02442044b0d0584f2062332c488090))
+* polyglot retrieval-quality fixtures — TypeScript + Go ([#173](https://github.com/dfrostar/neuralmind/issues/173) E2.2/E2.3) ([#178](https://github.com/dfrostar/neuralmind/issues/178)) ([f7d7b53](https://github.com/dfrostar/neuralmind/commit/f7d7b53bc209f2a5561beaf6cfb3a653c788a15e))
+
+
+### Documentation
+
+* establish a standard documentation process ([#176](https://github.com/dfrostar/neuralmind/issues/176)) ([9e4d014](https://github.com/dfrostar/neuralmind/commit/9e4d01415b78415b9f47d8b6316407a03c6ced93))
+
+## [0.12.0](https://github.com/dfrostar/neuralmind/compare/v0.11.1...v0.12.0) (2026-06-04)
+
+
+### Features
+
+* **cli:** neuralmind doctor — install health check + friendlier first-run error ([#169](https://github.com/dfrostar/neuralmind/issues/169)) ([2b0509b](https://github.com/dfrostar/neuralmind/commit/2b0509bb03a9a6e210d3f8bf3990d6b47a89edd9))
+
+
+### Documentation
+
+* next-release plan + eval-first roadmap announcement (v0.13→v0.16) ([#170](https://github.com/dfrostar/neuralmind/issues/170)) ([8d87d2b](https://github.com/dfrostar/neuralmind/commit/8d87d2bd16210c8d5810db85c0fa4b3c8455c913))
+* refresh benchmark chart [skip ci] ([b640818](https://github.com/dfrostar/neuralmind/commit/b6408181bc16512e5ce1d053fa9e61447548492c))
+
 ## [0.11.1](https://github.com/dfrostar/neuralmind/compare/v0.11.0...v0.11.1) (2026-06-01)
 
 
