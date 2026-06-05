@@ -130,6 +130,65 @@ class BuildGraphTests(unittest.TestCase):
                 self.assertIn(e["source"], rat_ids)
                 self.assertIn(e["target"], code_ids)
 
+    # -- v0.15 retrieval-parity enrichments -------------------------------- #
+    # These are what brought the built-in backend to parity with graphify on
+    # the faithfulness eval (see evals/parity/run.py); guard them so a future
+    # change can't silently regress retrieval quality below the gate.
+
+    def test_emits_document_nodes_from_markdown(self) -> None:
+        """README.md → a document file node plus its heading nodes."""
+        docs = [n for n in self.nodes if n["file_type"] == "document"]
+        self.assertTrue(docs, "markdown should yield document nodes")
+        labels = {n["label"] for n in docs}
+        self.assertIn("README.md", labels)
+        # At least one heading from the fixture README.
+        self.assertIn("NeuralMind Benchmark Fixture", labels)
+
+    def test_extracts_module_level_constants(self) -> None:
+        """Module constants are first-class code symbols (queryable by name)."""
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        self.assertIn("SESSION_TTL", labels)
+        self.assertIn("REFRESH_TTL", labels)
+
+    def test_extracts_class_fields(self) -> None:
+        """Dataclass fields become code symbols (e.g. the User record fields)."""
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        self.assertIn("password_hash", labels)
+        self.assertIn("is_active", labels)
+
+    def test_skips_dunder_assignments(self) -> None:
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        self.assertFalse(any(lbl.startswith("__") and lbl.endswith("__") for lbl in labels))
+
+    def test_communities_are_per_file(self) -> None:
+        """Every node in a file shares one community; clusters are balanced
+        (one per source file), not a single collapsed blob."""
+        by_file: dict[str, set[int]] = {}
+        for n in self.nodes:
+            by_file.setdefault(n["source_file"], set()).add(n["community"])
+        for src, comms in by_file.items():
+            self.assertEqual(len(comms), 1, f"{src} split across communities {comms}")
+        n_files = len(by_file)
+        n_comms = len({n["community"] for n in self.nodes})
+        self.assertEqual(n_comms, n_files)
+        # No giant blob: the largest community holds well under half the nodes.
+        sizes: dict[int, int] = {}
+        for n in self.nodes:
+            sizes[n["community"]] = sizes.get(n["community"], 0) + 1
+        self.assertLess(max(sizes.values()), len(self.nodes) // 2)
+
+    def test_rationale_captures_docstring_body(self) -> None:
+        """Rationale keeps the descriptive body, not just the summary line —
+        that's where query-relevant facts live."""
+        rats = [n["label"].lower() for n in self.nodes if n["file_type"] == "rationale"]
+        blob = " || ".join(rats)
+        self.assertIn("looks the user up by email", blob)
+
+    def test_rationale_respects_length_cap(self) -> None:
+        for n in self.nodes:
+            if n["file_type"] == "rationale":
+                self.assertLessEqual(len(n["label"]), graphgen._RATIONALE_MAX_CHARS)
+
 
 @unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
 class WriteGraphTests(unittest.TestCase):

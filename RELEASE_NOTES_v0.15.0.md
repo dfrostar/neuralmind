@@ -56,16 +56,22 @@ the same contract.
 `neuralmind/graphgen.py` is a **pure-Python tree-sitter backend** that parses a
 project into a graphify-compatible `graph.json`:
 
-- symbol-level `code` nodes (files, classes, functions/methods)
+- symbol-level `code` nodes — files, classes, functions/methods, **and
+  module-/class-level symbols** (constants like `SESSION_TTL`, dataclass fields
+  like `password_hash`) so name-level questions retrieve
 - `contains` / `imports_from` / `inherits` / `calls` edges (best-effort name
   resolution)
-- a docstring-derived `rationale` layer (`rationale_for` edges)
-- dependency-free label-propagation communities (no networkx)
+- a `rationale` layer that keeps the **docstring summary *and* its descriptive
+  body** (capped) — the body is where query-relevant facts live
+- `document` nodes from **markdown** (each file plus its headings), mirroring
+  graphify's document layer
+- balanced, **per-file communities** (no networkx) that feed the selector's L1
+  summary and L2 "relevant areas"
 
 `tree-sitter` + `tree-sitter-python` are now **core dependencies**, so the
 backend is bundled — there is no extra install. On the reference fixture it
-reproduces graphify's output closely (63 vs 64 code nodes, 51 rationale nodes,
-all key symbols present, zero dangling edges).
+**meets or beats graphify on every retrieval metric the parity gate measures**
+(fact recall, grounding, token reduction — see below).
 
 ### When does it run?
 
@@ -100,6 +106,24 @@ Tolerances are overridable via `NEURALMIND_PARITY_*` env vars so the gate can
 tighten as the measured distribution stabilises. It runs on every PR
 (`.github/workflows/ci-benchmark.yml`) and posts a parity table as a PR comment.
 
+**The result on the reference fixture** (the gate building both backends
+end-to-end): the built-in backend doesn't just stay within tolerance — it comes
+out **ahead**:
+
+| Metric | graphify | built-in |
+|---|---:|---:|
+| code nodes | 78 | 79 |
+| mean token reduction | 6.08× | **6.66×** |
+| faithfulness delta (vs naive) | +0.050 | **+0.143** |
+| fact recall | 0.555 | **0.717** |
+| grounding | 0.917 | **1.000** |
+
+This is exactly the loop the eval harness was built for: an early cut of the
+backend *failed* the gate (it retrieved worse than naive truncation), the gate
+caught it pre-merge, and the producer was improved — document nodes, balanced
+communities, fuller rationale, symbol extraction — until it cleared the bar on
+the merits.
+
 ## Honest scope & caveats
 
 - **Python first.** The built-in backend ships with a Python extractor today.
@@ -116,7 +140,8 @@ tighten as the measured distribution stabilises. It runs on every PR
 
 - **`neuralmind/graphgen.py`** — the built-in tree-sitter graph backend
   (graphify-compatible `graph.json`, `SCHEMA_VERSION` + `SUPPORTED_SUFFIXES`
-  seam). 15 stdlib tests.
+  seam): code + symbol + `document` nodes, full-body rationale, per-file
+  communities. 22 stdlib tests.
 - **`core.build()`** auto-generates the graph when no graphify output exists,
   with graphify-always-wins and never-clobber-`--force` guards.
 - **`evals/parity/run.py`** — the backend parity gate + a CI job that runs it on

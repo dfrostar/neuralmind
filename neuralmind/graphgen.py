@@ -26,7 +26,6 @@ Design notes:
 from __future__ import annotations
 
 import re
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +59,12 @@ SCHEMA_VERSION = 1
 # is additive — the 66-language bar set by 2026 tree-sitter code-graph tools is
 # a matter of registering grammars, not re-architecting.
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset({".py"})
+
+# Markdown files become graphify-style ``document`` nodes (the file plus one
+# node per heading). This mirrors graphify's document layer, which the context
+# selector surfaces in L0/L1/L2 — prose that carries query-relevant facts the
+# code symbols alone don't (architecture notes, "why", endpoint descriptions).
+_DOC_SUFFIXES: frozenset[str] = frozenset({".md", ".markdown"})
 
 
 def is_available() -> bool:
@@ -97,8 +102,8 @@ def _make_parser():
         return parser
 
 
-def _iter_source_files(root: Path, ignores: frozenset[str]) -> list[Path]:
-    """All supported source files under ``root``, skipping ignored directories."""
+def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -> list[Path]:
+    """All files under ``root`` with a suffix in ``suffixes``, skipping ignores."""
     out: list[Path] = []
 
     def walk(d: Path) -> None:
@@ -108,26 +113,45 @@ def _iter_source_files(root: Path, ignores: frozenset[str]) -> list[Path]:
             return
         for p in entries:
             if p.name in ignores or p.name.startswith("."):
-                # Always allow .py files even if dotfile-named (rare); skip
-                # dot-directories and ignored names.
+                # Skip dot-directories and ignored names; files matching a
+                # wanted suffix still pass below even if dotfile-named (rare).
                 if p.is_dir():
                     continue
             if p.is_dir():
                 if p.name not in ignores:
                     walk(p)
-            elif p.suffix in SUPPORTED_SUFFIXES:
+            elif p.suffix in suffixes:
                 out.append(p)
 
     walk(root)
     return out
 
 
+def _iter_source_files(root: Path, ignores: frozenset[str]) -> list[Path]:
+    """All supported code source files under ``root``."""
+    return _iter_files(root, ignores, SUPPORTED_SUFFIXES)
+
+
 def _node_text(node, src: bytes) -> str:
     return src[node.start_byte : node.end_byte].decode("utf-8", "replace")
 
 
+# Cap on the rationale text pulled from a docstring. Wide enough to keep the
+# summary line *and* the descriptive body sentences that carry query-relevant
+# facts (what a function looks up, verifies, returns) — these are the phrases
+# retrieval scores against — but bounded so the rationale layer stays cheap.
+_RATIONALE_MAX_CHARS = 200
+
+
 def _docstring(body_node, src: bytes) -> str | None:
-    """First-statement string literal of a block/module → its first line."""
+    """First-statement string literal of a block/module → its rationale text.
+
+    Returns the docstring collapsed to a single line (the summary plus the
+    descriptive body), capped at ``_RATIONALE_MAX_CHARS``. Keeping the body —
+    not just the first line — matters: the facts a query asks about ("looks the
+    user up by email", "verifies the password hash") live there, and the
+    context selector surfaces rationale nodes by exactly that text.
+    """
     if body_node is None:
         return None
     for child in body_node.named_children:
@@ -136,10 +160,15 @@ def _docstring(body_node, src: bytes) -> str | None:
             if inner.type == "string":
                 raw = _node_text(inner, src)
                 text = raw.strip().strip("\"'").strip()
-                # Strip leftover triple-quote remnants and take first line.
+                # Strip leftover triple-quote remnants, then collapse all
+                # whitespace (newlines, indentation) to single spaces.
                 text = text.lstrip("\"'").strip()
-                first = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
-                return first or None
+                collapsed = " ".join(text.split())
+                if not collapsed:
+                    return None
+                if len(collapsed) > _RATIONALE_MAX_CHARS:
+                    collapsed = collapsed[:_RATIONALE_MAX_CHARS].rstrip()
+                return collapsed
         # Only the very first statement can be a docstring.
         break
     return None
@@ -202,6 +231,61 @@ class _GraphBuilder:
         )
 
 
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+
+
+def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
+    """Emit a ``document`` node for a markdown file plus one per heading.
+
+    Headings become the document layer's searchable labels — they're the
+    prose anchors graphify exposes and the selector folds into L1/L2 (e.g.
+    "Why this fixture?", "POST /api/auth/login"). The file node anchors them
+    with a ``contains`` edge, mirroring code files' structure.
+    """
+    try:
+        text = md_path.read_text(encoding="utf-8")
+    except OSError:
+        return
+    file_id = _slug(rel)
+    b.add_node(file_id, md_path.name, "document", rel, 1)
+
+    in_fence = False
+    for i, line in enumerate(text.splitlines(), 1):
+        stripped = line.strip()
+        # Don't treat '#' inside fenced code blocks as headings.
+        if stripped.startswith(("```", "~~~")):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        m = _HEADING_RE.match(line)
+        if not m:
+            continue
+        heading = m.group(2).strip()
+        if not heading:
+            continue
+        hid = f"{file_id}__h{i}"
+        b.add_node(hid, heading, "document", rel, i)
+        b.add_edge("contains", file_id, hid, rel, i)
+
+
+def _assign_communities(b: _GraphBuilder) -> None:
+    """Assign each node a community keyed by its source file.
+
+    A deterministic stand-in for graphify's modularity clustering. Grouping a
+    file's symbols (+ its rationale/document children) into one community gives
+    balanced, feature-aligned clusters — which is what the context selector's
+    L1 summary and L2 "relevant areas" actually read. The previous
+    label-propagation pass collapsed almost every node into a single giant
+    community on these small, densely-connected code graphs, starving both
+    layers of signal; per-file grouping fixes that without networkx.
+    """
+    files_sorted = sorted({n["source_file"] for n in b.nodes.values()})
+    comm_of_file = {f: i for i, f in enumerate(files_sorted)}
+    for node in b.nodes.values():
+        node["community"] = comm_of_file[node["source_file"]]
+
+
 def _module_dotted(rel: str) -> str:
     """``users/crud.py`` → ``users.crud``; ``a/__init__.py`` → ``a``."""
     no_ext = rel[:-3] if rel.endswith(".py") else rel
@@ -262,10 +346,12 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         _resolve_inherits(b, tree.root_node, src, rel)
         _resolve_calls(b, tree.root_node, src, rel)
 
-    # ---- communities (label propagation) ---------------------------------- #
-    communities = _detect_communities(list(b.nodes), b.edges)
-    for nid, comm in communities.items():
-        b.nodes[nid]["community"] = comm
+    # ---- markdown → document nodes ---------------------------------------- #
+    for md_path in _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES):
+        _extract_markdown(b, md_path, md_path.relative_to(root).as_posix())
+
+    # ---- communities (per-file, balanced) --------------------------------- #
+    _assign_communities(b)
 
     return {
         "directed": False,
@@ -298,6 +384,37 @@ def _walk_top_level(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: 
                 _emit_function(b, inner, src, rel, file_id, container=file_id)
             elif inner.type == "class_definition":
                 _emit_class(b, inner, src, rel, file_id)
+        elif child.type == "expression_statement":
+            _emit_assignment(b, child, src, rel, container=file_id)
+
+
+def _emit_assignment(b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, container: str) -> None:
+    """Emit a ``code`` node for a module/class-level assignment's simple target.
+
+    Module constants (``SESSION_TTL = …``) and class/dataclass fields
+    (``password_hash: str``) are first-class symbols a query can ask about
+    ("how long is a session?", "what fields does a user record have?"), but
+    they live in neither a function nor a docstring. Surfacing them as named
+    code nodes lets the selector retrieve them by name. Only simple identifier
+    targets are taken — tuple/attribute/subscript LHS (``self.x``, ``a, b = …``)
+    are skipped to avoid noise.
+    """
+    if not stmt_node.named_child_count:
+        return
+    assign = stmt_node.named_children[0]
+    if assign.type != "assignment":
+        return
+    left = assign.child_by_field_name("left")
+    if left is None or left.type != "identifier":
+        return
+    name = _node_text(left, src)
+    # Skip dunders (``__all__`` etc.) — structural noise, not domain symbols.
+    if not name or (name.startswith("__") and name.endswith("__")):
+        return
+    line = left.start_point[0] + 1
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
 
 
 def _name_of(defn_node, src: bytes) -> str | None:
@@ -347,6 +464,9 @@ def _emit_class(b: _GraphBuilder, cls_node, src: bytes, rel: str, file_id: str) 
             fn = member.child_by_field_name("definition")
         if fn is not None and fn.type == "function_definition":
             _emit_function(b, fn, src, rel, file_id, container=cid)
+        elif member.type == "expression_statement":
+            # Class/dataclass fields (``password_hash: str``) → code nodes.
+            _emit_assignment(b, member, src, rel, container=cid)
 
 
 def _resolve_imports(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -442,46 +562,6 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
             visit(child, current_fn)
 
     visit(root_node, None)
-
-
-def _detect_communities(node_ids: list[str], edges: list[dict[str, Any]]) -> dict[str, int]:
-    """Deterministic label propagation over the undirected edge graph.
-
-    A dependency-free stand-in for graphify's clustering: each node starts in
-    its own community and iteratively adopts the most common label among its
-    neighbours (ties broken by lowest label, scanning in sorted id order for
-    reproducibility). Final labels are renumbered to a dense ``0..k`` range.
-    """
-    adj: dict[str, set[str]] = {nid: set() for nid in node_ids}
-    for e in edges:
-        s, t = e["source"], e["target"]
-        if s in adj and t in adj and s != t:
-            adj[s].add(t)
-            adj[t].add(s)
-
-    labels = {nid: i for i, nid in enumerate(sorted(node_ids))}
-    order = sorted(node_ids)
-    for _ in range(20):
-        changed = False
-        for nid in order:
-            nbrs = adj[nid]
-            if not nbrs:
-                continue
-            counts = Counter(labels[n] for n in nbrs)
-            best = min(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0]
-            if labels[nid] != best:
-                labels[nid] = best
-                changed = True
-        if not changed:
-            break
-
-    remap: dict[int, int] = {}
-    for nid in sorted(node_ids):
-        lab = labels[nid]
-        if lab not in remap:
-            remap[lab] = len(remap)
-        labels[nid] = remap[lab]
-    return labels
 
 
 def write_graph(project_path: str | Path, *, commit: str = "") -> Path:
