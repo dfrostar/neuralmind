@@ -9,12 +9,19 @@ Python on this machine.
 > the default, **Docker** for "no Python on the host", and **source**
 > for hacking on NeuralMind itself.
 
+> **v0.15.0+:** `graphifyy` is now **optional**. NeuralMind ships a
+> built-in tree-sitter graph backend, so `pip install neuralmind` alone
+> can build an index — no second tool to install. The commands below add
+> `graphifyy` only where you want graphify's richer graph (it takes
+> priority where present). Drop it for the leanest install.
+
 ---
 
 ## 1. `pip` — the default
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind            # built-in tree-sitter backend, no graphify needed
+# pip install neuralmind graphifyy   # optional: add graphify's richer graph
 ```
 
 Drops into your active environment. Works in venvs, conda envs, system

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. Now ships neuralmind eval — a 100%-local way to measure answer faithfulness, run from a source checkout — plus polyglot (TypeScript + Go) retrieval fixtures. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. v0.15 adds a built-in tree-sitter graph backend so neuralmind build works with no external graphify install, proven at parity by a CI gate. Also ships neuralmind eval — a 100%-local way to measure answer faithfulness. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <script type="application/ld+json">
     {
@@ -76,6 +76,23 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0150">
+            <h2>What's New in v0.15.0 — no graphify needed</h2>
+            <p><strong>The biggest barrier to trying NeuralMind on your own repo is gone.</strong> Until now you had to install a second, external tool (<code>graphify</code>) and run it before <code>neuralmind build</code> would do anything. v0.15.0 ships a <strong>built-in tree-sitter graph backend</strong>, so <code>pip install neuralmind &amp;&amp; neuralmind build .</code> just works.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Built-in tree-sitter backend (<code>neuralmind/graphgen.py</code>).</strong> A pure-Python parser that produces a graphify-compatible <code>graph.json</code> — symbol-level <code>code</code> nodes, <code>contains</code>/<code>imports_from</code>/<code>inherits</code>/<code>calls</code> edges, a docstring-derived <code>rationale</code> layer, and dependency-free communities. <code>tree-sitter</code> + <code>tree-sitter-python</code> are now bundled core deps.</li>
+                <li><strong>graphify still takes priority.</strong> The built-in backend only generates a graph when no graphify output exists; <code>--force</code> never clobbers a real graphify build, and an empty/non-code project still gets the honest "no graph" guidance instead of a silent 0-node "success."</li>
+                <li><strong>Proven at parity, not asserted.</strong> A new CI gate (<code>evals/parity/run.py</code>) builds the reference fixture with <em>both</em> backends, runs the faithfulness eval and derives the self-benchmark reduction on each, and fails the build if the built-in backend drifts outside tolerance of graphify (within 25% reduction, within 10 points faithfulness). It's the safety net every future backend change must clear.</li>
+                <li><strong>A pluggable seam.</strong> Everything downstream of <code>graph.json</code> — embedder, context selector, communities, synapses, graph view, MCP tools — is unchanged. Only the graph <em>producer</em> changed, behind a <code>generated_by</code> / <code>schema_version</code> stamp. That's what lets multi-language extractors and an optional LSP/SCIP precision pass slot in next.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Removing the external-tool dependency cuts the #1 onboarding drop-off and a single-maintainer bus-factor risk, and unblocks a cleaner fresh-install on more platforms. The static code graph is commoditizing across the industry; making the producer pluggable — and gating every swap on measured retrieval quality — is how NeuralMind keeps the part that's actually unique (the learned synapse layer) honest. No runtime change for existing graphify-based installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.15.0.md">Full v0.15.0 release notes →</a></p>
         </div>
     </section>
 
@@ -348,13 +365,13 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.14.0 — Measure faithfulness</h3>
-            <p>The latest release ships <code>neuralmind eval</code>: a 100%-local command that scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline — a faithfulness delta, plus grounding and contradiction checks. No runtime change — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.14.0.md">v0.14.0 release notes</a> or the <a href="#whats-new-v0140">summary above</a>.</p>
+            <h3>Current Release: v0.15.0 — No graphify needed</h3>
+            <p>The latest release ships a built-in <strong>tree-sitter graph backend</strong>: <code>pip install neuralmind &amp;&amp; neuralmind build .</code> works with no external graphify install, while a real graphify graph still takes priority where present. The backend swap is proven at parity by a new CI gate (token reduction + answer faithfulness within tolerance of graphify). No runtime change — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.15.0.md">v0.15.0 release notes</a> or the <a href="#whats-new-v0150">summary above</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>Next — onboarding-lift eval</strong> — cold agent + a committed team baseline vs a cold agent alone, measured by the v0.14 harness; gates the shared-memory build.</li>
-                <li><strong>Decouple → endure → anticipate</strong> — a graph-source adapter (tree-sitter / LSP / SCIP) proven at parity by the eval harness, host-API hardening, then portable cross-agent memory — including opt-in, git-committed team memory. See the <a href="#whats-next">eval-first roadmap above</a>.</li>
+                <li><strong>Next — multi-language</strong> — tree-sitter TypeScript + Go extractors behind the <code>SUPPORTED_SUFFIXES</code> seam, each proven at parity per language by the backend gate.</li>
+                <li><strong>Precision → incremental → moat</strong> — an optional LSP/SCIP precision pass for exact <code>calls</code>/<code>inherits</code> (off by default), incremental per-file graph updates wired to the watcher, then MCP auto-detection across agents and a measured learned-synapse onboarding-lift (E1.5). See the <a href="#whats-next">eval-first roadmap above</a>.</li>
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 

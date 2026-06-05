@@ -89,7 +89,13 @@ keywords = [
     "offline-eval",
     "neuralmind-eval",
     "answer-faithfulness",
-    "faithfulness-delta"
+    "faithfulness-delta",
+    "tree-sitter",
+    "tree-sitter-graph-backend",
+    "built-in-code-graph",
+    "graphify-alternative",
+    "pluggable-graph-backend",
+    "backend-parity-gate"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -4,6 +4,7 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 
 | Use case | Best for | Primary goal |
 |---|---|---|
+| **[Index any repo with just `pip` (no graphify)](./zero-install-indexing.md)** | **First-timers, CI, locked-down machines** | **Nothing → queryable index in one install + one build** |
 | **[Does it work on your code? (5-minute benchmark)](./benchmark-your-repo.md)** | **Evaluating whether to install at all** | **Measured before/after on YOUR codebase** |
 | [Claude Code user](./claude-code.md) | You use Claude Code daily and want full two-phase optimization | Cheapest + smartest agent sessions |
 | [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings |
