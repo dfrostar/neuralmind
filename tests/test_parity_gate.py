@@ -103,6 +103,42 @@ class GateTests(unittest.TestCase):
         self.assertFalse(checks["fact recall within tolerance of graphify"])
 
 
+class LanguageCoverageTests(unittest.TestCase):
+    """The multi-language structural parity check (TS/Go) gate logic."""
+
+    def _cov(self, **kw):
+        defaults = {
+            "language": "typescript",
+            "graphify_symbols": 54,
+            "builtin_symbols": 60,
+            "covered": 54,
+            "dangling": 0,
+        }
+        defaults.update(kw)
+        return parity.LanguageCoverage(**defaults)
+
+    def test_full_coverage_passes(self) -> None:
+        checks = parity.evaluate_language_gate(self._cov())
+        self.assertTrue(all(c.passed for c in checks))
+
+    def test_coverage_ratio(self) -> None:
+        self.assertAlmostEqual(self._cov(graphify_symbols=50, covered=45).coverage, 0.9)
+        self.assertEqual(self._cov(graphify_symbols=0, covered=0).coverage, 0.0)
+
+    def test_below_floor_fails(self) -> None:
+        checks = {
+            c.name: c.passed
+            for c in parity.evaluate_language_gate(
+                self._cov(graphify_symbols=54, covered=40)  # ~74% < 90%
+            )
+        }
+        self.assertFalse(checks["typescript: symbol coverage ≥ floor"])
+
+    def test_dangling_fails(self) -> None:
+        checks = {c.name: c.passed for c in parity.evaluate_language_gate(self._cov(dangling=3))}
+        self.assertFalse(checks["typescript: no dangling edges"])
+
+
 class RenderTests(unittest.TestCase):
     def test_pass_banner_and_metrics(self) -> None:
         g = _measurement("graphify")

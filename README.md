@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.15.0** — **No graphify needed.** NeuralMind now ships a built-in **tree-sitter** graph backend, so `pip install neuralmind && neuralmind build .` *just works* — no second, external tool to install first. A real graphify graph still takes priority where one exists, so nothing changes for existing setups. And the swap is **proven at parity, not asserted**: a new CI gate builds the reference fixture with *both* backends and fails if the built-in one drifts outside tolerance of graphify on token reduction or answer faithfulness. The graph *producer* is now pluggable behind a `graph.json` seam — the foundation for multi-language and optional LSP/SCIP precision. [Release notes](RELEASE_NOTES_v0.15.0.md)
+> **🆕 New in v0.16.0** — **Multi-language: TypeScript + Go.** The built-in **tree-sitter** backend now indexes **Python, TypeScript, and Go** out of the box — `pip install neuralmind && neuralmind build .` works standalone on a TS or Go repo, no graphify. Both new languages sit behind the same `SUPPORTED_SUFFIXES` seam, emit the same graph contract, and are **proven at parity per language** by the CI gate (100% symbol coverage vs graphify on the reference fixtures). [Release notes](RELEASE_NOTES_v0.16.0.md)
+>
+> **v0.15.0** — **No graphify needed.** A built-in **tree-sitter** graph backend, so `pip install neuralmind && neuralmind build .` *just works* — no second, external tool. graphify still takes priority where present. Proven at parity by a CI gate (reduction + faithfulness within tolerance). [Release notes](RELEASE_NOTES_v0.15.0.md)
 >
 > **v0.14.0** — **Measure faithfulness.** A new contributor/CI command — `neuralmind eval` — turns *"does the memory actually help?"* into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a naive baseline **at the same token budget** (a faithfulness delta, plus grounding and contradiction checks). 100% local by default; the LLM-as-judge is opt-in. [Release notes](RELEASE_NOTES_v0.14.0.md)
 >
@@ -1687,7 +1689,7 @@ Long context makes it *possible* to stuff a whole repo in; it does not make it *
 
 ### Does it support my language?
 
-The **built-in tree-sitter backend** (v0.15.0+) indexes **Python** today, with TypeScript + Go next behind the same seam. For broader coverage, install [graphify](https://github.com/dfrostar/graphify) — any language it supports works, since NeuralMind consumes `graphify-out/graph.json` and graphify takes priority where present. Either producer feeds the same retrieval pipeline.
+The **built-in tree-sitter backend** indexes **Python, TypeScript, and Go** out of the box (v0.16.0+) — a mixed-language repo is indexed in one pass. More grammars slot in behind the same `SUPPORTED_SUFFIXES` seam. For languages beyond those, install [graphify](https://github.com/dfrostar/graphify) — any language it supports works, since NeuralMind consumes `graphify-out/graph.json` and graphify takes priority where present. Either producer feeds the same retrieval pipeline.
 
 ### What is the difference between `wakeup`, `query`, and `skeleton`?
 
@@ -1737,6 +1739,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.16.0](RELEASE_NOTES_v0.16.0.md)** | Multi-language built-in backend — TypeScript + Go extractors behind the `SUPPORTED_SUFFIXES` seam, `neuralmind build` indexes Python/TS/Go with no graphify; proven at parity per language by the CI gate (100% symbol coverage on the reference fixtures) |
 | **[Release Notes v0.15.0](RELEASE_NOTES_v0.15.0.md)** | Built-in tree-sitter graph backend — `neuralmind build` works with no graphify install; graphify still takes priority where present; backend swap proven at parity by a new CI gate (reduction + faithfulness within tolerance) |
 | **[Release Notes v0.14.0](RELEASE_NOTES_v0.14.0.md)** | `neuralmind eval` — measure answer faithfulness (expected-fact recall vs a matched-budget naive baseline) with grounding + contradiction checks and `--json`; 100% local by default |
 | **[Release Notes v0.13.0](RELEASE_NOTES_v0.13.0.md)** | Measurement foundation — offline faithfulness eval (query + gold-fact dataset, expected-fact-recall scorer), polyglot retrieval fixtures (TypeScript + Go), and a standard documentation process |
