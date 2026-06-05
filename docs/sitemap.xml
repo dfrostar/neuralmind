@@ -66,14 +66,24 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.18.0.md</loc>
+    <loc>https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/about.html#whats-new-v0180</loc>
+    <loc>https://dfrostar.github.io/neuralmind/about.html#whats-new-v0190</loc>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.18.0.md</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://dfrostar.github.io/neuralmind/about.html#whats-new-v0180</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md</loc>
