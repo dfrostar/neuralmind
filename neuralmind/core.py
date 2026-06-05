@@ -210,6 +210,12 @@ class NeuralMind:
         """
         start_time = datetime.now()
 
+        # Built-in backend: when there's no graphify output yet, generate a
+        # graphify-compatible graph.json from a tree-sitter parse so that
+        # `pip install neuralmind && neuralmind build` works with no separate
+        # graphify install. A pre-existing graphify graph always takes priority.
+        self._maybe_generate_builtin_graph(force=force)
+
         # Load graph
         if not self.embedder.load_graph():
             self._emit_audit(
@@ -268,6 +274,41 @@ class NeuralMind:
         )
         return self._build_stats
 
+    def _maybe_generate_builtin_graph(self, force: bool = False) -> None:
+        """Generate ``graphify-out/graph.json`` with the built-in tree-sitter
+        backend when there's no graphify output to consume.
+
+        A graphify-produced graph always wins: we only generate when none
+        exists, or — on ``force`` — when the existing graph is one *we* wrote
+        (never clobber a real graphify build). Silently no-ops when tree-sitter
+        isn't importable, leaving the existing "no graph" path to advise the user.
+        """
+        import sys
+
+        graph_path = self.project_path / "graphify-out" / "graph.json"
+        if graph_path.exists():
+            if not force:
+                return
+            try:
+                existing = json.loads(graph_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                existing = {}
+            if "neuralmind.graphgen" not in str(existing.get("generated_by", "")):
+                return  # force-rebuild must not overwrite a graphify graph
+
+        from . import graphgen
+
+        if not graphgen.is_available():
+            return
+        try:
+            graphgen.write_graph(self.project_path)
+            print(
+                "[neuralmind] generated code graph via the built-in tree-sitter "
+                f"backend → {graph_path}"
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            print(f"[neuralmind] built-in graph backend failed: {exc}", file=sys.stderr)
+
     def _ensure_built(self):
         """Ensure the system is built before queries.
 
@@ -282,9 +323,11 @@ class NeuralMind:
                 if not graph_path.exists():
                     raise GraphNotBuiltError(
                         f"No code graph found at {graph_path}.\n"
-                        f"Generate it, then build the index:\n"
-                        f"  graphify update {self.project_path}\n"
-                        f"  neuralmind build {self.project_path}"
+                        f"NeuralMind builds one automatically with its bundled "
+                        f"tree-sitter backend — install the parser if it's missing:\n"
+                        f"  pip install tree-sitter tree-sitter-python\n"
+                        f"  neuralmind build {self.project_path}\n"
+                        f"(Or generate it with graphify: `graphify update {self.project_path}`.)"
                     )
                 raise GraphNotBuiltError(
                     result.get("error", "Failed to build the NeuralMind index.")

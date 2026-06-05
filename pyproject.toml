@@ -109,7 +109,11 @@ dependencies = [
     "chromadb>=0.4.0",
     "pyyaml>=6.0",
     "toml>=0.10",
-    "mcp>=1.27.2"
+    "mcp>=1.27.2",
+    # Built-in graph backend: parse a project into a graphify-compatible
+    # graph.json with no external graphify install. See neuralmind/graphgen.py.
+    "tree-sitter>=0.21.0",
+    "tree-sitter-python>=0.21.0"
 ]
 
 [project.optional-dependencies]
