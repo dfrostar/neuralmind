@@ -456,6 +456,18 @@ class GraphEmbedder(EmbeddingBackend):
             "db_path": self.db_path,
         }
 
+    def delete_nodes(self, node_ids) -> int:
+        """Delete embeddings for the given node ids (e.g. symbols removed by an
+        incremental update). Returns the number requested; best-effort."""
+        ids = [str(i) for i in node_ids]
+        if not ids:
+            return 0
+        try:
+            self.collection.delete(ids=ids)
+        except Exception:
+            return 0
+        return len(ids)
+
     def clear(self) -> None:
         """Clear all embeddings from the collection."""
         try:

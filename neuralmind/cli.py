@@ -468,10 +468,13 @@ def cmd_watch(args):
     quiet = bool(getattr(args, "quiet", False))
     decay_interval = float(getattr(args, "decay_interval", 600))
     debounce = float(getattr(args, "debounce", 0.75))
+    reindex = bool(getattr(args, "reindex", False))
 
     if not quiet:
         print(f"NeuralMind watcher starting for: {path}")
         print(f"  debounce: {debounce}s   decay every: {decay_interval}s")
+        if reindex:
+            print("  incremental re-index: on (edited files re-parsed into the graph)")
         print("  Ctrl-C to stop.\n")
 
     mind = NeuralMind(str(path))
@@ -524,6 +527,20 @@ def cmd_watch(args):
         activations_total += pairs
         if not quiet and pairs:
             print(f"  + {len(paths)} file(s) → {pairs} synapse pair(s) reinforced")
+        # Incremental re-index: re-parse just the edited files into the built-in
+        # graph + re-embed only their nodes. Opt-in (--reindex) since it needs
+        # the retrieval stack in the watch process.
+        if reindex:
+            try:
+                stats = mind.update_files(paths)
+            except Exception as exc:  # pragma: no cover - defensive
+                stats = {"success": False, "error": str(exc)}
+            if not quiet and stats.get("success") and stats.get("files_reparsed"):
+                print(
+                    f"  ↻ re-indexed {stats['files_reparsed']} file(s): "
+                    f"{stats.get('embedded', 0)} node(s) re-embedded, "
+                    f"{stats.get('skipped', 0)} unchanged, {stats.get('pruned', 0)} pruned"
+                )
 
     watcher = FileActivityWatcher(path, on_batch, debounce=debounce)
     watcher.start()
@@ -977,6 +994,12 @@ def main():
         "--quiet",
         action="store_true",
         help="Suppress per-batch logging",
+    )
+    watch_p.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Incrementally re-index edited files into the built-in graph as they "
+        "change (re-parses just those files, re-embeds only their nodes)",
     )
     watch_p.set_defaults(func=cmd_watch)
 
