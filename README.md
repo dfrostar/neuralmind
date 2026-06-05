@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.18.0** — **Incremental updates.** Re-index just the file you edited, not the whole repo: `neuralmind watch --reindex` re-parses each changed file into the built-in graph and re-embeds **only its nodes** (unchanged files stay byte-for-byte identical, so the embedder skips them). On the reference fixture, editing one file re-embeds 2 nodes and skips 135. Your index stays fresh as you type. [Release notes](RELEASE_NOTES_v0.18.0.md)
+> **🆕 New in v0.19.0** — **One-command MCP setup.** `neuralmind install-mcp --all` auto-detects your installed agents — **Claude Code, Cursor, Cline, Claude Desktop** — and registers NeuralMind's MCP server with each (non-destructive merge, idempotent). The agent then onboards onto your codebase through NeuralMind's tools instead of grepping cold. Distribution is half the moat; the learned synapse layer (usage memory) is the other half. [Release notes](RELEASE_NOTES_v0.19.0.md)
+>
+> **v0.18.0** — **Incremental updates.** Re-index just the file you edited, not the whole repo: `neuralmind watch --reindex` re-parses each changed file and re-embeds **only its nodes** (unchanged files stay byte-for-byte identical, so the embedder skips them). Your index stays fresh as you type. [Release notes](RELEASE_NOTES_v0.18.0.md)
 >
 > **v0.17.0** — **Optional SCIP precision.** Set `NEURALMIND_PRECISION=1` with a **SCIP** index (`scip-python`/`scip-typescript`/`scip-go`) and NeuralMind folds in **compiler-accurate** `calls`/`inherits` edges, replacing the heuristic ones for covered files. Off by default, dependency-free, proven by a precision check in the CI gate. [Release notes](RELEASE_NOTES_v0.17.0.md)
 >
@@ -1743,6 +1745,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.19.0](RELEASE_NOTES_v0.19.0.md)** | One-command MCP setup — `neuralmind install-mcp --all` auto-detects Claude Code / Cursor / Cline / Claude Desktop and registers the MCP server with each (non-destructive merge, idempotent); pure-stdlib `mcp_install` module |
 | **[Release Notes v0.18.0](RELEASE_NOTES_v0.18.0.md)** | Incremental per-file graph updates — `graphgen.update_files()` / `NeuralMind.update_files()` re-parse only changed files (unchanged files stay byte-identical so the embedder skips them), wired to the watcher via `neuralmind watch --reindex` |
 | **[Release Notes v0.17.0](RELEASE_NOTES_v0.17.0.md)** | Optional SCIP precision pass — `NEURALMIND_PRECISION=1` folds compiler-accurate `calls`/`inherits` edges from a `*.scip` index into the built-in graph (replacing heuristic ones for covered files); off by default, dependency-free stdlib SCIP reader, proven by a precision check in the CI gate |
 | **[Release Notes v0.16.0](RELEASE_NOTES_v0.16.0.md)** | Multi-language built-in backend — TypeScript + Go extractors behind the `SUPPORTED_SUFFIXES` seam, `neuralmind build` indexes Python/TS/Go with no graphify; proven at parity per language by the CI gate (100% symbol coverage on the reference fixtures) |

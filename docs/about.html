@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. v0.18 adds incremental per-file graph updates (neuralmind watch --reindex); the bundled tree-sitter backend indexes Python, TypeScript, and Go (no external graphify install) with an optional SCIP precision pass, proven at parity by a CI gate. Also ships neuralmind eval — a 100%-local way to measure answer faithfulness. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph, multi-language code intelligence, polyglot codebase indexing, typescript code intelligence, go code intelligence, scip, scip index, scip precision, compiler-accurate call graph, lsp code graph, precise call graph, incremental indexing, incremental code graph, watch mode reindex, live code index">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. v0.19 adds one-command MCP setup (neuralmind install-mcp auto-detects and registers with Claude Code, Cursor, Cline, Claude Desktop); the bundled tree-sitter backend indexes Python, TypeScript, and Go (no external graphify install) with incremental updates and an optional SCIP precision pass, proven at parity by a CI gate. Also ships neuralmind eval — a 100%-local way to measure answer faithfulness. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph, multi-language code intelligence, polyglot codebase indexing, typescript code intelligence, go code intelligence, scip, scip index, scip precision, compiler-accurate call graph, lsp code graph, precise call graph, incremental indexing, incremental code graph, watch mode reindex, live code index, mcp setup, install mcp server, claude code mcp, cursor mcp, cline mcp, claude desktop mcp, mcp auto-detection">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <script type="application/ld+json">
     {
@@ -76,6 +76,22 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0190">
+            <h2>What's New in v0.19.0 — one-command MCP setup</h2>
+            <p><strong>Distribution is half the moat.</strong> The static code graph is commoditizing; what NeuralMind has that a static graph can't copy is usage memory (the learned synapse layer) plus being the memory an agent actually reaches for. v0.19.0 makes the latter frictionless: one command registers NeuralMind's MCP server with every agent you have installed.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind install-mcp</code>.</strong> Auto-detects installed MCP clients — Claude Code, Cursor, Cline, Claude Desktop — and merges a NeuralMind entry into each client's config. <code>--all</code> does every detected client; <code>--client</code> targets one; <code>--print</code> emits the snippet to paste by hand.</li>
+                <li><strong>Non-destructive + idempotent.</strong> Every client reads the same <code>{"mcpServers": {…}}</code> shape (just in different files); the command preserves your other servers, re-running is a no-op, and a changed entry is updated in place. Pure standard library (<code>neuralmind/mcp_install.py</code>), 11 tests.</li>
+                <li><strong>Zero machine-specific config.</strong> The launch spec is just <code>{"command": "neuralmind-mcp"}</code> — the MCP tools take a <code>project_path</code> per call, so there's nothing to bake in.</li>
+            </ul>
+            <h3>Why this matters — the moat</h3>
+            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate 71.7% → 83.3%, +11.7 points with recall on, at a neutral token budget). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md">Full v0.19.0 release notes →</a></p>
         </div>
     </section>
 
@@ -415,13 +431,13 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.18.0 — Incremental per-file graph updates</h3>
-            <p>The latest release adds <strong>incremental updates</strong>: <code>neuralmind watch --reindex</code> re-parses just the file you edited into the built-in graph and re-embeds only its nodes (unchanged files stay byte-for-byte identical, communities included, so the embedder skips them). On the reference fixture, editing one file re-embeds 2 nodes and skips 135. No runtime change by default. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.18.0.md">v0.18.0 release notes</a> or the <a href="#whats-new-v0180">summary above</a>.</p>
+            <h3>Current Release: v0.19.0 — One-command MCP setup</h3>
+            <p>The latest release leans into the distribution moat: <code>neuralmind install-mcp --all</code> auto-detects your installed agents (Claude Code, Cursor, Cline, Claude Desktop) and registers NeuralMind's MCP server with each — a non-destructive, idempotent merge. The learned synapse layer's uplift is already measured by the self-benchmark's Phase-3 A/B (top-k hit rate 71.7% → 83.3% with recall on). See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md">v0.19.0 release notes</a> or the <a href="#whats-new-v0190">summary above</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>Next — lean into the moat</strong> — MCP auto-detection across Claude Code / Cursor / Cline out of the box, and a measured learned-synapse onboarding-lift (E1.5) — the usage-memory layer static-graph competitors lack.</li>
-                <li><strong>Toward v1.0</strong> — the moat (MCP distribution + learned-synapse uplift), then a stable API guarantee and LTS. See the <a href="#whats-next">eval-first roadmap above</a>.</li>
+                <li><strong>Next — E1.5 onboarding-lift eval</strong> — formalise the cold-agent-plus-committed-team-baseline vs cold-agent-alone measurement (the self-benchmark's synapse A/B is the foundation) as the headline differentiator.</li>
+                <li><strong>Toward v1.0</strong> — the moat (MCP distribution + a measured learned-synapse onboarding-lift), then a stable API guarantee and LTS. See the <a href="#whats-next">eval-first roadmap above</a>.</li>
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 

@@ -746,6 +746,48 @@ def cmd_install_hooks(args):
         sys.exit(1)
 
 
+def cmd_install_mcp(args):
+    """Register the NeuralMind MCP server with one or more AI coding agents."""
+    from . import mcp_install
+
+    project_dir = Path(args.project_path or ".").resolve()
+
+    if getattr(args, "print_only", False):
+        print(mcp_install.snippet())
+        print(
+            "\nPaste the above into your client's MCP config "
+            "(Claude Code: .mcp.json · Cursor: .cursor/mcp.json · "
+            "Claude Desktop / Cline: the app's settings file)."
+        )
+        return
+
+    if getattr(args, "all", False):
+        clients = mcp_install.detect_clients(project_dir)
+        if not clients:
+            print("No MCP clients detected. Use --client <name> or --print.")
+            print(f"  Known clients: {', '.join(mcp_install.CLIENTS)}")
+            return
+    else:
+        clients = [args.client]
+
+    any_change = False
+    for client in clients:
+        try:
+            result = mcp_install.install(client, project_dir)
+        except ValueError as exc:
+            print(f"Error: {exc}")
+            sys.exit(1)
+        symbol = "✓" if result.action != "already-present" else "•"
+        print(f"{symbol} {client}: {result.action} → {result.path}")
+        any_change = any_change or result.action != "already-present"
+
+    if any_change:
+        print(
+            "\nThe agent exposes NeuralMind's tools (wakeup, query, search, "
+            "skeleton, …). Restart the client to pick up the new server."
+        )
+
+
 def cmd_hook(args):
     """Internal: runtime entrypoint invoked by Claude Code hooks."""
     from .hooks import run_hook
@@ -1098,6 +1140,36 @@ def main():
         help="Remove neuralmind hooks, preserve other hooks",
     )
     hooks_p.set_defaults(func=cmd_install_hooks)
+
+    # install-mcp command — register the MCP server with AI coding agents
+    mcp_p = subparsers.add_parser(
+        "install-mcp",
+        help="Register the NeuralMind MCP server with Claude Code / Cursor / Cline / Claude Desktop",
+    )
+    mcp_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root for project-scoped clients (default: current dir)",
+    )
+    mcp_p.add_argument(
+        "--client",
+        choices=("claude-code", "cursor", "cline", "claude-desktop"),
+        default="claude-code",
+        help="Which client to register with (default: claude-code)",
+    )
+    mcp_p.add_argument(
+        "--all",
+        action="store_true",
+        help="Register with every detected client (auto-detect installed agents)",
+    )
+    mcp_p.add_argument(
+        "--print",
+        dest="print_only",
+        action="store_true",
+        help="Print the config snippet to paste manually instead of writing files",
+    )
+    mcp_p.set_defaults(func=cmd_install_mcp)
 
     # Internal hook runtime (invoked by Claude Code, not user-facing)
     hook_p = subparsers.add_parser(

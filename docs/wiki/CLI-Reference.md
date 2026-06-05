@@ -776,6 +776,56 @@ NEURALMIND_BYPASS=1 claude-code ...
 
 ---
 
+### install-mcp *(v0.19.0+)*
+
+Register the NeuralMind MCP server (`neuralmind-mcp`) with one or more AI coding
+agents. Auto-detects installed clients and merges a `neuralmind` entry into each
+client's `mcpServers` config **without clobbering** your other servers
+(idempotent — re-running is a no-op).
+
+```bash
+neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
+```
+
+#### Clients & config locations
+
+| Client | Scope | Config file |
+|--------|-------|-------------|
+| `claude-code` (default) | project | `.mcp.json` |
+| `cursor` | project | `.cursor/mcp.json` |
+| `claude-desktop` | user | platform `claude_desktop_config.json` |
+| `cline` | user | VS Code `cline_mcp_settings.json` |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--client` | `claude-code` | Which single client to register with |
+| `--all` | False | Register with every **detected** client (auto-detection) |
+| `--print` | False | Print the config snippet to paste manually; write nothing |
+
+#### Examples
+
+```bash
+# Register with Claude Code for this project (writes .mcp.json)
+neuralmind install-mcp
+
+# Register with every agent installed on this machine/project
+neuralmind install-mcp --all
+
+# A specific client
+neuralmind install-mcp --client cursor
+
+# Just show me the snippet
+neuralmind install-mcp --print
+```
+
+Restart the client after registering so it picks up the new server. The agent
+then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
+`build`, `stats`, …).
+
+---
+
 ### init-hook
 
 Install (or update) a Git post-commit hook that rebuilds the neural index automatically after every commit. Safe and idempotent — re-running only updates the NeuralMind block without touching other hooks.

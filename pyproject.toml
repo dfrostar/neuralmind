@@ -108,7 +108,13 @@ keywords = [
     "incremental-indexing",
     "incremental-code-graph",
     "live-code-index",
-    "watch-mode-reindex"
+    "watch-mode-reindex",
+    "mcp-setup",
+    "install-mcp",
+    "claude-code-mcp",
+    "cursor-mcp",
+    "cline-mcp",
+    "mcp-auto-detection"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
