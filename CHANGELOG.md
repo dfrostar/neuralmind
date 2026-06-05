@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/dfrostar/neuralmind/compare/v0.17.0...v0.18.0) (2026-06-05)
+
+
+### Features
+
+* **backend:** incremental per-file graph updates wired to the watcher ([#193](https://github.com/dfrostar/neuralmind/issues/193)) ([1777747](https://github.com/dfrostar/neuralmind/commit/177774726edc3f4e51e699d4b586955636881199))
+
 ## [0.17.0](https://github.com/dfrostar/neuralmind/compare/v0.16.0...v0.17.0) (2026-06-05)
 
 
