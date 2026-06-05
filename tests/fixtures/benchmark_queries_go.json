@@ -1,0 +1,82 @@
+{
+  "_comment": "Go counterpart of benchmark_queries.json. Same query shapes and gold-module intent as the Python fixture, with expected_modules pointing at tests/fixtures/sample_project_go source paths. Used to measure top-k retrieval hit-rate per language (issue #173, E2.3 / E2.4).",
+  "language": "go",
+  "fixture": "sample_project_go",
+  "queries": [
+    {
+      "id": "auth-flow",
+      "question": "How does authentication work in this codebase?",
+      "shape": "cross-file",
+      "expected_modules": ["auth/handlers.go", "auth/jwt_utils.go", "users/crud.go"]
+    },
+    {
+      "id": "api-endpoints",
+      "question": "What are the main API endpoints?",
+      "shape": "focused",
+      "expected_modules": ["api/routes.go"]
+    },
+    {
+      "id": "billing-flow",
+      "question": "Explain the billing flow from a user perspective.",
+      "shape": "cross-file",
+      "expected_modules": ["billing/stripe_client.go", "billing/invoices.go", "users/crud.go"]
+    },
+    {
+      "id": "user-storage",
+      "question": "How are users stored in the database?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.go", "db/connection.go"]
+    },
+    {
+      "id": "jwt-verify",
+      "question": "How does JWT signature verification work?",
+      "shape": "focused",
+      "expected_modules": ["auth/jwt_utils.go"]
+    },
+    {
+      "id": "stripe-webhook",
+      "question": "What happens when a Stripe webhook fires?",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.go"]
+    },
+    {
+      "id": "create-user",
+      "question": "How do I create a new user?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.go", "api/routes.go"]
+    },
+    {
+      "id": "refund",
+      "question": "Show me the refund logic.",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.go"]
+    },
+    {
+      "id": "db-choice",
+      "question": "What database does this project use?",
+      "shape": "identity",
+      "expected_modules": ["db/connection.go"]
+    },
+    {
+      "id": "invoice-send",
+      "question": "How are invoices sent to users?",
+      "shape": "cross-file",
+      "expected_modules": ["billing/invoices.go", "users/crud.go"]
+    }
+  ],
+  "learning_seed": {
+    "_comment": "Queries used to seed the memory log before the learning-uplift phase. Heavier on auth + billing than on users, to create a realistic cooccurrence signal the reranker can exploit.",
+    "history": [
+      "How does the JWT token get signed?",
+      "Where is password hashing done?",
+      "Can a user log in with an expired token?",
+      "How do I charge a customer?",
+      "What happens if a Stripe charge fails?",
+      "How do I issue a partial refund?",
+      "Where are invoices stored?",
+      "How does the login endpoint work?",
+      "What middleware runs before /api/billing/charge?",
+      "How is a user session revoked?"
+    ]
+  }
+}
