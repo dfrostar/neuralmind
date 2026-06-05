@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "_comment": "Faithfulness eval query + gold-fact set for issue #172 (E1.1). Each entry pairs a natural-language query with the KEY FACTS a correct answer must contain (expected_facts), not just the gold modules. Facts are derived directly from the code in tests/fixtures/sample_project/ — read that fixture before editing facts here. expected_modules are retained for grounding/citation scoring (E1.3); fact `aliases` give the offline judge synonym surface so heuristic recall is not brittle to exact wording. See schema.md for the format contract and README.md for the harness design.",
+  "fixture": "tests/fixtures/sample_project",
+  "queries": [
+    {
+      "id": "auth-flow",
+      "question": "How does authentication work in this codebase?",
+      "shape": "cross-file",
+      "expected_modules": ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"],
+      "expected_facts": [
+        {"id": "auth-lookup-by-email", "fact": "the user is looked up by email", "aliases": ["get_user_by_email", "lookup by email", "find user by email"]},
+        {"id": "auth-verify-password", "fact": "the password hash is verified", "aliases": ["verify_password", "password hash", "check password", "compare_digest"]},
+        {"id": "auth-issues-jwt-pair", "fact": "a JWT access token and refresh token pair is issued on success", "aliases": ["access_token", "refresh_token", "access and refresh", "token pair", "encode_token"]},
+        {"id": "auth-invalid-credentials", "fact": "InvalidCredentialsError is raised when email or password do not match", "aliases": ["InvalidCredentialsError", "bad password", "unknown email"]}
+      ]
+    },
+    {
+      "id": "jwt-verify",
+      "question": "How does JWT signature verification work?",
+      "shape": "focused",
+      "expected_modules": ["auth/jwt_utils.py"],
+      "expected_facts": [
+        {"id": "jwt-hs256", "fact": "tokens are signed with HMAC-SHA256 (HS256)", "aliases": ["HS256", "HMAC", "hmac.new", "sha256", "hashlib.sha256"]},
+        {"id": "jwt-three-segments", "fact": "the token is split into three dot-separated segments: header, payload, signature", "aliases": ["3 segments", "three segments", "header.payload.signature"]},
+        {"id": "jwt-constant-time", "fact": "the signature is compared in constant time with hmac.compare_digest", "aliases": ["compare_digest", "constant time", "constant-time"]},
+        {"id": "jwt-invalid-signature", "fact": "InvalidSignatureError is raised on a signature mismatch", "aliases": ["InvalidSignatureError", "signature mismatch"]},
+        {"id": "jwt-expiry-check", "fact": "the exp claim is checked and TokenExpiredError is raised when expired", "aliases": ["TokenExpiredError", "exp", "expired", "expiry"]}
+      ]
+    },
+    {
+      "id": "jwt-secret",
+      "question": "What secret and algorithm are used to sign JWTs?",
+      "shape": "identity",
+      "expected_modules": ["auth/jwt_utils.py"],
+      "expected_facts": [
+        {"id": "jwt-secret-symmetric", "fact": "signing uses a symmetric shared secret (JWT_SECRET)", "aliases": ["JWT_SECRET", "shared secret", "symmetric", "change-me-in-prod"]},
+        {"id": "jwt-alg-hs256", "fact": "the algorithm is HS256", "aliases": ["HS256", "ALGORITHM"]}
+      ]
+    },
+    {
+      "id": "token-refresh",
+      "question": "How is a refresh token exchanged for a new access token?",
+      "shape": "focused",
+      "expected_modules": ["auth/handlers.py", "auth/jwt_utils.py"],
+      "expected_facts": [
+        {"id": "refresh-decode", "fact": "the refresh token is decoded and its signature/expiry verified", "aliases": ["decode_token", "decode", "verify"]},
+        {"id": "refresh-kind-check", "fact": "the token must carry kind=refresh or InvalidTokenError is raised", "aliases": ["kind", "refresh", "InvalidTokenError", "not a refresh token"]},
+        {"id": "refresh-new-access", "fact": "a new short-lived access token is encoded and returned", "aliases": ["encode_token", "new access", "access_token", "SESSION_TTL"]}
+      ]
+    },
+    {
+      "id": "session-ttl",
+      "question": "How long are access and refresh tokens valid for?",
+      "shape": "identity",
+      "expected_modules": ["auth/handlers.py"],
+      "expected_facts": [
+        {"id": "ttl-access-1h", "fact": "the access/session token lives for 1 hour", "aliases": ["SESSION_TTL", "1 hour", "hours=1", "one hour"]},
+        {"id": "ttl-refresh-30d", "fact": "the refresh token lives for 30 days", "aliases": ["REFRESH_TTL", "30 days", "days=30", "thirty days"]}
+      ]
+    },
+    {
+      "id": "logout-revoke",
+      "question": "How is a session revoked on logout?",
+      "shape": "focused",
+      "expected_modules": ["auth/handlers.py"],
+      "expected_facts": [
+        {"id": "logout-revocation-list", "fact": "logout writes the refresh token to a revoked_tokens revocation list", "aliases": ["revoked_tokens", "revocation list", "revoke", "INSERT INTO revoked_tokens"]}
+      ]
+    },
+    {
+      "id": "api-endpoints",
+      "question": "What are the main API endpoints?",
+      "shape": "focused",
+      "expected_modules": ["api/routes.py"],
+      "expected_facts": [
+        {"id": "api-auth-routes", "fact": "there are auth routes for login, refresh, and logout", "aliases": ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout", "login", "logout"]},
+        {"id": "api-user-routes", "fact": "there are user routes to create a user and read/delete the current user", "aliases": ["/api/users", "/api/users/me", "create user", "get_me", "delete_me"]},
+        {"id": "api-billing-routes", "fact": "there are billing routes for charge, refund, and invoices", "aliases": ["/api/billing/charge", "/api/billing/refund", "/api/billing/invoices", "charge", "refund", "invoices"]},
+        {"id": "api-webhook-route", "fact": "there is a Stripe webhook endpoint", "aliases": ["/webhooks/stripe", "webhook", "stripe webhook"]}
+      ]
+    },
+    {
+      "id": "route-decorator",
+      "question": "How are routes registered in the API layer?",
+      "shape": "focused",
+      "expected_modules": ["api/routes.py"],
+      "expected_facts": [
+        {"id": "route-decorator-registers", "fact": "a @route(method, path) decorator records a (method, path, handler) tuple", "aliases": ["@route", "route decorator", "method, path, handler"]},
+        {"id": "route-registry", "fact": "registered routes are appended to a module-level ROUTES list", "aliases": ["ROUTES", "ROUTES list", "append"]}
+      ]
+    },
+    {
+      "id": "protected-endpoints",
+      "question": "How do protected endpoints authenticate the caller?",
+      "shape": "cross-file",
+      "expected_modules": ["api/routes.py", "auth/handlers.py"],
+      "expected_facts": [
+        {"id": "protected-bearer", "fact": "the caller passes a bearer token in the Authorization header", "aliases": ["Authorization", "Bearer", "bearer token", "Authorization header"]},
+        {"id": "protected-verify-session", "fact": "verify_session validates the access token and returns the user id", "aliases": ["verify_session", "user id", "user_id", "validate token"]}
+      ]
+    },
+    {
+      "id": "create-user",
+      "question": "How do I create a new user?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.py", "api/routes.py"],
+      "expected_facts": [
+        {"id": "create-user-endpoint", "fact": "POST /api/users is the sign-up endpoint", "aliases": ["/api/users", "POST /api/users", "sign-up", "signup"]},
+        {"id": "create-user-insert", "fact": "create_user inserts a row into the users table and returns the User record", "aliases": ["create_user", "INSERT INTO users", "User", "returns user"]},
+        {"id": "create-user-stores-hash", "fact": "the user is stored with email and a password_hash", "aliases": ["password_hash", "email", "hash"]}
+      ]
+    },
+    {
+      "id": "user-storage",
+      "question": "How are users stored in the database?",
+      "shape": "cross-file",
+      "expected_modules": ["users/crud.py", "db/connection.py"],
+      "expected_facts": [
+        {"id": "user-table", "fact": "users are stored in a users table", "aliases": ["users table", "CREATE TABLE", "users"]},
+        {"id": "user-columns", "fact": "the user record has id, email, password_hash, created_at, last_login, and is_active fields", "aliases": ["password_hash", "is_active", "last_login", "created_at", "users.id", "users.email"]},
+        {"id": "user-soft-delete", "fact": "users are soft-deleted by flipping the is_active flag rather than being removed", "aliases": ["soft-delete", "soft delete", "is_active", "deactivate_user"]}
+      ]
+    },
+    {
+      "id": "db-choice",
+      "question": "What database does this project use?",
+      "shape": "identity",
+      "expected_modules": ["db/connection.py"],
+      "expected_facts": [
+        {"id": "db-sqlite", "fact": "the fixture uses SQLite", "aliases": ["sqlite", "sqlite3", "SQLite"]},
+        {"id": "db-thread-local", "fact": "connections are thread-local", "aliases": ["thread-local", "threading.local", "thread local"]},
+        {"id": "db-lazy-schema", "fact": "the schema is created lazily on first connection", "aliases": ["lazily", "lazy", "_ensure_schema", "CREATE TABLE IF NOT EXISTS", "first access"]}
+      ]
+    },
+    {
+      "id": "billing-flow",
+      "question": "Explain the billing flow when a user is charged.",
+      "shape": "cross-file",
+      "expected_modules": ["billing/stripe_client.py", "billing/invoices.py", "users/crud.py"],
+      "expected_facts": [
+        {"id": "charge-validate-user", "fact": "the user is validated and must be active before charging", "aliases": ["get_user", "is_active", "not chargeable", "validate user", "BillingError"]},
+        {"id": "charge-stripe", "fact": "a charge is created via the Stripe API", "aliases": ["stripe", "Charge.create", "charge_customer", "_fake_stripe_charge"]},
+        {"id": "charge-record", "fact": "the charge is mirrored into a local charges table", "aliases": ["charges table", "INSERT INTO charges", "billing record", "charges"]},
+        {"id": "charge-invoice", "fact": "an invoice is created on a successful charge", "aliases": ["create_invoice", "invoice", "invoices"]}
+      ]
+    },
+    {
+      "id": "refund",
+      "question": "Show me the refund logic.",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.py"],
+      "expected_facts": [
+        {"id": "refund-lookup", "fact": "the charge is looked up by its stripe id", "aliases": ["stripe_id", "SELECT", "charges WHERE", "look up charge"]},
+        {"id": "refund-double-guard", "fact": "an already-refunded charge raises BillingError to prevent double refunds", "aliases": ["already refunded", "BillingError", "double refund", "refunded"]},
+        {"id": "refund-status-update", "fact": "the charge status is updated to refunded and a refunds row is written", "aliases": ["status = 'refunded'", "UPDATE charges", "INSERT INTO refunds", "refunds table"]}
+      ]
+    },
+    {
+      "id": "stripe-webhook",
+      "question": "What happens when a Stripe webhook fires?",
+      "shape": "cross-file",
+      "expected_modules": ["billing/stripe_client.py", "api/routes.py"],
+      "expected_facts": [
+        {"id": "webhook-verify-sig", "fact": "the webhook signature is verified before processing", "aliases": ["verify_webhook", "signature", "Stripe-Signature", "verify"]},
+        {"id": "webhook-tolerance", "fact": "the signature timestamp must be within a tolerance window (replay protection)", "aliases": ["WEBHOOK_TOLERANCE_SEC", "tolerance", "timestamp", "300", "replay"]},
+        {"id": "webhook-dispatch", "fact": "verified events are dispatched by type (charge.succeeded/failed/refunded) to update charge status", "aliases": ["handle_webhook_event", "charge.succeeded", "charge.failed", "charge.refunded", "dispatch", "event type"]}
+      ]
+    },
+    {
+      "id": "webhook-signature-detail",
+      "question": "How is the Stripe webhook signature validated?",
+      "shape": "focused",
+      "expected_modules": ["billing/stripe_client.py"],
+      "expected_facts": [
+        {"id": "wsig-header-format", "fact": "the Stripe-Signature header is parsed for a timestamp (t) and signature (v1)", "aliases": ["Stripe-Signature", "v1=", "timestamp", "signature header"]},
+        {"id": "wsig-hmac", "fact": "an HMAC-SHA256 of 'timestamp.payload' is computed with the webhook secret", "aliases": ["hmac", "sha256", "STRIPE_WEBHOOK_SECRET", "signed_payload", "hexdigest"]},
+        {"id": "wsig-error", "fact": "a mismatch raises WebhookVerificationError", "aliases": ["WebhookVerificationError", "signature mismatch", "outside tolerance"]}
+      ]
+    },
+    {
+      "id": "invoice-send",
+      "question": "How are invoices sent to users?",
+      "shape": "cross-file",
+      "expected_modules": ["billing/invoices.py", "users/crud.py"],
+      "expected_facts": [
+        {"id": "invoice-lookup", "fact": "the invoice is loaded by id and the recipient user is fetched", "aliases": ["send_invoice_email", "SELECT", "get_user", "load invoice", "invoice id"]},
+        {"id": "invoice-not-found", "fact": "a missing invoice or user raises InvoiceNotFoundError", "aliases": ["InvoiceNotFoundError", "not found", "missing"]},
+        {"id": "invoice-mark-sent", "fact": "the invoice is queued to the mail transport and stamped with sent_at", "aliases": ["sent_at", "_render_and_queue", "mail", "UPDATE invoices", "mark sent"]}
+      ]
+    },
+    {
+      "id": "list-invoices",
+      "question": "How do I list a user's invoices?",
+      "shape": "focused",
+      "expected_modules": ["billing/invoices.py"],
+      "expected_facts": [
+        {"id": "list-by-user", "fact": "list_user_invoices selects invoices filtered by user_id", "aliases": ["list_user_invoices", "WHERE user_id", "by user", "user_id"]},
+        {"id": "list-order", "fact": "results are ordered newest first", "aliases": ["ORDER BY created_at DESC", "newest first", "DESC", "newest"]}
+      ]
+    }
+  ]
+}
