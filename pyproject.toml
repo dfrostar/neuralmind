@@ -81,7 +81,12 @@ keywords = [
     "associative-memory",
     "health-check",
     "install-doctor",
-    "agent-onboarding"
+    "agent-onboarding",
+    "evaluation",
+    "faithfulness-eval",
+    "retrieval-quality",
+    "polyglot-fixtures",
+    "offline-eval"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. Now building a 100%-local faithfulness-evaluation harness and polyglot (TypeScript + Go) retrieval fixtures. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <script type="application/ld+json">
     {
@@ -19,7 +19,7 @@
         "@type": "SoftwareApplication",
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
-        "softwareVersion": "0.12.0"
+        "softwareVersion": "0.13.0"
       }
     }
     </script>
@@ -65,10 +65,10 @@
     <section>
         <div class="container" id="whats-next">
             <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
-            <p><strong>A staged plan, not yet shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the next arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
+            <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
             <h3>The arc (v0.13 → v0.16)</h3>
             <ul>
-                <li><strong>v0.13 — Measure.</strong> A CI-gated evaluation harness that answers the question we've been honest about not yet measuring: does the memory make the agent's answers <em>better</em>, not just shorter? Faithfulness + retrieval-quality scoring, with a 100%-local offline judge by default (an LLM-as-judge mode is strictly opt-in). Polyglot TypeScript + Go fixtures so quality claims stop being Python-only.</li>
+                <li><strong>v0.13 — Measure <em>(foundation shipped in v0.13.0)</em>.</strong> A CI-gated evaluation harness that answers the question we've been honest about not yet measuring: does the memory make the agent's answers <em>better</em>, not just shorter? The foundation is now in <code>main</code> — a versioned query + gold-fact dataset, a 100%-local offline expected-fact-recall scorer, and polyglot TypeScript + Go fixtures so quality claims stop being Python-only. A/B answer generation, the full judge (recall + grounding + contradiction), and the <code>neuralmind eval</code> report are the remaining increments; the LLM-as-judge mode stays strictly opt-in.</li>
                 <li><strong>v0.14 — Decouple.</strong> A graph-source adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness — reducing the single dependency on one graph backend and widening language coverage.</li>
                 <li><strong>v0.15 — Endure.</strong> A host-capabilities adapter plus integration-contract tests that pin NeuralMind against the behaviour it relies on (Claude Code hooks, the MCP spec), so an upstream change is a one-adapter swap, not a rewrite.</li>
                 <li><strong>v0.16 — Anticipate.</strong> Promote directional "what you edit next" recall to a first-class agent surface, and ship a portable memory format so one learned map serves Claude Code, Cursor, Cline, and Continue.</li>
@@ -76,6 +76,22 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0130">
+            <h2>What's New in v0.13.0 — measurement foundation</h2>
+            <p><strong>A foundation release: the scaffolding to <em>prove</em> the memory helps, not just claim it.</strong> v0.13.0 doesn't change what your install does at runtime — it builds the machinery to measure whether NeuralMind makes an agent's answers <em>better</em> (faithfulness), and to measure retrieval quality beyond Python. Plus a documentation process so the docs stop drifting.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Faithfulness eval (offline, 100% local).</strong> A versioned query + gold-fact dataset (18 queries / 52 expected facts derived from the bundled sample project) and a pure-stdlib <em>expected-fact-recall</em> scorer — the zero-network signal future CI gates run on. This ships the dataset + scorer skeleton; A/B answer generation and the report pipeline are the next increments. The opt-in <code>NEURALMIND_EVAL_LLM_JUDGE</code> mode is clearly labelled as leaving the machine and is never the default or the gate.</li>
+                <li><strong>Polyglot retrieval fixtures (TypeScript + Go).</strong> Self-contained sample projects mirroring the Python fixture domain-for-domain, with per-language gold-module query sets — so retrieval hit-rate can be measured per language instead of Python-only.</li>
+                <li><strong>A standard documentation process.</strong> A written <code>DOCUMENTATION-PROCESS.md</code>, a PR-template checklist, and a CONTRIBUTING link, so every user-facing change ships its docs in the same PR and the landing-page version stops going stale.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>NeuralMind's headline claims — cheaper, and the memory makes answers better — deserve to be <em>measured, not asserted</em>. v0.13.0 is the first brick: an honest, offline, reproducible way to score answer faithfulness, and fixtures that extend quality coverage past Python. Nothing here is a runtime feature; all of it is the fitness function the rest of the eval-first roadmap builds on. No migration, no new dependencies, no behavior change for existing installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md">Full v0.13.0 release notes →</a></p>
         </div>
     </section>
 
@@ -316,17 +332,17 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.6.0 — Live Activity Feed</h3>
-            <p>Builds on v0.5.4's graph view. <code>neuralmind serve</code> now streams synapse + file events to the canvas in real time over SSE — affected nodes pulse, a sidebar log shows the most recent ~80 events. A cross-process JSONL bridge means a separate <code>neuralmind watch</code> daemon, or a hook-driven Claude Code session, feeds the same live feed via <code>&lt;project&gt;/.neuralmind/events.jsonl</code>. Pin UX, Cmd/Ctrl-K quick-switch, a 1–3-hop depth slider, replay-last-query overlay, edge tooltips, and a min-weight synapse slider round out the release. No migration — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.0.md">v0.6.0 release notes</a>.</p>
+            <h3>Current Release: v0.13.0 — Measurement foundation</h3>
+            <p>The latest release lays the measurement foundation: a 100%-local <strong>faithfulness eval</strong> (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer) and <strong>polyglot TypeScript + Go retrieval fixtures</strong> so quality is measured beyond Python, plus a standard documentation process. No runtime change — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md">v0.13.0 release notes</a> or the <a href="#whats-new-v0130">summary above</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>v0.7 (next)</strong> — Saved named graph views (Obsidian-style filter/zoom/depth combos, localStorage-backed), right-click context menu on nodes, PNG/SVG canvas export, time-based edge filter (complements v0.6.0's min-weight slider), and unifying the <code>neuralmind watch</code> daemon with the in-process bus so a single-process serve+watch stays unified without the JSONL bridge.</li>
-                <li><strong>Later</strong> — Synapse import/export so teams can share a learned brain (<a href="https://github.com/dfrostar/neuralmind/issues/79">#79</a>); benchmarks measuring retrieval quality with vs without synapses (<a href="https://github.com/dfrostar/neuralmind/issues/80">#80</a>); PostgreSQL pgvector scale testing; expanded backend ecosystem.</li>
+                <li><strong>Next — finish the eval harness</strong> — A/B answer generation (with NeuralMind context vs a naive baseline), the full offline judge (recall + grounding + contradiction), and a <code>neuralmind eval</code> report (faithfulness delta, grounding rate, per-query breakdown). Built straight on the v0.13.0 foundation.</li>
+                <li><strong>v0.14 → v0.16</strong> — Decouple the graph backend (tree-sitter / LSP / SCIP adapters), harden against host/API drift, then promote directional "what you edit next" recall and a portable cross-agent memory format — including opt-in, git-committed team memory. See the <a href="#whats-next">eval-first roadmap above</a>.</li>
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 
-            <p><a href="../docs/FUTURE-PROOFING-PLAN.md">See the full roadmap →</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">See the next-release plan →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
         </div>
     </section>
 

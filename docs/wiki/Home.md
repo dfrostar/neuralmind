@@ -6,6 +6,22 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ## What's New
 
+### v0.13.0 — Measurement foundation
+
+The scaffolding to *prove* the memory helps, not just claim it: a 100%-local **faithfulness eval** (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer), **polyglot retrieval fixtures (TypeScript + Go)** so quality is measured beyond Python, and a written documentation process. No runtime change to your install — this is the fitness function the eval-first roadmap (v0.13→v0.16) builds on. The full `neuralmind eval` report is the next increment. Full details: [v0.13.0 release notes](../blob/main/RELEASE_NOTES_v0.13.0.md).
+
+### v0.12.0 — Install Doctor
+
+`neuralmind doctor` inspects an install (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query memory) and reports each piece with a status and the exact fix; `--json` for agents, non-zero exit to gate CI. Full details: [v0.12.0 release notes](../blob/main/RELEASE_NOTES_v0.12.0.md).
+
+### v0.11.0 — Directional Synapses
+
+The synapse layer now learns *what comes next*, not just *what goes together*: a `synapse_transitions` table, a `next_likely()` API, the `neuralmind next` CLI, and the `neuralmind_next_likely` MCP tool. Full details: [v0.11.0 release notes](../blob/main/RELEASE_NOTES_v0.11.0.md).
+
+### v0.10.0 — Agent Ergonomics
+
+A content-aware PostToolUse compression footer (categorized line counts + repeated-line detection) and `neuralmind last` to recover dropped middle output without re-running the command. Full details: [v0.10.0 release notes](../blob/main/RELEASE_NOTES_v0.10.0.md).
+
 ### v0.9.0 — Enterprise-Ready
 
 Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](../blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](../blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and `ENTERPRISE.md`, with a "how to verify yourself" command for every claim.
