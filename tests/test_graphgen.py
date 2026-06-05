@@ -324,6 +324,94 @@ class GoTests(unittest.TestCase):
             self.assertIn(e["target"], ids)
 
 
+@unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
+class IncrementalUpdateTests(unittest.TestCase):
+    """`update_files` re-parses only changed files (Item 3)."""
+
+    def _project(self, d: Path) -> Path:
+        proj = d / "proj"
+        (proj / "pkg").mkdir(parents=True)
+        (proj / "pkg" / "__init__.py").write_text("")
+        (proj / "pkg" / "a.py").write_text(
+            '"""Module a."""\n\n\nSOME_CONST = 1\n\n\ndef alpha():\n    return 1\n'
+        )
+        (proj / "pkg" / "b.py").write_text(
+            '"""Module b."""\n\nfrom pkg.a import alpha\n\n\ndef beta():\n    return alpha()\n'
+        )
+        return proj
+
+    def test_edit_keeps_other_files_byte_identical(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._project(Path(d))
+            graph = graphgen.build_graph(proj)
+            before = {n["id"]: n for n in graph["nodes"] if n["source_file"] != "pkg/a.py"}
+
+            (proj / "pkg" / "a.py").write_text(
+                '"""Module a."""\n\n\nSOME_CONST = 1\n\n\ndef alpha():\n    return 1\n\n\n'
+                'def gamma():\n    """New fn."""\n    return 3\n'
+            )
+            graph, stats = graphgen.update_files(proj, graph, ["pkg/a.py"])
+
+            after = {n["id"]: n for n in graph["nodes"] if n["source_file"] != "pkg/a.py"}
+            self.assertEqual(before, after, "unchanged files must stay byte-identical")
+            self.assertEqual(stats.files_reparsed, 1)
+            labels = {n["label"] for n in graph["nodes"] if n["source_file"] == "pkg/a.py"}
+            self.assertIn("gamma()", labels)
+            ids = {n["id"] for n in graph["nodes"]}
+            self.assertFalse(
+                any(e["source"] not in ids or e["target"] not in ids for e in graph["links"])
+            )
+
+    def test_incremental_matches_full_rebuild_symbols(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._project(Path(d))
+            graph = graphgen.build_graph(proj)
+            (proj / "pkg" / "a.py").write_text(
+                '"""Module a."""\n\n\ndef alpha():\n    return 1\n\n\ndef delta():\n    return 4\n'
+            )
+            inc, _ = graphgen.update_files(proj, graph, ["pkg/a.py"])
+            full = graphgen.build_graph(proj)
+            self.assertEqual(
+                {n["label"] for n in inc["nodes"] if n["file_type"] == "code"},
+                {n["label"] for n in full["nodes"] if n["file_type"] == "code"},
+            )
+
+    def test_remove_file_drops_nodes_and_prunes_edges(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._project(Path(d))
+            graph = graphgen.build_graph(proj)
+            (proj / "pkg" / "a.py").unlink()
+            graph, stats = graphgen.update_files(proj, graph, [], removed=["pkg/a.py"])
+            self.assertEqual(stats.files_removed, 1)
+            self.assertFalse(any(n["source_file"] == "pkg/a.py" for n in graph["nodes"]))
+            ids = {n["id"] for n in graph["nodes"]}
+            # b's import/call edges into a are pruned (no dangling edges).
+            self.assertFalse(
+                any(e["source"] not in ids or e["target"] not in ids for e in graph["links"])
+            )
+
+    def test_noop_when_nothing_changed(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._project(Path(d))
+            graph = graphgen.build_graph(proj)
+            snapshot = {n["id"]: dict(n) for n in graph["nodes"]}
+            graph, stats = graphgen.update_files(proj, graph, [])
+            self.assertEqual(stats.files_reparsed, 0)
+            self.assertEqual({n["id"]: n for n in graph["nodes"]}, snapshot)
+
+    def test_unchanged_communities_preserved(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            proj = self._project(Path(d))
+            graph = graphgen.build_graph(proj)
+            b_comm = next(n["community"] for n in graph["nodes"] if n["source_file"] == "pkg/b.py")
+            (proj / "pkg" / "a.py").write_text('"""Module a."""\n\n\ndef alpha():\n    return 99\n')
+            graph, _ = graphgen.update_files(proj, graph, ["pkg/a.py"])
+            b_comm_after = next(
+                n["community"] for n in graph["nodes"] if n["source_file"] == "pkg/b.py"
+            )
+            self.assertEqual(b_comm, b_comm_after)
+
+
 class LanguageSeamTests(unittest.TestCase):
     """The suffix→language registry is the only thing a new grammar touches."""
 
