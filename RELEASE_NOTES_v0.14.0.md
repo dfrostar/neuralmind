@@ -15,6 +15,11 @@ neuralmind eval --json     # machine-readable
 neuralmind eval --selfcheck  # validate the gold set + offline scorer (no heavy deps)
 ```
 
+> Run these from a **source checkout** of the repo — the reference gold set
+> ships in the `evals/` package, which is intentionally *not* bundled into the
+> PyPI wheel. From an installed wheel `neuralmind eval` prints an actionable
+> message pointing you at the checkout (see "Honest scope & caveats").
+
 It's the first release where you can **measure answer quality, not just token
 reduction** — and, like everything in NeuralMind, the default judge is **100%
 local**.
@@ -43,11 +48,16 @@ machine, and it says so loudly when enabled.
 
 ## What the agent actually sees, post-install
 
-A new **`neuralmind eval`** command (and the module form `python -m
-evals.faithfulness.runner --run`). It is a **quality self-test against the
-bundled reference fixture** — the faithfulness analogue of `neuralmind
-benchmark`, which measures token reduction. It does **not** change how the
-synapse layer, graph view, MCP tools, or hooks behave at runtime.
+A new **`neuralmind eval`** command on the CLI. It's a **contributor/CI
+quality self-test** — the faithfulness analogue of `neuralmind benchmark` —
+that runs against the reference fixture + gold-fact set shipped with the
+**source repository** (the `evals/` package), which is intentionally *not*
+bundled into the PyPI wheel. So from a plain `pip install`, `neuralmind eval`
+prints an actionable message pointing you at a source checkout (`python -m
+evals.faithfulness.runner --run` from the repo root) rather than running —
+the same way the benchmark fixtures live in the repo, not the wheel. It does
+**not** change how the synapse layer, graph view, MCP tools, or hooks behave
+at runtime.
 
 ### Per-agent expectations
 
@@ -111,8 +121,14 @@ macOS until the issues are fixed. Tracking: **#186**.
 
 ```bash
 pip install --upgrade neuralmind
-neuralmind eval --selfcheck   # confirms the gold set + offline scorer
 ```
 
 No migration, no config changes, no runtime behavior change for existing
-installs.
+installs. To run the faithfulness self-test, use a **source checkout** (the
+`evals/` gold set isn't in the wheel):
+
+```bash
+git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+python -m evals.faithfulness.runner --selfcheck   # gold set + offline scorer, no heavy deps
+python -m evals.faithfulness.runner --run         # full A/B (needs chromadb + a built index)
+```

@@ -8,7 +8,7 @@ Welcome — this wiki is the in-depth reference. For the fastest orientation, us
 
 ### v0.14.0 — Measure faithfulness
 
-`neuralmind eval` turns "does the memory make answers *better*, not just shorter?" into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline (a **faithfulness delta**), plus grounding and contradiction checks. 100% local by default (`--json` and `--selfcheck` too); the LLM-as-judge is opt-in. The first release where you can measure *answer quality*, not just token reduction. Full details: [v0.14.0 release notes](../blob/main/RELEASE_NOTES_v0.14.0.md).
+`neuralmind eval` turns "does the memory make answers *better*, not just shorter?" into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline (a **faithfulness delta**), plus grounding and contradiction checks. 100% local by default (`--json` and `--selfcheck` too); the LLM-as-judge is opt-in. It's a contributor/CI quality gate — run it from a **source checkout** (the `evals/` gold set isn't bundled in the pip wheel; from an installed wheel the command points you at the repo). The first release where you can measure *answer quality*, not just token reduction. Full details: [v0.14.0 release notes](../blob/main/RELEASE_NOTES_v0.14.0.md).
 
 ### v0.13.0 — Measurement foundation
 
