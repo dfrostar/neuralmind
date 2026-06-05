@@ -7,20 +7,25 @@ communities → synapses → graph-view server) consumes graphify's
 ``calls`` / ``imports_from`` / ``inherits`` edges, plus a docstring-derived
 ``rationale`` layer (``rationale_for`` edges).
 
-This module reproduces that contract from a pure `tree-sitter` parse of a
-Python project, so ``neuralmind build`` works on ``pip install neuralmind``
-alone — no separate graphify clone/install. Everything downstream is unchanged:
-we only replace the *graph producer*.
+This module reproduces that contract from a pure `tree-sitter` parse, so
+``neuralmind build`` works on ``pip install neuralmind`` alone — no separate
+graphify clone/install. Everything downstream is unchanged: we only replace the
+*graph producer*.
+
+Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
+per-language extractor (``_EXTRACTORS``). Python, TypeScript, and Go ship today,
+each mapping its grammar's node types onto the same node/edge model; registering
+another grammar adds a language with no change downstream of ``graph.json``.
 
 Design notes:
-- **Pure Python + tree-sitter** (no networkx). A lightweight, deterministic
-  label-propagation pass stands in for graphify's community clustering.
+- **Pure Python + tree-sitter** (no networkx). Balanced per-file communities
+  stand in for graphify's modularity clustering.
 - **Ids need only be internally consistent**, not byte-identical to graphify:
   edges reference the ids we mint, the embedder uses them as ChromaDB ids, and
   the selector matches on them. So we are free to choose a stable id scheme.
 - **Parity with graphify is *measured*, not asserted** — the faithfulness eval
-  (`evals/faithfulness`) and the self-benchmark are the gate that says whether
-  a code-only-plus-docstring graph holds up against graphify's richer one.
+  (`evals/faithfulness`) + self-benchmark gate Python, and a per-language
+  structural symbol-coverage check gates TypeScript and Go (`evals/parity`).
 """
 
 from __future__ import annotations
@@ -54,11 +59,17 @@ _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
 # inherits + docstring rationale, graphify-compatible.
 SCHEMA_VERSION = 1
 
-# Suffix → language label. Python is the only extractor implemented today; the
-# walk already dispatches per-file, so adding a tree-sitter grammar (TS, Go, …)
-# is additive — the 66-language bar set by 2026 tree-sitter code-graph tools is
-# a matter of registering grammars, not re-architecting.
-SUPPORTED_SUFFIXES: frozenset[str] = frozenset({".py"})
+# Suffix → tree-sitter language. The walk dispatches per file to the matching
+# extractor, so adding a grammar is additive — no re-architecting. Python ships
+# first; TypeScript and Go are registered here behind the same seam.
+_SUFFIX_LANG: dict[str, str] = {
+    ".py": "python",
+    ".ts": "typescript",
+    ".tsx": "typescript",
+    ".go": "go",
+}
+
+SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
 
 # Markdown files become graphify-style ``document`` nodes (the file plus one
 # node per heading). This mirrors graphify's document layer, which the context
@@ -67,8 +78,36 @@ SUPPORTED_SUFFIXES: frozenset[str] = frozenset({".py"})
 _DOC_SUFFIXES: frozenset[str] = frozenset({".md", ".markdown"})
 
 
+def _load_language(name: str):
+    """Return the tree-sitter ``Language`` for ``name``, or None if its grammar
+    package isn't importable. Only Python is a hard dependency; TS/Go grammars
+    are optional and a project is parsed only for the languages present."""
+    from tree_sitter import Language
+
+    try:
+        if name == "python":
+            import tree_sitter_python as ts
+
+            return Language(ts.language())
+        if name == "typescript":
+            import tree_sitter_typescript as ts
+
+            return Language(ts.language_typescript())
+        if name == "go":
+            import tree_sitter_go as ts
+
+            return Language(ts.language())
+    except Exception:
+        return None
+    return None
+
+
 def is_available() -> bool:
-    """True when the tree-sitter Python stack is importable."""
+    """True when the core tree-sitter Python stack is importable.
+
+    Python is the bundled baseline backend; TypeScript/Go grammars are optional
+    and checked per-file at build time, so their absence never blocks a build.
+    """
     try:
         import tree_sitter  # noqa: F401
         import tree_sitter_python  # noqa: F401
@@ -77,20 +116,27 @@ def is_available() -> bool:
     return True
 
 
+def language_available(name: str) -> bool:
+    """True when ``name``'s tree-sitter grammar is importable."""
+    return _load_language(name) is not None
+
+
 def _slug(text: str) -> str:
     """Stable id fragment: collapse non-alphanumerics to single underscores."""
     return _SLUG_RE.sub("_", text).strip("_").lower()
 
 
-def _make_parser():
-    """Construct a tree-sitter Parser bound to the Python grammar.
+def _make_parser(language: str = "python"):
+    """Construct a tree-sitter Parser bound to ``language``'s grammar.
 
-    Tolerant of the API churn between tree-sitter 0.21 and 0.23+.
+    Tolerant of the API churn between tree-sitter 0.21 and 0.23+. Raises
+    ``RuntimeError`` if the requested grammar isn't installed.
     """
-    import tree_sitter_python as tspython
-    from tree_sitter import Language, Parser
+    from tree_sitter import Parser
 
-    lang = Language(tspython.language())
+    lang = _load_language(language)
+    if lang is None:
+        raise RuntimeError(f"tree-sitter grammar for {language!r} is not installed")
     try:
         return Parser(lang)  # tree-sitter >= 0.23
     except TypeError:
@@ -183,8 +229,12 @@ class _GraphBuilder:
         # name → set of node ids, for best-effort call/inherit resolution.
         self.func_by_name: dict[str, list[str]] = {}
         self.class_by_name: dict[str, list[str]] = {}
-        # relpath-without-ext (dotted) → file node id, for import resolution.
+        # relpath-without-ext (dotted/posix) → file node id, for import
+        # resolution (Python dotted module, TS relative module key).
         self.file_by_module: dict[str, str] = {}
+        # Go package directory's last segment → file node ids in it (Go imports
+        # a package/dir, not a single file).
+        self.go_pkg_files: dict[str, list[str]] = {}
 
     # -- node/edge helpers ------------------------------------------------- #
     def add_node(
@@ -307,44 +357,45 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         )
 
     root = Path(project_path).resolve()
-    parser = _make_parser()
     b = _GraphBuilder()
 
     files = _iter_source_files(root, _DEFAULT_IGNORES)
 
-    # ---- pass 1: nodes (files, classes, functions/methods) + structure ---- #
+    # Group files by language and process each with its own extractor. A
+    # language whose grammar isn't installed is skipped (Python is the only
+    # hard dependency), so a missing TS/Go grammar degrades gracefully rather
+    # than failing the whole build.
+    by_lang: dict[str, list[Path]] = {}
     for fpath in files:
-        rel = fpath.relative_to(root).as_posix()
-        try:
-            src = fpath.read_bytes()
-        except OSError:
+        lang = _SUFFIX_LANG.get(fpath.suffix)
+        if lang:
+            by_lang.setdefault(lang, []).append(fpath)
+
+    for lang in sorted(by_lang):
+        spec = _EXTRACTORS.get(lang)
+        if spec is None or not language_available(lang):
             continue
-        tree = parser.parse(src)
-        file_id = _slug(rel)
-        b.add_node(file_id, fpath.name, "code", rel, 1)
-        b.file_by_module[_module_dotted(rel)] = file_id
+        extract_symbols, resolve_edges = spec
+        parser = _make_parser(lang)
 
-        # module docstring → rationale
-        mod_doc = _docstring(tree.root_node, src)
-        if mod_doc:
-            rid = f"{file_id}__rationale"
-            b.add_node(rid, mod_doc, "rationale", rel, 1)
-            b.add_edge("rationale_for", rid, file_id, rel, 1)
+        parsed: list[tuple[str, bytes, Any]] = []
+        for fpath in by_lang[lang]:
+            rel = fpath.relative_to(root).as_posix()
+            try:
+                src = fpath.read_bytes()
+            except OSError:
+                continue
+            tree = parser.parse(src)
+            file_id = _slug(rel)
+            b.add_node(file_id, fpath.name, "code", rel, 1)
+            parsed.append((rel, src, tree))
+            # pass 1: file-level + symbol nodes (+ module-key registration).
+            extract_symbols(b, tree.root_node, src, rel, file_id)
 
-        _walk_top_level(b, tree.root_node, src, rel, file_id)
-
-    # ---- pass 2: cross-symbol edges (inherits, imports, calls) ------------ #
-    for fpath in files:
-        rel = fpath.relative_to(root).as_posix()
-        try:
-            src = fpath.read_bytes()
-        except OSError:
-            continue
-        tree = parser.parse(src)
-        file_id = _slug(rel)
-        _resolve_imports(b, tree.root_node, src, rel, file_id)
-        _resolve_inherits(b, tree.root_node, src, rel)
-        _resolve_calls(b, tree.root_node, src, rel)
+        # pass 2: cross-symbol edges (imports/inherits/calls), once every
+        # file's symbols + module keys are registered.
+        for rel, src, tree in parsed:
+            resolve_edges(b, tree.root_node, src, rel, _slug(rel))
 
     # ---- markdown → document nodes ---------------------------------------- #
     for md_path in _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES):
@@ -367,6 +418,27 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         "generated_by": "neuralmind.graphgen (tree-sitter)",
         "schema_version": SCHEMA_VERSION,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Python extractor
+# --------------------------------------------------------------------------- #
+def _py_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for Python: module key, module docstring, classes/functions/symbols."""
+    b.file_by_module[_module_dotted(rel)] = file_id
+    mod_doc = _docstring(root_node, src)
+    if mod_doc:
+        rid = f"{file_id}__rationale"
+        b.add_node(rid, mod_doc, "rationale", rel, 1)
+        b.add_edge("rationale_for", rid, file_id, rel, 1)
+    _walk_top_level(b, root_node, src, rel, file_id)
+
+
+def _py_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for Python: imports / inherits / calls."""
+    _resolve_imports(b, root_node, src, rel, file_id)
+    _resolve_inherits(b, root_node, src, rel)
+    _resolve_calls(b, root_node, src, rel)
 
 
 def _walk_top_level(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -562,6 +634,395 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
             visit(child, current_fn)
 
     visit(root_node, None)
+
+
+# --------------------------------------------------------------------------- #
+# Comment-based rationale (TypeScript / Go) — docstrings live in the comment(s)
+# immediately preceding a declaration, not in a first-statement string literal.
+# --------------------------------------------------------------------------- #
+def _clean_comment(raw: str) -> str:
+    """Strip ``//`` / ``/* */`` / leading-``*`` markers from a comment and
+    collapse it to a single capped line."""
+    raw = raw.strip()
+    if raw.startswith("/*"):
+        raw = raw[2:]
+        if raw.endswith("*/"):
+            raw = raw[:-2]
+    out: list[str] = []
+    for ln in raw.splitlines():
+        s = ln.strip().lstrip("/*").strip()
+        if s.endswith("*/"):
+            s = s[:-2].strip()
+        if s:
+            out.append(s)
+    collapsed = " ".join(" ".join(out).split())
+    if len(collapsed) > _RATIONALE_MAX_CHARS:
+        collapsed = collapsed[:_RATIONALE_MAX_CHARS].rstrip()
+    return collapsed
+
+
+def _leading_comment_text(node, src: bytes) -> str | None:
+    """Concatenated text of the contiguous ``comment`` siblings immediately
+    preceding ``node`` (its doc comment), cleaned to rationale text."""
+    comments: list[str] = []
+    sib = node.prev_named_sibling
+    while sib is not None and sib.type == "comment":
+        comments.append(_node_text(sib, src))
+        sib = sib.prev_named_sibling
+    if not comments:
+        return None
+    cleaned = _clean_comment("\n".join(reversed(comments)))
+    return cleaned or None
+
+
+def _attach_comment_rationale(
+    b: _GraphBuilder, comment_node, src: bytes, rel: str, target_id: str
+) -> None:
+    """Attach a ``rationale`` node from ``comment_node``'s leading comment."""
+    doc = _leading_comment_text(comment_node, src)
+    if not doc:
+        return
+    line = comment_node.start_point[0] + 1
+    rid = f"{target_id}__rationale"
+    b.add_node(rid, doc, "rationale", rel, line)
+    b.add_edge("rationale_for", rid, target_id, rel, line)
+
+
+# --------------------------------------------------------------------------- #
+# TypeScript extractor
+# --------------------------------------------------------------------------- #
+def _ts_module_key(rel: str) -> str:
+    """``src/db/connection.ts`` → ``src/db/connection`` (extension dropped)."""
+    for suf in (".tsx", ".ts"):
+        if rel.endswith(suf):
+            return rel[: -len(suf)]
+    return rel
+
+
+def _ts_resolve_import(importing_rel: str, spec: str) -> str | None:
+    """Resolve a relative import specifier to a module key, or None if external."""
+    if not spec.startswith("."):
+        return None  # bare/package import — not a project file
+    import posixpath
+
+    base = posixpath.dirname(importing_rel)
+    return posixpath.normpath(posixpath.join(base, spec))
+
+
+def _ts_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for TypeScript: functions, classes, interfaces, const/let symbols."""
+    b.file_by_module[_ts_module_key(rel)] = file_id
+    for child in root_node.named_children:
+        decl = child
+        if child.type == "export_statement":
+            inner = child.child_by_field_name("declaration")
+            if inner is None:
+                continue
+            decl = inner
+        _ts_emit_decl(b, decl, child, src, rel, file_id)
+
+
+def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: str) -> None:
+    line = decl.start_point[0] + 1
+    if decl.type == "function_declaration":
+        name = _name_of(decl, src)
+        if not name:
+            return
+        fid = f"{file_id}__{_slug(name)}_fn"
+        b.add_node(fid, f"{name}()", "code", rel, line)
+        b.func_by_name.setdefault(name, []).append(fid)
+        b.add_edge("contains", file_id, fid, rel, line)
+        _attach_comment_rationale(b, outer, src, rel, fid)
+    elif decl.type in ("class_declaration", "abstract_class_declaration", "interface_declaration"):
+        name = _name_of(decl, src)
+        if not name:
+            return
+        cid = f"{file_id}__{_slug(name)}_cls"
+        b.add_node(cid, name, "code", rel, line)
+        b.class_by_name.setdefault(name, []).append(cid)
+        b.add_edge("contains", file_id, cid, rel, line)
+        _attach_comment_rationale(b, outer, src, rel, cid)
+        body = decl.child_by_field_name("body")
+        if body is not None:
+            for member in body.named_children:
+                if member.type in ("method_definition", "method_signature"):
+                    mname = _name_of(member, src)
+                    if not mname:
+                        continue
+                    mline = member.start_point[0] + 1
+                    mid = f"{cid}__{_slug(mname)}_fn"
+                    b.add_node(mid, f"{mname}()", "code", rel, mline)
+                    b.func_by_name.setdefault(mname, []).append(mid)
+                    b.add_edge("contains", cid, mid, rel, mline)
+                    _attach_comment_rationale(b, member, src, rel, mid)
+    elif decl.type == "lexical_declaration":
+        for vd in decl.named_children:
+            if vd.type != "variable_declarator":
+                continue
+            nm = vd.child_by_field_name("name")
+            if nm is None or nm.type != "identifier":
+                continue
+            name = _node_text(nm, src)
+            sid = f"{file_id}__{_slug(name)}_sym"
+            b.add_node(sid, name, "code", rel, line)
+            b.add_edge("contains", file_id, sid, rel, line)
+            _attach_comment_rationale(b, outer, src, rel, sid)
+
+
+def _ts_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for TypeScript: imports (relative) + inherits (extends/implements) + calls."""
+    # imports
+    for child in root_node.named_children:
+        if child.type != "import_statement":
+            continue
+        srcnode = child.child_by_field_name("source")
+        if srcnode is None:
+            continue
+        spec = _node_text(srcnode, src).strip("\"'`")
+        key = _ts_resolve_import(rel, spec)
+        target = b.file_by_module.get(key) if key else None
+        if target and target != file_id:
+            b.add_edge(
+                "imports_from", file_id, target, rel, child.start_point[0] + 1, context="import"
+            )
+
+    # inherits + calls
+    _ts_resolve_inherits(b, root_node, src, rel, file_id)
+    _ts_resolve_calls(b, root_node, src, rel, file_id)
+
+
+def _ts_resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def handle_class(decl) -> None:
+        name = _name_of(decl, src)
+        cid = next((c for c in b.class_by_name.get(name, []) if c.startswith(file_id)), None)
+        if not cid:
+            return
+        for h in decl.named_children:
+            if h.type not in (
+                "class_heritage",
+                "extends_clause",
+                "implements_clause",
+                "extends_type_clause",
+            ):
+                continue
+            for base in _ts_iter_type_names(h, src):
+                targets = b.class_by_name.get(base)
+                line = decl.start_point[0] + 1
+                if targets:
+                    for base_id in targets:
+                        b.add_edge("inherits", cid, base_id, rel, line)
+                else:
+                    # External base (e.g. Error) — synthesize a node so the
+                    # inherits edge survives, mirroring graphify's behaviour.
+                    base_id = f"ext__{_slug(base)}_cls"
+                    b.add_node(base_id, base, "code", rel, line)
+                    b.add_edge("inherits", cid, base_id, rel, line)
+
+    for child in root_node.named_children:
+        decl = (
+            child.child_by_field_name("declaration") if child.type == "export_statement" else child
+        )
+        if decl is not None and decl.type in (
+            "class_declaration",
+            "abstract_class_declaration",
+            "interface_declaration",
+        ):
+            handle_class(decl)
+
+
+def _ts_iter_type_names(node, src: bytes):
+    """Yield base type names from an extends/implements clause (one level of
+    nesting, unwrapping ``generic_type`` to its name)."""
+    for ch in node.named_children:
+        if ch.type in ("identifier", "type_identifier"):
+            yield _node_text(ch, src)
+        elif ch.type == "generic_type":
+            nm = ch.child_by_field_name("name")
+            if nm is not None:
+                yield _node_text(nm, src)
+        elif ch.type in ("extends_clause", "implements_clause", "extends_type_clause"):
+            yield from _ts_iter_type_names(ch, src)
+
+
+def _ts_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in ("function_declaration", "method_definition"):
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "call_expression" and current_fn is not None:
+                fn_field = child.child_by_field_name("function")
+                if fn_field is not None:
+                    callee = _node_text(fn_field, src).split(".")[-1].split("(")[0].strip()
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+# --------------------------------------------------------------------------- #
+# Go extractor
+# --------------------------------------------------------------------------- #
+def _go_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for Go: funcs, methods, type/struct/interface decls + fields, const/var."""
+    import posixpath
+
+    # Map the package directory's last segment → this file id (Go imports a
+    # package/dir, not a file; we link to the files in the matching dir).
+    pkg_dir = posixpath.dirname(rel)
+    seg = posixpath.basename(pkg_dir) if pkg_dir else posixpath.basename(rel)
+    b.go_pkg_files.setdefault(seg, []).append(file_id)
+
+    for child in root_node.named_children:
+        line = child.start_point[0] + 1
+        if child.type in ("function_declaration", "method_declaration"):
+            name = _name_of(child, src)
+            if not name:
+                continue
+            fid = f"{file_id}__{_slug(name)}_fn"
+            b.add_node(fid, f"{name}()", "code", rel, line)
+            b.func_by_name.setdefault(name, []).append(fid)
+            b.add_edge("contains", file_id, fid, rel, line)
+            _attach_comment_rationale(b, child, src, rel, fid)
+        elif child.type == "type_declaration":
+            for spec in child.named_children:
+                if spec.type != "type_spec":
+                    continue
+                nm = spec.child_by_field_name("name")
+                if nm is None:
+                    continue
+                name = _node_text(nm, src)
+                cid = f"{file_id}__{_slug(name)}_cls"
+                b.add_node(cid, name, "code", rel, line)
+                b.class_by_name.setdefault(name, []).append(cid)
+                b.add_edge("contains", file_id, cid, rel, line)
+                _attach_comment_rationale(b, child, src, rel, cid)
+                _go_emit_struct_fields(b, spec, src, rel, cid)
+        elif child.type in ("const_declaration", "var_declaration"):
+            _go_emit_const_var(b, child, src, rel, file_id)
+
+
+def _go_emit_struct_fields(
+    b: _GraphBuilder, type_spec, src: bytes, rel: str, container: str
+) -> None:
+    body = type_spec.child_by_field_name("type")
+    if body is None or body.type != "struct_type":
+        return
+    field_list = body.child_by_field_name("body") or (
+        body.named_children[0] if body.named_children else None
+    )
+    if field_list is None:
+        return
+    for fld in field_list.named_children:
+        if fld.type != "field_declaration":
+            continue
+        for nm in fld.named_children:
+            if nm.type == "field_identifier":
+                name = _node_text(nm, src)
+                line = nm.start_point[0] + 1
+                sid = f"{container}__{_slug(name)}_sym"
+                b.add_node(sid, name, "code", rel, line)
+                b.add_edge("contains", container, sid, rel, line)
+
+
+def _go_emit_const_var(b: _GraphBuilder, decl, src: bytes, rel: str, file_id: str) -> None:
+    for spec in decl.named_children:
+        if spec.type not in ("const_spec", "var_spec"):
+            continue
+        for nm in spec.named_children:
+            if nm.type == "identifier":
+                name = _node_text(nm, src)
+                line = nm.start_point[0] + 1
+                sid = f"{file_id}__{_slug(name)}_sym"
+                b.add_node(sid, name, "code", rel, line)
+                b.add_edge("contains", file_id, sid, rel, line)
+
+
+def _go_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for Go: imports (by package dir) + calls. Go has no inheritance."""
+    import posixpath
+
+    for child in root_node.named_children:
+        if child.type != "import_declaration":
+            continue
+        for spec in _go_iter_import_specs(child):
+            path = _node_text(spec, src).strip('"`')
+            seg = posixpath.basename(path)
+            for target in b.go_pkg_files.get(seg, []):
+                if target != file_id:
+                    b.add_edge(
+                        "imports_from",
+                        file_id,
+                        target,
+                        rel,
+                        child.start_point[0] + 1,
+                        context="import",
+                    )
+    _go_resolve_calls(b, root_node, src, rel, file_id)
+
+
+def _go_iter_import_specs(import_decl):
+    for ch in import_decl.named_children:
+        if ch.type == "import_spec":
+            path = ch.child_by_field_name("path")
+            if path is not None:
+                yield path
+        elif ch.type == "import_spec_list":
+            for spec in ch.named_children:
+                if spec.type == "import_spec":
+                    path = spec.child_by_field_name("path")
+                    if path is not None:
+                        yield path
+
+
+def _go_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in ("function_declaration", "method_declaration"):
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "call_expression" and current_fn is not None:
+                fn_field = child.child_by_field_name("function")
+                if fn_field is not None:
+                    callee = _node_text(fn_field, src).split(".")[-1].strip()
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+# Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
+# registering a grammar + a pair of functions adds a language with no change to
+# anything downstream of graph.json.
+_EXTRACTORS: dict[str, tuple] = {
+    "python": (_py_extract_symbols, _py_resolve_edges),
+    "typescript": (_ts_extract_symbols, _ts_resolve_edges),
+    "go": (_go_extract_symbols, _go_resolve_edges),
+}
 
 
 def write_graph(project_path: str | Path, *, commit: str = "") -> Path:

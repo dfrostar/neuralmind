@@ -237,5 +237,104 @@ class WriteGraphTests(unittest.TestCase):
             self.assertNotIn("should_not_appear()", labels)
 
 
+FIXTURE_TS = _REPO / "tests" / "fixtures" / "sample_project_ts"
+FIXTURE_GO = _REPO / "tests" / "fixtures" / "sample_project_go"
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("typescript"),
+    "tree-sitter-typescript not installed",
+)
+class TypeScriptTests(unittest.TestCase):
+    """The TS extractor behind the SUPPORTED_SUFFIXES seam (Item 1)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_TS)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_key_symbols(self) -> None:
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        for want in ("authenticateUser()", "verifySession()", "encodeToken()", "User"):
+            self.assertIn(want, labels)
+
+    def test_jsdoc_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("looks the user up by email", rats)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_TS)
+        self.assertEqual(again["nodes"], self.nodes)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("go"),
+    "tree-sitter-go not installed",
+)
+class GoTests(unittest.TestCase):
+    """The Go extractor behind the SUPPORTED_SUFFIXES seam (Item 1)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_GO)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+
+    def test_finds_key_symbols(self) -> None:
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        for want in ("AuthenticateUser()", "VerifySession()", "EncodeToken()", "User"):
+            self.assertIn(want, labels)
+
+    def test_struct_fields_extracted(self) -> None:
+        labels = {n["label"] for n in self.nodes if n["file_type"] == "code"}
+        # User struct fields become code symbols.
+        self.assertIn("PasswordHash", labels)
+
+    def test_line_comment_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("looks the user up by email", rats)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+
+class LanguageSeamTests(unittest.TestCase):
+    """The suffix→language registry is the only thing a new grammar touches."""
+
+    def test_supported_suffixes(self) -> None:
+        for suf in (".py", ".ts", ".tsx", ".go"):
+            self.assertIn(suf, graphgen.SUPPORTED_SUFFIXES)
+
+    def test_every_suffix_has_an_extractor(self) -> None:
+        langs = set(graphgen._SUFFIX_LANG.values())
+        self.assertTrue(langs <= set(graphgen._EXTRACTORS))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

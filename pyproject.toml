@@ -95,7 +95,11 @@ keywords = [
     "built-in-code-graph",
     "graphify-alternative",
     "pluggable-graph-backend",
-    "backend-parity-gate"
+    "backend-parity-gate",
+    "typescript-code-graph",
+    "go-code-graph",
+    "multi-language-code-intelligence",
+    "polyglot-codebase-indexing"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -118,8 +122,12 @@ dependencies = [
     "mcp>=1.27.2",
     # Built-in graph backend: parse a project into a graphify-compatible
     # graph.json with no external graphify install. See neuralmind/graphgen.py.
+    # Python + TypeScript + Go grammars are bundled so multi-language indexing
+    # works out of the box; the SUPPORTED_SUFFIXES seam registers more.
     "tree-sitter>=0.21.0",
-    "tree-sitter-python>=0.21.0"
+    "tree-sitter-python>=0.21.0",
+    "tree-sitter-typescript>=0.21.0",
+    "tree-sitter-go>=0.21.0"
 ]
 
 [project.optional-dependencies]

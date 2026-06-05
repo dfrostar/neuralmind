@@ -69,6 +69,17 @@ FAITHFULNESS_TOLERANCE = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_TO
 REDUCTION_FLOOR = float(os.environ.get("NEURALMIND_PARITY_REDUCTION_FLOOR", "4.0"))
 FAITHFULNESS_FLOOR = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_FLOOR", "0.0"))
 
+# Multi-language structural parity. The faithfulness A/B needs a per-language
+# gold-fact set (we have one only for the Python fixture), so for TypeScript and
+# Go the gate proves parity *structurally*: the built-in backend must recover at
+# least this fraction of the symbols graphify's committed graph found, with a
+# valid, dangling-free graph. Fixtures: tests/fixtures/sample_project_{ts,go}.
+SYMBOL_COVERAGE_FLOOR = float(os.environ.get("NEURALMIND_PARITY_COVERAGE_FLOOR", "0.90"))
+_LANG_FIXTURES: dict[str, str] = {
+    "typescript": "tests/fixtures/sample_project_ts",
+    "go": "tests/fixtures/sample_project_go",
+}
+
 
 @dataclass
 class BackendMeasurement:
@@ -290,6 +301,108 @@ def render_markdown(
     return "\n".join(lines)
 
 
+# --------------------------------------------------------------------------- #
+# Multi-language structural parity (TypeScript / Go)
+# --------------------------------------------------------------------------- #
+@dataclass
+class LanguageCoverage:
+    """How well the built-in backend recovers graphify's symbols for a language."""
+
+    language: str
+    graphify_symbols: int
+    builtin_symbols: int
+    covered: int
+    dangling: int
+
+    @property
+    def coverage(self) -> float:
+        return self.covered / self.graphify_symbols if self.graphify_symbols else 0.0
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["coverage"] = round(self.coverage, 4)
+        return d
+
+
+def _code_symbols(graph: dict) -> set[str]:
+    """Symbol set of a graph's ``code`` node labels (``()`` suffix normalised)."""
+    return {
+        str(n.get("label", "")).rstrip("()")
+        for n in graph.get("nodes", [])
+        if n.get("file_type") == "code" and n.get("label")
+    }
+
+
+def measure_language_coverage(language: str, fixture: str) -> LanguageCoverage:
+    """Build the fixture with the built-in backend and compare its symbol set to
+    graphify's committed ``graph.json``. Pure graph comparison — no chromadb."""
+    from neuralmind import graphgen
+
+    fixture_path = _REPO_ROOT / fixture
+    graphify_graph = json.loads(
+        (fixture_path / "graphify-out" / "graph.json").read_text(encoding="utf-8")
+    )
+    builtin_graph = graphgen.build_graph(fixture_path)
+
+    gf_syms = _code_symbols(graphify_graph)
+    bi_syms = _code_symbols(builtin_graph)
+    ids = {n["id"] for n in builtin_graph.get("nodes", [])}
+    dangling = sum(
+        1
+        for e in builtin_graph.get("links", [])
+        if e["source"] not in ids or e["target"] not in ids
+    )
+    return LanguageCoverage(
+        language=language,
+        graphify_symbols=len(gf_syms),
+        builtin_symbols=len(bi_syms),
+        covered=len(gf_syms & bi_syms),
+        dangling=dangling,
+    )
+
+
+def evaluate_language_gate(cov: LanguageCoverage) -> list[GateCheck]:
+    return [
+        GateCheck(
+            f"{cov.language}: symbol coverage ≥ floor",
+            cov.coverage >= SYMBOL_COVERAGE_FLOOR,
+            f"{cov.covered}/{cov.graphify_symbols} graphify symbols "
+            f"({cov.coverage:.0%}) ≥ {SYMBOL_COVERAGE_FLOOR:.0%}",
+        ),
+        GateCheck(
+            f"{cov.language}: no dangling edges",
+            cov.dangling == 0,
+            f"{cov.dangling} dangling edge(s)",
+        ),
+    ]
+
+
+def render_language_markdown(coverages: list[LanguageCoverage], checks: list[GateCheck]) -> str:
+    lines = [
+        "",
+        "### Multi-language structural parity",
+        "",
+        "| Language | graphify symbols | built-in covers | dangling |",
+        "|----------|-----------------:|----------------:|---------:|",
+    ]
+    for c in coverages:
+        lines.append(
+            f"| {c.language} | {c.graphify_symbols} | "
+            f"{c.covered} ({c.coverage:.0%}) | {c.dangling} |"
+        )
+    lines.append("")
+    for c in checks:
+        mark = "✅" if c.passed else "❌"
+        lines.append(f"- {mark} **{c.name}** — {c.detail}")
+    lines += [
+        "",
+        f"Coverage floor: {SYMBOL_COVERAGE_FLOOR:.0%} of graphify's per-language "
+        "symbols (no gold-fact set exists for TS/Go, so parity is structural).",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
 
@@ -306,9 +419,26 @@ def main(argv: list[str] | None = None) -> int:
     graphify = measurements["graphify"]
     builtin = measurements["builtin"]
     checks = evaluate_gate(graphify, builtin)
-    passed = all(c.passed for c in checks)
 
-    md = render_markdown(graphify, builtin, checks)
+    # Multi-language structural parity (TypeScript, Go).
+    lang_coverages: list[LanguageCoverage] = []
+    lang_checks: list[GateCheck] = []
+    for language, fixture in _LANG_FIXTURES.items():
+        print(f"[parity] measuring {language} structural coverage ({fixture}) …", flush=True)
+        cov = measure_language_coverage(language, fixture)
+        print(
+            f"[parity] {language}: {cov.covered}/{cov.graphify_symbols} symbols "
+            f"({cov.coverage:.0%}), dangling={cov.dangling}"
+        )
+        lang_coverages.append(cov)
+        lang_checks.extend(evaluate_language_gate(cov))
+
+    all_checks = checks + lang_checks
+    passed = all(c.passed for c in all_checks)
+
+    md = render_markdown(graphify, builtin, checks) + render_language_markdown(
+        lang_coverages, lang_checks
+    )
     _REPORT_MD.write_text(md, encoding="utf-8")
     _REPORT_JSON.write_text(
         json.dumps(
@@ -319,10 +449,13 @@ def main(argv: list[str] | None = None) -> int:
                     "faithfulness": FAITHFULNESS_TOLERANCE,
                     "reduction_floor": REDUCTION_FLOOR,
                     "faithfulness_floor": FAITHFULNESS_FLOOR,
+                    "symbol_coverage": SYMBOL_COVERAGE_FLOOR,
                 },
                 "graphify": graphify.to_dict(),
                 "builtin": builtin.to_dict(),
                 "checks": [asdict(c) for c in checks],
+                "language_coverage": [c.to_dict() for c in lang_coverages],
+                "language_checks": [asdict(c) for c in lang_checks],
             },
             indent=2,
         ),
