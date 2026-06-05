@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/dfrostar/neuralmind/compare/v0.14.0...v0.15.0) (2026-06-05)
+
+
+### Features
+
+* **backend:** built-in tree-sitter graph backend — `neuralmind build` with no graphify ([#187](https://github.com/dfrostar/neuralmind/issues/187)) ([c297898](https://github.com/dfrostar/neuralmind/commit/c29789840918706a1cb2e70a10e961c786d2f18f))
+
 ## [0.14.0](https://github.com/dfrostar/neuralmind/compare/v0.13.1...v0.14.0) (2026-06-05)
 
 
