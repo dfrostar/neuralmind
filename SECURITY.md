@@ -138,6 +138,17 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 1. **ChromaDB.** We rely on ChromaDB for vector storage. Monitor their security advisories.
 
+   - **CVE-2026-45829 (chromadb ≥ 1.0.0) — not exploitable in NeuralMind.**
+     This is a pre-authentication remote code-execution flaw in ChromaDB's
+     *client/server* HTTP API (`/api/v2/.../collections`), triggered by a
+     malicious model repository when `trust_remote_code=true`. NeuralMind
+     embeds ChromaDB via `chromadb.PersistentClient` (local, on-disk) — it
+     never starts the ChromaDB server, never exposes that endpoint, and never
+     sets `trust_remote_code`. The vulnerable code path is therefore
+     unreachable in NeuralMind's usage, so the corresponding Dependabot alert
+     is dismissed as "vulnerable code is not used." The pin will be bumped
+     once ChromaDB publishes a patched release (none exists as of this note).
+
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`), be aware:
    - It runs locally over stdio by default — no network port is opened.
    - RBAC is enabled by default with three roles: `admin` (all tools), `builder` (retrieval tools — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`), `reader` (read-only retrieval). The synapse-family tools (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`, `export_synapse_memory`) are **admin-only by default**.

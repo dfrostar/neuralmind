@@ -127,8 +127,14 @@ def load_query_set(path: str | os.PathLike[str] | None = None) -> QuerySet:
         modules = entry.get("expected_modules")
         if not isinstance(modules, list) or not modules:
             raise ValueError(f"query {qid!r} needs a non-empty 'expected_modules' list")
+        for m in modules:
+            if not isinstance(m, str) or not m.strip():
+                raise ValueError(
+                    f"query {qid!r} has a non-string/empty entry in 'expected_modules'"
+                )
 
         facts: list[ExpectedFact] = []
+        seen_fact_ids: set[str] = set()
         for f in entry.get("expected_facts", []):
             if not isinstance(f, dict):
                 raise ValueError(f"query {qid!r} has a non-object entry in 'expected_facts'")
@@ -136,9 +142,24 @@ def load_query_set(path: str | os.PathLike[str] | None = None) -> QuerySet:
             ftext = f.get("fact")
             if not isinstance(fid, str) or not fid.strip():
                 raise ValueError(f"query {qid!r} has an expected_fact missing a non-empty 'id'")
+            if fid in seen_fact_ids:
+                raise ValueError(f"duplicate expected_fact id {fid!r} in query {qid!r}")
+            seen_fact_ids.add(fid)
             if not isinstance(ftext, str) or not ftext.strip():
                 raise ValueError(f"fact {fid!r} in query {qid!r} is missing non-empty 'fact' text")
-            facts.append(ExpectedFact(id=fid, fact=ftext, aliases=tuple(f.get("aliases", []))))
+            # 'aliases' must be a list of non-empty strings. A bare string here
+            # would otherwise be silently exploded into per-character aliases
+            # (tuple("postgres") -> 'p','o','s',...), corrupting recall scoring.
+            aliases = f.get("aliases", [])
+            if not isinstance(aliases, list):
+                raise ValueError(
+                    f"fact {fid!r} in query {qid!r}: 'aliases' must be a list of strings, "
+                    f"got {type(aliases).__name__}"
+                )
+            for a in aliases:
+                if not isinstance(a, str) or not a.strip():
+                    raise ValueError(f"fact {fid!r} in query {qid!r} has a non-string/empty alias")
+            facts.append(ExpectedFact(id=fid, fact=ftext, aliases=tuple(aliases)))
         if not facts:
             raise ValueError(f"query {qid!r} has no expected_facts")
 
@@ -200,16 +221,27 @@ def _module_cited(module: str, answer: str) -> bool:
     return len(base) > 3 and base in a
 
 
-# Mutually-exclusive technical choices in the fixture domain. If a query's gold
-# facts pick exactly one option from a group and the answer asserts a *different*
-# one, that's a contradiction. Conservative on purpose — only well-known,
-# unambiguous pairs, so the CI gate isn't tripped by false positives.
-_CONTRADICTION_GROUPS: tuple[tuple[str, ...], ...] = (
-    ("sqlite", "postgresql", "postgres", "mysql", "mongodb", "redis"),
-    ("hs256", "rs256", "es256"),
-    ("symmetric", "asymmetric"),
-    ("bcrypt", "scrypt", "argon2", "pbkdf2"),
+# Mutually-exclusive technical choices in the fixture domain. Each group is a
+# set of competing *choices*; each choice is one or more synonymous surface
+# tokens (matched as whole words). If a query's gold facts pick exactly one
+# choice and the answer asserts a *different* choice, that's a contradiction.
+# Conservative on purpose — only well-known, unambiguous pairs, so the CI gate
+# isn't tripped by false positives. Synonyms within a choice (postgres ==
+# postgresql) never conflict with each other.
+_CONTRADICTION_GROUPS: tuple[tuple[tuple[str, ...], ...], ...] = (
+    # Primary persistence engine. Redis is deliberately excluded: it's
+    # typically a cache *alongside* the primary store, not a competing choice,
+    # so "sqlite + a redis cache" must not read as a contradiction.
+    (("sqlite",), ("postgresql", "postgres"), ("mysql",), ("mongodb",)),
+    (("hs256",), ("rs256",), ("es256",)),
+    (("symmetric",), ("asymmetric",)),
+    (("bcrypt",), ("scrypt",), ("argon2",), ("pbkdf2",)),
 )
+
+
+def _choice_present(text_norm: str, choice: tuple[str, ...]) -> bool:
+    """Is any synonym of ``choice`` present in the normalized text (whole-word)?"""
+    return any(_phrase_in(text_norm, _normalize(tok)) for tok in choice)
 
 
 @dataclass
@@ -308,13 +340,12 @@ class OfflineJudge:
         applicable = 0
         contradicted = 0
         for group in _CONTRADICTION_GROUPS:
-            gold_side = {opt for opt in group if _phrase_in(gold_norm, _normalize(opt))}
-            if len(gold_side) != 1:
+            gold_choices = [c for c in group if _choice_present(gold_norm, c)]
+            if len(gold_choices) != 1:
                 continue  # group not unambiguously relevant to this query
             applicable += 1
-            if any(
-                _phrase_in(answer_norm, _normalize(opt)) for opt in group if opt not in gold_side
-            ):
+            gold_choice = gold_choices[0]
+            if any(_choice_present(answer_norm, c) for c in group if c is not gold_choice):
                 contradicted += 1
         return contradicted / applicable if applicable else 0.0
 

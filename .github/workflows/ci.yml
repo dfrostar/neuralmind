@@ -30,12 +30,24 @@ jobs:
         run: ruff check .
 
   test:
-    name: Test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ['3.10', '3.11', '3.12']
+        include:
+          # Cross-OS coverage on a representative Python so every platform is
+          # actually exercised without a full 3x3 runner-minute blow-up.
+          - os: macos-latest
+            python-version: '3.12'
+          # windows-latest is intentionally omitted from the gating matrix:
+          # the suite has real Windows issues (chromadb holds open file
+          # handles so tempdir teardown hits WinError 32, event-log rotation
+          # relies on POSIX rename-over-open, and a concurrent-append test
+          # loses writes). Tracked separately before Windows can be claimed
+          # as supported — see the Windows-support tracking issue.
 
     steps:
       - uses: actions/checkout@v6
@@ -82,14 +94,21 @@ jobs:
         continue-on-error: true
 
   fresh-install:
-    name: Fresh Install (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Fresh Install (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ['3.10', '3.11', '3.12']
+        include:
+          # macOS shares the bash + venv bin/ layout the smoke steps assume, so
+          # they run as-is. Windows fresh-install needs Scripts/ venv path
+          # handling — tracked as a follow-up.
+          - os: macos-latest
+            python-version: '3.12'
     steps:
       - uses: actions/checkout@v6
 
