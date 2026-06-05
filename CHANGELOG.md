@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/dfrostar/neuralmind/compare/v0.16.0...v0.17.0) (2026-06-05)
+
+
+### Features
+
+* **backend:** optional SCIP precision pass for compiler-accurate edges ([#191](https://github.com/dfrostar/neuralmind/issues/191)) ([d457231](https://github.com/dfrostar/neuralmind/commit/d45723130be78879c7f80da0f2cef4bbf4271494))
+
 ## [0.16.0](https://github.com/dfrostar/neuralmind/compare/v0.15.0...v0.16.0) (2026-06-05)
 
 
