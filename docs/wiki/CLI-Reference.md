@@ -811,7 +811,7 @@ no query runs. Periodic decay ticks age unused weights without manual
 intervention. Stops cleanly on Ctrl-C.
 
 ```bash
-neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] [--quiet]
+neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] [--quiet] [--reindex]
 ```
 
 #### Arguments
@@ -827,6 +827,7 @@ neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] 
 | `--debounce` | `0.75` | Seconds to coalesce rapid edits into one co-activation batch |
 | `--decay-interval` | `600` | Seconds between decay ticks; `0` disables periodic decay |
 | `--quiet` | off | Suppress per-batch logging (still prints final summary on stop) |
+| `--reindex` | off | *(v0.18.0+)* Incrementally re-index edited files into the built-in graph as they change — re-parses just those files and re-embeds only their nodes (unchanged files are skipped). Built-in backend only; needs the retrieval stack in the watch process. |
 
 #### Examples
 
@@ -839,6 +840,9 @@ neuralmind watch /path/to/repo --quiet &
 
 # Disable periodic decay (decay only runs from SessionStart hook)
 neuralmind watch . --decay-interval 0
+
+# Keep the index live as you edit (incremental re-index, v0.18.0+)
+neuralmind watch . --reindex
 ```
 
 #### Notes

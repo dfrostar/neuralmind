@@ -1025,6 +1025,149 @@ _EXTRACTORS: dict[str, tuple] = {
 }
 
 
+# --------------------------------------------------------------------------- #
+# Incremental per-file update
+# --------------------------------------------------------------------------- #
+class UpdateStats:
+    """What an incremental update changed."""
+
+    def __init__(self) -> None:
+        self.files_reparsed = 0
+        self.files_removed = 0
+        self.nodes_before = 0
+        self.nodes_after = 0
+
+    def to_dict(self) -> dict[str, int]:
+        return {
+            "files_reparsed": self.files_reparsed,
+            "files_removed": self.files_removed,
+            "nodes_before": self.nodes_before,
+            "nodes_after": self.nodes_after,
+        }
+
+
+def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
+    """Rebuild a builder's name tables from an already-emitted node, so a
+    re-parsed file's edges can resolve against the unchanged files' symbols."""
+    if node.get("file_type") != "code":
+        return
+    import posixpath
+
+    nid = node["id"]
+    label = str(node.get("label", ""))
+    sf = str(node.get("source_file", ""))
+    if nid == _slug(sf):  # the file node
+        suffix = "." + sf.rsplit(".", 1)[-1] if "." in sf else ""
+        lang = _SUFFIX_LANG.get(suffix)
+        if lang == "python":
+            b.file_by_module[_module_dotted(sf)] = nid
+        elif lang == "typescript":
+            b.file_by_module[_ts_module_key(sf)] = nid
+        elif lang == "go":
+            seg = posixpath.basename(posixpath.dirname(sf)) or posixpath.basename(sf)
+            b.go_pkg_files.setdefault(seg, []).append(nid)
+        return
+    if nid.endswith("_fn"):
+        b.func_by_name.setdefault(label.rstrip("()"), []).append(nid)
+    elif nid.endswith("_cls"):
+        b.class_by_name.setdefault(label, []).append(nid)
+
+
+def update_files(
+    project_path: str | Path,
+    graph: dict[str, Any],
+    changed: list[str],
+    removed: list[str] | None = None,
+) -> tuple[dict[str, Any], UpdateStats]:
+    """Re-parse only ``changed`` files (relative posix paths) and splice their
+    nodes/edges back into ``graph`` in place; drop ``removed`` files.
+
+    Unchanged files keep their nodes, edges, **and community numbers** byte-for-
+    byte — so the embedder's content-hash skips them and only the edited file's
+    nodes are re-embedded. The edited file's *outgoing* edges are re-resolved
+    against the whole project's symbols; stale cross-file edges into a removed
+    or renamed symbol are pruned. Returns ``(graph, stats)``.
+    """
+    root = Path(project_path).resolve()
+    removed = removed or []
+    changed_set = set(changed)
+    touched = changed_set | set(removed)
+
+    stats = UpdateStats()
+    original_nodes = graph.get("nodes", [])
+    stats.nodes_before = len(original_nodes)
+    # Preserve each unchanged/edited file's existing community number; a brand
+    # new file gets the next free id. (Renumbering would change every node's
+    # content hash and defeat the point of an incremental update.)
+    comm_of_file: dict[str, int] = {}
+    for n in original_nodes:
+        comm_of_file.setdefault(n["source_file"], n["community"])
+    next_comm = max(comm_of_file.values(), default=-1) + 1
+
+    b = _GraphBuilder()
+    for n in original_nodes:
+        if n["source_file"] in touched:
+            continue
+        b.nodes[n["id"]] = dict(n)
+        _register_node_symbol(b, n)
+    for e in graph.get("links", []):
+        if e.get("source_file") in touched:
+            continue  # outgoing edges of touched files are re-derived below
+        b.edges.append(dict(e))
+
+    # Re-parse changed files: code via the per-language extractor, markdown via
+    # the document extractor. Group code files by language for one parser each.
+    code_by_lang: dict[str, list[str]] = {}
+    for rel in sorted(changed_set):
+        fpath = root / rel
+        if not fpath.exists():
+            continue
+        if fpath.suffix in _DOC_SUFFIXES:
+            _extract_markdown(b, fpath, rel)
+            stats.files_reparsed += 1
+            continue
+        lang = _SUFFIX_LANG.get(fpath.suffix)
+        if lang and lang in _EXTRACTORS and language_available(lang):
+            code_by_lang.setdefault(lang, []).append(rel)
+
+    for lang, rels in code_by_lang.items():
+        extract_symbols, resolve_edges = _EXTRACTORS[lang]
+        parser = _make_parser(lang)
+        parsed: list[tuple[str, bytes, Any]] = []
+        for rel in rels:
+            try:
+                src = (root / rel).read_bytes()
+            except OSError:
+                continue
+            tree = parser.parse(src)
+            file_id = _slug(rel)
+            b.add_node(file_id, (root / rel).name, "code", rel, 1)
+            extract_symbols(b, tree.root_node, src, rel, file_id)
+            parsed.append((rel, src, tree))
+            stats.files_reparsed += 1
+        for rel, src, tree in parsed:
+            resolve_edges(b, tree.root_node, src, rel, _slug(rel))
+
+    stats.files_removed = len(removed)
+
+    # Assign communities: preserved for known files, fresh for new ones.
+    for node in b.nodes.values():
+        sf = node["source_file"]
+        if sf not in comm_of_file:
+            comm_of_file[sf] = next_comm
+            next_comm += 1
+        node["community"] = comm_of_file[sf]
+
+    # Prune dangling edges (into removed/renamed symbols).
+    ids = set(b.nodes)
+    b.edges = [e for e in b.edges if e["source"] in ids and e["target"] in ids]
+
+    graph["nodes"] = list(b.nodes.values())
+    graph["links"] = b.edges
+    stats.nodes_after = len(graph["nodes"])
+    return graph, stats
+
+
 def write_graph(project_path: str | Path, *, commit: str = "") -> Path:
     """Build the graph and write ``<project>/graphify-out/graph.json``.
 

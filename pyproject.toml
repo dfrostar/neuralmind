@@ -104,7 +104,11 @@ keywords = [
     "scip-index",
     "scip-precision",
     "compiler-accurate-call-graph",
-    "precise-call-graph"
+    "precise-call-graph",
+    "incremental-indexing",
+    "incremental-code-graph",
+    "live-code-index",
+    "watch-mode-reindex"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

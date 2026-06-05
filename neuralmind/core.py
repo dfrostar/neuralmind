@@ -337,6 +337,96 @@ class NeuralMind:
             f"backend → {graph_path}"
         )
 
+    def update_files(self, paths) -> dict:
+        """Incrementally re-index only the given changed files (built-in graph).
+
+        Re-parses just those files into the existing ``graph.json`` (unchanged
+        files keep their nodes + community ids byte-for-byte), prunes embeddings
+        for removed symbols, and re-embeds — which, thanks to the embedder's
+        content hashing, only touches the edited file's nodes. A fast path for
+        the watcher: editing one file costs ~one file's parse + embed, not a
+        whole-repo rebuild.
+
+        Only the built-in tree-sitter graph is updated in place; a graphify
+        graph is left to graphify. Returns a stats dict.
+        """
+        graph_path = self.project_path / "graphify-out" / "graph.json"
+        if not graph_path.exists():
+            return {"success": False, "error": "no graph to update; run build first"}
+        try:
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return {"success": False, "error": f"could not read graph: {exc}"}
+        if "neuralmind.graphgen" not in str(graph.get("generated_by", "")):
+            return {
+                "success": False,
+                "error": "incremental update only applies to the built-in backend",
+            }
+
+        from . import graphgen
+
+        if not graphgen.is_available():
+            return {"success": False, "error": "tree-sitter not available"}
+
+        root = self.project_path.resolve()
+        indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
+        changed: list[str] = []
+        removed: list[str] = []
+        for p in paths:
+            ap = Path(p)
+            if not ap.is_absolute():
+                ap = self.project_path / p
+            try:
+                rel = ap.resolve().relative_to(root).as_posix()
+            except ValueError:
+                continue
+            if ap.suffix not in indexable:
+                continue
+            (changed if ap.exists() else removed).append(rel)
+
+        if not changed and not removed:
+            return {"success": True, "files_reparsed": 0, "reason": "no indexable files"}
+
+        old_ids = {n["id"] for n in graph.get("nodes", [])}
+        graph, stats = graphgen.update_files(self.project_path, graph, changed, removed)
+
+        # Keep precise edges if the precision pass is enabled and an index exists.
+        from . import precision
+
+        graph, _ = precision.maybe_refine(self.project_path, graph)
+
+        graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
+
+        new_ids = {n["id"] for n in graph.get("nodes", [])}
+        pruned = self.embedder.delete_nodes(old_ids - new_ids)
+
+        # Reload the graph into the embedder and re-embed (content-hash skips
+        # the unchanged nodes, so only the edited file's nodes are touched).
+        self.embedder.graph = {}
+        self.embedder.nodes = []
+        self.embedder.edges = []
+        self.embedder.load_graph()
+        embed_stats = self.embedder.embed_nodes(force=False)
+        self._graph_stats_dirty()
+
+        return {
+            "success": True,
+            "files_reparsed": stats.files_reparsed,
+            "files_removed": stats.files_removed,
+            "nodes_total": stats.nodes_after,
+            "embedded": embed_stats.get("added", 0) + embed_stats.get("updated", 0),
+            "skipped": embed_stats.get("skipped", 0),
+            "pruned": pruned,
+        }
+
+    def _graph_stats_dirty(self) -> None:
+        """Invalidate the selector's cached graph stats after an incremental
+        update so L0/L1 reflect the new node/community counts."""
+        if self.selector is not None:
+            self.selector._graph_stats = None
+            self.selector._l0_cache = None
+            self.selector._l1_cache = None
+
     def _ensure_built(self):
         """Ensure the system is built before queries.
 
