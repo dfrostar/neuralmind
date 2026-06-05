@@ -87,6 +87,68 @@ class LoadQuerySetTests(unittest.TestCase):
         finally:
             os.unlink(path)
 
+    def _load_query(self, query: dict) -> None:
+        """Write a one-query set with the given query dict and load it."""
+        import os
+        import tempfile
+
+        payload = {"schema_version": self.qs.schema_version, "fixture": "x", "queries": [query]}
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
+            json.dump(payload, fh)
+            path = fh.name
+        try:
+            load_query_set(path)
+        finally:
+            os.unlink(path)
+
+    def test_bare_string_aliases_rejected(self) -> None:
+        # A string (not a list) would explode into per-character aliases.
+        with self.assertRaises(ValueError):
+            self._load_query(
+                {
+                    "id": "q",
+                    "question": "?",
+                    "expected_modules": ["m"],
+                    "expected_facts": [{"id": "f", "fact": "x", "aliases": "postgres"}],
+                }
+            )
+
+    def test_non_string_module_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self._load_query(
+                {
+                    "id": "q",
+                    "question": "?",
+                    "expected_modules": ["ok", 123],
+                    "expected_facts": [{"id": "f", "fact": "x"}],
+                }
+            )
+
+    def test_duplicate_fact_id_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            self._load_query(
+                {
+                    "id": "q",
+                    "question": "?",
+                    "expected_modules": ["m"],
+                    "expected_facts": [
+                        {"id": "dup", "fact": "a"},
+                        {"id": "dup", "fact": "b"},
+                    ],
+                }
+            )
+
+    def test_valid_aliases_list_accepted(self) -> None:
+        # A proper list of strings still loads cleanly.
+        self._load_query(
+            {
+                "id": "q",
+                "question": "?",
+                "expected_modules": ["m"],
+                "expected_facts": [{"id": "f", "fact": "x", "aliases": ["pg", "postgres"]}],
+            }
+        )
+
 
 class OfflineRecallTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -194,6 +256,32 @@ class OfflineRecallTests(unittest.TestCase):
             expected_modules=("auth/handlers.py",),
         )
         self.assertEqual(self.judge.contradiction_score(q, "anything at all"), 0.0)
+
+    def test_contradiction_treats_postgres_synonyms_as_one_choice(self) -> None:
+        # "postgres" and "postgresql" are the same choice — not a contradiction.
+        q = Query(
+            id="pg",
+            question="?",
+            expected_facts=(ExpectedFact("f", "the store is PostgreSQL", ("postgresql",)),),
+            expected_modules=("db/connection.py",),
+        )
+        self.assertEqual(self.judge.contradiction_score(q, "it uses postgres"), 0.0)
+        # A genuinely different engine is still flagged.
+        self.assertGreater(self.judge.contradiction_score(q, "it uses mysql"), 0.0)
+
+    def test_contradiction_ignores_redis_cache_alongside_primary_store(self) -> None:
+        # Redis as a cache *alongside* the gold SQLite store is not a
+        # contradiction — redis is excluded from the persistence-engine group.
+        q = Query(
+            id="db",
+            question="?",
+            expected_facts=(ExpectedFact("f", "the fixture uses SQLite", ("sqlite",)),),
+            expected_modules=("db/connection.py",),
+        )
+        self.assertEqual(
+            self.judge.contradiction_score(q, "sqlite primary store with a redis cache layer"),
+            0.0,
+        )
 
 
 class GoldSetSanityTests(unittest.TestCase):
