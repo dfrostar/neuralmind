@@ -403,6 +403,86 @@ def render_language_markdown(coverages: list[LanguageCoverage], checks: list[Gat
     return "\n".join(lines)
 
 
+# --------------------------------------------------------------------------- #
+# Optional SCIP precision pass (Item 2)
+# --------------------------------------------------------------------------- #
+_PRECISION_FIXTURE = "tests/fixtures/scip_precision"
+# The fixture has two classes with a `handle()` method; the bare-name heuristic
+# links run() to the first (B.handle), which is wrong. SCIP resolves it to
+# A.handle. Node ids are graphgen-deterministic.
+_PRECISION_WRONG = ("app_py__run_fn", "app_py__b_cls__handle_fn")
+_PRECISION_RIGHT = ("app_py__run_fn", "app_py__a_cls__handle_fn")
+
+
+@dataclass
+class PrecisionCheck:
+    heuristic_has_wrong: bool
+    precise_has_right: bool
+    precise_drops_wrong: bool
+    noop_when_disabled: bool
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+def measure_precision() -> PrecisionCheck:
+    """Prove the SCIP precision pass corrects a call the heuristic gets wrong,
+    and is a strict no-op when disabled."""
+    import os
+
+    from neuralmind import graphgen, precision
+
+    fixture = _REPO_ROOT / _PRECISION_FIXTURE
+
+    def call_edges(graph) -> set[tuple[str, str]]:
+        return {(e["source"], e["target"]) for e in graph["links"] if e["relation"] == "calls"}
+
+    heuristic = call_edges(graphgen.build_graph(fixture))
+    index = precision.parse_scip_index((fixture / "index.scip").read_bytes())
+    refined, _ = precision.refine_graph(graphgen.build_graph(fixture), index)
+    precise = call_edges(refined)
+
+    os.environ.pop("NEURALMIND_PRECISION", None)
+    _, stats = precision.maybe_refine(fixture, graphgen.build_graph(fixture))
+
+    return PrecisionCheck(
+        heuristic_has_wrong=_PRECISION_WRONG in heuristic,
+        precise_has_right=_PRECISION_RIGHT in precise,
+        precise_drops_wrong=_PRECISION_WRONG not in precise,
+        noop_when_disabled=stats is None,
+    )
+
+
+def evaluate_precision_gate(p: PrecisionCheck) -> list[GateCheck]:
+    return [
+        GateCheck(
+            "precision: SCIP corrects the heuristic call edge",
+            p.heuristic_has_wrong and p.precise_has_right and p.precise_drops_wrong,
+            "run() → A.handle under SCIP (heuristic wrongly linked B.handle)",
+        ),
+        GateCheck(
+            "precision: strict no-op when disabled",
+            p.noop_when_disabled,
+            "graph unchanged when NEURALMIND_PRECISION is unset",
+        ),
+    ]
+
+
+def render_precision_markdown(checks: list[GateCheck]) -> str:
+    lines = ["", "### Optional SCIP precision pass", ""]
+    for c in checks:
+        mark = "✅" if c.passed else "❌"
+        lines.append(f"- {mark} **{c.name}** — {c.detail}")
+    lines += [
+        "",
+        "Off by default (`NEURALMIND_PRECISION`); proven on "
+        "`tests/fixtures/scip_precision` to replace a heuristic call edge with "
+        "the compiler-accurate one a SCIP index resolves.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
 
@@ -433,11 +513,22 @@ def main(argv: list[str] | None = None) -> int:
         lang_coverages.append(cov)
         lang_checks.extend(evaluate_language_gate(cov))
 
-    all_checks = checks + lang_checks
+    # Optional SCIP precision pass (Item 2).
+    print("[parity] checking SCIP precision pass …", flush=True)
+    precision_result = measure_precision()
+    precision_checks = evaluate_precision_gate(precision_result)
+    print(
+        f"[parity] precision: corrected={precision_result.precise_has_right and precision_result.precise_drops_wrong}, "
+        f"noop_when_disabled={precision_result.noop_when_disabled}"
+    )
+
+    all_checks = checks + lang_checks + precision_checks
     passed = all(c.passed for c in all_checks)
 
-    md = render_markdown(graphify, builtin, checks) + render_language_markdown(
-        lang_coverages, lang_checks
+    md = (
+        render_markdown(graphify, builtin, checks)
+        + render_language_markdown(lang_coverages, lang_checks)
+        + render_precision_markdown(precision_checks)
     )
     _REPORT_MD.write_text(md, encoding="utf-8")
     _REPORT_JSON.write_text(
@@ -456,6 +547,8 @@ def main(argv: list[str] | None = None) -> int:
                 "checks": [asdict(c) for c in checks],
                 "language_coverage": [c.to_dict() for c in lang_coverages],
                 "language_checks": [asdict(c) for c in lang_checks],
+                "precision": precision_result.to_dict(),
+                "precision_checks": [asdict(c) for c in precision_checks],
             },
             indent=2,
         ),
