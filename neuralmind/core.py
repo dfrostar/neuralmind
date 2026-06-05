@@ -313,6 +313,22 @@ class NeuralMind:
         if not any(n.get("file_type") == "code" for n in graph.get("nodes", [])):
             return
 
+        # Optional SCIP precision pass: when NEURALMIND_PRECISION is set and a
+        # *.scip index is present, replace the heuristic calls/inherits edges
+        # with compiler-accurate ones. Off by default — a no-op otherwise, so
+        # the generated graph is byte-for-byte unchanged.
+        from . import precision
+
+        graph, pstats = precision.maybe_refine(self.project_path, graph)
+        if pstats is not None:
+            print(
+                "[neuralmind] SCIP precision pass: "
+                f"+{pstats.calls_added} calls, +{pstats.inherits_added} inherits "
+                f"(replaced {pstats.heuristic_calls_removed} heuristic calls, "
+                f"{pstats.heuristic_inherits_removed} inherits across "
+                f"{pstats.documents} document(s))"
+            )
+
         out_dir = self.project_path / "graphify-out"
         out_dir.mkdir(parents=True, exist_ok=True)
         graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
