@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/dfrostar/neuralmind/compare/v0.13.0...v0.13.1) (2026-06-05)
+
+
+### Documentation
+
+* v0.13.0 launch pass — release notes, banners, SEO, wiki, sitemap ([#180](https://github.com/dfrostar/neuralmind/issues/180)) ([e995804](https://github.com/dfrostar/neuralmind/commit/e9958043025fe45222b32e81d5e241fc40501e26))
+
 ## [0.13.0](https://github.com/dfrostar/neuralmind/compare/v0.12.0...v0.13.0) (2026-06-05)
 
 
