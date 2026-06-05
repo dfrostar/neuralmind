@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.13.0** — **Measurement foundation.** A foundation release that builds the scaffolding to *prove* the memory helps, not just claim it: a 100%-local **faithfulness eval** (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer) plus **polyglot retrieval fixtures (TypeScript + Go)** so quality can be measured beyond Python — and a written **documentation process** so the docs stop drifting. No runtime change to your install; this is the fitness function the eval-first roadmap (v0.13→v0.16) builds on. [Release notes](RELEASE_NOTES_v0.13.0.md)
+> **🆕 New in v0.14.0** — **Measure faithfulness.** A new contributor/CI command — `neuralmind eval` — turns *"does the memory actually help?"* into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a naive baseline **at the same token budget** (a faithfulness delta, plus grounding and contradiction checks). 100% local by default; the LLM-as-judge is opt-in. Run it from a **source checkout** — the `evals/` gold set ships with the repo, not the pip wheel. The first release where you can measure *answer quality*, not just token reduction. [Release notes](RELEASE_NOTES_v0.14.0.md)
+>
+> **v0.13.0** — **Measurement foundation.** The offline faithfulness dataset + expected-fact-recall scorer and polyglot (TypeScript + Go) retrieval fixtures that `neuralmind eval` is built on. [Release notes](RELEASE_NOTES_v0.13.0.md)
 >
 > **v0.12.0** — **Install Doctor.** One command — `neuralmind doctor` — inspects your setup (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query-memory consent) and prints each piece with a status and the exact command to fix it. Exits non-zero on a real failure so you can gate CI or an agent's setup step on it; `--json` gives a stable machine-readable snapshot. [Release notes](RELEASE_NOTES_v0.12.0.md)
 >
@@ -1728,6 +1730,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.14.0](RELEASE_NOTES_v0.14.0.md)** | `neuralmind eval` — measure answer faithfulness (expected-fact recall vs a matched-budget naive baseline) with grounding + contradiction checks and `--json`; 100% local by default |
 | **[Release Notes v0.13.0](RELEASE_NOTES_v0.13.0.md)** | Measurement foundation — offline faithfulness eval (query + gold-fact dataset, expected-fact-recall scorer), polyglot retrieval fixtures (TypeScript + Go), and a standard documentation process |
 | **[Release Notes v0.12.0](RELEASE_NOTES_v0.12.0.md)** | Install Doctor — `neuralmind doctor` health checks (graph, index, synapses, MCP, hooks, memory), `--json` output, friendlier "graph not built" error |
 | **[Release Notes v0.11.0](RELEASE_NOTES_v0.11.0.md)** | Directional Synapses — `synapse_transitions` table, `next_likely()` API, `neuralmind next` CLI, `neuralmind_next_likely` MCP tool |
