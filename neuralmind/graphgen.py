@@ -50,6 +50,17 @@ _DEFAULT_IGNORES: frozenset[str] = frozenset(
 
 _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
 
+# Bumped when the emitted graph.json contract changes (new node/edge kinds,
+# field semantics). v1 = symbol-level code nodes + contains/calls/imports_from/
+# inherits + docstring rationale, graphify-compatible.
+SCHEMA_VERSION = 1
+
+# Suffix → language label. Python is the only extractor implemented today; the
+# walk already dispatches per-file, so adding a tree-sitter grammar (TS, Go, …)
+# is additive — the 66-language bar set by 2026 tree-sitter code-graph tools is
+# a matter of registering grammars, not re-architecting.
+SUPPORTED_SUFFIXES: frozenset[str] = frozenset({".py"})
+
 
 def is_available() -> bool:
     """True when the tree-sitter Python stack is importable."""
@@ -86,8 +97,8 @@ def _make_parser():
         return parser
 
 
-def _iter_py_files(root: Path, ignores: frozenset[str]) -> list[Path]:
-    """All ``*.py`` files under ``root``, skipping ignored directories."""
+def _iter_source_files(root: Path, ignores: frozenset[str]) -> list[Path]:
+    """All supported source files under ``root``, skipping ignored directories."""
     out: list[Path] = []
 
     def walk(d: Path) -> None:
@@ -104,7 +115,7 @@ def _iter_py_files(root: Path, ignores: frozenset[str]) -> list[Path]:
             if p.is_dir():
                 if p.name not in ignores:
                     walk(p)
-            elif p.suffix == ".py":
+            elif p.suffix in SUPPORTED_SUFFIXES:
                 out.append(p)
 
     walk(root)
@@ -215,7 +226,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     parser = _make_parser()
     b = _GraphBuilder()
 
-    files = _iter_py_files(root, _DEFAULT_IGNORES)
+    files = _iter_source_files(root, _DEFAULT_IGNORES)
 
     # ---- pass 1: nodes (files, classes, functions/methods) + structure ---- #
     for fpath in files:
@@ -264,7 +275,11 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         "links": b.edges,
         "hyperedges": [],
         "built_at_commit": commit,
+        # Producer + contract version: lets the stack evolve the graph schema
+        # and lets a future backend (SCIP/LSP precision pass, more languages)
+        # be slotted in behind the same graph.json seam without ambiguity.
         "generated_by": "neuralmind.graphgen (tree-sitter)",
+        "schema_version": SCHEMA_VERSION,
     }
 
 
