@@ -112,7 +112,7 @@ neuralmind build /path/to/project --force
 
 Backend precedence:
 1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
-2. Otherwise the **built-in tree-sitter backend** generates the graph (Python today; TS/Go behind the `SUPPORTED_SUFFIXES` seam next).
+2. Otherwise the **built-in tree-sitter backend** generates the graph. As of v0.16.0 it indexes **Python, TypeScript, and Go** (`.py`, `.ts`/`.tsx`, `.go`) out of the box; more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass.
 3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 
@@ -977,6 +977,7 @@ Behaviour:
 | `NEURALMIND_PARITY_FAITHFULNESS_TOL` | `0.10` | *(v0.15.0+)* Backend parity gate: max absolute points the built-in backend's faithfulness delta / fact recall may sit below graphify's (0.10 = 10 points). |
 | `NEURALMIND_PARITY_REDUCTION_FLOOR` | `4.0` | *(v0.15.0+)* Backend parity gate: absolute minimum mean reduction the built-in backend must clear, independent of graphify (mirrors the self-benchmark floor). |
 | `NEURALMIND_PARITY_FAITHFULNESS_FLOOR` | `0.0` | *(v0.15.0+)* Backend parity gate: absolute minimum faithfulness delta the built-in backend must clear (mirrors the eval gate — smart selection ≥ matched-budget naive truncation). |
+| `NEURALMIND_PARITY_COVERAGE_FLOOR` | `0.90` | *(v0.16.0+)* Backend parity gate: minimum fraction of graphify's per-language symbols the built-in backend must recover for TypeScript/Go (structural parity, since no gold-fact set exists for those fixtures yet). |
 
 ---
 
