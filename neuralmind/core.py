@@ -301,13 +301,25 @@ class NeuralMind:
         if not graphgen.is_available():
             return
         try:
-            graphgen.write_graph(self.project_path)
-            print(
-                "[neuralmind] generated code graph via the built-in tree-sitter "
-                f"backend → {graph_path}"
-            )
+            graph = graphgen.build_graph(self.project_path)
         except Exception as exc:  # pragma: no cover - defensive
             print(f"[neuralmind] built-in graph backend failed: {exc}", file=sys.stderr)
+            return
+
+        # Only materialize a graph when there's real code to index. An empty or
+        # non-Python project must keep falling through to the existing "no
+        # graph" guidance rather than producing a 0-node index that silently
+        # "succeeds".
+        if not any(n.get("file_type") == "code" for n in graph.get("nodes", [])):
+            return
+
+        out_dir = self.project_path / "graphify-out"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
+        print(
+            "[neuralmind] generated code graph via the built-in tree-sitter "
+            f"backend → {graph_path}"
+        )
 
     def _ensure_built(self):
         """Ensure the system is built before queries.
