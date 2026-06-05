@@ -1,0 +1,8 @@
+{
+  "name": "sample-project-ts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript retrieval-quality fixture mirroring tests/fixtures/sample_project (Python).",
+  "type": "module",
+  "main": "src/api/routes.ts"
+}
