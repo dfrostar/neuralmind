@@ -1,25 +1,24 @@
-"""Faithfulness eval runner — E1.1 foundation skeleton.
+"""Faithfulness eval runner — gold-fact dataset + offline judge.
 
 Pure standard library at import time: NO chromadb / graphify / neuralmind
 imports at module load, so this file loads and is unit-testable in a
-minimal environment. Heavy machinery (the real answerer wired to
-``neuralmind.core``) is imported lazily inside the functions that need it
-once E1.2 lands.
+minimal environment. The heavy A/B machinery (the real answerer wired to
+``neuralmind.core``) lives in ``harness.py`` and is imported lazily by the
+``--run`` path.
 
-What this module ships today (E1.1):
+What this module ships:
   * ``load_query_set`` — parse + lightly validate ``queries.json``.
-  * ``OfflineJudge.fact_recall`` — the offline, zero-network
-    expected-fact-recall scorer. This is the default, CI-gating signal.
+  * ``OfflineJudge`` — the offline, zero-network judge. Three dimensions:
+    ``fact_recall`` (the headline + CI-gating signal), ``grounding_rate``,
+    and ``contradiction_score``. None of them make a network call.
+  * CLI: ``--selfcheck`` (dependency-free gate) and ``--run`` (the
+    with-NeuralMind vs matched-budget-naive faithfulness A/B + report;
+    ``--json`` for machines), which delegates to ``harness.py``.
 
-What is intentionally left as TODO (later tasks of issue #172):
-  * E1.2 — answer generation (with-NeuralMind vs naive baseline).
-  * E1.3 — grounding-rate + contradiction scoring, and the opt-in
-    LLM-as-judge behind ``NEURALMIND_EVAL_LLM_JUDGE``.
-  * E1.4 — the ``neuralmind eval`` report (delta, per-query breakdown, JSON).
+The opt-in LLM-as-judge (``NEURALMIND_EVAL_LLM_JUDGE``) is the only path
+that would leave the machine, and is never the default or the CI gate.
 
-See ``schema.md`` for the data contract and ``README.md`` for the design
-(offline judge = default + gate; API judge = opt-in, labelled as leaving
-the machine).
+See ``schema.md`` for the data contract and ``README.md`` for the design.
 """
 
 from __future__ import annotations
@@ -190,6 +189,29 @@ def _phrase_in(answer_norm: str, needle_norm: str) -> bool:
     return f" {needle_norm} " in f" {answer_norm} "
 
 
+def _module_cited(module: str, answer: str) -> bool:
+    """Is ``module`` (a fixture-relative path like ``auth/handlers.py``)
+    referenced in ``answer``? Matches the full path or a distinctive basename."""
+    a = answer.lower()
+    m = module.lower()
+    if m in a:
+        return True
+    base = m.rsplit("/", 1)[-1]
+    return len(base) > 3 and base in a
+
+
+# Mutually-exclusive technical choices in the fixture domain. If a query's gold
+# facts pick exactly one option from a group and the answer asserts a *different*
+# one, that's a contradiction. Conservative on purpose — only well-known,
+# unambiguous pairs, so the CI gate isn't tripped by false positives.
+_CONTRADICTION_GROUPS: tuple[tuple[str, ...], ...] = (
+    ("sqlite", "postgresql", "postgres", "mysql", "mongodb", "redis"),
+    ("hs256", "rs256", "es256"),
+    ("symmetric", "asymmetric"),
+    ("bcrypt", "scrypt", "argon2", "pbkdf2"),
+)
+
+
 @dataclass
 class FactResult:
     fact_id: str
@@ -258,30 +280,43 @@ class OfflineJudge:
             return 0.0
         return sum(r.recall for r in results) / len(results)
 
-    # -- E1.3 TODOs ------------------------------------------------------- #
     def grounding_rate(self, query: Query, answer: str) -> float:
-        """TODO(E1.3): fraction of answer claims attributable to
-        ``query.expected_modules`` / retrieved context. Zero-network."""
-        raise NotImplementedError("grounding_rate lands in E1.3")
+        """Fraction of the query's ``expected_modules`` referenced in ``answer``.
+
+        An offline proxy for "is the answer drawn from the right sources?": the
+        deterministic answer is the selected context, which labels each snippet
+        with its file path, so this measures whether the gold modules actually
+        made it into the context. Zero-network.
+        """
+        modules = query.expected_modules
+        if not modules:
+            return 0.0
+        cited = sum(1 for m in modules if _module_cited(m, answer))
+        return cited / len(modules)
 
     def contradiction_score(self, query: Query, answer: str) -> float:
-        """TODO(E1.3): detect statements that conflict with the gold facts
-        (e.g. PostgreSQL vs SQLite, RS256 vs HS256). Zero-network."""
-        raise NotImplementedError("contradiction_score lands in E1.3")
+        """Rate of statements in ``answer`` that conflict with the gold facts.
 
-
-# --------------------------------------------------------------------------- #
-# Answer generation — E1.2 TODO
-# --------------------------------------------------------------------------- #
-def generate_answer(query: Query, *, with_context: bool) -> str:  # noqa: ARG001
-    """TODO(E1.2): produce an answer for ``query``.
-
-    ``with_context=True`` should answer using NeuralMind-selected context
-    (lazy-import ``neuralmind.core`` here, NOT at module top, to keep this
-    file importable without heavy deps). ``with_context=False`` is the
-    naive baseline. Must be deterministic given a fixed answerer.
-    """
-    raise NotImplementedError("answer generation lands in E1.2")
+        Conservative and offline: for each group of mutually-exclusive choices
+        (e.g. SQLite vs PostgreSQL, HS256 vs RS256), if the gold facts pick
+        exactly one side and the answer asserts a *different* side, that's a
+        contradiction. Returns contradictions / applicable-groups — ``0.0``
+        means none detected (lower is better).
+        """
+        gold_norm = _normalize(" ".join(s for f in query.expected_facts for s in f.surfaces()))
+        answer_norm = _normalize(answer)
+        applicable = 0
+        contradicted = 0
+        for group in _CONTRADICTION_GROUPS:
+            gold_side = {opt for opt in group if _phrase_in(gold_norm, _normalize(opt))}
+            if len(gold_side) != 1:
+                continue  # group not unambiguously relevant to this query
+            applicable += 1
+            if any(
+                _phrase_in(answer_norm, _normalize(opt)) for opt in group if opt not in gold_side
+            ):
+                contradicted += 1
+        return contradicted / applicable if applicable else 0.0
 
 
 def _llm_judge_enabled() -> bool:
@@ -321,24 +356,62 @@ def _selfcheck() -> int:
     return 0 if empty_mean == 0.0 else 1
 
 
+def _arg_value(argv: list[str], flag: str) -> str | None:
+    """Return the value following ``flag`` in ``argv``, or None."""
+    if flag in argv:
+        i = argv.index(flag)
+        if i + 1 < len(argv):
+            return argv[i + 1]
+    return None
+
+
+def _run(argv: list[str]) -> int:
+    """Run the faithfulness A/B and print the report (E1.2 + E1.4).
+
+    Requires the retrieval stack (chromadb) and a built index for the fixture;
+    degrades with a clear, actionable message when they're absent so a minimal
+    environment falls back to ``--selfcheck`` instead of crashing.
+    """
+    if _llm_judge_enabled():
+        print(
+            f"[{LLM_JUDGE_ENV}=on] LLM-as-judge mode requested: answers and gold "
+            "facts would be sent to a third-party API (NOT local). The offline "
+            "judge remains the default and the gate.",
+            file=sys.stderr,
+        )
+    try:
+        from . import harness
+    except ImportError:
+        # Allow running as a plain script (python evals/faithfulness/runner.py):
+        # put the repo root on the path and import the package absolutely.
+        sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from evals.faithfulness import harness  # type: ignore[no-redef]
+
+    try:
+        report = harness.run_and_report(_arg_value(argv, "--project"))
+    except RuntimeError as exc:
+        print(f"faithfulness A/B unavailable: {exc}", file=sys.stderr)
+        print(
+            "Run with --selfcheck to validate the gold set + offline scorer "
+            "without the retrieval stack.",
+            file=sys.stderr,
+        )
+        return 2
+    print(harness.render_json(report) if "--json" in argv else harness.render_markdown(report))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if "--selfcheck" in argv:
         return _selfcheck()
+    if "--run" in argv:
+        return _run(argv)
 
-    if _llm_judge_enabled():
-        # Honest, loud notice — answers + gold facts would leave the machine.
-        print(
-            f"[{LLM_JUDGE_ENV}=on] LLM-as-judge mode requested: answers and gold "
-            "facts would be sent to a third-party API (NOT local).",
-            file=sys.stderr,
-        )
-
-    # The full report (answer A/B + delta + per-query breakdown + --json)
-    # is E1.4. Until then, point the user at the selfcheck.
-    print("Faithfulness eval (E1.1 skeleton).")
-    print("Answer generation (E1.2) and the report (E1.4) are not implemented yet.")
-    print("Run with --selfcheck to validate the gold set + offline scorer.")
+    print("Faithfulness eval. Usage:")
+    print("  --selfcheck            validate the gold set + offline scorer (no deps)")
+    print("  --run [--project P]    run the with-NeuralMind vs naive A/B + report")
+    print("  --run --json           emit the report as JSON")
     return 0
 
 
