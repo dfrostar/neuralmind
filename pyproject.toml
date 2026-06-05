@@ -99,7 +99,12 @@ keywords = [
     "typescript-code-graph",
     "go-code-graph",
     "multi-language-code-intelligence",
-    "polyglot-codebase-indexing"
+    "polyglot-codebase-indexing",
+    "scip",
+    "scip-index",
+    "scip-precision",
+    "compiler-accurate-call-graph",
+    "precise-call-graph"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -139,6 +139,39 @@ class LanguageCoverageTests(unittest.TestCase):
         self.assertFalse(checks["typescript: no dangling edges"])
 
 
+class PrecisionGateTests(unittest.TestCase):
+    """The optional SCIP precision check (Item 2) gate logic."""
+
+    def test_all_good_passes(self) -> None:
+        p = parity.PrecisionCheck(
+            heuristic_has_wrong=True,
+            precise_has_right=True,
+            precise_drops_wrong=True,
+            noop_when_disabled=True,
+        )
+        self.assertTrue(all(c.passed for c in parity.evaluate_precision_gate(p)))
+
+    def test_uncorrected_fails(self) -> None:
+        p = parity.PrecisionCheck(
+            heuristic_has_wrong=True,
+            precise_has_right=False,  # SCIP didn't add the right edge
+            precise_drops_wrong=True,
+            noop_when_disabled=True,
+        )
+        checks = {c.name: c.passed for c in parity.evaluate_precision_gate(p)}
+        self.assertFalse(checks["precision: SCIP corrects the heuristic call edge"])
+
+    def test_not_noop_fails(self) -> None:
+        p = parity.PrecisionCheck(
+            heuristic_has_wrong=True,
+            precise_has_right=True,
+            precise_drops_wrong=True,
+            noop_when_disabled=False,  # ran when it shouldn't have
+        )
+        checks = {c.name: c.passed for c in parity.evaluate_precision_gate(p)}
+        self.assertFalse(checks["precision: strict no-op when disabled"])
+
+
 class RenderTests(unittest.TestCase):
     def test_pass_banner_and_metrics(self) -> None:
         g = _measurement("graphify")

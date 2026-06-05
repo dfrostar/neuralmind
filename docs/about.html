@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. v0.16 indexes Python, TypeScript, and Go with a bundled tree-sitter backend (no external graphify install), proven at parity per language by a CI gate. Also ships neuralmind eval — a 100%-local way to measure answer faithfulness. 100% local, NIST AI RMF compliant, enterprise-ready.">
-    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph, multi-language code intelligence, polyglot codebase indexing, typescript code intelligence, go code intelligence">
+    <meta name="description" content="About NeuralMind: Open-source semantic code intelligence with a brain-like synapse layer that learns associations between code from how you actually use it — both undirected co-activation and directional next-file transitions — plus an Obsidian-style graph view that makes the index inspectable, and PostToolUse hooks that compress tool output and recover dropped content without re-running. v0.17 adds an optional SCIP precision pass for compiler-accurate calls/inherits edges; the bundled tree-sitter backend indexes Python, TypeScript, and Go (no external graphify install), proven at parity by a CI gate. Also ships neuralmind eval — a 100%-local way to measure answer faithfulness. 100% local, NIST AI RMF compliant, enterprise-ready.">
+    <meta name="keywords" content="NeuralMind, semantic code search, AI agents, token optimization, local-first, open-source, NIST AI RMF, brain-like learning, hebbian learning, synapse layer, directional transitions, transition matrix, next-file prediction, claude code memory, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, MCP server, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph, multi-language code intelligence, polyglot codebase indexing, typescript code intelligence, go code intelligence, scip, scip index, scip precision, compiler-accurate call graph, lsp code graph, precise call graph">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <script type="application/ld+json">
     {
@@ -76,6 +76,23 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0170">
+            <h2>What's New in v0.17.0 — optional SCIP precision pass</h2>
+            <p><strong>Compiler-accurate edges, where you have them.</strong> The built-in backend resolves <code>calls</code>/<code>inherits</code> edges heuristically — by name — which is wrong when two classes both define, say, <code>handle()</code>. If your repo has been indexed by a SCIP tool (<code>scip-python</code>, <code>scip-typescript</code>, <code>scip-go</code>), v0.17.0 can fold that compiler-accurate resolution in.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Optional SCIP precision pass (<code>neuralmind/precision.py</code>).</strong> With <code>NEURALMIND_PRECISION=1</code> and a <code>*.scip</code> index present, <code>neuralmind build</code> replaces the heuristic <code>calls</code>/<code>inherits</code> edges for the files the index covers with SCIP-resolved ones. Off by default — a no-op otherwise.</li>
+                <li><strong>Dependency-free + class-aware.</strong> SCIP is decoded with a tiny stdlib protobuf reader (no protobuf runtime, no version-mismatch risk), and symbols are mapped to graph nodes using their enclosing type — so same-named methods don't collide, which is exactly the case the heuristic gets wrong.</li>
+                <li><strong>Scoped &amp; safe.</strong> Only covered files are touched; an unmapped symbol is skipped (no dangling edges); everything else — nodes, <code>contains</code>, <code>imports_from</code>, rationale, communities — is untouched, behind the same <code>graph.json</code> seam.</li>
+                <li><strong>Proven by the gate.</strong> The parity gate gained a precision section: on a dedicated fixture it asserts the heuristic links <code>run() → B.handle</code> (wrong), SCIP links <code>run() → A.handle</code> (right) and drops the wrong edge, and the pass is a strict no-op when disabled.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Tree-sitter gives breadth (66+ languages, no build); SCIP/LSP give compiler-grade precision per language. v0.17.0 is the proven hybrid: tree-sitter by default, exact edges where a SCIP index exists — both behind the same seam, so the retrieval stack is untouched. No runtime change unless you opt in.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md">Full v0.17.0 release notes →</a></p>
         </div>
     </section>
 
@@ -382,13 +399,13 @@
     <section>
         <div class="container">
             <h2>Status & Roadmap</h2>
-            <h3>Current Release: v0.16.0 — Multi-language (TypeScript + Go)</h3>
-            <p>The latest release takes the built-in <strong>tree-sitter backend</strong> multi-language: <code>neuralmind build .</code> indexes <strong>Python, TypeScript, and Go</strong> with no graphify, behind the same <code>SUPPORTED_SUFFIXES</code> seam. Proven at parity per language by the CI gate (100% symbol coverage vs graphify on the reference fixtures). No runtime change — same index, same <code>synapses.db</code>, same hooks. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.16.0.md">v0.16.0 release notes</a> or the <a href="#whats-new-v0160">summary above</a>.</p>
+            <h3>Current Release: v0.17.0 — Optional SCIP precision pass</h3>
+            <p>The latest release adds an optional <strong>SCIP precision pass</strong>: with <code>NEURALMIND_PRECISION=1</code> and a <code>*.scip</code> index present, the built-in backend's heuristic <code>calls</code>/<code>inherits</code> edges are replaced with compiler-accurate ones for covered files — off by default, dependency-free, behind the same <code>graph.json</code> seam. Proven by a precision check in the CI gate. No runtime change unless you opt in. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md">v0.17.0 release notes</a> or the <a href="#whats-new-v0170">summary above</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>
-                <li><strong>Next — optional precision pass</strong> — an LSP/SCIP-backed pass for compiler-accurate <code>calls</code>/<code>inherits</code> edges, off by default, behind the same <code>graph.json</code> seam.</li>
-                <li><strong>Incremental → moat</strong> — per-file incremental graph updates wired to the watcher, then MCP auto-detection across agents and a measured learned-synapse onboarding-lift (E1.5). See the <a href="#whats-next">eval-first roadmap above</a>.</li>
+                <li><strong>Next — incremental updates</strong> — per-file incremental graph updates wired to the watcher, so editing one file re-parses and re-embeds only its nodes.</li>
+                <li><strong>Lean into the moat</strong> — MCP auto-detection across agents and a measured learned-synapse onboarding-lift (E1.5). See the <a href="#whats-next">eval-first roadmap above</a>.</li>
                 <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
             </ul>
 

@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.16.0** — **Multi-language: TypeScript + Go.** The built-in **tree-sitter** backend now indexes **Python, TypeScript, and Go** out of the box — `pip install neuralmind && neuralmind build .` works standalone on a TS or Go repo, no graphify. Both new languages sit behind the same `SUPPORTED_SUFFIXES` seam, emit the same graph contract, and are **proven at parity per language** by the CI gate (100% symbol coverage vs graphify on the reference fixtures). [Release notes](RELEASE_NOTES_v0.16.0.md)
+> **🆕 New in v0.17.0** — **Optional SCIP precision.** The built-in backend resolves `calls`/`inherits` edges heuristically (by name). If your repo has a **SCIP** index (`scip-python`/`scip-typescript`/`scip-go`), set `NEURALMIND_PRECISION=1` and NeuralMind folds in **compiler-accurate** edges — replacing the heuristic ones for covered files. Off by default, dependency-free (a tiny stdlib SCIP reader), and proven by a precision check in the CI gate. [Release notes](RELEASE_NOTES_v0.17.0.md)
+>
+> **v0.16.0** — **Multi-language: TypeScript + Go.** The built-in **tree-sitter** backend now indexes **Python, TypeScript, and Go** out of the box — `neuralmind build .` works standalone on a TS or Go repo, no graphify. Proven at parity per language by the CI gate (100% symbol coverage vs graphify). [Release notes](RELEASE_NOTES_v0.16.0.md)
 >
 > **v0.15.0** — **No graphify needed.** A built-in **tree-sitter** graph backend, so `pip install neuralmind && neuralmind build .` *just works* — no second, external tool. graphify still takes priority where present. Proven at parity by a CI gate (reduction + faithfulness within tolerance). [Release notes](RELEASE_NOTES_v0.15.0.md)
 >
@@ -1739,6 +1741,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.17.0](RELEASE_NOTES_v0.17.0.md)** | Optional SCIP precision pass — `NEURALMIND_PRECISION=1` folds compiler-accurate `calls`/`inherits` edges from a `*.scip` index into the built-in graph (replacing heuristic ones for covered files); off by default, dependency-free stdlib SCIP reader, proven by a precision check in the CI gate |
 | **[Release Notes v0.16.0](RELEASE_NOTES_v0.16.0.md)** | Multi-language built-in backend — TypeScript + Go extractors behind the `SUPPORTED_SUFFIXES` seam, `neuralmind build` indexes Python/TS/Go with no graphify; proven at parity per language by the CI gate (100% symbol coverage on the reference fixtures) |
 | **[Release Notes v0.15.0](RELEASE_NOTES_v0.15.0.md)** | Built-in tree-sitter graph backend — `neuralmind build` works with no graphify install; graphify still takes priority where present; backend swap proven at parity by a new CI gate (reduction + faithfulness within tolerance) |
 | **[Release Notes v0.14.0](RELEASE_NOTES_v0.14.0.md)** | `neuralmind eval` — measure answer faithfulness (expected-fact recall vs a matched-budget naive baseline) with grounding + contradiction checks and `--json`; 100% local by default |
