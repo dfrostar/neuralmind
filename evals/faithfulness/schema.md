@@ -41,25 +41,25 @@ This file is the gold standard the offline judge scores answers against.
   `JWT_SECRET`, `WEBHOOK_TOLERANCE_SEC`) a real answer would name, so a
   grounded answer scores even if it paraphrases the prose.
 
-## Scoring dimensions (the judge contract, implemented across E1.1–E1.3)
+## Scoring dimensions (the judge contract)
 
-The query set is designed to be scored on three dimensions. E1.1 ships
-the data and the **expected-fact-recall** scorer; the other two are
-specified here and stubbed in `runner.py` for E1.3.
+The query set is scored on three dimensions, all implemented offline in
+`runner.py`'s `OfflineJudge` (zero network) and aggregated into the
+`neuralmind eval` report by `harness.py`.
 
-1. **Expected-fact recall** *(E1.1, implemented).* Fraction of a query's
+1. **Expected-fact recall** *(implemented).* Fraction of a query's
    `expected_facts` that the answer expresses. The offline judge matches
    a fact when the answer text contains the fact statement or any of its
-   `aliases` (case-insensitive, whitespace-normalised). This is the
-   headline, CI-gating number.
-2. **Citation / grounding rate** *(E1.3, stubbed).* Fraction of the
-   answer's claims that are attributable to one of `expected_modules`
-   (or, more strictly, to retrieved context). Measures whether the
-   answer is grounded in the codebase rather than the model's prior.
-3. **Contradiction check** *(E1.3, stubbed).* Detects statements that
-   conflict with the gold facts (e.g. claiming PostgreSQL when the
-   fixture uses SQLite, or RS256 when it is HS256). A negative signal:
-   an answer can have high recall yet still contradict the code.
+   `aliases` (case-insensitive, whitespace-normalised, token-boundary
+   aware). This is the headline, CI-gating number.
+2. **Citation / grounding rate** *(implemented).* Fraction of a query's
+   `expected_modules` referenced in the answer — a proxy for whether the
+   answer is drawn from the right sources rather than the model's prior.
+3. **Contradiction check** *(implemented).* Flags statements that conflict
+   with the gold facts (e.g. claiming PostgreSQL when the fixture uses
+   SQLite, or RS256 when it is HS256), via a conservative table of
+   mutually-exclusive choices. A negative signal: an answer can have high
+   recall yet still contradict the code.
 
 The faithfulness **delta** the release reports (E1.4) is the difference
 in these scores between an answer generated **with** NeuralMind context

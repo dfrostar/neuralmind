@@ -1,17 +1,19 @@
-"""Stdlib-only tests for the faithfulness eval foundation (issue #172, E1.1).
+"""Stdlib-only tests for the faithfulness eval (issue #172, E1.1–E1.4).
 
 These deliberately use ``unittest`` (no pytest) and import nothing heavy, so
 they run in a minimal environment that has neither pytest nor chromadb:
 
     python tests/test_eval_faithfulness.py
 
-Covers: queries.json loading/validation and the offline expected-fact-recall
-scorer. Answer generation (E1.2) and the full judge (E1.3) are not tested
-here because they are not implemented yet.
+Covers: queries.json loading/validation, the three offline judge dimensions
+(expected-fact recall, grounding, contradiction), and the A/B harness +
+report (E1.2/E1.4) exercised with injected stub context providers so the real
+retrieval stack is never required.
 """
 
 from __future__ import annotations
 
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -21,11 +23,13 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from evals.faithfulness import harness  # noqa: E402
 from evals.faithfulness.runner import (  # noqa: E402
     SCHEMA_VERSION,
     ExpectedFact,
     OfflineJudge,
     Query,
+    QuerySet,
     load_query_set,
 )
 
@@ -158,11 +162,38 @@ class OfflineRecallTests(unittest.TestCase):
         )
         self.assertEqual(self.judge.fact_recall(q, "there is a t value here").matched, 0)
 
-    def test_e1_3_methods_are_stubbed(self) -> None:
-        with self.assertRaises(NotImplementedError):
-            self.judge.grounding_rate(self.query, "x")
-        with self.assertRaises(NotImplementedError):
-            self.judge.contradiction_score(self.query, "x")
+    def test_grounding_rate_counts_cited_modules(self) -> None:
+        q = Query(
+            id="g",
+            question="?",
+            expected_facts=(ExpectedFact("f", "x"),),
+            expected_modules=("auth/handlers.py", "auth/jwt_utils.py"),
+        )
+        # Cites one of the two expected modules → 0.5.
+        self.assertEqual(self.judge.grounding_rate(q, "see auth/handlers.py for login"), 0.5)
+        self.assertEqual(self.judge.grounding_rate(q, "nothing relevant here"), 0.0)
+
+    def test_contradiction_flags_wrong_choice(self) -> None:
+        q = Query(
+            id="db",
+            question="?",
+            expected_facts=(ExpectedFact("f", "the fixture uses SQLite", ("sqlite",)),),
+            expected_modules=("db/connection.py",),
+        )
+        # Gold says SQLite; answer asserts PostgreSQL → contradiction.
+        self.assertGreater(self.judge.contradiction_score(q, "it uses PostgreSQL"), 0.0)
+        # Correct choice → none.
+        self.assertEqual(self.judge.contradiction_score(q, "it uses sqlite"), 0.0)
+
+    def test_contradiction_zero_when_no_group_applies(self) -> None:
+        # No gold fact selects a side of any contradiction group → 0.0.
+        q = Query(
+            id="none",
+            question="?",
+            expected_facts=(ExpectedFact("f", "the password hash is verified"),),
+            expected_modules=("auth/handlers.py",),
+        )
+        self.assertEqual(self.judge.contradiction_score(q, "anything at all"), 0.0)
 
 
 class GoldSetSanityTests(unittest.TestCase):
@@ -177,6 +208,65 @@ class GoldSetSanityTests(unittest.TestCase):
             result = judge.fact_recall(q, perfect)
             with self.subTest(query=q.id):
                 self.assertEqual(result.recall, 1.0)
+
+
+class HarnessTests(unittest.TestCase):
+    """E1.2/E1.4 — the A/B harness + report, run with injected stub providers
+    so no chromadb/tiktoken is required."""
+
+    def setUp(self) -> None:
+        self.qs = QuerySet(
+            schema_version=1,
+            fixture="x",
+            queries=[
+                Query(
+                    id="q1",
+                    question="?",
+                    expected_facts=(ExpectedFact("a", "alpha"), ExpectedFact("b", "beta")),
+                    expected_modules=("m1.py",),
+                ),
+            ],
+        )
+
+    def test_truncate_to_budget_is_bounded(self) -> None:
+        text = " ".join(["word"] * 1000)
+        out = harness._truncate_to_tokens(text, 10)
+        self.assertTrue(out)
+        self.assertLessEqual(harness.count_tokens(out), 10)
+        self.assertEqual(harness._truncate_to_tokens(text, 0), "")
+
+    def test_context_answerer_echoes_context(self) -> None:
+        ans = harness.ContextAnswerer().answer(self.qs.queries[0], "ctx text")
+        self.assertEqual(ans, "ctx text")
+
+    def test_run_ab_neuralmind_beats_naive(self) -> None:
+        results = harness.run_ab(
+            self.qs,
+            context_provider=lambda q: "alpha and beta are both here",
+            naive_provider=lambda budget: "alpha only",
+        )
+        self.assertEqual(len(results), 1)
+        r = results[0]
+        self.assertEqual(r.nm_recall, 1.0)
+        self.assertEqual(r.naive_recall, 0.5)
+        self.assertGreater(r.recall_delta, 0.0)
+
+    def test_build_and_render_report(self) -> None:
+        results = harness.run_ab(
+            self.qs,
+            context_provider=lambda q: "alpha and beta",
+            naive_provider=lambda budget: "",
+        )
+        report = harness.build_report(self.qs, results)
+        self.assertAlmostEqual(report.faithfulness_delta, 1.0)
+
+        payload = json.loads(harness.render_json(report))
+        self.assertEqual(payload["faithfulness_delta"], 1.0)
+        self.assertEqual(payload["n_queries"], 1)
+        self.assertIn("per_query", payload)
+
+        md = harness.render_markdown(report)
+        self.assertIn("faithfulness delta", md.lower())
 
 
 if __name__ == "__main__":
