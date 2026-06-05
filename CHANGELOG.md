@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.14.0](https://github.com/dfrostar/neuralmind/compare/v0.13.1...v0.14.0) (2026-06-05)
+
+
+### Features
+
+* **evals:** faithfulness A/B harness + report (E1.2-E1.4) ([#182](https://github.com/dfrostar/neuralmind/issues/182)) ([c7da2b1](https://github.com/dfrostar/neuralmind/commit/c7da2b169f4a69405ca5e1c7f220bd903a7ea0d9))
+
+
+### Documentation
+
+* v0.14.0 launch pass — neuralmind eval + faithfulness measurement ([#184](https://github.com/dfrostar/neuralmind/issues/184)) ([ba7fe52](https://github.com/dfrostar/neuralmind/commit/ba7fe5258acc4cb6a1665305c6dd79c5cf439661))
+
 ## [0.13.1](https://github.com/dfrostar/neuralmind/compare/v0.13.0...v0.13.1) (2026-06-05)
 
 
