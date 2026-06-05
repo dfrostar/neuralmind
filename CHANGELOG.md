@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/dfrostar/neuralmind/compare/v0.18.0...v0.19.0) (2026-06-05)
+
+
+### Features
+
+* **mcp:** one-command MCP setup — auto-detect + register with agents ([#195](https://github.com/dfrostar/neuralmind/issues/195)) ([40c3209](https://github.com/dfrostar/neuralmind/commit/40c3209a22d3b519b8c5b07732fcc79e1f61ee4f))
+
 ## [0.18.0](https://github.com/dfrostar/neuralmind/compare/v0.17.0...v0.18.0) (2026-06-05)
 
 
