@@ -328,6 +328,13 @@ class TestNeuralMindQuery:
 - Keep examples working
 - Add type hints
 
+> **Standard process.** For any user-facing change (a CLI command, MCP tool,
+> hook, env var, agent-visible behavior, or visible fix), follow the
+> [Documentation Process](docs/DOCUMENTATION-PROCESS.md): docs ship in the
+> *same PR* as the change, propagated across all five surfaces, and every doc
+> answers *"what does the user/agent now see?"*. The PR template's
+> "Documentation & discoverability" checklist operationalizes it.
+
 ## Release Process
 
 Releases are managed with [release-please](https://github.com/googleapis/release-please). The process is fully automated once commits land on `main`.
