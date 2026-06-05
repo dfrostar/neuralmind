@@ -70,6 +70,18 @@ synapse layer, graph view, MCP tools, or hooks behave at runtime.
 - From an installed wheel (where the `evals/` package isn't bundled), run it
   from a source checkout: `python -m evals.faithfulness.runner --run`.
 
+## Platform support — Windows is now ⚠️ experimental
+
+v0.14.0 adds **macOS to the CI gate** (verified on every PR alongside Linux
+3.10–3.12). Running the full suite on **Windows** for the first time surfaced
+genuine issues — ChromaDB holds open file handles so temp-dir teardown fails
+(`WinError 32`), event-log rotation relies on POSIX rename-over-open, and a
+concurrent-append path loses writes. Rather than claim support we can't back,
+**Windows is reclassified from "Full" to ⚠️ Experimental**: it still installs
+and runs (the Task Scheduler walkthrough applies), but it's dropped from the
+gating matrix and the `schema.org`/compatibility claims are narrowed to Linux +
+macOS until the issues are fixed. Tracking: **#186**.
+
 ## What ships (Epic E1, tasks E1.2–E1.4)
 
 - **`evals/faithfulness/harness.py`** — the deterministic answerer, the
@@ -78,7 +90,14 @@ synapse layer, graph view, MCP tools, or hooks behave at runtime.
 - **`OfflineJudge`** now scores all three dimensions offline — expected-fact
   recall, grounding, and contradiction.
 - **`neuralmind eval`** CLI + `python -m evals.faithfulness.runner --run`.
-- 22 stdlib unit tests covering the judge and the harness (no chromadb needed).
+- 28 stdlib unit tests covering the judge and the harness (no chromadb needed).
+- **Now gated in CI.** `ci-benchmark.yml` builds the reference fixture index
+  and runs the A/B on every PR, failing the build if NeuralMind's selected
+  context ever carries fewer gold facts than a matched-budget naive
+  truncation. First measured result on the reference fixture: **fact-recall
+  `1.0` vs `~0.4` naive, grounding `1.0` vs `0.0`** at an equal per-query token
+  budget — smart selection keeps every gold fact and cites the right modules
+  where dumb truncation keeps about half and cites none.
 
 ## What's next
 
