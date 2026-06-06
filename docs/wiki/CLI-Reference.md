@@ -522,7 +522,7 @@ source repository), so — like `neuralmind benchmark` — it's a quality
 self-test, not a per-repo command.
 
 ```bash
-neuralmind eval [project_path] [--json] [--selfcheck]
+neuralmind eval [project_path] [--json] [--selfcheck] [--onboarding]
 ```
 
 **Arguments:**
@@ -532,6 +532,7 @@ neuralmind eval [project_path] [--json] [--selfcheck]
 | `project_path` | No | the gold-set fixture | Project to evaluate |
 | `--json`, `-j` | No | `false` | Emit the report as JSON |
 | `--selfcheck` | No | `false` | Validate the gold set + offline scorer only (no retrieval deps) |
+| `--onboarding` | No | `false` | Run the **onboarding-lift** eval instead — committed team memory vs a cold agent (see `evals/onboarding/`) |
 
 **What it reports:** the **faithfulness delta** — mean expected-fact recall of
 NeuralMind's context minus the naive baseline's, at a matched per-query token
@@ -539,6 +540,14 @@ budget — plus grounding rate, contradiction rate, and a per-query breakdown.
 A positive delta means smart selection beats dumb truncation at equal token
 cost. The default judge is 100% offline; an opt-in LLM-as-judge sits behind
 `NEURALMIND_EVAL_LLM_JUDGE=1` and is never the default or the CI gate.
+
+**What `--onboarding` reports:** the **onboarding lift** — onboarded − cold
+**top-k module hit-rate** (the share of a query's expected modules that land in
+the ranked top-k retrieval the agent sees), the slice associative recall
+re-ranks within. Fact-recall and full-context grounding print as honest
+secondaries: at a fixed budget fact-recall is *budget-traded* (slightly negative
+on the tiny fixture) and grounding *saturates*, so neither is the gated headline.
+It's the same top-k hit-rate signal as the self-benchmark's Phase-3 A/B.
 
 **Requirements:** the A/B needs the retrieval stack (chromadb) and a built
 index; without them it degrades with an actionable message. `--selfcheck`
