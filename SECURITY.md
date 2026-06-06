@@ -138,16 +138,25 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 1. **ChromaDB.** We rely on ChromaDB for vector storage. Monitor their security advisories.
 
-   - **CVE-2026-45829 (chromadb ≥ 1.0.0) — not exploitable in NeuralMind.**
+   - **CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c (chromadb ≥ 1.0.0, CRITICAL) —
+     not exploitable in NeuralMind.**
      This is a pre-authentication remote code-execution flaw in ChromaDB's
      *client/server* HTTP API (`/api/v2/.../collections`), triggered by a
      malicious model repository when `trust_remote_code=true`. NeuralMind
      embeds ChromaDB via `chromadb.PersistentClient` (local, on-disk) — it
      never starts the ChromaDB server, never exposes that endpoint, and never
      sets `trust_remote_code`. The vulnerable code path is therefore
-     unreachable in NeuralMind's usage, so the corresponding Dependabot alert
-     is dismissed as "vulnerable code is not used." The pin will be bumped
-     once ChromaDB publishes a patched release (none exists as of this note).
+     unreachable in NeuralMind's usage, so the recommended disposition for the
+     corresponding Dependabot alert is to **dismiss it as "vulnerable code is
+     not used."**
+     - **No patched release exists yet.** Per the advisory, *every* published
+       version is affected (`introduced: 1.0.0`, `last_affected: 1.5.9` — the
+       current latest), so a version bump cannot resolve it. The pin will be
+       bumped the moment ChromaDB ships a fixed release.
+     - Severity: CRITICAL, `CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` (CWE-94).
+     - References: [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-45829) ·
+       [GHSA-f4j7-r4q5-qw2c](https://github.com/advisories/GHSA-f4j7-r4q5-qw2c) ·
+       [upstream issue](https://github.com/chroma-core/chroma/issues/6717).
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`), be aware:
    - It runs locally over stdio by default — no network port is opened.
