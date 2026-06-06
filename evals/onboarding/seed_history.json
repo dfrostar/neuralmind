@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "fixture": "tests/fixtures/sample_project",
+  "description": "Committed 'team baseline' synapse history for the onboarding-lift eval (E1.5). Each session is a group of files a teammate edited together in one sitting; replaying them through NeuralMind's real reinforcement path (activate_files) teaches the synapse graph cross-cutting associations that a purely textual search can't recover -- e.g. users/crud.py and db/connection.py are hubs touched alongside almost every feature even though the words 'authentication' or 'billing' never appear in them. An onboarded agent that inherits this memory should surface those co-edited hubs on its first queries; a cold agent cannot. Regenerable + transparent by design (no binary synapses.db): the harness replays this deterministically. Mirrors tests/benchmark/run.py SYNAPSE_SESSIONS, committed here as the eval's fixed baseline.",
+  "repeats": 8,
+  "sessions": [
+    ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"],
+    ["billing/stripe_client.py", "billing/invoices.py", "users/crud.py"],
+    ["api/routes.py", "users/crud.py"],
+    ["users/crud.py", "db/connection.py"],
+    ["billing/stripe_client.py", "db/connection.py"],
+    ["auth/handlers.py", "db/connection.py"]
+  ]
+}

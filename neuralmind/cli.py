@@ -327,14 +327,21 @@ def cmd_eval(args):
     command. The A/B needs the retrieval stack + a built index; ``--selfcheck``
     validates the gold set and offline scorer with no heavy deps.
     """
+    # --onboarding swaps in the E1.5 onboarding-lift eval (committed team memory
+    # vs a cold agent); both ship in the source `evals/` package, not the wheel.
+    pkg = "onboarding" if getattr(args, "onboarding", False) else "faithfulness"
+    label = "onboarding-lift" if pkg == "onboarding" else "faithfulness"
     try:
-        from evals.faithfulness import harness, runner
+        if pkg == "onboarding":
+            from evals.onboarding import harness, runner
+        else:
+            from evals.faithfulness import harness, runner
     except ImportError:
         print(
-            "neuralmind eval runs against the faithfulness gold set that ships "
-            "with the source repository (the `evals/` package), not the installed "
-            "wheel. Clone the repo and run "
-            "`python -m evals.faithfulness.runner --run` from its root.",
+            f"neuralmind eval runs against the {label} gold set that ships with "
+            "the source repository (the `evals/` package), not the installed "
+            f"wheel. Clone the repo and run `python -m evals.{pkg}.runner --run` "
+            "from its root.",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -345,7 +352,7 @@ def cmd_eval(args):
     try:
         report = harness.run_and_report(args.project_path)
     except RuntimeError as exc:
-        print(f"faithfulness A/B unavailable: {exc}", file=sys.stderr)
+        print(f"{label} A/B unavailable: {exc}", file=sys.stderr)
         print(
             "The A/B needs the retrieval stack + a built index. Use `--selfcheck` "
             "to validate the gold set + offline scorer only.",
@@ -959,6 +966,11 @@ def main():
         "--selfcheck",
         action="store_true",
         help="Validate the gold set + offline scorer only (no retrieval deps)",
+    )
+    eval_p.add_argument(
+        "--onboarding",
+        action="store_true",
+        help="Run the onboarding-lift eval (committed team memory vs a cold agent) instead",
     )
     eval_p.set_defaults(func=cmd_eval)
 
