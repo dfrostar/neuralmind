@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.20.0](https://github.com/dfrostar/neuralmind/compare/v0.19.0...v0.20.0) (2026-06-06)
+
+
+### Features
+
+* **evals:** onboarding-lift eval (E1.5) — measure the learned-synapse uplift ([#199](https://github.com/dfrostar/neuralmind/issues/199)) ([e53782e](https://github.com/dfrostar/neuralmind/commit/e53782ec5f5075450a6efb2c0f1ee5d5caeb661f))
+
+
+### Documentation
+
+* **plan:** session accomplishments + E1.5 onboarding-lift eval handoff ([#197](https://github.com/dfrostar/neuralmind/issues/197)) ([86c6eba](https://github.com/dfrostar/neuralmind/commit/86c6eba9208ae25b2ed380e68d80b4dd3dba148d))
+
 ## [0.19.0](https://github.com/dfrostar/neuralmind/compare/v0.18.0...v0.19.0) (2026-06-05)
 
 
