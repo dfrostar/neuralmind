@@ -99,6 +99,37 @@ jobs:
           )
           PY
 
+      - name: Onboarding-lift eval (A/B) gate
+        # Reuses the index built above to measure the learned-synapse uplift:
+        # an onboarded agent (committed team baseline, recall on) vs a cold one
+        # (recall off). Averages a few runs to absorb ChromaDB HNSW query-time
+        # jitter, and gates that inheriting committed team memory never hurts.
+        run: |
+          python - <<'PY'
+          import json
+          from evals.onboarding import harness
+
+          lifts = []
+          last = None
+          for _ in range(3):
+              last = harness.run_and_report(None).to_dict()
+              lifts.append(last["onboarding_lift"])
+          mean_lift = sum(lifts) / len(lifts)
+          with open("eval_onboarding.json", "w", encoding="utf-8") as fh:
+              json.dump({**last, "lifts_runs": lifts, "mean_lift": round(mean_lift, 4)}, fh, indent=2)
+          runs = ", ".join(f"{x:+.3f}" for x in lifts)
+          print(
+              f"[eval] onboarding lift runs=[{runs}] mean={mean_lift:+.3f}  "
+              f"(onboarded {last['onboarded_mean_recall']:.3f} vs cold "
+              f"{last['cold_mean_recall']:.3f}, {last['n_queries']} queries, "
+              f"{last['seed_sessions']} team sessions)"
+          )
+          # Gate: inheriting committed team memory must never REDUCE fact recall.
+          # Floor at 0 on the mean (conservative on the tiny fixture); catches a
+          # regression in the recall mechanism, not a chased number.
+          assert mean_lift >= 0.0, f"onboarding regression: mean lift {mean_lift:+.3f} < 0"
+          PY
+
       - name: Run benchmark (Phase 1 + Phase 2)
         id: bench
         run: |
