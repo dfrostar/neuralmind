@@ -57,13 +57,31 @@ def _selfcheck() -> int:
         # A "perfect" onboarded answer names every gold fact for the query.
         return " ".join(f.fact for f in q.expected_facts)
 
-    results = harness.run_ab(qs, seed=seed, cold_provider=cold, onboarded_provider=onboarded)
+    def onboarded_retrieval(q):
+        # A "perfect" onboarded top-k surfaces every expected module.
+        return " ".join(q.expected_modules)
+
+    results = harness.run_ab(
+        qs,
+        seed=seed,
+        cold_provider=cold,
+        onboarded_provider=onboarded,
+        cold_retrieval=cold,
+        onboarded_retrieval=onboarded_retrieval,
+    )
     report = harness.build_report(qs, results, seed=seed)
     print(
-        f"stub onboarding lift: {report.onboarding_lift:+.3f} "
-        f"(cold {report.cold_mean_recall:.3f} -> onboarded {report.onboarded_mean_recall:.3f})"
+        f"stub onboarding lift (top-k hit-rate): {report.onboarding_lift:+.3f} "
+        f"(cold {report.cold_mean_hit_rate:.3f} -> onboarded "
+        f"{report.onboarded_mean_hit_rate:.3f}); fact-recall lift "
+        f"{report.recall_lift:+.3f}"
     )
-    ok = report.onboarding_lift > 0 and report.cold_mean_recall == 0.0
+    ok = (
+        report.onboarding_lift > 0
+        and report.cold_mean_hit_rate == 0.0
+        and report.recall_lift > 0
+        and report.cold_mean_recall == 0.0
+    )
     print("ok" if ok else "WARN: stub lift not as expected")
     return 0 if ok else 1
 

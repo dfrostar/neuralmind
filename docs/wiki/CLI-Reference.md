@@ -541,6 +541,14 @@ A positive delta means smart selection beats dumb truncation at equal token
 cost. The default judge is 100% offline; an opt-in LLM-as-judge sits behind
 `NEURALMIND_EVAL_LLM_JUDGE=1` and is never the default or the CI gate.
 
+**What `--onboarding` reports:** the **onboarding lift** — onboarded − cold
+**top-k module hit-rate** (the share of a query's expected modules that land in
+the ranked top-k retrieval the agent sees), the slice associative recall
+re-ranks within. Fact-recall and full-context grounding print as honest
+secondaries: at a fixed budget fact-recall is *budget-traded* (slightly negative
+on the tiny fixture) and grounding *saturates*, so neither is the gated headline.
+It's the same top-k hit-rate signal as the self-benchmark's Phase-3 A/B.
+
 **Requirements:** the A/B needs the retrieval stack (chromadb) and a built
 index; without them it degrades with an actionable message. `--selfcheck`
 needs neither. From an installed wheel (where the `evals/` package isn't

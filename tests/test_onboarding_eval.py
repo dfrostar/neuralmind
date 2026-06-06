@@ -95,8 +95,24 @@ class RunABTests(unittest.TestCase):
         )
         self.seed = harness.load_seed_history()
 
-    def test_positive_lift_when_onboarded_recovers_more(self) -> None:
-        # cold: nothing; onboarded: every gold fact -> lift = +1.0
+    def test_headline_hit_rate_lift_is_positive(self) -> None:
+        # cold top-k surfaces no expected module; onboarded surfaces all of them
+        # -> headline onboarding lift (top-k module hit-rate) = +1.0.
+        results = harness.run_ab(
+            self.qs,
+            seed=self.seed,
+            cold_provider=lambda q: "",
+            onboarded_provider=lambda q: " ".join(f.fact for f in q.expected_facts),
+            cold_retrieval=lambda q: "",
+            onboarded_retrieval=lambda q: " ".join(q.expected_modules),
+        )
+        report = harness.build_report(self.qs, results, seed=self.seed)
+        self.assertAlmostEqual(report.cold_mean_hit_rate, 0.0)
+        self.assertAlmostEqual(report.onboarded_mean_hit_rate, 1.0)
+        self.assertAlmostEqual(report.onboarding_lift, 1.0)
+
+    def test_recall_lift_is_a_reported_secondary(self) -> None:
+        # cold: nothing; onboarded: every gold fact -> fact-recall lift = +1.0.
         results = harness.run_ab(
             self.qs,
             seed=self.seed,
@@ -106,30 +122,41 @@ class RunABTests(unittest.TestCase):
         report = harness.build_report(self.qs, results, seed=self.seed)
         self.assertAlmostEqual(report.cold_mean_recall, 0.0)
         self.assertAlmostEqual(report.onboarded_mean_recall, 1.0)
-        self.assertAlmostEqual(report.onboarding_lift, 1.0)
+        self.assertAlmostEqual(report.recall_lift, 1.0)
 
     def test_zero_lift_when_arms_equal(self) -> None:
-        same = lambda q: " ".join(f.fact for f in q.expected_facts)  # noqa: E731
+        same = lambda q: " ".join(q.expected_modules)  # noqa: E731
         results = harness.run_ab(
-            self.qs, seed=self.seed, cold_provider=same, onboarded_provider=same
+            self.qs,
+            seed=self.seed,
+            cold_provider=same,
+            onboarded_provider=same,
+            cold_retrieval=same,
+            onboarded_retrieval=same,
         )
         report = harness.build_report(self.qs, results, seed=self.seed)
         self.assertAlmostEqual(report.onboarding_lift, 0.0)
 
-    def test_per_query_partial_lift(self) -> None:
-        # query "a" has 2 facts; onboarded recovers 1 more than cold -> +0.5 there
-        def cold(q):
-            return "alpha fact" if q.id == "a" else ""
+    def test_per_query_partial_hit_rate_lift(self) -> None:
+        # query "a" expects 1 module the cold top-k misses and onboarded surfaces
+        # -> +1.0 there; "b"'s module is in both arms -> 0.0 there.
+        def cold_ret(q):
+            return "m/b.py" if q.id == "b" else ""
 
-        def onboarded(q):
-            return " ".join(f.fact for f in q.expected_facts)
+        def onboarded_ret(q):
+            return " ".join(q.expected_modules)
 
         results = harness.run_ab(
-            self.qs, seed=self.seed, cold_provider=cold, onboarded_provider=onboarded
+            self.qs,
+            seed=self.seed,
+            cold_provider=lambda q: "",
+            onboarded_provider=lambda q: "",
+            cold_retrieval=cold_ret,
+            onboarded_retrieval=onboarded_ret,
         )
         by_id = {r.query_id: r for r in results}
-        self.assertAlmostEqual(by_id["a"].recall_lift, 0.5)
-        self.assertAlmostEqual(by_id["b"].recall_lift, 1.0)
+        self.assertAlmostEqual(by_id["a"].hit_rate_lift, 1.0)
+        self.assertAlmostEqual(by_id["b"].hit_rate_lift, 0.0)
 
 
 class ReportRenderTests(unittest.TestCase):
@@ -141,6 +168,8 @@ class ReportRenderTests(unittest.TestCase):
             seed=self.seed,
             cold_provider=lambda q: "",
             onboarded_provider=lambda q: "alpha fact",
+            cold_retrieval=lambda q: "",
+            onboarded_retrieval=lambda q: " ".join(q.expected_modules),
         )
         self.report = harness.build_report(self.qs, self.results, seed=self.seed)
 
@@ -148,6 +177,8 @@ class ReportRenderTests(unittest.TestCase):
         d = json.loads(harness.render_json(self.report))
         self.assertEqual(d["n_queries"], 1)
         self.assertAlmostEqual(d["onboarding_lift"], 1.0)
+        self.assertAlmostEqual(d["recall_lift"], 1.0)
+        self.assertIn("onboarded_mean_hit_rate", d)
         self.assertIn("per_query", d)
 
     def test_markdown_runs(self) -> None:
