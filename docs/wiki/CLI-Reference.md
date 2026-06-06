@@ -522,7 +522,7 @@ source repository), so — like `neuralmind benchmark` — it's a quality
 self-test, not a per-repo command.
 
 ```bash
-neuralmind eval [project_path] [--json] [--selfcheck]
+neuralmind eval [project_path] [--json] [--selfcheck] [--onboarding]
 ```
 
 **Arguments:**
@@ -532,6 +532,7 @@ neuralmind eval [project_path] [--json] [--selfcheck]
 | `project_path` | No | the gold-set fixture | Project to evaluate |
 | `--json`, `-j` | No | `false` | Emit the report as JSON |
 | `--selfcheck` | No | `false` | Validate the gold set + offline scorer only (no retrieval deps) |
+| `--onboarding` | No | `false` | Run the **onboarding-lift** eval instead — committed team memory vs a cold agent (see `evals/onboarding/`) |
 
 **What it reports:** the **faithfulness delta** — mean expected-fact recall of
 NeuralMind's context minus the naive baseline's, at a matched per-query token

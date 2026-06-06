@@ -19,7 +19,7 @@
         "@type": "SoftwareApplication",
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
-        "softwareVersion": "0.14.0"
+        "softwareVersion": "0.20.0"
       }
     }
     </script>
@@ -76,6 +76,22 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0200">
+            <h2>What's New in v0.20.0 — measure the onboarding lift</h2>
+            <p><strong>The static code graph is commoditizing; the learned synapse layer is the moat.</strong> v0.20.0 turns that moat into a number: <code>neuralmind eval --onboarding</code> measures whether an agent that inherits a committed team memory retrieves better on its first queries than a cold agent with none.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind eval --onboarding</code>.</strong> A cold-vs-onboarded A/B over the gold queries, sharing one built index and differing only in synapse recall (off vs on over a committed team baseline). Scored by the same offline judge as the faithfulness eval; reports the onboarding lift (fact-recall + grounding deltas).</li>
+                <li><strong>Committed, transparent baseline.</strong> <code>evals/onboarding/seed_history.json</code> is a regenerable record of co-edit sessions replayed through the real reinforcement path — no binary <code>synapses.db</code> committed.</li>
+                <li><strong>CI-gated.</strong> The benchmark job averages a few runs (to absorb ChromaDB HNSW jitter) and fails if inheriting committed memory ever reduces recall (lift ≥ 0). 12 stdlib tests.</li>
+            </ul>
+            <h3>Why this matters — the moat</h3>
+            <p>AST-derived code graphs are table stakes now. NeuralMind's durable edge is usage memory — the synapse layer that learns what your team edits together. This release makes that edge measurable and regression-gated, formalising the self-benchmark's Phase-3 synapse A/B into a committed-baseline eval.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.20.0.md">Full v0.20.0 release notes →</a></p>
         </div>
     </section>
 
