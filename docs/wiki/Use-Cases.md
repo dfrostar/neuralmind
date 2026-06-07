@@ -13,6 +13,7 @@ Canonical pages live at [docs/use-cases/](../blob/main/docs/use-cases/README.md)
 | [Any LLM (ChatGPT / Gemini / local)](../blob/main/docs/use-cases/any-llm.md) | You use a non-MCP chat or mixed models | Copy-paste + CLI-piped context into any model |
 | [Offline / regulated work](../blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | 100% local, zero telemetry, compliance properties table |
 | [Growing monorepo](../blob/main/docs/use-cases/growing-monorepo.md) | Your codebase grows fast and drifts often | Three freshness strategies + large-repo tuning |
+| [Slim & sovereign: ChromaDB-free local stack](../blob/main/docs/use-cases/chromadb-free-local.md) | Security-sensitive teams, tiny-footprint installs (v0.21.0+) | Embed + search with zero ChromaDB — smaller deps, 8–16× smaller index, fewer advisories |
 
 ## Decision helpers
 
