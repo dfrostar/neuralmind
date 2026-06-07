@@ -8,7 +8,6 @@ from typing import Any
 
 import yaml
 
-from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .in_memory_backend import InMemoryEmbeddingBackend
 
@@ -58,6 +57,11 @@ def create_backend(
 ) -> EmbeddingBackend:
     normalized = backend.strip().lower()
     if normalized in {"graph", "chroma", "chromadb"}:
+        # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
+        # the chroma backend is actually selected, so the turbovec backend can
+        # run without it. See issue #204.
+        from .embedder import GraphEmbedder
+
         return GraphEmbedder(project_path, db_path=db_path)
     if normalized in {"in_memory", "inmemory", "memory"}:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
