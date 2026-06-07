@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/dfrostar/neuralmind/compare/v0.20.1...v0.21.0) (2026-06-07)
+
+
+### Features
+
+* **backend:** ChromaDB-free embeddings — owned MiniLM embedder ([#207](https://github.com/dfrostar/neuralmind/issues/207)) ([9be4762](https://github.com/dfrostar/neuralmind/commit/9be47626dedcdd14cb2235f950b555300ee9f0e5))
+* **backend:** experimental TurboVec (TurboQuant) vector backend [POC, [#204](https://github.com/dfrostar/neuralmind/issues/204)] ([#205](https://github.com/dfrostar/neuralmind/issues/205)) ([e37d4c7](https://github.com/dfrostar/neuralmind/commit/e37d4c7f66e3c70b116443f3a7e4f57c71f5be86))
+
 ## [0.20.1](https://github.com/dfrostar/neuralmind/compare/v0.20.0...v0.20.1) (2026-06-07)
 
 
