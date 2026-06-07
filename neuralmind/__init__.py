@@ -87,7 +87,7 @@ from .synapse_memory import (
 from .synapses import SynapseStore, default_db_path
 from .watcher import FileActivityWatcher
 
-__version__ = "0.20.1"
+__version__ = "0.21.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
