@@ -24,6 +24,30 @@ from chromadb.config import Settings
 from .embedding_backend import EmbeddingBackend
 
 
+def _silence_chroma_telemetry() -> None:
+    """Monkey-patch ChromaDB's Posthog ``capture()`` to a silent no-op.
+
+    Belt-and-suspenders against any chromadb version whose telemetry logger
+    hierarchy doesn't propagate as expected (env vars + CRITICAL log levels are
+    set in :mod:`neuralmind.__init__`). Lives here — next to the only
+    module-level ``import chromadb`` — so it runs exactly when the chroma
+    backend is loaded, and never when merely importing the ``neuralmind``
+    package (which must stay ChromaDB-free as of v0.22).
+    """
+    try:
+        from chromadb.telemetry.product.posthog import Posthog as _ChromaPosthog
+
+        def _noop_capture(self, *args, **kwargs):  # pragma: no cover
+            return None
+
+        _ChromaPosthog.capture = _noop_capture
+    except Exception:  # pragma: no cover
+        pass
+
+
+_silence_chroma_telemetry()
+
+
 class GraphEmbedder(EmbeddingBackend):
     """
     Embeds graphify graph.json nodes into ChromaDB for semantic search.

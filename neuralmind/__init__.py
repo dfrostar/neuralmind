@@ -18,7 +18,11 @@ warnings.filterwarnings("ignore", module="posthog")
 
 # Suppress posthog/chromadb telemetry noise. Must be CRITICAL because the
 # "Failed to send telemetry event" messages are emitted as logger.error(),
-# and ERROR-level filter lets ERROR messages through.
+# and ERROR-level filter lets ERROR messages through. Setting logger levels +
+# env vars here is import-free (no chromadb dependency); the actual posthog
+# monkey-patch happens lazily inside ``embedder`` when the chroma backend is
+# constructed, so merely importing ``neuralmind`` no longer pulls in ChromaDB.
+# See ``embedder._silence_chroma_telemetry``.
 for _logger_name in (
     "posthog",
     "chromadb.telemetry",
@@ -26,19 +30,6 @@ for _logger_name in (
     "chromadb.telemetry.product.posthog",
 ):
     logging.getLogger(_logger_name).setLevel(logging.CRITICAL)
-
-# Belt-and-suspenders: monkey-patch chromadb's Posthog client capture() to be
-# a silent no-op. This defends against any chromadb version where the logger
-# hierarchy doesn't propagate as expected.
-try:
-    from chromadb.telemetry.product.posthog import Posthog as _ChromaPosthog
-
-    def _noop_capture(self, *args, **kwargs):  # pragma: no cover
-        return None
-
-    _ChromaPosthog.capture = _noop_capture
-except Exception:  # pragma: no cover
-    pass
 
 """
 NeuralMind - Adaptive Neural Knowledge System
@@ -75,7 +66,6 @@ from .compressors import (
 )
 from .context_selector import ContextSelector
 from .core import NeuralMind
-from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
@@ -112,3 +102,20 @@ __all__ = [
     "export_synapse_memory",
     "project_memory_file",
 ]
+
+
+def __getattr__(name: str):
+    """Lazily expose ``GraphEmbedder`` without importing ChromaDB at package load.
+
+    ``GraphEmbedder`` lives in :mod:`neuralmind.embedder`, which imports ChromaDB
+    at module level. Importing it eagerly here would make ``import neuralmind``
+    require ChromaDB — the exact coupling v0.22 removes so the package (and the
+    ChromaDB-free ``turbovec`` backend) can run without it. PEP 562 module-level
+    ``__getattr__`` keeps ``from neuralmind import GraphEmbedder`` working for
+    back-compat while deferring the (ChromaDB-pulling) import to first access.
+    """
+    if name == "GraphEmbedder":
+        from .embedder import GraphEmbedder
+
+        return GraphEmbedder
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

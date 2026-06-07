@@ -11,6 +11,7 @@ deletion), not embedding quality.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -40,13 +41,20 @@ _DIM = 32
 _VOCAB_TOKENS = ("auth", "login", "billing", "invoice", "user", "db", "token", "refund")
 
 
+def _stable_bucket(tok: str) -> int:
+    """Process-stable token→bucket (unlike ``hash()``, which PYTHONHASHSEED
+    randomises per run — the source of prior flakiness in these tests)."""
+    digest = hashlib.md5(tok.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "little") % _DIM
+
+
 def _fake_embed(texts: list[str]) -> list[list[float]]:
     """Deterministic bag-of-words hashing embedder (no model needed)."""
     out = []
     for t in texts:
         vec = np.zeros(_DIM, dtype=np.float32)
         for tok in t.lower().replace("\n", " ").split():
-            vec[hash(tok) % _DIM] += 1.0
+            vec[_stable_bucket(tok)] += 1.0
         out.append(vec.tolist())
     return out
 
