@@ -86,26 +86,56 @@ DEFAULT_QUERIES: list[str] = [
 # --------------------------------------------------------------------------- #
 THEMES: list[tuple[str, str, list[str]]] = [
     # (package, docstring topic, verbs)
-    ("auth", "user authentication, login, tokens and sessions",
-     ["authenticate", "login", "logout", "issue_token", "verify_session"]),
-    ("validation", "validating and sanitizing incoming request payloads",
-     ["validate", "sanitize", "coerce", "check_schema", "normalize_input"]),
-    ("db", "database connections, pooling and transactions",
-     ["connect", "acquire_connection", "release", "begin_transaction", "execute_query"]),
-    ("cache", "caching expensive results with a time-to-live",
-     ["cache_get", "cache_set", "evict", "with_ttl", "invalidate"]),
-    ("config", "parsing and serializing JSON/YAML configuration",
-     ["load_config", "dump_config", "merge_config", "parse_json", "serialize"]),
-    ("scheduler", "scheduling recurring background jobs",
-     ["schedule", "tick", "enqueue_job", "run_periodic", "cancel_job"]),
-    ("http", "HTTP requests with retries and exponential backoff",
-     ["fetch", "retry_request", "backoff", "build_url", "decode_response"]),
-    ("hashing", "computing checksums and hashes of files",
-     ["checksum", "hash_file", "digest", "verify_integrity", "fingerprint"]),
-    ("logging", "structured logging and observability events",
-     ["log_event", "emit_metric", "trace", "with_context", "redact"]),
-    ("errors", "domain-specific exceptions and error handling",
-     ["raise_domain_error", "wrap_exception", "handle", "is_retryable", "to_dict"]),
+    (
+        "auth",
+        "user authentication, login, tokens and sessions",
+        ["authenticate", "login", "logout", "issue_token", "verify_session"],
+    ),
+    (
+        "validation",
+        "validating and sanitizing incoming request payloads",
+        ["validate", "sanitize", "coerce", "check_schema", "normalize_input"],
+    ),
+    (
+        "db",
+        "database connections, pooling and transactions",
+        ["connect", "acquire_connection", "release", "begin_transaction", "execute_query"],
+    ),
+    (
+        "cache",
+        "caching expensive results with a time-to-live",
+        ["cache_get", "cache_set", "evict", "with_ttl", "invalidate"],
+    ),
+    (
+        "config",
+        "parsing and serializing JSON/YAML configuration",
+        ["load_config", "dump_config", "merge_config", "parse_json", "serialize"],
+    ),
+    (
+        "scheduler",
+        "scheduling recurring background jobs",
+        ["schedule", "tick", "enqueue_job", "run_periodic", "cancel_job"],
+    ),
+    (
+        "http",
+        "HTTP requests with retries and exponential backoff",
+        ["fetch", "retry_request", "backoff", "build_url", "decode_response"],
+    ),
+    (
+        "hashing",
+        "computing checksums and hashes of files",
+        ["checksum", "hash_file", "digest", "verify_integrity", "fingerprint"],
+    ),
+    (
+        "logging",
+        "structured logging and observability events",
+        ["log_event", "emit_metric", "trace", "with_context", "redact"],
+    ),
+    (
+        "errors",
+        "domain-specific exceptions and error handling",
+        ["raise_domain_error", "wrap_exception", "handle", "is_retryable", "to_dict"],
+    ),
 ]
 
 
@@ -137,7 +167,7 @@ def _gen_file(theme_idx: int, file_idx: int) -> str:
             "        key = json.dumps(payload, sort_keys=True)",
             "        digest = hashlib.sha256(key.encode()).hexdigest()",
             "        self._cache[digest] = time.time()",
-            "        return {\"ok\": True, \"op\": \"" + v + "\", \"digest\": digest}",
+            '        return {"ok": True, "op": "' + v + '", "digest": digest}',
             "",
         ]
     # A module-level helper to create call/import edges within the package.
@@ -159,9 +189,7 @@ def generate_synthetic_repo(root: Path, n_files: int) -> int:
     for theme_idx, (package, _topic, _verbs) in enumerate(THEMES):
         pkg_dir = root / package
         pkg_dir.mkdir(parents=True, exist_ok=True)
-        (pkg_dir / "__init__.py").write_text(
-            f'"""The {package} package."""\n', encoding="utf-8"
-        )
+        (pkg_dir / "__init__.py").write_text(f'"""The {package} package."""\n', encoding="utf-8")
         for file_idx in range(per_theme):
             if written >= n_files:
                 break
@@ -207,7 +235,9 @@ def count_source_files(repo: Path) -> int:
     return sum(
         1
         for p in repo.rglob("*")
-        if p.is_file() and p.suffix in exts and ".neuralmind" not in p.parts
+        if p.is_file()
+        and p.suffix in exts
+        and ".neuralmind" not in p.parts
         and "graphify-out" not in p.parts
     )
 
@@ -430,21 +460,31 @@ def spawn_backend(backend: str, cfg: dict, work_dir: Path) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--out", default="results.json", help="output JSON path")
     parser.add_argument("--repo", default=None, help="path to a real repo (>=500 source files)")
-    parser.add_argument("--build", action="store_true", help="generate graph.json via tree-sitter for --repo")
-    parser.add_argument("--files", type=int, default=600, help="synthetic repo file count (default 600)")
+    parser.add_argument(
+        "--build", action="store_true", help="generate graph.json via tree-sitter for --repo"
+    )
+    parser.add_argument(
+        "--files", type=int, default=600, help="synthetic repo file count (default 600)"
+    )
     parser.add_argument("--keep-repo", action="store_true", help="don't delete the synthetic repo")
     parser.add_argument("--top-k", type=int, default=10, help="results per query (default 10)")
-    parser.add_argument("--repeat", type=int, default=20, help="timed repeats per query (default 20)")
+    parser.add_argument(
+        "--repeat", type=int, default=20, help="timed repeats per query (default 20)"
+    )
     parser.add_argument("--warmup", type=int, default=2, help="warm-up runs per query (default 2)")
     parser.add_argument(
         "--backends",
         default="chroma,turbovec",
         help="comma-separated backends to compare (default chroma,turbovec)",
     )
-    parser.add_argument("--queries-file", default=None, help="newline-delimited query file (overrides defaults)")
+    parser.add_argument(
+        "--queries-file", default=None, help="newline-delimited query file (overrides defaults)"
+    )
 
     # Hidden worker entrypoint — re-invoked per backend in an isolated process.
     parser.add_argument("--_worker", default=None, help=argparse.SUPPRESS)
@@ -519,7 +559,9 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     print(f"\nBenchmarking backends: {', '.join(backends)}")
-    print(f"  queries={len(queries)} top_k={args.top_k} repeat={args.repeat} warmup={args.warmup}\n")
+    print(
+        f"  queries={len(queries)} top_k={args.top_k} repeat={args.repeat} warmup={args.warmup}\n"
+    )
 
     results: dict[str, dict] = {}
     for backend in backends:

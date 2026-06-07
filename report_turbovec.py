@@ -169,19 +169,13 @@ def build_report(data: dict) -> str:
     if both_ok:
         b_p95 = g(base, "search", "ms_p95", default=0.0)
         c_p95 = g(cand, "search", "ms_p95", default=0.0)
-        headline["search_p95_delta_pct"] = (
-            (c_p95 - b_p95) / b_p95 * 100.0 if b_p95 else None
-        )
+        headline["search_p95_delta_pct"] = (c_p95 - b_p95) / b_p95 * 100.0 if b_p95 else None
         b_disk = base.get("disk_bytes", 0) or 0
         c_disk = cand.get("disk_bytes", 0) or 0
-        headline["disk_delta_pct"] = (
-            (c_disk - b_disk) / b_disk * 100.0 if b_disk else None
-        )
+        headline["disk_delta_pct"] = (c_disk - b_disk) / b_disk * 100.0 if b_disk else None
         b_rss = base.get("peak_rss_mb", 0) or 0
         c_rss = cand.get("peak_rss_mb", 0) or 0
-        headline["rss_delta_pct"] = (
-            (c_rss - b_rss) / b_rss * 100.0 if b_rss else None
-        )
+        headline["rss_delta_pct"] = (c_rss - b_rss) / b_rss * 100.0 if b_rss else None
 
     verdict, rationale = compute_verdict(parity, headline, both_ok)
 
@@ -246,21 +240,27 @@ def build_report(data: dict) -> str:
             g(base, "search", "ms_p50"),
             g(cand, "search", "ms_p50"),
             fmt_ms,
-            pct_delta(g(cand, "search", "ms_p50", default=0), g(base, "search", "ms_p50", default=0)),
+            pct_delta(
+                g(cand, "search", "ms_p50", default=0), g(base, "search", "ms_p50", default=0)
+            ),
         )
         hrow(
             "search p95 (ms)",
             g(base, "search", "ms_p95"),
             g(cand, "search", "ms_p95"),
             fmt_ms,
-            pct_delta(g(cand, "search", "ms_p95", default=0), g(base, "search", "ms_p95", default=0)),
+            pct_delta(
+                g(cand, "search", "ms_p95", default=0), g(base, "search", "ms_p95", default=0)
+            ),
         )
         hrow(
             "search mean (ms)",
             g(base, "search", "ms_mean"),
             g(cand, "search", "ms_mean"),
             fmt_ms,
-            pct_delta(g(cand, "search", "ms_mean", default=0), g(base, "search", "ms_mean", default=0)),
+            pct_delta(
+                g(cand, "search", "ms_mean", default=0), g(base, "search", "ms_mean", default=0)
+            ),
         )
         hrow(
             "on-disk size",
@@ -305,9 +305,7 @@ def build_report(data: dict) -> str:
         out.append("## Parity (turbovec vs. chroma top-k)")
         out.append("")
         out.append(f"- **Mean Jaccard@{cfg.get('top_k')}:** {parity['mean_jaccard']:.3f}")
-        out.append(
-            f"- **Mean recall of chroma's top-k by turbovec:** {parity['mean_recall']:.3f}"
-        )
+        out.append(f"- **Mean recall of chroma's top-k by turbovec:** {parity['mean_recall']:.3f}")
         out.append("")
         out.append("<details><summary>Per-query overlap</summary>")
         out.append("")
@@ -371,7 +369,9 @@ def build_report(data: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("results", help="results JSON from benchmark_turbovec.py")
     parser.add_argument("--out", default="report.md", help="output Markdown path")
     args = parser.parse_args(argv)
