@@ -12,5 +12,6 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | [Offline / regulated work](./offline-regulated.md) | Regulated industries, air-gapped machines | 100% local retrieval with zero telemetry |
 | [Growing monorepo](./growing-monorepo.md) | Codebase where old context goes stale fast | Keep the index fresh with minimal effort |
 | [Multi-agent codebase](./multi-agent.md) | You use multiple AI tools (Claude Code + Cursor + Hermes + OpenClaw) on the same project | One shared associative memory across every agent; v0.6.0 live graph shows the union |
+| **[Slim & sovereign: ChromaDB-free local stack](./chromadb-free-local.md)** | **Security-sensitive teams, tiny-footprint installs (v0.21.0+)** | **Embed + search with zero ChromaDB — smaller deps, smaller index, fewer advisories** |
 
 Not sure which applies? Start with the [symptom / goal table in the main README](../../README.md#-when-do-i-reach-for-neuralmind).
