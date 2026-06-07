@@ -87,4 +87,9 @@ at it — no network needed.
   then (v0.23) drop `chromadb` from the core dependency list. Staged on purpose
   so the new path bakes before it becomes everyone's default.
 - Quantization is approximate; parity is gated on the reference fixture. A
-  large-synthetic-repo memory/latency benchmark is a follow-up.
+  large-synthetic-repo memory/latency benchmark now ships as a standalone
+  toolkit — see [`BENCHMARK_TURBOVEC.md`](BENCHMARK_TURBOVEC.md)
+  (`benchmark_turbovec.py` + `report_turbovec.py`). It runs both backends in
+  isolated spawn subprocesses on the same graph with identical queries and
+  reports indexing latency, search p50/p95, on-disk size, peak RSS, and
+  query-level parity (Jaccard/recall) with a one-line adopt/hold verdict.
