@@ -43,7 +43,11 @@ def resolve_backend(backend: str | None) -> str:
     is normalised (lowercased/trimmed) and returned unchanged — so opting into
     chroma via ``backend: graph`` is always honoured.
     """
-    name = (backend or "auto").strip().lower()
+    # None, "", or a non-string (e.g. `backend: null` in YAML) all mean "auto".
+    if not isinstance(backend, str) or not backend.strip():
+        name = "auto"
+    else:
+        name = backend.strip().lower()
     if name == "auto":
         return "turbovec" if turbovec_available() else "graph"
     return name

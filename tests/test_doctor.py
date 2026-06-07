@@ -156,6 +156,19 @@ def test_backend_check_reports_pinned_choice(temp_project):
     assert "pinned" in check.detail
 
 
+def test_backend_check_treats_null_config_as_auto(temp_project, monkeypatch):
+    import neuralmind.backend_manager as bm
+
+    # `backend: null` parses to None — must be treated as auto (matching
+    # BackendManager), not a pinned backend named "none".
+    monkeypatch.setattr(bm, "turbovec_available", lambda: False)
+    (temp_project / "neuralmind-backend.yaml").write_text("backend: null\n", encoding="utf-8")
+    check = doctor._check_backend(temp_project)
+    assert check.status == doctor.OK
+    assert "auto-selected" in check.detail
+    assert "graph" in check.detail
+
+
 def test_run_diagnostics_returns_all_checks(temp_project):
     checks = doctor.run_diagnostics(str(temp_project))
     names = {c.name for c in checks}

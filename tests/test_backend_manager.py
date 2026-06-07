@@ -48,6 +48,17 @@ def test_resolve_backend_auto_falls_back_to_chroma(monkeypatch):
     assert resolve_backend("graph") == "graph"
 
 
+def test_resolve_backend_non_string_or_blank_is_auto(monkeypatch):
+    # YAML `backend: null` parses to None; blanks and non-strings must all mean
+    # auto (never a pinned backend literally named "none"/"123"), and must not raise.
+    monkeypatch.setattr(bm, "turbovec_available", lambda: False)
+    assert resolve_backend(None) == "graph"
+    assert resolve_backend("") == "graph"
+    assert resolve_backend("   ") == "graph"
+    assert resolve_backend(123) == "graph"  # type: ignore[arg-type]
+    assert resolve_backend(True) == "graph"  # type: ignore[arg-type]
+
+
 def test_backend_manager_auto_default_falls_back_to_chroma(temp_project, monkeypatch):
     # No yaml + no explicit backend → "auto"; with turbovec absent it must
     # resolve to chroma, and backend_name reports the resolved name (not "auto").

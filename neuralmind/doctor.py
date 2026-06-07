@@ -204,10 +204,14 @@ def _check_backend(project: Path) -> Check:
         )
     except Exception as e:
         return Check("Backend", WARN, f"could not resolve backend ({e})")
-    configured = str(load_backend_config(project).get("backend", "auto"))
-    resolved = resolve_backend(configured)
+    raw = load_backend_config(project).get("backend", "auto")
+    resolved = resolve_backend(raw)
     tv = "available" if turbovec_available() else "not installed"
-    if configured.strip().lower() == "auto":
+    # A non-string (e.g. `backend: null`) or "auto"/"" means auto-selection —
+    # match BackendManager, which treats None like auto. Don't str() first, or
+    # `null` would look like a backend literally named "none".
+    is_auto = not isinstance(raw, str) or raw.strip().lower() in {"", "auto"}
+    if is_auto:
         return Check(
             "Backend",
             OK,

@@ -71,7 +71,7 @@
                 <li><strong>Better answers, not just shorter.</strong> At a <em>matched</em> token budget, NeuralMind's selected context carries more of the facts a correct answer needs than naive truncation: expected-fact recall <strong>0.717 vs 0.574 (+0.143)</strong>.</li>
                 <li><strong>A memory layer that measurably improves with use.</strong> The learned synapse layer lifts top-k retrieval hit-rate <strong>72% → 83% (+12 points)</strong>; inheriting a committed team memory gives a <strong>+6.5-point</strong> day-one onboarding lift — both budget-neutral.</li>
                 <li><strong>100% local.</strong> Your code never leaves your machine; no telemetry by default.</li>
-                <li><strong>New in v0.22.0 — ChromaDB-free by default.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
+                <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>
             <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; 40–70× is a range, not a fixed guarantee. Point it at your own repo to see your ratio.</em></p>
@@ -106,7 +106,7 @@
 
     <section>
         <div class="container" id="whats-new-v0220">
-            <h2>What's New in v0.22.0 — ChromaDB-free by default</h2>
+            <h2>What's New in v0.22.0 — ChromaDB-free by default (when available)</h2>
             <p><strong><code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code>.</strong> v0.21.0 made a complete ChromaDB-free retrieval path (the <code>turbovec</code> backend). v0.22.0 starts switching everyone onto it — safely: the package imports without ChromaDB, and <code>auto</code> prefers turbovec when its deps are installed, else falls back to chroma. Nothing breaks for a plain install, and the old ChromaDB index is never deleted.</p>
             <h3>What ships</h3>
             <ul>
