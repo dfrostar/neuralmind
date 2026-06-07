@@ -179,6 +179,34 @@ class TurboVecBackendTests(unittest.TestCase):
         self.assertGreaterEqual(stats["communities"], 1)
         be.close()
 
+    def test_prefers_numpy_native_embed_over_tolist(self) -> None:
+        """An embedder exposing ``embed()`` is used numpy-native, skipping the
+        ``__call__`` → ``list[list[float]]`` round-trip that inflated peak RSS.
+        """
+
+        class NdEmbedder:
+            def __init__(self) -> None:
+                self.embed_calls = 0
+                self.call_calls = 0
+
+            def embed(self, texts: list[str]) -> np.ndarray:
+                self.embed_calls += 1
+                return np.asarray(_fake_embed(texts), dtype=np.float32)
+
+            def __call__(self, texts: list[str]) -> list[list[float]]:
+                self.call_calls += 1
+                return _fake_embed(texts)
+
+        emb = NdEmbedder()
+        be = TurboVecEmbedder(str(self.root), db_path=self.db, embed_fn=emb)
+        be.embed_nodes()
+        results = be.search("authenticate_user", n=1)
+        self.assertEqual(results[0]["id"], "n_auth")
+        # embed() carried the work for both indexing and the query; __call__ unused.
+        self.assertGreaterEqual(emb.embed_calls, 2)
+        self.assertEqual(emb.call_calls, 0)
+        be.close()
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
