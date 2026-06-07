@@ -12,11 +12,41 @@ from .embedding_backend import EmbeddingBackend
 from .in_memory_backend import InMemoryEmbeddingBackend
 
 DEFAULT_BACKEND_CONFIG: dict[str, Any] = {
-    "backend": "graph",
+    # v0.22: the default is "auto" — prefer the ChromaDB-free turbovec backend
+    # when its optional deps are installed, else fall back to chroma. An explicit
+    # `backend:` in neuralmind-backend.yaml (or a backend= argument) always wins.
+    "backend": "auto",
     "db_path": None,
     "hybrid_context": False,
     "security": {},
 }
+
+# The optional turbovec stack (the `[turbovec]` extra). All three must import for
+# the turbovec backend to construct, so auto-detection gates on all of them.
+_TURBOVEC_DEPS = ("turbovec", "onnxruntime", "tokenizers")
+
+
+def turbovec_available() -> bool:
+    """True when the optional turbovec stack (turbovec + onnxruntime + tokenizers)
+    is importable, i.e. the user installed ``neuralmind[turbovec]``."""
+    import importlib.util
+
+    return all(importlib.util.find_spec(mod) is not None for mod in _TURBOVEC_DEPS)
+
+
+def resolve_backend(backend: str | None) -> str:
+    """Resolve the ``auto`` default (or ``None``) to a concrete backend name.
+
+    As of v0.22 the shipped default is ``auto``: prefer turbovec when its deps
+    are installed (the ChromaDB-free path), otherwise fall back to ``graph``
+    (the ChromaDB-backed ``GraphEmbedder``). Any explicit, concrete backend name
+    is normalised (lowercased/trimmed) and returned unchanged — so opting into
+    chroma via ``backend: graph`` is always honoured.
+    """
+    name = (backend or "auto").strip().lower()
+    if name == "auto":
+        return "turbovec" if turbovec_available() else "graph"
+    return name
 
 
 def load_backend_config(project_path: str | Path) -> dict[str, Any]:
@@ -55,7 +85,7 @@ def create_backend(
     project_path: str,
     db_path: str | None = None,
 ) -> EmbeddingBackend:
-    normalized = backend.strip().lower()
+    normalized = resolve_backend(backend)
     if normalized in {"graph", "chroma", "chromadb"}:
         # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
         # the chroma backend is actually selected, so the turbovec backend can
@@ -85,7 +115,9 @@ class BackendManager:
     ):
         self.project_path = str(Path(project_path).resolve())
         self.config = load_backend_config(self.project_path)
-        selected_backend = backend or str(self.config.get("backend", "graph"))
+        # Resolve "auto" (and None) to a concrete backend up front so
+        # backend_name reports the real backend ("turbovec"/"graph"), not "auto".
+        selected_backend = resolve_backend(backend or self.config.get("backend"))
         selected_db_path = db_path or self.config.get("db_path")
         self.backend_name = selected_backend
         self.backend = create_backend(selected_backend, self.project_path, selected_db_path)
@@ -97,6 +129,7 @@ class BackendManager:
             except Exception:
                 pass
         selected_db_path = db_path or self.config.get("db_path")
-        self.backend_name = backend
-        self.backend = create_backend(backend, self.project_path, selected_db_path)
+        resolved = resolve_backend(backend)
+        self.backend_name = resolved
+        self.backend = create_backend(resolved, self.project_path, selected_db_path)
         return self.backend
