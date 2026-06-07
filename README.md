@@ -530,6 +530,25 @@ You **almost certainly want NeuralMind** if your AI coding agent feels amnesiac 
 
 See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guides matched to your situation.
 
+### The honest version — strengths and rough edges
+
+We'd rather you trust the numbers than be wowed by them, so here's the candid take a feature list won't give you.
+
+**What genuinely sets it apart**
+
+- **It measures whether the memory actually helps — and gates it in CI.** Most code-RAG tools assert; NeuralMind ships a faithfulness eval (+0.143 vs naive at a *matched* token budget), an onboarding-lift eval (+6.5 pts), and a synapse-recall A/B (+12 pts), each failing the build on regression. That measurement discipline is the real moat. ([Benchmarks](docs/wiki/Benchmarks.md))
+- **Learned *usage* memory, not just embeddings.** The synapse layer learns what your team edits together and what you touch next — and the onboarding-lift metric proves it's not decoration.
+- **100% local, and now optionally [ChromaDB-free](docs/use-cases/chromadb-free-local.md)** (v0.21.0) with byte-identical embeddings and an 8–16× smaller index.
+
+**Where it's still rough — set expectations accordingly**
+
+- **The headline 40–70× is a real-repo *extrapolation*.** What's measured in CI is a deliberately conservative **6.2×** on a 500-line fixture. The mechanism scales with repo size, but a large-repo benchmark isn't in CI yet — so prove it on *your* code with [`benchmark-your-repo`](docs/use-cases/benchmark-your-repo.md).
+- **ChromaDB is still the *default*.** The slim, advisory-free stack is opt-in (`backend: turbovec`) while it bakes; the default-flip + dependency removal are staged for later releases.
+- **It's beta, single-maintainer, fast-moving.** Lots of surface area (hooks, watcher, serve, MCP, evals) and frequent releases — expect occasional churn; pin a version for CI.
+- **The compressed backend is approximate.** TurboQuant parity is gated on the reference fixture; large-repo recall under 2/4-bit quantization is "trust the gate," not yet measured at scale.
+
+If those trade-offs are acceptable, the upside is real and receipts are included. If your repo is tiny or you don't use an agent, you don't need this — and we'd rather say so.
+
 ---
 
 ## 🏢 For organizations evaluating NeuralMind

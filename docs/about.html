@@ -78,6 +78,15 @@
     </section>
 
     <section>
+        <div class="container" id="who-its-for">
+            <h2>Who it's for — and who it isn't</h2>
+            <p><strong>Reach for NeuralMind if</strong> you drive an AI coding agent (Claude Code, Cursor, Cline, Continue, or your own MCP/OpenRouter stack) over a non-trivial codebase, you want one shared memory across those agents, you're watching LLM spend on repo-level questions, or you work in a regulated/air-gapped setting that rules out SaaS code search.</p>
+            <p><strong>You probably don't need it if</strong> your repo is under ~5K tokens (just paste it in), you don't use an agent, or you only want inline completions (use Copilot/Cursor directly).</p>
+            <p><strong>Set expectations honestly:</strong> the 40–70× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-next">
             <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
             <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
