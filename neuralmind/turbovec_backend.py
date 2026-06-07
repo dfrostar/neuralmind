@@ -137,6 +137,22 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._embed_fn = _default_embed_fn()
         return self._embed_fn
 
+    def _embed_matrix(self, texts: list[str]) -> np.ndarray:
+        """Embed ``texts`` into an ``(n, dim)`` array, numpy-native where possible.
+
+        The default ``OnnxMiniLMEmbedder`` exposes ``embed()`` returning an
+        ``ndarray`` directly. Its ``__call__`` (the ChromaDB-compatible interface)
+        instead returns ``list[list[float]]`` via ``.tolist()`` — and the caller
+        immediately rebuilds an array from it. For a large graph that round-trip
+        materialises one Python ``float`` per element (n × 384), ~150 MB of
+        transient heap that inflates peak RSS during indexing. Prefer ``embed()``
+        when the embedder offers it; injected callables still work via the
+        ``__call__`` fallback.
+        """
+        fn = self.embed_fn
+        embed = getattr(fn, "embed", None)
+        return embed(texts) if callable(embed) else fn(texts)
+
     @property
     def project_path(self) -> Path:
         return self._project_path
@@ -268,7 +284,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._conn.commit()
             return stats
 
-        vectors = _l2_normalize(self.embed_fn([p[2] for p in pending]))
+        vectors = _l2_normalize(self._embed_matrix([p[2] for p in pending]))
         dim = vectors.shape[1]
         idx = self._ensure_index(dim)
 
@@ -361,7 +377,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         total = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()["c"]
         k = max(1, min(n, allowlist.size if allowlist is not None else total))
-        q = _l2_normalize(self.embed_fn([query]))
+        q = _l2_normalize(self._embed_matrix([query]))
 
         try:
             scores, ids = idx.search(q, k, allowlist=allowlist)
