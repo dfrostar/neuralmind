@@ -188,11 +188,41 @@ def _check_memory() -> Check:
     )
 
 
+def _check_backend(project: Path) -> Check:
+    """Report the resolved backend and how it was chosen.
+
+    v0.22 made the default ``auto`` (turbovec when its deps are installed, else
+    chroma). The effective backend can therefore differ per environment, so
+    surface both the configured value and what it resolves to — and whether the
+    turbovec stack is available — so it's never a silent mystery.
+    """
+    try:
+        from neuralmind.backend_manager import (
+            load_backend_config,
+            resolve_backend,
+            turbovec_available,
+        )
+    except Exception as e:
+        return Check("Backend", WARN, f"could not resolve backend ({e})")
+    configured = str(load_backend_config(project).get("backend", "auto"))
+    resolved = resolve_backend(configured)
+    tv = "available" if turbovec_available() else "not installed"
+    if configured.strip().lower() == "auto":
+        return Check(
+            "Backend",
+            OK,
+            f"{resolved} (auto-selected; turbovec stack {tv})",
+            fix="Pin a backend with `backend: graph|turbovec` in neuralmind-backend.yaml.",
+        )
+    return Check("Backend", OK, f"{resolved} (pinned via neuralmind-backend.yaml; turbovec {tv})")
+
+
 def run_diagnostics(project_path: str) -> list[Check]:
     """Run every check against ``project_path`` and return the results."""
     project = Path(project_path).resolve()
     return [
         _check_graph(project),
+        _check_backend(project),
         _check_index(project),
         _check_synapses(project),
         _check_mcp(),

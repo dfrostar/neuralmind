@@ -304,9 +304,18 @@ class NeuralMind:
             already_indexed = 0
         if already_indexed:
             return  # turbovec index already populated — not the first run
+        # Rough first-build estimate (~25 ms/node observed in the v0.21 benchmark).
+        n = len(self.nodes) if self.nodes else 0
+        est = ""
+        if n:
+            secs = n * 0.025
+            if secs >= 90:
+                est = f" (~{round(secs / 60)} min to embed {n} nodes)"
+            elif secs >= 5:
+                est = f" (~{round(secs)}s to embed {n} nodes)"
         print(
             "[neuralmind] auto-selected the ChromaDB-free turbovec backend; "
-            "reindexing this project from graph.json (one-time). Your existing "
+            f"reindexing this project from graph.json (one-time{est}). Your existing "
             "ChromaDB index is left untouched — set `backend: graph` in "
             "neuralmind-backend.yaml to switch back.",
             file=sys.stderr,
