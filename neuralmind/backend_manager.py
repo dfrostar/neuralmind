@@ -61,6 +61,12 @@ def create_backend(
         return GraphEmbedder(project_path, db_path=db_path)
     if normalized in {"in_memory", "inmemory", "memory"}:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
+    if normalized in {"turbovec", "turboquant"}:
+        # Lazy import: keeps the optional turbovec dependency out of the import
+        # path for the default (chroma) backend. POC — see issue #204.
+        from .turbovec_backend import TurboVecEmbedder
+
+        return TurboVecEmbedder(project_path, db_path=db_path)
     raise ValueError(f"Unsupported backend: {backend}")
 
 
