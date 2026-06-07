@@ -231,6 +231,10 @@ class NeuralMind:
                 "duration_seconds": 0,
             }
 
+        # One-time migration notice when the auto-default flipped this project
+        # from chroma to turbovec (the reindex itself happens via embed_nodes).
+        self._maybe_announce_turbovec_migration()
+
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
@@ -273,6 +277,51 @@ class NeuralMind:
             },
         )
         return self._build_stats
+
+    def _maybe_announce_turbovec_migration(self) -> None:
+        """Print a one-time notice when a project that previously used the chroma
+        backend is being auto-reindexed into turbovec.
+
+        v0.22 flipped the default backend to ``auto`` (turbovec when its deps are
+        installed). When that resolves to turbovec on a project that still has a
+        legacy ChromaDB index and whose turbovec index hasn't been built yet, the
+        normal ``build`` → ``embed_nodes`` path reindexes it from graph.json. This
+        just surfaces that one-time cost so it isn't a silent surprise. The old
+        ChromaDB index is left in place as a fallback (selectable via
+        ``backend: graph``); nothing is deleted.
+        """
+        import sys
+
+        if self.backend_manager.backend_name != "turbovec":
+            return
+        # A prior chroma index lives at the GraphEmbedder default db path.
+        legacy_chroma = self.project_path / "graphify-out" / "neuralmind_db"
+        if not legacy_chroma.exists():
+            return  # fresh project, not a migration
+        try:
+            already_indexed = self.embedder.get_stats().get("total_nodes", 0)
+        except Exception:
+            already_indexed = 0
+        if already_indexed:
+            return  # turbovec index already populated — not the first run
+        # Rough first-build estimate (~25 ms/node observed in the v0.21 benchmark).
+        # The node list lives on the embedder (populated by load_graph, called
+        # just above in build()); NeuralMind itself has no self.nodes.
+        n = len(getattr(self.embedder, "nodes", None) or [])
+        est = ""
+        if n:
+            secs = n * 0.025
+            if secs >= 90:
+                est = f" (~{round(secs / 60)} min to embed {n} nodes)"
+            elif secs >= 5:
+                est = f" (~{round(secs)}s to embed {n} nodes)"
+        print(
+            "[neuralmind] auto-selected the ChromaDB-free turbovec backend; "
+            f"reindexing this project from graph.json (one-time{est}). Your existing "
+            "ChromaDB index is left untouched — set `backend: graph` in "
+            "neuralmind-backend.yaml to switch back.",
+            file=sys.stderr,
+        )
 
     def _maybe_generate_builtin_graph(self, force: bool = False) -> None:
         """Generate ``graphify-out/graph.json`` with the built-in tree-sitter

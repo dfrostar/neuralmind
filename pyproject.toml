@@ -124,7 +124,10 @@ keywords = [
     "chromadb-alternative",
     "onnx-embeddings",
     "vector-quantization",
-    "compressed-vector-search"
+    "compressed-vector-search",
+    "auto-backend-selection",
+    "default-backend",
+    "zero-dependency-import"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

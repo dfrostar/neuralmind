@@ -517,3 +517,36 @@ class TestCreateMind:
 
         mind = create_mind(str(temp_project), auto_build=False)
         assert mind._built is False
+
+
+class TestTurbovecMigrationNotice:
+    """Regression coverage for the v0.22 one-time turbovec migration notice."""
+
+    def test_notice_reads_embedder_nodes_without_attributeerror(
+        self, temp_project, capsys, monkeypatch
+    ):
+        # The notice path fires only when auto-selection lands on turbovec for a
+        # project with a legacy chroma index and an unbuilt turbovec index. It
+        # must read the node list off the embedder (NeuralMind has no self.nodes)
+        # — previously this raised AttributeError and blocked the reindex.
+        from neuralmind.core import NeuralMind
+
+        mind = NeuralMind(str(temp_project), backend_type="in_memory")
+        mind.embedder.load_graph()
+        monkeypatch.setattr(mind.backend_manager, "backend_name", "turbovec", raising=False)
+        monkeypatch.setattr(mind.embedder, "get_stats", lambda: {"total_nodes": 0})
+        (temp_project / "graphify-out" / "neuralmind_db").mkdir(parents=True, exist_ok=True)
+
+        mind._maybe_announce_turbovec_migration()  # must not raise
+
+        assert "reindexing" in capsys.readouterr().err
+
+    def test_notice_skipped_when_no_legacy_chroma_index(self, temp_project, capsys, monkeypatch):
+        from neuralmind.core import NeuralMind
+
+        mind = NeuralMind(str(temp_project), backend_type="in_memory")
+        mind.embedder.load_graph()
+        monkeypatch.setattr(mind.backend_manager, "backend_name", "turbovec", raising=False)
+        # No legacy graphify-out/neuralmind_db -> fresh project, no notice.
+        mind._maybe_announce_turbovec_migration()
+        assert capsys.readouterr().err == ""
