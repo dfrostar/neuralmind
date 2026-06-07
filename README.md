@@ -151,7 +151,7 @@ Built: True
 Nodes: 241
 ```
 
-If `Built: False`, run `graphify update . && neuralmind build .` first.
+If `Built: False`, run `neuralmind build .` first (the built-in backend generates the graph automatically; no graphify needed).
 
 ---
 
@@ -530,6 +530,25 @@ You **almost certainly want NeuralMind** if your AI coding agent feels amnesiac 
 
 See the [use-case walkthroughs](docs/use-cases/README.md) for step-by-step guides matched to your situation.
 
+### The honest version — strengths and rough edges
+
+We'd rather you trust the numbers than be wowed by them, so here's the candid take a feature list won't give you.
+
+**What genuinely sets it apart**
+
+- **It measures whether the memory actually helps — and gates it in CI.** Most code-RAG tools assert; NeuralMind ships a faithfulness eval (+0.143 vs naive at a *matched* token budget), an onboarding-lift eval (+6.5 pts), and a synapse-recall A/B (+12 pts), each failing the build on regression. That measurement discipline is the real moat. ([Benchmarks](docs/wiki/Benchmarks.md))
+- **Learned *usage* memory, not just embeddings.** The synapse layer learns what your team edits together and what you touch next — and the onboarding-lift metric proves it's not decoration.
+- **100% local, and now optionally [ChromaDB-free](docs/use-cases/chromadb-free-local.md)** (v0.21.0) with byte-identical embeddings and an 8–16× smaller index.
+
+**Where it's still rough — set expectations accordingly**
+
+- **The headline 40–70× is a real-repo *extrapolation*.** What's measured in CI is a deliberately conservative **6.2×** on a 500-line fixture. The mechanism scales with repo size, but a large-repo benchmark isn't in CI yet — so prove it on *your* code with [`benchmark-your-repo`](docs/use-cases/benchmark-your-repo.md).
+- **ChromaDB is still the *default*.** The slim, advisory-free stack is opt-in (`backend: turbovec`) while it bakes; the default-flip + dependency removal are staged for later releases.
+- **It's beta, single-maintainer, fast-moving.** Lots of surface area (hooks, watcher, serve, MCP, evals) and frequent releases — expect occasional churn; pin a version for CI.
+- **The compressed backend is approximate.** TurboQuant parity is gated on the reference fixture; large-repo recall under 2/4-bit quantization is "trust the gate," not yet measured at scale.
+
+If those trade-offs are acceptable, the upside is real and receipts are included. If your repo is tiny or you don't use an agent, you don't need this — and we'd rather say so.
+
 ---
 
 ## 🏢 For organizations evaluating NeuralMind
@@ -573,11 +592,15 @@ come in every path.
 
 | Method | Command | When to pick |
 |---|---|---|
-| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
-| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. Recommended if you want `neuralmind` available everywhere. |
-| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. ~10× faster install than pip. |
+| **pip** | `pip install neuralmind` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind` | Global CLI, no env pollution. Recommended if you want `neuralmind` available everywhere. |
+| **uv** | `uv pip install neuralmind` | Modern, fast Python tooling. ~10× faster install than pip. |
 | **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest && docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind:latest neuralmind --help` | Containerized — no Python on the host. Multi-platform (`linux/amd64` + `linux/arm64`); auto-published to GHCR on every release since v0.9.0. To build locally instead: `docker build -t neuralmind:dev .` and substitute that tag. |
 | **From source** | `git clone … && pip install -e .` | Hacking on NeuralMind itself. |
+
+**No external tools required.** Since v0.15.0 a built-in **tree-sitter** backend indexes Python, TypeScript, and Go out of the box — `pip install neuralmind && neuralmind build .` just works, no `graphify` install. Optional extras:
+- `pip install graphifyy` — use the legacy graphify graph backend instead of the built-in one (held at parity by a CI gate).
+- `pip install "neuralmind[turbovec]"` — the **ChromaDB-free** vector backend (v0.21.0+): smaller deps, 8–16× smaller index, same answer quality. See [ChromaDB-free local](docs/use-cases/chromadb-free-local.md).
 
 **Verify install:**
 
@@ -600,11 +623,12 @@ Walkthrough with pros/cons of each path: [docs/use-cases/install-paths.md](docs/
 # Go to your project
 cd your-project
 
-# Generate knowledge graph (requires graphify)
-graphify update .
-
-# Build neural index
+# Build the index — the built-in tree-sitter backend generates the
+# code graph automatically (Python / TypeScript / Go). No graphify needed.
 neuralmind build .
+
+# (Optional) Prefer the legacy graphify graph? Install graphifyy and run
+# `graphify update .` before `neuralmind build .` — it takes priority where present.
 
 # (Optional) Install Claude Code PostToolUse compression hooks
 neuralmind install-hooks .
@@ -1490,21 +1514,20 @@ neuralmind build . 2>/dev/null && echo "[neuralmind] OK"
 ### Manual
 
 ```bash
-graphify update .
-neuralmind build .
+neuralmind build .   # built-in backend regenerates the graph; add `graphify update .` first only if you use graphify
 ```
 
 ### Scheduled — cron
 
 ```bash
-0 6 * * * cd /path/to/project && graphify update . && neuralmind build .
+0 6 * * * cd /path/to/project && neuralmind build .
 ```
 
 ### CI/CD — GitHub Actions
 
 ```yaml
-- run: pip install neuralmind graphifyy
-- run: graphify update . && neuralmind build .
+- run: pip install neuralmind
+- run: neuralmind build .
 - run: neuralmind wakeup . > AI_CONTEXT.md
 ```
 
@@ -1527,10 +1550,9 @@ neuralmind build .
 <summary><b>Claude Code</b> — full two-phase optimization</summary>
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind
 cd your-project
-graphify update .
-neuralmind build .
+neuralmind build .            # built-in tree-sitter backend — no graphify needed
 neuralmind install-hooks .    # PostToolUse compression
 neuralmind init-hook .        # auto-rebuild on commit (optional)
 ```
@@ -1542,9 +1564,8 @@ Then use MCP tools in sessions: `neuralmind_wakeup`, `neuralmind_query`, `neural
 <summary><b>Cursor / Cline / Continue</b> — MCP server</summary>
 
 ```bash
-pip install neuralmind graphifyy
-graphify update .
-neuralmind build .
+pip install neuralmind
+neuralmind build .            # built-in tree-sitter backend — no graphify needed
 ```
 
 Add to your MCP config:
@@ -1612,6 +1633,8 @@ agent and the codebase actually interact. See the [release notes](RELEASE_NOTES_
 
 NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **4×** on the small fixture — the fixture is intentionally tiny, real repos consistently hit 40–70× as shown below).
 
+> 📊 **All measured numbers in one place:** the [Benchmarks & Results](docs/wiki/Benchmarks.md) page collects token reduction, faithfulness delta, synapse +12 pts, onboarding +6.5 pts, and the v0.21 ChromaDB-free parity — each CI-gated, each with a reproduce command and an honest "what we don't claim."
+
 ![Benchmark efficiency by tokenizer](docs/images/benchmark_chart.png)
 
 ### What CI measures on every PR
@@ -1659,8 +1682,8 @@ Full machine-readable results land in `tests/benchmark/results.json`, human-read
 Don't just trust numbers from our fixture — run it on your repo:
 
 ```bash
-pip install neuralmind graphifyy
-graphify update . && neuralmind build .
+pip install neuralmind
+neuralmind build .            # built-in tree-sitter backend — no graphify needed
 neuralmind benchmark . --contribute
 ```
 

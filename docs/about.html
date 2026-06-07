@@ -63,6 +63,30 @@
     </header>
 
     <section>
+        <div class="container" id="by-the-numbers">
+            <h2>By the numbers — measured, not claimed</h2>
+            <p>Every figure below is produced by code in the repo and <strong>gated in CI</strong>, so it can't silently regress. Where a number is a real-repo extrapolation or an estimate, it says so. Reproduce them all with <code>python -m tests.benchmark.run</code> and the <code>evals/</code> harnesses — details on the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Benchmarks.md">Benchmarks page</a>.</p>
+            <ul>
+                <li><strong>40–70× fewer tokens</strong> on code questions on real repositories — the agent gets the few entities that matter, not whole files. The CI self-benchmark measures a deliberately conservative <strong>6.2×</strong> on a tiny 500-line fixture (floor: 4×), because there's little to prune at that size; the mechanism scales with repo size.</li>
+                <li><strong>Better answers, not just shorter.</strong> At a <em>matched</em> token budget, NeuralMind's selected context carries more of the facts a correct answer needs than naive truncation: expected-fact recall <strong>0.717 vs 0.574 (+0.143)</strong>.</li>
+                <li><strong>A memory layer that measurably improves with use.</strong> The learned synapse layer lifts top-k retrieval hit-rate <strong>72% → 83% (+12 points)</strong>; inheriting a committed team memory gives a <strong>+6.5-point</strong> day-one onboarding lift — both budget-neutral.</li>
+                <li><strong>100% local.</strong> Your code never leaves your machine; no telemetry by default.</li>
+                <li><strong>New in v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
+            </ul>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; 40–70× is a range, not a fixed guarantee. Point it at your own repo to see your ratio.</em></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="who-its-for">
+            <h2>Who it's for — and who it isn't</h2>
+            <p><strong>Reach for NeuralMind if</strong> you drive an AI coding agent (Claude Code, Cursor, Cline, Continue, or your own MCP/OpenRouter stack) over a non-trivial codebase, you want one shared memory across those agents, you're watching LLM spend on repo-level questions, or you work in a regulated/air-gapped setting that rules out SaaS code search.</p>
+            <p><strong>You probably don't need it if</strong> your repo is under ~5K tokens (just paste it in), you don't use an agent, or you only want inline completions (use Copilot/Cursor directly).</p>
+            <p><strong>Set expectations honestly:</strong> the 40–70× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-next">
             <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
             <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
