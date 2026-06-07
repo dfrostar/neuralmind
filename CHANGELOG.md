@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.1](https://github.com/dfrostar/neuralmind/compare/v0.20.0...v0.20.1) (2026-06-07)
+
+
+### Documentation
+
+* **security:** document chromadb CVE-2026-45829 has no fixed release ([#201](https://github.com/dfrostar/neuralmind/issues/201)) ([722d41c](https://github.com/dfrostar/neuralmind/commit/722d41c27e8ba305c0a116b5b1f213a108ff25de))
+
 ## [0.20.0](https://github.com/dfrostar/neuralmind/compare/v0.19.0...v0.20.0) (2026-06-06)
 
 
