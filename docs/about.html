@@ -19,7 +19,7 @@
         "@type": "SoftwareApplication",
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
-        "softwareVersion": "0.21.0"
+        "softwareVersion": "0.22.0"
       }
     }
     </script>
@@ -100,6 +100,19 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0220">
+            <h2>What's New in v0.22.0 — ChromaDB-optional + auto backend</h2>
+            <p><strong>Opting into the ChromaDB-free path is now effortless, and the package no longer imports ChromaDB at all.</strong> The next staged step of the ChromaDB → TurboVec migration — deliberately non-breaking.</p>
+            <ul>
+                <li><strong><code>import neuralmind</code> is ChromaDB-free.</strong> The <code>GraphEmbedder</code> export is lazy and the telemetry patch moved into the chroma backend, so importing the package no longer imports ChromaDB (verified in CI).</li>
+                <li><strong>Default backend is now <code>auto</code>.</strong> It resolves to the ChromaDB-free <code>turbovec</code> backend when its deps are installed (<code>pip install neuralmind[turbovec]</code>), otherwise <code>chroma</code>. A bare install is unchanged; an explicit <code>backend:</code> always wins.</li>
+                <li><strong>Self-healing migration.</strong> If auto-selection lands on a backend with no index yet, it rebuilds on first use, with a one-time note explaining how to pin the old backend.</li>
+            </ul>
+            <p>Why staged: TurboVec is excellent but only shipped in v0.21.0, so the hard default-flip (and dropping ChromaDB from core deps) waits until it has baked — v0.23.</p>
         </div>
     </section>
 

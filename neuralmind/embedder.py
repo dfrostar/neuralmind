@@ -23,6 +23,21 @@ from chromadb.config import Settings
 
 from .embedding_backend import EmbeddingBackend
 
+# Belt-and-suspenders: monkey-patch ChromaDB's Posthog client capture() to a
+# silent no-op. Defends against chromadb versions where the telemetry logger
+# hierarchy doesn't propagate as expected. Lives here (not in __init__) so it
+# only runs when the chroma backend is actually imported — keeping
+# `import neuralmind` ChromaDB-free for the turbovec backend.
+try:
+    from chromadb.telemetry.product.posthog import Posthog as _ChromaPosthog
+
+    def _noop_capture(self, *args, **kwargs):  # pragma: no cover
+        return None
+
+    _ChromaPosthog.capture = _noop_capture
+except Exception:  # pragma: no cover
+    pass
+
 
 class GraphEmbedder(EmbeddingBackend):
     """

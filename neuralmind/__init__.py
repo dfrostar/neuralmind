@@ -27,18 +27,10 @@ for _logger_name in (
 ):
     logging.getLogger(_logger_name).setLevel(logging.CRITICAL)
 
-# Belt-and-suspenders: monkey-patch chromadb's Posthog client capture() to be
-# a silent no-op. This defends against any chromadb version where the logger
-# hierarchy doesn't propagate as expected.
-try:
-    from chromadb.telemetry.product.posthog import Posthog as _ChromaPosthog
-
-    def _noop_capture(self, *args, **kwargs):  # pragma: no cover
-        return None
-
-    _ChromaPosthog.capture = _noop_capture
-except Exception:  # pragma: no cover
-    pass
+# NOTE: the belt-and-suspenders Posthog monkey-patch that silences ChromaDB's
+# telemetry capture() lives in `embedder.py` (the chroma backend), not here, so
+# that `import neuralmind` does not import ChromaDB. The env vars + logger levels
+# set above are cheap and ChromaDB-free, and pre-mute it before the backend loads.
 
 """
 NeuralMind - Adaptive Neural Knowledge System
@@ -75,7 +67,6 @@ from .compressors import (
 )
 from .context_selector import ContextSelector
 from .core import NeuralMind
-from .embedder import GraphEmbedder
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
@@ -112,3 +103,15 @@ __all__ = [
     "export_synapse_memory",
     "project_memory_file",
 ]
+
+
+def __getattr__(name):
+    # Lazy export: GraphEmbedder pulls in ChromaDB. Keeping it out of the eager
+    # import path lets `import neuralmind` work with ChromaDB *uninstalled* — the
+    # turbovec backend needs none of it. Accessing `neuralmind.GraphEmbedder`
+    # still imports it on demand. (PEP 562)
+    if name == "GraphEmbedder":
+        from .embedder import GraphEmbedder
+
+        return GraphEmbedder
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

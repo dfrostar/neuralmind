@@ -1049,18 +1049,25 @@ Behaviour:
 
 ## Vector backend selection *(v0.21.0+)*
 
-NeuralMind's vector store is pluggable. The default is `graph` (ChromaDB). To use
-the **ChromaDB-free** TurboQuant backend, drop a `neuralmind-backend.yaml` at the
-project root:
+NeuralMind's vector store is pluggable. Since **v0.22.0** the default is
+**`auto`**: it picks the **ChromaDB-free** `turbovec` backend when its deps are
+importable (i.e. you installed `neuralmind[turbovec]`), otherwise `chroma`. So a
+bare `pip install neuralmind` stays on chroma; installing the extra makes the
+ChromaDB-free path the default automatically — the index rebuilds itself once.
+
+Force a specific backend with a `neuralmind-backend.yaml` at the project root:
 
 ```yaml
-backend: turbovec   # ChromaDB-free: TurboVec ANN + bundled OnnxMiniLMEmbedder
+backend: auto       # default — turbovec if its deps are installed, else chroma
+# backend: turbovec # force the ChromaDB-free backend (TurboVec ANN + OnnxMiniLMEmbedder)
+# backend: graph    # force chroma (e.g. to keep an existing chroma index)
 ```
 
-Install the extra: `pip install "neuralmind[turbovec]"` (pulls `turbovec`,
-`onnxruntime`, `tokenizers`, `numpy`). Vectors are byte-identical to the chroma
-backend's, so retrieval quality is at/above parity; the index is 8–16× smaller.
-Other accepted values: `graph` / `chroma` (default), `in_memory` (offline tests).
+Install the ChromaDB-free extra: `pip install "neuralmind[turbovec]"` (pulls
+`turbovec`, `onnxruntime`, `tokenizers`, `numpy`). Vectors are byte-identical to
+the chroma backend's, so retrieval quality is at/above parity; the index is
+8–16× smaller. Accepted values: `auto` (default), `turbovec`, `graph` / `chroma`,
+`in_memory` (offline tests).
 
 ---
 
