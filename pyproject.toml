@@ -153,6 +153,13 @@ dependencies = [
 # in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
 # package is now a base dependency.
 mcp = []
+# Experimental opt-in vector backend (Google TurboQuant). POC — see issue #204.
+# Provides the compressed ANN index; embeddings still come from the default
+# stack in this POC. Enable with backend "turbovec".
+turbovec = [
+    "turbovec>=0.7",
+    "numpy>=1.20",
+]
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
