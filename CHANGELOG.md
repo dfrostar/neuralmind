@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.22.0](https://github.com/dfrostar/neuralmind/compare/v0.21.0...v0.22.0) (2026-06-07)
+
+
+### Features
+
+* **backend:** default to turbovec when available, with chroma fallback ([#214](https://github.com/dfrostar/neuralmind/issues/214)) ([9be320f](https://github.com/dfrostar/neuralmind/commit/9be320f909747b7c3b58a3c55b240f418f37d799))
+* **bench:** TurboVec vs ChromaDB memory/latency benchmark toolkit ([#211](https://github.com/dfrostar/neuralmind/issues/211)) ([e5fb19b](https://github.com/dfrostar/neuralmind/commit/e5fb19baaaa72a475b230ce72ddce6a9fcd88419))
+
+
+### Performance Improvements
+
+* **turbovec:** skip numpy→list→numpy round-trip when indexing ([#212](https://github.com/dfrostar/neuralmind/issues/212)) ([e3e8914](https://github.com/dfrostar/neuralmind/commit/e3e89145610c14a598f8f60bd59be921ea2c46a3))
+
+
+### Documentation
+
+* showcase measured results — Benchmarks page, use cases, metrics ([#208](https://github.com/dfrostar/neuralmind/issues/208)) ([615c69b](https://github.com/dfrostar/neuralmind/commit/615c69bb2dc9fc562e88cc65a135b5c5f0a41b7f))
+
 ## [0.21.0](https://github.com/dfrostar/neuralmind/compare/v0.20.1...v0.21.0) (2026-06-07)
 
 
