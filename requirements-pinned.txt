@@ -4,11 +4,14 @@
 # Install with: pip install -r requirements-pinned.txt
 
 # Core dependencies
-# chromadb pinned at 1.5.8. CVE-2026-45829 (pre-auth RCE) affects the ChromaDB
-# *server* HTTP API with trust_remote_code=true; NeuralMind uses the embedded
-# PersistentClient only (no server, no trust_remote_code), so the vulnerable
-# path is unreachable. See SECURITY.md "Known Security Considerations". Bump
-# once a patched chromadb release ships.
+# chromadb pinned at 1.5.8. CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c (CRITICAL,
+# pre-auth RCE) affects the ChromaDB *server* HTTP API with
+# trust_remote_code=true; NeuralMind uses the embedded PersistentClient only
+# (no server, no trust_remote_code), so the vulnerable path is unreachable.
+# Note: every published version is affected (introduced 1.0.0, last_affected
+# 1.5.9 — the current latest), so there is no fixed version to bump to yet;
+# bumping to 1.5.9 would NOT clear the alert. See SECURITY.md "Known Security
+# Considerations". Bump the moment a patched chromadb release ships.
 chromadb==1.5.8
 pyyaml==6.0.3
 toml==0.10.2
