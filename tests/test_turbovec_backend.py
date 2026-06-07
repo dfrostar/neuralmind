@@ -23,7 +23,14 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 if importlib.util.find_spec("turbovec") is None or importlib.util.find_spec("numpy") is None:
-    raise unittest.SkipTest("turbovec/numpy not installed (optional backend)")
+    # Optional, opt-in backend: skip cleanly under pytest collection (the CI
+    # test job installs .[dev], not .[turbovec]) and under a direct unittest run.
+    try:
+        import pytest
+
+        pytest.skip("turbovec/numpy not installed (optional backend)", allow_module_level=True)
+    except ImportError:  # pragma: no cover - direct `python tests/...` without pytest
+        raise unittest.SkipTest("turbovec/numpy not installed (optional backend)") from None
 
 import numpy as np  # noqa: E402
 
@@ -52,16 +59,41 @@ def _write_graph(root: Path, nodes: list[dict]) -> None:
 
 def _nodes() -> list[dict]:
     return [
-        {"id": "n_auth", "label": "authenticate_user", "file_type": "function",
-         "source_file": "auth/handlers.py", "community": 0},
-        {"id": "n_login", "label": "login_route", "file_type": "function",
-         "source_file": "auth/routes.py", "community": 0},
-        {"id": "n_billing", "label": "charge_card", "file_type": "function",
-         "source_file": "billing/stripe.py", "community": 1},
-        {"id": "n_invoice", "label": "send_invoice", "file_type": "function",
-         "source_file": "billing/invoice.py", "community": 1},
-        {"id": "n_user", "label": "user_model", "file_type": "model",
-         "source_file": "users/models.py", "community": 2},
+        {
+            "id": "n_auth",
+            "label": "authenticate_user",
+            "file_type": "function",
+            "source_file": "auth/handlers.py",
+            "community": 0,
+        },
+        {
+            "id": "n_login",
+            "label": "login_route",
+            "file_type": "function",
+            "source_file": "auth/routes.py",
+            "community": 0,
+        },
+        {
+            "id": "n_billing",
+            "label": "charge_card",
+            "file_type": "function",
+            "source_file": "billing/stripe.py",
+            "community": 1,
+        },
+        {
+            "id": "n_invoice",
+            "label": "send_invoice",
+            "file_type": "function",
+            "source_file": "billing/invoice.py",
+            "community": 1,
+        },
+        {
+            "id": "n_user",
+            "label": "user_model",
+            "file_type": "model",
+            "source_file": "users/models.py",
+            "community": 2,
+        },
     ]
 
 

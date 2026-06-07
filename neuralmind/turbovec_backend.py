@@ -108,8 +108,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
     # ------------------------------------------------------------------ store
     def _init_store(self) -> None:
-        self._conn.executescript(
-            """
+        self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS nodes (
                 uid          INTEGER PRIMARY KEY,
                 node_id      TEXT UNIQUE NOT NULL,
@@ -122,8 +121,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                 embedded_at  TEXT
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
-            """
-        )
+            """)
         self._conn.commit()
 
     def _meta_get(self, key: str) -> str | None:
@@ -239,7 +237,9 @@ class TurboVecEmbedder(EmbeddingBackend):
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
-        pending: list[tuple[str, int, str, dict, str, bool]] = []  # (node_id, uid, text, meta, hash, is_update)
+        pending: list[tuple[str, int, str, dict, str, bool]] = (
+            []
+        )  # (node_id, uid, text, meta, hash, is_update)
         next_uid = self._next_uid()
 
         for node in self.nodes:
@@ -304,8 +304,15 @@ class TurboVecEmbedder(EmbeddingBackend):
                     embedded_at=excluded.embedded_at
                 """,
                 (
-                    uid, node_id, text, meta["label"], meta["file_type"],
-                    meta["source_file"], meta["community"], content_hash, now,
+                    uid,
+                    node_id,
+                    text,
+                    meta["label"],
+                    meta["file_type"],
+                    meta["source_file"],
+                    meta["community"],
+                    content_hash,
+                    now,
                 ),
             )
 
@@ -369,9 +376,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         out: list[dict[str, Any]] = []
         for score, uid in zip(scores[0], ids[0], strict=True):
-            row = self._conn.execute(
-                "SELECT * FROM nodes WHERE uid = ?", (int(uid),)
-            ).fetchone()
+            row = self._conn.execute("SELECT * FROM nodes WHERE uid = ?", (int(uid),)).fetchone()
             if row is None:  # padding / removed id
                 continue
             sim = float(score)
@@ -419,7 +424,12 @@ class TurboVecEmbedder(EmbeddingBackend):
     # ----------------------------------------------------- graph-derived reads
     def get_community_summary(self, community_id: int, max_nodes: int = 20) -> dict[str, Any]:
         if not self.nodes and not self.load_graph():
-            return {"community": community_id, "node_count": 0, "nodes": [], "summary": "Empty community"}
+            return {
+                "community": community_id,
+                "node_count": 0,
+                "nodes": [],
+                "summary": "Empty community",
+            }
         nodes = [n for n in self.nodes if int(n.get("community", -1)) == community_id][:max_nodes]
         file_types: dict[str, int] = {}
         formatted = []
