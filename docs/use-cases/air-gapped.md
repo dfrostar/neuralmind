@@ -82,6 +82,17 @@ The model lands at `~/.cache/chroma/onnx_models/all-MiniLM-L6-v2/`
 (Linux/macOS) or `%USERPROFILE%\.cache\chroma\onnx_models\` (Windows).
 Total size: ~85 MB.
 
+> **ChromaDB-free option (v0.21.0+).** The opt-in `turbovec` backend
+> (`backend: turbovec` in `neuralmind-backend.yaml`) owns embeddings via a
+> bundled `OnnxMiniLMEmbedder` — same `all-MiniLM-L6-v2` model, no ChromaDB.
+> For air-gapped use, pre-stage the extracted model folder anywhere and point
+> `NEURALMIND_ONNX_MODEL_DIR` at it (it also auto-reuses an existing
+> `~/.cache/chroma/...` model, so the cache you staged above already works):
+>
+> ```bash
+> export NEURALMIND_ONNX_MODEL_DIR=/opt/models/all-MiniLM-L6-v2/onnx
+> ```
+
 If your target has a different cache directory convention (NFS home
 mount, containerised cache, etc.), set `CHROMA_CACHE_DIR` on both
 machines to a path you control end-to-end.

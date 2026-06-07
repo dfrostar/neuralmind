@@ -117,7 +117,14 @@ keywords = [
     "claude-code-mcp",
     "cursor-mcp",
     "cline-mcp",
-    "mcp-auto-detection"
+    "mcp-auto-detection",
+    "turbovec",
+    "turboquant",
+    "chromadb-free",
+    "chromadb-alternative",
+    "onnx-embeddings",
+    "vector-quantization",
+    "compressed-vector-search"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -153,12 +160,15 @@ dependencies = [
 # in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
 # package is now a base dependency.
 mcp = []
-# Experimental opt-in vector backend (Google TurboQuant). POC — see issue #204.
-# Provides the compressed ANN index; embeddings still come from the default
-# stack in this POC. Enable with backend "turbovec".
+# Opt-in ChromaDB-free vector backend (Google TurboQuant). See issue #204.
+# Fully self-contained: turbovec for the compressed ANN index, onnxruntime +
+# tokenizers for the bundled MiniLM embedder (vectors byte-identical to
+# ChromaDB's), SQLite (stdlib) for metadata. Enable with backend "turbovec".
 turbovec = [
     "turbovec>=0.7",
     "numpy>=1.20",
+    "onnxruntime>=1.16",
+    "tokenizers>=0.15",
 ]
 dev = [
     "pytest>=9.0.3",

@@ -1043,6 +1043,24 @@ Behaviour:
 | `NEURALMIND_PARITY_FAITHFULNESS_FLOOR` | `0.0` | *(v0.15.0+)* Backend parity gate: absolute minimum faithfulness delta the built-in backend must clear (mirrors the eval gate — smart selection ≥ matched-budget naive truncation). |
 | `NEURALMIND_PARITY_COVERAGE_FLOOR` | `0.90` | *(v0.16.0+)* Backend parity gate: minimum fraction of graphify's per-language symbols the built-in backend must recover for TypeScript/Go (structural parity, since no gold-fact set exists for those fixtures yet). |
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
+| `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
+
+---
+
+## Vector backend selection *(v0.21.0+)*
+
+NeuralMind's vector store is pluggable. The default is `graph` (ChromaDB). To use
+the **ChromaDB-free** TurboQuant backend, drop a `neuralmind-backend.yaml` at the
+project root:
+
+```yaml
+backend: turbovec   # ChromaDB-free: TurboVec ANN + bundled OnnxMiniLMEmbedder
+```
+
+Install the extra: `pip install "neuralmind[turbovec]"` (pulls `turbovec`,
+`onnxruntime`, `tokenizers`, `numpy`). Vectors are byte-identical to the chroma
+backend's, so retrieval quality is at/above parity; the index is 8–16× smaller.
+Other accepted values: `graph` / `chroma` (default), `in_memory` (offline tests).
 
 ---
 

@@ -19,7 +19,7 @@
         "@type": "SoftwareApplication",
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
-        "softwareVersion": "0.20.0"
+        "softwareVersion": "0.21.0"
       }
     }
     </script>
@@ -76,6 +76,21 @@
             <h3>A decision we've made for the team story</h3>
             <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0210">
+            <h2>What's New in v0.21.0 — ChromaDB-free retrieval</h2>
+            <p><strong>NeuralMind can now embed <em>and</em> search with zero ChromaDB.</strong> v0.20.0 moved vector search to <a href="https://github.com/RyanCodrai/turbovec">TurboVec</a> (Google Research's <strong>TurboQuant</strong> compressed index); v0.21.0 moves the last ChromaDB-only job — embedding — into a bundled module, so the opt-in <code>turbovec</code> backend is fully self-contained.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>OnnxMiniLMEmbedder</code>.</strong> A ChromaDB-free <code>all-MiniLM-L6-v2</code> embedder on just <code>onnxruntime</code> + <code>tokenizers</code> + <code>numpy</code>, producing vectors <strong>byte-identical</strong> to ChromaDB's <code>DefaultEmbeddingFunction</code> (verified: cosine 1.0, max diff 0.0).</li>
+                <li><strong>The <code>turbovec</code> backend is ChromaDB-free end to end.</strong> Vectors → TurboVec <code>IdMapIndex</code> (8–16× smaller); text + metadata → local SQLite; embeddings → the bundled embedder. Enable with <code>backend: turbovec</code> in <code>neuralmind-backend.yaml</code>.</li>
+                <li><strong>At/above retrieval parity</strong> on the faithfulness gold set (fact-recall 0.744 → 0.800; top-k hit unchanged), and a lazy backend factory so choosing <code>turbovec</code> never constructs the Chroma stack.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>ChromaDB drags in a large dependency tree and the recurring <strong>CVE-2026-45829</strong> advisory surface. This release is the foundation for retiring it entirely — making the package import ChromaDB-free, flipping the default to <code>turbovec</code> with a migration, and dropping the dependency are the staged next steps (v0.22–v0.23).</p>
         </div>
     </section>
 

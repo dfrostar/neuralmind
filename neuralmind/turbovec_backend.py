@@ -17,11 +17,10 @@ does the ANN half, so this backend splits responsibilities:
   persisted to ``<db>/index.tvim``;
 * **text + metadata + the node-id↔uint64 map** → a local SQLite file
   ``<db>/store.sqlite`` (SQLite is already a NeuralMind dependency for synapses);
-* **embeddings** → owned here. For an apples-to-apples recall comparison this
-  POC reuses ChromaDB's ``DefaultEmbeddingFunction`` (the same MiniLM ONNX model
-  the shipping backend uses) via a lazy import, injectable through ``embed_fn``
-  for tests. Production would vendor the ONNX model directly so ChromaDB can be
-  dropped entirely.
+* **embeddings** → owned here via ``onnx_embedder.OnnxMiniLMEmbedder``, which
+  produces vectors *byte-identical* to ChromaDB's ``DefaultEmbeddingFunction``
+  (same ``all-MiniLM-L6-v2`` model + pipeline) on just onnxruntime + tokenizers.
+  Injectable through ``embed_fn`` for tests. **No ChromaDB import on this path.**
 
 Scope: this is opt-in (``backend: turbovec`` / ``create_backend("turbovec", …)``)
 and never the default. It implements the full ``EmbeddingBackend`` contract plus
@@ -57,19 +56,16 @@ def _l2_normalize(matrix: np.ndarray) -> np.ndarray:
 
 
 def _default_embed_fn() -> Callable[[list[str]], list[list[float]]]:
-    """Lazily build ChromaDB's default MiniLM embedding function.
+    """Build the ChromaDB-free MiniLM embedder.
 
-    Imported lazily so merely importing this module (e.g. for type checks) does
-    not require chromadb; only constructing the real backend does.
+    Produces vectors byte-identical to ChromaDB's ``DefaultEmbeddingFunction``
+    (same model + pipeline) on just onnxruntime + tokenizers, so the TurboVec
+    backend needs no ChromaDB at all. Imported lazily so merely importing this
+    module doesn't require onnxruntime; only constructing the backend does.
     """
-    from chromadb.utils import embedding_functions
+    from .onnx_embedder import OnnxMiniLMEmbedder
 
-    ef = embedding_functions.DefaultEmbeddingFunction()
-
-    def embed(texts: list[str]) -> list[list[float]]:
-        return ef(texts)
-
-    return embed
+    return OnnxMiniLMEmbedder()
 
 
 class TurboVecEmbedder(EmbeddingBackend):
