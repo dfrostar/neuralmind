@@ -305,7 +305,9 @@ class NeuralMind:
         if already_indexed:
             return  # turbovec index already populated — not the first run
         # Rough first-build estimate (~25 ms/node observed in the v0.21 benchmark).
-        n = len(self.nodes) if self.nodes else 0
+        # The node list lives on the embedder (populated by load_graph, called
+        # just above in build()); NeuralMind itself has no self.nodes.
+        n = len(getattr(self.embedder, "nodes", None) or [])
         est = ""
         if n:
             secs = n * 0.025
