@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.23.0** — **versioned index contract (IR), retrieval-quality harness, debug traces, and a local daemon.** Four future-proofing foundations. **(PRD 1)** A canonical, **schema-versioned** intermediate representation of your code graph, validated on every build — a new **`neuralmind validate`** command checks the contract **without a vector backend**; the embedder still reads `graph.json` unchanged (the IR round-trips back identically), so retrieval is unaffected. **(PRD 2)** A new **`neuralmind benchmark --quality`** mode measures whether retrieval finds the *right* code — **precision@k / recall@k / MRR / answerability** over 30 golden queries across Python/TS/Go — and **fails CI on a regression**. **(PRD 3)** **`neuralmind query --trace`** shows *why* a result came back — per-layer candidates, cluster scoring with vector-vs-synapse attribution, and final hits. **(PRD 5)** An experimental **`neuralmind daemon`** holds project state warm so repeat `query`/`stats` skip cold backend init (auto-preferred when running, transparent direct-mode fallback). [Release notes](RELEASE_NOTES_v0.23.0.md)
+> **🆕 New in v0.24.0** — **memory namespaces & branch isolation.** The learned synapse layer is now **namespace-aware**: `branch:<name>` / `personal` / `shared` / `ephemeral` memory live separately in the same store, so a feature-branch spike can't pollute what the agent learned about `main`. Recall stays smart by default — a **transparent merged view** weights the active branch at **1.0×**, your long-term `personal` memory at **0.8×**, and an imported `shared` team baseline at **0.5×** (published constants, attributed per-namespace in `query --trace`). New **`neuralmind memory {inspect,reset,export,import}`** shows contribution by namespace, clears exactly one namespace, and moves memory as **versioned JSON bundles** (the PRD 8 team-memory on-ramp). Existing learned memory migrates **in place, losslessly** into `personal` — single-transaction rebuild, rollback on any failure, proven by a no-data-loss test. [Release notes](RELEASE_NOTES_v0.24.0.md)
+>
+> **v0.23.0** — **versioned index contract (IR), retrieval-quality harness, debug traces, and a local daemon.** Four future-proofing foundations. **(PRD 1)** A canonical, **schema-versioned** intermediate representation of your code graph, validated on every build — a new **`neuralmind validate`** command checks the contract **without a vector backend**; the embedder still reads `graph.json` unchanged (the IR round-trips back identically), so retrieval is unaffected. **(PRD 2)** A new **`neuralmind benchmark --quality`** mode measures whether retrieval finds the *right* code — **precision@k / recall@k / MRR / answerability** over 30 golden queries across Python/TS/Go — and **fails CI on a regression**. **(PRD 3)** **`neuralmind query --trace`** shows *why* a result came back — per-layer candidates, cluster scoring with vector-vs-synapse attribution, and final hits. **(PRD 5)** An experimental **`neuralmind daemon`** holds project state warm so repeat `query`/`stats` skip cold backend init (auto-preferred when running, transparent direct-mode fallback). [Release notes](RELEASE_NOTES_v0.23.0.md)
 >
 > **v0.22.0** — **turbovec becomes the default (when available).** `import neuralmind` no longer requires ChromaDB, and the default backend is now **`auto`**: prefer the ChromaDB-free `turbovec` path when its deps are installed, else fall back to chroma. Safe by construction — a plain `pip install neuralmind` is unchanged; only installs with the `[turbovec]` extra flip, with a **one-time auto-reindex** (the old ChromaDB index is left as a fallback, nothing deleted). `neuralmind doctor` now shows the resolved backend. The staged middle step toward retiring ChromaDB. [Release notes](RELEASE_NOTES_v0.22.0.md)
 >
@@ -387,6 +389,38 @@ The transition signal needs a long observation window to converge
 (N files edited together yield only N-1 ordered pairs), so running
 the watcher as a service via the [always-on guide](docs/use-cases/always-on.md)
 shortens time-to-useful-predictions from weeks to days.
+
+---
+
+### Branch-isolated memory *(v0.24.0+)*
+
+Every learned association now carries a **namespace**. On `main` nothing
+changes — your memory is the `personal` namespace, read at full weight. The
+moment you `git checkout -b feature-x`, new activations land in
+`branch:feature-x`, and recall reads a **merged view**: branch-local context
+at 1.0×, long-term `personal` at 0.8×, an imported `shared` team baseline at
+0.5× (explicit constants — `query --trace` attributes every boost to the
+namespace that drove it). Session scratch goes to `ephemeral`, which decays
+fast and is cleared at the next SessionStart.
+
+```bash
+$ neuralmind memory inspect .
+Synapse memory — .neuralmind/synapses.db
+Active namespace: branch:feature-x  (schema v1)
+Namespace                  Edges    Weight  Transitions   Nodes
+branch:feature-x              34      6.20           12      28
+personal                     412     88.71          120     310
+shared                        96     31.40           41       0
+
+$ neuralmind memory reset . --namespace branch:feature-x   # branch merged? drop its memory
+$ neuralmind memory export . --namespace personal -o team-baseline.json
+$ neuralmind memory import team-baseline.json --namespace shared   # teammate's machine
+```
+
+Existing learned memory migrates **in place and losslessly** into
+`personal` on first open (single transaction, rollback on any failure).
+See the [branch-isolated memory walkthrough](docs/use-cases/branch-isolated-memory.md)
+and [Release Notes v0.24.0](RELEASE_NOTES_v0.24.0.md).
 
 ---
 
@@ -1776,6 +1810,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.24.0](RELEASE_NOTES_v0.24.0.md)** | Memory namespaces & branch isolation (PRD 4) — every synapse/transition/activation carries a namespace (`personal` / `shared` / `branch:<name>` / `ephemeral`); lossless single-transaction v0→v1 schema migration (existing memory → `personal`); transparent merged reads (branch 1.0× > personal 0.8× > shared 0.5×, published constants, per-namespace `--trace` attribution); new `neuralmind memory {inspect,reset,export,import}` with versioned JSON bundles (PRD 8 on-ramp); per-namespace decay/TTL (`shared` sticky, `ephemeral` fast + cleared at session boundaries); branch auto-detection via stdlib git with safe `personal` fallback |
 | **[Release Notes v0.23.0](RELEASE_NOTES_v0.23.0.md)** | Versioned index contract (IR) + retrieval-quality harness + debug traces + local daemon. **PRD 1:** builds materialize a canonical, schema-versioned `IndexIR` and validate it; new backend-free `neuralmind validate`; round-trip-faithful graphify⇄IR adapter; learned synapses folded in; IR metadata in `build`/`stats`. **PRD 2:** new `neuralmind benchmark --quality` measures precision@k / recall@k / MRR / answerability over 30 golden queries (Python/TS/Go), gated in CI. **PRD 3:** `neuralmind query --trace` attaches a per-layer retrieval trace (candidates, cluster scoring with vector-vs-synapse attribution, final hits, token budget); bounded + redactable; zero-overhead off by default. **PRD 5:** experimental `neuralmind daemon` keeps project state warm (project registry + per-project locks + background jobs + shared `dispatch()` API); CLI auto-prefers it with direct-mode fallback. Retrieval and existing indexes unchanged |
 | **[Release Notes v0.22.0](RELEASE_NOTES_v0.22.0.md)** | turbovec becomes the default (when available) — `import neuralmind` no longer needs ChromaDB; default backend is now `auto` (turbovec when its deps are installed, else chroma); one-time auto-reindex with the old ChromaDB index kept as a fallback; `neuralmind doctor` shows the resolved backend; staged middle step toward retiring ChromaDB |
 | **[Release Notes v0.21.0](RELEASE_NOTES_v0.21.0.md)** | ChromaDB-free retrieval — opt-in `turbovec` backend now embeds *and* searches with zero ChromaDB: TurboQuant compressed index (8–16× smaller vectors) + a bundled `OnnxMiniLMEmbedder` producing vectors byte-identical to ChromaDB's; at/above parity (fact-recall 0.744→0.800); enable via `backend: turbovec`; retires the CVE-2026-45829 dependency (default-flip staged for v0.22) |

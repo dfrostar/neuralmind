@@ -688,6 +688,121 @@ def load_synapses_for_project(project_path: str | Path) -> list[IRSynapse]:
 
 
 # --------------------------------------------------------------------------- #
+# Synapse namespace bundles (PRD 4; the PRD 8 team-memory on-ramp)
+# --------------------------------------------------------------------------- #
+
+# A bundle is one namespace's learned memory as portable JSON. Entries reuse
+# the IRSynapse shape (source/target/weight/kind) plus the lifetime counters
+# the store needs to merge faithfully (activation_count / count). The format
+# is versioned independently of the IR so PRD 8 can evolve bundles (signing,
+# provenance) without touching the index contract.
+SYNAPSE_BUNDLE_FORMAT = "neuralmind.synapse-bundle"
+SYNAPSE_BUNDLE_VERSION = 1
+SYNAPSE_BUNDLE_KIND_TRANSITION = "transition"
+_SYNAPSE_BUNDLE_EXPORT_LIMIT = 100_000
+
+
+def export_synapse_bundle(store: Any, namespace: str) -> dict[str, Any]:
+    """Export one namespace from a synapse store as a portable bundle dict.
+
+    Reads the namespace raw (no merged-mode multipliers), so the bundle
+    carries exactly the weights the store learned.
+    """
+    edge_rows = store.edges(
+        min_weight=0.0, limit=_SYNAPSE_BUNDLE_EXPORT_LIMIT, namespaces=[namespace]
+    )
+    transition_rows = store.transitions(
+        min_weight=0.0, limit=_SYNAPSE_BUNDLE_EXPORT_LIMIT, namespaces=[namespace]
+    )
+    synapses = []
+    for a, b, weight, count in edge_rows:
+        entry = IRSynapse(source=str(a), target=str(b), weight=float(weight)).to_dict()
+        entry["activation_count"] = int(count)
+        synapses.append(entry)
+    transitions = []
+    for f, t, weight, count in transition_rows:
+        entry = IRSynapse(
+            source=str(f), target=str(t), weight=float(weight), kind=SYNAPSE_BUNDLE_KIND_TRANSITION
+        ).to_dict()
+        entry["count"] = int(count)
+        transitions.append(entry)
+    return {
+        "format": SYNAPSE_BUNDLE_FORMAT,
+        "version": SYNAPSE_BUNDLE_VERSION,
+        "namespace": namespace,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "synapses": synapses,
+        "transitions": transitions,
+        "counts": {"synapses": len(synapses), "transitions": len(transitions)},
+    }
+
+
+def validate_synapse_bundle(bundle: Any) -> list[str]:
+    """Structural validation for a synapse bundle. Returns error strings."""
+    if not isinstance(bundle, dict):
+        return ["bundle must be a JSON object"]
+    errors: list[str] = []
+    if bundle.get("format") != SYNAPSE_BUNDLE_FORMAT:
+        errors.append(
+            f"unrecognized bundle format {bundle.get('format')!r} "
+            f"(expected {SYNAPSE_BUNDLE_FORMAT!r})"
+        )
+    version = bundle.get("version")
+    if not isinstance(version, int) or version < 1:
+        errors.append(f"invalid bundle version {version!r}")
+    elif version > SYNAPSE_BUNDLE_VERSION:
+        errors.append(
+            f"bundle version {version} is newer than this NeuralMind supports "
+            f"({SYNAPSE_BUNDLE_VERSION}) — upgrade neuralmind to import it"
+        )
+    namespace = bundle.get("namespace")
+    if not isinstance(namespace, str) or not namespace.strip():
+        errors.append("bundle is missing its source namespace")
+    for key in ("synapses", "transitions"):
+        entries = bundle.get(key, [])
+        if not isinstance(entries, list):
+            errors.append(f"{key!r} must be a list")
+            continue
+        for i, entry in enumerate(entries):
+            if not isinstance(entry, dict) or not entry.get("source") or not entry.get("target"):
+                errors.append(f"{key}[{i}] is missing source/target")
+                continue
+            weight = entry.get("weight", 0.0)
+            if not isinstance(weight, (int, float)) or weight < 0:
+                errors.append(f"{key}[{i}] has invalid weight {weight!r}")
+    return errors
+
+
+def import_synapse_bundle(
+    store: Any, bundle: dict[str, Any], namespace: str | None = None
+) -> dict[str, Any]:
+    """Validate a bundle and merge it into a target namespace.
+
+    The target defaults to the bundle's own namespace. Merging keeps the
+    MAX of weight/count per edge (see ``SynapseStore.import_edges``), so
+    re-importing a bundle is idempotent. Raises :class:`IRError` when the
+    bundle fails validation — never partially imports a malformed bundle.
+    """
+    errors = validate_synapse_bundle(bundle)
+    if errors:
+        raise IRError("invalid synapse bundle: " + "; ".join(errors))
+    target = namespace or str(bundle["namespace"]).strip()
+    edge_rows = [
+        (s["source"], s["target"], float(s.get("weight", 0.0)), int(s.get("activation_count", 1)))
+        for s in bundle.get("synapses", [])
+    ]
+    transition_rows = [
+        (t["source"], t["target"], float(t.get("weight", 0.0)), int(t.get("count", 1)))
+        for t in bundle.get("transitions", [])
+    ]
+    return {
+        "namespace": target,
+        "synapses": store.import_edges(edge_rows, namespace=target),
+        "transitions": store.import_transitions(transition_rows, namespace=target),
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Validation (FR5)
 # --------------------------------------------------------------------------- #
 
