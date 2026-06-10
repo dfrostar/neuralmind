@@ -66,6 +66,9 @@ from .compressors import (
 )
 from .context_selector import ContextSelector
 from .core import NeuralMind, validate_project
+from .embedding_backend import EmbeddingBackend
+from .hooks import install_hooks
+from .in_memory_backend import InMemoryEmbeddingBackend
 from .ir import (
     IR_VERSION,
     IndexIR,
@@ -78,9 +81,6 @@ from .ir import (
     to_graph_json,
     validate_ir,
 )
-from .embedding_backend import EmbeddingBackend
-from .hooks import install_hooks
-from .in_memory_backend import InMemoryEmbeddingBackend
 from .synapse_memory import (
     export_synapse_memory,
     project_memory_file,

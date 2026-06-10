@@ -15,8 +15,24 @@ TS_GRAPH = FIXTURE_DIR / "sample_project_ts" / "graphify-out" / "graph.json"
 
 # Fields every downstream consumer reads off a node / edge. Round-trip parity
 # is defined as equality on exactly these.
-_NODE_FIELDS = ("id", "label", "file_type", "source_file", "source_location", "community", "norm_label")
-_EDGE_FIELDS = ("relation", "source", "target", "weight", "confidence", "confidence_score", "source_file")
+_NODE_FIELDS = (
+    "id",
+    "label",
+    "file_type",
+    "source_file",
+    "source_location",
+    "community",
+    "norm_label",
+)
+_EDGE_FIELDS = (
+    "relation",
+    "source",
+    "target",
+    "weight",
+    "confidence",
+    "confidence_score",
+    "source_file",
+)
 
 
 def _synthetic_graph() -> dict:
@@ -29,29 +45,76 @@ def _synthetic_graph() -> dict:
         "generated_by": "neuralmind.graphgen (tree-sitter)",
         "schema_version": 1,
         "nodes": [
-            {"label": "app.py", "file_type": "code", "source_file": "app.py",
-             "source_location": "L1", "id": "app_py", "community": 0, "norm_label": "app.py"},
-            {"label": "handle", "file_type": "code", "source_file": "app.py",
-             "source_location": "L10", "id": "app_py_handle", "community": 0, "norm_label": "handle"},
-            {"label": "Server", "file_type": "code", "source_file": "app.py",
-             "source_location": "L20", "id": "app_py_Server", "community": 0, "norm_label": "server"},
-            {"label": "README.md", "file_type": "document", "source_file": "README.md",
-             "source_location": "L1", "id": "readme_md", "community": 1, "norm_label": "readme.md"},
+            {
+                "label": "app.py",
+                "file_type": "code",
+                "source_file": "app.py",
+                "source_location": "L1",
+                "id": "app_py",
+                "community": 0,
+                "norm_label": "app.py",
+            },
+            {
+                "label": "handle",
+                "file_type": "code",
+                "source_file": "app.py",
+                "source_location": "L10",
+                "id": "app_py_handle",
+                "community": 0,
+                "norm_label": "handle",
+            },
+            {
+                "label": "Server",
+                "file_type": "code",
+                "source_file": "app.py",
+                "source_location": "L20",
+                "id": "app_py_Server",
+                "community": 0,
+                "norm_label": "server",
+            },
+            {
+                "label": "README.md",
+                "file_type": "document",
+                "source_file": "README.md",
+                "source_location": "L1",
+                "id": "readme_md",
+                "community": 1,
+                "norm_label": "readme.md",
+            },
         ],
         "links": [
-            {"relation": "contains", "context": "contains", "confidence": "EXTRACTED",
-             "source_file": "app.py", "source_location": "L1", "weight": 1.0,
-             "source": "app_py", "target": "app_py_handle", "confidence_score": 1.0},
-            {"relation": "calls", "context": "call", "confidence": "EXTRACTED",
-             "source_file": "app.py", "source_location": "L12", "weight": 1.0,
-             "source": "app_py_handle", "target": "app_py_Server", "confidence_score": 1.0},
+            {
+                "relation": "contains",
+                "context": "contains",
+                "confidence": "EXTRACTED",
+                "source_file": "app.py",
+                "source_location": "L1",
+                "weight": 1.0,
+                "source": "app_py",
+                "target": "app_py_handle",
+                "confidence_score": 1.0,
+            },
+            {
+                "relation": "calls",
+                "context": "call",
+                "confidence": "EXTRACTED",
+                "source_file": "app.py",
+                "source_location": "L12",
+                "weight": 1.0,
+                "source": "app_py_handle",
+                "target": "app_py_Server",
+                "confidence_score": 1.0,
+            },
         ],
         "hyperedges": [],
     }
 
 
 def _index(items, fields):
-    return {it["id"] if "id" in fields else (it["source"], it["target"], it["relation"]): it for it in items}
+    return {
+        it["id"] if "id" in fields else (it["source"], it["target"], it["relation"]): it
+        for it in items
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -213,8 +276,7 @@ def test_validate_flags_duplicate_node_id():
 
 def test_validate_flags_unknown_kind_as_warning():
     ir = ir_mod.from_graph_json(_synthetic_graph())
-    ir.nodes.append(ir_mod.IRNode(id="weird", kind="quasar", label="weird",
-                                  source_file="app.py"))
+    ir.nodes.append(ir_mod.IRNode(id="weird", kind="quasar", label="weird", source_file="app.py"))
     # connect it so it isn't also flagged as orphaned
     ir.edges.append(ir_mod.IREdge(relation="contains", source="app_py", target="weird"))
     issues = ir_mod.validate_ir(ir)

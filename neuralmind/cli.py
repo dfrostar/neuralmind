@@ -330,7 +330,9 @@ def cmd_validate(args):
         if val.get("ok"):
             print(f"VALID — 0 errors, {val.get('warnings', 0)} warning(s).")
         else:
-            print(f"INVALID — {val.get('errors', 0)} error(s), {val.get('warnings', 0)} warning(s).")
+            print(
+                f"INVALID — {val.get('errors', 0)} error(s), {val.get('warnings', 0)} warning(s)."
+            )
         for issue in val.get("issues", []):
             marker = "[ERROR]" if issue["severity"] == "error" else "[warn ]"
             print(f"  {marker} {issue['code']}: {issue['message']}")

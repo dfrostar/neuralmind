@@ -25,10 +25,11 @@ without the full embedding dep set.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 # --------------------------------------------------------------------------- #
 # Versioning
@@ -231,7 +232,7 @@ class IRNode:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "IRNode":
+    def from_dict(cls, d: dict[str, Any]) -> IRNode:
         return cls(
             id=str(d.get("id", "")),
             kind=str(d.get("kind", "symbol")),
@@ -277,7 +278,7 @@ class IREdge:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "IREdge":
+    def from_dict(cls, d: dict[str, Any]) -> IREdge:
         return cls(
             relation=str(d.get("relation", "")),
             source=str(d.get("source", "")),
@@ -308,7 +309,7 @@ class IRCluster:
         return {"id": self.id, "size": self.size, "label": self.label}
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "IRCluster":
+    def from_dict(cls, d: dict[str, Any]) -> IRCluster:
         return cls(
             id=int(d.get("id", -1)),
             size=int(d.get("size", 0)),
@@ -339,7 +340,7 @@ class IRSynapse:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "IRSynapse":
+    def from_dict(cls, d: dict[str, Any]) -> IRSynapse:
         return cls(
             source=str(d.get("source", "")),
             target=str(d.get("target", "")),
@@ -414,7 +415,7 @@ class IndexIR:
         }
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "IndexIR":
+    def from_dict(cls, d: dict[str, Any]) -> IndexIR:
         version = int(d.get("ir_version", 0))
         if version not in SUPPORTED_IR_VERSIONS:
             d = migrate_payload(d)  # may raise IRError
@@ -438,7 +439,7 @@ class IndexIR:
         Path(path).write_text(json.dumps(self.to_dict(), indent=2), encoding="utf-8")
 
     @classmethod
-    def read(cls, path: str | Path) -> "IndexIR":
+    def read(cls, path: str | Path) -> IndexIR:
         return cls.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
 
 
@@ -536,9 +537,7 @@ def from_graph_json(graph: dict[str, Any], *, source_backend: str = "") -> Index
 
     clusters = _derive_clusters(nodes)
 
-    source_meta = {
-        k: v for k, v in graph.items() if k not in ("nodes", "links", "edges")
-    }
+    source_meta = {k: v for k, v in graph.items() if k not in ("nodes", "links", "edges")}
     source_meta["_edge_key"] = edge_key
 
     return IndexIR(
@@ -658,7 +657,9 @@ def validate_ir(ir: IndexIR) -> list[ValidationIssue]:
     for n in ir.nodes:
         if not n.id:
             issues.append(
-                ValidationIssue("error", "node_missing_id", f"Node with label {n.label!r} has no id.")
+                ValidationIssue(
+                    "error", "node_missing_id", f"Node with label {n.label!r} has no id."
+                )
             )
             continue
         if n.id in seen_ids:
