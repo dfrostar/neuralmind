@@ -39,7 +39,11 @@ v0.23.0. The new behavior appears the moment you branch:
   in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch
   → `personal`. Detection is best-effort stdlib `git rev-parse` with a
   3-second timeout — a detached HEAD, a missing git, or a non-repo all
-  degrade safely to `personal` and never fail a write.
+  degrade safely to `personal` and never fail a write. Long-lived processes
+  (the daemon's warm registry, the MCP server's mind cache) notice a
+  `git checkout` between writes via a cheap `.git/HEAD` fingerprint and
+  re-target the store automatically — branch isolation never requires a
+  restart.
 
 - **Lossless in-place schema migration (v0 → v1).** `namespace` joins the
   primary keys of all three tables — SQLite can't alter a PK, so the store

@@ -94,6 +94,35 @@ def namespace_for_branch(branch: str) -> str:
     return f"{BRANCH_NAMESPACE_PREFIX}{branch}"
 
 
+def head_fingerprint(project_path: str | Path) -> str | None:
+    """A cheap change token for "which commit/branch is checked out".
+
+    Reads ``.git/HEAD`` directly (following a worktree-style ``.git`` file's
+    ``gitdir:`` pointer) — a microsecond file read, no subprocess — so
+    long-lived processes (the daemon's warm registry, the MCP server's mind
+    cache) can notice a ``git checkout`` between memory writes without
+    paying ``git rev-parse`` per write. The content is opaque: callers only
+    compare it to a previous value and re-run :func:`resolve_namespace`
+    when it changes. Returns None outside a git repo.
+    """
+    try:
+        git_path = Path(project_path) / ".git"
+        if git_path.is_file():
+            gitdir = None
+            for line in git_path.read_text(encoding="utf-8", errors="replace").splitlines():
+                if line.startswith("gitdir:"):
+                    gitdir = Path(line.split(":", 1)[1].strip())
+                    break
+            if gitdir is None:
+                return None
+            if not gitdir.is_absolute():
+                gitdir = Path(project_path) / gitdir
+            git_path = gitdir
+        return (git_path / "HEAD").read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return None
+
+
 def config_namespace(project_path: str | Path, config: dict | None = None) -> str | None:
     """The project-pinned ``memory_namespace``, or None.
 
@@ -146,7 +175,8 @@ def resolve_namespace(
 
     Priority: env override → pinned config → ``branch:<name>`` on a
     non-default git branch → ``personal``. Never raises: an invalid
-    override degrades to ``personal`` rather than blocking a write.
+    override is ignored and resolution falls through to the next source
+    (ultimately ``personal``) rather than blocking a write.
     """
     environ = os.environ if env is None else env
     override = (environ.get(ENV_NAMESPACE) or "").strip()
