@@ -408,20 +408,26 @@ def _validate(ctx: DaemonContext, project: str, write: bool) -> dict:
 
 
 class _Handler(BaseHTTPRequestHandler):
-    context: DaemonContext = None  # type: ignore[assignment]
-    auth_token: str | None = None
+    # Context and token live on the *server instance* (set in create_server),
+    # never as class attributes — so multiple daemons in one process (e.g. the
+    # test suite) can't clobber each other's state.
 
     def log_message(self, *args) -> None:  # silence default stderr spam
         pass
 
+    @property
+    def _ctx(self) -> DaemonContext:
+        return self.server.nm_context  # type: ignore[attr-defined]
+
     def _authed(self) -> bool:
-        if self.auth_token is None:
+        token = self.server.nm_token  # type: ignore[attr-defined]
+        if token is None:
             return True
         header = self.headers.get("Authorization", "")
         if header.startswith("Bearer "):
-            return secrets.compare_digest(header[7:], self.auth_token)
-        token = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
-        return bool(token) and secrets.compare_digest(token, self.auth_token)
+            return secrets.compare_digest(header[7:], token)
+        qtoken = (parse_qs(urlparse(self.path).query).get("token") or [""])[0]
+        return bool(qtoken) and secrets.compare_digest(qtoken, token)
 
     def _send(self, status: int, payload: dict) -> None:
         data = json.dumps(payload).encode("utf-8")
@@ -444,7 +450,7 @@ class _Handler(BaseHTTPRequestHandler):
                 except ValueError:
                     self._send(400, {"error": "invalid JSON body"})
                     return
-        status, payload = dispatch(self.context, method, self.path, body)
+        status, payload = dispatch(self._ctx, method, self.path, body)
         self._send(status, payload)
 
     def do_GET(self) -> None:  # noqa: N802
@@ -454,14 +460,22 @@ class _Handler(BaseHTTPRequestHandler):
         self._handle("POST")
 
 
-def serve(
+def create_server(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     *,
     auth: bool = True,
     registry: ProjectRegistry | None = None,
-) -> None:
-    """Run the daemon in the foreground until shutdown (blocking)."""
+    write_disco: bool = True,
+) -> tuple[ThreadingHTTPServer, dict]:
+    """Bind the daemon socket and attach its state, *without* serving yet.
+
+    The socket is bound + listening on return (TCPServer does both in
+    ``__init__``), so a caller can start ``serve_forever`` in a thread and
+    clients connect reliably with no startup race. State (context + token) is
+    attached to the server instance, so multiple daemons never share state.
+    Returns ``(httpd, info)``; the caller owns shutdown.
+    """
     from . import __version__
 
     registry = registry or ProjectRegistry()
@@ -472,14 +486,13 @@ def serve(
     httpd.daemon_threads = True
     actual_port = httpd.server_address[1]
 
-    ctx = DaemonContext(
+    httpd.nm_context = DaemonContext(  # type: ignore[attr-defined]
         registry=registry,
         jobs=jobs,
         version=__version__,
         on_shutdown=lambda: threading.Thread(target=httpd.shutdown, daemon=True).start(),
     )
-    _Handler.context = ctx
-    _Handler.auth_token = token
+    httpd.nm_token = token  # type: ignore[attr-defined]
 
     info = {
         "host": host,
@@ -489,7 +502,20 @@ def serve(
         "version": __version__,
         "started_at": time.time(),
     }
-    write_discovery(info)
+    if write_disco:
+        write_discovery(info)
+    return httpd, info
+
+
+def serve(
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
+    *,
+    auth: bool = True,
+    registry: ProjectRegistry | None = None,
+) -> None:
+    """Run the daemon in the foreground until shutdown (blocking)."""
+    httpd, info = create_server(host, port, auth=auth, registry=registry)
 
     def _graceful(*_a) -> None:
         threading.Thread(target=httpd.shutdown, daemon=True).start()
@@ -500,7 +526,10 @@ def serve(
         signal.signal(signal.SIGTERM, _graceful)
         signal.signal(signal.SIGINT, _graceful)
 
-    print(f"[neuralmind] daemon listening on http://{host}:{actual_port} (pid {os.getpid()})")
+    print(
+        f"[neuralmind] daemon listening on http://{info['host']}:{info['port']} "
+        f"(pid {os.getpid()})"
+    )
     try:
         httpd.serve_forever()
     finally:

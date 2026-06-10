@@ -237,25 +237,30 @@ def test_dispatch_validate_is_backend_free(registry, tmp_path):
 
 @pytest.fixture
 def running_daemon(daemon_home, registry):
-    """Start a real daemon on an ephemeral port in a thread; yield the client."""
-    t = threading.Thread(
-        target=daemon_mod.serve,
-        kwargs={"host": "127.0.0.1", "port": 0, "auth": True, "registry": registry},
-        daemon=True,
-    )
+    """Start a real daemon on an ephemeral port and yield a connected client.
+
+    Uses create_server so the socket is bound + listening (and discovery is
+    written) *before* the serving thread starts — no startup race — and so the
+    test owns shutdown deterministically (no leaked daemon threads clobbering
+    later tests).
+    """
+    httpd, info = daemon_mod.create_server(host="127.0.0.1", port=0, auth=True, registry=registry)
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
-    client = None
-    for _ in range(200):  # up to ~20s — CI runners (esp. macOS) can be slow to bind
-        client = daemon_client.connect()
-        if client is not None:
-            break
-        time.sleep(0.1)
-    assert client is not None, "daemon did not come up"
-    yield client
     try:
-        client.shutdown()
-    except Exception:
-        pass
+        client = None
+        for _ in range(100):  # socket is already listening; this is near-instant
+            client = daemon_client.connect()
+            if client is not None:
+                break
+            time.sleep(0.05)
+        assert client is not None, "daemon did not come up"
+        yield client
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
+        daemon_mod.clear_discovery()
+        t.join(timeout=5)
 
 
 def test_e2e_health_query_stats(running_daemon, tmp_path):
