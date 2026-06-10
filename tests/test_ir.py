@@ -315,9 +315,15 @@ def test_valid_synapse_between_known_nodes_is_clean():
 
 
 def test_project_artifact_resolves_under_root(tmp_path):
+    import os
+
     art = ir_mod.project_artifact(tmp_path, ".neuralmind", "index_ir.json")
-    assert art == (tmp_path.resolve() / ".neuralmind" / "index_ir.json")
-    assert art.is_relative_to(tmp_path.resolve())
+    assert art.name == "index_ir.json"
+    assert art.parent.name == ".neuralmind"
+    # Stays within the (abspath-normalized) project root — no symlink resolution,
+    # so compare against abspath, not resolve() (which differs on macOS tmpdirs).
+    base = os.path.abspath(tmp_path)
+    assert os.path.commonpath([base, str(art)]) == base
 
 
 def test_project_artifact_rejects_traversal(tmp_path):

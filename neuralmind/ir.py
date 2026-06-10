@@ -25,6 +25,7 @@ without the full embedding dep set.
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -167,16 +168,18 @@ def project_artifact(project_path: str | Path, *parts: str) -> Path:
 
     The daemon accepts a project path over HTTP and the CLI takes one as an
     argument, so a project root flows from external input into filesystem
-    reads/writes. Resolving the base and confirming the (constant-suffix)
-    artifact stays within it neutralizes any path traversal in the supplied
-    root before it reaches a file operation — a single choke point so no caller
-    builds an unchecked path from untrusted input.
+    reads/writes. Normalizing the base and confirming the (constant-suffix)
+    artifact stays within it — via ``os.path.commonpath`` — neutralizes any
+    path traversal in the supplied root before it reaches a file operation. A
+    single choke point so no caller builds an unchecked path from untrusted
+    input. Pure string normalization (no symlink resolution), so it stays a
+    barrier and never itself becomes a filesystem access.
     """
-    base = Path(project_path).resolve()
-    target = base.joinpath(*parts).resolve()
-    if target != base and not target.is_relative_to(base):
+    base = os.path.abspath(project_path)
+    target = os.path.normpath(os.path.join(base, *parts))
+    if base != target and os.path.commonpath([base, target]) != base:
         raise ValueError(f"artifact path {target} escapes project root {base}")
-    return target
+    return Path(target)
 
 
 def _kind_for_node(node: dict) -> str:
