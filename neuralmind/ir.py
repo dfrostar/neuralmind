@@ -608,7 +608,9 @@ def to_graph_json(ir: IndexIR) -> dict[str, Any]:
             "label": n.label,
             "file_type": n.raw_kind or _coarse_file_type(n.kind),
             "source_file": n.source_file,
-            "source_location": f"L{max(n.line, 0)}" if n.line else "L1",
+            # Preserve the exact line, including 0 -> "L0", so a graph using
+            # "L0" round-trips identically (don't coerce 0 to "L1").
+            "source_location": f"L{max(n.line, 0)}",
             "id": n.id,
             "community": n.cluster,
             "norm_label": n.norm_label,
@@ -623,7 +625,7 @@ def to_graph_json(ir: IndexIR) -> dict[str, Any]:
             "context": e.context or e.relation,
             "confidence": e.confidence,
             "source_file": e.source_file,
-            "source_location": f"L{max(e.line, 0)}" if e.line else "L1",
+            "source_location": f"L{max(e.line, 0)}",  # preserve 0 -> "L0" (round-trip)
             "weight": e.weight,
             "source": e.source,
             "target": e.target,

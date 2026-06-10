@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from .daemon import _pid_alive, clear_discovery, read_discovery
@@ -81,7 +82,7 @@ class DaemonClient:
         return self._request("POST", "/search", {"project": project, "query": query, "n": n})
 
     def stats(self, project: str) -> dict:
-        return self._request("GET", f"/stats?project={urllib.request.quote(project)}")
+        return self._request("GET", f"/stats?project={urllib.parse.quote(project)}")
 
     def build(self, project: str, force: bool = False, sync: bool = False) -> dict:
         return self._request(

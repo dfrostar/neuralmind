@@ -172,6 +172,17 @@ def test_round_trip_preserves_consumed_fields():
             assert back_edges[key][f] == orig[f], f"edge {key}.{f}"
 
 
+def test_round_trip_preserves_l0_line():
+    """A node/edge at source_location 'L0' must round-trip as 'L0', not 'L1'."""
+    graph = _synthetic_graph()
+    graph["nodes"][1]["source_location"] = "L0"
+    graph["links"][0]["source_location"] = "L0"
+    back = ir_mod.to_graph_json(ir_mod.from_graph_json(graph))
+    node = next(n for n in back["nodes"] if n["id"] == "app_py_handle")
+    assert node["source_location"] == "L0"
+    assert back["links"][0]["source_location"] == "L0"
+
+
 def test_round_trip_preserves_top_level_metadata():
     graph = _synthetic_graph()
     back = ir_mod.to_graph_json(ir_mod.from_graph_json(graph))
@@ -427,6 +438,19 @@ def test_validate_reports_unsupported_version():
     ir.ir_version = 999
     issues = ir_mod.validate_ir(ir)
     assert any(i.code == "unsupported_version" for i in issues)
+
+
+def test_cmd_validate_exits_nonzero_on_top_level_error(tmp_path):
+    """`neuralmind validate --json` must exit non-zero on a hard error (no graph),
+    not just on a failed validation block."""
+    from types import SimpleNamespace
+
+    from neuralmind import cli
+
+    args = SimpleNamespace(project_path=str(tmp_path), write=False, json=True)
+    with pytest.raises(SystemExit) as exc:
+        cli.cmd_validate(args)
+    assert exc.value.code == 1
 
 
 def test_migrate_payload_passthrough_current_version():

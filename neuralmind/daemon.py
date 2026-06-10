@@ -66,8 +66,22 @@ def discovery_path() -> Path:
 
 def write_discovery(info: dict, path: Path | None = None) -> Path:
     path = path or discovery_path()
+    # The discovery file holds the daemon's bearer token (the only auth for the
+    # loopback endpoints), so keep it owner-only — otherwise another local user
+    # could read the token and drive the daemon. Restrict the dir too.
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(info, indent=2), encoding="utf-8")
+    try:
+        os.chmod(path.parent, 0o700)
+    except OSError:  # best-effort (e.g. Windows / unusual filesystems)
+        pass
+    # Create the file private *before* writing the token into it.
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(json.dumps(info, indent=2))
+    try:
+        os.chmod(path, 0o600)  # tighten even if the file pre-existed with a looser mode
+    except OSError:
+        pass
     return path
 
 
@@ -164,6 +178,9 @@ class ProjectRegistry:
                     mind.build()
                 self._built.add(key)
         return mind
+
+    def mark_built(self, project_path: str) -> None:
+        self._built.add(self._key(project_path))
 
     def mark_unbuilt(self, project_path: str) -> None:
         self._built.discard(self._key(project_path))
@@ -403,8 +420,9 @@ def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[i
         mind = ctx.registry.get(project)
         with ctx.registry.lock_for(project):
             result = mind.build(force=force)
-        ctx.registry.mark_unbuilt(project)  # re-mark so ensure_built is a no-op
-        ctx.registry._built.add(ctx.registry._key(project))
+            # Mark built *inside* the lock: otherwise a concurrent ensure_built
+            # could acquire the lock in the gap and trigger a redundant rebuild.
+            ctx.registry.mark_built(project)
         return result
 
     if sync:

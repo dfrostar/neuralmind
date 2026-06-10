@@ -104,6 +104,18 @@ def test_connect_none_when_no_discovery(daemon_home):
     assert daemon_client.is_running() is False
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX file modes")
+def test_write_discovery_is_owner_only(daemon_home):
+    """The discovery file holds the bearer token — it must be owner-only (0600)."""
+    import stat
+
+    path = daemon_mod.write_discovery(
+        {"host": "127.0.0.1", "port": 9, "token": "secret", "pid": os.getpid()}
+    )
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    assert mode == 0o600, f"token file mode {oct(mode)} is not 0600"
+
+
 # --------------------------------------------------------------------------- #
 # Registry: warm cache + locks
 # --------------------------------------------------------------------------- #
@@ -213,6 +225,17 @@ def test_dispatch_build_sync(registry, tmp_path):
         _ctx(registry), "POST", "/build", {"project": str(tmp_path), "sync": True}
     )
     assert status == 200 and payload["success"] is True
+
+
+def test_build_marks_built_under_lock(registry, tmp_path):
+    """A sync build records built-state (inside the lock) so a later
+    ensure_built is a no-op rather than a redundant rebuild."""
+    ctx = _ctx(registry)
+    daemon_mod.dispatch(ctx, "POST", "/build", {"project": str(tmp_path), "sync": True})
+    assert registry.is_built(str(tmp_path))
+    mind = registry.get(str(tmp_path))
+    registry.ensure_built(str(tmp_path))  # must NOT rebuild
+    assert mind.build_count == 1
 
 
 def test_dispatch_unknown_route(registry):

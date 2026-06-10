@@ -477,7 +477,10 @@ def cmd_validate(args):
             print("-" * 60)
             print(f"IR written to {result['written_to']}")
 
-    if not result.get("validation", {}).get("ok", True):
+    # Exit non-zero on a top-level error (e.g. no graph, unsupported IR version)
+    # as well as a failed validation — otherwise `validate --json` would exit 0
+    # in CI on a hard error, since those carry no "validation" block.
+    if result.get("error") or not result.get("validation", {}).get("ok", True):
         sys.exit(1)
 
 
