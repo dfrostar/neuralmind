@@ -141,7 +141,11 @@ keywords = [
     "daemon-first-architecture",
     "retrieval-trace",
     "explainable-retrieval",
-    "retrieval-debugging"
+    "retrieval-debugging",
+    "memory-namespaces",
+    "branch-isolated-memory",
+    "team-memory-bundle",
+    "memory-export-import"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

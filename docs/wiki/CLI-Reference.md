@@ -18,6 +18,7 @@ Complete command-line interface documentation for NeuralMind.
   - [eval](#eval-v0140)
   - [learn](#learn)
   - [next](#next-v0110)
+  - [memory](#memory-v0240)
   - [skeleton](#skeleton)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
@@ -751,7 +752,7 @@ learned **directional transition** graph. Pairs with the
 batched flush.
 
 ```bash
-neuralmind next <project_path> <from_node> [--n 5] [--json]
+neuralmind next <project_path> <from_node> [--n 5] [--namespace NAME] [--json]
 ```
 
 #### Arguments
@@ -766,6 +767,7 @@ neuralmind next <project_path> <from_node> [--n 5] [--json]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--n` | `5` | Top-N successors to return |
+| `--namespace` | merged | *(v0.24.0+)* Read one memory namespace at raw weights (e.g. `branch:feature-x`). Default is the merged view: active namespace 1.0× + `personal` 0.8× + `shared` 0.5× |
 | `--json`, `-j` | False | Output as JSON |
 
 #### Examples
@@ -794,6 +796,72 @@ and via Python as `SynapseStore.next_likely(from_node, top_k=5)`. The
 file watcher must have been running at some point for this to return
 results — fresh installs need a few sessions before the transition
 graph accumulates signal.
+
+---
+
+### memory *(v0.24.0+)*
+
+Namespace-level controls over the learned synapse memory (PRD 4). Every
+learned association carries a namespace — `personal` (default; all
+pre-v0.24 memory migrates here losslessly), `shared` (imported team
+baseline), `branch:<name>` (per-git-branch, detected automatically), and
+`ephemeral` (session scratch, cleared at session boundaries). All four
+subcommands work without a built index — the store is stdlib SQLite.
+
+```bash
+neuralmind memory inspect [project_path] [--namespace NAME] [--json]
+neuralmind memory reset   [project_path] --namespace NAME [--json]
+neuralmind memory export  [project_path] [--namespace NAME] [-o FILE]
+neuralmind memory import  <file> [--project-path PATH] [--namespace NAME] [--json]
+```
+
+#### Subcommands
+
+| Subcommand | What it does |
+|------------|--------------|
+| `inspect` | Contribution by namespace — edges, total weight, transitions, nodes — plus the active namespace and schema version. Also folded into `neuralmind stats`. |
+| `reset` | Clear **one** namespace (`--namespace` is required). The project index and every other namespace are untouched — the surgical alternative to a full retrain. |
+| `export` | Write one namespace as a portable, versioned JSON bundle reusing the IR's `IRSynapse` shape (the PRD 8 team-memory on-ramp). Defaults to the active namespace; `-o` writes a file, otherwise stdout. |
+| `import` | Validate a bundle (format + version + entries) and merge it into a target namespace (default: the bundle's own). Merging keeps the MAX of weight/count per edge, so re-importing the same bundle is **idempotent**. A malformed bundle is rejected wholesale — never partially imported. |
+
+#### Examples
+
+```bash
+# What has the agent learned, and where does it live?
+neuralmind memory inspect .
+
+# A feature branch merged — drop exactly its memory
+neuralmind memory reset . --namespace branch:feature-x
+
+# Ship a team baseline to a new teammate
+neuralmind memory export . --namespace personal -o team-baseline.json
+neuralmind memory import team-baseline.json --namespace shared
+```
+
+#### How the active namespace is resolved
+
+`NEURALMIND_NAMESPACE` env var → `memory_namespace:` in
+`neuralmind-backend.yaml` → `branch:<name>` when the repo is on a
+non-default git branch (best-effort `git rev-parse`, 3s timeout) →
+`personal`. A non-repo, detached HEAD, or missing git all degrade safely
+to `personal`.
+
+#### Merged-read weighting
+
+Recall, `next`, and stats default to a merged view with explicit,
+published constants (`neuralmind/synapses.py`):
+
+```
+merged_weight = 1.0 × active  +  0.8 × personal  +  0.5 × shared
+                (W_BRANCH)       (W_PERSONAL)        (W_SHARED)
+```
+
+On the default branch the active namespace *is* `personal` (read at
+1.0×), so behavior is identical to pre-namespace releases. Per-namespace
+decay: `shared` is sticky, `personal`/`branch:*` decay at the standard
+rates, `ephemeral` fades fast with no LTP floor. Traced queries
+(`query --trace`) attribute each synapse boost to its namespace via
+`namespace_contribution`.
 
 ---
 
@@ -1255,6 +1323,7 @@ neuralmind daemon stop
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
+| `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 
 ---

@@ -79,8 +79,10 @@ def _top_pairs(db_path: Path, limit: int, min_weight: float) -> list[tuple[str, 
     """Read the top N strongest synapse pairs directly from the DB.
 
     We bypass SynapseStore's query helpers so we can grab weight +
-    activation_count in one round trip, ordered. Tolerates a missing or
-    locked DB by returning an empty list.
+    activation_count in one round trip, ordered. Pairs aggregate across
+    memory namespaces (PRD 4) so a pair learned on both a branch and
+    ``personal`` renders once. Tolerates a missing or locked DB by
+    returning an empty list.
     """
     if not db_path.exists():
         return []
@@ -89,9 +91,11 @@ def _top_pairs(db_path: Path, limit: int, min_weight: float) -> list[tuple[str, 
         try:
             cur = conn.execute(
                 """
-                SELECT node_a, node_b, weight, activation_count
+                SELECT node_a, node_b, SUM(weight) AS weight,
+                       SUM(activation_count) AS activation_count
                 FROM synapses
-                WHERE weight >= ?
+                GROUP BY node_a, node_b
+                HAVING weight >= ?
                 ORDER BY weight DESC, activation_count DESC
                 LIMIT ?
                 """,
@@ -139,10 +143,14 @@ def _top_transition_groups(
                 return []
             groups: list[tuple[str, list[tuple[str, float, int]]]] = []
             for from_node in from_nodes:
+                # Aggregate across memory namespaces (PRD 4) so one
+                # successor never renders twice for a from_node.
                 cur = conn.execute(
                     """
-                    SELECT to_node, weight, count FROM synapse_transitions
+                    SELECT to_node, SUM(weight) AS weight, SUM(count) AS count
+                    FROM synapse_transitions
                     WHERE from_node = ?
+                    GROUP BY to_node
                     ORDER BY weight DESC
                     """,
                     (from_node,),
