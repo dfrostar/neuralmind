@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import subprocess
+from pathlib import Path
 
 from neuralmind import namespaces
 from neuralmind.ir import (
@@ -541,6 +542,68 @@ def test_invalid_env_override_degrades_to_detection(tmp_path, monkeypatch):
     _mock_git(monkeypatch, branch="feature-x", default_branch="main")
     resolved = namespaces.resolve_namespace(tmp_path, env={"NEURALMIND_NAMESPACE": "   "})
     assert resolved == "branch:feature-x"
+
+
+# ---------------------------------------------------------------------------
+# Branch switches in long-lived processes (daemon registry / MCP mind cache)
+# ---------------------------------------------------------------------------
+
+
+def test_head_fingerprint_changes_on_checkout(tmp_path):
+    assert namespaces.head_fingerprint(tmp_path) is None  # not a repo
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir()
+    (git_dir / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+    first = namespaces.head_fingerprint(tmp_path)
+    assert first == "ref: refs/heads/main"
+    (git_dir / "HEAD").write_text("ref: refs/heads/feature-x\n", encoding="utf-8")
+    assert namespaces.head_fingerprint(tmp_path) != first
+
+
+def test_head_fingerprint_follows_worktree_gitdir_pointer(tmp_path):
+    real = tmp_path / "repo.git"
+    real.mkdir()
+    (real / "HEAD").write_text("ref: refs/heads/wt-branch\n", encoding="utf-8")
+    project = tmp_path / "wt"
+    project.mkdir()
+    (project / ".git").write_text(f"gitdir: {real}\n", encoding="utf-8")
+    assert namespaces.head_fingerprint(project) == "ref: refs/heads/wt-branch"
+
+
+def test_warm_instance_follows_branch_switch(tmp_path, monkeypatch):
+    """A long-lived NeuralMind (daemon registry, MCP mind cache) must notice
+    a `git checkout` and re-target the synapse store — branch isolation
+    can't require a process restart."""
+    from neuralmind.core import NeuralMind
+
+    monkeypatch.delenv("NEURALMIND_NAMESPACE", raising=False)
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir()
+    head = git_dir / "HEAD"
+    head.write_text("ref: refs/heads/main\n", encoding="utf-8")
+
+    def fake_branch(project_path):
+        ref = (Path(project_path) / ".git" / "HEAD").read_text(encoding="utf-8").strip()
+        return ref.rsplit("/", 1)[-1]
+
+    monkeypatch.setattr(namespaces, "detect_git_branch", fake_branch)
+    monkeypatch.setattr(namespaces, "detect_default_branch", lambda p: "main")
+
+    mind = NeuralMind(str(tmp_path), backend_type="in_memory")
+    assert mind.memory_namespace == DEFAULT_NAMESPACE
+    mind.synapses.reinforce(["a", "b"])
+
+    head.write_text("ref: refs/heads/feature-x\n", encoding="utf-8")  # `git checkout`
+
+    assert mind.memory_namespace == "branch:feature-x"
+    store = mind.synapses
+    assert store.namespace == "branch:feature-x"
+    store.reinforce(["a", "c"])
+    # New writes land branch-local; the personal memory is untouched.
+    branch_pairs = {(a, b) for a, b, _, _ in store.edges(namespaces=["branch:feature-x"])}
+    personal_pairs = {(a, b) for a, b, _, _ in store.edges(namespaces=[DEFAULT_NAMESPACE])}
+    assert branch_pairs == {("a", "c")}
+    assert personal_pairs == {("a", "b")}
 
 
 # ---------------------------------------------------------------------------

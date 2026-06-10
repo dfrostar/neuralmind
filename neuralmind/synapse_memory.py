@@ -95,7 +95,7 @@ def _top_pairs(db_path: Path, limit: int, min_weight: float) -> list[tuple[str, 
                        SUM(activation_count) AS activation_count
                 FROM synapses
                 GROUP BY node_a, node_b
-                HAVING weight >= ?
+                HAVING SUM(weight) >= ?
                 ORDER BY weight DESC, activation_count DESC
                 LIMIT ?
                 """,

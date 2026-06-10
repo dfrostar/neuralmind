@@ -417,7 +417,9 @@ class SynapseStore:
         land in ``namespace`` (default: the store's active namespace).
         """
         ids = [n for n in dict.fromkeys(node_ids) if n]
-        if len(ids) < 2 and not ids:
+        # A single node creates no pairs but still bumps its activation
+        # counter — lone activations feed the hub/stats signals.
+        if not ids:
             return 0
         ns = normalize_namespace(namespace) if namespace else self.namespace
         ts = now if now is not None else time.time()

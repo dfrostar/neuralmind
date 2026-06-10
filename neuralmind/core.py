@@ -170,6 +170,7 @@ class NeuralMind:
         self._synapses_lock = threading.Lock()
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
+        self._head_fingerprint: str | None = None
 
     @property
     def backend_name(self) -> str:
@@ -179,17 +180,26 @@ class NeuralMind:
     def memory_namespace(self) -> str:
         """The active synapse-memory namespace for this project (PRD 4).
 
-        Resolved once per instance: explicit constructor override →
+        Resolution order: explicit constructor override →
         ``NEURALMIND_NAMESPACE`` → the backend config's ``memory_namespace``
         → ``branch:<name>`` on a non-default git branch → ``personal``.
+
+        Long-lived processes (the daemon's warm registry, the MCP server's
+        mind cache) keep one NeuralMind per project across ``git checkout``s,
+        so the resolved value can't be cached forever — that would keep
+        writing a switched-away branch's memory. Instead the cache is keyed
+        on a ``.git/HEAD`` fingerprint (a microsecond file read, no
+        subprocess): the namespace re-resolves only when the checkout
+        actually changes.
         """
-        if self._memory_namespace is None:
-            if self._memory_namespace_override:
-                self._memory_namespace = self._memory_namespace_override
-            else:
-                self._memory_namespace = ns_mod.resolve_namespace(
-                    self.project_path, config=self.backend_manager.config
-                )
+        if self._memory_namespace_override:
+            return self._memory_namespace_override
+        fingerprint = ns_mod.head_fingerprint(self.project_path)
+        if self._memory_namespace is None or fingerprint != self._head_fingerprint:
+            self._memory_namespace = ns_mod.resolve_namespace(
+                self.project_path, config=self.backend_manager.config
+            )
+            self._head_fingerprint = fingerprint
         return self._memory_namespace
 
     @property
@@ -200,17 +210,22 @@ class NeuralMind:
         ``<project>/.neuralmind/synapses.db`` so it persists across
         sessions and can be inspected or reset independently. Writes land
         in :attr:`memory_namespace`; reads default to the merged view
-        documented in :mod:`neuralmind.synapses`.
+        documented in :mod:`neuralmind.synapses`. When a branch switch
+        changes the active namespace, the store is reopened on that
+        namespace so a warm daemon/MCP process keeps branch isolation
+        without a restart.
         """
         if not self.enable_synapses:
             return None
-        if self._synapses is None:
+        namespace = self.memory_namespace
+        store = self._synapses
+        if store is None or getattr(store, "namespace", namespace) != namespace:
             with self._synapses_lock:
-                if self._synapses is None:
-                    self._synapses = SynapseStore(
-                        default_db_path(self.project_path), namespace=self.memory_namespace
-                    )
-        return self._synapses
+                store = self._synapses
+                if store is None or getattr(store, "namespace", namespace) != namespace:
+                    store = SynapseStore(default_db_path(self.project_path), namespace=namespace)
+                    self._synapses = store
+        return store
 
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
         """Feed an activation signal into the synapse layer.

@@ -844,7 +844,9 @@ neuralmind memory import team-baseline.json --namespace shared
 `neuralmind-backend.yaml` → `branch:<name>` when the repo is on a
 non-default git branch (best-effort `git rev-parse`, 3s timeout) →
 `personal`. A non-repo, detached HEAD, or missing git all degrade safely
-to `personal`.
+to `personal`. Long-lived processes (the daemon, the MCP server) detect a
+`git checkout` between writes via a cheap `.git/HEAD` fingerprint and
+re-resolve automatically — no restart needed.
 
 #### Merged-read weighting
 
