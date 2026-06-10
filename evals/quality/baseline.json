@@ -1,0 +1,51 @@
+{
+  "_comment": "Measured retrieval-quality baseline for the golden suites (PRD 2). Regenerate with: neuralmind benchmark --quality --json. Used by --baseline for delta reporting; the hard CI gate uses the absolute floors in evals/quality/harness.py (DEFAULT_THRESHOLDS).",
+  "_tokenizer": "chromadb default all-MiniLM-L6-v2 (onnx)",
+  "suites": {
+    "go": {
+      "mrr": 0.95,
+      "answerability": 1.0,
+      "mean_precision": {
+        "1": 0.9,
+        "3": 0.6167,
+        "5": 0.6033
+      },
+      "mean_recall": {
+        "1": 0.6167,
+        "3": 0.8333,
+        "5": 0.8333
+      },
+      "n_queries": 10
+    },
+    "python": {
+      "mrr": 0.9,
+      "answerability": 1.0,
+      "mean_precision": {
+        "1": 0.8,
+        "3": 0.6333,
+        "5": 0.6117
+      },
+      "mean_recall": {
+        "1": 0.5167,
+        "3": 0.8333,
+        "5": 0.8333
+      },
+      "n_queries": 10
+    },
+    "typescript": {
+      "mrr": 0.9,
+      "answerability": 1.0,
+      "mean_precision": {
+        "1": 0.8,
+        "3": 0.5833,
+        "5": 0.5617
+      },
+      "mean_recall": {
+        "1": 0.5833,
+        "3": 0.8,
+        "5": 0.8
+      },
+      "n_queries": 10
+    }
+  }
+}

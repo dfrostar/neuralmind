@@ -75,6 +75,9 @@ def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     except ir_mod.IRError as exc:
         return {"ok": False, "error": str(exc)}
 
+    # Fold in learned synapses (backend-free: the store is stdlib sqlite).
+    index_ir.synapses = ir_mod.load_synapses_for_project(project_path)
+
     issues = ir_mod.validate_ir(index_ir)
     summary = index_ir.summary()
     summary["validation"] = ir_mod.validation_summary(issues)
@@ -371,6 +374,14 @@ class NeuralMind:
             index_ir = ir_mod.from_graph_json(
                 graph, source_backend=self.backend_manager.backend_name
             )
+            # Fold the learned synapse layer into the IR as canonical entities.
+            if self.enable_synapses and self._synapses is not None:
+                try:
+                    index_ir.synapses = ir_mod.synapses_from_edges(
+                        self._synapses.edges(min_weight=0.0, limit=5000)
+                    )
+                except Exception:  # pragma: no cover - synapses are optional
+                    pass
             issues = ir_mod.validate_ir(index_ir)
             summary = index_ir.summary()
             summary["validation"] = ir_mod.validation_summary(issues)

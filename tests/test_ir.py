@@ -245,6 +245,97 @@ def test_summary_reports_counts_and_coverage():
 # --------------------------------------------------------------------------- #
 
 
+def test_callable_label_maps_to_function_kind():
+    """The built-in backend emits callables as ``name()``; the adapter reads
+    that convention as a function without touching the locked graph schema."""
+    graph = _synthetic_graph()
+    graph["nodes"].append(
+        {
+            "label": "authenticate()",
+            "file_type": "code",
+            "source_file": "app.py",
+            "source_location": "L30",
+            "id": "app_py_authenticate",
+            "community": 0,
+            "norm_label": "authenticate()",
+        }
+    )
+    ir = ir_mod.from_graph_json(graph)
+    by_id = {n.id: n for n in ir.nodes}
+    assert by_id["app_py_authenticate"].kind == "function"
+    # A non-call code symbol stays the generic "symbol" (no class guessing).
+    assert by_id["app_py_Server"].kind == "symbol"
+
+
+# --------------------------------------------------------------------------- #
+# Synapses (PRD 1 canonical entity)
+# --------------------------------------------------------------------------- #
+
+
+def test_synapses_from_edges():
+    rows = [("a", "b", 0.8, 3), ("b", "c", 0.4, 1)]
+    syn = ir_mod.synapses_from_edges(rows)
+    assert [(s.source, s.target, s.weight, s.kind) for s in syn] == [
+        ("a", "b", 0.8, "co_activation"),
+        ("b", "c", 0.4, "co_activation"),
+    ]
+
+
+def test_synapses_serialize_round_trip(tmp_path):
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = ir_mod.synapses_from_edges([("app_py", "app_py_handle", 0.9, 5)])
+    path = tmp_path / "ir.json"
+    ir.write(path)
+    reloaded = ir_mod.IndexIR.read(path)
+    assert len(reloaded.synapses) == 1
+    assert reloaded.synapses[0].source == "app_py"
+    assert reloaded.summary()["synapses"] == 1
+
+
+def test_validate_flags_stale_synapse_as_warning():
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [ir_mod.IRSynapse(source="app_py", target="ghost", weight=0.5)]
+    issues = ir_mod.validate_ir(ir)
+    assert not ir_mod.has_errors(issues)  # stale memory is not fatal
+    assert any(i.code == "stale_synapse" for i in issues)
+
+
+def test_validate_flags_synapse_missing_endpoint():
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [ir_mod.IRSynapse(source="app_py", target="", weight=0.5)]
+    issues = ir_mod.validate_ir(ir)
+    assert any(i.code == "synapse_missing_endpoint" and i.severity == "error" for i in issues)
+
+
+def test_valid_synapse_between_known_nodes_is_clean():
+    ir = ir_mod.from_graph_json(_synthetic_graph())
+    ir.synapses = [ir_mod.IRSynapse(source="app_py", target="app_py_handle", weight=0.7)]
+    issues = ir_mod.validate_ir(ir)
+    assert not any(i.code in ("stale_synapse", "synapse_missing_endpoint") for i in issues)
+
+
+def test_load_synapses_for_project_empty_when_no_store(tmp_path):
+    assert ir_mod.load_synapses_for_project(tmp_path) == []
+
+
+def test_load_synapses_for_project_reads_real_store(tmp_path):
+    """End-to-end: a populated SQLite synapse store is folded into the IR
+    (backend-free — the store is stdlib sqlite)."""
+    from neuralmind.synapses import SynapseStore
+
+    db = tmp_path / ".neuralmind" / "synapses.db"
+    db.parent.mkdir(parents=True)
+    store = SynapseStore(db)
+    store.reinforce(["app_py", "app_py_handle", "app_py_Server"], strength=1.0)
+
+    syn = ir_mod.load_synapses_for_project(tmp_path)
+    assert syn, "expected synapses loaded from the store"
+    assert all(s.kind == "co_activation" and s.weight > 0 for s in syn)
+    pairs = {(s.source, s.target) for s in syn}
+    # reinforce() adds undirected pairwise edges across the activated set.
+    assert ("app_py", "app_py_handle") in pairs or ("app_py_handle", "app_py") in pairs
+
+
 def test_validate_clean_graph_has_no_errors():
     ir = ir_mod.from_graph_json(_synthetic_graph())
     issues = ir_mod.validate_ir(ir)

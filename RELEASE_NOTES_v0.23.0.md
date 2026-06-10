@@ -37,11 +37,12 @@ migration seam — without a rebuild.
 - **`neuralmind validate`.** Validates the IR without standing up a vector
   backend (the decoupling is the point — it needs no ChromaDB/turbovec). It
   reports the contract version, adapter metadata, node-kind and language
-  breakdowns, and any issues:
+  breakdowns, learned-synapse count, and any issues:
   - **errors** — dangling edge endpoints, missing endpoints, duplicate node
-    ids, unsupported IR version;
+    ids, malformed synapse endpoints, unsupported IR version;
   - **warnings** — orphaned (edgeless) nodes, unknown node kinds, unknown edge
-    relations (forward-compatibility signals for new backends).
+    relations, and **stale synapses** (learned memory pointing at nodes a
+    rebuild removed — harmless but prunable).
 
   `neuralmind validate --write` (re)materializes the IR to `.neuralmind/` — the
   **in-place migration** path for a project that predates the IR, no rebuild
@@ -54,6 +55,21 @@ migration seam — without a rebuild.
   weight / confidence). Non-standard producer fields are preserved verbatim, so
   upgrades don't silently drop information. A test exercises this on a real
   graphify fixture.
+
+- **Learned synapses are first-class IR entities.** The IR folds in the
+  Hebbian co-activation layer from the SQLite synapse store as canonical
+  `IRSynapse` records — on `build` (from the live store) and in `validate`
+  (read backend-free, since the store is stdlib `sqlite3`). So the learned
+  memory travels with the index, validated alongside it, ready for the
+  portable team-memory bundles of PRD 8.
+
+- **Coarse-but-honest kinds.** The `graph.json` schema is deliberately locked
+  to graphify's shape (a parity test enforces it), so the adapter infers kind
+  from the only signals it has: `file_type` plus the label convention the
+  built-in backend emits — a call-form label (`name()`) maps to `function`,
+  file anchors to `file`, docs/rationale to `document`, everything else to the
+  generic `symbol`. It never *guesses* a class, so coverage stays `coarse`; a
+  precise backend that carries real kind metadata is the path to `precise`.
 
 - **IR metadata in `build` and `stats`.** `neuralmind build` prints an
   `IR: v1 (valid)` line; `neuralmind stats` (and the `build_stats`) now carry an
@@ -134,10 +150,14 @@ files. v0.23.0 adds the relevance fitness function that catches that.
   for dashboards. Like `neuralmind eval`, it's a contributor/CI self-test
   against suites that ship with the source repo (`evals/quality/`).
 
-- **CI gate.** A dependency-free `--selfcheck` validates the golden suites and
-  metric math, and `tests/test_quality_harness.py` runs the suite under pytest
-  (the retrieval-backed run is gated on a built fixture). The rollout follows
-  the PRD: internal suite now → CI-required for retrieval-affecting PRs next.
+- **CI gate (live).** The self-benchmark workflow runs the eval on every PR
+  and **fails the build if any suite drops below the quality floors** — wired
+  where real embeddings work (the unit-test job firewalls the model download).
+  A measured **baseline ships in the repo** (`evals/quality/baseline.json`):
+  Python MRR 0.90 / TS 0.90 / Go 0.95, answerability 100%, recall@5 0.80–0.83;
+  the PR comment shows per-suite metrics and deltas vs that baseline. A
+  dependency-free `--selfcheck` validates the suites + metric math everywhere,
+  and `tests/test_quality_harness.py` adds an env-gated end-to-end check.
 
 ```bash
 # Score retrieval quality across all golden suites (CI self-test)

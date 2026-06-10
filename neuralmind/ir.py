@@ -165,25 +165,34 @@ def _looks_like_filename(label: str) -> bool:
 def _kind_for_node(node: dict) -> str:
     """Best-effort canonical kind for a graphify node.
 
-    graphify granularity is coarse: ``file_type`` is code / rationale /
-    document. We map the file-level node to ``file``/``document`` and every
-    other code node to the generic ``symbol`` (a precise backend later splits
-    that into function/class/method). The mapping is recorded as ``coarse``
-    coverage so nothing pretends to know more than the parser did.
+    The ``graph.json`` schema is intentionally locked to graphify's shape
+    (built-in/graphify parity is enforced by a test), so the only kind signal
+    available is ``file_type`` (code / rationale / document) plus the label
+    convention. We use both:
+
+    - ``document`` / ``rationale`` → ``document``;
+    - a code node whose location anchors a file → ``file``;
+    - a code node whose label is a call form (``name()`` — the convention the
+      built-in tree-sitter backend emits for functions and methods) →
+      ``function``;
+    - everything else (classes, fields, constants, and any producer that
+      doesn't follow the call-form convention) → the generic ``symbol``.
+
+    This stays deliberately conservative — it never *guesses* a class — so the
+    build records ``coarse`` coverage. A precise backend that carries real kind
+    metadata is the path to ``precise`` (see :data:`COVERAGE_PRECISE`).
     """
     file_type = str(node.get("file_type", "")).lower()
     label = str(node.get("label", ""))
     location = node.get("source_location", "")
     is_file_anchor = location in ("L1", "L0", 1, 0) and _looks_like_filename(label)
 
-    if file_type == "document":
-        # The markdown file node anchors heading nodes; headings are sections.
-        return "document" if is_file_anchor else "document"
-    if file_type == "rationale":
+    if file_type in ("document", "rationale"):
         return "document"
-    # file_type == "code" (or anything else): file anchor vs symbol.
     if is_file_anchor:
         return "file"
+    if label.endswith(")"):  # graphgen emits callables as ``name()``
+        return "function"
     return "symbol"
 
 
@@ -618,6 +627,45 @@ def _coarse_file_type(kind: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Synapses
+# --------------------------------------------------------------------------- #
+
+
+def synapses_from_edges(edge_rows: Iterable[tuple]) -> list[IRSynapse]:
+    """Build canonical synapses from a synapse store's ``edges()`` rows.
+
+    Each row is ``(node_a, node_b, weight, activation_count)`` (the shape
+    :meth:`neuralmind.synapses.SynapseStore.edges` returns). Learned
+    co-activation associations are first-class IR entities so they travel with
+    the index (and, later, with the portable team-memory bundles of PRD 8).
+    """
+    out: list[IRSynapse] = []
+    for row in edge_rows:
+        a, b, weight = row[0], row[1], float(row[2])
+        out.append(IRSynapse(source=str(a), target=str(b), weight=weight, kind="co_activation"))
+    return out
+
+
+def load_synapses_for_project(project_path: str | Path) -> list[IRSynapse]:
+    """Load learned synapses for a project from its SQLite store, if present.
+
+    Backend-free (the synapse store is stdlib ``sqlite3``), so ``validate`` can
+    fold synapses into the IR without standing up an embedding backend. Returns
+    an empty list when there's no store or it can't be read.
+    """
+    db = Path(project_path) / ".neuralmind" / "synapses.db"
+    if not db.exists():
+        return []
+    try:
+        from .synapses import SynapseStore
+
+        store = SynapseStore(db)
+        return synapses_from_edges(store.edges(min_weight=0.0, limit=5000))
+    except Exception:  # pragma: no cover - defensive; synapses are optional
+        return []
+
+
+# --------------------------------------------------------------------------- #
 # Validation (FR5)
 # --------------------------------------------------------------------------- #
 
@@ -732,6 +780,33 @@ def validate_ir(ir: IndexIR) -> list[ValidationIssue]:
             issues.append(
                 ValidationIssue("warning", "orphaned_node", f"Node {nid!r} has no edges.")
             )
+
+    # Synapses: learned associations may legitimately outlive the nodes they
+    # were learned on (a file gets deleted, its memory lingers), so a synapse
+    # pointing at an unknown node is a *warning* (stale), not an error — but an
+    # empty endpoint is malformed.
+    stale = 0
+    for s in ir.synapses:
+        if not s.source or not s.target:
+            issues.append(
+                ValidationIssue(
+                    "error",
+                    "synapse_missing_endpoint",
+                    f"Synapse is missing a source or target ({s.source!r} → {s.target!r}).",
+                )
+            )
+            continue
+        if s.source not in node_ids or s.target not in node_ids:
+            stale += 1
+    if stale:
+        issues.append(
+            ValidationIssue(
+                "warning",
+                "stale_synapse",
+                f"{stale} learned synapse(s) reference nodes not in the current index "
+                "(memory predates a rebuild; harmless but prunable).",
+            )
+        )
 
     return issues
 

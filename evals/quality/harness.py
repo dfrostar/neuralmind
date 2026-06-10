@@ -8,7 +8,9 @@ ranking against the suite's ``expected_modules`` with ``neuralmind.quality``.
 
 from __future__ import annotations
 
+import contextlib
 import json
+import sys
 from dataclasses import dataclass
 
 from neuralmind import quality
@@ -63,34 +65,39 @@ def run_suite(
     suite: Suite = load_suite(name)
     thresholds = thresholds or DEFAULT_THRESHOLDS
 
-    # Construct + build inside one guard: the embedding backend is imported
-    # lazily at NeuralMind() construction (chromadb/turbovec), so a missing
-    # stack surfaces here, not at the `import neuralmind` above. Convert any
-    # such failure into a RuntimeError so the CLI degrades to a clean message
-    # instead of a traceback.
-    try:
-        from neuralmind import NeuralMind
-        from neuralmind.core import GraphNotBuiltError
+    # Build + query with stdout redirected to stderr: the embedder prints graph
+    # load / embedding progress (and a one-time model download bar) to stdout,
+    # which would corrupt `--json`. Humans still see it on stderr; stdout stays
+    # pure for machine consumption.
+    with contextlib.redirect_stdout(sys.stderr):
+        # Construct + build inside one guard: the embedding backend is imported
+        # lazily at NeuralMind() construction (chromadb/turbovec), so a missing
+        # stack surfaces here, not at the `import neuralmind` above. Convert any
+        # such failure into a RuntimeError so the CLI degrades to a clean
+        # message instead of a traceback.
+        try:
+            from neuralmind import NeuralMind
+            from neuralmind.core import GraphNotBuiltError
 
-        nm = NeuralMind(str(suite.fixture_dir))
-        build = nm.build()
-        if not build.get("success", True):
-            raise RuntimeError(build.get("error", "build failed"))
-    except GraphNotBuiltError as exc:  # pragma: no cover - needs real env
-        raise RuntimeError(
-            f"no code graph for {suite.fixture_dir}; run `neuralmind build` first ({exc})"
-        ) from exc
-    except RuntimeError:
-        raise
-    except Exception as exc:  # pragma: no cover - only without deps
-        raise RuntimeError(
-            f"the quality A/B needs the retrieval stack (chromadb/turbovec etc.) ({exc})"
-        ) from exc
+            nm = NeuralMind(str(suite.fixture_dir))
+            build = nm.build()
+            if not build.get("success", True):
+                raise RuntimeError(build.get("error", "build failed"))
+        except GraphNotBuiltError as exc:  # pragma: no cover - needs real env
+            raise RuntimeError(
+                f"no code graph for {suite.fixture_dir}; run `neuralmind build` first ({exc})"
+            ) from exc
+        except RuntimeError:
+            raise
+        except Exception as exc:  # pragma: no cover - only without deps
+            raise RuntimeError(
+                f"the quality A/B needs the retrieval stack (chromadb/turbovec etc.) ({exc})"
+            ) from exc
 
-    per_query: list[quality.QueryQuality] = []
-    for q in suite.queries:
-        ranked = _ranked_modules(nm, q.question, SEARCH_K)
-        per_query.append(quality.evaluate_query(q.id, ranked, q.expected_modules, ks=REPORT_KS))
+        per_query: list[quality.QueryQuality] = []
+        for q in suite.queries:
+            ranked = _ranked_modules(nm, q.question, SEARCH_K)
+            per_query.append(quality.evaluate_query(q.id, ranked, q.expected_modules, ks=REPORT_KS))
 
     agg = quality.aggregate(name, per_query, ks=REPORT_KS)
     return SuiteReport(suite=agg, failures=thresholds.check(agg))
@@ -101,14 +108,29 @@ def run_suite(
 # --------------------------------------------------------------------------- #
 
 
+def _suite_baseline(baseline: dict | None, suite_name: str) -> dict | None:
+    """Resolve one suite's baseline metrics.
+
+    Accepts either a flat ``{suite: metrics}`` mapping or the committed
+    ``{"suites": {suite: metrics}, ...}`` wrapper (which also carries
+    ``_comment`` / provenance). Returns ``None`` when the suite is absent so a
+    partial baseline degrades gracefully.
+    """
+    if not baseline:
+        return None
+    suites = baseline.get("suites", baseline)
+    entry = suites.get(suite_name)
+    return entry if isinstance(entry, dict) else None
+
+
 def render_json(reports: list[SuiteReport], baseline: dict | None = None) -> str:
-    out = {"suites": []}
+    out: dict = {"suites": []}
     for rep in reports:
         entry = rep.suite.to_dict()
         entry["passed"] = rep.passed
         entry["failures"] = rep.failures
-        if baseline is not None:
-            base = baseline.get(rep.suite.suite, baseline)
+        base = _suite_baseline(baseline, rep.suite.suite)
+        if base is not None:
             entry["baseline_deltas"] = [
                 d.to_dict() for d in quality.compare_to_baseline(rep.suite, base)
             ]
@@ -135,13 +157,15 @@ def render_markdown(reports: list[SuiteReport], baseline: dict | None = None) ->
             for f in rep.failures:
                 lines.append(f"- {f}")
             lines.append("")
-        if baseline is not None:
-            base = baseline.get(rep.suite.suite, baseline)
+        base = _suite_baseline(baseline, rep.suite.suite)
+        if base is not None:
             deltas = quality.compare_to_baseline(rep.suite, base)
             if deltas:
                 lines.append(f"**`{rep.suite.suite}` vs baseline:**")
                 for d in deltas:
-                    arrow = "▲" if d.delta > 0 else ("▼" if d.delta < 0 else "=")
+                    # Treat sub-0.0005 movement as unchanged so display rounding
+                    # never shows a misleading "▼ -0.000".
+                    arrow = "▲" if d.delta > 5e-4 else ("▼" if d.delta < -5e-4 else "=")
                     lines.append(f"- {d.metric}: {d.current:.3f} ({arrow} {d.delta:+.3f})")
                 lines.append("")
     lines.append(f"**Overall: {'PASS' if all(r.passed for r in reports) else 'FAIL'}**")

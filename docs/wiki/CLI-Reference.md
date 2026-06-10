@@ -381,26 +381,32 @@ neuralmind benchmark --quality
 # One language, machine-readable
 neuralmind benchmark --quality --suite go --json
 
-# Compare against a saved baseline (reports metric deltas)
-neuralmind benchmark --quality --suite go --baseline baseline_go.json
+# Compare against the committed measured baseline (reports metric deltas)
+neuralmind benchmark --quality --baseline evals/quality/baseline.json
 
-# Dependency-free validation of the suites + metric math
+# Dependency-free validation of the suites + metric math (no embeddings)
 python -m evals.quality.runner --selfcheck
 ```
 
-Sample (markdown) output:
+Sample (markdown) output — measured on the committed fixtures:
 
 ```
 ## NeuralMind retrieval-quality eval
 
 | Suite | Queries | MRR | Answerability | Recall@5 | Precision@5 | Gate |
 |-------|--------:|----:|--------------:|---------:|------------:|:----:|
-| `python`     | 10 | 0.842 | 100% | 0.733 | 0.300 | PASS |
-| `typescript` | 10 | 0.808 |  90% | 0.700 | 0.280 | PASS |
-| `go`         | 10 | 0.795 |  90% | 0.690 | 0.275 | PASS |
+| `go`         | 10 | 0.950 | 100% | 0.833 | 0.603 | PASS |
+| `python`     | 10 | 0.900 | 100% | 0.833 | 0.612 | PASS |
+| `typescript` | 10 | 0.900 | 100% | 0.800 | 0.562 | PASS |
 
 **Overall: PASS**
 ```
+
+The exit code is non-zero if any suite drops below the floors in
+`evals/quality/harness.py` (`DEFAULT_THRESHOLDS`), so CI can gate on it. The
+measured baseline lives at `evals/quality/baseline.json`; the self-benchmark
+workflow runs this on every PR (where real embeddings are available) and posts
+the table + baseline deltas as a PR comment.
 
 #### Sample Output
 
@@ -526,12 +532,15 @@ neuralmind validate [project_path] [OPTIONS]
 #### What it checks
 
 - **errors** (exit code `1`): dangling edge endpoints, missing endpoints,
-  duplicate node ids, unsupported (too-new) `ir_version`.
+  duplicate node ids, malformed synapse endpoints, unsupported (too-new)
+  `ir_version`.
 - **warnings**: orphaned (edgeless) nodes, unknown node kinds, unknown edge
-  relations — forward-compatibility signals for new ingestion backends.
+  relations, and **stale synapses** (learned memory pointing at nodes a
+  rebuild removed) — forward-compatibility / hygiene signals.
 
 It also reports the IR contract version, source backend + producer schema
-version, coverage (`coarse`/`precise`), and per-kind / per-language counts.
+version, coverage (`coarse`/`precise`), per-kind / per-language counts, and the
+learned-synapse count (folded in backend-free from the SQLite store).
 
 #### Examples
 
@@ -553,12 +562,17 @@ IR version:      1
 Source backend:  neuralmind.graphgen (tree-sitter)
 Source schema:   v1
 Coverage:        coarse
-Entities:        241 nodes, 203 edges, 93 clusters
-Node kinds:      document=39, file=38, symbol=164
-Languages:       python=241
+Entities:        135 nodes, 185 edges, 18 clusters
+Node kinds:      document=56, file=13, function=41, symbol=25
+Languages:       python=135
 ------------------------------------------------------------
 VALID — 0 errors, 0 warning(s).
 ```
+
+> `function` is inferred from the built-in backend's call-form labels
+> (`name()`); a producer that doesn't follow that convention maps those to the
+> generic `symbol`. Learned synapses, when a `.neuralmind/synapses.db` exists,
+> are folded in and shown in the `--json` `synapses` count.
 
 > The IR is also exposed as a public Python API:
 > `from neuralmind import IndexIR, from_graph_json, validate_ir, validate_project`.
