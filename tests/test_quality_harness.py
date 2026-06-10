@@ -90,17 +90,28 @@ _QUALITY_EVAL_ENABLED = bool(os.environ.get("NEURALMIND_QUALITY_EVAL"))
 _BASELINE_PATH = REPO_ROOT / "evals" / "quality" / "baseline.json"
 
 
+def _hermetic_fixture(suite_name: str, tmp_path) -> str:
+    """Copy a suite's committed fixture into tmp so the build never mutates the
+    repo tree or cross-contaminates other tests in the same session."""
+    import shutil
+
+    src = runner.load_suite(suite_name).fixture_dir
+    dst = tmp_path / src.name
+    shutil.copytree(src, dst)
+    return str(dst)
+
+
 @pytest.mark.skipif(
     not _QUALITY_EVAL_ENABLED,
     reason="set NEURALMIND_QUALITY_EVAL=1 (needs real embeddings); runs in the self-benchmark workflow",
 )
 @pytest.mark.parametrize("suite_name", ["python", "typescript", "go"])
-def test_suite_meets_quality_floor(suite_name):
+def test_suite_meets_quality_floor(suite_name, tmp_path):
     """End-to-end: real retrieval over each golden suite clears the absolute gate."""
     from evals.quality import harness
 
     try:
-        report = harness.run_suite(suite_name)
+        report = harness.run_suite(suite_name, fixture_dir=_hermetic_fixture(suite_name, tmp_path))
     except RuntimeError as exc:
         pytest.skip(f"retrieval stack unavailable for {suite_name}: {exc}")
 
@@ -123,14 +134,14 @@ _REGRESSION_TOLERANCE = 0.15
     reason="set NEURALMIND_QUALITY_EVAL=1 (needs real embeddings); runs in the self-benchmark workflow",
 )
 @pytest.mark.parametrize("suite_name", ["python", "typescript", "go"])
-def test_no_severe_regression_vs_committed_baseline(suite_name):
+def test_no_severe_regression_vs_committed_baseline(suite_name, tmp_path):
     """Each suite's MRR / answerability must stay within tolerance of the
     committed measured baseline — catches quiet drift the absolute floor misses."""
     from evals.quality import harness
 
     base = _load_baseline()[suite_name]
     try:
-        report = harness.run_suite(suite_name)
+        report = harness.run_suite(suite_name, fixture_dir=_hermetic_fixture(suite_name, tmp_path))
     except RuntimeError as exc:
         pytest.skip(f"retrieval stack unavailable for {suite_name}: {exc}")
 

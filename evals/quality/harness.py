@@ -56,14 +56,18 @@ def run_suite(
     name: str,
     *,
     thresholds: quality.QualityThresholds | None = None,
+    fixture_dir: str | None = None,
 ) -> SuiteReport:
     """Build the suite's fixture index, run every query, and score retrieval.
 
-    Raises ``RuntimeError`` (deps / no built graph) so the CLI degrades
-    gracefully; ``ValueError`` for an unknown/malformed suite.
+    ``fixture_dir`` overrides the suite's committed fixture path — tests pass a
+    throwaway copy so the run never mutates a committed fixture or leaks build
+    artifacts into the tree. Raises ``RuntimeError`` (deps / no built graph) so
+    the CLI degrades gracefully; ``ValueError`` for an unknown/malformed suite.
     """
     suite: Suite = load_suite(name)
     thresholds = thresholds or DEFAULT_THRESHOLDS
+    build_dir = fixture_dir or str(suite.fixture_dir)
 
     # Build + query with stdout redirected to stderr: the embedder prints graph
     # load / embedding progress (and a one-time model download bar) to stdout,
@@ -79,13 +83,13 @@ def run_suite(
             from neuralmind import NeuralMind
             from neuralmind.core import GraphNotBuiltError
 
-            nm = NeuralMind(str(suite.fixture_dir))
+            nm = NeuralMind(build_dir)
             build = nm.build()
             if not build.get("success", True):
                 raise RuntimeError(build.get("error", "build failed"))
         except GraphNotBuiltError as exc:  # pragma: no cover - needs real env
             raise RuntimeError(
-                f"no code graph for {suite.fixture_dir}; run `neuralmind build` first ({exc})"
+                f"no code graph for {build_dir}; run `neuralmind build` first ({exc})"
             ) from exc
         except RuntimeError:
             raise
