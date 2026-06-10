@@ -36,6 +36,11 @@ def cmd_build(args):
         print(f"   Project: {result.get('project')}")
         print(f"   Nodes: {result.get('nodes_total')}")
         print(f"   Communities: {result.get('communities')}")
+        ir_meta = result.get("ir")
+        if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
+            val = ir_meta.get("validation", {})
+            status = "valid" if val.get("ok", True) else f"{val.get('errors', 0)} error(s)"
+            print(f"   IR: v{ir_meta['ir_version']} ({status})")
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
@@ -281,6 +286,60 @@ def cmd_stats(args):
         print(f"Built: {stats.get('built')}")
         if stats.get("built"):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
+
+
+def cmd_validate(args):
+    """Validate the project's canonical IR and report any schema problems.
+
+    Adapts ``graph.json`` into the versioned IR (or reads a persisted one),
+    runs structural validation, and prints the contract version, adapter
+    metadata, coverage, and any errors/warnings. ``--write`` (re)materializes
+    the IR to ``.neuralmind/`` — the in-place migration path for a legacy
+    project that predates the IR.
+    """
+    from neuralmind.core import validate_project
+
+    result = validate_project(args.project_path, write=args.write)
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        if result.get("error"):
+            print(f"validate: {result['error']}")
+            sys.exit(1)
+        val = result.get("validation", {})
+        print(f"IR version:      {result.get('ir_version')}")
+        print(f"Source backend:  {result.get('source_backend')}")
+        schema = result.get("source_schema_version")
+        if schema is not None:
+            print(f"Source schema:   v{schema}")
+        print(f"Coverage:        {result.get('coverage')}")
+        print(
+            f"Entities:        {result.get('nodes', 0)} nodes, "
+            f"{result.get('edges', 0)} edges, {result.get('clusters', 0)} clusters"
+        )
+        kinds = result.get("node_kinds", {})
+        if kinds:
+            kind_str = ", ".join(f"{k}={v}" for k, v in sorted(kinds.items()))
+            print(f"Node kinds:      {kind_str}")
+        langs = result.get("languages", {})
+        if langs:
+            lang_str = ", ".join(f"{k}={v}" for k, v in sorted(langs.items()))
+            print(f"Languages:       {lang_str}")
+        print("-" * 60)
+        if val.get("ok"):
+            print(f"VALID — 0 errors, {val.get('warnings', 0)} warning(s).")
+        else:
+            print(f"INVALID — {val.get('errors', 0)} error(s), {val.get('warnings', 0)} warning(s).")
+        for issue in val.get("issues", []):
+            marker = "[ERROR]" if issue["severity"] == "error" else "[warn ]"
+            print(f"  {marker} {issue['code']}: {issue['message']}")
+        if result.get("written_to"):
+            print("-" * 60)
+            print(f"IR written to {result['written_to']}")
+
+    if not result.get("validation", {}).get("ok", True):
+        sys.exit(1)
 
 
 def cmd_doctor(args):
@@ -950,6 +1009,19 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    validate_p = subparsers.add_parser(
+        "validate",
+        help="Validate the project's canonical IR (schema, versions, orphans)",
+    )
+    validate_p.add_argument("project_path", nargs="?", default=".")
+    validate_p.add_argument(
+        "--write",
+        action="store_true",
+        help="(Re)materialize the IR to .neuralmind/ — migrates a legacy project in place",
+    )
+    validate_p.add_argument("--json", "-j", action="store_true")
+    validate_p.set_defaults(func=cmd_validate)
 
     eval_p = subparsers.add_parser(
         "eval",

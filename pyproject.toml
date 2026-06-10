@@ -127,7 +127,11 @@ keywords = [
     "compressed-vector-search",
     "auto-backend-selection",
     "default-backend",
-    "zero-dependency-import"
+    "zero-dependency-import",
+    "versioned-index-contract",
+    "intermediate-representation",
+    "index-schema-validation",
+    "ir-migration"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

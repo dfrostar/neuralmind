@@ -65,7 +65,19 @@ from .compressors import (
     offload_if_large,
 )
 from .context_selector import ContextSelector
-from .core import NeuralMind
+from .core import NeuralMind, validate_project
+from .ir import (
+    IR_VERSION,
+    IndexIR,
+    IRCluster,
+    IREdge,
+    IRError,
+    IRNode,
+    IRSynapse,
+    from_graph_json,
+    to_graph_json,
+    validate_ir,
+)
 from .embedding_backend import EmbeddingBackend
 from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
@@ -101,6 +113,18 @@ __all__ = [
     "render_synapse_memory",
     "export_synapse_memory",
     "project_memory_file",
+    # Canonical versioned IR contract (v0.23.0 — PRD 1)
+    "IndexIR",
+    "IRNode",
+    "IREdge",
+    "IRCluster",
+    "IRSynapse",
+    "IRError",
+    "IR_VERSION",
+    "from_graph_json",
+    "to_graph_json",
+    "validate_ir",
+    "validate_project",
 ]
 
 

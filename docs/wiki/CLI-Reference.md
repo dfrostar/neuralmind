@@ -13,6 +13,7 @@ Complete command-line interface documentation for NeuralMind.
   - [search](#search)
   - [benchmark](#benchmark)
   - [stats](#stats)
+  - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
   - [eval](#eval-v0140)
   - [learn](#learn)
@@ -450,6 +451,72 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 - Build Duration: 8.3s
 - Embedding Model: all-MiniLM-L6-v2
 ```
+
+---
+
+### validate *(v0.23.0+)*
+
+Validate the project's canonical **intermediate representation (IR)** — the
+versioned, producer-agnostic contract NeuralMind builds from `graph.json`.
+Runs a static schema check; **no vector backend required** (it never touches
+ChromaDB/turbovec).
+
+```bash
+neuralmind validate [project_path] [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No (default `.`) | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--write` | False | (Re)materialize the IR to `.neuralmind/index_ir.json` — the in-place **migration** path for a legacy project that predates the IR (no rebuild). |
+| `--json`, `-j` | False | Output a machine-readable summary (for CI/dashboards) |
+
+#### What it checks
+
+- **errors** (exit code `1`): dangling edge endpoints, missing endpoints,
+  duplicate node ids, unsupported (too-new) `ir_version`.
+- **warnings**: orphaned (edgeless) nodes, unknown node kinds, unknown edge
+  relations — forward-compatibility signals for new ingestion backends.
+
+It also reports the IR contract version, source backend + producer schema
+version, coverage (`coarse`/`precise`), and per-kind / per-language counts.
+
+#### Examples
+
+```bash
+# Validate the IR for the current project
+neuralmind validate .
+
+# Machine-readable summary
+neuralmind validate . --json
+
+# Migrate a legacy project's state to the IR in place (no rebuild)
+neuralmind validate . --write
+```
+
+#### Sample Output
+
+```
+IR version:      1
+Source backend:  neuralmind.graphgen (tree-sitter)
+Source schema:   v1
+Coverage:        coarse
+Entities:        241 nodes, 203 edges, 93 clusters
+Node kinds:      document=39, file=38, symbol=164
+Languages:       python=241
+------------------------------------------------------------
+VALID — 0 errors, 0 warning(s).
+```
+
+> The IR is also exposed as a public Python API:
+> `from neuralmind import IndexIR, from_graph_json, validate_ir, validate_project`.
 
 ---
 
