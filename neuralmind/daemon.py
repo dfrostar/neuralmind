@@ -551,6 +551,7 @@ def serve(
     registry: ProjectRegistry | None = None,
 ) -> None:
     """Run the daemon in the foreground until shutdown (blocking)."""
+    registry = registry or ProjectRegistry()
     httpd, info = create_server(host, port, auth=auth, registry=registry)
 
     def _graceful(*_a) -> None:
@@ -571,6 +572,28 @@ def serve(
     finally:
         clear_discovery()
         httpd.server_close()
+        _clear_ephemeral_memory(registry)
+
+
+def _clear_ephemeral_memory(registry: ProjectRegistry) -> None:
+    """Drop the session-scoped ``ephemeral`` namespace on daemon shutdown.
+
+    The daemon's lifetime is the session for memory it accumulated (PRD 4),
+    so its scratch associations don't leak into the next run. Best-effort
+    per project; never blocks shutdown, and never *creates* a synapse db
+    for a project that has none.
+    """
+    try:
+        from .synapses import EPHEMERAL_NAMESPACE, SynapseStore, default_db_path
+    except Exception:  # pragma: no cover - defensive
+        return
+    for project in registry.projects():
+        try:
+            db = default_db_path(project)
+            if db.exists():
+                SynapseStore(db).clear_namespace(EPHEMERAL_NAMESPACE)
+        except Exception:
+            continue
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -133,16 +133,31 @@ class RetrievalTrace:
         )
 
     def record_synapse_boost(
-        self, seeds: list[str], comm: int, energy: float, weighted: float
+        self,
+        seeds: list[str],
+        comm: int,
+        energy: float,
+        weighted: float,
+        namespace_contribution: dict[str, float] | None = None,
     ) -> None:
+        data = {
+            "seeds": seeds[:MAX_ITEMS],
+            "cluster": comm,
+            "energy": round(energy, 4),
+            "weighted_boost": round(weighted, 4),
+        }
+        if namespace_contribution:
+            # PRD 4: which memory namespace(s) the boost energy arrived
+            # through (branch / personal / shared / ephemeral), so a traced
+            # query explains the merged-read weighting, not just its result.
+            data["namespace_contribution"] = {
+                ns: round(value, 4) for ns, value in sorted(namespace_contribution.items())
+            }
         self.add(
             "synapse",
             "synapse_boost",
             f"cluster {comm} boosted +{weighted:.4f} from co-activation",
-            seeds=seeds[:MAX_ITEMS],
-            cluster=comm,
-            energy=round(energy, 4),
-            weighted_boost=round(weighted, 4),
+            **data,
         )
 
     def record_hits(self, results: list[dict]) -> None:

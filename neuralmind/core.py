@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import ir as ir_mod
+from . import namespaces as ns_mod
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
@@ -127,6 +128,7 @@ class NeuralMind:
         backend_type: str | None = None,
         hybrid_context: bool | None = None,
         enable_synapses: bool = True,
+        memory_namespace: str | None = None,
     ):
         """
         Initialize NeuralMind for a project.
@@ -137,6 +139,9 @@ class NeuralMind:
             enable_reranking: If True, apply learned patterns to rerank search results
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
+            memory_namespace: Explicit synapse-memory namespace (PRD 4). When
+                None, resolved from NEURALMIND_NAMESPACE / the backend config's
+                ``memory_namespace`` / the current git branch / ``personal``.
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
@@ -163,10 +168,29 @@ class NeuralMind:
         self.enable_synapses = enable_synapses
         self._synapses: SynapseStore | None = None
         self._synapses_lock = threading.Lock()
+        self._memory_namespace_override = memory_namespace
+        self._memory_namespace: str | None = None
 
     @property
     def backend_name(self) -> str:
         return self.backend_manager.backend_name
+
+    @property
+    def memory_namespace(self) -> str:
+        """The active synapse-memory namespace for this project (PRD 4).
+
+        Resolved once per instance: explicit constructor override →
+        ``NEURALMIND_NAMESPACE`` → the backend config's ``memory_namespace``
+        → ``branch:<name>`` on a non-default git branch → ``personal``.
+        """
+        if self._memory_namespace is None:
+            if self._memory_namespace_override:
+                self._memory_namespace = self._memory_namespace_override
+            else:
+                self._memory_namespace = ns_mod.resolve_namespace(
+                    self.project_path, config=self.backend_manager.config
+                )
+        return self._memory_namespace
 
     @property
     def synapses(self) -> SynapseStore | None:
@@ -174,14 +198,18 @@ class NeuralMind:
 
         Returns None when synapses are disabled. The store lives at
         ``<project>/.neuralmind/synapses.db`` so it persists across
-        sessions and can be inspected or reset independently.
+        sessions and can be inspected or reset independently. Writes land
+        in :attr:`memory_namespace`; reads default to the merged view
+        documented in :mod:`neuralmind.synapses`.
         """
         if not self.enable_synapses:
             return None
         if self._synapses is None:
             with self._synapses_lock:
                 if self._synapses is None:
-                    self._synapses = SynapseStore(default_db_path(self.project_path))
+                    self._synapses = SynapseStore(
+                        default_db_path(self.project_path), namespace=self.memory_namespace
+                    )
         return self._synapses
 
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
@@ -315,6 +343,9 @@ class NeuralMind:
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
         self.selector.synapse_recall = self._recall_for_selection
+        # Traced queries use the detailed variant so the PRD 3 trace can show
+        # which memory namespace drove each boost (PRD 4).
+        self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
 
         # Get final stats
         final_stats = self.embedder.get_stats()
@@ -1201,6 +1232,23 @@ class NeuralMind:
             return store.spread(seed_ids, depth=depth, top_k=top_k)
         except Exception:
             return []
+
+    def _recall_for_selection_detailed(
+        self, seed_ids: list[str], depth: int = 2, top_k: int = 8
+    ) -> tuple[list[tuple[str, float]], dict[str, dict[str, float]]]:
+        """Seed-based spread that also reports per-namespace attribution.
+
+        Same contract as :meth:`_recall_for_selection` plus a contributions
+        map (``{node_id: {namespace: energy}}``). Only invoked on traced
+        queries, so the untraced hot path pays nothing for attribution.
+        """
+        store = self.synapses
+        if store is None or not seed_ids:
+            return [], {}
+        try:
+            return store.spread_with_contributions(seed_ids, depth=depth, top_k=top_k)
+        except Exception:
+            return [], {}
 
     def synaptic_neighbors(
         self, query: str, depth: int = 2, top_k: int = 10

@@ -286,6 +286,15 @@ def run_hook(action: str) -> int:
             store.decay()
         except Exception:
             pass
+        # Ephemeral memory is session-scoped. Claude Code has no SessionEnd
+        # lifecycle event, so the next session's start is the boundary where
+        # the previous session's scratch associations are dropped (PRD 4).
+        try:
+            from .synapses import EPHEMERAL_NAMESPACE
+
+            store.clear_namespace(EPHEMERAL_NAMESPACE)
+        except Exception:
+            pass
         if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
             try:
                 from .synapse_memory import export_synapse_memory
@@ -329,12 +338,17 @@ def _open_synapses(project_path: str):
     """Open the synapse store for a project without forcing a build.
 
     Hooks must stay fast and never raise — fall through to None on any
-    failure so we don't disrupt the user's session.
+    failure so we don't disrupt the user's session. The active namespace
+    is resolved per-project (env / config / git branch — PRD 4) so hook
+    writes land in the same namespace the CLI and MCP server use.
     """
     try:
+        from .namespaces import resolve_namespace
         from .synapses import SynapseStore, default_db_path
 
-        return SynapseStore(default_db_path(project_path))
+        return SynapseStore(
+            default_db_path(project_path), namespace=resolve_namespace(project_path)
+        )
     except Exception:
         return None
 

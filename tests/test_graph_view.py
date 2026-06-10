@@ -119,7 +119,7 @@ def test_synapse_store_is_initialized_once_under_concurrency(temp_project, monke
     release = threading.Event()
 
     class MockSlowSynapseStore:
-        def __init__(self, db_path):
+        def __init__(self, db_path, namespace=None):
             created.append(str(db_path))
             started.set()
             release.wait(timeout=timeout_s)

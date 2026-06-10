@@ -71,22 +71,33 @@ from .hooks import install_hooks
 from .in_memory_backend import InMemoryEmbeddingBackend
 from .ir import (
     IR_VERSION,
+    SYNAPSE_BUNDLE_VERSION,
     IndexIR,
     IRCluster,
     IREdge,
     IRError,
     IRNode,
     IRSynapse,
+    export_synapse_bundle,
     from_graph_json,
+    import_synapse_bundle,
     to_graph_json,
     validate_ir,
+    validate_synapse_bundle,
 )
+from .namespaces import resolve_namespace
 from .synapse_memory import (
     export_synapse_memory,
     project_memory_file,
     render_synapse_memory,
 )
-from .synapses import SynapseStore, default_db_path
+from .synapses import (
+    DEFAULT_NAMESPACE,
+    EPHEMERAL_NAMESPACE,
+    SHARED_NAMESPACE,
+    SynapseStore,
+    default_db_path,
+)
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
@@ -128,6 +139,15 @@ __all__ = [
     "validate_project",
     # Retrieval traces (v0.23.0 — PRD 3)
     "RetrievalTrace",
+    # Memory namespaces (PRD 4)
+    "DEFAULT_NAMESPACE",
+    "SHARED_NAMESPACE",
+    "EPHEMERAL_NAMESPACE",
+    "resolve_namespace",
+    "SYNAPSE_BUNDLE_VERSION",
+    "export_synapse_bundle",
+    "import_synapse_bundle",
+    "validate_synapse_bundle",
 ]
 
 

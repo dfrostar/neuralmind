@@ -141,6 +141,11 @@ class ContextSelector:
         # Left None here so a selector built without a synapse store (or on a
         # cold graph) behaves exactly as it did before this layer existed.
         self.synapse_recall = None
+        # Optional traced variant (PRD 4): same seeds, returns
+        # (ranked, {node_id: {namespace: energy}}) so the retrieval trace can
+        # attribute each boost to the memory namespace that drove it. Only
+        # consulted when a trace is active.
+        self.synapse_recall_detailed = None
 
         # Cache for layer content
         self._l0_cache: str | None = None
@@ -433,6 +438,25 @@ class ContextSelector:
         except Exception:
             return {}
 
+    def _recall_energy_traced(
+        self, seeds: list[str]
+    ) -> tuple[dict[str, float], dict[str, dict[str, float]]]:
+        """Traced recall: energies plus per-namespace attribution (PRD 4).
+
+        Falls back to the plain recall (empty attribution) when the detailed
+        hook isn't wired, so a selector built against an older core still
+        traces boosts — just without namespace breakdowns.
+        """
+        if not seeds:
+            return {}, {}
+        if self.synapse_recall_detailed is not None:
+            try:
+                ranked, contributions = self.synapse_recall_detailed(seeds)
+                return dict(ranked), contributions
+            except Exception:
+                return {}, {}
+        return self._recall_energy(seeds), {}
+
     def _boost_communities_from_synapses(
         self, search_results: list[dict], community_scores: dict[int, float]
     ) -> None:
@@ -444,7 +468,11 @@ class ContextSelector:
         if self._synapse_disabled():
             return
         seeds = [r["id"] for r in search_results[: self.SYNAPSE_SEED_K] if r.get("id")]
-        for node_id, energy in self._recall_energy(seeds).items():
+        if self._trace is not None:
+            energies, contributions = self._recall_energy_traced(seeds)
+        else:
+            energies, contributions = self._recall_energy(seeds), {}
+        for node_id, energy in energies.items():
             if not node_id.startswith("community_"):
                 continue
             try:
@@ -454,7 +482,13 @@ class ContextSelector:
             weighted = energy * self.SYNAPSE_BOOST_WEIGHT
             community_scores[comm] = community_scores.get(comm, 0.0) + weighted
             if self._trace is not None:
-                self._trace.record_synapse_boost(seeds, comm, energy, weighted)
+                self._trace.record_synapse_boost(
+                    seeds,
+                    comm,
+                    energy,
+                    weighted,
+                    namespace_contribution=contributions.get(node_id),
+                )
 
     def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
         """Re-rank L3 hits using learned synapse co-activation.

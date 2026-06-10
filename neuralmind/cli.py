@@ -416,6 +416,16 @@ def cmd_stats(args):
             "built": False,
             "error": str(e),
         }
+    # Learned-memory contribution by namespace (PRD 4). Read straight from
+    # the synapse store so it shows without a built index — but only when a
+    # store already exists (stats must not create one as a side effect).
+    try:
+        from neuralmind.synapses import default_db_path
+
+        if default_db_path(args.project_path).exists() and mind.synapses is not None:
+            stats["synapses"] = mind.synapses.stats()
+    except Exception:
+        pass
     if args.json:
         print(json.dumps(stats, indent=2))
     else:
@@ -423,6 +433,16 @@ def cmd_stats(args):
         print(f"Built: {stats.get('built')}")
         if stats.get("built"):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
+        synapse_stats = stats.get("synapses") or {}
+        by_namespace = synapse_stats.get("namespaces") or {}
+        if by_namespace:
+            print(f"Memory namespaces (active: {synapse_stats.get('namespace')}):")
+            for ns in sorted(by_namespace):
+                entry = by_namespace[ns]
+                print(
+                    f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
+                    f"{entry['transitions']} transitions"
+                )
 
 
 def cmd_validate(args):
@@ -569,12 +589,16 @@ def cmd_next(args):
     learned directional-transition graph."""
     mind = NeuralMind(args.project_path)
     store = mind.synapses
-    ranked = store.next_likely(args.from_node, top_k=args.n) if store else []
+    # Default: the merged namespace view (active branch + personal + shared);
+    # --namespace pins the read to one namespace at raw weights (PRD 4).
+    namespaces = [args.namespace] if getattr(args, "namespace", None) else None
+    ranked = store.next_likely(args.from_node, top_k=args.n, namespaces=namespaces) if store else []
     if args.json:
         print(
             json.dumps(
                 {
                     "from_node": args.from_node,
+                    "namespace": args.namespace or "merged",
                     "next": [{"to_node": to_node, "probability": prob} for to_node, prob in ranked],
                 },
                 indent=2,
@@ -587,6 +611,105 @@ def cmd_next(args):
     print(f"After {args.from_node}:")
     for to_node, prob in ranked:
         print(f"  {prob * 100:5.1f}%  {to_node}")
+
+
+def cmd_memory(args):
+    """Namespace-level controls over the learned synapse memory (PRD 4).
+
+    ``inspect`` shows contribution by namespace, ``reset`` clears exactly one
+    namespace (the project index and every other namespace are untouched),
+    ``export``/``import`` move a namespace as a portable, versioned JSON
+    bundle (the PRD 8 team-memory on-ramp). All four work without a built
+    index — the synapse store is stdlib SQLite.
+    """
+    from neuralmind.ir import IRError, export_synapse_bundle, import_synapse_bundle
+    from neuralmind.namespaces import resolve_namespace
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    db = default_db_path(args.project_path)
+    if args.memory_cmd != "import" and not db.exists():
+        print(f"No learned synapse memory at {db} yet.")
+        if args.memory_cmd != "inspect":
+            sys.exit(1)
+        return
+    active = resolve_namespace(args.project_path)
+    store = SynapseStore(db, namespace=active)
+
+    if args.memory_cmd == "inspect":
+        stats = store.stats()
+        namespaces = stats.get("namespaces", {})
+        if args.namespace:
+            namespaces = {k: v for k, v in namespaces.items() if k == args.namespace}
+        result = {
+            "db_path": stats["db_path"],
+            "active_namespace": stats["namespace"],
+            "schema_version": stats["schema_version"],
+            "namespaces": namespaces,
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+            return
+        print(f"Synapse memory — {stats['db_path']}")
+        print(f"Active namespace: {stats['namespace']}  (schema v{stats['schema_version']})")
+        if not namespaces:
+            target = f"namespace {args.namespace!r}" if args.namespace else "any namespace"
+            print(f"No learned memory in {target} yet.")
+            return
+        print(f"{'Namespace':<24} {'Edges':>7} {'Weight':>9} {'Transitions':>12} {'Nodes':>7}")
+        for ns in sorted(namespaces):
+            entry = namespaces[ns]
+            print(
+                f"{ns:<24} {entry['edges']:>7} {entry['weight']:>9.2f} "
+                f"{entry['transitions']:>12} {entry['nodes']:>7}"
+            )
+        return
+
+    if args.memory_cmd == "reset":
+        counts = store.clear_namespace(args.namespace)
+        if args.json:
+            print(json.dumps(counts, indent=2))
+            return
+        print(
+            f"Cleared namespace {counts['namespace']!r}: {counts['edges']} edges, "
+            f"{counts['transitions']} transitions, {counts['activations']} activations."
+        )
+        print("All other namespaces and the project index are untouched.")
+        return
+
+    if args.memory_cmd == "export":
+        namespace = args.namespace or active
+        bundle = export_synapse_bundle(store, namespace)
+        payload = json.dumps(bundle, indent=2)
+        if args.output:
+            Path(args.output).write_text(payload + "\n", encoding="utf-8")
+            print(
+                f"Exported namespace {namespace!r} → {args.output} "
+                f"({bundle['counts']['synapses']} synapses, "
+                f"{bundle['counts']['transitions']} transitions)"
+            )
+        else:
+            print(payload)
+        return
+
+    if args.memory_cmd == "import":
+        try:
+            data = json.loads(Path(args.file).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"Could not read bundle {args.file}: {exc}", file=sys.stderr)
+            sys.exit(1)
+        try:
+            result = import_synapse_bundle(store, data, namespace=args.namespace)
+        except IRError as exc:
+            print(f"Import rejected: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(result, indent=2))
+            return
+        print(
+            f"Imported {result['synapses']} synapses and {result['transitions']} "
+            f"transitions into namespace {result['namespace']!r}."
+        )
+        print("Re-importing the same bundle is idempotent (weights merge by MAX).")
 
 
 def cmd_learn(args):
@@ -1323,8 +1446,63 @@ def main():
         help="Source node (file path or node id) to predict successors for",
     )
     next_p.add_argument("--n", type=int, default=5, help="Top-N successors to return")
+    next_p.add_argument(
+        "--namespace",
+        help="Read one memory namespace at raw weights (default: merged view)",
+    )
     next_p.add_argument("--json", "-j", action="store_true")
     next_p.set_defaults(func=cmd_next)
+
+    # memory command group — namespace controls over learned memory (PRD 4)
+    memory_p = subparsers.add_parser(
+        "memory",
+        help="Inspect, reset, export, or import learned synapse memory by namespace",
+    )
+    memory_sub = memory_p.add_subparsers(dest="memory_cmd", required=True)
+
+    mem_inspect = memory_sub.add_parser(
+        "inspect", help="Show learned memory contribution by namespace"
+    )
+    mem_inspect.add_argument("project_path", nargs="?", default=".")
+    mem_inspect.add_argument("--namespace", help="Limit output to one namespace")
+    mem_inspect.add_argument("--json", "-j", action="store_true")
+    mem_inspect.set_defaults(func=cmd_memory)
+
+    mem_reset = memory_sub.add_parser(
+        "reset", help="Clear ONE namespace without touching the index or other namespaces"
+    )
+    mem_reset.add_argument("project_path", nargs="?", default=".")
+    mem_reset.add_argument(
+        "--namespace",
+        required=True,
+        help="Namespace to clear (personal, shared, ephemeral, branch:<name>)",
+    )
+    mem_reset.add_argument("--json", "-j", action="store_true")
+    mem_reset.set_defaults(func=cmd_memory)
+
+    mem_export = memory_sub.add_parser(
+        "export", help="Export a namespace as a portable, versioned JSON bundle"
+    )
+    mem_export.add_argument("project_path", nargs="?", default=".")
+    mem_export.add_argument(
+        "--namespace", help="Namespace to export (default: the active namespace)"
+    )
+    mem_export.add_argument("-o", "--output", help="Write the bundle to a file (default: stdout)")
+    mem_export.set_defaults(func=cmd_memory)
+
+    mem_import = memory_sub.add_parser(
+        "import", help="Validate a bundle and merge it into a namespace"
+    )
+    mem_import.add_argument("file", help="Bundle JSON produced by `neuralmind memory export`")
+    mem_import.add_argument(
+        "--project-path", dest="project_path", default=".", help="Project root (default: .)"
+    )
+    mem_import.add_argument(
+        "--namespace",
+        help="Target namespace (default: the bundle's own namespace, e.g. 'shared')",
+    )
+    mem_import.add_argument("--json", "-j", action="store_true")
+    mem_import.set_defaults(func=cmd_memory)
 
     # Init-hook command
     init_parser = subparsers.add_parser(
