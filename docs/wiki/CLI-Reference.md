@@ -13,6 +13,7 @@ Complete command-line interface documentation for NeuralMind.
   - [search](#search)
   - [benchmark](#benchmark)
   - [stats](#stats)
+  - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
   - [eval](#eval-v0140)
   - [learn](#learn)
@@ -23,6 +24,7 @@ Complete command-line interface documentation for NeuralMind.
   - [init-hook](#init-hook)
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
+  - [daemon](#daemon-v0230)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -139,6 +141,8 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
+| `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
+| `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 
 #### Output
 
@@ -148,6 +152,24 @@ Returns:
 - Reduction ratio compared to full codebase
 - Communities/modules loaded
 
+#### Retrieval traces *(v0.23.0+)*
+
+`--trace` explains **why** a result came back (PRD 3) — useful when retrieval
+surprises you. It records, layer by layer:
+
+- **candidates** — the raw vector-search pool (ids + scores);
+- **cluster_scores** — per-cluster score with **vector-vs-synapse attribution**
+  (how much of each cluster's score came from learned co-activation);
+- **synapse_boost** — individual co-activation boosts;
+- **hits** — the final ranked hits, flagging which were synapse-recalled;
+- **budget** — tokens per layer + reduction ratio.
+
+Plain `--trace` prints a compact per-layer summary; `--json` includes the full
+trace object (bounded, and path-redactable via the `RetrievalTrace` API for
+sharing in bug reports). Tracing is off by default and zero-overhead. The
+daemon's `/query` honors `trace` too, so daemon and direct mode return the same
+attribution.
+
 #### Examples
 
 ```bash
@@ -156,6 +178,10 @@ neuralmind query /path/to/project "How does authentication work?"
 
 # JSON output
 neuralmind query /path/to/project "What are the main API endpoints?" --json
+
+# Explain the retrieval path
+neuralmind query /path/to/project "How does billing work?" --trace
+neuralmind query /path/to/project "How does billing work?" --trace --json
 ```
 
 #### Sample Output
@@ -337,6 +363,9 @@ neuralmind benchmark <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
+| `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
+| `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
+| `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
 
 #### Output
 
@@ -355,6 +384,54 @@ neuralmind benchmark /path/to/project
 # JSON output
 neuralmind benchmark /path/to/project --json
 ```
+
+#### Quality-eval mode *(v0.23.0+)*
+
+`--quality` switches the command from token-reduction benchmarking to
+**retrieval-quality** measurement: does NeuralMind surface the *right* code,
+not just *less* of it? It scores **precision@k**, **recall@k**, **MRR**, and
+**answerability** over golden query suites (Python / TypeScript / Go — 30
+queries with expected-module labels) and **exits non-zero if a suite regresses
+past its floor**, so CI can gate retrieval-affecting changes.
+
+Like `neuralmind eval`, this is a contributor/CI self-test that runs against
+the golden suites shipping with the **source repo** (the `evals/quality/`
+package), not the installed wheel. The pure metrics live in
+`neuralmind.quality` (`from neuralmind import quality`).
+
+```bash
+# Score all golden suites
+neuralmind benchmark --quality
+
+# One language, machine-readable
+neuralmind benchmark --quality --suite go --json
+
+# Compare against the committed measured baseline (reports metric deltas)
+neuralmind benchmark --quality --baseline evals/quality/baseline.json
+
+# Dependency-free validation of the suites + metric math (no embeddings)
+python -m evals.quality.runner --selfcheck
+```
+
+Sample (markdown) output — measured on the committed fixtures:
+
+```
+## NeuralMind retrieval-quality eval
+
+| Suite | Queries | MRR | Answerability | Recall@5 | Precision@5 | Gate |
+|-------|--------:|----:|--------------:|---------:|------------:|:----:|
+| `go`         | 10 | 0.950 | 100% | 0.833 | 0.603 | PASS |
+| `python`     | 10 | 0.900 | 100% | 0.833 | 0.612 | PASS |
+| `typescript` | 10 | 0.900 | 100% | 0.800 | 0.562 | PASS |
+
+**Overall: PASS**
+```
+
+The exit code is non-zero if any suite drops below the floors in
+`evals/quality/harness.py` (`DEFAULT_THRESHOLDS`), so CI can gate on it. The
+measured baseline lives at `evals/quality/baseline.json`; the self-benchmark
+workflow runs this on every PR (where real embeddings are available) and posts
+the table + baseline deltas as a PR comment.
 
 #### Sample Output
 
@@ -450,6 +527,80 @@ DB Path: /path/to/project/graphify-out/neuralmind_db
 - Build Duration: 8.3s
 - Embedding Model: all-MiniLM-L6-v2
 ```
+
+---
+
+### validate *(v0.23.0+)*
+
+Validate the project's canonical **intermediate representation (IR)** — the
+versioned, producer-agnostic contract NeuralMind builds from `graph.json`.
+Runs a static schema check; **no vector backend required** (it never touches
+ChromaDB/turbovec).
+
+```bash
+neuralmind validate [project_path] [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No (default `.`) | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--write` | False | (Re)materialize the IR to `.neuralmind/index_ir.json` — the in-place **migration** path for a legacy project that predates the IR (no rebuild). |
+| `--json`, `-j` | False | Output a machine-readable summary (for CI/dashboards) |
+
+#### What it checks
+
+- **errors** (exit code `1`): dangling edge endpoints, missing endpoints,
+  duplicate node ids, malformed synapse endpoints, unsupported (too-new)
+  `ir_version`.
+- **warnings**: orphaned (edgeless) nodes, unknown node kinds, unknown edge
+  relations, and **stale synapses** (learned memory pointing at nodes a
+  rebuild removed) — forward-compatibility / hygiene signals.
+
+It also reports the IR contract version, source backend + producer schema
+version, coverage (`coarse`/`precise`), per-kind / per-language counts, and the
+learned-synapse count (folded in backend-free from the SQLite store).
+
+#### Examples
+
+```bash
+# Validate the IR for the current project
+neuralmind validate .
+
+# Machine-readable summary
+neuralmind validate . --json
+
+# Migrate a legacy project's state to the IR in place (no rebuild)
+neuralmind validate . --write
+```
+
+#### Sample Output
+
+```
+IR version:      1
+Source backend:  neuralmind.graphgen (tree-sitter)
+Source schema:   v1
+Coverage:        coarse
+Entities:        135 nodes, 185 edges, 18 clusters
+Node kinds:      document=56, file=13, function=41, symbol=25
+Languages:       python=135
+------------------------------------------------------------
+VALID — 0 errors, 0 warning(s).
+```
+
+> `function` is inferred from the built-in backend's call-form labels
+> (`name()`); a producer that doesn't follow that convention maps those to the
+> generic `symbol`. Learned synapses, when a `.neuralmind/synapses.db` exists,
+> are folded in and shown in the `--json` `synapses` count.
+
+> The IR is also exposed as a public Python API:
+> `from neuralmind import IndexIR, from_graph_json, validate_ir, validate_project`.
 
 ---
 
@@ -1012,6 +1163,61 @@ Behaviour:
 
 ---
 
+### daemon *(v0.23.0+)*
+
+Manage the local NeuralMind daemon (experimental — PRD 5). The daemon holds
+each project's state **warm** so repeated queries skip cold backend init. CLI
+read commands (`query`, `stats`) prefer it automatically when it's running and
+fall back to direct mode otherwise.
+
+```bash
+neuralmind daemon {start|stop|restart|status} [OPTIONS]
+```
+
+#### Actions
+
+| Action | Description |
+|--------|-------------|
+| `start` | Launch the daemon in the background (writes a discovery file). No-op if already running. |
+| `stop` | Ask the running daemon to shut down gracefully; clears stale discovery. |
+| `restart` | Stop (if running) then start. |
+| `status` | Show pid, uptime, warm projects, and active jobs (exit 3 if not running). |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | `127.0.0.1` | Host to bind (loopback) |
+| `--port` | `8787` | Port to bind |
+| `--foreground` | False | Run in the foreground instead of detaching (`start`/`restart`) |
+| `--json`, `-j` | False | Machine-readable `status` output |
+
+#### Behavior
+
+- **One per-user daemon, many projects.** A project registry initializes each
+  `NeuralMind` once and reuses it; a per-project lock serializes
+  build/query/watch so they can't corrupt the index or synapse store; slow
+  builds run as background jobs.
+- **Auto-preference + fallback.** `neuralmind query` / `stats` use the daemon
+  when reachable (output marked `via: daemon` in `--json`), else run directly.
+  Force direct mode with **`NEURALMIND_NO_DAEMON=1`**.
+- **Crash-safe discovery.** A stale discovery file (dead pid / unreachable) is
+  cleaned up automatically, so a crashed daemon never wedges the CLI.
+- **Shared API.** The daemon speaks one transport-agnostic contract
+  (`health` / `status` / `query` / `search` / `stats` / `build` / `validate` /
+  `jobs`); the `neuralmind-daemon` console script runs it directly. Token-guarded
+  even on loopback.
+
+```bash
+# Warm daemon, then fast repeat queries
+neuralmind daemon start
+neuralmind query . "how does auth work?"   # served warm (via: daemon)
+neuralmind daemon status --json
+neuralmind daemon stop
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -1048,6 +1254,8 @@ Behaviour:
 | `NEURALMIND_PARITY_COVERAGE_FLOOR` | `0.90` | *(v0.16.0+)* Backend parity gate: minimum fraction of graphify's per-language symbols the built-in backend must recover for TypeScript/Go (structural parity, since no gold-fact set exists for those fixtures yet). |
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
+| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
+| `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 
 ---
 

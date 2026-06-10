@@ -127,7 +127,21 @@ keywords = [
     "compressed-vector-search",
     "auto-backend-selection",
     "default-backend",
-    "zero-dependency-import"
+    "zero-dependency-import",
+    "versioned-index-contract",
+    "intermediate-representation",
+    "index-schema-validation",
+    "ir-migration",
+    "retrieval-quality-harness",
+    "precision-recall-mrr",
+    "answerability-eval",
+    "ranked-retrieval-metrics",
+    "local-daemon",
+    "warm-index-cache",
+    "daemon-first-architecture",
+    "retrieval-trace",
+    "explainable-retrieval",
+    "retrieval-debugging"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -190,6 +204,7 @@ all = [
 [project.scripts]
 neuralmind = "neuralmind.cli:main"
 neuralmind-mcp = "neuralmind.mcp_server:main"
+neuralmind-daemon = "neuralmind.daemon:main"
 
 [project.urls]
 Homepage = "https://github.com/dfrostar/neuralmind"

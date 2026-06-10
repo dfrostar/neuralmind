@@ -77,6 +77,14 @@ neuralmind stats . --json
 
 Watch `total_nodes` and `communities` — sudden drops mean something went wrong with `graphify update`.
 
+**Validate index integrity (v0.23.0+):**
+
+```bash
+neuralmind validate . --json
+```
+
+A backend-free schema check over the canonical index IR — it reports dangling edges, orphaned nodes, and unknown kinds, turning "why is retrieval weird?" into a one-line check (ideal for CI). Add `--write` to migrate a pre-IR project's state in place, no rebuild required.
+
 ## Query patterns for large repos
 
 - **Start every session with `wakeup`** — with hundreds of clusters, orientation matters more, not less.

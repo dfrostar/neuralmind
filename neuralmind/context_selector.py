@@ -64,6 +64,7 @@ class ContextResult:
     search_hits: int = 0
     reduction_ratio: float = 0.0
     top_search_hits: list[dict] = field(default_factory=list)
+    trace: dict | None = None
 
     @property
     def tokens(self) -> int:
@@ -130,6 +131,11 @@ class ContextSelector:
         self._reranker: SemanticReranker | None = None
         self._context_modules: list[str] = []
 
+        # Optional retrieval trace (PRD 3). None = tracing off (zero overhead);
+        # set per-query by get_query_context(trace=True). Every record site is
+        # guarded on this, so behavior is identical when it's None.
+        self._trace = None
+
         # Optional seed-based synapse recall, injected by NeuralMind.build().
         # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, energy]].
         # Left None here so a selector built without a synapse store (or on a
@@ -178,6 +184,8 @@ class ContextSelector:
         fetch_n = max(n, self._query_search_max_n)
         results = self.embedder.search(query, n=fetch_n)
         self._query_search_cache[query] = results
+        if self._trace is not None:
+            self._trace.record_candidates(results)
         return results[:n]
 
     def _get_reranker(self) -> SemanticReranker:
@@ -367,6 +375,7 @@ class ContextSelector:
         # outscoring a vector one, but it can't grow how many we load — the
         # cap stays at what vector search alone would have surfaced.
         vector_community_count = len(community_scores)
+        vector_scores = dict(community_scores) if self._trace is not None else None
         self._boost_communities_from_synapses(search_results, community_scores)
         community_budget = min(max_communities, vector_community_count)
 
@@ -374,6 +383,14 @@ class ContextSelector:
         top_communities = sorted(community_scores.items(), key=lambda x: x[1], reverse=True)[
             :community_budget
         ]
+
+        if self._trace is not None and vector_scores is not None:
+            self._trace.record_cluster_scores(
+                vector_scores,
+                community_scores,
+                [c for c, _ in top_communities],
+                community_budget,
+            )
 
         if not top_communities:
             return "", []
@@ -434,9 +451,10 @@ class ContextSelector:
                 comm = int(node_id[len("community_") :])
             except ValueError:
                 continue
-            community_scores[comm] = (
-                community_scores.get(comm, 0.0) + energy * self.SYNAPSE_BOOST_WEIGHT
-            )
+            weighted = energy * self.SYNAPSE_BOOST_WEIGHT
+            community_scores[comm] = community_scores.get(comm, 0.0) + weighted
+            if self._trace is not None:
+                self._trace.record_synapse_boost(seeds, comm, energy, weighted)
 
     def _apply_synapse_boost(self, results: list[dict]) -> list[dict]:
         """Re-rank L3 hits using learned synapse co-activation.
@@ -544,6 +562,9 @@ class ContextSelector:
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
 
+        if self._trace is not None:
+            self._trace.record_hits(results)
+
         parts = ["## Search Results", ""]
 
         for i, result in enumerate(results, 1):
@@ -637,6 +658,9 @@ class ContextSelector:
         # Calculate reduction ratio
         reduction_ratio = full_codebase_tokens / budget.total if budget.total > 0 else 0
 
+        if self._trace is not None:
+            self._trace.record_budget(layers_used, budget, reduction_ratio)
+
         # Surface the cached search hits so downstream layers (synapses,
         # MCP responses) can reuse them instead of re-querying the embedder.
         top_hits: list[dict] = []
@@ -669,18 +693,34 @@ class ContextSelector:
             include_l3=False,
         )
 
-    def get_query_context(self, query: str) -> ContextResult:
+    def get_query_context(
+        self, query: str, trace: bool = False, trace_verbose: bool = False
+    ) -> ContextResult:
         """
         Get full context for a specific query.
         Use this when answering a question about the codebase.
 
+        With ``trace=True``, records a per-layer :class:`~neuralmind.trace.
+        RetrievalTrace` (candidates, cluster scoring, synapse boosts, final
+        hits, token budget) and attaches it to ``result.trace``.
+
         Returns:
             ContextResult with relevant context and search results
         """
-        return self.get_context(
-            query=query,
-            include_l0=True,
-            include_l1=True,
-            include_l2=True,
-            include_l3=True,
-        )
+        if trace:
+            from .trace import RetrievalTrace
+
+            self._trace = RetrievalTrace(query=query, verbose=trace_verbose)
+        try:
+            result = self.get_context(
+                query=query,
+                include_l0=True,
+                include_l1=True,
+                include_l2=True,
+                include_l3=True,
+            )
+            if self._trace is not None:
+                result.trace = self._trace.to_dict()
+            return result
+        finally:
+            self._trace = None

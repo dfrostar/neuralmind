@@ -54,6 +54,12 @@ tests/benchmark/multi_model.json
 tests/benchmark/multi_model.md
 tests/fixtures/sample_project/graphify-out/
 tests/fixtures/sample_project/.neuralmind/
+# Quality-eval (PRD 2) builds the TS/Go fixtures too; their generated index
+# state (.neuralmind/, index_ir.json) is not source. graphify-out/ for those
+# fixtures IS committed, so only ignore .neuralmind here.
+tests/fixtures/sample_project_ts/.neuralmind/
+tests/fixtures/sample_project_go/.neuralmind/
+tests/benchmark/quality.md
 /graphify-out/
 
 # Per-project synapse layer artifacts (generated, not source)
