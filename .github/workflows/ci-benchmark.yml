@@ -138,7 +138,10 @@ jobs:
           NEURALMIND_QUALITY_EVAL: "1"
         run: |
           set -eo pipefail
-          neuralmind benchmark --quality --baseline evals/quality/baseline.json \
+          # Module form (not the `neuralmind` console script): the golden suites
+          # live in the top-level evals/ package, importable from the repo root
+          # but not from the installed wheel's sys.path.
+          python -m evals.quality.runner --run --baseline evals/quality/baseline.json \
             | tee tests/benchmark/quality.md
 
       - name: Generate chart
