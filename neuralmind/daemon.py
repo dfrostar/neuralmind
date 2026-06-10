@@ -128,7 +128,12 @@ class ProjectRegistry:
 
     @staticmethod
     def _key(project_path: str) -> str:
-        return str(Path(project_path).resolve())
+        # Canonicalize to a stable absolute key. os.path.abspath is pure-string
+        # (no filesystem access), so a request-supplied project path doesn't
+        # flow through a filesystem-touching sink here — the resolve()/read
+        # happens later, behind validate_project's containment barrier and the
+        # backend's own path handling.
+        return os.path.abspath(project_path)
 
     def lock_for(self, project_path: str) -> threading.RLock:
         key = self._key(project_path)
