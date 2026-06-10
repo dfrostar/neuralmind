@@ -665,7 +665,11 @@ def cmd_memory(args):
         return
 
     if args.memory_cmd == "reset":
-        counts = store.clear_namespace(args.namespace)
+        try:
+            counts = store.clear_namespace(args.namespace)
+        except ValueError as exc:
+            print(f"Invalid namespace: {exc}", file=sys.stderr)
+            sys.exit(1)
         if args.json:
             print(json.dumps(counts, indent=2))
             return
@@ -701,6 +705,9 @@ def cmd_memory(args):
             result = import_synapse_bundle(store, data, namespace=args.namespace)
         except IRError as exc:
             print(f"Import rejected: {exc}", file=sys.stderr)
+            sys.exit(1)
+        except ValueError as exc:
+            print(f"Invalid namespace: {exc}", file=sys.stderr)
             sys.exit(1)
         if args.json:
             print(json.dumps(result, indent=2))
