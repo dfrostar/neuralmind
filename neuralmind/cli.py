@@ -64,13 +64,30 @@ def _try_daemon():
         return None
 
 
+def _print_trace(trace: dict | None) -> None:
+    """Render a retrieval trace as a compact, human-readable block."""
+    if not trace:
+        return
+    print("-" * 60)
+    print(f"Retrieval trace ({len(trace.get('events', []))} events):")
+    for e in trace.get("events", []):
+        print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+    trace = getattr(args, "trace", False) is True
+    trace_verbose = getattr(args, "trace_verbose", False) is True
 
     client = _try_daemon()
     if client is not None:
         try:
-            out = client.query(str(Path(args.project_path).resolve()), args.question)
+            out = client.query(
+                str(Path(args.project_path).resolve()),
+                args.question,
+                trace=trace,
+                trace_verbose=trace_verbose,
+            )
             if not out.get("error"):
                 if args.json:
                     print(
@@ -81,6 +98,7 @@ def cmd_query(args):
                                 "reduction_ratio": out.get("reduction_ratio"),
                                 "layers": out.get("layers"),
                                 "context": out.get("context", ""),
+                                "trace": out.get("trace"),
                                 "via": "daemon",
                             },
                             indent=2,
@@ -92,12 +110,14 @@ def cmd_query(args):
                     print("=" * 60)
                     print(out.get("context", ""))
                     print("=" * 60)
+                    if trace:
+                        _print_trace(out.get("trace"))
                 return
         except Exception:
             pass  # fall through to direct mode
 
     mind = create_mind(args.project_path, auto_build=True)
-    result = mind.query(args.question)
+    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
     if args.json:
         output = {
             "query": args.question,
@@ -105,6 +125,7 @@ def cmd_query(args):
             "reduction_ratio": round(result.reduction_ratio, 1),
             "layers": result.layers_used,
             "context": result.context,
+            "trace": result.trace,
         }
         print(json.dumps(output, indent=2))
     else:
@@ -113,6 +134,8 @@ def cmd_query(args):
         print("=" * 60)
         print(result.context)
         print("=" * 60)
+        if trace:
+            _print_trace(result.trace)
 
 
 def _maybe_prompt_for_memory_opt_in():
@@ -1170,6 +1193,17 @@ def main():
     query_p.add_argument("project_path")
     query_p.add_argument("question")
     query_p.add_argument("--json", "-j", action="store_true")
+    query_p.add_argument(
+        "--trace",
+        action="store_true",
+        help="Attach a per-layer retrieval trace (candidates, cluster scores, "
+        "synapse boosts, final hits, token budget) for explainability/debugging.",
+    )
+    query_p.add_argument(
+        "--trace-verbose",
+        action="store_true",
+        help="With --trace, keep full candidate/hit lists in the trace.",
+    )
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")

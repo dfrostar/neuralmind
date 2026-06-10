@@ -62,9 +62,19 @@ class DaemonClient:
     def status(self) -> dict:
         return self._request("GET", "/status")
 
-    def query(self, project: str, question: str) -> dict:
+    def query(
+        self, project: str, question: str, trace: bool = False, trace_verbose: bool = False
+    ) -> dict:
         return self._request(
-            "POST", "/query", {"project": project, "question": question}, timeout=120.0
+            "POST",
+            "/query",
+            {
+                "project": project,
+                "question": question,
+                "trace": trace,
+                "trace_verbose": trace_verbose,
+            },
+            timeout=120.0,
         )
 
     def search(self, project: str, query: str, n: int = 10) -> dict:

@@ -658,7 +658,9 @@ class NeuralMind:
         )
         return result
 
-    def query(self, question: str) -> ContextResult:
+    def query(
+        self, question: str, trace: bool = False, trace_verbose: bool = False
+    ) -> ContextResult:
         """
         Get optimized context for answering a question.
 
@@ -667,12 +669,15 @@ class NeuralMind:
 
         Args:
             question: Natural language question about the codebase
+            trace: If True, attach a per-layer retrieval trace (PRD 3) to
+                ``result.trace`` for explainability/debugging.
+            trace_verbose: If True (with trace), keep full candidate/hit lists.
 
         Returns:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        result = self.selector.get_query_context(question)
+        result = self.selector.get_query_context(question, trace=trace, trace_verbose=trace_verbose)
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:

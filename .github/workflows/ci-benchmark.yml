@@ -144,6 +144,14 @@ jobs:
           python -m evals.quality.runner --run --baseline evals/quality/baseline.json \
             | tee tests/benchmark/quality.md
 
+      - name: Retrieval e2e tests (quality + traces, real embeddings)
+        # The env-gated end-to-end tests (real retrieval over a built fixture)
+        # only run where embeddings are available — here, not the firewalled
+        # unit-test job. Covers the quality harness + PRD 3 trace population.
+        env:
+          NEURALMIND_QUALITY_EVAL: "1"
+        run: python -m pytest tests/test_quality_harness.py tests/test_trace.py -v
+
       - name: Generate chart
         run: python scripts/generate_chart.py
 

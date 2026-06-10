@@ -141,6 +141,8 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
+| `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
+| `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 
 #### Output
 
@@ -150,6 +152,24 @@ Returns:
 - Reduction ratio compared to full codebase
 - Communities/modules loaded
 
+#### Retrieval traces *(v0.23.0+)*
+
+`--trace` explains **why** a result came back (PRD 3) — useful when retrieval
+surprises you. It records, layer by layer:
+
+- **candidates** — the raw vector-search pool (ids + scores);
+- **cluster_scores** — per-cluster score with **vector-vs-synapse attribution**
+  (how much of each cluster's score came from learned co-activation);
+- **synapse_boost** — individual co-activation boosts;
+- **hits** — the final ranked hits, flagging which were synapse-recalled;
+- **budget** — tokens per layer + reduction ratio.
+
+Plain `--trace` prints a compact per-layer summary; `--json` includes the full
+trace object (bounded, and path-redactable via the `RetrievalTrace` API for
+sharing in bug reports). Tracing is off by default and zero-overhead. The
+daemon's `/query` honors `trace` too, so daemon and direct mode return the same
+attribution.
+
 #### Examples
 
 ```bash
@@ -158,6 +178,10 @@ neuralmind query /path/to/project "How does authentication work?"
 
 # JSON output
 neuralmind query /path/to/project "What are the main API endpoints?" --json
+
+# Explain the retrieval path
+neuralmind query /path/to/project "How does billing work?" --trace
+neuralmind query /path/to/project "How does billing work?" --trace --json
 ```
 
 #### Sample Output

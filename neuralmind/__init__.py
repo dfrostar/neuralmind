@@ -87,6 +87,7 @@ from .synapse_memory import (
     render_synapse_memory,
 )
 from .synapses import SynapseStore, default_db_path
+from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
 __version__ = "0.22.0"
@@ -125,6 +126,8 @@ __all__ = [
     "to_graph_json",
     "validate_ir",
     "validate_project",
+    # Retrieval traces (v0.23.0 — PRD 3)
+    "RetrievalTrace",
 ]
 
 

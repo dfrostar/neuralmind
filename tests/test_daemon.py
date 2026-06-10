@@ -44,7 +44,7 @@ class FakeMind:
         self.build_count += 1
         return {"success": True, "project": self.project_path, "force": force}
 
-    def query(self, question: str) -> _FakeResult:
+    def query(self, question: str, trace: bool = False, trace_verbose: bool = False) -> _FakeResult:
         self.query_count += 1
         return _FakeResult()
 

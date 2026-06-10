@@ -1,14 +1,15 @@
-# NeuralMind v0.23.0 — versioned IR, retrieval-quality harness, and a local daemon
+# NeuralMind v0.23.0 — versioned IR, quality harness, debug traces, and a local daemon
 
-**The headline:** three foundations from the future-proofing roadmap land
+**The headline:** four foundations from the future-proofing roadmap land
 together — a **versioned internal index contract (IR)** that decouples the
 stack from any one graph producer (**PRD 1**), a **retrieval-quality harness**
 that proves NeuralMind retrieves the *right* code, not just *less* of it
-(**PRD 2**), and an experimental **local daemon** that holds project state warm
+(**PRD 2**), **explainability traces** that show *why* a result came back
+(**PRD 3**), and an experimental **local daemon** that holds project state warm
 so repeat queries skip cold backend init (**PRD 5**). The IR is the contract
 everything reads, the quality harness is the fitness function that keeps
-retrieval honest, and the daemon is the stable runtime boundary the rest of the
-roadmap builds on.
+retrieval honest, traces make retrieval debuggable, and the daemon is the
+stable runtime boundary the rest of the roadmap builds on.
 
 ## PRD 1 — versioned internal index contract (IR)
 
@@ -106,8 +107,8 @@ migration seam — without a rebuild.
 |-------|--------------------------|
 | **Claude Code** | No workflow change. Builds now also write `.neuralmind/index_ir.json` and show an `IR: v1 (valid)` line; `neuralmind validate` is available for a schema check. Optional: `neuralmind daemon start` makes repeat `query`/`stats` warm. |
 | **Cursor / Cline** | Same MCP tools, same retrieval. The IR is internal and the daemon is opt-in; nothing about the tool surface changes. |
-| **Generic MCP client** | No new tool in this release. The IR is the internal contract MCP responses are built on; the daemon's shared `dispatch()` API is the boundary MCP moves onto next (PRD 5 Phase 3), and trace/attribution (PRD 3) builds on the IR. |
-| **Contributors / CI** | New `neuralmind/ir.py` contract + `neuralmind validate` (backend-free, `--json`); `validate_project()` / `from_graph_json()` / `validate_ir()` seams; IR metadata in `stats`/`build_stats`. New `neuralmind/quality.py` + `neuralmind benchmark --quality` (precision@k / recall@k / MRR / answerability, gated). New `neuralmind/daemon.py` + `daemon_client.py`: a `ProjectRegistry` (warm cache), `JobManager`, and a transport-agnostic `dispatch()` the CLI client speaks. |
+| **Generic MCP client** | No new tool in this release. `query` gains an optional `trace` for machine-readable retrieval attribution (PRD 3); the daemon's shared `dispatch()` API is the boundary MCP moves onto next (PRD 5 Phase 3). |
+| **Contributors / CI** | New `neuralmind/ir.py` contract + `neuralmind validate` (backend-free, `--json`); `validate_project()` / `from_graph_json()` / `validate_ir()` seams; IR metadata in `stats`/`build_stats`. New `neuralmind/quality.py` + `neuralmind benchmark --quality` (precision@k / recall@k / MRR / answerability, gated). New `neuralmind/trace.py` + `query(..., trace=True)` → `result.trace` (per-layer attribution; `RetrievalTrace` is public). New `neuralmind/daemon.py` + `daemon_client.py`: a `ProjectRegistry` (warm cache), `JobManager`, and a transport-agnostic `dispatch()` the CLI client speaks. |
 
 ## How to use it
 
@@ -178,6 +179,36 @@ suite = quality.aggregate("my-suite", per)
 print(suite.mrr, suite.answerability, suite.mean_recall)
 ```
 
+## PRD 3 — explainability & debug traces
+
+Retrieval blends layered summaries, cluster selection, semantic search, and
+learned synapse boosts — so when a result is surprising, "why did *this* come
+back?" was hard to answer. v0.23.0 makes the retrieval path inspectable.
+
+- **`neuralmind query --trace` (`--trace-verbose`).** Attaches a per-layer
+  trace to the result: the **vector candidate pool** (ids + scores), **cluster
+  scoring with vector-vs-synapse attribution** (exactly how much each cluster's
+  score came from co-activation), individual **synapse boosts**, the **final
+  ranked hits** (flagging which were synapse-recalled), and the **token budget /
+  reduction**. `--json` includes the full trace; `--trace` prints a compact
+  per-layer summary.
+
+- **`neuralmind/trace.py` — a stable, bounded, redactable trace.** Pure and
+  stdlib-only; lists are capped so a trace can ride along in a CLI payload or an
+  MCP response, and `to_dict(redact=True)` strips paths to basenames so a trace
+  is safe to paste into a bug report. Exposed as `from neuralmind import
+  RetrievalTrace`.
+
+- **Zero-overhead by default.** The selector records a trace **only when
+  asked**; every record site is guarded, so an ordinary query is byte-for-byte
+  unchanged. The daemon's `/query` accepts `trace` too, so daemon and direct
+  mode return the same attribution.
+
+```bash
+neuralmind query . "how does auth work?" --trace
+neuralmind query . "how does auth work?" --trace --json   # full trace for tooling
+```
+
 ## PRD 5 — local daemon (experimental)
 
 Today every `neuralmind` invocation re-initializes the backend, reloads the
@@ -232,7 +263,10 @@ neuralmind daemon stop
   fallback, and runs one localhost process per user. Making it the default,
   moving MCP and the graph UI onto its shared API, and richer watch/rebuild
   coordination are the next phases.
+- **Traces are CLI/daemon-first (PRD 3 Phase 1).** Trace mode is on `query`
+  (CLI + daemon `/query`); a graph-UI "replay last trace" view and richer MCP
+  trace metadata are the next phases.
 - **Next:** the pluggable ingestion framework (PRD 7) registers alternate
-  backends behind this same IR, explainability traces (PRD 3) attribute
-  retrieval decisions across the IR's layers, and MCP/UI adopt the daemon's
-  shared API (PRD 5 Phase 3).
+  backends behind this same IR; memory namespaces / branch isolation (PRD 4)
+  scope the learned layer; and MCP/UI adopt the daemon's shared API and trace
+  replay (PRD 5 / PRD 3 later phases).

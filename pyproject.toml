@@ -138,7 +138,10 @@ keywords = [
     "ranked-retrieval-metrics",
     "local-daemon",
     "warm-index-cache",
-    "daemon-first-architecture"
+    "daemon-first-architecture",
+    "retrieval-trace",
+    "explainable-retrieval",
+    "retrieval-debugging"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

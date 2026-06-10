@@ -307,7 +307,13 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
             project = (qs.get("project") or [""])[0] or _require(body, "project")
             return 200, _stats(ctx, project)
         if method == "POST" and route == "/query":
-            return 200, _query(ctx, _require(body, "project"), _require(body, "question"))
+            return 200, _query(
+                ctx,
+                _require(body, "project"),
+                _require(body, "question"),
+                trace=bool(body.get("trace", False)),
+                trace_verbose=bool(body.get("trace_verbose", False)),
+            )
         if method == "POST" and route == "/search":
             return 200, _search(
                 ctx, _require(body, "project"), _require(body, "query"), int(body.get("n", 10))
@@ -353,10 +359,16 @@ def _status(ctx: DaemonContext) -> dict:
     }
 
 
-def _query(ctx: DaemonContext, project: str, question: str) -> dict:
+def _query(
+    ctx: DaemonContext,
+    project: str,
+    question: str,
+    trace: bool = False,
+    trace_verbose: bool = False,
+) -> dict:
     mind = ctx.registry.ensure_built(project)
     with ctx.registry.lock_for(project):
-        result = mind.query(question)
+        result = mind.query(question, trace=trace, trace_verbose=trace_verbose)
     return {
         "project": project,
         "question": question,
@@ -364,6 +376,7 @@ def _query(ctx: DaemonContext, project: str, question: str) -> dict:
         "reduction_ratio": round(getattr(result, "reduction_ratio", 0.0), 1),
         "layers": getattr(result, "layers_used", None),
         "context": getattr(result, "context", ""),
+        "trace": getattr(result, "trace", None),
     }
 
 
