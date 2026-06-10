@@ -53,8 +53,11 @@ class DaemonClient:
             raise DaemonUnavailableError(str(exc)) from exc
 
     # -- API ------------------------------------------------------------- #
-    def health(self) -> dict:
-        return self._request("GET", "/health", timeout=5.0)
+    def health(self, timeout: float = 2.0) -> dict:
+        # Short timeout: this is the liveness probe behind the CLI's
+        # daemon-or-direct decision, so an unresponsive daemon must fall back
+        # fast rather than stalling every command.
+        return self._request("GET", "/health", timeout=timeout)
 
     def status(self) -> dict:
         return self._request("GET", "/status")
@@ -88,9 +91,12 @@ class DaemonClient:
 def connect(*, ping: bool = True) -> DaemonClient | None:
     """Return a client for a running daemon, or ``None`` if none is reachable.
 
-    Reads the discovery file; if the pid is dead or ``/health`` is unreachable,
-    clears the stale file and returns ``None`` so callers fall back to direct
-    mode cleanly.
+    Reads the discovery file. If the recorded pid is **dead**, the file is stale
+    and gets cleared. If the pid is alive but ``/health`` is unreachable, the
+    daemon is still starting (the socket binds before ``serve_forever`` accepts)
+    or transiently busy — we return ``None`` **without** clearing, so a startup
+    race can't orphan a daemon that's about to be ready. Callers fall back to
+    direct mode for that invocation and a later call connects.
     """
     info = read_discovery()
     if not info:
@@ -104,7 +110,6 @@ def connect(*, ping: bool = True) -> DaemonClient | None:
         try:
             client.health()
         except DaemonUnavailableError:
-            clear_discovery()
             return None
     return client
 

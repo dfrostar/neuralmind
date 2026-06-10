@@ -314,6 +314,18 @@ def test_valid_synapse_between_known_nodes_is_clean():
     assert not any(i.code in ("stale_synapse", "synapse_missing_endpoint") for i in issues)
 
 
+def test_project_artifact_resolves_under_root(tmp_path):
+    art = ir_mod.project_artifact(tmp_path, ".neuralmind", "index_ir.json")
+    assert art == (tmp_path.resolve() / ".neuralmind" / "index_ir.json")
+    assert art.is_relative_to(tmp_path.resolve())
+
+
+def test_project_artifact_rejects_traversal(tmp_path):
+    # A constant suffix can't escape, but a traversal component must be refused.
+    with pytest.raises(ValueError):
+        ir_mod.project_artifact(tmp_path, "..", "..", "etc", "passwd")
+
+
 def test_load_synapses_for_project_empty_when_no_store(tmp_path):
     assert ir_mod.load_synapses_for_project(tmp_path) == []
 

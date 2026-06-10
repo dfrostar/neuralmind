@@ -245,11 +245,11 @@ def running_daemon(daemon_home, registry):
     )
     t.start()
     client = None
-    for _ in range(100):
+    for _ in range(200):  # up to ~20s — CI runners (esp. macOS) can be slow to bind
         client = daemon_client.connect()
         if client is not None:
             break
-        time.sleep(0.05)
+        time.sleep(0.1)
     assert client is not None, "daemon did not come up"
     yield client
     try:

@@ -162,6 +162,23 @@ def _looks_like_filename(label: str) -> bool:
     return suffix in _SUFFIX_LANG
 
 
+def project_artifact(project_path: str | Path, *parts: str) -> Path:
+    """Resolve a fixed artifact path under a project root, refusing escapes.
+
+    The daemon accepts a project path over HTTP and the CLI takes one as an
+    argument, so a project root flows from external input into filesystem
+    reads/writes. Resolving the base and confirming the (constant-suffix)
+    artifact stays within it neutralizes any path traversal in the supplied
+    root before it reaches a file operation — a single choke point so no caller
+    builds an unchecked path from untrusted input.
+    """
+    base = Path(project_path).resolve()
+    target = base.joinpath(*parts).resolve()
+    if target != base and not target.is_relative_to(base):
+        raise ValueError(f"artifact path {target} escapes project root {base}")
+    return target
+
+
 def _kind_for_node(node: dict) -> str:
     """Best-effort canonical kind for a graphify node.
 
@@ -653,7 +670,7 @@ def load_synapses_for_project(project_path: str | Path) -> list[IRSynapse]:
     fold synapses into the IR without standing up an embedding backend. Returns
     an empty list when there's no store or it can't be read.
     """
-    db = Path(project_path) / ".neuralmind" / "synapses.db"
+    db = project_artifact(project_path, ".neuralmind", "synapses.db")
     if not db.exists():
         return []
     try:

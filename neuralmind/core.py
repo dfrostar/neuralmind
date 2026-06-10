@@ -54,9 +54,11 @@ def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     Returns a summary dict; on failure returns ``{"ok": False, "error": ...}``.
     """
     project_path = Path(project_path)
-    graph_path = project_path / "graphify-out" / "graph.json"
-    ir_path = project_path / ".neuralmind" / IR_FILENAME
-    ir_meta_path = project_path / ".neuralmind" / IR_META_FILENAME
+    # Resolve + contain artifact paths: validate is reachable from the daemon
+    # with a request-supplied project, so the root is untrusted input.
+    graph_path = ir_mod.project_artifact(project_path, "graphify-out", "graph.json")
+    ir_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_FILENAME)
+    ir_meta_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_META_FILENAME)
 
     try:
         if ir_path.exists() and not write:
@@ -352,11 +354,11 @@ class NeuralMind:
     # ----------------------------------------------------------------- #
     @property
     def ir_path(self) -> Path:
-        return self.project_path / ".neuralmind" / self.IR_FILENAME
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_FILENAME)
 
     @property
     def ir_meta_path(self) -> Path:
-        return self.project_path / ".neuralmind" / self.IR_META_FILENAME
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_META_FILENAME)
 
     def _materialize_ir(self) -> dict | None:
         """Adapt the loaded graph into the canonical IR, validate, and persist.
