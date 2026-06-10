@@ -103,7 +103,10 @@ def cmd_wakeup(args):
 
 
 def cmd_benchmark(args):
-    if getattr(args, "quality", False):
+    # Literal True check — a bare MagicMock() args (used by the benchmark unit
+    # tests) makes `args.quality` a truthy attribute but not `is True`, so the
+    # default token-reduction path still runs. Mirrors the --contribute guard.
+    if getattr(args, "quality", False) is True:
         _run_quality_eval(args)
         return
 

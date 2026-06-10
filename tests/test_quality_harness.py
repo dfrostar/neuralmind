@@ -9,6 +9,8 @@ mirroring ``test_benchmark_regression``.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -40,6 +42,41 @@ def test_every_query_has_relevant_modules():
         suite = runner.load_suite(name)
         for q in suite.queries:
             assert q.expected_modules, f"{name}/{q.id} has no expected_modules"
+
+
+def test_cmd_benchmark_routes_to_quality_only_on_literal_true(monkeypatch):
+    """`benchmark --quality` enters quality mode; a bare MagicMock args must not.
+
+    Regression guard: argparse `store_true` yields a real ``True``, but the
+    benchmark unit tests pass a bare ``MagicMock()`` whose ``.quality`` is a
+    truthy attribute — that must fall through to the normal token-reduction
+    path, not the (file-reading) quality path.
+    """
+    from neuralmind import cli
+
+    calls: list[str] = []
+    monkeypatch.setattr(cli, "_run_quality_eval", lambda args: calls.append("quality"))
+
+    # Real flag set -> routes to quality.
+    cli.cmd_benchmark(SimpleNamespace(quality=True))
+    assert calls == ["quality"]
+
+    # Bare MagicMock -> must NOT route to quality; stub the normal path.
+    calls.clear()
+    monkeypatch.setattr(cli, "create_mind", lambda *a, **k: _StubMind())
+    cli.cmd_benchmark(MagicMock(json=True, contribute=False))
+    assert calls == []  # quality path never taken
+
+
+class _StubMind:
+    def benchmark(self):
+        return {
+            "project": "stub",
+            "wakeup_tokens": 1,
+            "avg_query_tokens": 1,
+            "avg_reduction_ratio": 1.0,
+            "summary": "ok",
+        }
 
 
 @pytest.mark.skipif(
