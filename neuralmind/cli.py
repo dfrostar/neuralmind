@@ -5,6 +5,7 @@ cli.py - NeuralMind Command Line Interface
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -47,8 +48,54 @@ def cmd_build(args):
         sys.exit(1)
 
 
+def _try_daemon():
+    """Return a connected DaemonClient, or None to fall back to direct mode.
+
+    Honors NEURALMIND_NO_DAEMON=1 to force direct mode. Never raises — any
+    discovery/connection problem degrades to direct mode silently.
+    """
+    if os.environ.get("NEURALMIND_NO_DAEMON") == "1":
+        return None
+    try:
+        from neuralmind.daemon_client import connect
+
+        return connect()
+    except Exception:
+        return None
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+
+    client = _try_daemon()
+    if client is not None:
+        try:
+            out = client.query(str(Path(args.project_path).resolve()), args.question)
+            if not out.get("error"):
+                if args.json:
+                    print(
+                        json.dumps(
+                            {
+                                "query": args.question,
+                                "tokens": out.get("tokens"),
+                                "reduction_ratio": out.get("reduction_ratio"),
+                                "layers": out.get("layers"),
+                                "context": out.get("context", ""),
+                                "via": "daemon",
+                            },
+                            indent=2,
+                        )
+                    )
+                else:
+                    print(f"Query: {args.question}  (via daemon)")
+                    print(f"Tokens: {out.get('tokens')} ({out.get('reduction_ratio')}x reduction)")
+                    print("=" * 60)
+                    print(out.get("context", ""))
+                    print("=" * 60)
+                return
+        except Exception:
+            pass  # fall through to direct mode
+
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.query(args.question)
     if args.json:
@@ -318,6 +365,23 @@ def cmd_search(args):
 
 
 def cmd_stats(args):
+    client = _try_daemon()
+    if client is not None:
+        try:
+            stats = client.stats(str(Path(args.project_path).resolve()))
+            if not stats.get("error"):
+                stats.setdefault("via", "daemon")
+                if args.json:
+                    print(json.dumps(stats, indent=2))
+                else:
+                    print(f"Project: {stats.get('project')}  (via daemon)")
+                    print(f"Built: {stats.get('built')}")
+                    if stats.get("built"):
+                        print(f"Nodes: {stats.get('nodes', stats.get('total_nodes', 0))}")
+                return
+        except Exception:
+            pass
+
     mind = NeuralMind(args.project_path)
     try:
         stats = mind.embedder.get_stats()
@@ -691,6 +755,99 @@ def cmd_watch(args):
         watcher.stop()
         if not quiet:
             print(f"\nWatcher stopped. Reinforced {activations_total} synapse pair(s) total.")
+
+
+def cmd_daemon(args):
+    """Manage the local NeuralMind daemon (PRD 5, experimental).
+
+    The daemon holds project state warm so repeated queries skip cold backend
+    init. CLI read commands prefer it automatically when it's running; set
+    NEURALMIND_NO_DAEMON=1 to force direct mode.
+    """
+    import subprocess
+    import time
+
+    from neuralmind import daemon as daemon_mod
+    from neuralmind.daemon_client import connect
+
+    action = args.action
+
+    if action == "status":
+        client = connect()
+        if client is None:
+            print("daemon: not running")
+            sys.exit(3)
+        health = client.health()
+        if args.json:
+            print(json.dumps(health, indent=2))
+        else:
+            print(f"daemon: running (pid {health.get('pid')}, v{health.get('version')})")
+            print(f"  uptime: {health.get('uptime_seconds')}s")
+            print(f"  projects warm: {len(health.get('projects', []))}")
+            print(f"  jobs active: {health.get('jobs_active', 0)}")
+        return
+
+    if action == "stop":
+        client = connect()
+        if client is None:
+            print("daemon: not running")
+            return
+        try:
+            client.shutdown()
+        except Exception:
+            pass
+        # Confirm it actually went away; clear stale discovery otherwise.
+        for _ in range(20):
+            if connect(ping=True) is None:
+                break
+            time.sleep(0.1)
+        daemon_mod.clear_discovery()
+        print("daemon: stopped")
+        return
+
+    if action in ("start", "restart"):
+        if action == "restart":
+            existing = connect()
+            if existing is not None:
+                try:
+                    existing.shutdown()
+                except Exception:
+                    pass
+                time.sleep(0.3)
+                daemon_mod.clear_discovery()
+        if connect() is not None:
+            print("daemon: already running")
+            return
+        if args.foreground:
+            daemon_mod.serve(host=args.host, port=args.port)
+            return
+        # Detached background process; it writes discovery once bound.
+        daemon_mod.clear_discovery()
+        log_dir = Path.home() / ".neuralmind"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log = open(log_dir / "daemon.log", "ab")  # noqa: SIM115 - lifetime is the child's
+        cmd = [
+            sys.executable,
+            "-m",
+            "neuralmind.daemon",
+            "--host",
+            args.host,
+            "--port",
+            str(args.port),
+        ]
+        subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
+        for _ in range(50):  # up to ~5s for it to come up
+            client = connect()
+            if client is not None:
+                health = client.health()
+                print(
+                    f"daemon: started (pid {health.get('pid')}) on port "
+                    f"{daemon_mod.read_discovery().get('port')}"
+                )
+                return
+            time.sleep(0.1)
+        print("daemon: failed to start (see ~/.neuralmind/daemon.log)")
+        sys.exit(1)
 
 
 def cmd_serve(args):
@@ -1234,6 +1391,25 @@ def main():
         "Examples: 'code', 'cursor', 'vim', 'subl', 'code -n'.",
     )
     serve_p.set_defaults(func=cmd_serve)
+
+    daemon_p = subparsers.add_parser(
+        "daemon",
+        help="Manage the local NeuralMind daemon (warm state for fast repeat queries)",
+    )
+    daemon_p.add_argument(
+        "action",
+        choices=["start", "stop", "restart", "status"],
+        help="start (background), stop, restart, or status",
+    )
+    daemon_p.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
+    daemon_p.add_argument("--port", type=int, default=8787, help="Port to bind (default: 8787)")
+    daemon_p.add_argument(
+        "--foreground",
+        action="store_true",
+        help="Run in the foreground instead of detaching (start/restart only)",
+    )
+    daemon_p.add_argument("--json", "-j", action="store_true")
+    daemon_p.set_defaults(func=cmd_daemon)
 
     # demo command — runs against bundled sample_project, no git checkout needed
     demo_p = subparsers.add_parser(

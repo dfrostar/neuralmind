@@ -24,6 +24,7 @@ Complete command-line interface documentation for NeuralMind.
   - [init-hook](#init-hook)
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
+  - [daemon](#daemon-v0230)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -1138,6 +1139,61 @@ Behaviour:
 
 ---
 
+### daemon *(v0.23.0+)*
+
+Manage the local NeuralMind daemon (experimental — PRD 5). The daemon holds
+each project's state **warm** so repeated queries skip cold backend init. CLI
+read commands (`query`, `stats`) prefer it automatically when it's running and
+fall back to direct mode otherwise.
+
+```bash
+neuralmind daemon {start|stop|restart|status} [OPTIONS]
+```
+
+#### Actions
+
+| Action | Description |
+|--------|-------------|
+| `start` | Launch the daemon in the background (writes a discovery file). No-op if already running. |
+| `stop` | Ask the running daemon to shut down gracefully; clears stale discovery. |
+| `restart` | Stop (if running) then start. |
+| `status` | Show pid, uptime, warm projects, and active jobs (exit 3 if not running). |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | `127.0.0.1` | Host to bind (loopback) |
+| `--port` | `8787` | Port to bind |
+| `--foreground` | False | Run in the foreground instead of detaching (`start`/`restart`) |
+| `--json`, `-j` | False | Machine-readable `status` output |
+
+#### Behavior
+
+- **One per-user daemon, many projects.** A project registry initializes each
+  `NeuralMind` once and reuses it; a per-project lock serializes
+  build/query/watch so they can't corrupt the index or synapse store; slow
+  builds run as background jobs.
+- **Auto-preference + fallback.** `neuralmind query` / `stats` use the daemon
+  when reachable (output marked `via: daemon` in `--json`), else run directly.
+  Force direct mode with **`NEURALMIND_NO_DAEMON=1`**.
+- **Crash-safe discovery.** A stale discovery file (dead pid / unreachable) is
+  cleaned up automatically, so a crashed daemon never wedges the CLI.
+- **Shared API.** The daemon speaks one transport-agnostic contract
+  (`health` / `status` / `query` / `search` / `stats` / `build` / `validate` /
+  `jobs`); the `neuralmind-daemon` console script runs it directly. Token-guarded
+  even on loopback.
+
+```bash
+# Warm daemon, then fast repeat queries
+neuralmind daemon start
+neuralmind query . "how does auth work?"   # served warm (via: daemon)
+neuralmind daemon status --json
+neuralmind daemon stop
+```
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -1174,6 +1230,8 @@ Behaviour:
 | `NEURALMIND_PARITY_COVERAGE_FLOOR` | `0.90` | *(v0.16.0+)* Backend parity gate: minimum fraction of graphify's per-language symbols the built-in backend must recover for TypeScript/Go (structural parity, since no gold-fact set exists for those fixtures yet). |
 | `NEURALMIND_PRECISION` | unset | *(v0.17.0+)* Set to `1` to enable the optional SCIP precision pass: when a `*.scip` index is present in the project root, the built-in backend's heuristic `calls`/`inherits` edges are replaced with compiler-accurate ones for the files the index covers. Off by default; a no-op when unset or when no index is found. |
 | `NEURALMIND_ONNX_MODEL_DIR` | unset | *(v0.21.0+)* Path to a pre-extracted `all-MiniLM-L6-v2` ONNX folder (`model.onnx` + `tokenizer.json`) for the ChromaDB-free `turbovec` backend's bundled embedder. When unset, the model is resolved from NeuralMind's cache, an existing ChromaDB cache, or downloaded (SHA256-verified). Set it for **air-gapped** installs so no network is needed. |
+| `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
+| `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 
 ---
 

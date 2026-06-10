@@ -1,11 +1,14 @@
-# NeuralMind v0.23.0 — versioned index contract (IR) + retrieval-quality harness
+# NeuralMind v0.23.0 — versioned IR, retrieval-quality harness, and a local daemon
 
-**The headline:** two foundations from the future-proofing roadmap land
+**The headline:** three foundations from the future-proofing roadmap land
 together — a **versioned internal index contract (IR)** that decouples the
-stack from any one graph producer (**PRD 1**), and a **retrieval-quality
-harness** that proves NeuralMind retrieves the *right* code, not just *less* of
-it (**PRD 2**). The IR is the contract everything reads; the quality harness is
-the fitness function that keeps retrieval honest as ranking evolves.
+stack from any one graph producer (**PRD 1**), a **retrieval-quality harness**
+that proves NeuralMind retrieves the *right* code, not just *less* of it
+(**PRD 2**), and an experimental **local daemon** that holds project state warm
+so repeat queries skip cold backend init (**PRD 5**). The IR is the contract
+everything reads, the quality harness is the fitness function that keeps
+retrieval honest, and the daemon is the stable runtime boundary the rest of the
+roadmap builds on.
 
 ## PRD 1 — versioned internal index contract (IR)
 
@@ -101,10 +104,10 @@ migration seam — without a rebuild.
 
 | Agent | What changes in v0.23.0 |
 |-------|--------------------------|
-| **Claude Code** | No workflow change. Builds now also write `.neuralmind/index_ir.json` and show an `IR: v1 (valid)` line; `neuralmind validate` is available for a schema check. |
-| **Cursor / Cline** | Same MCP tools, same retrieval. The IR is internal; nothing about the tool surface changes. |
-| **Generic MCP client** | No new tool in this release. The IR is the internal contract MCP responses are built on; trace/attribution work (PRD 3) builds on it next. |
-| **Contributors / CI** | New `neuralmind/ir.py` contract + `neuralmind validate` (backend-free, `--json`). `validate_project()` / `from_graph_json()` / `validate_ir()` are the new seams; IR metadata appears in `stats`/`build_stats`. New `neuralmind/quality.py` metrics + `neuralmind benchmark --quality` (precision@k / recall@k / MRR / answerability over golden suites), gating on a regression floor. |
+| **Claude Code** | No workflow change. Builds now also write `.neuralmind/index_ir.json` and show an `IR: v1 (valid)` line; `neuralmind validate` is available for a schema check. Optional: `neuralmind daemon start` makes repeat `query`/`stats` warm. |
+| **Cursor / Cline** | Same MCP tools, same retrieval. The IR is internal and the daemon is opt-in; nothing about the tool surface changes. |
+| **Generic MCP client** | No new tool in this release. The IR is the internal contract MCP responses are built on; the daemon's shared `dispatch()` API is the boundary MCP moves onto next (PRD 5 Phase 3), and trace/attribution (PRD 3) builds on the IR. |
+| **Contributors / CI** | New `neuralmind/ir.py` contract + `neuralmind validate` (backend-free, `--json`); `validate_project()` / `from_graph_json()` / `validate_ir()` seams; IR metadata in `stats`/`build_stats`. New `neuralmind/quality.py` + `neuralmind benchmark --quality` (precision@k / recall@k / MRR / answerability, gated). New `neuralmind/daemon.py` + `daemon_client.py`: a `ProjectRegistry` (warm cache), `JobManager`, and a transport-agnostic `dispatch()` the CLI client speaks. |
 
 ## How to use it
 
@@ -175,17 +178,61 @@ suite = quality.aggregate("my-suite", per)
 print(suite.mrr, suite.answerability, suite.mean_recall)
 ```
 
+## PRD 5 — local daemon (experimental)
+
+Today every `neuralmind` invocation re-initializes the backend, reloads the
+graph, and re-opens the index from cold. The durable long-term boundary is a
+**local service** that owns project state, the index lifecycle, caching, and
+concurrency — with thin CLI/MCP/UI clients on top. v0.23.0 ships the
+experimental first cut.
+
+- **`neuralmind daemon start|stop|status|restart`.** A per-user localhost
+  daemon (also `neuralmind-daemon`) with a **project registry**: each project's
+  `NeuralMind` is initialized **once** and reused across requests, so warm
+  queries skip cold backend init. `start` detaches into the background and
+  writes a discovery file; a **stale discovery file** (dead pid / unreachable)
+  is cleaned up automatically so a crashed daemon never wedges the CLI.
+
+- **CLI prefers the daemon automatically.** `neuralmind query` and
+  `neuralmind stats` use the daemon when it's running and **fall back to direct
+  mode** otherwise — identical output either way (the daemon path is marked
+  `via: daemon` in `--json`). Force direct mode with `NEURALMIND_NO_DAEMON=1`.
+
+- **One shared API contract.** A transport-agnostic `dispatch()` core maps
+  `(method, path, body) → (status, payload)` — `health`, `status`, `query`,
+  `search`, `stats`, `build`, `validate`, `jobs`. The HTTP handler is a thin
+  wrapper over it; the CLI client speaks the same contract, and MCP/UI move onto
+  it next (so behavior can't drift between surfaces).
+
+- **Concurrency-safe.** A **per-project lock** serializes build/query/watch so
+  they can't corrupt the index or the synapse store; slow rebuilds run as
+  **background jobs** with pollable status (`/jobs`), token-guarded even on
+  loopback, with graceful shutdown.
+
+```bash
+neuralmind daemon start            # background; warms state on first query
+neuralmind query . "how does auth work?"   # served warm, marked via: daemon
+neuralmind daemon status           # pid, uptime, warm projects, active jobs
+neuralmind daemon stop
+```
+
 ## Honest scope & what's next
 
 - **Phase 1 only.** This is the "hidden internal adapter, legacy mode default"
   phase. The embedder still consumes `graph.json`; the IR is materialized and
   validated in parallel. Future phases dual-write, then make the IR the read
   path, then deprecate the legacy storage.
-- **Coverage is `coarse` today.** The tree-sitter/graphify extractors can't
-  reliably split a code symbol into function vs class vs method, so the adapter
-  reports `coarse` and maps them to the generic `symbol` kind rather than
-  pretending to know more than the parser did. A precise (SCIP/LSP) backend
-  will populate the finer kinds and report `precise`.
+- **Coverage is `coarse` today.** The `graph.json` schema is intentionally
+  locked to graphify's shape (a parity test enforces it), so the adapter infers
+  kind from `file_type` + the call-form label convention (`name()` → function)
+  rather than pretending to know more than the parser did. A precise (SCIP/LSP)
+  backend that carries real kind metadata is the path to `precise`.
+- **The daemon is experimental (PRD 5 Phase 1).** It's opt-in (`neuralmind
+  daemon start`), serves the read path (`query`/`stats`) with direct-mode
+  fallback, and runs one localhost process per user. Making it the default,
+  moving MCP and the graph UI onto its shared API, and richer watch/rebuild
+  coordination are the next phases.
 - **Next:** the pluggable ingestion framework (PRD 7) registers alternate
-  backends behind this same IR, and explainability traces (PRD 3) attribute
-  retrieval decisions across the IR's layers.
+  backends behind this same IR, explainability traces (PRD 3) attribute
+  retrieval decisions across the IR's layers, and MCP/UI adopt the daemon's
+  shared API (PRD 5 Phase 3).

@@ -135,7 +135,10 @@ keywords = [
     "retrieval-quality-harness",
     "precision-recall-mrr",
     "answerability-eval",
-    "ranked-retrieval-metrics"
+    "ranked-retrieval-metrics",
+    "local-daemon",
+    "warm-index-cache",
+    "daemon-first-architecture"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -198,6 +201,7 @@ all = [
 [project.scripts]
 neuralmind = "neuralmind.cli:main"
 neuralmind-mcp = "neuralmind.mcp_server:main"
+neuralmind-daemon = "neuralmind.daemon:main"
 
 [project.urls]
 Homepage = "https://github.com/dfrostar/neuralmind"
