@@ -22,6 +22,10 @@ already in flight — cross-reference before scheduling so they don't fork:
   [`2026-06-06-onboarding-lift-eval-handoff.md`](2026-06-06-onboarding-lift-eval-handoff.md).
 - **PRD 8 (Durable Team Memory)** is the portable cross-agent memory format
   flagged in the v0.16 "Anticipate" theme.
+- **PRD 4 (Memory Namespaces & Branch Isolation)** has a concrete
+  schema-migration plan in
+  [`2026-06-10-prd4-memory-namespaces.md`](2026-06-10-prd4-memory-namespaces.md)
+  (next up after v0.23.0; its namespace export/import is the PRD 8 on-ramp).
 - **PRD 9 (Agent-Agnostic Orchestration)** is the host-capabilities adapter
   from the v0.15 "Endure" theme.
 
