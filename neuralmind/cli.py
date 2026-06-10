@@ -5,6 +5,7 @@ cli.py - NeuralMind Command Line Interface
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -36,16 +37,87 @@ def cmd_build(args):
         print(f"   Project: {result.get('project')}")
         print(f"   Nodes: {result.get('nodes_total')}")
         print(f"   Communities: {result.get('communities')}")
+        ir_meta = result.get("ir")
+        if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
+            val = ir_meta.get("validation", {})
+            status = "valid" if val.get("ok", True) else f"{val.get('errors', 0)} error(s)"
+            print(f"   IR: v{ir_meta['ir_version']} ({status})")
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
 
 
+def _try_daemon():
+    """Return a connected DaemonClient, or None to fall back to direct mode.
+
+    Honors NEURALMIND_NO_DAEMON=1 to force direct mode. Never raises — any
+    discovery/connection problem degrades to direct mode silently.
+    """
+    if os.environ.get("NEURALMIND_NO_DAEMON") == "1":
+        return None
+    try:
+        from neuralmind.daemon_client import connect
+
+        return connect()
+    except Exception:
+        return None
+
+
+def _print_trace(trace: dict | None) -> None:
+    """Render a retrieval trace as a compact, human-readable block."""
+    if not trace:
+        return
+    print("-" * 60)
+    print(f"Retrieval trace ({len(trace.get('events', []))} events):")
+    for e in trace.get("events", []):
+        print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+    trace = getattr(args, "trace", False) is True
+    trace_verbose = getattr(args, "trace_verbose", False) is True
+
+    client = _try_daemon()
+    if client is not None:
+        try:
+            out = client.query(
+                str(Path(args.project_path).resolve()),
+                args.question,
+                trace=trace,
+                trace_verbose=trace_verbose,
+            )
+            if not out.get("error"):
+                if args.json:
+                    print(
+                        json.dumps(
+                            {
+                                "query": args.question,
+                                "tokens": out.get("tokens"),
+                                "reduction_ratio": out.get("reduction_ratio"),
+                                "layers": out.get("layers"),
+                                "context": out.get("context", ""),
+                                "trace": out.get("trace"),
+                                "via": "daemon",
+                            },
+                            indent=2,
+                        )
+                    )
+                else:
+                    print(f"Query: {args.question}  (via daemon)")
+                    print(f"Tokens: {out.get('tokens')} ({out.get('reduction_ratio')}x reduction)")
+                    print("=" * 60)
+                    print(out.get("context", ""))
+                    print("=" * 60)
+                    if trace:
+                        _print_trace(out.get("trace"))
+                return
+        except Exception:
+            pass  # fall through to direct mode
+
     mind = create_mind(args.project_path, auto_build=True)
-    result = mind.query(args.question)
+    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
     if args.json:
         output = {
             "query": args.question,
@@ -53,6 +125,7 @@ def cmd_query(args):
             "reduction_ratio": round(result.reduction_ratio, 1),
             "layers": result.layers_used,
             "context": result.context,
+            "trace": result.trace,
         }
         print(json.dumps(output, indent=2))
     else:
@@ -61,6 +134,8 @@ def cmd_query(args):
         print("=" * 60)
         print(result.context)
         print("=" * 60)
+        if trace:
+            _print_trace(result.trace)
 
 
 def _maybe_prompt_for_memory_opt_in():
@@ -98,6 +173,13 @@ def cmd_wakeup(args):
 
 
 def cmd_benchmark(args):
+    # Literal True check — a bare MagicMock() args (used by the benchmark unit
+    # tests) makes `args.quality` a truthy attribute but not `is True`, so the
+    # default token-reduction path still runs. Mirrors the --contribute guard.
+    if getattr(args, "quality", False) is True:
+        _run_quality_eval(args)
+        return
+
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
@@ -117,6 +199,49 @@ def cmd_benchmark(args):
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
         print(f"Summary: {result['summary']}")
+
+
+def _run_quality_eval(args) -> None:
+    """`neuralmind benchmark --quality` — the retrieval-quality self-test.
+
+    Like `neuralmind eval`, this runs against the golden suites that ship with
+    the *source* repo (the `evals/` package), not the installed wheel. Exits
+    non-zero when a suite regresses past its threshold so CI can gate on it.
+    """
+    try:
+        from evals.quality import harness, runner
+    except ImportError:
+        print(
+            "neuralmind benchmark --quality runs against the golden query suites "
+            "that ship with the source repository (the `evals/` package), not the "
+            "installed wheel. Clone the repo and run "
+            "`python -m evals.quality.runner --run` from its root.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    names = [args.suite] if getattr(args, "suite", None) else runner.all_suites()
+    baseline = None
+    if getattr(args, "baseline", None):
+        baseline = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
+
+    try:
+        reports = [harness.run_suite(name) for name in names]
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(2)
+    except RuntimeError as exc:
+        print(f"quality eval unavailable: {exc}", file=sys.stderr)
+        print(
+            "It needs the retrieval stack + built fixtures. Run "
+            "`python -m evals.quality.runner --selfcheck` to validate the golden "
+            "suites + metric math only.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    exit_code = harness.emit(reports, baseline=baseline, as_json=args.json)
+    sys.exit(exit_code)
 
 
 def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
@@ -263,6 +388,23 @@ def cmd_search(args):
 
 
 def cmd_stats(args):
+    client = _try_daemon()
+    if client is not None:
+        try:
+            stats = client.stats(str(Path(args.project_path).resolve()))
+            if not stats.get("error"):
+                stats.setdefault("via", "daemon")
+                if args.json:
+                    print(json.dumps(stats, indent=2))
+                else:
+                    print(f"Project: {stats.get('project')}  (via daemon)")
+                    print(f"Built: {stats.get('built')}")
+                    if stats.get("built"):
+                        print(f"Nodes: {stats.get('nodes', stats.get('total_nodes', 0))}")
+                return
+        except Exception:
+            pass
+
     mind = NeuralMind(args.project_path)
     try:
         stats = mind.embedder.get_stats()
@@ -281,6 +423,65 @@ def cmd_stats(args):
         print(f"Built: {stats.get('built')}")
         if stats.get("built"):
             print(f"Nodes: {stats.get('total_nodes', 0)}")
+
+
+def cmd_validate(args):
+    """Validate the project's canonical IR and report any schema problems.
+
+    Adapts ``graph.json`` into the versioned IR (or reads a persisted one),
+    runs structural validation, and prints the contract version, adapter
+    metadata, coverage, and any errors/warnings. ``--write`` (re)materializes
+    the IR to ``.neuralmind/`` — the in-place migration path for a legacy
+    project that predates the IR.
+    """
+    from neuralmind.core import validate_project
+
+    result = validate_project(args.project_path, write=args.write)
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+    else:
+        if result.get("error"):
+            print(f"validate: {result['error']}")
+            sys.exit(1)
+        val = result.get("validation", {})
+        print(f"IR version:      {result.get('ir_version')}")
+        print(f"Source backend:  {result.get('source_backend')}")
+        schema = result.get("source_schema_version")
+        if schema is not None:
+            print(f"Source schema:   v{schema}")
+        print(f"Coverage:        {result.get('coverage')}")
+        print(
+            f"Entities:        {result.get('nodes', 0)} nodes, "
+            f"{result.get('edges', 0)} edges, {result.get('clusters', 0)} clusters"
+        )
+        kinds = result.get("node_kinds", {})
+        if kinds:
+            kind_str = ", ".join(f"{k}={v}" for k, v in sorted(kinds.items()))
+            print(f"Node kinds:      {kind_str}")
+        langs = result.get("languages", {})
+        if langs:
+            lang_str = ", ".join(f"{k}={v}" for k, v in sorted(langs.items()))
+            print(f"Languages:       {lang_str}")
+        print("-" * 60)
+        if val.get("ok"):
+            print(f"VALID — 0 errors, {val.get('warnings', 0)} warning(s).")
+        else:
+            print(
+                f"INVALID — {val.get('errors', 0)} error(s), {val.get('warnings', 0)} warning(s)."
+            )
+        for issue in val.get("issues", []):
+            marker = "[ERROR]" if issue["severity"] == "error" else "[warn ]"
+            print(f"  {marker} {issue['code']}: {issue['message']}")
+        if result.get("written_to"):
+            print("-" * 60)
+            print(f"IR written to {result['written_to']}")
+
+    # Exit non-zero on a top-level error (e.g. no graph, unsupported IR version)
+    # as well as a failed validation — otherwise `validate --json` would exit 0
+    # in CI on a hard error, since those carry no "validation" block.
+    if result.get("error") or not result.get("validation", {}).get("ok", True):
+        sys.exit(1)
 
 
 def cmd_doctor(args):
@@ -580,6 +781,99 @@ def cmd_watch(args):
         watcher.stop()
         if not quiet:
             print(f"\nWatcher stopped. Reinforced {activations_total} synapse pair(s) total.")
+
+
+def cmd_daemon(args):
+    """Manage the local NeuralMind daemon (PRD 5, experimental).
+
+    The daemon holds project state warm so repeated queries skip cold backend
+    init. CLI read commands prefer it automatically when it's running; set
+    NEURALMIND_NO_DAEMON=1 to force direct mode.
+    """
+    import subprocess
+    import time
+
+    from neuralmind import daemon as daemon_mod
+    from neuralmind.daemon_client import connect
+
+    action = args.action
+
+    if action == "status":
+        client = connect()
+        if client is None:
+            print("daemon: not running")
+            sys.exit(3)
+        health = client.health()
+        if args.json:
+            print(json.dumps(health, indent=2))
+        else:
+            print(f"daemon: running (pid {health.get('pid')}, v{health.get('version')})")
+            print(f"  uptime: {health.get('uptime_seconds')}s")
+            print(f"  projects warm: {len(health.get('projects', []))}")
+            print(f"  jobs active: {health.get('jobs_active', 0)}")
+        return
+
+    if action == "stop":
+        client = connect()
+        if client is None:
+            print("daemon: not running")
+            return
+        try:
+            client.shutdown()
+        except Exception:
+            pass
+        # Confirm it actually went away; clear stale discovery otherwise.
+        for _ in range(20):
+            if connect(ping=True) is None:
+                break
+            time.sleep(0.1)
+        daemon_mod.clear_discovery()
+        print("daemon: stopped")
+        return
+
+    if action in ("start", "restart"):
+        if action == "restart":
+            existing = connect()
+            if existing is not None:
+                try:
+                    existing.shutdown()
+                except Exception:
+                    pass
+                time.sleep(0.3)
+                daemon_mod.clear_discovery()
+        if connect() is not None:
+            print("daemon: already running")
+            return
+        if args.foreground:
+            daemon_mod.serve(host=args.host, port=args.port)
+            return
+        # Detached background process; it writes discovery once bound.
+        daemon_mod.clear_discovery()
+        log_dir = Path.home() / ".neuralmind"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log = open(log_dir / "daemon.log", "ab")  # noqa: SIM115 - lifetime is the child's
+        cmd = [
+            sys.executable,
+            "-m",
+            "neuralmind.daemon",
+            "--host",
+            args.host,
+            "--port",
+            str(args.port),
+        ]
+        subprocess.Popen(cmd, stdout=log, stderr=log, start_new_session=True)
+        for _ in range(50):  # up to ~5s for it to come up
+            client = connect()
+            if client is not None:
+                health = client.health()
+                print(
+                    f"daemon: started (pid {health.get('pid')}) on port "
+                    f"{daemon_mod.read_discovery().get('port')}"
+                )
+                return
+            time.sleep(0.1)
+        print("daemon: failed to start (see ~/.neuralmind/daemon.log)")
+        sys.exit(1)
 
 
 def cmd_serve(args):
@@ -902,6 +1196,17 @@ def main():
     query_p.add_argument("project_path")
     query_p.add_argument("question")
     query_p.add_argument("--json", "-j", action="store_true")
+    query_p.add_argument(
+        "--trace",
+        action="store_true",
+        help="Attach a per-layer retrieval trace (candidates, cluster scores, "
+        "synapse boosts, final hits, token budget) for explainability/debugging.",
+    )
+    query_p.add_argument(
+        "--trace-verbose",
+        action="store_true",
+        help="With --trace, keep full candidate/hit lists in the trace.",
+    )
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
@@ -913,8 +1218,22 @@ def main():
         "benchmark",
         help="Run benchmark on your project (supports --contribute for community submissions)",
     )
-    bench_p.add_argument("project_path")
+    bench_p.add_argument("project_path", nargs="?", default=".")
     bench_p.add_argument("--json", "-j", action="store_true")
+    bench_p.add_argument(
+        "--quality",
+        action="store_true",
+        help="Quality-eval mode: precision@k / recall@k / MRR / answerability over the "
+        "golden polyglot suites (a contributor/CI self-test, not a per-project run).",
+    )
+    bench_p.add_argument(
+        "--suite",
+        help="With --quality, run a single suite (python / typescript / go) instead of all.",
+    )
+    bench_p.add_argument(
+        "--baseline",
+        help="With --quality, a saved suite JSON to compare against (reports metric deltas).",
+    )
     bench_p.add_argument(
         "--contribute",
         action="store_true",
@@ -950,6 +1269,19 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    validate_p = subparsers.add_parser(
+        "validate",
+        help="Validate the project's canonical IR (schema, versions, orphans)",
+    )
+    validate_p.add_argument("project_path", nargs="?", default=".")
+    validate_p.add_argument(
+        "--write",
+        action="store_true",
+        help="(Re)materialize the IR to .neuralmind/ — migrates a legacy project in place",
+    )
+    validate_p.add_argument("--json", "-j", action="store_true")
+    validate_p.set_defaults(func=cmd_validate)
 
     eval_p = subparsers.add_parser(
         "eval",
@@ -1096,6 +1428,25 @@ def main():
         "Examples: 'code', 'cursor', 'vim', 'subl', 'code -n'.",
     )
     serve_p.set_defaults(func=cmd_serve)
+
+    daemon_p = subparsers.add_parser(
+        "daemon",
+        help="Manage the local NeuralMind daemon (warm state for fast repeat queries)",
+    )
+    daemon_p.add_argument(
+        "action",
+        choices=["start", "stop", "restart", "status"],
+        help="start (background), stop, restart, or status",
+    )
+    daemon_p.add_argument("--host", default="127.0.0.1", help="Host to bind (default: 127.0.0.1)")
+    daemon_p.add_argument("--port", type=int, default=8787, help="Port to bind (default: 8787)")
+    daemon_p.add_argument(
+        "--foreground",
+        action="store_true",
+        help="Run in the foreground instead of detaching (start/restart only)",
+    )
+    daemon_p.add_argument("--json", "-j", action="store_true")
+    daemon_p.set_defaults(func=cmd_daemon)
 
     # demo command — runs against bundled sample_project, no git checkout needed
     demo_p = subparsers.add_parser(

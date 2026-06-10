@@ -27,6 +27,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import ir as ir_mod
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
@@ -34,6 +35,62 @@ from .memory import is_memory_logging_enabled, log_query_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
+
+# Canonical IR artifacts (PRD 1), under <project>/.neuralmind/.
+IR_FILENAME = "index_ir.json"
+IR_META_FILENAME = "ir_meta.json"
+
+
+def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
+    """Validate a project's canonical IR without standing up a vector backend.
+
+    The IR is a static schema over ``graph.json`` (or a persisted IR), so this
+    deliberately needs no embedding engine — that decoupling is the point of
+    PRD 1. Reads the persisted IR when present (and ``write`` is False);
+    otherwise adapts ``graph.json`` on the fly. With ``write=True`` it
+    (re)materializes the IR to ``.neuralmind/`` (the in-place migration path
+    for a legacy project that predates the IR).
+
+    Returns a summary dict; on failure returns ``{"ok": False, "error": ...}``.
+    """
+    project_path = Path(project_path)
+    # Resolve + contain artifact paths: validate is reachable from the daemon
+    # with a request-supplied project, so the root is untrusted input.
+    graph_path = ir_mod.project_artifact(project_path, "graphify-out", "graph.json")
+    ir_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_FILENAME)
+    ir_meta_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_META_FILENAME)
+
+    try:
+        if ir_path.exists() and not write:
+            index_ir = ir_mod.IndexIR.read(ir_path)
+        elif graph_path.exists():
+            graph = json.loads(graph_path.read_text(encoding="utf-8"))
+            index_ir = ir_mod.from_graph_json(graph)
+        else:
+            return {
+                "ok": False,
+                "error": (
+                    f"No index found for {project_path}. Run `neuralmind build` "
+                    f"first (or `graphify update {project_path}`)."
+                ),
+            }
+    except ir_mod.IRError as exc:
+        return {"ok": False, "error": str(exc)}
+
+    # Fold in learned synapses (backend-free: the store is stdlib sqlite).
+    index_ir.synapses = ir_mod.load_synapses_for_project(project_path)
+
+    issues = ir_mod.validate_ir(index_ir)
+    summary = index_ir.summary()
+    summary["validation"] = ir_mod.validation_summary(issues)
+
+    if write:
+        ir_path.parent.mkdir(parents=True, exist_ok=True)
+        index_ir.write(ir_path)
+        ir_meta_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        summary["written_to"] = str(ir_path)
+
+    return summary
 
 
 class GraphNotBuiltError(RuntimeError):
@@ -54,6 +111,12 @@ class NeuralMind:
     """
 
     MAX_HYBRID_HIGHLIGHT_RESULTS = 3
+
+    # Canonical IR artifacts (PRD 1). The IR is materialized from graph.json at
+    # build time and validated; the embedder still reads graph.json directly
+    # (legacy default), so the IR is a hidden, parity-checked internal contract.
+    IR_FILENAME = IR_FILENAME
+    IR_META_FILENAME = IR_META_FILENAME
 
     def __init__(
         self,
@@ -235,6 +298,12 @@ class NeuralMind:
         # from chroma to turbovec (the reindex itself happens via embed_nodes).
         self._maybe_announce_turbovec_migration()
 
+        # Convert the loaded graph into the canonical, versioned IR before
+        # indexing (PRD 1 FR1). Validated and written to .neuralmind/; the
+        # embedder still reads graph.json, so this is a parity-checked internal
+        # contract that never blocks a build.
+        ir_summary = self._materialize_ir()
+
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
@@ -264,6 +333,8 @@ class NeuralMind:
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
         }
+        if ir_summary is not None:
+            self._build_stats["ir"] = ir_summary
 
         self._built = True
         self._emit_audit(
@@ -277,6 +348,70 @@ class NeuralMind:
             },
         )
         return self._build_stats
+
+    # ----------------------------------------------------------------- #
+    # Canonical IR (PRD 1)
+    # ----------------------------------------------------------------- #
+    @property
+    def ir_path(self) -> Path:
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_FILENAME)
+
+    @property
+    def ir_meta_path(self) -> Path:
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_META_FILENAME)
+
+    def _materialize_ir(self) -> dict | None:
+        """Adapt the loaded graph into the canonical IR, validate, and persist.
+
+        Returns a compact summary (IR metadata + validation result) for the
+        build stats, or ``None`` if no graph was loaded. Never raises — IR
+        materialization is observability, not a gate on the build. Validation
+        *errors* are recorded in the metadata so ``stats``/``validate`` can
+        surface them without failing an otherwise-working index.
+        """
+        graph = getattr(self.embedder, "graph", None)
+        if not graph:
+            return None
+        try:
+            index_ir = ir_mod.from_graph_json(
+                graph, source_backend=self.backend_manager.backend_name
+            )
+            # Fold the learned synapse layer into the IR as canonical entities.
+            if self.enable_synapses and self._synapses is not None:
+                try:
+                    index_ir.synapses = ir_mod.synapses_from_edges(
+                        self._synapses.edges(min_weight=0.0, limit=5000)
+                    )
+                except Exception:  # pragma: no cover - synapses are optional
+                    pass
+            issues = ir_mod.validate_ir(index_ir)
+            summary = index_ir.summary()
+            summary["validation"] = ir_mod.validation_summary(issues)
+
+            self.ir_path.parent.mkdir(parents=True, exist_ok=True)
+            index_ir.write(self.ir_path)
+            self.ir_meta_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+            return summary
+        except Exception as exc:  # pragma: no cover - defensive; never block build
+            return {"error": f"IR materialization failed: {exc}"}
+
+    def load_ir(self) -> "ir_mod.IndexIR | None":
+        """Load the persisted canonical IR for this project, if present.
+
+        Raises :class:`ir_mod.IRError` for an unsupported (too-new) IR version
+        — the one case where reading is unsafe (FR4).
+        """
+        if not self.ir_path.exists():
+            return None
+        return ir_mod.IndexIR.read(self.ir_path)
+
+    def validate(self, *, write: bool = False) -> dict:
+        """Validate this project's canonical IR (UX: ``neuralmind validate``).
+
+        Thin wrapper over :func:`validate_project` so the programmatic API and
+        the CLI share one backend-free implementation.
+        """
+        return validate_project(self.project_path, write=write)
 
     def _maybe_announce_turbovec_migration(self) -> None:
         """Print a one-time notice when a project that previously used the chroma
@@ -523,7 +658,9 @@ class NeuralMind:
         )
         return result
 
-    def query(self, question: str) -> ContextResult:
+    def query(
+        self, question: str, trace: bool = False, trace_verbose: bool = False
+    ) -> ContextResult:
         """
         Get optimized context for answering a question.
 
@@ -532,12 +669,15 @@ class NeuralMind:
 
         Args:
             question: Natural language question about the codebase
+            trace: If True, attach a per-layer retrieval trace (PRD 3) to
+                ``result.trace`` for explainability/debugging.
+            trace_verbose: If True (with trace), keep full candidate/hit lists.
 
         Returns:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        result = self.selector.get_query_context(question)
+        result = self.selector.get_query_context(question, trace=trace, trace_verbose=trace_verbose)
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:
@@ -946,6 +1086,17 @@ class NeuralMind:
             "db_path": embed_stats.get("db_path", ""),
             "build_stats": self._build_stats,
         }
+        # Surface the canonical IR contract version + adapter metadata (PRD 1
+        # UX). Read from the persisted meta so it's available even on a stats
+        # call that didn't just build.
+        ir_meta = self._build_stats.get("ir")
+        if ir_meta is None and self.ir_meta_path.exists():
+            try:
+                ir_meta = json.loads(self.ir_meta_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                ir_meta = None
+        if ir_meta is not None:
+            stats["ir"] = ir_meta
         if self.enable_synapses:
             try:
                 stats["synapses"] = self.synapses.stats() if self.synapses else None

@@ -8,7 +8,10 @@ For the longer-horizon engineering plan (release cadence, monitoring,
 compliance, scale targets), see
 [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). For the
 sequenced feature map of the next arc, see
-[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md).
+[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md). For the
+nine-initiative durability arc beyond that (versioned IR, retrieval quality
+harness, daemon-first architecture, and more), see
+[`docs/plans/2026-06-10-future-proofing-prd-pack.md`](docs/plans/2026-06-10-future-proofing-prd-pack.md).
 
 ## Next — v0.13 → v0.16 (the eval-first arc)
 

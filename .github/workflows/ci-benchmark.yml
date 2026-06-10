@@ -128,6 +128,30 @@ jobs:
       - name: Run memory-persistence + regression tests
         run: python -m pytest tests/test_benchmark_regression.py tests/test_memory_persistence.py -v
 
+      - name: Retrieval-quality eval + gate (PRD 2)
+        # Real retrieval over the golden suites (Python/TS/Go). Gates the build
+        # on the absolute quality floors (precision@k / recall@k / MRR /
+        # answerability) and reports deltas vs the committed baseline. Runs
+        # here, not in the unit-test job, because it needs real embeddings (the
+        # MiniLM model download the firewalled test job blocks).
+        env:
+          NEURALMIND_QUALITY_EVAL: "1"
+        run: |
+          set -eo pipefail
+          # Module form (not the `neuralmind` console script): the golden suites
+          # live in the top-level evals/ package, importable from the repo root
+          # but not from the installed wheel's sys.path.
+          python -m evals.quality.runner --run --baseline evals/quality/baseline.json \
+            | tee tests/benchmark/quality.md
+
+      - name: Retrieval e2e tests (quality + traces, real embeddings)
+        # The env-gated end-to-end tests (real retrieval over a built fixture)
+        # only run where embeddings are available — here, not the firewalled
+        # unit-test job. Covers the quality harness + PRD 3 trace population.
+        env:
+          NEURALMIND_QUALITY_EVAL: "1"
+        run: python -m pytest tests/test_quality_harness.py tests/test_trace.py -v
+
       - name: Generate chart
         run: python scripts/generate_chart.py
 
@@ -140,6 +164,7 @@ jobs:
             tests/benchmark/report.md
             tests/benchmark/multi_model.json
             tests/benchmark/multi_model.md
+            tests/benchmark/quality.md
             docs/images/benchmark_chart.png
           if-no-files-found: error
 
@@ -157,8 +182,10 @@ jobs:
             echo ''
             cat tests/benchmark/multi_model.md
             echo ''
+            cat tests/benchmark/quality.md
+            echo ''
             echo '---'
-            echo '_Automated by `.github/workflows/ci-benchmark.yml` — regenerate locally with `python -m tests.benchmark.run`._'
+            echo '_Automated by `.github/workflows/ci-benchmark.yml` — regenerate locally with `python -m tests.benchmark.run` and `neuralmind benchmark --quality`._'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
