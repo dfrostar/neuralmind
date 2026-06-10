@@ -103,6 +103,10 @@ def cmd_wakeup(args):
 
 
 def cmd_benchmark(args):
+    if getattr(args, "quality", False):
+        _run_quality_eval(args)
+        return
+
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
@@ -122,6 +126,49 @@ def cmd_benchmark(args):
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
         print(f"Summary: {result['summary']}")
+
+
+def _run_quality_eval(args) -> None:
+    """`neuralmind benchmark --quality` — the retrieval-quality self-test.
+
+    Like `neuralmind eval`, this runs against the golden suites that ship with
+    the *source* repo (the `evals/` package), not the installed wheel. Exits
+    non-zero when a suite regresses past its threshold so CI can gate on it.
+    """
+    try:
+        from evals.quality import harness, runner
+    except ImportError:
+        print(
+            "neuralmind benchmark --quality runs against the golden query suites "
+            "that ship with the source repository (the `evals/` package), not the "
+            "installed wheel. Clone the repo and run "
+            "`python -m evals.quality.runner --run` from its root.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    names = [args.suite] if getattr(args, "suite", None) else runner.all_suites()
+    baseline = None
+    if getattr(args, "baseline", None):
+        baseline = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
+
+    try:
+        reports = [harness.run_suite(name) for name in names]
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        sys.exit(2)
+    except RuntimeError as exc:
+        print(f"quality eval unavailable: {exc}", file=sys.stderr)
+        print(
+            "It needs the retrieval stack + built fixtures. Run "
+            "`python -m evals.quality.runner --selfcheck` to validate the golden "
+            "suites + metric math only.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    exit_code = harness.emit(reports, baseline=baseline, as_json=args.json)
+    sys.exit(exit_code)
 
 
 def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
@@ -974,8 +1021,22 @@ def main():
         "benchmark",
         help="Run benchmark on your project (supports --contribute for community submissions)",
     )
-    bench_p.add_argument("project_path")
+    bench_p.add_argument("project_path", nargs="?", default=".")
     bench_p.add_argument("--json", "-j", action="store_true")
+    bench_p.add_argument(
+        "--quality",
+        action="store_true",
+        help="Quality-eval mode: precision@k / recall@k / MRR / answerability over the "
+        "golden polyglot suites (a contributor/CI self-test, not a per-project run).",
+    )
+    bench_p.add_argument(
+        "--suite",
+        help="With --quality, run a single suite (python / typescript / go) instead of all.",
+    )
+    bench_p.add_argument(
+        "--baseline",
+        help="With --quality, a saved suite JSON to compare against (reports metric deltas).",
+    )
     bench_p.add_argument(
         "--contribute",
         action="store_true",

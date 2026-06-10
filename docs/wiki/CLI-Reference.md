@@ -338,6 +338,9 @@ neuralmind benchmark <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
+| `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
+| `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
+| `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
 
 #### Output
 
@@ -355,6 +358,48 @@ neuralmind benchmark /path/to/project
 
 # JSON output
 neuralmind benchmark /path/to/project --json
+```
+
+#### Quality-eval mode *(v0.23.0+)*
+
+`--quality` switches the command from token-reduction benchmarking to
+**retrieval-quality** measurement: does NeuralMind surface the *right* code,
+not just *less* of it? It scores **precision@k**, **recall@k**, **MRR**, and
+**answerability** over golden query suites (Python / TypeScript / Go — 30
+queries with expected-module labels) and **exits non-zero if a suite regresses
+past its floor**, so CI can gate retrieval-affecting changes.
+
+Like `neuralmind eval`, this is a contributor/CI self-test that runs against
+the golden suites shipping with the **source repo** (the `evals/quality/`
+package), not the installed wheel. The pure metrics live in
+`neuralmind.quality` (`from neuralmind import quality`).
+
+```bash
+# Score all golden suites
+neuralmind benchmark --quality
+
+# One language, machine-readable
+neuralmind benchmark --quality --suite go --json
+
+# Compare against a saved baseline (reports metric deltas)
+neuralmind benchmark --quality --suite go --baseline baseline_go.json
+
+# Dependency-free validation of the suites + metric math
+python -m evals.quality.runner --selfcheck
+```
+
+Sample (markdown) output:
+
+```
+## NeuralMind retrieval-quality eval
+
+| Suite | Queries | MRR | Answerability | Recall@5 | Precision@5 | Gate |
+|-------|--------:|----:|--------------:|---------:|------------:|:----:|
+| `python`     | 10 | 0.842 | 100% | 0.733 | 0.300 | PASS |
+| `typescript` | 10 | 0.808 |  90% | 0.700 | 0.280 | PASS |
+| `go`         | 10 | 0.795 |  90% | 0.690 | 0.275 | PASS |
+
+**Overall: PASS**
 ```
 
 #### Sample Output

@@ -131,7 +131,11 @@ keywords = [
     "versioned-index-contract",
     "intermediate-representation",
     "index-schema-validation",
-    "ir-migration"
+    "ir-migration",
+    "retrieval-quality-harness",
+    "precision-recall-mrr",
+    "answerability-eval",
+    "ranked-retrieval-metrics"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
