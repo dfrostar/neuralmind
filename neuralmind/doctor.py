@@ -52,7 +52,7 @@ def _check_graph(project: Path) -> Check:
             "Code graph",
             FAIL,
             f"not found at {graph}",
-            fix=f"Generate it: graphify update {project}",
+            fix=f"Generate it: neuralmind build {project}",
         )
     try:
         nodes = len(json.loads(graph.read_text(encoding="utf-8")).get("nodes", []))
@@ -61,7 +61,7 @@ def _check_graph(project: Path) -> Check:
             "Code graph",
             FAIL,
             f"unreadable ({e})",
-            fix=f"Regenerate it: graphify update {project}",
+            fix=f"Regenerate it: neuralmind build {project}",
         )
     return Check("Code graph", OK, f"{nodes} nodes at {graph}")
 

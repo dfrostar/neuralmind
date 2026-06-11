@@ -490,9 +490,11 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     msg = (
         f"no graph found at {graph_path}\n"
         f"\n"
-        f"NeuralMind needs a graphify build first. To generate one:\n"
-        f"  pip install graphifyy        # if not already installed\n"
-        f"  graphify update {project_path}\n"
+        f"NeuralMind needs a code graph first. To generate one:\n"
+        f"  neuralmind build {project_path}\n"
+        f"\n"
+        f"(On the optional graphify backend? Run:\n"
+        f"  pip install graphifyy && graphify update {project_path})\n"
         f"\n"
         f"Then re-run: neuralmind serve {project_path}"
     )

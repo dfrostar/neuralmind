@@ -661,7 +661,7 @@ JSON output (`--json`) is stable for scripting and agent consumption:
   "checks": [
     {"name": "Code graph", "status": "fail",
      "detail": "not found at /repo/graphify-out/graph.json",
-     "fix": "Generate it: graphify update /repo"}
+     "fix": "Generate it: neuralmind build /repo"}
   ]
 }
 ```
