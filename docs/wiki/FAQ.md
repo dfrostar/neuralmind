@@ -27,6 +27,9 @@ $env:Path += ";$env:APPDATA\Python\Python311\Scripts"
 
 ### "graphify build fails with 'unknown command'"
 
+*(Only relevant if you installed the optional graphify backend — since
+v0.15.0 NeuralMind builds the code graph itself.)*
+
 **Solution:**
 The command changed in newer versions. Use:
 ```bash
@@ -208,7 +211,6 @@ exclude_patterns = [
 **Option 1: Local per-developer (simplest)**
 ```bash
 # Each developer on their machine
-graphify update .
 neuralmind build .
 neuralmind install-hooks .
 ```
@@ -518,5 +520,5 @@ uname -a
 
 ### "Can I contribute?"
 
-**Yes!** See [CONTRIBUTING.md](../CONTRIBUTING.md)
+**Yes!** See [CONTRIBUTING.md](https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md)
 

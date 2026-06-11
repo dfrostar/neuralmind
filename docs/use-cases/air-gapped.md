@@ -11,7 +11,7 @@ download, and ChromaDB's at-first-use embedding-model download. This
 walkthrough covers both.
 
 > If you only need offline *runtime* (you have internet during the
-> initial install), regular `pip install neuralmind graphifyy` is
+> initial install), regular `pip install neuralmind` is
 > already enough. This page is for the harder case: install *also*
 > happens behind a firewall.
 
@@ -21,14 +21,14 @@ walkthrough covers both.
 
 ```bash
 # On a connected machine, with the same Python version as the target:
-pip download neuralmind graphifyy --dest ./offline-bundle
+pip download neuralmind --dest ./offline-bundle   # append graphifyy for the optional graphify backend
 python -c "from chromadb.utils import embedding_functions as ef; \
   ef.DefaultEmbeddingFunction()(['warm'])"        # warm the model cache
 tar czf neuralmind-offline.tgz ./offline-bundle \
   -C ~/.cache/chroma onnx_models
 # Move the tarball to the air-gapped machine, then:
 tar xzf neuralmind-offline.tgz
-pip install --no-index --find-links offline-bundle neuralmind graphifyy
+pip install --no-index --find-links offline-bundle neuralmind
 mkdir -p ~/.cache/chroma && cp -r onnx_models ~/.cache/chroma/
 neuralmind --help                          # works, offline.
 ```
@@ -43,7 +43,7 @@ installs via `--no-index --find-links` so PyPI is never reached.
 
 ```bash
 mkdir -p offline-bundle
-pip download neuralmind graphifyy \
+pip download neuralmind \
   --dest offline-bundle \
   --python-version 3.12 \
   --platform manylinux_2_28_x86_64 \
@@ -57,8 +57,10 @@ substitute `--platform macosx_14_0_arm64`; for Windows
 see what platform tags it accepts.
 
 The resulting `offline-bundle/` contains every wheel: `neuralmind`,
-`graphifyy`, `chromadb`, `mcp`, `pyyaml`, `toml`, plus all their
-transitives (~50-80 wheels, ~150-250 MB depending on Python version).
+`chromadb`, `mcp`, `pyyaml`, `toml`, the tree-sitter grammars, plus
+all their transitives (~50-80 wheels, ~150-250 MB depending on Python
+version). Append `graphifyy` to the download command if you want the
+optional graphify backend in the bundle.
 
 ---
 
@@ -119,11 +121,11 @@ solution, signed package, etc.).
 ```bash
 tar xzf neuralmind-offline.tgz
 
-# Install NeuralMind + graphify from the wheel bundle, no PyPI:
+# Install NeuralMind from the wheel bundle, no PyPI:
 pip install \
   --no-index \
   --find-links offline-bundle/ \
-  neuralmind graphifyy
+  neuralmind
 
 # Restore the ChromaDB model cache:
 mkdir -p ~/.cache/chroma
@@ -145,7 +147,6 @@ connected machine with the target's actual platform tag (run
 
 ```bash
 cd /path/to/your-project
-graphify update .
 neuralmind build .
 neuralmind wakeup .
 ```

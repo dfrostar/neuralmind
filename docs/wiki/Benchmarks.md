@@ -89,7 +89,7 @@ compiler-accurate ones. All gated by `evals/parity/run.py`.
 
 - The CI numbers come from a **deliberately tiny fixture** — they prove the
   mechanism and catch regressions, not a real-repo ceiling. Point it at your own
-  repo with [`benchmark-your-repo`](../blob/main/docs/use-cases/benchmark-your-repo.md).
+  repo with [`benchmark-your-repo`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md).
 - TurboQuant is an **approximate** (quantized) index; parity is gated on the
   reference fixture, and the compression win only matters at scale.
 - The 40–70× figure is a real-repo range, not a fixed guarantee — your ratio

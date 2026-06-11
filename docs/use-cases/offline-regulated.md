@@ -14,8 +14,7 @@ You work in a regulated industry (healthcare, finance, defense, legal), on an ai
 ## Fully local stack
 
 ```bash
-pip install neuralmind graphifyy
-graphify update .
+pip install neuralmind
 neuralmind build .              # local embeddings, local vector store
 ```
 
@@ -47,12 +46,12 @@ Nothing here touches the public internet.
 
 1. On a connected machine:
    ```bash
-   pip download neuralmind graphifyy -d ./offline-bundle
+   pip download neuralmind -d ./offline-bundle
    ```
 2. Copy `./offline-bundle/` to the air-gapped machine.
 3. Install:
    ```bash
-   pip install --no-index --find-links ./offline-bundle neuralmind graphifyy
+   pip install --no-index --find-links ./offline-bundle neuralmind
    ```
 
 ChromaDB pulls its embedding model on first use — download it in advance or point `HF_HOME` at a pre-populated directory.

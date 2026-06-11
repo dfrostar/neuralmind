@@ -852,4 +852,4 @@ for the day-by-day walkthrough.
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
-- [Release Notes v0.4.0](../blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes
+- [Release Notes v0.4.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes

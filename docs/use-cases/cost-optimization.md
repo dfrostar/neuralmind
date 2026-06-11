@@ -18,8 +18,7 @@ Compute: `avg_tokens_per_query × queries_per_day × 30 × $_per_MTok`. That's y
 ## Step 2 — Install NeuralMind
 
 ```bash
-pip install neuralmind graphifyy
-graphify update .
+pip install neuralmind
 neuralmind build .
 neuralmind install-hooks .     # Claude Code users only
 ```
@@ -64,7 +63,7 @@ A one-page summary template:
 > - Baseline: `{avg_tokens} × {queries/day} × 30 × ${price}/MTok = ${monthly}`
 > - After NeuralMind: `{new_tokens} × {queries/day} × 30 × ${price}/MTok = ${new_monthly}`
 > - Reduction: **{ratio}×** on retrieval, **{total_ratio}×** combined with PostToolUse hooks
-> - Setup cost: one-time `graphify update && neuralmind build` (~minutes)
+> - Setup cost: one-time `neuralmind build` (~minutes)
 > - Ongoing cost: incremental rebuild on git commit (seconds)
 > - Risk: fully local, no new SaaS dependency, MIT-licensed
 

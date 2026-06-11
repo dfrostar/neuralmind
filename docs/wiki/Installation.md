@@ -25,13 +25,13 @@ NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbo
 
 ## Install — pick your path
 
-*New in [v0.7.0](../../blob/main/RELEASE_NOTES_v0.7.0.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
+*New in [v0.7.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
 
 | Method | Command | When to pick |
 |---|---|---|
-| **pip** | `pip install neuralmind graphifyy` | Default. Drops it in your active env. |
-| **pipx** | `pipx install neuralmind && pipx inject neuralmind graphifyy` | Global CLI, no env pollution. |
-| **uv** | `uv pip install neuralmind graphifyy` | Modern, fast Python tooling. |
+| **pip** | `pip install neuralmind` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind` | Global CLI, no env pollution. |
+| **uv** | `uv pip install neuralmind` | Modern, fast Python tooling. |
 | **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest && docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind:latest neuralmind --help` | Containerized — no Python on the host. Multi-platform (`linux/amd64` + `linux/arm64`); auto-published to GHCR on every release since v0.9.0. |
 | **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Hacking on NeuralMind itself. |
 
@@ -44,7 +44,7 @@ neuralmind --help     # works for every path
 python -c "import neuralmind; print(neuralmind.__version__)"
 ```
 
-Full walkthrough with pros and cons of each path: [Install paths](../../blob/main/docs/use-cases/install-paths.md).
+Full walkthrough with pros and cons of each path: [Install paths](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md).
 
 The sections below remain the deep reference — system requirements, dependency tables, platform-specific notes, and troubleshooting.
 
@@ -66,7 +66,7 @@ The sections below remain the deep reference — system requirements, dependency
 1. **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/)
 2. **pip** (or [pipx](https://pipx.pypa.io/) / [uv](https://docs.astral.sh/uv/)): Usually included with Python
 3. **git** (optional): For source installation
-4. **graphify**: For generating knowledge graphs from codebases (installed alongside NeuralMind in every path above)
+4. **graphify** (optional): since v0.15.0 NeuralMind generates the code graph itself with a built-in tree-sitter backend (Python, TypeScript, Go). Install [graphify](https://github.com/safishamsi/graphify) (`pip install graphifyy`) only if you want its richer graph — it takes priority automatically when present.
 
 ---
 
@@ -75,11 +75,8 @@ The sections below remain the deep reference — system requirements, dependency
 For most users, the quickest path:
 
 ```bash
-# Install NeuralMind
+# Install NeuralMind (includes the built-in tree-sitter graph backend)
 pip install neuralmind
-
-# Install graphify for knowledge graph generation
-pip install graphifyy
 
 # Verify installation
 neuralmind --help
@@ -134,6 +131,8 @@ pip install neuralmind[all]
 
 ```bash
 pipx install neuralmind
+
+# Optional — only if you want the graphify backend:
 pipx inject neuralmind graphifyy
 ```
 
@@ -144,13 +143,13 @@ pipx inject neuralmind graphifyy
 [uv](https://docs.astral.sh/uv/) is Astral's Rust-based Python package manager — significantly faster installs, drop-in for pip, compatible venvs.
 
 ```bash
-uv pip install neuralmind graphifyy
+uv pip install neuralmind
 ```
 
 For a `uv`-managed project:
 
 ```bash
-uv add neuralmind graphifyy
+uv add neuralmind
 ```
 
 ### Docker
@@ -259,7 +258,7 @@ server.
 
 | Tool | Installation | Purpose |
 |------|--------------|----------|
-| graphify | `pip install graphifyy` | Knowledge graph generation |
+| graphify *(optional)* | `pip install graphifyy` | Richer knowledge graph — auto-prioritized over the built-in tree-sitter backend when present |
 
 ---
 
@@ -310,7 +309,7 @@ pip install neuralmind
 
 ### Docker
 
-Use the repo's [`Dockerfile`](../../blob/main/Dockerfile) — multi-stage, non-root, transitive deps pre-wheeled in the builder stage so the runtime image doesn't need a C toolchain. See the [Docker section above](#docker) for the build and run commands, or the [install-paths walkthrough](../../blob/main/docs/use-cases/install-paths.md#4-docker--no-python-on-the-host) for persistence and security notes.
+Use the repo's [`Dockerfile`](https://github.com/dfrostar/neuralmind/blob/main/Dockerfile) — multi-stage, non-root, transitive deps pre-wheeled in the builder stage so the runtime image doesn't need a C toolchain. See the [Docker section above](#docker) for the build and run commands, or the [install-paths walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md#4-docker--no-python-on-the-host) for persistence and security notes.
 
 If you want a minimal app-style Dockerfile for embedding NeuralMind inside another image:
 
@@ -319,8 +318,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install NeuralMind (MCP server is bundled by default) + graph builder
-RUN pip install --no-cache-dir neuralmind graphifyy
+# Install NeuralMind (MCP server and tree-sitter graph backend are bundled)
+RUN pip install --no-cache-dir neuralmind
 
 # Your project files
 COPY . .
@@ -363,10 +362,7 @@ cd test-neuralmind
 # Create a simple Python file
 echo 'def hello(): return "world"' > hello.py
 
-# Generate knowledge graph (requires graphify)
-graphify update .
-
-# Build neural index
+# Build neural index (the code graph is generated automatically)
 neuralmind build .
 
 # Test query
@@ -405,18 +401,16 @@ pip install chromadb>=0.4.0
 
 #### "graph.json not found"
 
-**Cause**: Knowledge graph not generated.
+**Cause**: The index was never built (since v0.15.0, `neuralmind build`
+generates the code graph itself via the built-in tree-sitter backend).
 
 **Solution**:
 ```bash
-# Install graphify if not present
-pip install graphifyy
-
-# Generate knowledge graph
-graphify update /path/to/your/project
-
-# Then build neural index
+# Build the neural index — generates the code graph automatically
 neuralmind build /path/to/your/project
+
+# Still failing? The doctor pinpoints the missing piece:
+neuralmind doctor
 ```
 
 #### Memory Error on Large Codebases
@@ -448,7 +442,7 @@ pip install --trusted-host pypi.org --trusted-host pypi.python.org neuralmind
 
 After installation:
 
-1. [Generate a knowledge graph](Integration-Guide.md#graphify-integration) for your project
-2. [Build the neural index](CLI-Reference.md#build) using `neuralmind build`
-3. [Query your codebase](CLI-Reference.md#query) with natural language
+1. [Build the neural index](CLI-Reference.md#build) using `neuralmind build` (the code graph is generated automatically)
+2. [Query your codebase](CLI-Reference.md#query) with natural language
+3. Register the MCP server with your agents: `neuralmind install-mcp --all`
 4. [Set up MCP integration](Integration-Guide.md#mcp-integration) for Claude Desktop

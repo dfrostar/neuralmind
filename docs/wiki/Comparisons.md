@@ -2,24 +2,24 @@
 
 Honest side-by-side comparisons between NeuralMind and the tools developers most often evaluate alongside it. Each linked page follows the same structure: what the alternative is → how NeuralMind differs → when to pick which → feature matrix.
 
-Full source of these pages lives at [docs/comparisons/](../blob/main/docs/comparisons/README.md). The wiki version below is a convenience mirror with anchor links.
+Full source of these pages lives at [docs/comparisons/](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/README.md). The wiki version below is a convenience mirror with anchor links.
 
 ## When to read each page
 
 | Compared against | Best when you are asking |
 |---|---|
-| [Cursor `@codebase`](../blob/main/docs/comparisons/vs-cursor-codebase.md) | "I use Cursor — do I still need this?" |
-| [Aider repo-map](../blob/main/docs/comparisons/vs-aider-repomap.md) | "Aider already builds a repo-map, isn't this the same?" |
-| [Sourcegraph Cody](../blob/main/docs/comparisons/vs-cody.md) | "How is this different from Cody's code context?" |
-| [Continue / Cline](../blob/main/docs/comparisons/vs-continue-cline.md) | "I already have an MCP-capable IDE agent" |
-| [GitHub Copilot](../blob/main/docs/comparisons/vs-github-copilot.md) | "I pay for Copilot — does this overlap?" |
-| [Windsurf / Codeium](../blob/main/docs/comparisons/vs-windsurf-codeium.md) | "How does this compare to the Windsurf IDE?" |
-| [Claude Projects](../blob/main/docs/comparisons/vs-claude-projects.md) | "Can't I just attach files to a Claude Project?" |
-| [Prompt caching](../blob/main/docs/comparisons/vs-prompt-caching.md) | "Doesn't prompt caching solve the cost problem?" |
-| [LangChain / LlamaIndex for code](../blob/main/docs/comparisons/vs-langchain-llamaindex.md) | "Can I just wire up RAG myself?" |
-| [Long context windows](../blob/main/docs/comparisons/vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
-| [Generic RAG over a codebase](../blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
-| [Tree-sitter / ctags / grep](../blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
+| [Cursor `@codebase`](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cursor-codebase.md) | "I use Cursor — do I still need this?" |
+| [Aider repo-map](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-aider-repomap.md) | "Aider already builds a repo-map, isn't this the same?" |
+| [Sourcegraph Cody](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cody.md) | "How is this different from Cody's code context?" |
+| [Continue / Cline](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-continue-cline.md) | "I already have an MCP-capable IDE agent" |
+| [GitHub Copilot](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-github-copilot.md) | "I pay for Copilot — does this overlap?" |
+| [Windsurf / Codeium](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-windsurf-codeium.md) | "How does this compare to the Windsurf IDE?" |
+| [Claude Projects](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-claude-projects.md) | "Can't I just attach files to a Claude Project?" |
+| [Prompt caching](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-prompt-caching.md) | "Doesn't prompt caching solve the cost problem?" |
+| [LangChain / LlamaIndex for code](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-langchain-llamaindex.md) | "Can I just wire up RAG myself?" |
+| [Long context windows](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
+| [Generic RAG over a codebase](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
+| [Tree-sitter / ctags / grep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
 
 ## One-line verdicts
 
@@ -49,4 +49,4 @@ The savings compound.
 
 ---
 
-See the [full comparison index](../blob/main/docs/comparisons/README.md) for the structured decision-guidance table.
+See the [full comparison index](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/README.md) for the structured decision-guidance table.

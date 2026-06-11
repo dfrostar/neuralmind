@@ -882,7 +882,7 @@ try:
     mind = NeuralMind('/path/to/project')
     result = mind.query("How does auth work?")
 except GraphNotFoundError:
-    print("Run 'graphify update' first to generate knowledge graph")
+    print("Run 'neuralmind build' first to generate the knowledge graph")
 except IndexNotBuiltError:
     print("Run mind.build() before querying")
 except Exception as e:

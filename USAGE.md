@@ -76,7 +76,7 @@ Total: ~800-1,100 tokens vs 50,000+ for full codebase
 
 ### How It Works
 
-1. **Graphify** analyzes your codebase and creates a knowledge graph
+1. **The built-in tree-sitter backend** (or graphify, if installed) analyzes your codebase and creates a knowledge graph
 2. **NeuralMind** creates vector embeddings of all code entities
 3. **When you query**, it selects only relevant context using semantic similarity
 4. **You get** focused, accurate context that fits in any LLM's context window
@@ -88,23 +88,17 @@ Total: ~800-1,100 tokens vs 50,000+ for full codebase
 ### Step 1: Install
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind
 ```
 
-### Step 2: Generate Knowledge Graph
+### Step 2: Build Neural Index
 
 ```bash
 cd your-project
-graphify update .
+neuralmind build .   # the code graph is generated automatically (v0.15.0+)
 ```
 
-### Step 3: Build Neural Index
-
-```bash
-neuralmind build .
-```
-
-### Step 4: Query Your Codebase
+### Step 3: Query Your Codebase
 
 ```bash
 # Get project overview
@@ -116,7 +110,7 @@ neuralmind query . "What are the main components?"
 neuralmind query . "How is data validated?"
 ```
 
-### Step 5: Use with AI
+### Step 4: Use with AI
 
 ```bash
 # Copy output to clipboard (macOS)
@@ -235,10 +229,7 @@ jobs:
           python-version: '3.11'
       
       - name: Install NeuralMind
-        run: pip install neuralmind graphifyy
-      
-      - name: Update knowledge graph
-        run: graphify update .
+        run: pip install neuralmind
       
       - name: Build neural index
         run: neuralmind build .
@@ -306,7 +297,7 @@ neuralmind build .
 neuralmind build /path/to/project
 
 # Rebuild after code changes
-graphify update . && neuralmind build .
+neuralmind build .
 ```
 
 **When to use**: After initial setup, after significant code changes, weekly maintenance.
@@ -425,7 +416,6 @@ Automatically update the index after every commit:
 cat > .git/hooks/post-commit << 'EOF'
 #!/bin/bash
 echo "🧠 Updating NeuralMind index..."
-graphify update . --quiet 2>/dev/null
 neuralmind build . --quiet 2>/dev/null
 echo "✓ NeuralMind index updated"
 EOF
@@ -441,10 +431,10 @@ chmod +x .git/hooks/post-commit
 crontab -e
 
 # Daily update at 6 AM
-0 6 * * * cd /path/to/project && graphify update . && neuralmind build . >> /var/log/neuralmind.log 2>&1
+0 6 * * * cd /path/to/project && neuralmind build . >> /var/log/neuralmind.log 2>&1
 
 # Weekly update on Monday at 3 AM
-0 3 * * 1 cd /path/to/project && graphify update . && neuralmind build . >> /var/log/neuralmind.log 2>&1
+0 3 * * 1 cd /path/to/project && neuralmind build . >> /var/log/neuralmind.log 2>&1
 ```
 
 ### CI/CD Integration (Recommended for Teams)
@@ -467,8 +457,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install neuralmind graphifyy
-      - run: graphify update .
+      - run: pip install neuralmind
       - run: neuralmind build .
       - run: neuralmind stats .
 ```
@@ -484,20 +473,16 @@ Weekly maintenance routine:
 echo "🔧 NeuralMind Weekly Maintenance"
 echo "================================"
 
-# Update knowledge graph
-echo "1. Updating knowledge graph..."
-graphify update .
-
-# Rebuild neural index
-echo "2. Rebuilding neural index..."
+# Rebuild neural index (the code graph is regenerated automatically)
+echo "1. Rebuilding neural index..."
 neuralmind build .
 
 # Show stats
-echo "3. Current statistics:"
+echo "2. Current statistics:"
 neuralmind stats .
 
 # Run benchmark
-echo "4. Benchmark results:"
+echo "3. Benchmark results:"
 neuralmind benchmark .
 
 echo ""
@@ -663,7 +648,6 @@ python -m neuralmind.doc_indexer query /path/to/project "patient consent form"
 
 ```bash
 # Solution: Run graphify first
-graphify update .
 neuralmind build .
 ```
 
@@ -671,7 +655,6 @@ neuralmind build .
 
 ```bash
 # Solution: Rebuild the index
-graphify update .
 neuralmind build .
 ```
 

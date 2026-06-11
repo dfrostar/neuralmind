@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pip install neuralmind graphifyy
-      - run: graphify update . && neuralmind build .
+      - run: pip install neuralmind
+      - run: neuralmind build .
       - run: neuralmind wakeup . > AI_CONTEXT.md
       - uses: actions/upload-artifact@v4
         with: { name: ai-context, path: AI_CONTEXT.md }
@@ -48,7 +48,7 @@ Everyone on the team can download the latest `AI_CONTEXT.md` artifact — useful
 ### 3. Scheduled cron
 
 ```cron
-0 6 * * * cd /path/to/repo && graphify update . && neuralmind build .
+0 6 * * * cd /path/to/repo && neuralmind build .
 ```
 
 Good for slower-moving repos or shared machines.
@@ -75,7 +75,7 @@ neuralmind build . --force
 neuralmind stats . --json
 ```
 
-Watch `total_nodes` and `communities` — sudden drops mean something went wrong with `graphify update`.
+Watch `total_nodes` and `communities` — sudden drops mean something went wrong with the graph build (`neuralmind build`).
 
 **Validate index integrity (v0.23.0+):**
 

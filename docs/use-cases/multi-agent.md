@@ -39,9 +39,8 @@ feature you can see.
 ## Setup (one-time, per project)
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind
 cd your-project
-graphify update .
 neuralmind build .
 ```
 

@@ -7,10 +7,9 @@ You use Claude Code daily. Your context fills up fast, `Read` pulls in too much 
 ## Setup (one time)
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind
 cd your-project
-graphify update .              # builds the knowledge graph
-neuralmind build .             # builds the vector index
+neuralmind build .             # builds the knowledge graph + vector index
 neuralmind install-hooks .     # PostToolUse compression (Read/Bash/Grep)
 neuralmind init-hook .         # auto-rebuild on every git commit
 ```
