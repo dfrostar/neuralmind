@@ -47,7 +47,7 @@ def test_graph_check_ok_when_present(temp_project):
 def test_graph_check_fail_when_missing(empty_project):
     check = doctor._check_graph(empty_project)
     assert check.status == doctor.FAIL
-    assert "graphify update" in check.fix
+    assert "neuralmind build" in check.fix
 
 
 def test_graph_check_fail_when_corrupt(empty_project):
@@ -56,7 +56,7 @@ def test_graph_check_fail_when_corrupt(empty_project):
     (out / "graph.json").write_text("{ not valid json", encoding="utf-8")
     check = doctor._check_graph(empty_project)
     assert check.status == doctor.FAIL
-    assert "graphify update" in check.fix
+    assert "neuralmind build" in check.fix
 
 
 def test_index_check_fail_when_not_built(temp_project):

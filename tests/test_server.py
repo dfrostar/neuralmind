@@ -54,9 +54,12 @@ def test_ensure_graph_or_explain_missing(tmp_path):
         _ensure_graph_or_explain(tmp_path)
     msg = str(exc.value)
     assert "no graph found" in msg
-    # The supported graphify entrypoint is `graphify update`; the package
-    # on PyPI is `graphifyy` (yes, two y's). Lock in both so we don't
-    # quietly regress to the deprecated `graphify build` guidance.
+    # The primary fix is the built-in backend; graphify stays as the
+    # qualified optional alternative. The PyPI package is `graphifyy`
+    # (yes, two y's) and the supported entrypoint is `graphify update` —
+    # lock all three in so we don't regress to graphify-as-required or
+    # to the deprecated `graphify build` guidance.
+    assert "neuralmind build" in msg
     assert "graphifyy" in msg
     assert "graphify update" in msg
 
