@@ -375,7 +375,7 @@ external services. Disable with:
 
 ### Read more
 
-- [v0.4.0 Release Notes](../blob/main/RELEASE_NOTES_v0.4.0.md) — full feature walkthrough
+- [v0.4.0 Release Notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) — full feature walkthrough
 - [Architecture: Synapse Layer (v0.4)](Architecture#synapse-layer-v04) — design and activation channels
 
 ## What's Coming (after v0.4.0)

@@ -1298,10 +1298,7 @@ Run `neuralmind doctor` to see which backend the current environment resolves to
 ### Complete Workflow
 
 ```bash
-# 1. Generate knowledge graph
-graphify update ~/projects/myapp
-
-# 2. Build neural index
+# 1. Build neural index (the code graph is generated automatically)
 neuralmind build ~/projects/myapp
 
 # 3. View statistics

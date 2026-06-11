@@ -2,18 +2,18 @@
 
 Command-driven walkthroughs matched to how people actually use NeuralMind. Copy, run, done.
 
-Canonical pages live at [docs/use-cases/](../blob/main/docs/use-cases/README.md) — this wiki page is a jump table.
+Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/README.md) — this wiki page is a jump table.
 
 ## Pick your situation
 
 | Use case | Best for you if… | Primary outcome |
 |---|---|---|
-| [Claude Code user](../blob/main/docs/use-cases/claude-code.md) | You use Claude Code daily | Two-phase optimization: retrieval + PostToolUse compression |
-| [Cost optimization](../blob/main/docs/use-cases/cost-optimization.md) | You need to reduce and *report* LLM spend | Baseline → measure → stakeholder-ready report |
-| [Any LLM (ChatGPT / Gemini / local)](../blob/main/docs/use-cases/any-llm.md) | You use a non-MCP chat or mixed models | Copy-paste + CLI-piped context into any model |
-| [Offline / regulated work](../blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | 100% local, zero telemetry, compliance properties table |
-| [Growing monorepo](../blob/main/docs/use-cases/growing-monorepo.md) | Your codebase grows fast and drifts often | Three freshness strategies + large-repo tuning |
-| [Slim & sovereign: ChromaDB-free local stack](../blob/main/docs/use-cases/chromadb-free-local.md) | Security-sensitive teams, tiny-footprint installs (v0.21.0+) | Embed + search with zero ChromaDB — smaller deps, 8–16× smaller index, fewer advisories |
+| [Claude Code user](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md) | You use Claude Code daily | Two-phase optimization: retrieval + PostToolUse compression |
+| [Cost optimization](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cost-optimization.md) | You need to reduce and *report* LLM spend | Baseline → measure → stakeholder-ready report |
+| [Any LLM (ChatGPT / Gemini / local)](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/any-llm.md) | You use a non-MCP chat or mixed models | Copy-paste + CLI-piped context into any model |
+| [Offline / regulated work](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | 100% local, zero telemetry, compliance properties table |
+| [Growing monorepo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/growing-monorepo.md) | Your codebase grows fast and drifts often | Three freshness strategies + large-repo tuning |
+| [Slim & sovereign: ChromaDB-free local stack](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) | Security-sensitive teams, tiny-footprint installs (v0.21.0+) | Embed + search with zero ChromaDB — smaller deps, 8–16× smaller index, fewer advisories |
 
 ## Decision helpers
 
@@ -31,7 +31,7 @@ Canonical pages live at [docs/use-cases/](../blob/main/docs/use-cases/README.md)
 
 ### "This is happening to me" (symptoms → fix)
 
-Full symptom/fix table lives in the [main README](../blob/main/README.md#-when-do-i-reach-for-neuralmind).
+Full symptom/fix table lives in the [main README](https://github.com/dfrostar/neuralmind/blob/main/README.md#-when-do-i-reach-for-neuralmind).
 
 ## Still not sure?
 

@@ -21,7 +21,7 @@ Python on this machine.
 
 ```bash
 pip install neuralmind            # built-in tree-sitter backend, no graphify needed
-# pip install neuralmind graphifyy   # optional: add graphify's richer graph
+# pip install neuralmind   # optional: add graphify's richer graph
 ```
 
 Drops into your active environment. Works in venvs, conda envs, system
@@ -37,6 +37,8 @@ reactivation dance.
 
 ```bash
 pipx install neuralmind
+
+# Optional — only if you want the graphify backend:
 pipx inject neuralmind graphifyy
 ```
 
@@ -55,7 +57,7 @@ API, use `pip` instead.
 ## 3. `uv pip` — fast, modern
 
 ```bash
-uv pip install neuralmind graphifyy
+uv pip install neuralmind
 ```
 
 [uv](https://docs.astral.sh/uv/) is the Rust-based Python package
@@ -66,7 +68,7 @@ venv works.
 If you have a `pyproject.toml` or `uv` project, prefer:
 
 ```bash
-uv add neuralmind graphifyy
+uv add neuralmind
 ```
 
 **Trade-offs:** `uv` is newer; some corporate Python policies still

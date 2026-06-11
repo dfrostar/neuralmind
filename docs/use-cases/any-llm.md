@@ -11,9 +11,8 @@ NeuralMind's CLI output is plain text. Pipe it into any clipboard, file, or requ
 ## Setup
 
 ```bash
-pip install neuralmind graphifyy
+pip install neuralmind
 cd your-project
-graphify update .
 neuralmind build .
 ```
 
