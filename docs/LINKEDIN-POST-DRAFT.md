@@ -1,10 +1,129 @@
 # LinkedIn post draft — NeuralMind progress update
 
-Three sets of drafts. The **v0.7.0 launch drafts** are the current
-batch — post one of them the moment v0.7.0 is on PyPI. The
-**v0.6.0 launch drafts** below were the previous progress update.
-The **earlier drafts** below those are the v0.5-era progress update;
-kept for reference and as a backbone if you want to combine.
+Four sets of drafts. The **site-relaunch drafts** (v0.22-era) are the
+current batch — they announce the redesigned landing page and the
+persistent-memory positioning, and include a Reddit variant alongside
+LinkedIn. The **v0.7.0 launch drafts** below were the previous batch.
+The **v0.6.0 launch drafts** below those were the progress update
+before that. The **earlier drafts** at the bottom are the v0.5-era
+progress update; kept for reference and as a backbone if you want to
+combine.
+
+---
+
+## Site-relaunch drafts (v0.22-era — persistent memory positioning)
+
+The pitch frame: **"persistent memory for AI coding agents, with every
+claim CI-gated."** Matches the relaunched landing page
+(https://dfrostar.github.io/neuralmind/) and the README. Two audiences,
+two voices: LinkedIn gets the narrative with the finance-friendly side
+effect; Reddit gets proof-first, caveats up front, no marketing voice.
+Numbers used (all CI-gated as of v0.22.0): ~800 tokens vs 50K+ per code
+question, 40–70× on real repos (community submissions 46–66×, n=2),
+synapse recall A/B 72% → 83% (+12 pts, budget-neutral), onboarding
+lift +6.5 pts, 30-second reproduction via `bash scripts/demo.sh`.
+
+### Draft relaunch–LinkedIn (recommended)
+
+> Your AI coding agent has amnesia. Every session, it re-reads your
+> codebase from zero — you re-explain the auth flow, the billing module,
+> the naming conventions, and you pay for 50,000+ tokens of context it
+> had already loaded yesterday.
+>
+> I've been building NeuralMind to fix exactly that: persistent memory
+> for AI coding agents.
+>
+> It runs a brain-inspired synapse layer next to the LLM. It watches how
+> you actually work — which files you co-edit, what you usually touch
+> next — and learns Hebbian associations that persist across sessions.
+> Next session, the agent boots already knowing the shape of your code.
+> After you edit payment_service.py, it offers the webhook handler and
+> the test file, because that's what you do.
+>
+> It's 100% local. Your code never leaves your machine — no cloud APIs,
+> no telemetry. The side effect is the part your finance team will like:
+> ~800 tokens per code question instead of 50,000+, which is 40–70× on
+> real repos.
+>
+> The thing I'm proudest of isn't a feature — it's that every claim is
+> measured in CI on every commit, and regressions fail the build:
+>
+> → Token reduction: gated on every PR
+> → Learned memory: +12 pt top-k retrieval lift (72% → 83%), A/B-tested,
+>   budget-neutral
+> → Team onboarding: +6.5 pt lift for a fresh agent inheriting a
+>   committed team memory
+>
+> Skeptical? Good. It reproduces on a fresh clone in 30 seconds:
+>
+>   git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+>   bash scripts/demo.sh
+>
+> Works with Claude Code, Cursor, Cline, Continue — anything that speaks
+> MCP. One command (neuralmind install-mcp --all) registers it with all
+> of them. MIT-licensed, pip install neuralmind.
+>
+> 🔗 https://dfrostar.github.io/neuralmind/
+>
+> #AIEngineering #DeveloperTools #LLM #OpenSource #CodingAgents #MCP
+
+### Draft relaunch–Reddit (r/LocalLLaMA, r/ChatGPTCoding, r/ClaudeAI)
+
+> **Title:** I built a local-first persistent memory layer for coding
+> agents — every claim is CI-gated, here's what's actually measured
+>
+> I got tired of two things: my agent re-reading the whole repo every
+> session, and AI tools whose benchmark numbers live in the README and
+> nowhere else. So I built NeuralMind and wired every claim into CI so
+> I can't quietly fudge them.
+>
+> What it is: a synapse layer (SQLite-backed weighted graph) that runs
+> alongside whatever agent you use. It learns from your actual usage —
+> file co-edits via a watcher, query patterns via MCP, tool-use via
+> hooks. Associations strengthen with co-activation and decay when
+> unused. On session start it injects what it learned, so the agent
+> doesn't start cold.
+>
+> Fully local: tree-sitter indexing (Python/TS/Go), local ONNX
+> embeddings, and as of v0.22 it doesn't even need ChromaDB. Nothing
+> leaves your machine.
+>
+> The measured numbers (all gated in CI, build fails on regression):
+>
+> - Token reduction: ~800 tokens per code question vs 50K+ naive
+>   loading. The CI fixture does ~6×; real repos measure 40–70×.
+>   Honest caveat: community-submitted real-world numbers are 46–66×
+>   but that's n=2 so far.
+> - Synapse layer A/B (same index, recall off vs on): top-k retrieval
+>   hit rate 72% → 83%, with zero extra token budget.
+> - Team memory: commit the learned graph to your repo and a teammate's
+>   fresh agent gets a +6.5 pt retrieval lift on first queries.
+>
+> Reproduce it yourself in ~30 seconds, no API key needed:
+>
+>     git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+>     bash scripts/demo.sh
+>
+> Works with any MCP client (Claude Code, Cursor, Cline, Continue);
+> `neuralmind install-mcp --all` auto-registers it. MIT licensed.
+>
+> There's also a docs/HONEST-ASSESSMENT.md covering when this is NOT
+> worth installing, because every tool post needs one.
+>
+> Site: https://dfrostar.github.io/neuralmind/
+> Repo: https://github.com/dfrostar/neuralmind
+>
+> Happy to answer anything about the Hebbian learning mechanics or the
+> eval setup — tear it apart.
+
+### Notes for this batch
+
+- Post LinkedIn and Reddit on different days; Reddit first if you want
+  feedback to fold into the LinkedIn version.
+- Reddit: keep the title free of superlatives, reply fast in the first
+  hour, and lead any pushback response with the HONEST-ASSESSMENT link.
+- Both posts link the relaunched landing page — don't post if the site
+  is mid-deploy.
 
 ---
 
