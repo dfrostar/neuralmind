@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="NeuralMind: Semantic code intelligence for AI agents. Reduce token costs 40–70× with local code indexing, a brain-like synapse layer that learns from co-activation and directional file-to-file transitions, an Obsidian-style graph view, and PostToolUse hooks that compress tool output and let agents recover dropped middle content without re-running. v0.19 adds one-command MCP setup (neuralmind install-mcp auto-detects and registers with Claude Code, Cursor, Cline, Claude Desktop); the bundled tree-sitter backend indexes Python, TypeScript, and Go with no external graphify install, plus incremental updates and an optional SCIP precision pass — all proven by a CI parity gate. Plus neuralmind eval, a 100%-local way to measure answer faithfulness. v0.22 imports without ChromaDB and defaults to an auto backend that prefers the ChromaDB-free turbovec path when available. v0.23 adds a canonical, versioned internal index contract (IR) materialized on every build plus neuralmind validate, a backend-free schema check that catches dangling edges, orphaned nodes, and unsupported versions and migrates legacy state in place. NIST AI RMF compliant.">
+    <title>NeuralMind — Persistent Memory for AI Coding Agents | 40–70× Token Reduction</title>
+    <meta name="description" content="NeuralMind: Persistent memory for AI coding agents. A brain-like synapse layer learns your codebase from how you actually use it — what files go together, what you usually edit next — and surfaces it automatically on every session. 100% local code indexing with 40–70× per-query token reduction, an Obsidian-style graph view, and PostToolUse hooks that compress tool output and let agents recover dropped middle content without re-running. One-command MCP setup (neuralmind install-mcp auto-detects and registers with Claude Code, Cursor, Cline, Claude Desktop); the bundled tree-sitter backend indexes Python, TypeScript, and Go with no external graphify install, plus incremental updates and an optional SCIP precision pass — all proven by a CI parity gate. neuralmind eval measures answer faithfulness and onboarding lift 100% locally. v0.22 imports without ChromaDB and defaults to an auto backend that prefers the ChromaDB-free turbovec path when available. NIST AI RMF compliant.">
     <meta name="keywords" content="semantic code search, AI coding agents, token optimization, code intelligence, local-first, NIST AI RMF, Claude, Cursor, MCP server, graph view, neuralmind serve, Obsidian-style code graph, force-directed graph, synapse layer, Hebbian learning, directional transitions, transition matrix, next-file prediction, code visualization, tool output recovery, bash output cache, agent ergonomics, claude code hooks, install doctor, health check, agent onboarding, faithfulness eval, retrieval quality evaluation, offline llm eval, polyglot code fixtures, typescript code graph, go code graph, neuralmind eval, answer faithfulness, faithfulness delta, tree-sitter, tree-sitter graph backend, built-in code graph, no graphify, standalone code indexing, graphify alternative, pluggable graph backend, backend parity gate, ast code graph, multi-language code intelligence, polyglot codebase indexing, typescript code intelligence, go code intelligence, scip, scip index, scip precision, compiler-accurate call graph, lsp code graph, precise call graph, incremental indexing, incremental code graph, watch mode reindex, live code index, mcp setup, install mcp server, claude code mcp, cursor mcp, cline mcp, claude desktop mcp, mcp auto-detection, onboarding lift, onboarding-lift eval, learned memory eval, synapse recall eval, team memory, agent onboarding eval, turbovec, turboquant, chromadb-free, chromadb alternative, onnx embeddings, vector quantization, compressed vector search, local embeddings, auto-backend-selection, default-backend, zero-dependency-import, chromadb-free by default, index ir, intermediate representation, versioned schema, index contract, neuralmind validate, index validation, dangling edges, orphaned nodes, schema migration, index integrity">
-    <title>NeuralMind - Semantic Code Intelligence for AI Agents | 40–70× Token Reduction</title>
-    <meta property="og:title" content="NeuralMind - Semantic Code Intelligence for AI Agents">
-    <meta property="og:description" content="Local-first code indexing with 40–70× per-query token reduction (50K → ~800 tokens). Zero data exfiltration, 100% offline, enterprise-ready.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dfrostar.github.io/neuralmind/">
+    <meta property="og:title" content="NeuralMind — Persistent Memory for AI Coding Agents">
+    <meta property="og:description" content="Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local, zero exfiltration. Side effect: 40–70× cheaper code questions, measured in CI on every commit.">
+    <meta property="og:image" content="https://dfrostar.github.io/neuralmind/assets/social-preview.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NeuralMind — Persistent Memory for AI Coding Agents">
+    <meta name="twitter:description" content="Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local. 40–70× token reduction, measured in CI.">
+    <meta name="twitter:image" content="https://dfrostar.github.io/neuralmind/assets/social-preview.png">
+    <link rel="canonical" href="https://dfrostar.github.io/neuralmind/">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -26,328 +34,636 @@
       "author": { "@type": "Person", "name": "Darren Frost" }
     }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #070b15;
+            --bg-raised: #0c1322;
+            --bg-card: #0e1626;
+            --border: #1b2740;
+            --border-strong: #28395c;
+            --text: #e7ecf5;
+            --text-dim: #97a3ba;
+            --text-faint: #67748f;
+            --accent: #8b7cf8;
+            --accent-bright: #a99cff;
+            --accent-deep: #6d5ae6;
+            --green: #4ade80;
+            --red: #f87171;
+            --amber: #fbbf24;
+            --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; background: #fff; }
-        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem 2rem; text-align: center; }
-        header h1 { font-size: 2.5rem; margin-bottom: 1rem; }
-        header p { font-size: 1.25rem; margin-bottom: 2rem; opacity: 0.95; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
-        section { padding: 4rem 2rem; border-bottom: 1px solid #eee; }
-        h2 { font-size: 2rem; margin-bottom: 1.5rem; color: #667eea; }
-        h3 { font-size: 1.5rem; margin-bottom: 1rem; }
-        .btn { display: inline-block; padding: 0.75rem 2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; border: 2px solid; cursor: pointer; margin-right: 1rem; margin-top: 1rem; }
-        .btn-primary { background: white; color: #667eea; border-color: white; }
-        .btn-secondary { background: transparent; color: white; border-color: white; }
-        .btn:hover { transform: translateY(-2px); }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 2rem 0; }
-        .feature-card { padding: 2rem; border: 1px solid #ddd; border-radius: 0.75rem; background: #fafafa; }
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; text-align: center; margin: 3rem 0; }
-        .stat-number { font-size: 2.5rem; font-weight: 700; color: #667eea; }
-        .highlights { background: #f8f9fa; padding: 3rem 2rem; }
-        .highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0; }
-        .highlight-item { padding: 1.5rem; background: white; border-left: 4px solid #667eea; }
-        nav { background: #333; padding: 1rem 2rem; }
-        nav a { color: white; text-decoration: none; margin-right: 2rem; font-weight: 500; }
-        nav a:hover { color: #667eea; }
-        footer { background: #333; color: white; padding: 3rem 2rem; text-align: center; }
-        footer a { color: #667eea; text-decoration: none; }
-        table { width: 100%; border-collapse: collapse; margin: 2rem 0; }
-        th, td { padding: 1rem; text-align: left; border: 1px solid #ddd; }
-        th { background: #f5f5f5; }
-        code { background: #f5f5f5; padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: 'Monaco', monospace; }
-        pre { background: #f5f5f5; padding: 1.5rem; border-radius: 0.5rem; overflow-x: auto; }
-        @media (max-width: 768px) {
-            header h1 { font-size: 2rem; }
-            h2 { font-size: 1.5rem; }
+        html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.65;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--accent-bright); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code { font-family: var(--mono); font-size: 0.875em; background: rgba(139, 124, 248, 0.1); border: 1px solid rgba(139, 124, 248, 0.18); padding: 0.1em 0.35em; border-radius: 4px; color: var(--accent-bright); }
+        .container { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* ───── Nav ───── */
+        nav {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(7, 11, 21, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+        .nav-logo { display: flex; align-items: center; gap: 0.55rem; font-weight: 700; font-size: 1.05rem; color: var(--text); }
+        .nav-logo:hover { text-decoration: none; }
+        .nav-logo svg { width: 22px; height: 22px; }
+        .nav-links { display: flex; align-items: center; gap: 1.75rem; }
+        .nav-links a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; }
+        .nav-links a:hover { color: var(--text); text-decoration: none; }
+        .nav-gh {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            border: 1px solid var(--border-strong); border-radius: 8px;
+            padding: 0.4rem 0.9rem; color: var(--text) !important; font-size: 0.875rem;
+        }
+        .nav-gh:hover { border-color: var(--accent); background: rgba(139, 124, 248, 0.08); }
+        .nav-toggle { display: none; background: none; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text); padding: 0.35rem 0.6rem; font-size: 1.1rem; cursor: pointer; }
+
+        /* ───── Hero ───── */
+        .hero { position: relative; overflow: hidden; padding: 5rem 0 4rem; }
+        .hero-bg { position: absolute; inset: 0; pointer-events: none; opacity: 0.55; }
+        .hero-bg svg { width: 100%; height: 100%; }
+        .hero-glow {
+            position: absolute; top: -20%; left: 50%; transform: translateX(-50%);
+            width: 900px; height: 600px; pointer-events: none;
+            background: radial-gradient(ellipse at center, rgba(109, 90, 230, 0.22) 0%, transparent 65%);
+        }
+        .hero-grid { position: relative; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 3.5rem; align-items: center; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: rgba(139, 124, 248, 0.1); border: 1px solid rgba(139, 124, 248, 0.3);
+            border-radius: 999px; padding: 0.3rem 0.9rem; font-size: 0.8rem; font-weight: 500;
+            color: var(--accent-bright); margin-bottom: 1.5rem;
+        }
+        .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .badge a { color: var(--accent-bright); }
+        h1 { font-size: 3.1rem; line-height: 1.12; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 1.25rem; }
+        .grad { background: linear-gradient(100deg, #a99cff 10%, #7c8cf8 50%, #5eead4 95%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero-sub { color: var(--text-dim); font-size: 1.1rem; max-width: 34rem; margin-bottom: 1rem; }
+        .hero-sub strong { color: var(--text); font-weight: 600; }
+        .hero-local { color: var(--text-dim); font-size: 0.95rem; max-width: 34rem; margin-bottom: 2rem; }
+        .hero-local strong { color: var(--text); }
+        .cta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 2rem; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            border-radius: 10px; padding: 0.75rem 1.5rem;
+            font-weight: 600; font-size: 0.95rem; cursor: pointer; border: 1px solid transparent;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn:hover { text-decoration: none; transform: translateY(-1px); }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-deep), var(--accent));
+            color: #fff; box-shadow: 0 4px 24px rgba(109, 90, 230, 0.35);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 32px rgba(109, 90, 230, 0.5); }
+        .btn-ghost { border-color: var(--border-strong); color: var(--text); }
+        .btn-ghost:hover { border-color: var(--accent); background: rgba(139, 124, 248, 0.08); }
+        .works-with { font-size: 0.78rem; color: var(--text-faint); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+        .works-with span { color: var(--text-dim); letter-spacing: normal; text-transform: none; font-weight: 500; font-family: var(--mono); font-size: 0.82rem; }
+
+        /* terminal mock */
+        .terminal {
+            background: #0a101d; border: 1px solid var(--border-strong); border-radius: 12px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(139, 124, 248, 0.06);
+            overflow: hidden; font-family: var(--mono); font-size: 0.78rem; line-height: 1.7;
+        }
+        .term-bar { display: flex; align-items: center; gap: 0.45rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); background: #0d1424; }
+        .term-bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+        .term-bar i:nth-child(1) { background: #ff5f57; } .term-bar i:nth-child(2) { background: #febc2e; } .term-bar i:nth-child(3) { background: #28c840; }
+        .term-bar span { margin-left: 0.5rem; color: var(--text-faint); font-size: 0.72rem; }
+        .term-body { padding: 1.1rem 1.25rem 1.3rem; overflow-x: auto; white-space: pre; color: #b6c2d9; }
+        .term-body .p { color: var(--green); }
+        .term-body .c { color: var(--text-faint); }
+        .term-body .q { color: #93c5fd; }
+        .term-body .hl { color: var(--accent-bright); font-weight: 600; }
+        .term-body .ok { color: var(--green); font-weight: 600; }
+
+        /* ───── Stats band ───── */
+        .stats-band { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--bg-raised); }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+        .stat { padding: 2rem 1.5rem; text-align: center; }
+        .stat + .stat { border-left: 1px solid var(--border); }
+        .stat b { display: block; font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, var(--accent-bright), #5eead4); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat span { font-size: 0.85rem; color: var(--text-dim); }
+
+        /* ───── Sections ───── */
+        section { padding: 5.5rem 0; }
+        section + section { border-top: 1px solid var(--border); }
+        .eyebrow { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.8rem; }
+        h2 { font-size: 2.1rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 1rem; }
+        .lede { color: var(--text-dim); font-size: 1.05rem; max-width: 46rem; margin-bottom: 2.5rem; }
+        .lede strong, .lede b { color: var(--text); }
+
+        /* token bars */
+        .bars { display: grid; gap: 1.4rem; max-width: 46rem; }
+        .bar-row label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.45rem; }
+        .bar-row label b { font-family: var(--mono); }
+        .bar-track { height: 30px; border-radius: 7px; background: rgba(255, 255, 255, 0.035); border: 1px solid var(--border); overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 6px 0 0 6px; }
+        .bar-naive .bar-fill { width: 100%; background: linear-gradient(90deg, #7f1d1d, #ef4444); border-radius: 6px; }
+        .bar-nm .bar-fill { width: 1.6%; min-width: 7px; background: linear-gradient(90deg, var(--accent-deep), #5eead4); }
+        .bar-note { font-size: 0.82rem; color: var(--text-faint); margin-top: 0.4rem; }
+
+        /* cards */
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 1.2rem; }
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+            padding: 1.6rem; transition: border-color 0.2s ease, transform 0.2s ease;
+        }
+        .card:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+        .card-icon {
+            width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            background: rgba(139, 124, 248, 0.12); border: 1px solid rgba(139, 124, 248, 0.25);
+            margin-bottom: 1rem; font-size: 1.1rem;
+        }
+        .card h3 { font-size: 1.02rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .card h3 em { font-style: normal; font-size: 0.75rem; font-weight: 600; color: var(--text-faint); }
+        .card p { font-size: 0.88rem; color: var(--text-dim); }
+        .card p + p { margin-top: 0.6rem; }
+
+        /* without/with */
+        .duel { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+        .duel-col { border-radius: 14px; padding: 1.6rem; border: 1px solid var(--border); background: var(--bg-card); }
+        .duel-col.with { border-color: rgba(139, 124, 248, 0.4); background: linear-gradient(180deg, rgba(139, 124, 248, 0.07), var(--bg-card) 45%); }
+        .duel-col h3 { font-size: 0.8rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 1.2rem; }
+        .duel-col.without h3 { color: var(--red); }
+        .duel-col.with h3 { color: var(--green); }
+        .duel-col ul { list-style: none; display: grid; gap: 1rem; }
+        .duel-col li { display: flex; gap: 0.7rem; font-size: 0.9rem; color: var(--text-dim); }
+        .duel-col li .mark { flex-shrink: 0; font-weight: 700; }
+        .duel-col.without .mark { color: var(--red); }
+        .duel-col.with .mark { color: var(--green); }
+        .duel-col li b, .duel-col li strong { color: var(--text); }
+        .duel-foot { font-size: 0.85rem; color: var(--text-faint); margin-top: 1.5rem; max-width: 46rem; }
+
+        /* compare table */
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--bg-card); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 640px; }
+        th, td { padding: 0.95rem 1.2rem; text-align: left; }
+        thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); border-bottom: 1px solid var(--border-strong); }
+        tbody tr + tr td { border-top: 1px solid var(--border); }
+        td:first-child { color: var(--text); font-weight: 600; }
+        td { color: var(--text-dim); }
+        td.nm { color: var(--text); background: rgba(139, 124, 248, 0.06); }
+        .yes { color: var(--green); font-weight: 600; }
+        .no { color: var(--red); }
+        .meh { color: var(--amber); }
+
+        /* code blocks */
+        .codeblock { position: relative; background: #0a101d; border: 1px solid var(--border-strong); border-radius: 12px; margin-bottom: 1.2rem; }
+        .codeblock pre { padding: 1.3rem 1.4rem; overflow-x: auto; font-family: var(--mono); font-size: 0.83rem; line-height: 1.75; color: #c4cfe4; }
+        .codeblock .cmt { color: var(--text-faint); }
+        .codeblock .kw { color: var(--accent-bright); }
+        .copy-btn {
+            position: absolute; top: 0.7rem; right: 0.7rem;
+            background: rgba(139, 124, 248, 0.1); border: 1px solid var(--border-strong); border-radius: 7px;
+            color: var(--text-dim); font-family: var(--sans); font-size: 0.72rem; font-weight: 600;
+            padding: 0.3rem 0.7rem; cursor: pointer;
+        }
+        .copy-btn:hover { color: var(--text); border-color: var(--accent); }
+
+        /* timeline */
+        .timeline { position: relative; max-width: 46rem; padding-left: 1.6rem; }
+        .timeline::before { content: ""; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--border-strong); }
+        .tl-item { position: relative; padding-bottom: 2.2rem; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-item::before {
+            content: ""; position: absolute; left: -1.6rem; top: 7px; width: 12px; height: 12px;
+            border-radius: 50%; background: var(--bg); border: 2px solid var(--accent);
+        }
+        .tl-item.dev::before { background: var(--bg); border-color: var(--amber); }
+        .tl-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-bottom: 0.35rem; }
+        .tl-head b { font-family: var(--mono); font-size: 1rem; }
+        .pill { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 999px; padding: 0.15rem 0.65rem; }
+        .pill-latest { color: var(--green); border: 1px solid rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.08); }
+        .pill-dev { color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.08); }
+        .tl-item p { font-size: 0.9rem; color: var(--text-dim); }
+        .tl-item p b { color: var(--text); }
+        .tl-links { margin-top: 2.2rem; font-size: 0.9rem; color: var(--text-faint); }
+
+        /* docs grid */
+        .doc-card { display: block; color: inherit; }
+        .doc-card:hover { text-decoration: none; }
+        .doc-card h3 { color: var(--accent-bright); display: flex; align-items: center; gap: 0.4rem; }
+        .doc-card h3::after { content: "→"; opacity: 0; transition: opacity 0.15s, transform 0.15s; }
+        .doc-card:hover h3::after { opacity: 1; transform: translateX(3px); }
+
+        .center-cta { margin-top: 2.5rem; }
+
+        /* footer */
+        footer { border-top: 1px solid var(--border); background: var(--bg-raised); padding: 3rem 0; }
+        .foot-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+        .foot-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.875rem; }
+        .foot-links a { color: var(--text-dim); }
+        .foot-links a:hover { color: var(--text); }
+        .foot-meta { width: 100%; margin-top: 1.2rem; font-size: 0.8rem; color: var(--text-faint); }
+
+        /* synapse animation */
+        @media (prefers-reduced-motion: no-preference) {
+            .pulse { animation: pulse 3.4s ease-in-out infinite; }
+            .pulse2 { animation: pulse 4.2s ease-in-out 1.1s infinite; }
+            .pulse3 { animation: pulse 5s ease-in-out 2.2s infinite; }
+            @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.9; } }
+        }
+
+        /* ───── Responsive ───── */
+        @media (max-width: 960px) {
+            .hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+            h1 { font-size: 2.4rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .stat:nth-child(3) { border-left: none; }
+            .stat:nth-child(n+3) { border-top: 1px solid var(--border); }
+            .duel { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 720px) {
+            .nav-links {
+                display: none; position: absolute; top: 4rem; left: 0; right: 0;
+                flex-direction: column; align-items: flex-start; gap: 0;
+                background: var(--bg-raised); border-bottom: 1px solid var(--border); padding: 0.5rem 1.5rem 1rem;
+            }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 0.6rem 0; width: 100%; }
+            .nav-toggle { display: block; }
+            h1 { font-size: 2rem; }
+            section { padding: 3.5rem 0; }
+            h2 { font-size: 1.6rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat b { font-size: 1.6rem; }
         }
     </style>
 </head>
 <body>
-    <nav class="container" style="max-width: 100%; padding: 1rem 2rem;">
-        <div style="max-width: 1200px; margin: 0 auto;">
-            <a href="/">🧠 NeuralMind</a>
-            <a href="wiki/">Docs</a>
-            <a href="wiki/Setup-Guide">Setup</a>
-            <a href="benchmarks/">Benchmarks</a>
-            <a href="#comparison" style="float: right;">Compare</a>
-            <a href="https://github.com/dfrostar/neuralmind" style="float: right;">GitHub</a>
-        </div>
-    </nav>
 
-    <header>
-        <div class="container">
-            <h1>🧠 NeuralMind</h1>
-            <p>Semantic code intelligence for AI agents.<br/>40–70× token reduction. Zero data exfiltration. Enterprise-ready.</p>
-            <p style="font-size: 1rem; opacity: 0.85; margin-top: 0.5rem;">
-                <strong>🆕 v0.23.0 — versioned IR, quality harness, debug traces, and a local daemon.</strong> Four future-proofing foundations. <strong>(PRD 1)</strong> Every build materializes a canonical, schema-versioned <strong>IndexIR</strong> alongside <code>graph.json</code>; the new <code>neuralmind validate</code> command checks that contract with no vector backend. <strong>(PRD 2)</strong> A new <code>neuralmind benchmark --quality</code> mode measures whether retrieval finds the <em>right</em> code — precision@k / recall@k / MRR / answerability over 30 golden queries (Python/TS/Go) — and fails CI on a regression. <strong>(PRD 3)</strong> <code>neuralmind query --trace</code> shows <em>why</em> a result came back — per-layer candidates, cluster scoring with vector-vs-synapse attribution, and final hits. <strong>(PRD 5)</strong> An experimental <code>neuralmind daemon</code> keeps project state warm so repeat queries skip cold init, with transparent direct-mode fallback. Retrieval and existing indexes are unchanged. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.23.0.md" style="color: white; text-decoration: underline;">Release notes →</a> · <a href="about.html#whats-new-v0230" style="color: white; text-decoration: underline;">Summary →</a>
-            </p>
-            <p style="font-size: 0.9rem; opacity: 0.75; margin-top: 0.25rem;">
-                Earlier: <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.22.0.md" style="color: white; text-decoration: underline;">v0.22.0 ChromaDB-free by default</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.21.0.md" style="color: white; text-decoration: underline;">v0.21.0 ChromaDB-free retrieval</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.20.0.md" style="color: white; text-decoration: underline;">v0.20.0 onboarding-lift eval</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.18.0.md" style="color: white; text-decoration: underline;">v0.18.0 incremental updates</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md" style="color: white; text-decoration: underline;">v0.17.0 optional SCIP precision</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.16.0.md" style="color: white; text-decoration: underline;">v0.16.0 multi-language (TypeScript + Go)</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.15.0.md" style="color: white; text-decoration: underline;">v0.15.0 no graphify needed</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.14.0.md" style="color: white; text-decoration: underline;">v0.14.0 measure faithfulness</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md" style="color: white; text-decoration: underline;">v0.13.0 measurement foundation</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md" style="color: white; text-decoration: underline;">v0.12.0 install doctor</a>.
-            </p>
-            <div>
-                <a href="wiki/Setup-Guide" class="btn btn-primary">Get Started in 5 Minutes</a>
-                <a href="https://github.com/dfrostar/neuralmind" class="btn btn-secondary">View on GitHub</a>
+<nav>
+    <div class="container nav-inner">
+        <a class="nav-logo" href="https://dfrostar.github.io/neuralmind/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.getElementById('navlinks').classList.toggle('open')">☰</button>
+        <div class="nav-links" id="navlinks">
+            <a href="#how-it-works">How it works</a>
+            <a href="#proof">Proof</a>
+            <a href="#compare">Compare</a>
+            <a href="#quickstart">Quickstart</a>
+            <a href="wiki/Home">Docs</a>
+            <a href="about.html">About</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
+        </div>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-bg" aria-hidden="true">
+        <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMid slice">
+            <g stroke="#2a3a5e" stroke-width="1">
+                <line x1="120" y1="120" x2="320" y2="240" class="pulse"/>
+                <line x1="320" y1="240" x2="180" y2="430" class="pulse2"/>
+                <line x1="320" y1="240" x2="560" y2="160" class="pulse3"/>
+                <line x1="900" y1="520" x2="1080" y2="380" class="pulse"/>
+                <line x1="980" y1="140" x2="1080" y2="380" class="pulse2"/>
+                <line x1="120" y1="600" x2="180" y2="430" class="pulse3"/>
+            </g>
+            <g fill="#3d4f7c">
+                <circle cx="120" cy="120" r="4" class="pulse"/><circle cx="320" cy="240" r="6" class="pulse2"/>
+                <circle cx="560" cy="160" r="3.5" class="pulse3"/><circle cx="180" cy="430" r="5" class="pulse"/>
+                <circle cx="120" cy="600" r="3.5" class="pulse2"/><circle cx="980" cy="140" r="4.5" class="pulse3"/>
+                <circle cx="1080" cy="380" r="6" class="pulse"/><circle cx="900" cy="520" r="4" class="pulse2"/>
+            </g>
+        </svg>
+    </div>
+    <div class="container hero-grid">
+        <div>
+            <p class="badge"><span class="dot"></span> v0.22.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.22.0.md">release notes</a></p>
+            <h1>Persistent memory for <span class="grad">AI coding agents</span></h1>
+            <p class="hero-sub">Your agent learns your codebase the way a senior engineer would — <strong>what files go together, what you usually edit next, what patterns matter</strong>. The memory persists across sessions and surfaces automatically.</p>
+            <p class="hero-local"><strong>100% local.</strong> Your code never leaves your machine. Side effect: <strong>40–70× cheaper code questions</strong>, measured in CI on every commit.</p>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="wiki/Setup-Guide">Get started in 5 minutes</a>
+                <a class="btn btn-ghost" href="https://github.com/dfrostar/neuralmind">View on GitHub</a>
             </div>
+            <p class="works-with">Works with&nbsp;&nbsp;<span>Claude Code · Cursor · Cline · Continue · any MCP agent</span></p>
         </div>
-    </header>
+        <div class="terminal" aria-label="Demo output">
+            <div class="term-bar"><i></i><i></i><i></i><span>demo — 30-second proof</span></div>
+            <div class="term-body"><span class="p">$</span> bash scripts/demo.sh
+<span class="c"># builds the index for the bundled fixture, runs 3 real questions</span>
 
-    <div class="highlights">
-        <div class="container">
-            <div class="highlight-grid">
-                <div class="highlight-item">
-                    <strong>⚡ 40–70× Token Reduction</strong>
-                    <p>~800 tokens per code question instead of 50,000+. Real-world bills drop 40–70%.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>🔒 100% Local & Offline</strong>
-                    <p>Your code never leaves your machine. Zero cloud APIs, zero telemetry.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>✅ NIST AI RMF Compliant</strong>
-                    <p>Full audit trail and enterprise compliance reporting.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>🛠️ Works Everywhere</strong>
-                    <p>Claude Code, Cursor, ChatGPT, Gemini, or any LLM.</p>
-                </div>
+  <span class="q">Q:</span> How does authentication work?
+     naive = 4,736 tok   neuralmind =  829 tok   <span class="hl">5.7×</span>
+  <span class="q">Q:</span> What are the main API endpoints?
+     naive = 4,736 tok   neuralmind =  923 tok   <span class="hl">5.1×</span>
+  <span class="q">Q:</span> Explain the billing flow.
+     naive = 4,736 tok   neuralmind =  826 tok   <span class="hl">5.7×</span>
+
+  <span class="ok">Average reduction:  5.5×  across 3 queries</span>
+  Avg context size:   859 tokens  (vs 4,736 naive)
+  Wall time:          0.85s
+<span class="c"># small CI fixture — real repos hit 40–70× on the same pipeline</span></div>
+        </div>
+    </div>
+</header>
+
+<div class="stats-band">
+    <div class="container stats-grid">
+        <div class="stat"><b>40–70×</b><span>per-query token reduction on real repos</span></div>
+        <div class="stat"><b>~800</b><span>tokens per code question, vs 50,000+</span></div>
+        <div class="stat"><b>100%</b><span>local &amp; offline — zero exfiltration</span></div>
+        <div class="stat"><b>+6.5 pts</b><span>onboarding lift from committed team memory</span></div>
+    </div>
+</div>
+
+<section id="problem">
+    <div class="container">
+        <p class="eyebrow">The problem</p>
+        <h2>Agents re-read your codebase every session</h2>
+        <p class="lede">Traditional agents load whole files to answer a question — 50,000+ tokens of mostly irrelevant context, re-paid on every query, every session. NeuralMind keeps a learned, persistent index and surfaces only the code that matters.</p>
+        <div class="bars">
+            <div class="bar-row bar-naive">
+                <label><span>Whole-file loading</span><b>50,000+ tokens</b></label>
+                <div class="bar-track"><div class="bar-fill"></div></div>
+            </div>
+            <div class="bar-row bar-nm">
+                <label><span>NeuralMind</span><b>~800 tokens</b></label>
+                <div class="bar-track"><div class="bar-fill"></div></div>
+            </div>
+            <p class="bar-note">Bars drawn to scale — ~800 is 1.6% of 50,000. Demo fixture averages 5.5×; real repos hit 40–70× on the same pipeline, <a href="benchmarks/">verified in CI on every commit</a>.</p>
+        </div>
+    </div>
+</section>
+
+<section id="how-it-works">
+    <div class="container">
+        <p class="eyebrow">How it works</p>
+        <h2>Four layers, one pipeline</h2>
+        <p class="lede">Each layer is independently useful; together they compound. Everything runs locally with no cloud APIs and no telemetry.</p>
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">◎</div>
+                <h3>Smart retrieval</h3>
+                <p>A 4-layer semantic index surfaces only the context your question needs — not the entire codebase. Built-in tree-sitter backend indexes Python, TypeScript, and Go standalone; SCIP gives an optional compiler-accurate precision pass.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">⌁</div>
+                <h3>Output compression</h3>
+                <p>PostToolUse hooks compress Read/Bash/Grep output 88–91% smaller before the agent sees it. <code>neuralmind last</code> recovers the raw cache when the agent needs what was dropped — no re-running commands.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧠</div>
+                <h3>Brain-like memory</h3>
+                <p>A persistent synapse graph learns Hebbian associations between co-active code nodes, plus directional edit-order transitions. Decay prunes stale links; spreading activation primes related code on every prompt — no MCP call required.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">◍</div>
+                <h3>Graph view</h3>
+                <p><code>neuralmind serve</code> opens an Obsidian-style force-directed graph of your codebase: structural edges, the learned synapse overlay, a live activity feed, and one-click "open in editor". Makes the brain inspectable — no black-box retrieval.</p>
             </div>
         </div>
     </div>
+</section>
 
-    <section>
-        <div class="container">
-            <h2>The Problem & Solution</h2>
-            <p style="font-size: 1.1rem; margin-bottom: 2rem;">Traditional: Load entire files → 50,000+ tokens. <strong>NeuralMind: Smart context → ~800 tokens.</strong></p>
-            <div class="stats">
-                <div>
-                    <div class="stat-number">50K+</div>
-                    <div>Tokens (traditional)</div>
-                </div>
-                <div>
-                    <div class="stat-number">~800</div>
-                    <div>Tokens (NeuralMind)</div>
-                </div>
-                <div>
-                    <div class="stat-number">60×</div>
-                    <div>Cost Reduction</div>
-                </div>
+<section id="what-changes">
+    <div class="container">
+        <p class="eyebrow">What changes</p>
+        <h2>An agent with memory behaves differently</h2>
+        <p class="lede">Three concrete behaviors appear once the synapse layer has watched a few coding sessions. None require extra tool calls — the memory surfaces automatically.</p>
+        <div class="duel">
+            <div class="duel-col without">
+                <h3>Without NeuralMind</h3>
+                <ul>
+                    <li><span class="mark">✗</span><span>Every session, the agent starts cold. You re-explain your auth flow, your billing module, your naming conventions.</span></li>
+                    <li><span class="mark">✗</span><span>Agent finishes editing <code>payment_service.py</code>, asks "anything else?"</span></li>
+                    <li><span class="mark">✗</span><span><code>npm test</code> floods the conversation with 800 lines. The agent re-reads 50K tokens of output.</span></li>
+                </ul>
+            </div>
+            <div class="duel-col with">
+                <h3>With NeuralMind</h3>
+                <ul>
+                    <li><span class="mark">✓</span><span>Session starts with the learned memory in context: <em>"strongest associations: <code>middleware.py</code> ↔ <code>handlers.py</code> ↔ <code>session.py</code> — auth flow."</em> The agent boots knowing the shape of your code.</span></li>
+                    <li><span class="mark">✓</span><span>Agent: <em>"after <code>payment_service.py</code> you usually update <code>webhook_handler.py</code> (45%) and the test file (28%) — want me to do those too?"</em> Learned from your edit history.</span></li>
+                    <li><span class="mark">✓</span><span>Hooks auto-summarize output to errors + patterns + last 3 lines; <code>neuralmind last</code> recovers the raw cache on demand.</span></li>
+                </ul>
             </div>
         </div>
-    </section>
+        <p class="duel-foot">The brain layer learns continuously from how you actually work — file co-edits via a watcher daemon, query intent from MCP calls, tool-use patterns from hooks — and decays unused associations so stale knowledge doesn't crowd out current patterns.</p>
+    </div>
+</section>
 
-    <section>
-        <div class="container">
-            <h2>How It Works</h2>
-            <div class="features">
-                <div class="feature-card">
-                    <h3>Phase 1: Smart Retrieval</h3>
-                    <p>A 4-layer semantic index surfaces only the context your question needs—not the entire codebase.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Phase 2: Output Compression</h3>
-                    <p>PostToolUse hooks compress Read/Bash/Grep output 88–91% smaller before agents see it.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Phase 3: Brain-like Memory <em>(v0.4.0)</em></h3>
-                    <p>A persistent weighted graph runs alongside the LLM, learning Hebbian associations between co-active code nodes. Decay prunes stale links; long-term potentiation protects frequently-used ones; spreading activation surfaces related code on every prompt — no MCP call required.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Phase 4: Graph View <em>(new)</em></h3>
-                    <p><code>neuralmind serve</code> opens an Obsidian-style force-directed graph of your codebase in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click "open in editor". Makes the brain inspectable — no more black-box retrieval.</p>
-                </div>
-                <div class="feature-card">
-                    <h3>Result: 40–70× Reduction</h3>
-                    <p>50K+ tokens of raw source compressed to ~800 tokens of structured context per code question. Cost bills drop 40–70%. The brain-like layer makes retrieval get sharper the longer NeuralMind runs on a codebase.</p>
-                </div>
+<section id="proof">
+    <div class="container">
+        <p class="eyebrow">Proof, not promises</p>
+        <h2>Every claim is one command from verification</h2>
+        <p class="lede">Retrieval reduction is <strong>measured in CI on every commit</strong> and reproduces in 30 seconds on a fresh clone. The learning layer's lift is gated in CI too — regressions fail the build.</p>
+        <div class="cards">
+            <div class="card">
+                <h3>40–70× on real repos</h3>
+                <p>~800 tokens of structured context instead of 50,000+ per code question. The bundled demo fixture (intentionally small, ~500 lines) averages <b>5.5×</b> and catches regressions in CI; community-submitted real-world repos measure <b>46–66×</b>, and you get your own number with <code>neuralmind benchmark . --contribute</code>.</p>
+            </div>
+            <div class="card">
+                <h3>Learned memory, measured</h3>
+                <p>The synapse layer lifts top-k retrieval hit rate from <b>72% to 83%</b> (+12 pts) with recall on. The onboarding eval shows a deterministic <b>+6.5-point</b> top-k lift from inheriting a committed team memory — budget-neutral by design, CI-gated at lift ≥ 0.</p>
+            </div>
+            <div class="card">
+                <h3>Honest by construction</h3>
+                <p>The docs include a <a href="HONEST-ASSESSMENT">skeptic's companion</a> — when NeuralMind <em>isn't</em> worth installing, what "40–70×" does and doesn't mean, where the sample is too small to extrapolate — alongside the <a href="BUSINESS-CASE">business case</a> with ROI math you can change.</p>
             </div>
         </div>
-    </section>
+        <p class="center-cta"><a class="btn btn-ghost" href="benchmarks/">Open the interactive benchmark dashboard</a></p>
+    </div>
+</section>
 
-    <section class="highlights">
-        <div class="container">
-            <h2>Enterprise Features</h2>
-            <div class="highlight-grid">
-                <div class="highlight-item">
-                    <strong>NIST AI RMF Audit Trail</strong>
-                    <p>Every query logged. Export for compliance and auditor review.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>Pluggable Backends</strong>
-                    <p>ChromaDB, PostgreSQL pgvector, or LanceDB. Choose your infrastructure.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>MCP Security</strong>
-                    <p>RBAC, rate limiting, secret detection, audit logging.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>SOC 2 & GDPR Ready</strong>
-                    <p>Full transparency, no vendor lock-in, zero exfiltration.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="comparison">
-        <div class="container">
-            <h2>How NeuralMind Compares</h2>
+<section id="compare">
+    <div class="container">
+        <p class="eyebrow">Compare</p>
+        <h2>How NeuralMind stacks up</h2>
+        <div class="table-wrap">
             <table>
-                <tr style="background: #f5f5f5;">
-                    <th>Feature</th>
-                    <th>NeuralMind</th>
-                    <th>Cursor @codebase</th>
-                    <th>Claude Projects</th>
-                    <th>Long Context</th>
-                </tr>
-                <tr>
-                    <td><strong>Works everywhere</strong></td>
-                    <td>✅ Yes</td>
-                    <td>❌ Cursor only</td>
-                    <td>⚠️ Claude only</td>
-                    <td>✅ Yes</td>
-                </tr>
-                <tr style="background: #fafafa;">
-                    <td><strong>100% local & offline</strong></td>
-                    <td>✅ Yes</td>
-                    <td>❌ No</td>
-                    <td>❌ No</td>
-                    <td>❌ No</td>
-                </tr>
-                <tr>
-                    <td><strong>Token reduction</strong></td>
-                    <td>40–70×</td>
-                    <td>2–3×</td>
-                    <td>0× (loads all)</td>
-                    <td>0× (loads all)</td>
-                </tr>
-                <tr style="background: #fafafa;">
-                    <td><strong>Enterprise compliance</strong></td>
-                    <td>✅ NIST AI RMF</td>
-                    <td>⚠️ Basic</td>
-                    <td>⚠️ Basic</td>
-                    <td>⚠️ Basic</td>
-                </tr>
+                <thead>
+                    <tr><th>Capability</th><th>NeuralMind</th><th>Cursor @codebase</th><th>Claude Projects</th><th>Long context</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Works with any agent</td><td class="nm"><span class="yes">✓</span> Any MCP agent</td><td><span class="no">✗</span> Cursor only</td><td><span class="meh">~</span> Claude only</td><td><span class="yes">✓</span> Yes</td></tr>
+                    <tr><td>100% local &amp; offline</td><td class="nm"><span class="yes">✓</span> Yes</td><td><span class="no">✗</span> No</td><td><span class="no">✗</span> No</td><td><span class="no">✗</span> No</td></tr>
+                    <tr><td>Learns from your usage</td><td class="nm"><span class="yes">✓</span> Persistent synapses</td><td><span class="no">✗</span> No</td><td><span class="no">✗</span> No</td><td><span class="no">✗</span> No</td></tr>
+                    <tr><td>Token reduction</td><td class="nm">40–70×</td><td>2–3×</td><td>0× (loads all)</td><td>0× (loads all)</td></tr>
+                    <tr><td>Enterprise compliance</td><td class="nm"><span class="yes">✓</span> NIST AI RMF + audit trail</td><td><span class="meh">~</span> Basic</td><td><span class="meh">~</span> Basic</td><td><span class="meh">~</span> Basic</td></tr>
+                </tbody>
             </table>
-            <p><a href="wiki/Comparisons" style="color: #667eea; font-weight: bold;">View detailed comparisons →</a></p>
         </div>
-    </section>
+        <p class="center-cta"><a href="wiki/Comparisons">View detailed comparisons →</a></p>
+    </div>
+</section>
 
-    <section>
-        <div class="container">
-            <h2>5-Minute Setup</h2>
-            <pre><code># 1. Install NeuralMind
-pip install neuralmind
-
-# 2. Install graphify (required)
-git clone https://github.com/safishamsi/graphify.git
-cd graphify && pip install -e .
-
-# 3. Go to your project
-cd /path/to/your-project
-
-# 4. Generate the code graph
-graphify update .
-
-# 5. Build the neural index
+<section id="quickstart">
+    <div class="container">
+        <p class="eyebrow">Quickstart</p>
+        <h2>Up and running in five minutes</h2>
+        <p class="lede">One package. The built-in tree-sitter backend means no external graph tool is required (v0.15.0+) — <code>pip install</code>, and build.</p>
+        <div class="codeblock">
+            <button class="copy-btn" data-copy="pip install neuralmind
+cd /path/to/your-repo
 neuralmind build .
+neuralmind query . &quot;How does authentication work in this codebase?&quot;
+neuralmind install-mcp --all">Copy</button>
+            <pre><span class="cmt"># Install — built-in tree-sitter backend, no graphify needed</span>
+<span class="kw">pip install</span> neuralmind
 
-# 6. Test it
-neuralmind stats .</code></pre>
-            <p><a href="wiki/Setup-Guide" class="btn btn-primary">Full Setup Guide</a></p>
+<span class="cmt"># Index your project</span>
+<span class="kw">cd</span> /path/to/your-repo
+<span class="kw">neuralmind build</span> .
+
+<span class="cmt"># Ask a question — ~800 tokens of context instead of 50K</span>
+<span class="kw">neuralmind query</span> . "How does authentication work in this codebase?"
+
+<span class="cmt"># One command registers the MCP server with Claude Code, Cursor,</span>
+<span class="cmt"># Cline, and Claude Desktop (auto-detected, non-destructive, idempotent)</span>
+<span class="kw">neuralmind install-mcp</span> --all</pre>
         </div>
-    </section>
+        <div class="codeblock">
+            <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+bash scripts/demo.sh">Copy</button>
+            <pre><span class="cmt"># Skeptical? Reproduce the numbers on a fresh clone in 30 seconds:</span>
+<span class="kw">git clone</span> https://github.com/dfrostar/neuralmind <span class="kw">&amp;&amp; cd</span> neuralmind
+<span class="kw">bash</span> scripts/demo.sh</pre>
+        </div>
+        <p class="center-cta"><a class="btn btn-primary" href="wiki/Setup-Guide">Full setup guide</a></p>
+    </div>
+</section>
 
-    <section class="highlights">
-        <div class="container">
-            <h2>Use Cases</h2>
-            <div class="highlight-grid">
-                <div class="highlight-item">
-                    <strong>💰 Cost Optimization</strong>
-                    <p>Reduce monthly AI bills by 40–70% while improving answer quality.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>🔐 Regulated Industries</strong>
-                    <p>Process sensitive code without exfiltration. GDPR/HIPAA compliant.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>📈 Growing Monorepos</strong>
-                    <p>Scale AI help to 100K+ LOC without loading entire files.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>⚡ Any LLM</strong>
-                    <p>ChatGPT, Gemini, local models, Claude Code. Works with all of them.</p>
-                </div>
+<section id="enterprise">
+    <div class="container">
+        <p class="eyebrow">Enterprise</p>
+        <h2>Built for regulated environments</h2>
+        <p class="lede">Process sensitive code without exfiltration — zero cloud APIs, zero telemetry, air-gap installable. Compliance claims are consolidated in a <a href="COMPLIANCE-SUMMARY">one-page summary</a> for audit review.</p>
+        <div class="cards">
+            <div class="card">
+                <h3>NIST AI RMF audit trail</h3>
+                <p>Every query logged locally with export for compliance and auditor review. SOC 2 &amp; GDPR-ready posture: full transparency, no vendor lock-in, zero exfiltration.</p>
             </div>
-            <p style="margin-top: 2rem; text-align: center;"><a href="wiki/Use-Cases" style="color: #667eea; font-weight: bold;">See detailed use cases →</a></p>
-        </div>
-    </section>
-
-    <section>
-        <div class="container">
-            <h2>Documentation & Resources</h2>
-            <div class="highlight-grid">
-                <div class="highlight-item">
-                    <strong><a href="wiki/Setup-Guide" style="color: #667eea;">Setup Guide</a></strong>
-                    <p>First-time setup for all platforms.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong><a href="wiki/Scheduling-Guide" style="color: #667eea;">Scheduling Guide</a></strong>
-                    <p>Auto-discovery, cloud sync, CI/CD.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong><a href="wiki/CLI-Reference" style="color: #667eea;">CLI Reference</a></strong>
-                    <p>All commands and flags.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong><a href="wiki/Enterprise-Features" style="color: #667eea;">Enterprise Features</a></strong>
-                    <p>NIST AI RMF, audit trails, security.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong><a href="docs/VERSION-STRATEGY.md" style="color: #667eea;">Version Strategy</a></strong>
-                    <p>Versioning, support timeline, upgrades.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong><a href="wiki/Troubleshooting" style="color: #667eea;">Troubleshooting</a></strong>
-                    <p>Common issues & solutions.</p>
-                </div>
+            <div class="card">
+                <h3>Supply-chain transparency</h3>
+                <p>CycloneDX SBOM attached to every release, an auto-built multi-platform container image on GHCR, and a documented air-gapped install path.</p>
             </div>
-            <p style="margin-top: 2rem; text-align: center;"><a href="wiki/" class="btn btn-primary" style="background: #667eea; color: white; border-color: #667eea;">Browse All Docs</a></p>
-        </div>
-    </section>
-
-    <section>
-        <div class="container">
-            <h2>Status & Future</h2>
-            <div class="highlight-grid">
-                <div class="highlight-item">
-                    <strong>✅ v0.19.0 (Current) — MCP distribution</strong>
-                    <p><code>neuralmind install-mcp --all</code> auto-detects installed agents (Claude Code, Cursor, Cline, Claude Desktop) and registers NeuralMind's MCP server with each — non-destructive, idempotent. The agent onboards through NeuralMind's tools instead of grepping cold.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>📋 Next — measured onboarding-lift</strong>
-                    <p>The self-benchmark already measures the learned-synapse uplift (Phase 3: top-k hit rate 71.7% → 83.3% with recall on). Next: formalise the E1.5 onboarding-lift eval — a cold agent plus a committed team baseline vs a cold agent alone — as the headline differentiator.</p>
-                </div>
-                <div class="highlight-item">
-                    <strong>🎯 v0.19 → v1.0</strong>
-                    <p>The moat (MCP distribution + a measured learned-synapse onboarding-lift), then a stable API guarantee and LTS toward v1.0.</p>
-                </div>
+            <div class="card">
+                <h3>MCP security</h3>
+                <p>RBAC, rate limiting, secret detection, and audit logging on the MCP server boundary.</p>
             </div>
-            <p style="margin-top: 2rem;"><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md" style="color: #667eea; font-weight: bold;">See the next-release plan →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md" style="color: #667eea; font-weight: bold;">Roadmap →</a></p>
+            <div class="card">
+                <h3>Pluggable backends</h3>
+                <p>Default <code>auto</code> backend prefers the ChromaDB-free turbovec path (8–16× smaller vectors, byte-identical embeddings); ChromaDB, PostgreSQL pgvector, or LanceDB if that's your infrastructure.</p>
+            </div>
         </div>
-    </section>
+    </div>
+</section>
 
-    <footer>
-        <div class="container">
-            <p style="margin-bottom: 1rem;">
-                <a href="https://github.com/dfrostar/neuralmind">GitHub</a> •
-                <a href="wiki/">Docs</a> •
-                <a href="https://github.com/dfrostar/neuralmind/issues">Issues</a> •
-                <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a> •
-                <a href="docs/about.html">About</a>
-            </p>
-            <p style="color: #999;">MIT License. Open source, not affiliated with NeuralMind.ai.</p>
-            <p style="color: #999; margin-top: 1rem; font-size: 0.9rem;">🔐 100% Local • 🚀 40–70× Token Reduction • ✅ NIST AI RMF • 🛠️ Works Everywhere</p>
+<section id="releases">
+    <div class="container">
+        <p class="eyebrow">Release timeline</p>
+        <h2>What's new</h2>
+        <p class="lede">Shipped in small, verifiable increments — every release gated by the CI benchmark.</p>
+        <div class="timeline">
+            <div class="tl-item dev">
+                <div class="tl-head"><b>v0.23.0</b><span class="pill pill-dev">In development</span></div>
+                <p>Four future-proofing foundations: a <b>schema-versioned index contract (IR)</b> checked by the new <code>neuralmind validate</code>, a <b>retrieval-quality harness</b> (<code>benchmark --quality</code>: precision@k / recall@k / MRR over 30 golden queries, failing CI on regression), <b>debug traces</b> (<code>query --trace</code> shows why a result came back), and an experimental <b>local daemon</b> that keeps project state warm. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.23.0.md">Draft notes →</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.22.0</b><span class="pill pill-latest">Latest release</span></div>
+                <p><b>ChromaDB-free by default.</b> <code>import neuralmind</code> no longer requires ChromaDB; the default <code>auto</code> backend prefers turbovec when its deps are installed, with a one-time auto-reindex and chroma fallback — nothing deleted. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.22.0.md">Release notes →</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.21.0</b></div>
+                <p><b>ChromaDB-free retrieval.</b> The turbovec backend pairs TurboQuant compressed indexing (8–16× smaller vectors) with bundled ONNX embeddings byte-identical to ChromaDB's, at/above retrieval parity (fact-recall 0.744 → 0.800). <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.21.0.md">Release notes →</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.20.0</b></div>
+                <p><b>Measured onboarding lift.</b> <code>neuralmind eval --onboarding</code> turns the headline differentiator into a number: a deterministic <b>+6.5-point</b> top-k lift from inheriting a committed team memory, budget-neutral, gated in CI. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.20.0.md">Release notes →</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.19.0</b></div>
+                <p><b>One-command MCP setup.</b> <code>neuralmind install-mcp --all</code> auto-detects Claude Code, Cursor, Cline, and Claude Desktop and registers the MCP server with each — non-destructive, idempotent. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md">Release notes →</a></p>
+            </div>
         </div>
-    </footer>
+        <p class="tl-links"><a href="https://github.com/dfrostar/neuralmind/releases">All releases</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap</a> · <a href="VERSION-STRATEGY">Version strategy</a></p>
+    </div>
+</section>
+
+<section id="docs">
+    <div class="container">
+        <p class="eyebrow">Documentation</p>
+        <h2>Everything you need to ship it</h2>
+        <div class="cards">
+            <a class="card doc-card" href="wiki/Setup-Guide"><h3>Setup Guide</h3><p>First-time setup for all platforms.</p></a>
+            <a class="card doc-card" href="wiki/CLI-Reference"><h3>CLI Reference</h3><p>All commands and flags.</p></a>
+            <a class="card doc-card" href="wiki/Scheduling-Guide"><h3>Scheduling Guide</h3><p>Always-on services, cloud sync, CI/CD.</p></a>
+            <a class="card doc-card" href="wiki/Use-Cases"><h3>Use Cases</h3><p>Walkthroughs, from cost optimization to air-gapped installs.</p></a>
+            <a class="card doc-card" href="wiki/Troubleshooting"><h3>Troubleshooting</h3><p>Common issues &amp; solutions.</p></a>
+            <a class="card doc-card" href="COMPLIANCE-SUMMARY"><h3>Compliance Summary</h3><p>NIST AI RMF, SOC 2, GDPR claims in one page.</p></a>
+        </div>
+        <p class="center-cta"><a class="btn btn-ghost" href="wiki/Home">Browse all docs</a></p>
+    </div>
+</section>
+
+<footer>
+    <div class="container foot-inner">
+        <a class="nav-logo" href="https://dfrostar.github.io/neuralmind/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <div class="foot-links">
+            <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            <a href="https://pypi.org/project/neuralmind/">PyPI</a>
+            <a href="wiki/Home">Docs</a>
+            <a href="benchmarks/">Benchmarks</a>
+            <a href="https://github.com/dfrostar/neuralmind/issues">Issues</a>
+            <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a>
+            <a href="about.html">About</a>
+        </div>
+        <p class="foot-meta">MIT License. Open source, not affiliated with NeuralMind.ai. &nbsp;🔐 100% local · ⚡ 40–70× token reduction · ✅ NIST AI RMF · 🛠 Works with any MCP agent</p>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+                var prev = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(function () { btn.textContent = prev; }, 1600);
+            });
+        });
+    });
+    document.querySelectorAll('#navlinks a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            document.getElementById('navlinks').classList.remove('open');
+        });
+    });
+</script>
+
 </body>
 </html>
