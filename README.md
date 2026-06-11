@@ -1726,7 +1726,7 @@ Long context makes it *possible* to stuff a whole repo in; it does not make it *
 
 ### Does it support my language?
 
-The **built-in tree-sitter backend** indexes **Python, TypeScript, and Go** out of the box (v0.16.0+) — a mixed-language repo is indexed in one pass. More grammars slot in behind the same `SUPPORTED_SUFFIXES` seam. For languages beyond those, install [graphify](https://github.com/dfrostar/graphify) — any language it supports works, since NeuralMind consumes `graphify-out/graph.json` and graphify takes priority where present. Either producer feeds the same retrieval pipeline.
+The **built-in tree-sitter backend** indexes **Python, TypeScript, and Go** out of the box (v0.16.0+) — a mixed-language repo is indexed in one pass. More grammars slot in behind the same `SUPPORTED_SUFFIXES` seam. For languages beyond those, install [graphify](https://github.com/safishamsi/graphify) — any language it supports works, since NeuralMind consumes `graphify-out/graph.json` and graphify takes priority where present. Either producer feeds the same retrieval pipeline.
 
 ### What is the difference between `wakeup`, `query`, and `skeleton`?
 

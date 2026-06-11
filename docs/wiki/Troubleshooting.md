@@ -125,22 +125,21 @@ pyenv local 3.11.0
 **Symptoms**: `neuralmind build` fails with "graph.json not found".
 
 **Causes**:
-1. Graphify not run on the project
-2. Wrong project path
+1. Wrong project path
+2. Build never ran (since v0.15.0, `neuralmind build` generates the graph itself)
 3. graph.json in different location
 
 **Solutions**:
 
 ```bash
-# Generate knowledge graph first
-pip install graphifyy
-graphify update /path/to/project
+# Build with the correct path — the code graph is generated automatically
+neuralmind build /path/to/project
 
 # Verify graph exists
 ls /path/to/project/graphify-out/graph.json
 
-# Run build with correct path
-neuralmind build /path/to/project
+# Still failing? The doctor pinpoints the missing piece
+neuralmind doctor
 ```
 
 ### "Empty graph - no nodes to embed"
@@ -148,8 +147,8 @@ neuralmind build /path/to/project
 **Symptoms**: Build completes but reports 0 nodes processed.
 
 **Causes**:
-1. Graphify didn't find any code files
-2. Project uses unsupported languages
+1. No code files found at the path
+2. Project uses unsupported languages (built-in backend covers Python, TypeScript, Go — install the optional graphify backend for others)
 3. All files excluded by .gitignore
 
 **Solutions**:
@@ -161,7 +160,7 @@ cat /path/to/project/graphify-out/GRAPH_REPORT.md
 # Verify graph.json has content
 python -c "import json; g=json.load(open('graphify-out/graph.json')); print(f'Nodes: {len(g.get(\"nodes\", []))}')"
 
-# Re-run graphify with verbose output
+# Using the optional graphify backend? Re-run it with verbose output
 graphify update /path/to/project --verbose
 ```
 
@@ -259,8 +258,7 @@ neuralmind search /path "authentication" --n 20
 # Check graph quality
 cat /path/graphify-out/GRAPH_REPORT.md
 
-# Rebuild with fresh graph
-graphify update /path --force
+# Rebuild with fresh graph (regenerated automatically)
 neuralmind build /path --force
 ```
 
@@ -307,8 +305,9 @@ for n in g['nodes']:
         print(n)
 "
 
-# If not in graph, re-run graphify
-graphify update /path
+# If not in graph, rebuild (use graphify update /path instead if
+# you're on the optional graphify backend)
+neuralmind build /path --force
 ```
 
 ---
@@ -541,7 +540,6 @@ Get-ChildItem -Path "C:\Users\dtfro\claudecode" -Directory | ForEach-Object {
 
 # Initialize missing projects
 cd "C:\path\to\project"
-graphify update .
 neuralmind build .
 ```
 
@@ -690,7 +688,7 @@ neuralmind build /path --force
 
 | Exception | Meaning | Solution |
 |-----------|---------|----------|
-| `FileNotFoundError: graph.json` | Knowledge graph missing | Run `graphify update` |
+| `FileNotFoundError: graph.json` | Knowledge graph missing | Run `neuralmind build` (regenerates the graph) |
 | `RuntimeError: Index not built` | Embeddings not generated | Run `neuralmind build` |
 | `chromadb.errors.InvalidCollectionException` | Database corruption | Delete and rebuild database |
 | `MemoryError` | Insufficient RAM | Reduce project size or increase RAM |
@@ -754,7 +752,7 @@ if [ -f "$PROJECT/graphify-out/graph.json" ]; then
     NODE_COUNT=$(python -c "import json; print(len(json.load(open('$PROJECT/graphify-out/graph.json'))['nodes']))")
     echo "  Nodes: $NODE_COUNT"
 else
-    echo "✗ Knowledge graph missing (run: graphify update $PROJECT)"
+    echo "✗ Knowledge graph missing (run: neuralmind build $PROJECT)"
 fi
 
 # Check index

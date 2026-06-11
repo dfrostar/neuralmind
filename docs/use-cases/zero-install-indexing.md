@@ -64,8 +64,7 @@ the graph *producer* changed.
 Install it and it takes priority automatically — no flag needed:
 
 ```bash
-pip install neuralmind graphifyy
-graphify update .
+pip install neuralmind
 neuralmind build .
 ```
 

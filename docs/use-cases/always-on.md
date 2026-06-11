@@ -263,7 +263,7 @@ Common causes:
   Pass an explicit absolute path in `ExecStart` (e.g.
   `/home/$USER/.local/bin/neuralmind`).
 - `WorkingDirectory` doesn't exist or doesn't have a `graphify-out/`
-  yet. Run `graphify update .` and `neuralmind build .` in the
+  yet. Run `neuralmind build .` in the
   project first.
 
 ### launchd "Could not find service"

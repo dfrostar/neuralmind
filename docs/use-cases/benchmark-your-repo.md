@@ -15,7 +15,7 @@ If the numbers don't justify the install — you uninstall and move on. Nothing 
 ## Step 1 — Install (60 seconds)
 
 ```bash
-pip install neuralmind graphifyy tiktoken
+pip install neuralmind tiktoken
 ```
 
 `graphifyy` builds the code knowledge graph NeuralMind reads from; `tiktoken` is needed for accurate OpenAI-model token counting. If you only care about a rough number, `tiktoken` is optional.
@@ -24,7 +24,6 @@ pip install neuralmind graphifyy tiktoken
 
 ```bash
 cd /path/to/your-project
-graphify update .
 neuralmind build .
 ```
 
