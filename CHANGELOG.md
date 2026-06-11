@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.24.0](https://github.com/dfrostar/neuralmind/compare/v0.23.0...v0.24.0) (2026-06-11)
+
+
+### Features
+
+* memory namespaces & branch isolation for the synapse layer (PRD 4) ([8fae289](https://github.com/dfrostar/neuralmind/commit/8fae28975779bcfe2491443a47b9a8f6929e6de4))
+
+
+### Bug Fixes
+
+* re-resolve memory namespace when a warm process crosses a git checkout ([32cd1e0](https://github.com/dfrostar/neuralmind/commit/32cd1e0c8af3ff13c64b8ab8e15510697c768fef))
+
+
+### Documentation
+
+* mark v0.23.0 as the latest release on the landing page ([#224](https://github.com/dfrostar/neuralmind/issues/224)) ([f72ff10](https://github.com/dfrostar/neuralmind/commit/f72ff10f9cb2b9d5c96eb14154f9d1ac59674875))
+
 ## [0.23.0](https://github.com/dfrostar/neuralmind/compare/v0.22.0...v0.23.0) (2026-06-11)
 
 
