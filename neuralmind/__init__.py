@@ -90,7 +90,7 @@ from .synapses import SynapseStore, default_db_path
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "0.22.0"
+__version__ = "0.23.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",

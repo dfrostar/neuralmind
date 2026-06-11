@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.23.0](https://github.com/dfrostar/neuralmind/compare/v0.22.0...v0.23.0) (2026-06-11)
+
+
+### Features
+
+* versioned IR (PRD 1) + quality harness (PRD 2) + debug traces (PRD 3) + local daemon (PRD 5) ([#217](https://github.com/dfrostar/neuralmind/issues/217)) ([a62e635](https://github.com/dfrostar/neuralmind/commit/a62e6353a9dcd799c8cb3dfee321ac194c69be9a))
+
+
+### Bug Fixes
+
+* stop suggesting graphify update as the fix for a missing graph ([#223](https://github.com/dfrostar/neuralmind/issues/223)) ([045008f](https://github.com/dfrostar/neuralmind/commit/045008fafc26eb2e64d4ad0dae0f598541831af8))
+
+
+### Documentation
+
+* modernize guides to the no-graphify flow, fix all broken links ([#222](https://github.com/dfrostar/neuralmind/issues/222)) ([ba7e4d0](https://github.com/dfrostar/neuralmind/commit/ba7e4d0852fd22a2fe68558f0178a6f87e82a69e))
+* redesign landing page — fix versions, links, quickstart, positioning ([#220](https://github.com/dfrostar/neuralmind/issues/220)) ([2602bf8](https://github.com/dfrostar/neuralmind/commit/2602bf83b014c4339de851b0d82f92214e2e9773))
+* refresh benchmark chart [skip ci] ([8ff1e0d](https://github.com/dfrostar/neuralmind/commit/8ff1e0df86f0ca5827731e216be99ebf942ce3ec))
+
 ## [0.22.0](https://github.com/dfrostar/neuralmind/compare/v0.21.0...v0.22.0) (2026-06-07)
 
 
