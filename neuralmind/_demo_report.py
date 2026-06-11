@@ -154,9 +154,9 @@ def run_demo_report(
     print(" Real repos consistently hit 40–70× on the same pipeline.")
     print()
     print(" Try it on YOUR code:")
-    print("   pip install neuralmind graphifyy")
+    print("   pip install neuralmind")
     print("   cd /path/to/your-repo")
-    print("   graphify update . && neuralmind build .")
+    print("   neuralmind build .")
     print("   neuralmind benchmark . --contribute")
     print()
     return 0

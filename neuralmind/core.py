@@ -71,7 +71,8 @@ def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
                 "ok": False,
                 "error": (
                     f"No index found for {project_path}. Run `neuralmind build` "
-                    f"first (or `graphify update {project_path}`)."
+                    f"first (or `graphify update {project_path}` if you use "
+                    f"the optional graphify backend)."
                 ),
             }
     except ir_mod.IRError as exc:
