@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
@@ -15,25 +16,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v5
+        id: release
         with:
-          # Token override so the tag push triggers downstream workflows.
-          # GitHub deliberately suppresses workflow-from-workflow triggers
-          # when the actor is GITHUB_TOKEN (anti-infinite-loop guard), so
-          # tags release-please creates with the default token never fire
-          # release.yml — which means the PyPI publish never runs without
-          # a manual `gh workflow run release.yml` dispatch.
-          #
-          # Set `RELEASE_PLEASE_TOKEN` as a repo secret (a classic PAT
-          # from a maintainer account, or a fine-grained PAT, with
-          # `contents:write` + `pull_requests:write` on this repo). When
-          # the secret is present, this `token:` override picks it up;
-          # when it isn't, `secrets.RELEASE_PLEASE_TOKEN` evaluates to
-          # empty and the action falls back to GITHUB_TOKEN — so adding
-          # the secret is a zero-risk follow-up.
-          #
-          # Tracked in #98. Long-term, a GitHub App is more durable
-          # (no per-human-account expiry, survives maintainer turnover);
-          # PAT is the 10-minute option that unblocks publishing.
+          # Optional token override. GitHub deliberately suppresses
+          # workflow-from-workflow triggers when the actor is
+          # GITHUB_TOKEN (anti-infinite-loop guard), so tags created
+          # with the default token never fire release.yml's push:tags
+          # trigger. The dispatch step below works around that without
+          # any secret — workflow_dispatch is exempt from the guard —
+          # so RELEASE_PLEASE_TOKEN is no longer required for
+          # publishing. Setting it (a PAT or GitHub App token) is still
+          # useful for one thing the dispatch can't fix: CI runs on the
+          # release PR itself. Tracked in #98.
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # When a release PR merges, release-please creates the tag with
+      # GITHUB_TOKEN, which cannot fire release.yml's push:tags trigger
+      # (see comment above). workflow_dispatch IS exempt from that
+      # guard, so dispatch the publish explicitly against the new tag —
+      # the same recovery path release.yml already supports for manual
+      # runs (its `tag` input).
+      - name: Dispatch PyPI/GHCR publish for the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml \
+            --repo "${{ github.repository }}" \
+            -f tag="${{ steps.release.outputs.tag_name }}"
