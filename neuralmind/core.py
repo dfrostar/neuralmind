@@ -182,7 +182,10 @@ class NeuralMind:
         Args:
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
-            enable_reranking: If True, apply learned patterns to rerank search results
+            enable_reranking: Deprecated and ignored. The learned_patterns
+                reranker was removed; the synapse layer supersedes it. Kept in
+                the signature for backward compatibility (callers passing it
+                won't break), but it no longer has any effect.
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
             memory_namespace: Explicit synapse-memory namespace (PRD 4). When
@@ -191,6 +194,9 @@ class NeuralMind:
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
+        # Deprecated and ignored (see __init__ docstring): retained only so the
+        # attribute keeps existing for any code that reads it. The reranker it
+        # used to gate has been removed; the synapse layer supersedes it.
         self.enable_reranking = enable_reranking
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type
@@ -413,10 +419,8 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Initialize selector with reranking
-        self.selector = ContextSelector(
-            self.embedder, str(self.project_path), enable_reranking=self.enable_reranking
-        )
+        # Initialize selector
+        self.selector = ContextSelector(self.embedder, str(self.project_path))
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
         self.selector.synapse_recall = self._recall_for_selection

@@ -706,17 +706,30 @@ locations:
 Add `@.neuralmind/SYNAPSE_MEMORY.md` to `CLAUDE.md` so the file gets
 imported into every session even when the auto-memory path doesn't apply.
 
-### Why this isn't the same as the v0.3.2 reranker
+### Why this isn't the same as the v0.3.2 reranker (removed in v0.25.0)
 
-- The **reranker** boosts vector-search results based on patterns found
-  in past queries. Static index, batch analysis, post-hoc re-ranking.
+NeuralMind once had a second learning mechanism, the `learned_patterns`
+cooccurrence **reranker** (v0.3.2). **It was removed in v0.25.0** after a
+2×2 A/B on the benchmark fixture showed it added 0.0 points to top-k hit
+rate whether the synapse layer was on or off (71.7% → 71.7% cold, 83.3% →
+83.3% warm), while the synapse layer alone added +11.6 points. The
+reranker was also runtime-inert on the warm path — the synapse boost
+re-sort discarded its ordering anyway. The architectural reason the two
+were never equivalent:
+
+- The **reranker** boosted vector-search results based on patterns found
+  in past queries. Static index, batch analysis triggered by a manual
+  `neuralmind learn` step, post-hoc re-ranking, no forgetting.
 - The **synapse layer** is a continuously updated weighted graph that
   contributes its own retrieval path (spreading activation), independent
-  of vector search. Updates happen on every query, every tool call,
-  every file edit.
+  of vector search. Updates happen on every query, every tool call, and
+  every file edit, and unused edges decay so recall tracks current usage.
 
-The two are complementary: reranker re-orders the L3 hits the synapse
-layer also sees as activation seeds.
+The reranker only ever re-ordered the L3 hits the synapse layer already
+sees as activation seeds, so its ordering was both redundant and
+discarded. The synapse layer is now the single learning system. See the
+[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md)
+for the full evidence.
 
 ---
 

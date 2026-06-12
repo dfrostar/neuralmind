@@ -25,7 +25,7 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 | **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
 | **Keep all code local** | Default install — no extra config | 100% offline; nothing leaves the machine |
 | **Work across Claude + GPT + Gemini** | Build once, pipe output into any model | Model-agnostic |
-| **Make retrieval adapt** to your team's patterns | Enable memory + `neuralmind learn .` | Reranking improves over time |
+| **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) | The synapse layer learns from usage automatically; recall improves over time, no manual step |
 | **Measure savings** for a stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios |
 | **Auto-refresh** the index | `neuralmind init-hook .` | Every commit rebuilds incrementally |
 
