@@ -26,7 +26,7 @@
       "description": "Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent.",
       "url": "https://dfrostar.github.io/neuralmind/",
       "downloadUrl": "https://pypi.org/project/neuralmind/",
-      "softwareVersion": "0.24.0",
+      "softwareVersion": "0.25.0",
       "license": "https://opensource.org/licenses/MIT",
       "programmingLanguage": "Python",
       "operatingSystemRequirements": "Python 3.10+",
@@ -355,7 +355,7 @@
     </div>
     <div class="container hero-grid">
         <div>
-            <p class="badge"><span class="dot"></span> v0.24.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.24.0.md">release notes</a></p>
+            <p class="badge"><span class="dot"></span> v0.25.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md">release notes</a></p>
             <h1>Persistent memory for <span class="grad">AI coding agents</span></h1>
             <p class="hero-sub">Your agent learns your codebase the way a senior engineer would — <strong>what files go together, what you usually edit next, what patterns matter</strong>. The memory persists across sessions and surfaces automatically.</p>
             <p class="hero-local"><strong>100% local.</strong> Your code never leaves your machine. Side effect: <strong>40–70× cheaper code questions</strong>, measured in CI on every commit.</p>
@@ -584,11 +584,11 @@ bash scripts/demo.sh">Copy</button>
         <p class="lede">Shipped in small, verifiable increments — every release gated by the CI benchmark.</p>
         <div class="timeline">
             <div class="tl-item dev">
-                <div class="tl-head"><b>v0.25.0</b><span class="pill pill-dev">In development</span></div>
+                <div class="tl-head"><b>v0.25.0</b><span class="pill pill-latest">Latest release</span></div>
                 <p><b>One learning system: the synapse layer.</b> The old <code>learned_patterns</code> cooccurrence reranker is removed and <code>neuralmind learn</code> becomes an exit-0 deprecation no-op. The Hebbian synapse layer — which already learns continuously from queries, edits, and tool calls, and lets unused edges decay — is now the single learning signal. A 2&times;2 A/B on the benchmark fixture showed the reranker moved top-k hit rate by 0.0 points whether synapses were on or off (71.7% &rarr; 71.7% cold, 83.3% &rarr; 83.3% warm), while the synapse layer alone adds +11.6 points. Warm-path behavior is unchanged; the only visible difference is that L3 output no longer prints reranker <code>(+X.XX boost)</code> labels (synapse labels stay). <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md">Release notes →</a></p>
             </div>
             <div class="tl-item">
-                <div class="tl-head"><b>v0.24.0</b><span class="pill pill-latest">Latest release</span></div>
+                <div class="tl-head"><b>v0.24.0</b></div>
                 <p><b>Memory namespaces &amp; branch isolation.</b> The synapse layer becomes namespace-aware: <code>branch:&lt;name&gt;</code> / <code>personal</code> / <code>shared</code> / <code>ephemeral</code> memory live separately in the same store, so a feature-branch spike can't pollute what the agent learned about <code>main</code>. Recall reads a transparent merged view (active branch 1.0&times; &gt; personal 0.8&times; &gt; shared team baseline 0.5&times;, attributed per-namespace in <code>query --trace</code>), and the new <code>neuralmind memory {inspect,reset,export,import}</code> moves memory as versioned JSON bundles — the team-memory on-ramp. Existing learned memory migrates losslessly into <code>personal</code>. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.24.0.md">Release notes →</a></p>
             </div>
             <div class="tl-item">

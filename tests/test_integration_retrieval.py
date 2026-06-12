@@ -17,8 +17,15 @@ from neuralmind import GraphEmbedder, NeuralMind
 
 @pytest.fixture
 def minimal_project():
-    """Create a minimal project with sample graph for testing."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    """Create a minimal project with sample graph for testing.
+
+    ``ignore_cleanup_errors``: this directory hosts a ChromaDB store, and
+    fixture teardown is LIFO — the temp dir exits before conftest's
+    autouse chroma-release fixture runs, so on Windows a still-open (or
+    just-released, AV-scanned) sqlite handle would otherwise fail the
+    teardown even though ``initialized_mind`` closes the embedder.
+    """
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         project_path = Path(tmpdir)
         graphify_out = project_path / "graphify-out"
         graphify_out.mkdir()
