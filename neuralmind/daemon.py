@@ -104,6 +104,28 @@ def clear_discovery(path: Path | None = None) -> None:
 
 
 def _pid_alive(pid: int) -> bool:
+    if os.name == "nt":
+        # os.kill(pid, 0) is NOT a liveness probe on Windows:
+        # signal.CTRL_C_EVENT == 0, so it sends a real Ctrl-C to the
+        # console process group — interrupting the daemon's (or test
+        # runner's) own console. Query the process handle instead.
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000  # noqa: N806 - WinAPI name
+        STILL_ACTIVE = 259  # noqa: N806
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            # ERROR_ACCESS_DENIED (5): the process exists but is owned
+            # by someone else — alive, same as the PermissionError arm.
+            return ctypes.get_last_error() == 5
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return False
+            return code.value == STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:

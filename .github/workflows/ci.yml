@@ -42,12 +42,8 @@ jobs:
           # actually exercised without a full 3x3 runner-minute blow-up.
           - os: macos-latest
             python-version: '3.12'
-          # windows-latest is intentionally omitted from the gating matrix:
-          # the suite has real Windows issues (chromadb holds open file
-          # handles so tempdir teardown hits WinError 32, event-log rotation
-          # relies on POSIX rename-over-open, and a concurrent-append test
-          # loses writes). Tracked separately before Windows can be claimed
-          # as supported — see the Windows-support tracking issue.
+          - os: windows-latest
+            python-version: '3.12'
 
     steps:
       - uses: actions/checkout@v6

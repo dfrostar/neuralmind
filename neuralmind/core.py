@@ -23,6 +23,7 @@ Usage:
 """
 
 import json
+import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +37,51 @@ from .memory import is_memory_logging_enabled, log_query_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
+
+# Serializes recent-queries appends within this process. POSIX O_APPEND
+# already makes single-line appends atomic, but Windows' CRT implements
+# append mode as a separate seek-to-end + write, so two handles writing
+# concurrently can interleave and lose lines.
+_RECENT_QUERIES_APPEND_LOCK = threading.Lock()
+
+try:
+    import msvcrt  # Windows-only: cross-process advisory lock below.
+except ImportError:  # pragma: no cover - POSIX
+    msvcrt = None  # type: ignore[assignment]
+
+
+def _lock_byte0(fd: int) -> bool:
+    """Best-effort cross-process mutex on byte 0 of *fd* (Windows only).
+
+    POSIX writers don't need it (O_APPEND is atomic) and use flock for
+    compaction instead; on Windows both the appender and the compactor
+    take this same region so a compaction's read-truncate-rewrite can't
+    drop a concurrent process's append. Non-blocking with a short retry
+    so a stuck holder can never stall a query.
+    """
+    if msvcrt is None:
+        return False
+    import time as _time
+
+    for _ in range(50):  # ~50ms worst case
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+            return True
+        except OSError:
+            _time.sleep(0.001)
+    return False
+
+
+def _unlock_byte0(fd: int) -> None:
+    if msvcrt is None:
+        return
+    try:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+    except OSError:
+        pass
+
 
 # Canonical IR artifacts (PRD 1), under <project>/.neuralmind/.
 IR_FILENAME = "index_ir.json"
@@ -175,6 +221,22 @@ class NeuralMind:
     @property
     def backend_name(self) -> str:
         return self.backend_manager.backend_name
+
+    def close(self) -> None:
+        """Release backend resources (vector-store file handles).
+
+        Windows can't delete files a process still holds open, so
+        anything that removes the project directory afterwards — test
+        teardown, ``neuralmind reset`` — needs this. Safe to call more
+        than once; the synapse store opens its sqlite database per
+        operation and holds nothing between calls.
+        """
+        embedder = getattr(self, "embedder", None)
+        if embedder is not None and hasattr(embedder, "close"):
+            try:
+                embedder.close()
+            except Exception:
+                pass
 
     @property
     def memory_namespace(self) -> str:
@@ -763,12 +825,14 @@ class NeuralMind:
         UI can highlight on the canvas. Always on (local-only data,
         readable only through the auth-gated server).
 
-        The hot path is an atomic single-line append (POSIX O_APPEND
-        guarantees writes < PIPE_BUF don't tear across processes), so
-        CLI and MCP-server processes can safely write to the same file
-        without losing entries. Trimming back to RECENT_QUERIES_MAX is
-        a lazy compaction step gated by file size and protected by an
-        advisory lock — see ``_compact_recent_queries``.
+        The hot path is a single-line O_APPEND write. On POSIX that is
+        atomic across processes by itself (writes < PIPE_BUF don't
+        tear); Windows' CRT implements append as seek-to-end + write,
+        so writes are additionally serialized by a process-local lock
+        and a best-effort cross-process byte-range lock. Trimming back
+        to RECENT_QUERIES_MAX is a lazy compaction step gated by file
+        size and protected by the same locks — see
+        ``_compact_recent_queries``.
 
         Gated on the same consent flag as the learning log
         (`NEURALMIND_MEMORY`): if the user opted out of persisting
@@ -799,9 +863,17 @@ class NeuralMind:
             }
             log_path = self._recent_queries_path()
             log_path.parent.mkdir(parents=True, exist_ok=True)
-            line = json.dumps(record, sort_keys=True) + "\n"
-            with log_path.open("a", encoding="utf-8") as f:
-                f.write(line)
+            encoded = (json.dumps(record, sort_keys=True) + "\n").encode("utf-8")
+            with _RECENT_QUERIES_APPEND_LOCK:
+                fd = os.open(str(log_path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+                locked = False
+                try:
+                    locked = _lock_byte0(fd)
+                    os.write(fd, encoded)
+                finally:
+                    if locked:
+                        _unlock_byte0(fd)
+                    os.close(fd)
         except Exception:
             # Recording must never block the actual query.
             return
@@ -814,10 +886,11 @@ class NeuralMind:
         """Trim the recent-queries log back to RECENT_QUERIES_MAX entries.
 
         Only runs when the file has grown past the size threshold, so the
-        hot path stays append-only. Uses an advisory file lock on POSIX
-        so the read-truncate-rewrite isn't interleaved with another
-        process's append; on Windows the lock is best-effort and worst
-        case is a slightly oversized log file (no data loss).
+        hot path stays append-only. The read-truncate-rewrite is guarded
+        against another process's append by flock on POSIX and by the
+        byte-0 region lock shared with ``_record_recent_query`` on
+        Windows; both are best-effort — worst case is a slightly
+        oversized log file (no data loss).
         """
         try:
             size = log_path.stat().st_size
@@ -829,12 +902,13 @@ class NeuralMind:
             import fcntl
         except ImportError:
             fcntl = None  # type: ignore[assignment]
-        with log_path.open("r+", encoding="utf-8") as f:
+        with _RECENT_QUERIES_APPEND_LOCK, log_path.open("r+", encoding="utf-8") as f:
             if fcntl is not None:
                 try:
                     fcntl.flock(f.fileno(), fcntl.LOCK_EX)
                 except OSError:
                     pass
+            locked = _lock_byte0(f.fileno())
             try:
                 lines = [ln for ln in f if ln.strip()]
                 if len(lines) <= self.RECENT_QUERIES_MAX:
@@ -842,7 +916,10 @@ class NeuralMind:
                 f.seek(0)
                 f.truncate()
                 f.writelines(lines[-self.RECENT_QUERIES_MAX :])
+                f.flush()
             finally:
+                if locked:
+                    _unlock_byte0(f.fileno())
                 if fcntl is not None:
                     try:
                         fcntl.flock(f.fileno(), fcntl.LOCK_UN)

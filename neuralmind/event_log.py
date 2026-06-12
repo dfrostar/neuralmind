@@ -37,6 +37,61 @@ DEFAULT_POLL_INTERVAL = 0.5
 _MAX_LINE_BYTES = 64 * 1024  # Skip pathologically long lines.
 
 
+def _open_shared_rb(path: Path):
+    """Open *path* for binary read without blocking a concurrent rename.
+
+    The tailer holds its read handle across poll intervals, and rotation
+    is a logrotate-style rename of the live file. POSIX allows renaming
+    an open file; Windows' ``open()`` omits FILE_SHARE_DELETE from the
+    sharing mode, so the rotating process gets a PermissionError instead.
+    Recreate the POSIX semantics with CreateFileW + share-delete so
+    rotation never depends on catching the tailer between polls.
+    """
+    if os.name != "nt":
+        return open(path, "rb")
+
+    import ctypes
+    import msvcrt
+
+    GENERIC_READ = 0x80000000  # noqa: N806 - canonical WinAPI names
+    FILE_SHARE_READ = 0x00000001  # noqa: N806
+    FILE_SHARE_WRITE = 0x00000002  # noqa: N806
+    FILE_SHARE_DELETE = 0x00000004  # noqa: N806
+    OPEN_EXISTING = 3  # noqa: N806
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.restype = ctypes.c_void_p
+    kernel32.CreateFileW.argtypes = [
+        ctypes.c_wchar_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+        ctypes.c_void_p,
+    ]
+    handle = kernel32.CreateFileW(
+        str(path),
+        GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        None,
+        OPEN_EXISTING,
+        0,
+        None,
+    )
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        # WinError maps ERROR_FILE_NOT_FOUND to FileNotFoundError, which
+        # _open() relies on to distinguish "not yet created" from real
+        # failures.
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
+    except OSError:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+        raise
+    return os.fdopen(fd, "rb")
+
+
 class EventLogWriter:
     """Append JSON events to a line-delimited file. Thread-safe."""
 
@@ -115,7 +170,7 @@ class EventLogTailer:
 
     def _open(self, *, seek_to_end: bool):
         try:
-            fh = open(self.path, "rb")
+            fh = _open_shared_rb(self.path)
         except FileNotFoundError:
             return None, None
         except OSError:
