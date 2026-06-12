@@ -33,7 +33,7 @@ from . import namespaces as ns_mod
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
-from .memory import is_memory_logging_enabled, log_query_event
+from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -371,6 +371,30 @@ class NeuralMind:
             # Audit logging must never block primary query/build/search flows.
             pass
 
+    def _tuned_l2_recall_k(self) -> int | None:
+        """The selector's persisted L2 recall depth, or None when autotuning off.
+
+        Read-only and gated on NEURALMIND_SELECTOR_AUTOTUNE=1: the hot query
+        path must do no extra I/O by default, so we read the synapse meta key
+        only when the operator has opted into the self-improvement engine.
+        Returns None — meaning "keep the selector default" — when autotune is
+        off, synapses are disabled, or anything goes wrong (fail-open). The
+        tuner clamps before persisting and the selector clamps on read, so a
+        garbage meta value can never widen recall out of bounds.
+        """
+        if os.environ.get("NEURALMIND_SELECTOR_AUTOTUNE") != "1":
+            return None
+        store = self.synapses
+        if store is None:
+            return None
+        try:
+            from .self_improve import META_KEY
+
+            raw = store.get_meta(META_KEY)
+            return int(raw) if raw is not None else None
+        except Exception:
+            return None
+
     def build(self, force: bool = False) -> dict:
         """
         Build or update the neural knowledge base.
@@ -419,8 +443,18 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Initialize selector
-        self.selector = ContextSelector(self.embedder, str(self.project_path))
+        # Initialize selector. When the selector auto-tuner is enabled
+        # (NEURALMIND_SELECTOR_AUTOTUNE=1), read its persisted L2 recall depth
+        # from the synapse meta table once, here, and thread it through to the
+        # selector — never per get_query_context call, since the value changes
+        # at most once per session (the SessionStart tuner tick). Default-off:
+        # with the flag unset we don't touch the store and the selector keeps
+        # its hard-coded default, so behavior is byte-identical.
+        self.selector = ContextSelector(
+            self.embedder,
+            str(self.project_path),
+            l2_recall_k=self._tuned_l2_recall_k(),
+        )
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
         self.selector.synapse_recall = self._recall_for_selection
@@ -762,6 +796,9 @@ class NeuralMind:
         """
         self._ensure_built()
         result = self.selector.get_wakeup_context()
+        # Mirror the query-event log: a wakeup with no follow-up query in the
+        # same session is the "L0/L1 was sufficient" signal the tuner reads.
+        log_wakeup_event(self.project_path, result)
         self._emit_audit(
             category="audit",
             action="wakeup",

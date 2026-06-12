@@ -145,7 +145,14 @@ keywords = [
     "memory-namespaces",
     "branch-isolated-memory",
     "team-memory-bundle",
-    "memory-export-import"
+    "memory-export-import",
+    "context-compression",
+    "prompt-compression",
+    "tool-output-compression",
+    "fable-5",
+    "self-improvement-engine",
+    "selector-autotuning",
+    "adaptive-recall-depth"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
