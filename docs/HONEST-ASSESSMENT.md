@@ -179,6 +179,13 @@ will.
 - **`grep` + `Read` + careful prompting** — if you only run a few
   questions a day, this is fine. NeuralMind's value scales with
   query volume.
+- **Headroom (universal context compression)** — compresses tool
+  outputs, conversation history, RAG chunks, and files for any
+  provider, with prompt-cache alignment; strictly more general
+  *compression* than ours, and more mature in that category. It has
+  no semantic codebase index and no persistent memory of your code.
+  The two compose (their proxy under, our retrieval on top). If
+  compression is your whole problem, use Headroom.
 - **Generic RAG (LangChain/LlamaIndex over code)** — more flexible,
   more setup, loses the call graph. NeuralMind is a pre-assembled
   default for code; pick this if you want the call-graph structure

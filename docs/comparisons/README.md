@@ -23,6 +23,7 @@ Each page follows the same structure:
 | [Long context windows](./vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
 | [Generic RAG over a codebase](./vs-rag.md) | "Isn't this just RAG with extra steps?" |
 | [Tree-sitter / ctags / grep](./vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
+| [Headroom](./vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 
 ## TL;DR
 

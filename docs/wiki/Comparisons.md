@@ -20,6 +20,7 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | [Long context windows](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
 | [Generic RAG over a codebase](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
 | [Tree-sitter / ctags / grep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
+| [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 
 ## One-line verdicts
 
