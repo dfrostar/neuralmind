@@ -501,9 +501,29 @@ class GraphEmbedder(EmbeddingBackend):
             pass
 
     def close(self) -> None:
-        """Close ChromaDB client and cleanup."""
-        if hasattr(self, "client"):
-            try:
-                self.client.delete_collection(name=self.COLLECTION_NAME)
-            except Exception:
-                pass
+        """Release the ChromaDB client's file handles.
+
+        Chroma has no public ``close()``: it caches one ``System`` per
+        storage path (holding the sqlite connection pool and HNSW
+        segment files) for the life of the process. Windows refuses to
+        delete open files, so anything that removes the store afterwards
+        — temp-dir teardown in tests, a user deleting ``.neuralmind/`` —
+        hits ``WinError 32`` unless the System is actually stopped and
+        evicted from that cache. Deleting the collection (the previous
+        behavior) released nothing and destroyed data a later open
+        expected to find.
+        """
+        client = getattr(self, "client", None)
+        if client is None:
+            return
+        self._collection = None
+        self.client = None
+        try:
+            from chromadb.api.shared_system_client import SharedSystemClient
+
+            client._system.stop()
+            SharedSystemClient._identifier_to_system.pop(getattr(client, "_identifier", ""), None)
+        except Exception:
+            # Best-effort across chromadb versions: worst case is the
+            # pre-close behavior (handles live until process exit).
+            pass
