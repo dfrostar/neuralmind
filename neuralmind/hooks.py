@@ -286,6 +286,18 @@ def run_hook(action: str) -> int:
             store.decay()
         except Exception:
             pass
+        # Self-improvement engine: tune the selector from logged usage. Opt-in
+        # (not the != "0" pattern) because it is net behavior change. One JSONL
+        # read plus at most one meta write — stays fast — and tuner failures
+        # are swallowed (tune_selector itself fails open) so the hook always
+        # returns 0. Runs at most once per session, here at the boundary.
+        if os.environ.get("NEURALMIND_SELECTOR_AUTOTUNE") == "1":
+            try:
+                from .self_improve import tune_selector
+
+                tune_selector(cwd)
+            except Exception:
+                pass
         # Ephemeral memory is session-scoped. Claude Code has no SessionEnd
         # lifecycle event, so the next session's start is the boundary where
         # the previous session's scratch associations are dropped (PRD 4).

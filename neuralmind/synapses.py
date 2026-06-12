@@ -373,6 +373,27 @@ class SynapseStore:
             conn.execute("ROLLBACK")
             raise
 
+    def get_meta(self, key: str, default: str | None = None) -> str | None:
+        """Read a value from the key-value ``meta`` table.
+
+        The ``meta`` table is namespace-free (one row per key for the whole
+        store), so values written here are global per project regardless of
+        the store's active namespace. Used by the self-improvement engine to
+        persist tuner state (``self_improve:*`` keys) across sessions.
+        """
+        with self._connect() as conn:
+            cur = conn.execute("SELECT value FROM meta WHERE key = ?", (key,))
+            row = cur.fetchone()
+            return row[0] if row is not None else default
+
+    def set_meta(self, key: str, value: object) -> None:
+        """Write a value to the key-value ``meta`` table (coerced via ``str``)."""
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO meta(key, value) VALUES (?, ?)",
+                (key, str(value)),
+            )
+
     def schema_version(self) -> int:
         """The schema version recorded in the ``meta`` table (0 = pre-v1)."""
         with self._connect() as conn:
