@@ -100,15 +100,36 @@ class ContextSelector:
     SYNAPSE_PULL_IN_MAX = 2
     SYNAPSE_PULL_IN_MIN_ENERGY = 0.15
 
-    def __init__(self, embedder, project_path: str = None):
+    # L2 recall depth — how many community summaries L2 surfaces per query
+    # (the budget cap on get_l2_context). Historically a hard-coded 3; the
+    # self-improvement engine's selector auto-tuner (neuralmind/self_improve.py)
+    # can override it per project via the l2_recall_k constructor arg, clamped
+    # to [L2_RECALL_K_MIN, L2_RECALL_K_MAX]. Default-off: when autotune isn't
+    # enabled, build() never reads the persisted value and the default stands.
+    L2_RECALL_K_DEFAULT = 3
+    L2_RECALL_K_MIN = 2
+    L2_RECALL_K_MAX = 6
+
+    def __init__(self, embedder, project_path: str = None, l2_recall_k: int | None = None):
         """
         Initialize context selector.
 
         Args:
             embedder: GraphEmbedder instance with loaded embeddings
             project_path: Path to project root (for reading metadata files)
+            l2_recall_k: Optional override for the L2 recall depth (number of
+                community summaries surfaced per query). When None, the
+                hard-coded L2_RECALL_K_DEFAULT is used — so a selector built
+                without the autotuner behaves exactly as before. Clamped
+                defensively to [L2_RECALL_K_MIN, L2_RECALL_K_MAX].
         """
         self.embedder = embedder
+        if l2_recall_k is None:
+            self.l2_recall_k = self.L2_RECALL_K_DEFAULT
+        else:
+            self.l2_recall_k = max(
+                self.L2_RECALL_K_MIN, min(int(l2_recall_k), self.L2_RECALL_K_MAX)
+            )
         # Handle project_path - can be string, Path, or get from embedder
         if project_path and project_path is not True:
             self.project_path = (
@@ -320,14 +341,22 @@ class ContextSelector:
         self._l1_cache = self._truncate_to_tokens("\n".join(parts), self.L1_MAX_TOKENS)
         return self._l1_cache
 
-    def get_l2_context(self, query: str, max_communities: int = 3) -> tuple[str, list[int]]:
+    def get_l2_context(
+        self, query: str, max_communities: int | None = None
+    ) -> tuple[str, list[int]]:
         """
         Layer 2: On-demand context based on query.
         Load relevant communities/modules.
 
+        ``max_communities`` defaults to :attr:`l2_recall_k` (the auto-tunable
+        recall depth) when not passed explicitly, so the persisted tuner value
+        flows through here without a per-call store read.
+
         Returns:
             Tuple of (context_text, list of community IDs loaded)
         """
+        if max_communities is None:
+            max_communities = self.l2_recall_k
         # First, search to find which communities are relevant
         search_results = self._fetch_search(query, n=5)
 

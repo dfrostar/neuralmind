@@ -17,6 +17,7 @@ Complete command-line interface documentation for NeuralMind.
   - [doctor](#doctor-v0120)
   - [eval](#eval-v0140)
   - [learn (deprecated)](#learn-deprecated-v0250)
+  - [self-improve status](#self-improve-status-v0260)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
   - [skeleton](#skeleton)
@@ -737,6 +738,59 @@ and migration notes, see the
 
 ---
 
+### self-improve status *(v0.26.0+)*
+
+Show the self-improvement engine's current selector-tuning state. **Read-only** —
+it never writes and never runs the tuner; it only reports what the tuner has done.
+
+```bash
+neuralmind self-improve status [project_path] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No (default `.`) | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--json`, `-j` | off | Machine-readable JSON output (adds `autotune_enabled`) |
+
+#### What it reports
+
+- `l2_recall_k` — the current (possibly tuned) L2 recall depth, i.e. how many
+  community summaries a query surfaces. Default `3`, clamped to `[2, 6]`.
+- `l2_recall_k_tuned_at` — ISO timestamp of the last change, or `never`.
+- query-event count + warm-up state (the tuner holds until 50 query events
+  accumulate).
+- the windowed `re_query_rate` the tuner reads.
+- whether autotune is enabled (the `NEURALMIND_SELECTOR_AUTOTUNE` flag).
+
+```bash
+$ neuralmind self-improve status .
+Project: my-project
+Autotune enabled: True (NEURALMIND_SELECTOR_AUTOTUNE)
+l2_recall_k: 4
+Last tuned at: 2026-06-12T17:58:10+00:00
+Query events logged: 132 (warmed up: True)
+Query events in tuning window: 41
+re_query_rate: 0.512
+```
+
+The tuner itself runs only when `NEURALMIND_SELECTOR_AUTOTUNE=1` — under Claude
+Code it ticks once per session from the `SessionStart` hook (after the synapse
+decay tick); the tuned value is then threaded into the selector at build time so
+ordinary queries (CLI or MCP) use the adapted recall depth. With the flag unset
+the hot path does **zero** extra I/O and the selector keeps its hard-coded
+default. The tuner is single-step, windowed, hysteretic, clamped, and fail-open;
+see the [v0.26.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.26.0.md)
+and `evals/self_improvement/PLAN.md` for the full design.
+
+---
+
 ### next *(v0.11.0+)*
 
 Predict what typically follows a node (file path or node id) in the
@@ -1320,6 +1374,7 @@ neuralmind daemon stop
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
+| `NEURALMIND_SELECTOR_AUTOTUNE` | `0` | *(v0.26.0+)* Set to `1` to enable the self-improvement engine's selector auto-tuner: the `SessionStart` hook adjusts the L2 recall depth from the re-query rate (once per session), and `build()` threads the persisted value into the selector. Opt-in (`== "1"`, not the `!= "0"` pattern) because it is net behavior change. With it unset the hot path does **zero** extra I/O and the selector keeps its hard-coded default. Inspect state with `neuralmind self-improve status`. |
 
 ---
 
