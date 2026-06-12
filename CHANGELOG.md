@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.26.0](https://github.com/dfrostar/neuralmind/compare/v0.25.0...v0.26.0) (2026-06-12)
+
+
+### Features
+
+* self-improvement engine phases 1-2 — selector auto-tuning from the synapse signal ([#233](https://github.com/dfrostar/neuralmind/issues/233)) ([d1d622f](https://github.com/dfrostar/neuralmind/commit/d1d622fcd9721893143a001b016ccf4225701d06))
+
+
+### Documentation
+
+* mark v0.25.0 as the latest release on the landing page ([#231](https://github.com/dfrostar/neuralmind/issues/231)) ([edb5b05](https://github.com/dfrostar/neuralmind/commit/edb5b05d84a34b7d7a9ab0cd47f915ad07056cda))
+
 ## [0.25.0](https://github.com/dfrostar/neuralmind/compare/v0.24.0...v0.25.0) (2026-06-12)
 
 
