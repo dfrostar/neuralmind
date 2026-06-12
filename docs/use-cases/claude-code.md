@@ -71,6 +71,25 @@ Same data via the `neuralmind_next_likely` MCP tool — Claude Code
 can call it right after finishing edits in one file to surface the
 files you usually touch next, no manual prompt needed.
 
+## Let the selector tune itself *(v0.26.0+, opt-in)*
+
+If you want NeuralMind to adapt how much context a query surfaces to how you
+actually work, set `NEURALMIND_SELECTOR_AUTOTUNE=1`. The `SessionStart` hook then
+runs the self-improvement tuner once per session (after the synapse decay tick):
+it watches the **re-query rate** — when you fire two same-session queries whose
+recalled communities overlap heavily, the first one under-disclosed and you had
+to come back — and nudges the L2 recall depth up (so the next query lands more in
+one shot) or down (so it stops spending tokens on context you didn't use). Moves
+are single-step, clamped to `[2, 6]`, and fail-open.
+
+```bash
+export NEURALMIND_SELECTOR_AUTOTUNE=1   # off by default; unset = byte-identical to before
+neuralmind self-improve status .        # read-only: current depth, re-query rate, warm-up state
+```
+
+It's off by default and does zero extra hot-path work when unset, so it's safe to
+try and trivial to turn back off.
+
 ## Escape hatches
 
 Need the raw file body for a specific command?
