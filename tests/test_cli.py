@@ -1,6 +1,7 @@
 """Tests for NeuralMind CLI functionality with real assertions."""
 
 import json
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -792,6 +793,7 @@ class TestCLIInitHook:
             cmd_init_hook(args)
         assert exc_info.value.code == 1
 
+    @pytest.mark.skipif(sys.platform.startswith("win"), reason="Windows has no executable bit")
     def test_cmd_init_hook_makes_executable(self, tmp_path):
         """init-hook makes the hook file executable."""
         import os

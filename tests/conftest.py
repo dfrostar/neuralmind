@@ -1,6 +1,8 @@
 """Pytest fixtures for NeuralMind tests."""
 
+import gc
 import json
+import os
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -111,8 +113,14 @@ def sample_graph() -> dict[str, Any]:
 
 @pytest.fixture
 def temp_project(sample_graph: dict[str, Any]) -> Generator[Path, None, None]:
-    """Create a temporary project directory with graph.json."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    """Create a temporary project directory with graph.json.
+
+    ``ignore_cleanup_errors``: chromadb-backed tests can leave file
+    handles open at teardown (released afterwards by
+    ``_release_chroma_file_handles``), and Windows refuses to delete
+    open files — without the flag every such test errors in teardown.
+    """
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         project_path = Path(tmpdir)
 
         # Create graphify-out directory
@@ -170,7 +178,7 @@ def temp_project_with_claude_md(temp_project: Path) -> Path:
 @pytest.fixture
 def empty_project() -> Generator[Path, None, None]:
     """Create an empty temporary project directory."""
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
         yield Path(tmpdir)
 
 
@@ -343,3 +351,34 @@ def isolate_tests(tmp_path, monkeypatch):
     """Ensure tests don't affect each other."""
     # Use temp directory for any file operations
     monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def _release_chroma_file_handles():
+    """Stop chromadb's cached Systems after each test.
+
+    Chroma caches one System per storage path for the life of the
+    process, holding sqlite + HNSW file handles. Tests rarely close
+    their embedders, which is invisible on POSIX but fatal on Windows:
+    temp-dir teardown can't delete open files (WinError 32). Stopping
+    and evicting every cached System after each test releases the
+    handles regardless of whether the test cleaned up.
+    """
+    yield
+    try:
+        from chromadb.api.shared_system_client import SharedSystemClient
+    except Exception:
+        return
+    for system in list(SharedSystemClient._identifier_to_system.values()):
+        try:
+            system.stop()
+        except Exception:
+            pass
+    try:
+        SharedSystemClient._identifier_to_system.clear()
+    except Exception:
+        pass
+    if os.name == "nt":
+        # Segment objects may hold the last reference to an open index
+        # file; make their finalizers run before directory teardown.
+        gc.collect()

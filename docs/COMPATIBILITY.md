@@ -23,7 +23,7 @@
 |----|--------|-----------------|-------|
 | Linux | ✅ Full | Ubuntu 20.04+ | CI-verified on every PR (Python 3.10–3.12) |
 | macOS | ✅ Full | 11.0+ | CI-verified on every PR; x86 and Apple Silicon |
-| Windows | ⚠️ Experimental | 10, 11 | Installs and runs; **not yet CI-green** — the test suite has known Windows issues (ChromaDB holds open file handles so temp-dir teardown hits `WinError 32`, event-log rotation relies on POSIX rename-over-open, and a concurrent-append path loses writes). Task Scheduler walkthrough works; full support is tracked before Windows is gated in CI. |
+| Windows | ✅ Full | 10, 11 | CI-verified on every PR (`windows-latest`, Python 3.12); Task Scheduler walkthrough included |
 | Docker | ✅ Full | Docker 20.10+ | Included in releases |
 
 ---
