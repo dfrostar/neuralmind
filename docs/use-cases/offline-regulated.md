@@ -72,7 +72,7 @@ Every action is a local file operation — easy to log via existing endpoint mon
 - Knowledge graph: `graphify-out/graph.json`
 - Vector store: `graphify-out/neuralmind_db/`
 - Query events (only if opted in): `.neuralmind/memory/query_events.jsonl`
-- Learned patterns (only after `neuralmind learn`): `.neuralmind/learned_patterns.json`
+- Learned synapse memory: `.neuralmind/synapses.db` (the Hebbian graph the synapse layer learns automatically from usage)
 
 Delete any of these at any time — nothing persists outside your project.
 

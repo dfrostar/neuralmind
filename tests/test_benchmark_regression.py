@@ -71,7 +71,7 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     same warm graph, recall on must surface at least as many expected
     modules as recall off.
     """
-    p3 = benchmark_results["phase3_synapse"]
+    p3 = benchmark_results["phase2_synapse"]
     assert p3["on_avg_top_k_hit_rate"] >= p3["off_avg_top_k_hit_rate"] - 1e-9, (
         f"Synapse recall lowered hit rate: {p3['off_avg_top_k_hit_rate']:.2%} off → "
         f"{p3['on_avg_top_k_hit_rate']:.2%} on. Displacement is dropping relevant hits."
@@ -80,7 +80,7 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
 
 def test_synapse_recall_is_budget_neutral(benchmark_results):
     """Synapse recall reshapes selection without growing the token budget."""
-    p3 = benchmark_results["phase3_synapse"]
+    p3 = benchmark_results["phase2_synapse"]
     assert abs(p3["reduction_delta"]) <= 0.5, (
         f"Synapse recall moved the reduction ratio by {p3['reduction_delta']:+.2f}× "
         f"({p3['off_avg_reduction_ratio']:.1f}× off → {p3['on_avg_reduction_ratio']:.1f}× on). "

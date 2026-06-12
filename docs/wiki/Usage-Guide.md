@@ -346,7 +346,7 @@ writer (you still get the in-process feed for the agent running
 | `neuralmind query . "..."` | Query with natural language | Daily usage |
 | `neuralmind wakeup .` | Get project overview | Start new AI conversations |
 | `neuralmind search . "..."` | Direct semantic search | Find specific code entities |
-| `neuralmind learn .` | **NEW** Analyze query patterns → improve ranking | After collecting queries |
+| `neuralmind learn .` | *(deprecated, v0.25.0)* No-op — learning is now automatic via the synapse layer | Not needed; kept as an exit-0 no-op for old scripts |
 | `neuralmind benchmark .` | Measure token reduction | Verify cost savings |
 | `neuralmind stats .` | Show index statistics | Check index health |
 
@@ -413,38 +413,28 @@ neuralmind search . "database models"
 
 **When to use**: When you want to find specific code entities quickly.
 
-#### `neuralmind learn` (v0.3.2+)
+#### `neuralmind learn` *(deprecated, v0.25.0)*
 
-Analyzes your query history to discover module relationships and improve ranking.
+**Deprecated and a no-op since v0.25.0.** The `learned_patterns`
+cooccurrence reranker this command populated was removed; the command now
+prints a deprecation notice and **exits 0**, so old scripts and CI keep
+working unchanged.
 
 ```bash
-# After collecting queries, analyze patterns
-neuralmind learn .
-
-# Example output:
-# Analyzing 8 query events...
-# ✓ Learned 12 cooccurrence patterns
-# ✓ Patterns saved to .neuralmind/learned_patterns.json
-# ✓ Next query will apply learned patterns for improved retrieval
-# 
-# Top cooccurrence patterns:
-#   community_0|community_1: 5 times
-#   community_1|community_2: 4 times
-#   community_0|community_2: 3 times
+neuralmind learn .   # prints a deprecation notice, exits 0
 ```
 
-**What it does**:
-- Reads query events from `.neuralmind/memory/query_events.jsonl`
-- Finds which code modules appear together in successful queries
-- Saves patterns to `.neuralmind/learned_patterns.json`
-- On next query, automatically boosts related modules in search results
+Learning is now handled entirely by the **synapse layer**, which learns
+continuously and automatically from queries, edits, and tool calls — no
+manual step, and edges decay instead of going stale. The reranker was
+removed after a 2×2 A/B on the benchmark fixture showed it added 0.0
+points to top-k hit rate while the synapse layer alone adds +11.6 points.
 
-**When to use**: After 5-10 queries have been logged to build meaningful patterns. Run weekly for continuous improvement.
-
-**How it improves retrieval**:
-- Example: If you frequently query about "auth" + "validation" together
-- System learns this pattern (cooccurrence score: high)
-- Next time you ask about auth, validation automatically gets boosted in results
+**What to do instead**: install the lifecycle hooks
+(`neuralmind install-hooks .`) and optionally run `neuralmind watch .` so
+the synapse layer learns from your usage. Inspect what's been learned with
+`neuralmind stats .` or `neuralmind memory inspect .`. See the
+[Learning Guide](Learning-Guide) for details.
 - Better relevance = smaller context needed = more token savings
 
 **Privacy**: 100% local analysis. No data sent anywhere. Patterns file is just JSON in your project.

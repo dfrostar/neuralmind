@@ -9,12 +9,14 @@ Phase 1 — Reduction.
     concatenated). The "after" is ``NeuralMind.query(q).budget.total``.
     Emit per-query + aggregate numbers.
 
-Phase 2 — Learning uplift.
-    Run the same queries cold (no memory), then seed the memory log with
-    a realistic query history, run ``neuralmind learn``, and re-run the
-    queries. Report the change in reduction ratio and top-k retrieval
-    accuracy. On a 500-line fixture the delta is modest by design; the
-    point is to show the mechanism *works*, not to fake a huge number.
+Phase 2 — Synapse recall A/B (the learning measurement).
+    Reinforce realistic co-editing sessions into the Hebbian synapse
+    store, then re-run the same queries with synapse recall off vs on.
+    Report the change in reduction ratio and top-k retrieval accuracy.
+    On a 500-line fixture the delta is modest by design; the point is to
+    show the associative-recall mechanism *works*, not to fake a huge
+    number. (The old learned_patterns reranker phase was removed — the
+    synapse layer supersedes it.)
 
 Outputs:
     - tests/benchmark/results.json  (structured, consumed by chart + CI)
@@ -274,15 +276,6 @@ def run_phase(
     return result
 
 
-def seed_memory(nm: NeuralMind, seed_queries: list[str]) -> None:
-    """Populate the memory log with a realistic query history, then learn."""
-    for q in seed_queries:
-        # Each call writes an event to .neuralmind/memory/query_events.jsonl
-        # (assuming the user consented — see reset_memory below which
-        # also sets the consent flag so CI runs without a TTY prompt).
-        nm.query(q)
-
-
 def reset_memory() -> None:
     """Clear persisted memory so Phase 2 starts cold, and enable consent.
 
@@ -301,38 +294,7 @@ def reset_memory() -> None:
     memory.write_consent_sentinel(True)
 
 
-def memory_stats() -> dict:
-    """Read the memory log and learned patterns for the report."""
-    mem_dir = FIXTURE_DIR / ".neuralmind"
-    events_path = mem_dir / "memory" / "query_events.jsonl"
-    patterns_path = mem_dir / "learned_patterns.json"
-
-    event_count = 0
-    if events_path.exists():
-        event_count = sum(1 for _ in events_path.read_text().splitlines() if _.strip())
-
-    pattern_count = 0
-    if patterns_path.exists():
-        try:
-            patterns = json.loads(patterns_path.read_text())
-            # Patterns are typically nested: {"cooccurrence": {...}} or similar.
-            # Count leaves conservatively.
-            if isinstance(patterns, dict):
-                pattern_count = sum(
-                    len(v) if isinstance(v, (dict, list)) else 1 for v in patterns.values()
-                )
-        except json.JSONDecodeError:
-            pattern_count = 0
-
-    return {
-        "events_logged": event_count,
-        "patterns_learned": pattern_count,
-        "events_file_exists": events_path.exists(),
-        "patterns_file_exists": patterns_path.exists(),
-    }
-
-
-# ----------------------------------------------------------- phase 3 (synapses)
+# ----------------------------------------------------------- phase 2 (synapses)
 
 # Realistic "files edited together in one session" groups. The point is to
 # teach the synapse graph cross-cutting associations a *textual* search
@@ -427,8 +389,6 @@ def _dollars_saved(naive_tokens: int, neuralmind_tokens: int, queries_per_day: i
 
 def write_results(
     phase1: PhaseResult,
-    phase2: PhaseResult,
-    mem: dict,
     synapse_off: PhaseResult,
     synapse_on: PhaseResult,
     synapse_edges: int,
@@ -443,14 +403,7 @@ def write_results(
             "total_neuralmind_tokens": phase1.total_neuralmind_tokens,
             "queries": [asdict(q) for q in phase1.queries],
         },
-        "phase2_learning": {
-            "avg_reduction_ratio": phase2.avg_reduction,
-            "avg_top_k_hit_rate": phase2.avg_hit_rate,
-            "queries": [asdict(q) for q in phase2.queries],
-            "uplift_reduction_ratio": phase2.avg_reduction - phase1.avg_reduction,
-            "uplift_hit_rate": phase2.avg_hit_rate - phase1.avg_hit_rate,
-        },
-        "phase3_synapse": {
+        "phase2_synapse": {
             "synapse_edges": synapse_edges,
             "off_avg_reduction_ratio": synapse_off.avg_reduction,
             "off_avg_top_k_hit_rate": synapse_off.avg_hit_rate,
@@ -460,7 +413,6 @@ def write_results(
             "reduction_delta": synapse_on.avg_reduction - synapse_off.avg_reduction,
             "queries": [asdict(q) for q in synapse_on.queries],
         },
-        "memory": mem,
         "regression_floor": REDUCTION_FLOOR,
         "pass": phase1.avg_reduction >= REDUCTION_FLOOR,
         "estimated_monthly_savings_usd": _dollars_saved(
@@ -478,8 +430,6 @@ def write_results(
 
 def write_report(
     phase1: PhaseResult,
-    phase2: PhaseResult,
-    mem: dict,
     synapse_off: PhaseResult,
     synapse_on: PhaseResult,
     synapse_edges: int,
@@ -516,20 +466,7 @@ def write_report(
 
     lines += [
         "",
-        "### Phase 2 — Learning uplift",
-        "",
-        f"- Memory events logged: `{mem['events_logged']}`",
-        f"- Learned patterns: `{mem['patterns_learned']}`",
-        f"- Reduction ratio after `neuralmind learn`: **{phase2.avg_reduction:.1f}×** "
-        f"(Δ {phase2.avg_reduction - phase1.avg_reduction:+.2f}× vs. cold)",
-        f"- Top-k hit rate after learning: **{_fmt_pct(phase2.avg_hit_rate)}** "
-        f"(Δ {(phase2.avg_hit_rate - phase1.avg_hit_rate) * 100:+.1f} points vs. cold)",
-        "",
-        "Note: uplift numbers on a 500-line fixture are intentionally modest — the point is to",
-        "verify the learning mechanism persists and applies. On real production repos the lift",
-        "is larger; this test only catches regressions in persistence.",
-        "",
-        "### Phase 3 — Synapse recall A/B (same warm graph, recall off vs on)",
+        "### Phase 2 — Synapse recall A/B (same warm graph, recall off vs on)",
         "",
         f"- Synapse edges after seeding co-editing sessions: `{synapse_edges}`",
         f"- Top-k hit rate: **{_fmt_pct(synapse_off.avg_hit_rate)}** off → "
@@ -540,10 +477,11 @@ def write_report(
         f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
         "budget-neutral by design)",
         "",
-        "This isolates the Hebbian synapse layer from the `learned_patterns` reranker in",
-        "Phase 2. The hit-rate delta shows associative recall surfacing co-edited modules a",
-        "purely textual search ranks lower; the near-zero reduction delta confirms it does so",
-        "without spending extra tokens (recalled nodes displace the weakest hits, not add to them).",
+        "The Hebbian synapse layer is now the single learning measurement (the old",
+        "`learned_patterns` reranker was removed). The hit-rate delta shows associative recall",
+        "surfacing co-edited modules a purely textual search ranks lower; the near-zero reduction",
+        "delta confirms it does so without spending extra tokens (recalled nodes displace the",
+        "weakest hits, not add to them).",
         "",
         "### Assumptions",
         "",
@@ -562,7 +500,6 @@ def write_report(
 def main() -> int:
     queries_doc = json.loads(QUERIES_PATH.read_text())
     queries = queries_doc["queries"]
-    seed = queries_doc["learning_seed"]["history"]
 
     # Naive baseline is the same for every query — compute once.
     naive_total = naive_baseline_tokens()
@@ -574,37 +511,18 @@ def main() -> int:
     phase1 = run_phase(nm, queries, naive_total, phase_name="cold")
     phase1_seconds = time.time() - t0
 
-    # Phase 2 — seed memory with a realistic history, learn, re-run.
-    reset_memory()
-    nm = NeuralMind(str(FIXTURE_DIR))
-    seed_memory(nm, seed)
-
-    # Run `neuralmind learn` programmatically against the fixture. This
-    # mirrors what the CLI does in cmd_learn; we inline it here to avoid
-    # spawning a subprocess just to read/write four files.
-    events_file = memory.project_query_events_file(FIXTURE_DIR)
-    events = memory.read_query_events(events_file)
-    if events:
-        index = memory.build_cooccurrence_index(events)
-        memory.write_learned_patterns(str(FIXTURE_DIR), index)
-    # If events is empty, skip — memory_stats() in the report will show
-    # events_logged=0 and make the reason obvious.
-
-    phase2 = run_phase(nm, queries, naive_total, phase_name="warm")
-    mem = memory_stats()
-
-    # Phase 3 — synapse recall A/B. Reinforce co-editing sessions, then
-    # measure the same queries with synapse recall off vs on. Isolates the
-    # synapse layer (Phase 2's lift also includes the learned_patterns
-    # reranker), and verifies the boost is budget-neutral (reduction holds).
+    # Phase 2 — synapse recall A/B (the single learning measurement).
+    # Reinforce co-editing sessions, then measure the same queries with
+    # synapse recall off vs on. Verifies the boost is budget-neutral
+    # (reduction holds) while associative recall lifts the hit rate.
     reset_memory()
     nm = NeuralMind(str(FIXTURE_DIR))
     synapse_edges = seed_synapses(nm)
     synapse_off = run_synapse_phase(nm, queries, naive_total, inject=False)
     synapse_on = run_synapse_phase(nm, queries, naive_total, inject=True)
 
-    write_results(phase1, phase2, mem, synapse_off, synapse_on, synapse_edges)
-    write_report(phase1, phase2, mem, synapse_off, synapse_on, synapse_edges)
+    write_results(phase1, synapse_off, synapse_on, synapse_edges)
+    write_report(phase1, synapse_off, synapse_on, synapse_edges)
 
     print(
         f"Phase 1: {phase1.avg_reduction:.1f}× reduction, "
@@ -612,18 +530,12 @@ def main() -> int:
         f"({phase1_seconds:.1f}s)"
     )
     print(
-        f"Phase 2: {phase2.avg_reduction:.1f}× reduction, "
-        f"{phase2.avg_hit_rate * 100:.0f}% top-k hit rate "
-        f"(Δ {phase2.avg_reduction - phase1.avg_reduction:+.2f}×)"
-    )
-    print(
-        f"Phase 3: synapse off {synapse_off.avg_hit_rate * 100:.0f}% → "
+        f"Phase 2: synapse off {synapse_off.avg_hit_rate * 100:.0f}% → "
         f"on {synapse_on.avg_hit_rate * 100:.0f}% hit rate "
         f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.0f}pts), "
         f"reduction {synapse_off.avg_reduction:.1f}× → {synapse_on.avg_reduction:.1f}×, "
         f"{synapse_edges} edges"
     )
-    print(f"Memory: {mem['events_logged']} events, {mem['patterns_learned']} patterns")
 
     return 0 if phase1.avg_reduction >= REDUCTION_FLOOR else 1
 

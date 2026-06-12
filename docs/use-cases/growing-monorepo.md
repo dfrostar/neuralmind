@@ -93,13 +93,14 @@ A backend-free schema check over the canonical index IR — it reports dangling 
 
 ## Enable learning
 
-Query patterns in a large repo often cluster around hot paths (auth, billing, search). Enable memory (TTY prompt) and run weekly:
+Query patterns in a large repo often cluster around hot paths (auth, billing, search). Enable memory (TTY prompt) and install the hooks so the synapse layer learns from how the repo is actually used:
 
 ```bash
-neuralmind learn .
+neuralmind install-hooks .
+neuralmind watch &          # optional: also learn from file co-edits
 ```
 
-Future queries get a `+0.3` rerank boost on modules that historically cooccur with your team's queries. Over a few weeks, retrieval starts to anticipate what you mean.
+The synapse layer reinforces the edges between code nodes that fire together (queries, tool calls, file edits) and lets unused edges decay. Recall then spreads activation across that learned graph, surfacing related code that pure vector search would miss. Over a few weeks, retrieval starts to anticipate what you mean — automatically, with no `neuralmind learn` step (that command was deprecated in v0.25.0). Inspect what's been learned with `neuralmind memory inspect .`.
 
 ## Always-on activity tracking (v0.6.0+)
 

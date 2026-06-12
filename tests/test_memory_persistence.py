@@ -1,15 +1,13 @@
-"""End-to-end proof that the memory + learning pipeline persists.
+"""End-to-end proof that the memory pipeline persists.
 
 Catches regressions where a refactor silently breaks:
 
 - Event logging to ``.neuralmind/memory/query_events.jsonl``
-- Cooccurrence index construction
-- Writing ``.neuralmind/learned_patterns.json``
-- Applying the learned patterns on the next query
+- Re-querying after events are logged still runs cleanly end-to-end
 
 We don't assert a specific numerical uplift (too noisy on a small
-fixture). We assert the **mechanism** — files grow, patterns load,
-reranking runs — which is what an end user depends on.
+fixture). We assert the **mechanism** — events are logged, queries
+keep working — which is what an end user depends on.
 """
 
 from __future__ import annotations
@@ -75,45 +73,19 @@ def test_query_events_are_persisted(clean_project_memory):
         "Events are being dropped — check is_memory_logging_enabled and log_query_event."
     )
 
-    # Each line should be a valid JSON event with at least the fields the
-    # reranker needs downstream.
+    # Each line should be a valid JSON event with a question/query field.
     for ln in lines:
         event = json.loads(ln)
         assert "question" in event or "query" in event, f"event missing question/query: {event}"
 
 
-def test_learn_builds_and_writes_patterns(clean_project_memory):
-    """neuralmind learn must produce a readable patterns file."""
-    from neuralmind import NeuralMind, memory
+def test_query_after_events_logged_runs_cleanly(clean_project_memory):
+    """After events accrue, a fresh instance should still query cleanly.
 
-    memory.write_consent_sentinel(True)
-    nm = NeuralMind(str(FIXTURE_DIR))
-
-    for q in SEED_QUERIES:
-        nm.query(q)
-
-    events = memory.read_query_events(memory.project_query_events_file(FIXTURE_DIR))
-    assert events, "Events should have been logged before learning runs."
-
-    index = memory.build_cooccurrence_index(events)
-    patterns_file = memory.write_learned_patterns(str(FIXTURE_DIR), index)
-
-    assert patterns_file.exists(), f"write_learned_patterns did not create {patterns_file}"
-    data = json.loads(patterns_file.read_text())
-    assert isinstance(data, dict), f"patterns file is not a JSON object: {type(data).__name__}"
-    # The exact schema is an internal detail we don't want to pin down —
-    # assert only that it's non-empty and structured. If the schema
-    # changes, downstream users notice; this test is about persistence.
-    assert data, "patterns file is empty — cooccurrence pipeline produced nothing"
-
-
-def test_learned_patterns_load_on_next_query(clean_project_memory):
-    """After learn, a subsequent query should run without errors and produce context.
-
-    This verifies the reranker picks up the learned patterns file
-    without tripping. We intentionally don't assert ranked-order changes
-    because that's noisy on a small fixture; the assertion is simply
-    that the pipeline completes cleanly end-to-end.
+    This guards the end-to-end retrieval path against regressions once
+    memory has been populated. We intentionally don't assert ranked-order
+    changes because that's noisy on a small fixture; the assertion is
+    simply that the pipeline completes cleanly and produces context.
     """
     from neuralmind import NeuralMind, memory
 
@@ -124,11 +96,11 @@ def test_learned_patterns_load_on_next_query(clean_project_memory):
         nm.query(q)
 
     events = memory.read_query_events(memory.project_query_events_file(FIXTURE_DIR))
-    memory.write_learned_patterns(str(FIXTURE_DIR), memory.build_cooccurrence_index(events))
+    assert events, "Events should have been logged before re-querying."
 
-    # New NeuralMind instance — forces a fresh load of learned patterns.
+    # New NeuralMind instance — forces a fresh load against persisted state.
     nm2 = NeuralMind(str(FIXTURE_DIR))
     result = nm2.query("How does authentication work?")
 
-    assert result.context, "Query after learning returned empty context."
-    assert result.budget.total > 0, "Query after learning reported zero tokens."
+    assert result.context, "Query after events logged returned empty context."
+    assert result.budget.total > 0, "Query after events logged reported zero tokens."

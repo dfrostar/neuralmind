@@ -45,7 +45,7 @@ for internal conversations; the actual numbers come from running
 
 **What NeuralMind offers:**
 - Build the index once → share across all teams.
-- Cooccurrence learning adapts to your org's query patterns (`neuralmind learn`).
+- The synapse layer adapts to your org's usage patterns automatically (Hebbian learning from queries, edits, and tool calls, with decay — no manual step).
 - Reproducible context for every question against the same index version.
 - Single source of truth for "how does this system work?"
 

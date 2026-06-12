@@ -1,7 +1,7 @@
 name: Self-benchmark
 
 # Runs the hermetic self-benchmark on every PR and every push to main.
-# Produces a PR comment with reduction + learning uplift, and fails the
+# Produces a PR comment with reduction + synapse uplift, and fails the
 # build if the aggregate reduction drops below the conservative floor.
 
 on:

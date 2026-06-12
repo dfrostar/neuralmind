@@ -70,7 +70,7 @@ A one-page summary template:
 ## Ongoing hygiene
 
 - **Index freshness:** `neuralmind init-hook .` auto-rebuilds on every commit.
-- **Adapt to workflow:** enable memory (TTY prompt) + periodically `neuralmind learn .` to rerank by actual query patterns.
+- **Adapt to workflow:** enable memory (TTY prompt) and install the hooks (`neuralmind install-hooks .`) so the synapse layer learns from your actual usage automatically — no manual step, and stale associations decay instead of lingering.
 - **Model changes:** run `neuralmind benchmark` again when you switch models — absolute dollar savings scale with input price.
 
 ## Debugging cost spikes with the graph view (v0.6.0+)

@@ -133,7 +133,7 @@ sections.
 | [Architecture](Architecture) | How the 4-layer progressive disclosure system works |
 | [Integration Guide](Integration-Guide) | MCP, CI/CD, VS Code, JetBrains, any-LLM piping |
 | [Scheduling Guide](Scheduling-Guide) | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
-| [Learning Guide](Learning-Guide) | Opt-in memory + cooccurrence reranking (v0.3.2) and brain-like synapses (v0.4.0) |
+| [Learning Guide](Learning-Guide) | Opt-in memory + the brain-like synapse layer that learns associations from how you use the codebase (Hebbian co-activation with decay), the single learning system since v0.25.0 |
 | [Brain-Like Learning](https://github.com/dfrostar/neuralmind/blob/main/docs/brain_like_learning.md) | Design rationale for the v0.3.x learning system |
 | [v0.4.0 Release Notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) | Brain-like synapse layer: continuous co-activation, spreading activation, lifecycle hooks |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |

@@ -16,7 +16,7 @@ Complete command-line interface documentation for NeuralMind.
   - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
   - [eval](#eval-v0140)
-  - [learn](#learn)
+  - [learn (deprecated)](#learn-deprecated-v0250)
   - [next](#next-v0110)
   - [memory](#memory-v0240)
   - [skeleton](#skeleton)
@@ -713,34 +713,27 @@ bundled), run it from a source checkout instead:
 
 ---
 
-### learn
+### learn *(deprecated, v0.25.0)*
 
-Analyze query history to discover cooccurrence patterns and improve future search relevance.
-
-```bash
-neuralmind learn <project_path>
-```
-
-#### Arguments
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `project_path` | Yes | Path to project root |
-
-#### Examples
+**Deprecated and a no-op since v0.25.0.** The `learned_patterns`
+cooccurrence reranker this command used to populate was removed. The
+command now prints a deprecation notice and **exits 0**, so existing
+scripts and CI that call it keep working unchanged.
 
 ```bash
-neuralmind learn .
-neuralmind learn /path/to/project
+neuralmind learn <project_path>   # prints a deprecation notice, exits 0
 ```
 
-After collecting 5–10 queries, this command:
-1. Reads `.neuralmind/memory/query_events.jsonl`
-2. Finds which modules frequently appear together
-3. Saves patterns to `.neuralmind/learned_patterns.json`
-4. Future queries automatically apply boosted reranking
+Learning is now handled entirely by the **synapse layer**, which learns
+continuously and automatically from queries, edits, and tool calls — no
+manual step, and edges decay instead of going stale. A 2×2 A/B on the
+benchmark fixture showed the old reranker added 0.0 points to top-k hit
+rate while the synapse layer alone adds +11.6 points.
 
-**Note:** Learning must be enabled (not blocked by `NEURALMIND_LEARNING=0`).
+To see what's been learned, use [`neuralmind stats`](#stats) or
+[`neuralmind memory inspect`](#neuralmind-memory). For the full rationale
+and migration notes, see the
+[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md).
 
 ---
 
@@ -1306,7 +1299,7 @@ neuralmind daemon stop
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
-| `NEURALMIND_LEARNING` | `1` | Set to `0` to disable continual learning |
+| `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |

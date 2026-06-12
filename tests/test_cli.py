@@ -362,80 +362,34 @@ class TestCLIStats:
 
 
 class TestCLILearn:
-    """Tests for CLI learn command."""
+    """`neuralmind learn` is a deprecated exit-0 no-op."""
 
-    def test_cmd_learn_noop_when_disabled(self, monkeypatch, capsys):
-        """Test learn command is a safe no-op when disabled by env var."""
+    def test_cmd_learn_prints_deprecation(self, temp_project, capsys):
+        """learn prints a deprecation notice pointing at the synapse layer."""
         from neuralmind.cli import cmd_learn
 
-        monkeypatch.setenv("NEURALMIND_LEARNING", "0")
-        args = MagicMock()
-        args.project_path = "."
-
-        cmd_learn(args)
-
-        captured = capsys.readouterr()
-        assert "no-op" in captured.out.lower()
-
-    def test_cmd_learn_noop_when_no_events(self, temp_project, monkeypatch, capsys):
-        """Test learn command handles missing events gracefully."""
-        from neuralmind.cli import cmd_learn
-
-        monkeypatch.setenv("NEURALMIND_LEARNING", "1")
         args = MagicMock()
         args.project_path = str(temp_project)
 
-        cmd_learn(args)
+        # No exception, no sys.exit — a plain return is exit 0.
+        result = cmd_learn(args)
+        assert result is None
 
         captured = capsys.readouterr()
-        assert "no query events" in captured.out.lower()
+        out = captured.out.lower()
+        assert "deprecated" in out
+        assert "synapse" in out
 
-    def test_cmd_learn_builds_patterns(self, temp_project, monkeypatch, capsys):
-        """Test learn command analyzes events and builds patterns."""
-        import json
-
-        from neuralmind import memory
+    def test_cmd_learn_writes_no_patterns_file(self, temp_project, capsys):
+        """learn must not write the old learned_patterns.json anymore."""
         from neuralmind.cli import cmd_learn
 
-        monkeypatch.setenv("NEURALMIND_LEARNING", "1")
-
-        # Create sample events
-        events_file = memory.project_query_events_file(temp_project)
-        events_file.parent.mkdir(parents=True, exist_ok=True)
-
-        events = [
-            {
-                "event_type": "query",
-                "query": "auth",
-                "retrieval_summary": {"communities_loaded": [0, 1]},
-            },
-            {
-                "event_type": "query",
-                "query": "validation",
-                "retrieval_summary": {"communities_loaded": [0, 1]},
-            },
-        ]
-
-        # Write events as JSONL
-        content = ""
-        for event in events:
-            content += json.dumps(event) + "\n"
-        events_file.write_text(content, encoding="utf-8")
-
-        # Run learn
         args = MagicMock()
         args.project_path = str(temp_project)
         cmd_learn(args)
 
-        captured = capsys.readouterr()
-        assert "learned" in captured.out.lower() or "pattern" in captured.out.lower()
-
-        # Check patterns were saved
         patterns_file = temp_project / ".neuralmind" / "learned_patterns.json"
-        assert patterns_file.exists()
-
-        patterns = json.loads(patterns_file.read_text(encoding="utf-8"))
-        assert patterns["metadata"]["patterns_learned"] > 0
+        assert not patterns_file.exists()
 
 
 class TestCLIBenchmark:

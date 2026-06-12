@@ -105,6 +105,25 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0250">
+            <h2>What's New in v0.25.0 — one learning system: the synapse layer</h2>
+            <p><strong>NeuralMind now has a single learning signal.</strong> The old <code>learned_patterns</code> cooccurrence reranker is removed, and <code>neuralmind learn</code> becomes an exit-0 deprecation no-op. The Hebbian <strong>synapse layer</strong> — which already learns continuously from your queries, edits, and tool calls, and lets unused edges decay — is now the only thing that adapts retrieval to how you actually use the codebase. One system instead of two means automatic learning instead of a manual step, and decay instead of staleness. This is a removal, not a regression: warm-path recall is synapse-driven exactly as it was in v0.24.</p>
+            <h3>The A/B evidence</h3>
+            <p>A 2&times;2 on the benchmark fixture measured top-k hit rate with the reranker on vs. off, crossed with synapses on vs. off. The reranker moved the number by <strong>0.0 points</strong> in both rows (71.7% &rarr; 71.7% cold, 83.3% &rarr; 83.3% warm), while the synapse layer alone moved it by <strong>+11.6 points</strong>. The reranker was also runtime-inert on the warm path — the synapse boost re-sort discarded its ordering anyway — required the manual <code>neuralmind learn</code> step to populate, and went stale between runs. The learning that matters is the synapse layer's, and that is the signal NeuralMind keeps.</p>
+            <h3>What the agent actually sees</h3>
+            <ul>
+                <li><strong>No warm-path behavior change.</strong> Recall is synapse-driven exactly as before, through both the CLI and MCP. Claude Code, Cursor, Cline, and generic MCP clients all see the same results.</li>
+                <li><strong>The L3 search output no longer prints <code>(+X.XX boost)</code> labels</strong> from the reranker. Synapse-recall labels are unchanged and still appear.</li>
+                <li><strong><code>.neuralmind/learned_patterns.json</code> is no longer read or written.</strong> An existing one is simply ignored and can be deleted.</li>
+                <li><strong><code>neuralmind learn</code> prints a deprecation notice and exits 0,</strong> so any script or CI step that calls it keeps working. <code>NeuralMind(enable_reranking=...)</code> is accepted and ignored for backward compatibility.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Two learning mechanisms that nominally do the same job is two places for behavior to drift, two things to document, and two things to keep honest. The A/B settled which one earns its keep. Automatic beats manual: the reranker only improved with a <code>neuralmind learn</code> step you had to remember to run, while the synapse layer learns as you work. And decay beats staleness: the reranker's JSON captured a snapshot that aged between runs, whereas the synapse layer continuously reinforces what's used and decays what isn't, so recall tracks current usage instead of a stale batch. To see what's been learned, use <code>neuralmind stats</code> or <code>neuralmind memory inspect</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md">Full v0.25.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0240">
             <h2>What's New in v0.24.0 — memory namespaces &amp; branch isolation</h2>
             <p><strong>The learned synapse layer is now namespace-aware (PRD 4).</strong> Branch experiments, your personal long-term memory, an imported team baseline, and throwaway session scratch live in separate namespaces inside the same store — <code>branch:&lt;name&gt;</code>, <code>personal</code>, <code>shared</code>, <code>ephemeral</code> — so a weekend spike on a feature branch can't pollute what the agent learned about <code>main</code>. Reads stay smart by default: a transparent merged view prioritizes recent branch-local context while retaining long-term priors, with the weighting published as three constants. Existing learned memory migrates <strong>in place, losslessly</strong> — everything you've taught NeuralMind becomes the <code>personal</code> namespace, and on the default branch behavior is byte-identical to v0.23.</p>
@@ -503,7 +522,7 @@
             <p>The agent gets exactly what it needs, in order, without bloat.</p>
 
             <h3>Learnable Patterns</h3>
-            <p>NeuralMind learns from your actual queries. Over time, cooccurrence-based reranking improves retrieval quality based on how you ask questions. Better answers, without external training.</p>
+            <p>NeuralMind learns from how you actually use the codebase. Over time, the brain-like synapse layer (described below) improves retrieval quality based on which code you query, edit, and run tools over together — automatically and continuously, with no external training and no manual step.</p>
 
             <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
             <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>
