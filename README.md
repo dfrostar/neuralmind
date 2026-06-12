@@ -13,7 +13,9 @@
 
 > Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.24.0** — **memory namespaces & branch isolation.** The learned synapse layer is now **namespace-aware**: `branch:<name>` / `personal` / `shared` / `ephemeral` memory live separately in the same store, so a feature-branch spike can't pollute what the agent learned about `main`. Recall stays smart by default — a **transparent merged view** weights the active branch at **1.0×**, your long-term `personal` memory at **0.8×**, and an imported `shared` team baseline at **0.5×** (published constants, attributed per-namespace in `query --trace`). New **`neuralmind memory {inspect,reset,export,import}`** shows contribution by namespace, clears exactly one namespace, and moves memory as **versioned JSON bundles** (the PRD 8 team-memory on-ramp). Existing learned memory migrates **in place, losslessly** into `personal` — single-transaction rebuild, rollback on any failure, proven by a no-data-loss test. [Release notes](RELEASE_NOTES_v0.24.0.md)
+> **🆕 New in v0.25.0** — **one learning system: the synapse layer.** The old `learned_patterns` cooccurrence reranker is **removed**, and `neuralmind learn` is now an exit-0 deprecation no-op. The Hebbian **synapse layer** — which already learns continuously from queries, edits, and tool calls, and lets unused edges decay — is now NeuralMind's single learning signal. This is a removal, not a regression: a 2×2 A/B on the benchmark fixture showed the reranker moved top-k hit rate by **0.0 points** with synapses on or off (71.7% → 71.7% cold, 83.3% → 83.3% warm), while the synapse layer alone adds **+11.6 points**. The reranker was also runtime-inert on the warm path (the synapse re-sort discarded its order), needed the manual `neuralmind learn` step, and went stale between runs. **Warm-path behavior is unchanged** — recall is synapse-driven exactly as before; the only visible difference is the L3 output no longer prints `(+X.XX boost)` labels from the reranker (synapse labels stay). Scripts calling `neuralmind learn` keep working (exit 0); a stale `.neuralmind/learned_patterns.json` is ignored and can be deleted; `NeuralMind(enable_reranking=...)` is accepted and ignored. [Release notes](RELEASE_NOTES_v0.25.0.md)
+>
+> **v0.24.0** — **memory namespaces & branch isolation.** The learned synapse layer is now **namespace-aware**: `branch:<name>` / `personal` / `shared` / `ephemeral` memory live separately in the same store, so a feature-branch spike can't pollute what the agent learned about `main`. Recall stays smart by default — a **transparent merged view** weights the active branch at **1.0×**, your long-term `personal` memory at **0.8×**, and an imported `shared` team baseline at **0.5×** (published constants, attributed per-namespace in `query --trace`). New **`neuralmind memory {inspect,reset,export,import}`** shows contribution by namespace, clears exactly one namespace, and moves memory as **versioned JSON bundles** (the PRD 8 team-memory on-ramp). Existing learned memory migrates **in place, losslessly** into `personal` — single-transaction rebuild, rollback on any failure, proven by a no-data-loss test. [Release notes](RELEASE_NOTES_v0.24.0.md)
 >
 > **v0.23.0** — **versioned index contract (IR), retrieval-quality harness, debug traces, and a local daemon.** Four future-proofing foundations. **(PRD 1)** A canonical, **schema-versioned** intermediate representation of your code graph, validated on every build — a new **`neuralmind validate`** command checks the contract **without a vector backend**; the embedder still reads `graph.json` unchanged (the IR round-trips back identically), so retrieval is unaffected. **(PRD 2)** A new **`neuralmind benchmark --quality`** mode measures whether retrieval finds the *right* code — **precision@k / recall@k / MRR / answerability** over 30 golden queries across Python/TS/Go — and **fails CI on a regression**. **(PRD 3)** **`neuralmind query --trace`** shows *why* a result came back — per-layer candidates, cluster scoring with vector-vs-synapse attribution, and final hits. **(PRD 5)** An experimental **`neuralmind daemon`** holds project state warm so repeat `query`/`stats` skip cold backend init (auto-preferred when running, transparent direct-mode fallback). [Release notes](RELEASE_NOTES_v0.23.0.md)
 >
@@ -539,7 +541,7 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 | `grep` floods the agent with hundreds of matches | `neuralmind install-hooks .` | Caps at 25 matches with "N more hidden" pointer |
 | The agent is confidently wrong about what my code does | Start session with `wakeup`; ask with `query` | Grounds the model in real structure instead of guessing |
 | I want to query my codebase from ChatGPT / Gemini | `neuralmind wakeup . \| pbcopy` | Model-agnostic output; paste into any chat |
-| Retrieval feels random across similar questions | `neuralmind learn .` | Cooccurrence-based reranking adapts to your patterns |
+| Retrieval feels random across similar questions | `install-hooks` + `neuralmind watch .` | The synapse layer learns automatically from usage and adapts recall to your patterns |
 | Index feels out of date after a refactor | `neuralmind build .` (or `init-hook` once) | Incremental — only re-embeds changed nodes |
 
 ### Goals — "What am I trying to solve for?"
@@ -552,7 +554,7 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 | **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
 | **Keep all code local** (no SaaS, no telemetry) | Default install — no extra config | 100% offline; nothing leaves the machine |
 | **Work across Claude + GPT + Gemini** with one index | Build once, pipe output into any model | Same context quality, model-agnostic |
-| **Make retrieval adapt** to how your team queries | Enable memory (TTY prompt) + `neuralmind learn .` | Relevance improves on repeat patterns |
+| **Make retrieval adapt** to how your team queries | `install-hooks` + `neuralmind watch .` | The synapse layer learns continuously from usage; relevance improves on repeat patterns, no manual step |
 | **Measure savings** for a manager or stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios, dollar estimate |
 | **Auto-refresh** the index as code changes | `neuralmind init-hook .` (git post-commit) | Every commit rebuilds incrementally |
 
@@ -891,21 +893,16 @@ neuralmind stats . --json   # {"built": true, "total_nodes": 241, "communities":
 
 ---
 
-### `neuralmind learn`
+### `neuralmind learn` *(deprecated, v0.25.0)*
 
-Analyze logged query history to discover module cooccurrence patterns. Improves future query
-relevance automatically.
+**Deprecated and a no-op since v0.25.0.** The `learned_patterns` cooccurrence
+reranker this command populated was removed; the command now prints a
+deprecation notice and **exits 0** so existing scripts and CI don't break.
 
-```bash
-neuralmind learn <project_path>
-```
-
-```bash
-neuralmind learn .
-```
-
-Reads `.neuralmind/memory/query_events.jsonl`, writes `.neuralmind/learned_patterns.json`.
-The next `neuralmind query` applies boosted reranking automatically.
+Learning is now handled entirely by the **synapse layer**, which learns
+continuously and automatically from queries, edits, and tool calls (no manual
+step, and edges decay instead of going stale). To see what's been learned, use
+`neuralmind stats .` or `neuralmind memory inspect .`.
 
 ---
 
@@ -1489,16 +1486,21 @@ Prevents context flooding from repository-wide searches.
 
 ## 🧠 Continual Learning
 
-NeuralMind optionally learns from your query patterns to improve future relevance.
+NeuralMind learns from how you use the codebase to improve future relevance, through
+the **synapse layer** — automatically and continuously, with no manual step.
 
 ### How it works
 
-1. **Collect** — Each `neuralmind query` logs which modules appeared in the result to
-   `.neuralmind/memory/query_events.jsonl` (opt-in, local only, zero overhead)
-2. **Learn** — `neuralmind learn .` analyzes cooccurrence: which clusters appear together across queries
-3. **Improve** — The next `neuralmind query` applies a `+0.3` reranking boost to modules that
-   co-occur with the current query's top matches
-4. **Repeat** — The system gets smarter as you use it
+1. **Observe** — Every query, tool call, and file edit co-activates a set of code
+   nodes. The synapse layer reinforces the edges between nodes that fire together
+   (Hebbian learning), all local and opt-in.
+2. **Recall** — A new query lights up the relevant nodes and lets activation spread
+   across the learned graph, surfacing related code that pure vector search would miss.
+3. **Decay** — Unused edges age out automatically, so recall tracks current usage
+   instead of a stale snapshot. Frequently-used connections are protected by long-term
+   potentiation.
+4. **Repeat** — The system gets smarter as you use it, with no `neuralmind learn` step
+   to remember (that command was deprecated in v0.25.0 — see the release notes).
 
 ### Opt-in / consent
 
@@ -1511,8 +1513,8 @@ Enable? [y/N]:
 Consent saved to `~/.neuralmind/memory_consent.json`. Disable at any time:
 
 ```bash
-export NEURALMIND_MEMORY=0     # disable query logging
-export NEURALMIND_LEARNING=0   # disable pattern application
+export NEURALMIND_MEMORY=0          # disable query logging
+export NEURALMIND_SYNAPSE_INJECT=0  # disable prompt-time synapse recall
 ```
 
 ### File locations
@@ -1526,7 +1528,7 @@ export NEURALMIND_LEARNING=0   # disable pattern application
 <project>/.neuralmind/
 ├── memory/
 │   └── query_events.jsonl          # project-specific events
-└── learned_patterns.json           # created by: neuralmind learn .
+└── synapses.db                     # SQLite-backed Hebbian synapse store
 ```
 
 ### Privacy
@@ -1660,8 +1662,8 @@ agent and the codebase actually interact. See the [release notes](RELEASE_NOTES_
 | **Memory Collection** | v0.3.0 | Local JSONL storage for query events |
 | **Opt-in Consent** | v0.3.0 | One-time TTY prompt, env var overrides |
 | **EmbeddingBackend abstraction** | v0.3.1 | Pluggable vector backend (Pinecone/Weaviate ready) |
-| **Pattern Learning** | v0.3.2 | `neuralmind learn .` analyzes cooccurrence |
-| **Smart Reranking** | v0.3.2 | L3 results boosted by learned patterns |
+| **Pattern Learning** *(removed v0.25.0)* | v0.3.2 | `neuralmind learn .` analyzed cooccurrence; superseded by the synapse layer |
+| **Smart Reranking** *(removed v0.25.0)* | v0.3.2 | L3 results were boosted by learned patterns; removed after a 2×2 A/B showed 0.0 lift |
 | **Accurate Build Stats** | v0.3.3 | Correctly distinguishes added vs updated nodes |
 | **Documentation polish** | v0.3.4 | CLI flags sync, Setup Guide, agent guidance in README |
 
@@ -1678,9 +1680,9 @@ NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/f
 ### What CI measures on every PR
 
 - **Phase 1 — Reduction.** Naive baseline (every `.py` file in the fixture concatenated) vs `NeuralMind.query()` output, per query. All tokens counted with `tiktoken`.
-- **Phase 2 — Learning uplift.** Same queries run cold, then after seeding memory and running `neuralmind learn`. Reports the delta in reduction ratio and top-k retrieval hit rate. On a 500-line fixture the numerical uplift is modest by design — the test proves the mechanism persists, not that it's magic.
+- **Phase 2 — Synapse recall uplift.** The same queries run cold, then after reinforcing realistic co-editing sessions into the Hebbian synapse store, with synapse recall toggled off vs on. Reports the delta in top-k retrieval hit rate. On a 500-line fixture the numerical uplift is modest by design — the test proves the mechanism persists, not that it's magic. *(The old `learned_patterns` reranker phase was removed in v0.25.0; the synapse layer supersedes it.)*
 - **Per-model breakdown.** GPT-4o and GPT-4/3.5 counts are *measured* via real tiktoken encodings. Claude uses the Anthropic SDK tokenizer when available, else a clearly-labeled *estimate* derived from published vocab ratios. Llama is always estimated. **No fabricated numbers anywhere.**
-- **Memory persistence.** `tests/test_memory_persistence.py` asserts events are logged, `neuralmind learn` produces a patterns file, and subsequent queries load it without error.
+- **Memory persistence.** `tests/test_memory_persistence.py` asserts query events are logged and that re-querying against persisted state keeps working end-to-end.
 
 ### Community benchmarks
 
@@ -1730,7 +1732,7 @@ Output shows your reduction ratio, tokens per query, and estimated monthly savin
 ### Retrieval quality baseline
 
 - Heuristic-only baseline (community-reported): **70–80% top-5 retrieval accuracy**
-- NeuralMind target on the same query set: exceed that baseline via semantic retrieval + learned cooccurrence reranking
+- NeuralMind target on the same query set: exceed that baseline via semantic retrieval + the learned synapse layer (Hebbian recall over your usage)
 
 The pytest regression gate (`tests/test_benchmark_regression.py`) currently enforces **≥50% top-k hit rate** on the fixture plus **≥4× reduction** (low because the fixture is tiny; real repos measure 10× higher).
 
@@ -1784,7 +1786,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 
 1. Check that `neuralmind stats .` reports all your nodes indexed.
 2. Run `neuralmind benchmark .` to see reduction ratios.
-3. Enable query memory (it prompts on first TTY run) and periodically run `neuralmind learn .` — cooccurrence-based reranking improves relevance on your actual queries.
+3. Enable query memory (it prompts on first TTY run) and let the synapse layer warm up via `neuralmind install-hooks .` + `neuralmind watch .` — it learns from your usage automatically and continuously, so relevance improves on repeat patterns with no manual step.
 4. Open an issue with the query and expected result — retrieval quality is the thing we most want to improve.
 
 ---
@@ -1810,6 +1812,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.25.0](RELEASE_NOTES_v0.25.0.md)** | One learning system: the synapse layer — the `learned_patterns` cooccurrence reranker is removed and `neuralmind learn` becomes an exit-0 deprecation no-op; the Hebbian synapse layer (learns continuously from queries/edits/tool calls, with decay) is now the single learning signal. A 2×2 A/B on the benchmark fixture showed the reranker moved top-k hit rate by 0.0 points with synapses on or off (71.7% → 71.7% cold, 83.3% → 83.3% warm) while synapses alone add +11.6 points; the reranker was also runtime-inert on the warm path. No warm-path behavior change; the L3 output no longer prints reranker `(+X.XX boost)` labels (synapse labels stay); `learned_patterns.json` is no longer read or written; `NeuralMind(enable_reranking=...)` is accepted and ignored |
 | **[Release Notes v0.24.0](RELEASE_NOTES_v0.24.0.md)** | Memory namespaces & branch isolation (PRD 4) — every synapse/transition/activation carries a namespace (`personal` / `shared` / `branch:<name>` / `ephemeral`); lossless single-transaction v0→v1 schema migration (existing memory → `personal`); transparent merged reads (branch 1.0× > personal 0.8× > shared 0.5×, published constants, per-namespace `--trace` attribution); new `neuralmind memory {inspect,reset,export,import}` with versioned JSON bundles (PRD 8 on-ramp); per-namespace decay/TTL (`shared` sticky, `ephemeral` fast + cleared at session boundaries); branch auto-detection via stdlib git with safe `personal` fallback |
 | **[Release Notes v0.23.0](RELEASE_NOTES_v0.23.0.md)** | Versioned index contract (IR) + retrieval-quality harness + debug traces + local daemon. **PRD 1:** builds materialize a canonical, schema-versioned `IndexIR` and validate it; new backend-free `neuralmind validate`; round-trip-faithful graphify⇄IR adapter; learned synapses folded in; IR metadata in `build`/`stats`. **PRD 2:** new `neuralmind benchmark --quality` measures precision@k / recall@k / MRR / answerability over 30 golden queries (Python/TS/Go), gated in CI. **PRD 3:** `neuralmind query --trace` attaches a per-layer retrieval trace (candidates, cluster scoring with vector-vs-synapse attribution, final hits, token budget); bounded + redactable; zero-overhead off by default. **PRD 5:** experimental `neuralmind daemon` keeps project state warm (project registry + per-project locks + background jobs + shared `dispatch()` API); CLI auto-prefers it with direct-mode fallback. Retrieval and existing indexes unchanged |
 | **[Release Notes v0.22.0](RELEASE_NOTES_v0.22.0.md)** | turbovec becomes the default (when available) — `import neuralmind` no longer needs ChromaDB; default backend is now `auto` (turbovec when its deps are installed, else chroma); one-time auto-reindex with the old ChromaDB index kept as a fallback; `neuralmind doctor` shows the resolved backend; staged middle step toward retiring ChromaDB |

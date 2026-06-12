@@ -1,5 +1,14 @@
 # Brain-like Continual Learning (Opt-in MVP)
 
+> **Note (v0.25.0):** this document describes the original v0.3.x learning
+> scaffolding, including the `learned_patterns` cooccurrence reranker and
+> `neuralmind learn`. **That reranker was removed in v0.25.0** — `neuralmind
+> learn` is now an exit-0 deprecation no-op, and learning is handled entirely
+> by the Hebbian synapse layer (see the [Learning Guide](wiki/Learning-Guide.md)
+> and the [v0.25.0 release notes](../RELEASE_NOTES_v0.25.0.md)). The
+> consent/query-event-logging content below remains accurate; treat the
+> reranker references as historical design rationale.
+
 NeuralMind includes opt-in, local-first scaffolding for implicit continual learning.
 
 ## What this MVP does
@@ -24,8 +33,8 @@ NeuralMind includes opt-in, local-first scaffolding for implicit continual learn
   - does not prompt in non-interactive sessions
   - if non-interactive and not already enabled, no memory is logged
 - `neuralmind learn <project_path>`:
-  - minimal scaffold command
-  - safe no-op when learning is disabled
+  - **deprecated and a no-op since v0.25.0** (prints a deprecation notice, exits 0)
+  - the synapse layer now learns automatically; nothing to run manually
 
 ## Hook points
 

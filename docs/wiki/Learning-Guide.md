@@ -1,31 +1,45 @@
-# Brain-Like Learning Guide (v0.3.2+)
+# Brain-Like Learning Guide
 
-> How to teach your project to improve retrieval relevance through query patterns
+> How NeuralMind improves retrieval relevance by learning from how you
+> actually use your codebase
 
 ## Overview
 
-NeuralMind's learning system automatically improves as you use it. The more you query, the smarter it gets.
+NeuralMind's learning system improves automatically as you use it. The
+more you query, edit, and run tools over your code, the smarter recall
+gets — with no manual step to remember.
+
+As of **v0.25.0 there is a single learning system: the Hebbian synapse
+layer.** It learns continuously from queries, edits, and tool calls,
+reinforces the edges between code nodes that fire together, and lets
+unused edges decay so recall tracks current usage instead of a stale
+snapshot. (NeuralMind previously had a second mechanism — a
+`learned_patterns` cooccurrence reranker driven by `neuralmind learn` —
+which was removed in v0.25.0. See ["The old reranker"](#the-old-reranker-removed-in-v0250)
+below if you arrived here from an older link.)
 
 ### The Learning Cycle
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ 1. Query Your Code                                       │
-│    neuralmind query . "How does auth work?"              │
-│    ↓ Events logged to .neuralmind/memory/                │
+│ 1. Observe                                                │
+│    Every query, tool call, and file edit co-activates a   │
+│    set of code nodes.                                     │
+│    ↓ The synapse layer reinforces edges between them      │
 ├──────────────────────────────────────────────────────────┤
-│ 2. Collect Patterns                                      │
-│    After 5-10 queries, run:                              │
-│    neuralmind learn .                                    │
-│    ↓ Analyzes which modules appear together              │
+│ 2. Recall                                                 │
+│    A new query lights up the relevant nodes; activation   │
+│    spreads across the learned graph.                      │
+│    ↓ Related code surfaces that vector search would miss  │
 ├──────────────────────────────────────────────────────────┤
-│ 3. Automatic Improvement                                 │
-│    Next queries automatically boost related modules      │
-│    ↓ Better results in fewer tokens                      │
+│ 3. Decay                                                  │
+│    Unused edges age out automatically; long-term          │
+│    potentiation protects frequently-used connections.     │
+│    ↓ Recall tracks current usage, not a stale batch       │
 ├──────────────────────────────────────────────────────────┤
-│ 4. Continuous Learning                                   │
-│    Each new query adds to the pattern                    │
-│    Run neuralmind learn . weekly for updates             │
+│ 4. Continuous improvement                                 │
+│    No `neuralmind learn` step — the graph grows as you     │
+│    work.                                                   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -43,14 +57,29 @@ Enable local NeuralMind memory logging to improve retrieval over time? [y/N]: y
 
 ✅ Consent saved to `~/.neuralmind/memory_consent.json`
 
-**To disable:** Set `NEURALMIND_MEMORY=0` or `NEURALMIND_LEARNING=0`
+**To disable:** Set `NEURALMIND_MEMORY=0` (query event logging) and/or
+`NEURALMIND_SYNAPSE_INJECT=0` (prompt-time synapse recall).
 
-### Step 2: Use NeuralMind Naturally
+### Step 2: Install hooks and (optionally) the watcher
 
-Just query as usual. Events are logged automatically.
+The synapse layer learns the most when it can observe your work. Install
+the lifecycle hooks once, and optionally run the file watcher for
+always-on learning from edits:
 
 ```bash
-# Daily usage - these all get logged
+# One-time: install the lifecycle hooks (idempotent — safe to re-run)
+neuralmind install-hooks .
+
+# Optional: always-on learning from file edits
+neuralmind watch &
+```
+
+### Step 3: Use NeuralMind Naturally
+
+Just query and edit as usual. Co-activations are recorded automatically.
+
+```bash
+# Daily usage - these all reinforce the synapse graph
 neuralmind query . "How does authentication work?"
 neuralmind query . "What are the API endpoints?"
 neuralmind query . "How is data validated?"
@@ -58,146 +87,102 @@ neuralmind query . "Where's the database logic?"
 neuralmind query . "What's the error handling?"
 ```
 
-Each query logs:
+Each query also logs (when memory is enabled):
 - The question you asked
 - Which modules were retrieved
-- How many tokens used
+- How many tokens were used
 - Which communities matched
 
-### Step 3: Analyze Patterns
-
-After collecting 5-10 queries, analyze the patterns:
-
-```bash
-$ neuralmind learn .
-
-Analyzing 8 query events...
-✓ Learned 12 cooccurrence patterns
-✓ Patterns saved to .neuralmind/learned_patterns.json
-✓ Next query will apply learned patterns for improved retrieval
-
-Top cooccurrence patterns:
-  community_0|community_1: 5 times (100% - auth + validation)
-  community_1|community_2: 4 times (validation + middleware)
-  community_0|community_2: 3 times (auth + middleware)
-```
+The query event log is a local, auditable record; the synapse layer is
+what turns that activity into better recall.
 
 ### Step 4: Automatic Improvements
 
-On your next query, learned patterns are applied automatically:
+On later queries, the synapse layer surfaces associations it has learned
+— including related code that pure vector search would not have found,
+because the relationship is *behavioral* (learned from co-activation),
+not textual. Synapse-driven hits are labelled in the L3 output — a
+`[recalled]` tag for code surfaced purely via the learned graph, and a
+`(+X.XX synapse)` annotation on hits whose score the graph boosted:
 
 ```bash
 $ neuralmind query . "How does auth work?"
 
 ## Search Results
 
-1. **validate_user** (score: 0.85 +0.25 boost)  ← Boosted due to cooccurrence!
+1. **authenticate** (score: 0.91)
    Type: function
    File: auth.py
 
-2. **authenticate** (score: 0.91)
+2. **validate_user** (score: 0.85 (+0.25 synapse))  ← boosted by the learned graph
    Type: function
    File: auth.py
 
-3. **check_permissions** (score: 0.78 +0.18 boost)  ← Also boosted!
+3. **check_permissions** [recalled] (score: 0.23)  ← surfaced purely via the graph
    Type: function
    File: middleware.py
 ```
 
-**What happened:**
-- System recognized "auth" question
-- Looked for modules that frequently appear with auth
-- Boosted validation and middleware in results
-- Same token budget, better relevance ✅
-
 ### Step 5: Continuous Improvement
 
-Run `neuralmind learn .` weekly or after major development:
+There is no weekly `neuralmind learn` step to run. The synapse store
+grows continuously as you work, and `SessionStart` runs decay so weights
+age between sessions. Inspect what's been learned at any time:
 
 ```bash
-# Weekly learning update
-0 9 * * 1 neuralmind learn /path/to/project
+neuralmind stats .            # includes a synapse breakdown
+neuralmind memory inspect .   # contribution by namespace
+cat .neuralmind/SYNAPSE_MEMORY.md
 ```
 
-Each run:
-- Reads new query events
-- Updates pattern weights
-- Saves improved patterns
+## How synapse learning happens
 
-## Understanding Patterns
+Five activation paths, all of which strengthen pairwise edges between
+co-active nodes (Hebbian: "nodes that fire together wire together"):
 
-### What Gets Learned
+1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
+2. **`PostToolUse` hook** — when the agent reads/runs/searches code together.
+3. **`UserPromptSubmit` hook** — current prompt's neighbors get an activation pulse.
+4. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
+5. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
 
-The system tracks **module cooccurrence** — which code parts appear together in successful queries.
+The synapse layer has been namespace-aware since v0.24.0:
+`branch:<name>` / `personal` / `shared` / `ephemeral` memory live
+separately in the same store, with a transparent merged read view. See
+the [memory namespaces](CLI-Reference#neuralmind-memory) commands.
 
-```json
-{
-  "cooccurrence": {
-    "community_0|community_1": 5,
-    "community_0|community_2": 3,
-    "community_1|community_2": 4
-  },
-  "module_frequency": {
-    "community_0": 8,
-    "community_1": 12,
-    "community_2": 7
-  }
-}
-```
+### What the synapse layer learns
 
-**Example:** If users ask about authentication, validation modules usually appear in L2 context (frequency: 5). The system learns this relationship.
+The store is a weighted graph in SQLite (`.neuralmind/synapses.db`) with
+two parts:
 
-### How Reranking Uses Patterns
+- An **undirected co-activation graph** — which nodes tend to be active
+  together. Drives spreading-activation recall.
+- A **directional transition table** (`synapse_transitions`, v0.11.0+) —
+  ordered `(from_node, to_node)` observations, so the agent can ask
+  `neuralmind next <file>` for a probability distribution over what's
+  typically edited next.
 
-When you query:
+Weights follow a Hebbian + decay + LTP (long-term potentiation) model:
+co-activation strengthens an edge, disuse decays it, and frequently-used
+edges are protected by an LTP floor so they don't evaporate.
 
-1. **L2 identifies context modules** — which communities match your question
-2. **L3 searches normally** — semantic search finds candidates
-3. **Reranker boosts results** — modules cooccurring with L2 context get +0.3 multiplier
-4. **Final ranking** — better matches rise to top
+### Surface in Claude Code
 
-**Boost formula:**
-```
-combined_score = semantic_score × (1.0 + 0.3 × cooccurrence_strength)
-```
+Each `SessionStart` re-exports the synapse memory as markdown to:
 
-Where `cooccurrence_strength` is 0-1 (normalized to max pattern).
-
-### Pattern Examples
-
-#### Example 1: Authentication System
-
-```
-Queries ask about: auth, validation, permissions
-System learns: These modules appear together
-Effect: "How does auth work?" automatically includes validation
-Token savings: -20% (fewer irrelevant results)
-```
-
-#### Example 2: API Layer
-
-```
-Queries ask about: API endpoints, routes, handlers
-System learns: These modules always appear together
-Effect: "What are the endpoints?" automatically includes handler details
-Token savings: -15% (more complete context)
-```
-
-#### Example 3: Data Pipeline
-
-```
-Queries ask about: database, models, migrations
-System learns: These concepts are linked
-Effect: "How's the data stored?" includes migration history
-Token savings: -25% (better context relevance)
-```
+- `<project>/.neuralmind/SYNAPSE_MEMORY.md` — import in `CLAUDE.md`
+  via `@.neuralmind/SYNAPSE_MEMORY.md` so it's part of every session.
+- `~/.claude/projects/<slug>/memory/synapse-activations.md` — Claude
+  Code's auto-memory directory (when present); the model picks it up
+  natively without anyone calling an MCP tool.
 
 ## Privacy & Data
 
 ✅ **100% Local** — All learning happens on your machine
 ✅ **No Telemetry** — Nothing sent to servers
 ✅ **User Control** — One-time consent, can disable anytime
-✅ **Persistent** — Patterns stay in your `.neuralmind/` directory
+✅ **Persistent** — Memory stays in your `.neuralmind/` directory
 
 ### File Locations
 
@@ -210,69 +195,65 @@ Token savings: -25% (better context relevance)
 project/.neuralmind/
 ├── memory/
 │   └── query_events.jsonl           # Project-specific events
-└── learned_patterns.json            # Learned patterns (created by neuralmind learn)
+└── synapses.db                      # SQLite-backed Hebbian synapse store
 ```
 
 ### Environment Variables
 
 ```bash
-# Disable memory logging
+# Disable query event logging
 export NEURALMIND_MEMORY=0
 
-# Disable learning
-export NEURALMIND_LEARNING=0
+# Disable prompt-time synapse recall injection
+export NEURALMIND_SYNAPSE_INJECT=0
 
-# Use both to disable completely
-export NEURALMIND_MEMORY=0 NEURALMIND_LEARNING=0
+# Disable the auto-memory export
+export NEURALMIND_SYNAPSE_EXPORT=0
 ```
+
+You can also disable the layer entirely in Python with
+`NeuralMind(..., enable_synapses=False)`, or wipe the learned graph at
+any time with `mind.synapses.reset()`.
 
 ## Troubleshooting
 
 ### "No query events found"
 
-**Problem:** You run `neuralmind learn .` but see "No query events found"
+**Problem:** `neuralmind stats .` or `neuralmind memory inspect .` shows
+nothing learned.
 
 **Solution:**
-1. Have you run at least 1 query? `neuralmind query . "test"`
-2. Did you consent to memory logging? You should see prompt on first query
-3. Check memory file exists: `ls -la project/.neuralmind/memory/query_events.jsonl`
-4. Check NEURALMIND_MEMORY not set to 0
+1. Have you run at least one query, or installed the hooks / watcher?
+2. Did you consent to memory logging? You should see the prompt on first query.
+3. Check the memory file exists: `ls -la project/.neuralmind/memory/query_events.jsonl`
+4. Check `NEURALMIND_MEMORY` is not set to `0`.
 
-### "Learned 0 patterns"
+### "Recall isn't surfacing related code"
 
-**Problem:** You see "Learned 0 cooccurrence patterns"
-
-**Solution:**
-1. You may need 5+ queries for meaningful patterns
-2. Your queries might be too different (no overlapping modules)
-3. Try a few more queries, then run learn again
-
-### "Patterns not being applied"
-
-**Problem:** You see no boost scores in search results
+**Problem:** You see no synapse-recalled hits in search results.
 
 **Solution:**
-1. Run `neuralmind query . "test"` again (must be AFTER learning)
-2. Check file exists: `ls -la project/.neuralmind/learned_patterns.json`
-3. Check logs aren't disabled: `echo $NEURALMIND_LEARNING`
-4. Try with a fresh query (not the exact same as before)
+1. The synapse graph needs to warm up — query, edit, and run tools over a
+   few sessions, or run `neuralmind watch .` to learn from edits.
+2. Check `NEURALMIND_SYNAPSE_INJECT` is not set to `0`.
+3. Inspect the store: `neuralmind stats .` and `cat .neuralmind/SYNAPSE_MEMORY.md`.
 
 ## Best Practices
 
-### 1. Natural Querying
+### 1. Natural Usage
 ```bash
-✅ DO: Ask questions naturally as they come up
+✅ DO: Ask questions and edit code naturally as you work
 neuralmind query . "How does user login work?"
 
-❌ DON'T: Artificially create queries just for learning
+❌ DON'T: Artificially create queries just to "train" the layer
 ```
 
-### 2. Regular Learning
+### 2. Let the watcher run
 ```bash
-✅ DO: Run learn after several days/weeks of usage
-neuralmind learn . # Weekly is ideal
+✅ DO: Run neuralmind watch . so co-edits feed the synapse graph
+neuralmind watch &
 
-❌ DON'T: Rely on very fresh patterns (need 5+ queries)
+❌ DON'T: Expect rich recall from a cold store on day one
 ```
 
 ### 3. Meaningful Questions
@@ -285,109 +266,67 @@ neuralmind learn . # Weekly is ideal
 ❌ DON'T: Ask the exact same question repeatedly
 ```
 
-### 4. Monitoring Patterns
+### 4. Inspecting what's learned
 ```bash
-✅ DO: Check top patterns to understand your code structure
-neuralmind learn . | grep "cooccurrence"
+✅ DO: Use the built-in inspectors to understand your code's associations
+neuralmind stats .
+neuralmind memory inspect .
 
-❌ DON'T: Manually edit learned_patterns.json (it's auto-generated)
+❌ DON'T: Hand-edit synapses.db (it's managed by the layer)
 ```
 
 ## Performance Impact
 
-Learning has **zero overhead**:
+Learning has **negligible overhead**:
 
-- **Pattern loading:** ~1ms (lazy loaded, happens once)
-- **Reranking:** ~5ms (only sort, no compute)
-- **Memory:** ~10KB for patterns file
-- **Storage:** ~50KB for event logs (100 queries)
+- **Recall (spreading activation):** a few ms over the existing vector search
+- **Reinforcement:** a small SQLite write, batched by the watcher
+- **Storage:** a compact SQLite graph in `.neuralmind/synapses.db`
 
-**Total cost:** Negligible compared to network latency of semantic search.
+The untraced hot path pays nothing for trace/attribution machinery.
 
-## v0.4 Synapse Layer
+## The old reranker (removed in v0.25.0)
 
-v0.4.0 adds a second learning system that runs **in parallel with** the
-v0.3.2 cooccurrence reranker described above. They are complementary —
-read this section as "what v0.4 adds on top".
+Before v0.25.0, NeuralMind also shipped a **`learned_patterns`
+cooccurrence reranker**. You ran `neuralmind learn .` to analyze logged
+query events, which wrote `.neuralmind/learned_patterns.json`, and the
+next query re-ordered its L3 hits by a `+0.3` cooccurrence boost.
 
-### How v0.3.2 reranking and v0.4 synapses differ
+**It was removed** after a 2×2 A/B on the benchmark fixture showed it
+added **0.0 points** to top-k hit rate whether the synapse layer was on
+or off (71.7% → 71.7% cold, 83.3% → 83.3% warm), while the synapse layer
+alone added **+11.6 points**. The reranker was also runtime-inert on the
+warm path — the synapse boost re-sort discarded its ordering anyway — it
+required the manual `neuralmind learn` step to populate, and its JSON
+captured a snapshot that went stale between runs. The synapse layer is
+strictly better on all three counts: automatic instead of manual,
+decaying instead of staling, and the only mechanism with measured lift.
 
-| Aspect | v0.3.2 reranker | v0.4 synapse layer |
-|--------|-----------------|---------------------|
-| Data structure | Cooccurrence counts in JSON (`.neuralmind/learned_patterns.json`) | Weighted graph in SQLite (`.neuralmind/synapses.db`) |
-| Update timing | Batch — runs `neuralmind learn .` after collecting events | Continuous — updates on every query, tool call, file edit |
-| What it influences | Re-orders L3 search hits | Adds a new retrieval path (spreading activation) and surfaces associations to Claude Code's auto-memory |
-| Memory model | Logged event history | Hebbian + decay + LTP (long-term potentiation) |
-| Forgets stale patterns? | No (only what you analyze) | Yes (multiplicative decay; LTP floor protects frequent associations) |
+What this means for you:
 
-In short: the **reranker** improves the ordering of vector-search hits
-based on cooccurrence patterns from the past. The **synapse layer** is
-an independent associative memory that can recall related code even when
-vector search wouldn't have found it — because the relationship isn't
-textual or graph-structural, it's *behavioral*, learned from
-co-activation.
+- **`neuralmind learn`** is now an exit-0 deprecation no-op. Scripts and
+  CI that call it keep working; you can drop the call when convenient.
+- **`.neuralmind/learned_patterns.json`** is no longer read or written.
+  An existing one is simply ignored and can be deleted.
+- **`NeuralMind(enable_reranking=...)`** is accepted and ignored for
+  backward compatibility.
+- The L3 output **no longer prints `(+X.XX boost)` reranker labels**;
+  synapse-recall labels are unchanged.
 
-### How synapse learning happens
+See the [v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md)
+for the full evidence and migration notes.
 
-Five activation paths, all of which strengthen pairwise edges between
-co-active nodes (Hebbian: "nodes that fire together wire together"):
+## What's Coming
 
-1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
-2. **`PostToolUse` hook** — when the agent reads/runs/searches code together.
-3. **`UserPromptSubmit` hook** — current prompt's neighbors get an activation pulse.
-4. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
-5. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
-
-### Quick start
-
-```bash
-# One-time: install the lifecycle hooks (idempotent — safe to re-run)
-neuralmind install-hooks .
-
-# Optional: always-on learning from file edits
-neuralmind watch &
-
-# That's it — the synapse store grows continuously.
-
-# Inspect what was learned
-cat .neuralmind/SYNAPSE_MEMORY.md
-```
-
-### Surface in Claude Code
-
-Each `SessionStart` re-exports the synapse memory as markdown to:
-
-- `<project>/.neuralmind/SYNAPSE_MEMORY.md` — import in `CLAUDE.md`
-  via `@.neuralmind/SYNAPSE_MEMORY.md` so it's part of every session.
-- `~/.claude/projects/<slug>/memory/synapse-activations.md` — Claude
-  Code's auto-memory directory (when present); the model picks it up
-  natively without anyone calling an MCP tool.
-
-### Privacy
-
-Local-only, project-scoped, same as the v0.3.x memory layer. No
-external services. Disable with:
-
-- `NEURALMIND_SYNAPSE_INJECT=0` — skip prompt-time recall injection
-- `NEURALMIND_SYNAPSE_EXPORT=0` — skip the auto-memory export
-- `NeuralMind(..., enable_synapses=False)` — disable the layer entirely
-- `mind.synapses.reset()` — wipe the learned graph any time
-
-### Read more
-
-- [v0.4.0 Release Notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) — full feature walkthrough
-- [Architecture: Synapse Layer (v0.4)](Architecture#synapse-layer-v04) — design and activation channels
-
-## What's Coming (after v0.4.0)
-
-- **Synapse import/export** — let teams share a learned brain.
-- **Quality benchmark** — measure retrieval gain with vs without synapses.
-- **Auto-watcher launch from `SessionStart`** — no manual `watch` invocation needed.
-- **Feedback signals** — explicit ratings improve pattern accuracy.
+- **Synapse import/export** — let teams share a learned brain (shipped as
+  `neuralmind memory export/import` in v0.24.0).
+- **Quality benchmark** — measure retrieval gain with vs without synapses
+  (the self-benchmark's Phase 2 synapse A/B).
+- **Feedback signals** — explicit ratings to further improve recall.
 
 ## See Also
 
 - [CLI Reference](CLI-Reference) — All commands
-- [Brain-Like Learning](../brain_like_learning.md) — v0.3.x design rationale
-- [Architecture](Architecture#synapse-layer-v04) — v0.4 synapse layer architecture
+- [Brain-Like Learning](../brain_like_learning.md) — design rationale
+- [Architecture](Architecture#synapse-layer-v04) — synapse layer architecture
 - [Troubleshooting](Troubleshooting) — Common issues

@@ -308,9 +308,13 @@ pip install "neuralmind[dev]"
    # Good: "How does user authentication work?"
    ```
 
-3. **Enable learning** — NeuralMind improves with use
+3. **Let learning warm up** — NeuralMind improves with use, automatically
+   via the synapse layer (no manual step). Install the hooks and optionally
+   the watcher, then check what's been learned:
    ```bash
-   neuralmind learn .
+   neuralmind install-hooks .
+   neuralmind watch &            # optional: learn from file edits
+   neuralmind memory inspect .   # see what the synapse layer has learned
    ```
 
 ---

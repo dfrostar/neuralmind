@@ -43,6 +43,19 @@ class TestNeuralMindInit:
         mind = NeuralMind(str(temp_project))
         assert isinstance(mind.embedder, GraphEmbedder)
 
+    def test_init_accepts_deprecated_enable_reranking(self, temp_project):
+        """The deprecated enable_reranking kwarg is accepted (no TypeError).
+
+        The learned_patterns reranker was removed in favor of the synapse
+        layer; the kwarg is ignored but still part of the public signature so
+        existing callers don't break.
+        """
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project), enable_reranking=False)
+        # Stored for backward compat, but it no longer gates any behavior.
+        assert mind.enable_reranking is False
+
 
 class TestNeuralMindBuild:
     """Tests for NeuralMind build functionality."""

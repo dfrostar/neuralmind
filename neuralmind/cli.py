@@ -720,45 +720,20 @@ def cmd_memory(args):
 
 
 def cmd_learn(args):
-    project_path = Path(args.project_path).resolve()
-    if memory.is_learning_disabled():
-        print("Learning is disabled (NEURALMIND_LEARNING=0). No-op.")
-        return
+    """Deprecated no-op: the synapse layer learns automatically.
 
-    # Count events
-    events_file = memory.project_query_events_file(project_path)
-    project_event_count = memory.count_events(events_file)
-
-    if project_event_count == 0:
-        print(f"No query events found for {project_path}")
-        print("Events are logged automatically when you query the codebase.")
-        return
-
-    # Read and analyze events
-    events = memory.read_query_events(events_file)
-    if not events:
-        print("No queryable events found in memory.")
-        return
-
-    # Build patterns
-    print(f"Analyzing {len(events)} query events...")
-    index = memory.build_cooccurrence_index(events)
-
-    # Write patterns
-    patterns_file = memory.write_learned_patterns(project_path, index)
-
-    # Report results
-    print(f"✓ Learned {index['metadata']['patterns_learned']} cooccurrence patterns")
-    print(f"✓ Patterns saved to {patterns_file}")
-    print("✓ Next query will apply learned patterns for improved retrieval")
-
-    # Show top patterns
-    cooccurrence = index["cooccurrence"]
-    if cooccurrence:
-        print("\nTop cooccurrence patterns:")
-        sorted_pairs = sorted(cooccurrence.items(), key=lambda x: x[1], reverse=True)
-        for pair, count in sorted_pairs[:5]:
-            print(f"  {pair}: {count} times")
+    The old learned_patterns reranker that ``neuralmind learn`` populated has
+    been removed. The Hebbian synapse layer now learns continuously from
+    queries, edits, and tool calls — no manual step, and edges decay instead
+    of going stale. Kept as an exit-0 no-op so existing scripts/CI don't break.
+    """
+    print("`neuralmind learn` is deprecated and does nothing.")
+    print(
+        "The synapse layer now learns automatically and continuously from "
+        "queries, edits, and tool calls"
+    )
+    print("(no manual step, and edges decay instead of going stale).")
+    print("Run `neuralmind stats` or `neuralmind memory inspect` to see learned memory.")
 
 
 def cmd_skeleton(args):
@@ -1437,9 +1412,9 @@ def main():
     eval_p.set_defaults(func=cmd_eval)
 
     learn_p = subparsers.add_parser(
-        "learn", help="Run continual learning scaffold (safe no-op for MVP)"
+        "learn", help="Deprecated no-op: the synapse layer learns automatically"
     )
-    learn_p.add_argument("project_path")
+    learn_p.add_argument("project_path", nargs="?", default=".")
     learn_p.set_defaults(func=cmd_learn)
 
     # Next-likely — directional transition recall (v0.11.0+)
