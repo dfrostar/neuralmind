@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.25.0](https://github.com/dfrostar/neuralmind/compare/v0.24.0...v0.25.0) (2026-06-12)
+
+
+### Features
+
+* retire the learned_patterns reranker — the synapse layer is the single learning signal ([#230](https://github.com/dfrostar/neuralmind/issues/230)) ([d00f46c](https://github.com/dfrostar/neuralmind/commit/d00f46c29b2dacaff1af8577278a2eb13cff90c6)), closes [#143](https://github.com/dfrostar/neuralmind/issues/143)
+
+
+### Bug Fixes
+
+* make the test suite Windows-green and restore full Windows support ([#228](https://github.com/dfrostar/neuralmind/issues/228)) ([bd3daad](https://github.com/dfrostar/neuralmind/commit/bd3daadd6db1746edf4365ff99dea21cfa5d0350))
+
 ## [0.24.0](https://github.com/dfrostar/neuralmind/compare/v0.23.0...v0.24.0) (2026-06-11)
 
 
