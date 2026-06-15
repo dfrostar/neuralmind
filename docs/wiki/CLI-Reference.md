@@ -12,6 +12,7 @@ Complete command-line interface documentation for NeuralMind.
   - [wakeup](#wakeup)
   - [search](#search)
   - [benchmark](#benchmark)
+  - [probe](#probe-v0270)
   - [stats](#stats)
   - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
@@ -457,6 +458,84 @@ Estimated Full Codebase: 50,000 tokens
 ---
 Benchmark completed in 625ms
 ```
+
+---
+
+### probe *(v0.27.0+)*
+
+Run a **retrieval self-probe** on your own codebase: does the index actually
+find the right file when the agent asks about a symbol? Unlike `benchmark`
+(which measures token reduction) and `benchmark --quality` (which scores ranking
+against committed golden fixtures), `probe` runs **label-free** — no hand
+annotation — so it works on **any** built project.
+
+```bash
+neuralmind probe [project_path] [OPTIONS]
+```
+
+For a deterministic sample of indexed symbols, it synthesizes a natural-language
+query from each symbol's identity (the *humanized* label — `authenticate_user` →
+`"authenticate user"`, never its node id), retrieves the top-k hits, and scores
+whether the symbol's own source file came back. It reports **recall@1/3/5**,
+**MRR**, and **answerability@k** (reusing the `neuralmind.quality` metrics), plus
+a **blind-spot list**: the sampled symbols the index couldn't retrieve from
+their description — i.e. where an agent would come up empty.
+
+The idea is borrowed from long-context "needle-in-a-haystack" evals (e.g. S-NIAH
+in the *Recursive Language Models* paper): rather than measuring cost, it
+measures whether the right node still surfaces as the index grows. It is
+**read-only** — it never mutates the index or the synapse store.
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Path to project root (default: `.`) |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sample-size` | 50 | How many indexed symbols to probe (`0` = all) |
+| `--k` | 10 | Retrieval depth — a symbol's file must surface in the top-k |
+| `--seed` | 0 | Sampling seed; same seed = same sample, for stable/comparable runs |
+| `--baseline` | — | A saved probe JSON to compare against (reports recall/MRR deltas) |
+| `--json`, `-j` | False | Output the full report (including every blind spot) as JSON |
+
+#### Examples
+
+```bash
+# Probe the current project
+neuralmind probe .
+
+# Tighter: the right file must be the #1 hit
+neuralmind probe . --k 1
+
+# Save a baseline, then check whether a refactor moved retrieval
+neuralmind probe . --sample-size 100 --json > probe-baseline.json
+neuralmind probe . --sample-size 100 --baseline probe-baseline.json
+```
+
+#### Sample Output
+
+```
+Retrieval self-probe — my-project
+Sampled 50 of 1240 indexed symbols, retrieval depth k=10
+============================================================
+  answerability  : 92%  (file found in top-10)
+  MRR            : 0.810
+  recall@1/3/5   : 0.740 / 0.860 / 0.900
+  blind spots    : 4
+------------------------------------------------------------
+Symbols the index couldn't retrieve from their own description (4 total):
+  - parseConfig  (cfg/loader.py)   query: "parse config"
+  - RetryPolicy  (net/retry.py)    query: "retry policy"
+  …
+```
+
+Because the probe is deterministic per `--seed` and emits `--json`, you can gate
+CI on a per-repo recall/MRR floor, or diff two runs with `--baseline` to catch a
+retrieval regression before it ships.
 
 ---
 

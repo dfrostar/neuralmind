@@ -201,6 +201,85 @@ def cmd_benchmark(args):
         print(f"Summary: {result['summary']}")
 
 
+def cmd_probe(args):
+    """`neuralmind probe` — retrieval self-probe on your own codebase.
+
+    Unlike `benchmark` (which measures token reduction) and `benchmark
+    --quality` (which scores ranking against committed golden fixtures), this
+    runs label-free on the current project: it samples indexed symbols, asks
+    the index to retrieve each one back from a natural-language query, and
+    reports recall@k / MRR / answerability plus the symbols it couldn't find.
+    """
+    import contextlib
+
+    # The embedder prints graph-load / embedding progress to stdout, which would
+    # corrupt --json and clutter the human report. Redirect that to stderr (the
+    # same trick the quality harness uses) so stdout carries only the report.
+    with contextlib.redirect_stdout(sys.stderr):
+        mind = create_mind(args.project_path, auto_build=True)
+        report = mind.retrieval_probe(
+            sample_size=args.sample_size,
+            k=args.k,
+            seed=args.seed,
+        )
+    data = report.to_dict()
+
+    baseline = None
+    if getattr(args, "baseline", None):
+        try:
+            raw = json.loads(Path(args.baseline).read_text(encoding="utf-8"))
+            baseline = raw.get("mean_recall") and raw or None
+        except (OSError, ValueError) as exc:
+            print(f"probe: could not read baseline {args.baseline}: {exc}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.json:
+        if baseline is not None:
+            from neuralmind import quality
+
+            data["baseline_deltas"] = [
+                d.to_dict() for d in quality.compare_to_baseline(report.suite, baseline)
+            ]
+        print(json.dumps(data, indent=2))
+        return
+
+    if data["n_queries"] == 0:
+        print(f"probe: no probeable symbols in {Path(args.project_path).resolve().name}.")
+        print("Build the index first: neuralmind build .")
+        sys.exit(1)
+
+    print(f"Retrieval self-probe — {Path(args.project_path).resolve().name}")
+    print(
+        f"Sampled {data['sample_size']} of {data['index_size']} indexed symbols, "
+        f"retrieval depth k={data['k']}"
+    )
+    print("=" * 60)
+    print(f"  answerability  : {data['answerability']:.0%}  (file found in top-{data['k']})")
+    print(f"  MRR            : {data['mrr']:.3f}")
+    recall = data["mean_recall"]
+    print(
+        "  recall@1/3/5   : "
+        f"{recall.get('1', 0):.3f} / {recall.get('3', 0):.3f} / {recall.get('5', 0):.3f}"
+    )
+    print(f"  blind spots    : {data['blind_spot_total']}")
+    if baseline is not None:
+        from neuralmind import quality
+
+        print("-" * 60)
+        print("vs baseline:")
+        for d in quality.compare_to_baseline(report.suite, baseline):
+            arrow = "▲" if d.delta > 5e-4 else ("▼" if d.delta < -5e-4 else "=")
+            print(f"  {d.metric}: {d.current:.3f} ({arrow} {d.delta:+.3f})")
+    if data["blind_spots"]:
+        print("-" * 60)
+        shown = data["blind_spots"]
+        print(f"Symbols the index couldn't retrieve from their own description ({data['blind_spot_total']} total):")
+        for spot in shown:
+            print(f"  - {spot['label']}  ({spot['source_file']})   query: \"{spot['query']}\"")
+        if data["blind_spot_total"] > len(shown):
+            print(f"  … and {data['blind_spot_total'] - len(shown)} more (see --json)")
+
+
 def _run_quality_eval(args) -> None:
     """`neuralmind benchmark --quality` — the retrieval-quality self-test.
 
@@ -1376,6 +1455,37 @@ def main():
     bench_p.add_argument("--submitter", help="Your GitHub username (optional)")
     bench_p.add_argument("--notes", help="Optional notes for the submission")
     bench_p.set_defaults(func=cmd_benchmark)
+
+    probe_p = subparsers.add_parser(
+        "probe",
+        help="Retrieval self-probe: does the index find YOUR symbols? "
+        "(recall@k / MRR / answerability + a blind-spot list, no labeling needed)",
+    )
+    probe_p.add_argument("project_path", nargs="?", default=".")
+    probe_p.add_argument(
+        "--sample-size",
+        type=int,
+        default=50,
+        help="How many indexed symbols to probe (default: 50; 0 = all)",
+    )
+    probe_p.add_argument(
+        "--k",
+        type=int,
+        default=10,
+        help="Retrieval depth — a symbol's file must surface in the top-k (default: 10)",
+    )
+    probe_p.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Sampling seed; same seed = same sample, for stable/comparable runs (default: 0)",
+    )
+    probe_p.add_argument(
+        "--baseline",
+        help="A saved probe JSON to compare against (reports recall/MRR deltas)",
+    )
+    probe_p.add_argument("--json", "-j", action="store_true")
+    probe_p.set_defaults(func=cmd_probe)
 
     search_p = subparsers.add_parser("search", help="Direct semantic search")
     search_p.add_argument("project_path")

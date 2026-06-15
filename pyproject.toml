@@ -152,7 +152,12 @@ keywords = [
     "fable-5",
     "self-improvement-engine",
     "selector-autotuning",
-    "adaptive-recall-depth"
+    "adaptive-recall-depth",
+    "retrieval-self-probe",
+    "label-free-retrieval-eval",
+    "recall-at-k",
+    "codebase-retrieval-test",
+    "needle-in-haystack"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

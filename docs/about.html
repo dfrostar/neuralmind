@@ -105,6 +105,24 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0270">
+            <h2>What's New in v0.27.0 — prove retrieval finds <em>your</em> code</h2>
+            <p><strong>A new <code>neuralmind probe</code> command answers the question the existing benchmarks couldn't:</strong> on my codebase, can the agent actually find the right file when it asks about a symbol? <code>neuralmind benchmark</code> proves NeuralMind is <em>cheap</em> (token reduction); <code>neuralmind benchmark --quality</code> proves the ranking is <em>good</em> — but only against a committed golden suite of hand-labeled modules that ships with the source repo, so you can't point it at your own code. <code>probe</code> fills that gap by running <strong>label-free</strong>: no fixtures, no annotation, works on any built project.</p>
+            <h3>How it works</h3>
+            <p>For a deterministic sample of indexed symbols, the probe synthesizes a natural-language query from each symbol's own identity — the <em>humanized</em> label, never its node id (<code>authenticate_user</code> &rarr; &ldquo;authenticate user&rdquo;, <code>HTTPServerFactory</code> &rarr; &ldquo;http server factory&rdquo;) — retrieves the top-k hits from the real index, and scores whether the symbol's own source file came back. It reports <strong>recall@1/3/5, MRR, and answerability@k</strong>, reusing the exact metric math (<code>neuralmind.quality</code>) behind the golden-suite eval. The most actionable output is the <strong>blind-spot list</strong>: the sampled symbols whose own file never surfaced — i.e. the places an agent would come up empty — each named with the query that missed.</p>
+            <p>The idea is borrowed from long-context &ldquo;needle-in-a-haystack&rdquo; evals (e.g. S-NIAH in the <em>Recursive Language Models</em> paper): rather than measuring cost, it measures whether the right node still surfaces as the index grows — the retrieval analog of context rot.</p>
+            <h3>What the agent actually sees</h3>
+            <ul>
+                <li><strong>A new CLI you run yourself:</strong> <code>neuralmind probe .</code> (with <code>--sample-size</code>, <code>--k</code>, <code>--seed</code>, <code>--baseline</code>, <code>--json</code>). No hook, query, or memory behavior changes — retrieval and compression are untouched.</li>
+                <li><strong>Read-only.</strong> The probe never mutates the index or the synapse store; a retrieval error on any sample degrades to an empty result for that sample rather than crashing the run.</li>
+                <li><strong>Deterministic and CI-friendly.</strong> A fixed <code>--seed</code> gives the same sample every run, so a probe number is stable and comparable over time; <code>--baseline</code> diffs two runs to catch a retrieval regression, and <code>--json</code> lets you gate CI on a per-repo recall/MRR floor.</li>
+            </ul>
+            <p>Token reduction tells you NeuralMind is cheap and the golden suite tells the maintainers it's good on a fixture. <code>neuralmind probe</code> tells <em>you</em> it's good on <em>your</em> code — and, when it isn't, names exactly which symbols fall through.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.27.0.md">Full v0.27.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0260">
             <h2>What's New in v0.26.0 — the selector starts tuning itself</h2>
             <p><strong>NeuralMind's progressive-disclosure selector can now adjust its own L2 recall depth from how an agent actually uses it.</strong> This is phases 1&ndash;2 of the self-improvement engine (issue #156): a logging substrate that records query and wakeup events with a <code>session_id</code>, and an opt-in tuner that reads that signal back to widen or narrow how many community summaries L2 surfaces per query. The whole thing is <strong>off by default</strong> behind <code>NEURALMIND_SELECTOR_AUTOTUNE=1</code>, and with the flag unset behavior is byte-identical to v0.25 — zero extra I/O on the hot path.</p>
