@@ -292,7 +292,9 @@ def cmd_probe(args):
     if data["blind_spots"]:
         print("-" * 60)
         shown = data["blind_spots"]
-        print(f"Symbols the index couldn't retrieve from their own description ({data['blind_spot_total']} total):")
+        print(
+            f"Symbols the index couldn't retrieve from their own description ({data['blind_spot_total']} total):"
+        )
         for spot in shown:
             print(f"  - {spot['label']}  ({spot['source_file']})   query: \"{spot['query']}\"")
         if data["blind_spot_total"] > len(shown):
