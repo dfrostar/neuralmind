@@ -7,6 +7,41 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
+class TestCLIEncoding:
+    """Regression tests for the Windows cp1252 stdout crash — UnicodeEncodeError
+    when printing arrows / em-dashes / box-drawing glyphs (e.g. `neuralmind query`
+    output, and the em-dash in argparse --help) to a cp1252 console."""
+
+    def test_force_utf8_io_lets_cp1252_stream_print_non_ascii(self, monkeypatch):
+        import io
+
+        from neuralmind.cli import _force_utf8_io
+
+        buf = io.BytesIO()
+        # A cp1252 text stream raises UnicodeEncodeError on these glyphs...
+        cp1252_stream = io.TextIOWrapper(buf, encoding="cp1252", newline="")
+        monkeypatch.setattr(sys, "stdout", cp1252_stream)
+
+        _force_utf8_io()
+
+        # ...but after the reconfigure the same print must succeed as UTF-8.
+        # → = →, — = em-dash, ─ = box-drawing, é = é
+        glyphs = "→ — ─ café"
+        print(glyphs)
+        sys.stdout.flush()
+        assert glyphs.encode("utf-8") in buf.getvalue()
+
+    def test_force_utf8_io_is_noop_when_reconfigure_missing(self, monkeypatch):
+        from neuralmind.cli import _force_utf8_io
+
+        class _NoReconfigure:
+            pass
+
+        monkeypatch.setattr(sys, "stdout", _NoReconfigure())
+        monkeypatch.setattr(sys, "stderr", _NoReconfigure())
+        _force_utf8_io()  # must not raise (e.g. under pytest capture objects)
+
+
 class TestCLIBuild:
     """Tests for CLI build command."""
 
