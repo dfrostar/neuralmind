@@ -15,6 +15,21 @@ from neuralmind import memory
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 
 
+def _force_utf8_io() -> None:
+    """Force UTF-8 on stdout/stderr so non-ASCII output (arrows, em-dashes,
+    box-drawing glyphs in the context/report) doesn't crash on Windows consoles,
+    which default to the cp1252 codec and raise UnicodeEncodeError.
+
+    No-op where it isn't needed or possible: streams already UTF-8 (Linux/macOS)
+    or that lack ``reconfigure`` (e.g. pytest capture objects).
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
     force = args.force
@@ -1302,6 +1317,11 @@ fi
 
 
 def main():
+    # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
+    # Unicode glyphs we print — and on the em-dash argparse prints in --help.
+    # Force UTF-8 before any output. No-op on Linux/macOS and under pytest capture.
+    _force_utf8_io()
+
     parser = argparse.ArgumentParser(
         description=(
             "NeuralMind — reduce Claude/GPT/Gemini token costs 40-70x on code questions. "
