@@ -105,6 +105,50 @@
     </section>
 
     <section>
+        <div class="container" id="context-engineering-stack">
+            <h2>The Context Engineering Stack: NeuralMind, Ponytail, and Headroom</h2>
+            <p>NeuralMind is one piece of a broader context engineering ecosystem. Three tools address token waste at different points in the LLM pipeline — and they compose without conflict:</p>
+            <ul>
+                <li><strong>NeuralMind (Retrieval Stage):</strong> Persistent semantic memory. The agent receives only the few entities that matter (~800 tokens) rather than whole files, and the Hebbian synapse layer learns which files go together from actual usage — carrying that knowledge across sessions.</li>
+                <li><strong><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a> (Generation Stage):</strong> Behavioral prompt steering. Enforces a "lazy senior developer" persona — a sequential optimization ladder (YAGNI → stdlib → native → existing → one-line → minimum code) that blocks custom abstractions until simpler alternatives are exhausted. Any deliberate shortcut is annotated <code>ponytail:</code> and harvested into a technical debt ledger via <code>/ponytail-debt</code>.</li>
+                <li><strong><a href="https://github.com/chopratejas/headroom">Headroom</a> (Transport Stage):</strong> Lossless transport-layer compression. Intercepts traffic between client and LLM, applying a three-stage engine (CacheAligner for KV prefix stability, ContentRouter for JSON/HTML/diff payloads, IntelligentContext for relevance scoring) with 60–95% payload reduction and a reversible CCR loop backed by local SQLite storage.</li>
+            </ul>
+            <h3>Where each tool intervenes</h3>
+            <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid #667eea;">
+                        <th style="text-align:left;padding:0.5rem 1rem;">Tool</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Locus</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Primary Mechanism</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Verified Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:0.5rem 1rem;"><strong>NeuralMind</strong></td>
+                        <td style="padding:0.5rem 1rem;">Retrieval</td>
+                        <td style="padding:0.5rem 1rem;">Hebbian synapse networks</td>
+                        <td style="padding:0.5rem 1rem;">40–70× fewer query tokens</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a></td>
+                        <td style="padding:0.5rem 1rem;">Generation</td>
+                        <td style="padding:0.5rem 1rem;">Sequential decision ladder</td>
+                        <td style="padding:0.5rem 1rem;">80–94% output token savings</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/chopratejas/headroom">Headroom</a></td>
+                        <td style="padding:0.5rem 1rem;">Transport</td>
+                        <td style="padding:0.5rem 1rem;">Reversible CCR loops</td>
+                        <td style="padding:0.5rem 1rem;">60–95% payload reduction</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0260">
             <h2>What's New in v0.26.0 — the selector starts tuning itself</h2>
             <p><strong>NeuralMind's progressive-disclosure selector can now adjust its own L2 recall depth from how an agent actually uses it.</strong> This is phases 1&ndash;2 of the self-improvement engine (issue #156): a logging substrate that records query and wakeup events with a <code>session_id</code>, and an opt-in tuner that reads that signal back to widen or narrow how many community summaries L2 surfaces per query. The whole thing is <strong>off by default</strong> behind <code>NEURALMIND_SELECTOR_AUTOTUNE=1</code>, and with the flag unset behavior is byte-identical to v0.25 — zero extra I/O on the hot path.</p>

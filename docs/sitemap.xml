@@ -61,6 +61,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://dfrostar.github.io/neuralmind/comparisons/context-engineering-stack.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+  </url>
+  <url>
     <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-langchain-llamaindex.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
