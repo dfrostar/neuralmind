@@ -21,6 +21,7 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | [Generic RAG over a codebase](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
 | [Tree-sitter / ctags / grep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
 | [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
+| [The Context Engineering Stack (NeuralMind + Ponytail + Headroom)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md) | "How do NeuralMind, Ponytail, and Headroom work together as a unified token optimization stack?" |
 
 ## One-line verdicts
 
@@ -38,6 +39,8 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | Long context (1M/2M) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
 | Generic RAG | Text chunking loses structure; NeuralMind keeps the call graph |
 | Tree-sitter / ctags / grep | Deterministic but syntactic; use alongside NeuralMind, not instead of |
+| Headroom | Use both — Headroom compresses what flows to the model; NeuralMind stops most of it from flowing in the first place |
+| Context Engineering Stack (NeuralMind + Ponytail + Headroom) | These compose: NeuralMind (retrieval) + Headroom (transport) + Ponytail (generation) address token waste at every pipeline stage |
 
 ## TL;DR
 
