@@ -102,9 +102,15 @@ from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
 __version__ = "0.28.0"
+# NOTE: ``GraphEmbedder`` is intentionally NOT in ``__all__``. It is the
+# ChromaDB backend (lazy-exposed via ``__getattr__`` below), and ChromaDB is an
+# opt-in extra as of v0.29.0. Listing it in ``__all__`` would make
+# ``from neuralmind import *`` resolve the lazy attribute and import ChromaDB,
+# which fails on the default ChromaDB-free install. Explicit
+# ``from neuralmind import GraphEmbedder`` still works when ``[chromadb]`` is
+# installed.
 __all__ = [
     "NeuralMind",
-    "GraphEmbedder",
     "InMemoryEmbeddingBackend",
     "EmbeddingBackend",
     "ContextSelector",

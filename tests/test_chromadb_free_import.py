@@ -32,8 +32,26 @@ class ChromaFreeImportTest(unittest.TestCase):
         result = subprocess.run([sys.executable, "-c", code], cwd=str(_REPO_ROOT))
         self.assertEqual(result.returncode, 0, "`import neuralmind` eagerly imported chromadb")
 
+    def test_star_import_does_not_import_chromadb(self) -> None:
+        # `from neuralmind import *` must not resolve the lazy GraphEmbedder
+        # export (which imports chromadb) — so it stays usable on the default
+        # ChromaDB-free install. GraphEmbedder is therefore excluded from
+        # __all__; explicit `from neuralmind import GraphEmbedder` still works.
+        code = (
+            "import sys; ns = {}; exec('from neuralmind import *', ns); "
+            "sys.exit(1 if 'chromadb' in sys.modules else 0)"
+        )
+        result = subprocess.run([sys.executable, "-c", code], cwd=str(_REPO_ROOT))
+        self.assertEqual(result.returncode, 0, "`from neuralmind import *` pulled in chromadb")
+
     def test_graphembedder_still_importable_on_demand(self) -> None:
-        # The lazy export must still resolve when actually accessed.
+        # The lazy export must still resolve when actually accessed — but only
+        # when the optional [chromadb] extra is installed (v0.29.0+). On a
+        # ChromaDB-free install, accessing it raises (the chroma backend is gone).
+        import importlib.util
+
+        if importlib.util.find_spec("chromadb") is None:
+            self.skipTest("needs the optional [chromadb] extra")
         import neuralmind
 
         self.assertEqual(neuralmind.GraphEmbedder.__name__, "GraphEmbedder")
