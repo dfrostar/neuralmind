@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.27.0](https://github.com/dfrostar/neuralmind/compare/v0.26.0...v0.27.0) (2026-06-18)
+
+
+### Features
+
+* add Rust to the built-in tree-sitter backend ([#245](https://github.com/dfrostar/neuralmind/issues/245)) ([6eea233](https://github.com/dfrostar/neuralmind/commit/6eea23333af8f464d3a151d9979869b91cd4f766))
+
+
+### Bug Fixes
+
+* force UTF-8 stdout/stderr in CLI to avoid Windows cp1252 crash ([#242](https://github.com/dfrostar/neuralmind/issues/242)) ([2db260a](https://github.com/dfrostar/neuralmind/commit/2db260a27260e14f07e5314c96071d8b60ce6b66))
+
+
+### Documentation
+
+* add context engineering stack comparative guide ([5a21b39](https://github.com/dfrostar/neuralmind/commit/5a21b39ec0e796d9902bd581cb6f5dfb1bfcb596))
+* add context engineering stack comparative guide (NeuralMind + Ponytail + Headroom) ([005ceba](https://github.com/dfrostar/neuralmind/commit/005ceba9e7746c6f6607d23c573e8306c10535d4))
+* add Google Search Console site-verification file ([#237](https://github.com/dfrostar/neuralmind/issues/237)) ([c26c0ad](https://github.com/dfrostar/neuralmind/commit/c26c0ad1844a9afb12e97d78f81009fb0bbc20d3))
+* add the Headroom comparison and fix the sitemap to same-host URLs ([#236](https://github.com/dfrostar/neuralmind/issues/236)) ([040a8ef](https://github.com/dfrostar/neuralmind/commit/040a8efd8d63d9f610e2f6cfc355836f3b1ec97e))
+* mark v0.26.0 as the latest release on the landing page ([#234](https://github.com/dfrostar/neuralmind/issues/234)) ([cbea018](https://github.com/dfrostar/neuralmind/commit/cbea01850ca476d1bce2f2fde0b2f6a82cb524e0))
+* refresh benchmark chart [skip ci] ([a2f20db](https://github.com/dfrostar/neuralmind/commit/a2f20dbeecd4eea806d7b4591588f1b0402ce486))
+
 ## [0.26.0](https://github.com/dfrostar/neuralmind/compare/v0.25.0...v0.26.0) (2026-06-12)
 
 
