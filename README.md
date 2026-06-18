@@ -625,6 +625,7 @@ Short answers to "why not just use X?". Each row links to a deeper page.
 | [Long context windows (1M/2M)](docs/comparisons/vs-long-context.md) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
 | [Generic RAG over a codebase](docs/comparisons/vs-rag.md) | Text chunking loses structure; NeuralMind keeps the call graph |
 | [Tree-sitter / ctags / grep](docs/comparisons/vs-treesitter-ctags.md) | Deterministic but syntactic; use alongside NeuralMind, not instead of |
+| [Context Engineering Stack (NeuralMind + Ponytail + Headroom)](docs/comparisons/context-engineering-stack.md) | How all three tools fit together as a unified retrieval → transport → generation pipeline |
 
 Full comparison index: [docs/comparisons/](docs/comparisons/README.md).
 
