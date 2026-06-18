@@ -78,6 +78,7 @@ SYMBOL_COVERAGE_FLOOR = float(os.environ.get("NEURALMIND_PARITY_COVERAGE_FLOOR",
 _LANG_FIXTURES: dict[str, str] = {
     "typescript": "tests/fixtures/sample_project_ts",
     "go": "tests/fixtures/sample_project_go",
+    "rust": "tests/fixtures/sample_project_rust",
 }
 
 

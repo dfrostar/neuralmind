@@ -3,7 +3,7 @@
 These tests are **stdlib-only** (json + pathlib) so they run in CI without
 chromadb, tiktoken, or graphify — mirroring the synapse layer's stdlib-only
 test convention. They do NOT measure retrieval quality (that needs the
-embedder); they guard that the TS and Go fixtures, their hand-authored
+embedder); they guard that the TS, Go, and Rust fixtures, their
 graph.json, and their gold-module query sets stay mutually consistent so the
 per-language hit-rate harness has something valid to run against later
 (Epic E2.4).
@@ -34,6 +34,7 @@ REFERENCE_GRAPH = (
 CASES = [
     ("sample_project_ts", "benchmark_queries_ts.json"),
     ("sample_project_go", "benchmark_queries_go.json"),
+    ("sample_project_rust", "benchmark_queries_rust.json"),
 ]
 
 
@@ -101,7 +102,7 @@ def test_symbol_lines_point_at_real_definitions(fixture: str, queryfile: str) ->
         # (whose label is the filename). Every other code node is a real symbol
         # we DO validate — including any that lands on L1, since that signals
         # _gen_graph.py failed to locate it and must fail loudly, not be skipped.
-        if src == "<builtin>" or label.endswith((".ts", ".go")):
+        if src == "<builtin>" or label.endswith((".ts", ".go", ".rs")):
             continue
         line_no = int(node["source_location"].lstrip("L"))
         text = (FIXTURES / fixture / src).read_text().splitlines()[line_no - 1]
@@ -129,7 +130,10 @@ def test_edge_locations_point_at_real_lines(fixture: str, queryfile: str) -> Non
             ), f"{fixture}:{src}:{line_no} is not a call to {callee}(): {text!r}"
         elif link["relation"] == "imports_from":
             assert (
-                "import" in text or "from" in text or text.strip().startswith('"')
+                "import" in text
+                or "from" in text
+                or text.strip().startswith('"')
+                or text.lstrip().startswith("use ")
             ), f"{fixture}:{src}:{line_no} is not an import line: {text!r}"
 
 

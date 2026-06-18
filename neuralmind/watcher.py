@@ -36,6 +36,7 @@ DEFAULT_IGNORES = (
     ".ruff_cache",
     "dist",
     "build",
+    "target",
 )
 
 
