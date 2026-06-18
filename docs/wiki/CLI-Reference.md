@@ -860,6 +860,7 @@ neuralmind memory inspect [project_path] [--namespace NAME] [--json]
 neuralmind memory reset   [project_path] --namespace NAME [--json]
 neuralmind memory export  [project_path] [--namespace NAME] [-o FILE]
 neuralmind memory import  <file> [--project-path PATH] [--namespace NAME] [--json]
+neuralmind memory publish [project_path] [--json]
 ```
 
 #### Subcommands
@@ -868,8 +869,9 @@ neuralmind memory import  <file> [--project-path PATH] [--namespace NAME] [--jso
 |------------|--------------|
 | `inspect` | Contribution by namespace — edges, total weight, transitions, nodes — plus the active namespace and schema version. Also folded into `neuralmind stats`. |
 | `reset` | Clear **one** namespace (`--namespace` is required). The project index and every other namespace are untouched — the surgical alternative to a full retrain. |
-| `export` | Write one namespace as a portable, versioned JSON bundle reusing the IR's `IRSynapse` shape (the PRD 8 team-memory on-ramp). Defaults to the active namespace; `-o` writes a file, otherwise stdout. |
+| `export` | Write one namespace as a portable, versioned JSON bundle reusing the IR's `IRSynapse` shape. Defaults to the active namespace; `-o` writes a file, otherwise stdout. |
 | `import` | Validate a bundle (format + version + entries) and merge it into a target namespace (default: the bundle's own). Merging keeps the MAX of weight/count per edge, so re-importing the same bundle is **idempotent**. A malformed bundle is rejected wholesale — never partially imported. |
+| `publish` *(v0.30.0)* | **Team memory.** Export the project's learned memory (`personal` + `shared`, MAX-merged) to a committed bundle at the repo root, **`.neuralmind-team-memory.json`**. Commit it, and every teammate's agent inherits it once into `shared` on its next `SessionStart`/`build` (content-hash-gated, off-switch `NEURALMIND_TEAM_MEMORY=0`). |
 
 #### Examples
 
@@ -880,9 +882,14 @@ neuralmind memory inspect .
 # A feature branch merged — drop exactly its memory
 neuralmind memory reset . --namespace branch:feature-x
 
-# Ship a team baseline to a new teammate
+# Ship a team baseline to a new teammate (ad-hoc bundle)
 neuralmind memory export . --namespace personal -o team-baseline.json
 neuralmind memory import team-baseline.json --namespace shared
+
+# Team memory (v0.30.0): commit once, teammates inherit automatically
+neuralmind memory publish .
+git add .neuralmind-team-memory.json && git commit -m "publish team memory"
+# teammates: their next `neuralmind build` / Claude Code session inherits it
 ```
 
 #### How the active namespace is resolved
@@ -1357,6 +1364,7 @@ neuralmind daemon stop
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
+| `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
 | `NEURALMIND_OUTPUT_CACHE_MAX` | `2097152` | *(v0.10.0+)* Total size cap (bytes) for the recovery cache. Oversize payloads are split proportionally between stdout/stderr and truncated keeping head + tail. |
