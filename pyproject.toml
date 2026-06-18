@@ -104,6 +104,9 @@ keywords = [
     "rust-code-graph",
     "rust-code-intelligence",
     "rust-tree-sitter",
+    "java-code-graph",
+    "java-code-intelligence",
+    "java-tree-sitter",
     "multi-language-code-intelligence",
     "polyglot-codebase-indexing",
     "scip",
@@ -178,13 +181,15 @@ dependencies = [
     "mcp>=1.27.2",
     # Built-in graph backend: parse a project into a graphify-compatible
     # graph.json with no external graphify install. See neuralmind/graphgen.py.
-    # Python + TypeScript + Go + Rust grammars are bundled so multi-language
-    # indexing works out of the box; the SUPPORTED_SUFFIXES seam registers more.
+    # Python + TypeScript + Go + Rust + Java grammars are bundled so
+    # multi-language indexing works out of the box; the SUPPORTED_SUFFIXES
+    # seam registers more.
     "tree-sitter>=0.21.0",
     "tree-sitter-python>=0.21.0",
     "tree-sitter-typescript>=0.21.0",
     "tree-sitter-go>=0.21.0",
-    "tree-sitter-rust>=0.21.0"
+    "tree-sitter-rust>=0.21.0",
+    "tree-sitter-java>=0.21.0"
 ]
 
 [project.optional-dependencies]

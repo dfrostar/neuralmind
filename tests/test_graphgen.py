@@ -240,6 +240,7 @@ class WriteGraphTests(unittest.TestCase):
 FIXTURE_TS = _REPO / "tests" / "fixtures" / "sample_project_ts"
 FIXTURE_GO = _REPO / "tests" / "fixtures" / "sample_project_go"
 FIXTURE_RUST = _REPO / "tests" / "fixtures" / "sample_project_rust"
+FIXTURE_JAVA = _REPO / "tests" / "fixtures" / "sample_project_java"
 
 
 @unittest.skipUnless(
@@ -436,6 +437,105 @@ class RustTests(unittest.TestCase):
         self.assertEqual(gold_syms, built_syms)
 
 
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("java"),
+    "tree-sitter-java not installed",
+)
+class JavaTests(unittest.TestCase):
+    """The Java extractor behind the SUPPORTED_SUFFIXES seam — the independent
+    correctness oracle for the Java gold (hand-listed expected symbols/edges)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_JAVA)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_methods_and_constructors(self) -> None:
+        for want in (
+            "getConnection()",  # static method
+            "ensureSchema()",
+            "encodeToken()",
+            "sign()",  # private method
+            "authenticateUser()",
+            "chargeCustomer()",
+            "StripeClient()",  # constructor
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_types(self) -> None:
+        # class, interface, and enum all become `code` type nodes.
+        for want in ("Connection", "DataStore", "User", "StripeClient", "Method", "Route"):
+            self.assertIn(want, self.code_labels)
+
+    def test_fields_and_enum_constants_extracted(self) -> None:
+        for want in ("url", "apiKey", "amountCents", "email", "GET", "POST", "DELETE"):
+            self.assertIn(want, self.code_labels)
+
+    def test_javadoc_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("authentication hot path", rats)
+
+    def test_implements_becomes_inherits(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        inherits = {
+            (label[e["source"]], label[e["target"]])
+            for e in self.edges
+            if e["relation"] == "inherits"
+        }
+        self.assertIn(("Connection", "DataStore"), inherits)
+
+    def test_import_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        base = "src/main/java/com/example"
+        self.assertIn((f"{base}/users/Crud.java", f"{base}/db/Connection.java"), pairs)
+        self.assertIn((f"{base}/api/Routes.java", f"{base}/auth/Handlers.java"), pairs)
+
+    def test_cross_file_call_resolved(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        calls = {
+            (label[e["source"]], label[e["target"]]) for e in self.edges if e["relation"] == "calls"
+        }
+        self.assertIn(("authenticateUser()", "getUserByEmail()"), calls)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_JAVA)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        import json
+
+        gold = json.loads(
+            (FIXTURE_JAVA / "graphify-out" / "graph.json").read_text(encoding="utf-8")
+        )
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
+
+
 @unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
 class IncrementalUpdateTests(unittest.TestCase):
     """`update_files` re-parses only changed files (Item 3)."""
@@ -528,7 +628,7 @@ class LanguageSeamTests(unittest.TestCase):
     """The suffix→language registry is the only thing a new grammar touches."""
 
     def test_supported_suffixes(self) -> None:
-        for suf in (".py", ".ts", ".tsx", ".go", ".rs"):
+        for suf in (".py", ".ts", ".tsx", ".go", ".rs", ".java"):
             self.assertIn(suf, graphgen.SUPPORTED_SUFFIXES)
 
     def test_every_suffix_has_an_extractor(self) -> None:

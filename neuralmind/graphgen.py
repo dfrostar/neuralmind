@@ -13,8 +13,8 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 *graph producer*.
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
-per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, and Rust ship
-today, each mapping its grammar's node types onto the same node/edge model;
+per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, and Java
+ship today, each mapping its grammar's node types onto the same node/edge model;
 registering another grammar adds a language with no change downstream of
 ``graph.json``.
 
@@ -26,7 +26,7 @@ Design notes:
   the selector matches on them. So we are free to choose a stable id scheme.
 - **Parity with graphify is *measured*, not asserted** — the faithfulness eval
   (`evals/faithfulness`) + self-benchmark gate Python, and a per-language
-  structural symbol-coverage check gates TypeScript, Go, and Rust
+  structural symbol-coverage check gates TypeScript, Go, Rust, and Java
   (`evals/parity`).
 """
 
@@ -65,13 +65,14 @@ SCHEMA_VERSION = 1
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
-# first; TypeScript, Go, and Rust are registered here behind the same seam.
+# first; TypeScript, Go, Rust, and Java are registered here behind the same seam.
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
     ".tsx": "typescript",
     ".go": "go",
     ".rs": "rust",
+    ".java": "java",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -104,6 +105,10 @@ def _load_language(name: str):
             return Language(ts.language())
         if name == "rust":
             import tree_sitter_rust as ts
+
+            return Language(ts.language())
+        if name == "java":
+            import tree_sitter_java as ts
 
             return Language(ts.language())
     except Exception:
@@ -1320,6 +1325,249 @@ def _rust_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
     _rust_resolve_calls(b, root_node, src, rel, file_id)
 
 
+# --------------------------------------------------------------------------- #
+# Java extractor
+# --------------------------------------------------------------------------- #
+_JAVA_TYPE_DECLS: frozenset[str] = frozenset(
+    {
+        "class_declaration",
+        "interface_declaration",
+        "enum_declaration",
+        "record_declaration",
+        "annotation_type_declaration",
+    }
+)
+
+
+def _java_package(root_node, src: bytes) -> str:
+    """The file's ``package`` path (``com.example.auth``), or ``""`` if none."""
+    for child in root_node.named_children:
+        if child.type == "package_declaration":
+            for n in child.named_children:
+                if n.type in ("scoped_identifier", "identifier"):
+                    return _node_text(n, src)
+    return ""
+
+
+def _java_leading_doc(node, src: bytes) -> str | None:
+    """Javadoc is a ``block_comment``/``line_comment`` sibling preceding the
+    declaration — not the ``comment`` type ``_leading_comment_text`` matches."""
+    comments: list[str] = []
+    sib = node.prev_named_sibling
+    while sib is not None and sib.type in ("block_comment", "line_comment"):
+        comments.append(_node_text(sib, src))
+        sib = sib.prev_named_sibling
+    if not comments:
+        return None
+    return _clean_comment("\n".join(reversed(comments))) or None
+
+
+def _java_attach_doc(b: _GraphBuilder, node, src: bytes, rel: str, target_id: str) -> None:
+    doc = _java_leading_doc(node, src)
+    if not doc:
+        return
+    line = node.start_point[0] + 1
+    rid = f"{target_id}__rationale"
+    b.add_node(rid, doc, "rationale", rel, line)
+    b.add_edge("rationale_for", rid, target_id, rel, line)
+
+
+def _java_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> None:
+    nm = fn_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    # Anchor on the identifier's line, not the declaration's — modifiers and
+    # annotations (`@Override`) make ``start_point`` land above the name.
+    line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _java_attach_doc(b, fn_node, src, rel, fid)
+
+
+def _java_emit_fields(b: _GraphBuilder, field_node, src: bytes, rel: str, container: str) -> None:
+    """Each ``variable_declarator`` in a field declaration → a symbol node."""
+    for decl in field_node.named_children:
+        if decl.type != "variable_declarator":
+            continue
+        nm = decl.child_by_field_name("name")
+        if nm is not None:
+            name = _node_text(nm, src)
+            line = nm.start_point[0] + 1
+            sid = f"{container}__{_slug(name)}_sym"
+            b.add_node(sid, name, "code", rel, line)
+            b.add_edge("contains", container, sid, rel, line)
+
+
+def _java_body_of(type_node):
+    """The members container for any Java type declaration."""
+    return type_node.child_by_field_name("body")
+
+
+def _java_emit_type(
+    b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: str, container: str, pkg: str
+) -> None:
+    nm = type_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    # Anchor on the identifier's line (annotations/modifiers shift start_point).
+    line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    b.add_edge("contains", container, cid, rel, line)
+    _java_attach_doc(b, type_node, src, rel, cid)
+
+    # Register name keys so `import`s resolve to this file: the fully-qualified
+    # name (package + type) and the bare simple name.
+    fqn = f"{pkg}.{name}" if pkg else name
+    b.file_by_module.setdefault(fqn, file_id)
+    b.file_by_module.setdefault(name, file_id)
+
+    body = _java_body_of(type_node)
+    if body is None:
+        return
+    for member in body.named_children:
+        t = member.type
+        if t in (
+            "method_declaration",
+            "constructor_declaration",
+            "compact_constructor_declaration",
+        ):
+            _java_emit_fn(b, member, src, rel, cid)
+        elif t == "field_declaration":
+            _java_emit_fields(b, member, src, rel, cid)
+        elif t == "enum_constant":
+            nm = member.child_by_field_name("name")
+            if nm is not None:
+                name_c = _node_text(nm, src)
+                sid = f"{cid}__{_slug(name_c)}_sym"
+                b.add_node(sid, name_c, "code", rel, member.start_point[0] + 1)
+                b.add_edge("contains", cid, sid, rel, member.start_point[0] + 1)
+        elif t in _JAVA_TYPE_DECLS:
+            # Nested type — contained by the outer type.
+            _java_emit_type(b, member, src, rel, file_id, cid, f"{pkg}.{name}" if pkg else name)
+
+
+def _java_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for Java: package keys + top-level/nested type declarations,
+    their methods, fields, and enum constants."""
+    pkg = _java_package(root_node, src)
+    for child in root_node.named_children:
+        if child.type in _JAVA_TYPE_DECLS:
+            _java_emit_type(b, child, src, rel, file_id, file_id, pkg)
+
+
+def _java_iter_type_names(node, src: bytes):
+    """Yield base type names from an extends/implements clause, unwrapping
+    ``generic_type`` to its bare name."""
+    for ch in node.named_children:
+        if ch.type in ("type_identifier", "identifier"):
+            yield _node_text(ch, src)
+        elif ch.type == "scoped_type_identifier":
+            # com.foo.Bar -> Bar (last segment)
+            yield _node_text(ch, src).split(".")[-1].strip()
+        elif ch.type == "generic_type":
+            nm = ch.child_by_field_name("name") or (
+                ch.named_children[0] if ch.named_children else None
+            )
+            if nm is not None:
+                yield _node_text(nm, src).split(".")[-1].strip()
+        elif ch.type in ("type_list", "super_interfaces", "extends_interfaces"):
+            yield from _java_iter_type_names(ch, src)
+
+
+def _java_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``extends`` / ``implements`` → ``inherits`` edges (external bases
+    synthesized so the edge never dangles)."""
+    for child in node.named_children:
+        if child.type not in _JAVA_TYPE_DECLS:
+            continue
+        name = _name_of(child, src)
+        cid = next((c for c in b.class_by_name.get(name, []) if c.startswith(file_id)), None)
+        if cid is not None:
+            line = child.start_point[0] + 1
+            for clause in child.named_children:
+                if clause.type not in (
+                    "superclass",
+                    "super_interfaces",
+                    "extends_interfaces",
+                ):
+                    continue
+                for base in _java_iter_type_names(clause, src):
+                    targets = b.class_by_name.get(base)
+                    if targets:
+                        for base_id in targets:
+                            b.add_edge("inherits", cid, base_id, rel, line)
+                    else:
+                        base_id = f"ext__{_slug(base)}_cls"
+                        b.add_node(base_id, base, "code", rel, line)
+                        b.add_edge("inherits", cid, base_id, rel, line)
+        # Recurse into nested types.
+        body = _java_body_of(child)
+        if body is not None:
+            _java_resolve_inherits(b, body, src, rel, file_id)
+
+
+def _java_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for Java: imports (by fully-qualified name) + inherits + calls."""
+    for child in root_node.named_children:
+        if child.type != "import_declaration":
+            continue
+        # Strip `static` / trailing `.*`; the remaining scoped name is the key.
+        raw = _node_text(child, src)
+        raw = raw.replace("import", "", 1).replace("static", "").strip().rstrip(";").strip()
+        line = child.start_point[0] + 1
+        keys = [raw]
+        if raw.endswith(".*"):
+            keys.append(raw[:-2])
+        for key in keys:
+            target = b.file_by_module.get(key)
+            if target and target != file_id:
+                b.add_edge("imports_from", file_id, target, rel, line, context="import")
+                break
+
+    _java_resolve_inherits(b, root_node, src, rel, file_id)
+    _java_resolve_calls(b, root_node, src, rel, file_id)
+
+
+def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in (
+                "method_declaration",
+                "constructor_declaration",
+                "compact_constructor_declaration",
+            ):
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "method_invocation" and current_fn is not None:
+                nm = child.child_by_field_name("name")
+                if nm is not None:
+                    callee = _node_text(nm, src)
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -1328,6 +1576,7 @@ _EXTRACTORS: dict[str, tuple] = {
     "typescript": (_ts_extract_symbols, _ts_resolve_edges),
     "go": (_go_extract_symbols, _go_resolve_edges),
     "rust": (_rust_extract_symbols, _rust_resolve_edges),
+    "java": (_java_extract_symbols, _java_resolve_edges),
 }
 
 
