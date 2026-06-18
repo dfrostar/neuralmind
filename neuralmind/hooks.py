@@ -286,6 +286,15 @@ def run_hook(action: str) -> int:
             store.decay()
         except Exception:
             pass
+        # Team memory: inherit the committed team bundle once into `shared`, so a
+        # fresh clone's agent starts with the team's learned associations. Gated
+        # by NEURALMIND_TEAM_MEMORY=0; idempotent (content-hash) and fail-open.
+        try:
+            from .team_memory import maybe_import_team_memory
+
+            maybe_import_team_memory(cwd, store)
+        except Exception:
+            pass
         # Self-improvement engine: tune the selector from logged usage. Opt-in
         # (not the != "0" pattern) because it is net behavior change. One JSONL
         # read plus at most one meta write — stays fast — and tuner failures

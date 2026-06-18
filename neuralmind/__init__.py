@@ -98,6 +98,13 @@ from .synapses import (
     SynapseStore,
     default_db_path,
 )
+from .team_memory import (
+    TEAM_BUNDLE_FILENAME,
+    build_team_bundle,
+    maybe_import_team_memory,
+    publish_team_memory,
+    team_bundle_path,
+)
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
@@ -154,6 +161,12 @@ __all__ = [
     "export_synapse_bundle",
     "import_synapse_bundle",
     "validate_synapse_bundle",
+    # Team memory (v0.30.0)
+    "TEAM_BUNDLE_FILENAME",
+    "team_bundle_path",
+    "build_team_bundle",
+    "publish_team_memory",
+    "maybe_import_team_memory",
 ]
 
 

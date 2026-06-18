@@ -732,6 +732,30 @@ def cmd_memory(args):
             f"transitions into namespace {result['namespace']!r}."
         )
         print("Re-importing the same bundle is idempotent (weights merge by MAX).")
+        return
+
+    if args.memory_cmd == "publish":
+        from neuralmind.team_memory import publish_team_memory
+
+        summary = publish_team_memory(args.project_path, store)
+        if args.json:
+            print(json.dumps(summary, indent=2))
+            return
+        c = summary["counts"]
+        print(
+            f"Published team memory → {summary['path']} "
+            f"({c['synapses']} synapses, {c['transitions']} transitions)."
+        )
+        print(
+            "Commit it so teammates inherit it automatically:\n"
+            f"  git add {summary['path']} && git commit -m 'chore: publish neuralmind team memory'"
+        )
+        print(
+            "A teammate's agent imports it once into the `shared` namespace on its "
+            "next session/build. Measure the onboarding lift with "
+            "`neuralmind eval --onboarding`."
+        )
+        return
 
 
 def cmd_learn(args):
@@ -1538,6 +1562,15 @@ def main():
     )
     mem_import.add_argument("--json", "-j", action="store_true")
     mem_import.set_defaults(func=cmd_memory)
+
+    mem_publish = memory_sub.add_parser(
+        "publish",
+        help="Write the project's learned memory to the committed team bundle "
+        "(.neuralmind-team-memory.json) so teammates' agents inherit it",
+    )
+    mem_publish.add_argument("project_path", nargs="?", default=".")
+    mem_publish.add_argument("--json", "-j", action="store_true")
+    mem_publish.set_defaults(func=cmd_memory)
 
     # Init-hook command
     init_parser = subparsers.add_parser(
