@@ -24,6 +24,7 @@ Each page follows the same structure:
 | [Generic RAG over a codebase](./vs-rag.md) | "Isn't this just RAG with extra steps?" |
 | [Tree-sitter / ctags / grep](./vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
 | [Headroom](./vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
+| [Context Engineering Stack (NeuralMind + Ponytail + Headroom)](./context-engineering-stack.md) | "How do I deploy all three tools together as an end-to-end pipeline?" |
 
 ## TL;DR
 
