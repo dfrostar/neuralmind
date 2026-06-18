@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.29.0](https://github.com/dfrostar/neuralmind/compare/v0.28.0...v0.29.0) (2026-06-18)
+
+
+### Features
+
+* make the default install ChromaDB-free (turbovec/ONNX) ([#251](https://github.com/dfrostar/neuralmind/issues/251)) ([5edf090](https://github.com/dfrostar/neuralmind/commit/5edf090c28a84c4416efb0685f70b330f9797650))
+
+
+### Documentation
+
+* README comparisons row, SEO meta tags, and unified-stack use-case walkthrough ([dad3298](https://github.com/dfrostar/neuralmind/commit/dad32984f835a2df9fa31d414176c88bd723c456))
+* README comparisons row, SEO meta tags, and unified-stack use-case walkthrough ([540d3ad](https://github.com/dfrostar/neuralmind/commit/540d3ad26fbdf07b5c2808b2c4cf23c276fb82e1))
+
 ## [0.28.0](https://github.com/dfrostar/neuralmind/compare/v0.27.0...v0.28.0) (2026-06-18)
 
 
