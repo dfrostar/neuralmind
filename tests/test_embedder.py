@@ -3,6 +3,12 @@
 import json
 from pathlib import Path
 
+import pytest
+
+# The GraphEmbedder is the ChromaDB backend, an opt-in extra as of v0.29.0.
+# Skip cleanly on a ChromaDB-free install; runs in the `[dev,chromadb]` CI job.
+pytest.importorskip("chromadb")
+
 
 class TestGraphEmbedder:
     """Tests for GraphEmbedder class."""

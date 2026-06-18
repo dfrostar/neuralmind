@@ -127,6 +127,11 @@ keywords = [
     "turbovec",
     "turboquant",
     "chromadb-free",
+    "chromadb-free-by-default",
+    "chromadb-optional",
+    "lean-default-install",
+    "cve-tree-free-default",
+    "reduced-cve-surface",
     "chromadb-alternative",
     "onnx-embeddings",
     "vector-quantization",
@@ -175,10 +180,29 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "chromadb>=0.4.0",
     "pyyaml>=6.0",
     "toml>=0.10",
     "mcp>=1.27.2",
+    # Vector backend — platform-gated so a base `pip install neuralmind` always
+    # resolves to prebuilt wheels (no Rust/C++ toolchain needed):
+    #   * the ChromaDB-free TurboQuant/ONNX stack is the default WHERE turbovec
+    #     publishes wheels — Linux (manylinux_2_28 x86_64/aarch64), Apple Silicon
+    #     (macOS arm64), and Windows x86_64;
+    #   * on platforms turbovec has no wheel for (notably Intel macOS x86_64 and
+    #     Windows ARM), ChromaDB is installed instead as the fallback backend, so
+    #     the default install still works out of the box there.
+    # `auto` backend selection then prefers turbovec when present, else chroma.
+    # NOTE: env markers can't distinguish musl from glibc, so Alpine/musl (and
+    # pre-2.28 glibc) Linux still resolve to turbovec and need a toolchain or
+    # `pip install "neuralmind[chromadb]"`; use a glibc base image (python:slim)
+    # rather than python:alpine. See docs/prd/chromadb-free-by-default.md.
+    "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "numpy>=1.20",
+    # Fallback vector backend on platforms without a turbovec wheel (the De
+    # Morgan complement of the turbovec marker — PEP 508 has no unary `not`).
+    "chromadb>=0.4.0; platform_system != 'Linux' and (platform_system != 'Darwin' or platform_machine != 'arm64') and (platform_system != 'Windows' or platform_machine != 'AMD64')",
     # Built-in graph backend: parse a project into a graphify-compatible
     # graph.json with no external graphify install. See neuralmind/graphgen.py.
     # Python + TypeScript + Go + Rust + Java grammars are bundled so
@@ -197,16 +221,16 @@ dependencies = [
 # in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
 # package is now a base dependency.
 mcp = []
-# Opt-in ChromaDB-free vector backend (Google TurboQuant). See issue #204.
-# Fully self-contained: turbovec for the compressed ANN index, onnxruntime +
-# tokenizers for the bundled MiniLM embedder (vectors byte-identical to
-# ChromaDB's), SQLite (stdlib) for metadata. Enable with backend "turbovec".
-turbovec = [
-    "turbovec>=0.7",
-    "numpy>=1.20",
-    "onnxruntime>=1.16",
-    "tokenizers>=0.15",
+# Opt-in ChromaDB backend. As of v0.29.0 the ChromaDB-free turbovec/ONNX stack
+# is the default install; install this extra (and set `backend: graph` in
+# neuralmind-backend.yaml, or pass backend="graph") to use ChromaDB instead.
+chromadb = [
+    "chromadb>=0.4.0",
 ]
+# Back-compat alias: the turbovec/ONNX stack is now a base dependency, so this
+# extra is empty. Existing `pip install "neuralmind[turbovec]"` commands keep
+# resolving (same pattern as the `mcp` extra).
+turbovec = []
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
@@ -218,7 +242,7 @@ dev = [
     "pre-commit>=4.6.0"
 ]
 all = [
-    "neuralmind[mcp,dev]"
+    "neuralmind[mcp,chromadb,dev]"
 ]
 
 [project.scripts]

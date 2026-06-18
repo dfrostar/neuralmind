@@ -6,13 +6,22 @@ Tests the full 4-layer retrieval pipeline (Identity → Summary → On-Demand �
 with real graph data and validates token reduction, layer selection, and context quality.
 """
 
+import importlib.util
 import json
 import tempfile
 from pathlib import Path
 
 import pytest
 
-from neuralmind import GraphEmbedder, NeuralMind
+from neuralmind import NeuralMind
+
+# ChromaDB (the GraphEmbedder backend) is an opt-in extra as of v0.29.0. The
+# default-backend pipeline tests run on turbovec; the few tests that drive the
+# ChromaDB backend directly are guarded and import GraphEmbedder lazily.
+_HAS_CHROMADB = importlib.util.find_spec("chromadb") is not None
+requires_chromadb = pytest.mark.skipif(
+    not _HAS_CHROMADB, reason="needs the optional [chromadb] extra"
+)
 
 
 @pytest.fixture
@@ -233,6 +242,8 @@ class TestRetrievalPipeline:
         Logic fixed: embed_nodes now correctly tracks updated vs added nodes
         when force=True by checking if node exists before counting.
         """
+        from neuralmind import GraphEmbedder
+
         embedder = GraphEmbedder(str(minimal_project))
         assert embedder.load_graph()
 
@@ -299,8 +310,11 @@ class TestBackendAbstraction:
         assert hasattr(embedder, "project_path")
         assert embedder.project_path.is_absolute()
 
+    @requires_chromadb
     def test_backend_clear_and_close(self, minimal_project):
         """Test that backend clear() and close() methods work."""
+        from neuralmind import GraphEmbedder
+
         embedder = GraphEmbedder(str(minimal_project))
         assert embedder.load_graph()
         embedder.embed_nodes()

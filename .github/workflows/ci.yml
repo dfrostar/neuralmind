@@ -56,7 +56,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          # ChromaDB is an opt-in extra as of v0.29.0; install it here so the
+          # suite exercises BOTH the default turbovec backend (base dep) and the
+          # opt-in chroma backend. The Fresh Install job proves the default
+          # install is ChromaDB-free.
+          pip install -e ".[dev,chromadb]"
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
@@ -128,14 +132,41 @@ jobs:
       - name: Import smoke test
         run: |
           source .smoke/bin/activate
+          # NOTE: do NOT import neuralmind.embedder here — it is the ChromaDB
+          # backend (top-level `import chromadb`), which is an opt-in extra as of
+          # v0.29.0. The default install must work without it.
           python -c "
           import neuralmind
           import neuralmind.cli
           import neuralmind.core
-          import neuralmind.embedder
           import neuralmind.config
           import neuralmind.compressors
           import neuralmind.hooks
+          import neuralmind.backend_manager
+          "
+
+      - name: ChromaDB-free default install assertions (v0.29.0)
+        run: |
+          source .smoke/bin/activate
+          # The default install must be ChromaDB-free and resolve to turbovec.
+          python -c "
+          import importlib.util as u
+          assert u.find_spec('chromadb') is None, 'default install must not pull ChromaDB'
+          assert u.find_spec('turbovec') is not None, 'turbovec must be a base dependency'
+          from neuralmind.backend_manager import resolve_backend, turbovec_available
+          assert turbovec_available(), 'turbovec stack must be importable on a base install'
+          assert resolve_backend('auto') == 'turbovec', 'auto must resolve to turbovec by default'
+          "
+          # Selecting the chroma backend without the extra must raise an
+          # actionable error, not an opaque ModuleNotFoundError.
+          python -c "
+          from neuralmind.backend_manager import create_backend
+          try:
+              create_backend('graph', '.')
+          except ModuleNotFoundError as e:
+              assert 'neuralmind[chromadb]' in str(e), e
+          else:
+              raise SystemExit('expected a ModuleNotFoundError with an install hint')
           "
 
       - name: MCP bundling smoke test
