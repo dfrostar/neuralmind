@@ -13,7 +13,9 @@
 
 > Works with Claude Code (including Claude Fable 5), Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. The more capable the model, the more every saved token is worth, so context compression and persistent memory pay off more on a frontier model like Fable 5. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
-> **🆕 New in v0.28.0** — **Multi-language: Java.** The built-in **tree-sitter** backend now indexes **Java** out of the box — `neuralmind build .` works standalone on a Java/Maven/Gradle project, no graphify. Classes, interfaces, enums, records, methods, constructors, fields, and enum constants become `code` nodes; `extends`/`implements` become **`inherits`** edges; `import` statements resolve to **`imports_from`** edges (by fully-qualified name); Javadoc (`/** … */`) becomes the **`rationale`** layer. That takes the bundled backend to **five languages — Python, TypeScript, Go, Rust, and Java** — indexed in one pass, all behind the same `SUPPORTED_SUFFIXES` seam. Proven at parity by the CI gate (100% symbol coverage on the reference fixture, zero dangling edges). [Release notes](RELEASE_NOTES_v0.28.0.md)
+> **🆕 New in v0.29.0** — **ChromaDB-free by default.** `pip install neuralmind` no longer pulls **ChromaDB**. The default install now uses the ChromaDB-free **turbovec/ONNX** backend (byte-identical embeddings), removing ChromaDB's large dependency tree — and its recurring **CVE surface** — from the default. ChromaDB is one opt-in away: `pip install "neuralmind[chromadb]"` (then `backend: graph`). Retrieval is unchanged; a previously chroma-indexed repo **auto-reindexes once** into turbovec (old index kept as a fallback), and selecting chroma without the extra now raises an **actionable install hint**. Honest framing: this is *ChromaDB-tree-free*, not "smaller" — it trades ChromaDB's sprawl for one focused native dep (`onnxruntime`). [Release notes](RELEASE_NOTES_v0.29.0.md)
+>
+> **v0.28.0** — **Multi-language: Java.** The built-in **tree-sitter** backend indexes **Java** out of the box — classes, interfaces, enums, records, methods, constructors, fields, and enum constants become `code` nodes; `extends`/`implements` → **`inherits`**; `import` → **`imports_from`** (by FQN); Javadoc → the **`rationale`** layer. Five bundled languages (Python/TS/Go/Rust/Java). [Release notes](RELEASE_NOTES_v0.28.0.md)
 >
 > **v0.27.0** — **Multi-language: Rust.** The built-in **tree-sitter** backend indexes **Rust** out of the box — structs, enums, traits, `impl` blocks, fields, and free functions become `code` nodes; `impl Trait for Type` → **`inherits`**; `use` paths → **`imports_from`**; `///`/`//!` doc comments → the **`rationale`** layer; `target/` is skipped. [Release notes](RELEASE_NOTES_v0.27.0.md)
 >
@@ -131,7 +133,7 @@ The headline you can stand on: **retrieval reduction is measured in CI on every 
 
 **For enterprises and regulated industries:**
 
-- **100% Local Processing** – Your code never leaves your machine. All embeddings are generated and stored locally using ChromaDB.
+- **100% Local Processing** – Your code never leaves your machine. All embeddings are generated and stored locally (the default turbovec/ONNX backend; ChromaDB optional).
 - **No External APIs** – NeuralMind runs completely offline. No cloud services, no telemetry, no data exfiltration.
 - **Explainable AI** – Every context decision is auditable. Know exactly which code was retrieved (Extracted) vs. inferred by the model.
 - **Open-Source & MIT Licensed** – Full transparency. No hidden clauses, no vendor lock-in. Audit the code yourself.
@@ -586,12 +588,12 @@ We'd rather you trust the numbers than be wowed by them, so here's the candid ta
 
 - **It measures whether the memory actually helps — and gates it in CI.** Most code-RAG tools assert; NeuralMind ships a faithfulness eval (+0.143 vs naive at a *matched* token budget), an onboarding-lift eval (+6.5 pts), and a synapse-recall A/B (+12 pts), each failing the build on regression. That measurement discipline is the real moat. ([Benchmarks](docs/wiki/Benchmarks.md))
 - **Learned *usage* memory, not just embeddings.** The synapse layer learns what your team edits together and what you touch next — and the onboarding-lift metric proves it's not decoration.
-- **100% local, and now optionally [ChromaDB-free](docs/use-cases/chromadb-free-local.md)** (v0.21.0) with byte-identical embeddings and an 8–16× smaller index.
+- **100% local, and [ChromaDB-free by default](docs/use-cases/chromadb-free-local.md)** (v0.29.0) with byte-identical embeddings and an 8–16× smaller index.
 
 **Where it's still rough — set expectations accordingly**
 
 - **The headline 40–70× is a real-repo *extrapolation*.** What's measured in CI is a deliberately conservative **6.2×** on a 500-line fixture. The mechanism scales with repo size, but a large-repo benchmark isn't in CI yet — so prove it on *your* code with [`benchmark-your-repo`](docs/use-cases/benchmark-your-repo.md).
-- **ChromaDB is still the *default*.** The slim, advisory-free stack is opt-in (`backend: turbovec`) while it bakes; the default-flip + dependency removal are staged for later releases.
+- **ChromaDB-free is the *default* (v0.29.0).** The slim, advisory-free turbovec/ONNX stack ships out of the box; ChromaDB is now an opt-in extra (`pip install "neuralmind[chromadb]"`, `backend: graph`).
 - **It's beta, single-maintainer, fast-moving.** Lots of surface area (hooks, watcher, serve, MCP, evals) and frequent releases — expect occasional churn; pin a version for CI.
 - **The compressed backend is approximate.** TurboQuant parity is gated on the reference fixture; large-repo recall under 2/4-bit quantization is "trust the gate," not yet measured at scale.
 
@@ -649,7 +651,8 @@ come in every path.
 
 **No external tools required.** Since v0.15.0 a built-in **tree-sitter** backend indexes Python, TypeScript, Go, Rust, and Java out of the box — `pip install neuralmind && neuralmind build .` just works, no `graphify` install. Optional extras:
 - `pip install graphifyy` — use the legacy graphify graph backend instead of the built-in one (held at parity by a CI gate).
-- `pip install "neuralmind[turbovec]"` — the **ChromaDB-free** vector backend (v0.21.0+): smaller deps, 8–16× smaller index, same answer quality. See [ChromaDB-free local](docs/use-cases/chromadb-free-local.md).
+- The default backend is **ChromaDB-free** (turbovec/ONNX) as of v0.29.0 — smaller deps, 8–16× smaller index, same answer quality. See [ChromaDB-free local](docs/use-cases/chromadb-free-local.md).
+- `pip install "neuralmind[chromadb]"` — add the optional **ChromaDB** backend back (then set `backend: graph`).
 
 **Verify install:**
 
@@ -735,7 +738,7 @@ synapse co-activations. Full plan in [ROADMAP.md](ROADMAP.md).
 
 ## 🔧 How It Works
 
-NeuralMind wraps a knowledge graph (`graphify-out/graph.json`) in a ChromaDB vector store.
+NeuralMind wraps a knowledge graph (`graphify-out/graph.json`) in a local vector store (the default turbovec/ONNX backend; ChromaDB optional).
 Since **v0.15.0** that graph is produced by a **built-in tree-sitter backend** when no graphify
 output exists, so `neuralmind build .` works with no external tool; a real graphify graph still
 takes priority where present. When you query it, a 4-layer progressive disclosure system loads
@@ -1821,6 +1824,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.29.0](RELEASE_NOTES_v0.29.0.md)** | ChromaDB-free by default — `pip install neuralmind` no longer pulls ChromaDB; the default backend is the ChromaDB-free turbovec/ONNX stack (byte-identical embeddings), removing ChromaDB's dependency tree and CVE surface from the default install. ChromaDB demoted to a `[chromadb]` extra (`backend: graph`); turbovec/onnxruntime/tokenizers promoted to base deps. One-time auto-reindex on upgrade (old index kept as fallback); actionable error when chroma is selected without the extra. Honest framing: ChromaDB-tree-free, not fewer megabytes (trades the sprawl for `onnxruntime`) |
 | **[Release Notes v0.28.0](RELEASE_NOTES_v0.28.0.md)** | Multi-language: Java — the built-in tree-sitter backend now indexes Java out of the box, taking the bundled producer to five languages (Python/TS/Go/Rust/Java). Classes, interfaces, enums, records, methods, constructors, fields, and enum constants become `code` nodes; `extends`/`implements` → `inherits`; `import` → `imports_from` (by fully-qualified name); Javadoc → the `rationale` layer. Behind the same `_EXTRACTORS` / `SUPPORTED_SUFFIXES` seam; gated by `evals/parity` at 100% symbol coverage on the reference fixture with zero dangling edges |
 | **[Release Notes v0.27.0](RELEASE_NOTES_v0.27.0.md)** | Multi-language: Rust — the built-in tree-sitter backend now indexes Rust out of the box, taking the bundled producer to four languages (Python/TS/Go/Rust). Structs, enums, traits, `impl` methods, struct fields, enum variants, and free functions become `code` nodes; `impl Trait for Type` → `inherits`; `use` paths → `imports_from`; `///`/`//!` doc comments → the `rationale` layer; `target/` is ignored like `node_modules`. Behind the same `_EXTRACTORS` / `SUPPORTED_SUFFIXES` seam (no change downstream of `graph.json`); gated by `evals/parity` at 100% symbol coverage on the reference fixture with zero dangling edges |
 | **[Release Notes v0.26.0](RELEASE_NOTES_v0.26.0.md)** | The selector starts tuning itself — self-improvement engine phases 1–2 (issue #156): memory logs query/wakeup events with a `session_id`, and an opt-in tuner (`NEURALMIND_SELECTOR_AUTOTUNE=1`) adjusts the selector's L2 recall depth from the re-query rate, persisted in the synapse store's `meta` table, with a transition-margin dampener that suppresses a widen when the directional-transition graph already predicts the next hop decisively. Single-step, windowed, dead-banded, clamped to `[2, 6]`, fail-open; off by default and byte-identical when unset (zero extra hot-path I/O). New read-only `neuralmind self-improve status` CLI; Phase 3 (eval-driven tuning) is surveyed in `evals/self_improvement/PLAN.md` |

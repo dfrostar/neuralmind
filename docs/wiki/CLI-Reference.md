@@ -644,8 +644,8 @@ neuralmind doctor .
 NeuralMind doctor — /path/to/project
 ============================================================
   [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
-  [ ok ] Semantic index: 1240 nodes embedded (chromadb backend)
-  [ ok ] Backend: turbovec (auto-selected; turbovec stack available)
+  [ ok ] Semantic index: 1240 nodes embedded (turbovec backend)
+  [ ok ] Backend: turbovec (auto-selected; ChromaDB-free default)
   [warn] Synapse memory: no synapses.db yet (nothing learned)
          -> It populates automatically as you query and edit the codebase.
   [ ok ] MCP server: MCP SDK importable (neuralmind-mcp ready)
@@ -1380,27 +1380,29 @@ neuralmind daemon stop
 
 ## Vector backend selection *(v0.21.0+)*
 
-NeuralMind's vector store is pluggable. **As of v0.22.0 the default is `auto`**
-(an unset config behaves the same): it resolves to the **ChromaDB-free**
-`turbovec` backend when its stack (`turbovec` + `onnxruntime` + `tokenizers`) is
-importable, and otherwise falls back to `chroma`. A plain `pip install neuralmind`
-(no `[turbovec]` extra) therefore still resolves to ChromaDB — nothing changes —
-while installs that added the extra get the ChromaDB-free path automatically.
+NeuralMind's vector store is pluggable. The default is `auto` (an unset config
+behaves the same): it resolves to the **ChromaDB-free** `turbovec` backend when
+its stack (`turbovec` + `onnxruntime` + `tokenizers`) is importable, and
+otherwise falls back to `chroma`. **As of v0.29.0 the turbovec stack is a base
+dependency**, so a plain `pip install neuralmind` resolves to turbovec out of
+the box — ChromaDB is no longer installed by default. Install
+`pip install "neuralmind[chromadb]"` (and pin `backend: graph`) to use ChromaDB.
 
 To **pin** a backend explicitly (an explicit value always wins over `auto`), drop
 a `neuralmind-backend.yaml` at the project root:
 
 ```yaml
-backend: turbovec   # force the ChromaDB-free path: TurboVec ANN + bundled OnnxMiniLMEmbedder
-# backend: graph    # force ChromaDB (alias: chroma)
+backend: turbovec   # the default path: TurboVec ANN + bundled OnnxMiniLMEmbedder
+# backend: graph    # force ChromaDB (alias: chroma) — needs `pip install "neuralmind[chromadb]"`
 # backend: auto     # the default — turbovec when its deps are installed, else chroma
 ```
 
-Install the extra: `pip install "neuralmind[turbovec]"` (pulls `turbovec`,
-`onnxruntime`, `tokenizers`, `numpy`). Vectors are byte-identical to the chroma
-backend's, so retrieval quality is at/above parity; the index is 8–16× smaller.
-Accepted values: `auto` (default), `graph` / `chroma`, `turbovec`, `in_memory`
-(offline tests).
+The turbovec/ONNX stack ships by default; `pip install "neuralmind[chromadb]"`
+adds the opt-in ChromaDB backend. Vectors are byte-identical between backends, so
+retrieval quality is at/above parity; the turbovec index is 8–16× smaller.
+Selecting `graph`/`chroma` without the `[chromadb]` extra raises an actionable
+error pointing at the install command. Accepted values: `auto` (default),
+`graph` / `chroma`, `turbovec`, `in_memory` (offline tests).
 
 **One-time auto-reindex.** When `auto` resolves to turbovec for a project that
 still has a legacy ChromaDB index and no turbovec index yet, the next build

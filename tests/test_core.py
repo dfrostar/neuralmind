@@ -36,12 +36,16 @@ class TestNeuralMindInit:
         assert mind.db_path == str(custom_db)
 
     def test_init_creates_embedder(self, temp_project):
-        """Test that init creates embedder instance."""
+        """Test that init creates an embedding backend instance.
+
+        Backend-agnostic: as of v0.29.0 the default is the ChromaDB-free
+        turbovec backend, but any concrete ``EmbeddingBackend`` is valid here.
+        """
         from neuralmind import NeuralMind
-        from neuralmind.embedder import GraphEmbedder
+        from neuralmind.embedding_backend import EmbeddingBackend
 
         mind = NeuralMind(str(temp_project))
-        assert isinstance(mind.embedder, GraphEmbedder)
+        assert isinstance(mind.embedder, EmbeddingBackend)
 
     def test_init_accepts_deprecated_enable_reranking(self, temp_project):
         """The deprecated enable_reranking kwarg is accepted (no TypeError).
