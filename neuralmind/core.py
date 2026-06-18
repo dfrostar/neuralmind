@@ -434,6 +434,12 @@ class NeuralMind:
         # from chroma to turbovec (the reindex itself happens via embed_nodes).
         self._maybe_announce_turbovec_migration()
 
+        # Team memory: inherit a committed team bundle once into `shared`, so a
+        # fresh clone is seeded with the team's learned associations. This is the
+        # build-path parallel of the SessionStart hook, so Cursor/Cline/generic
+        # MCP agents (which don't run Claude Code hooks) inherit it too.
+        self._maybe_inherit_team_memory()
+
         # Convert the loaded graph into the canonical, versioned IR before
         # indexing (PRD 1 FR1). Validated and written to .neuralmind/; the
         # embedder still reads graph.json, so this is a parity-checked internal
@@ -559,6 +565,28 @@ class NeuralMind:
         the CLI share one backend-free implementation.
         """
         return validate_project(self.project_path, write=write)
+
+    def _maybe_inherit_team_memory(self) -> None:
+        """Import the committed team-memory bundle once into ``shared`` (PRD:
+        team-memory). Idempotent (content-hash), off-switch
+        ``NEURALMIND_TEAM_MEMORY=0``, and fail-open — inheritance must never
+        break a build."""
+        if not self.enable_synapses:
+            return
+        try:
+            from .team_memory import maybe_import_team_memory
+
+            store = self.synapses
+            if store is not None:
+                summary = maybe_import_team_memory(self.project_path, store)
+                if summary and summary.get("synapses"):
+                    print(
+                        f"[neuralmind] inherited team memory → +{summary['synapses']} shared "
+                        f"synapses, +{summary['transitions']} transitions "
+                        "(set NEURALMIND_TEAM_MEMORY=0 to disable)"
+                    )
+        except Exception:
+            pass
 
     def _maybe_announce_turbovec_migration(self) -> None:
         """Print a one-time notice when a project that previously used the chroma
