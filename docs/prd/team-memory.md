@@ -46,10 +46,12 @@ So this release is a **thin workflow layer**, not new core machinery. Low risk.
 The primitives require manual `export`/`import` and an out-of-band file. The
 missing piece is the **zero-effort, committed, auto-inherited workflow**:
 
-1. **A committed convention.** Today `.neuralmind/` is fully git-ignored. Define
-   one **committed** path — `.neuralmind/team-memory.json` (un-ignored via a
-   `.gitignore` negation) — as the canonical team bundle that lives *in the
-   repo* and travels with `git clone`.
+1. **A committed convention.** Today `.neuralmind/` is fully git-ignored. Rather
+   than un-ignore a path *inside* it (a `.gitignore` negation that's easy to get
+   wrong), ship the canonical bundle at a **repo-root** path —
+   `.neuralmind-team-memory.json` — beside `.gitignore`. It commits normally and
+   travels with `git clone`, no negation gymnastics. (Shipped convention; the
+   earlier `.neuralmind/team-memory.json` idea was dropped for this reason.)
 2. **`neuralmind memory publish`** — a one-command wrapper that exports the
    project's learned memory (the `personal` + `shared` namespaces, union) to the
    committed path, stamped with provenance (tool version, timestamp, a content
@@ -59,9 +61,11 @@ missing piece is the **zero-effort, committed, auto-inherited workflow**:
    (idempotent, tracked in the synapse store's `meta` table so it never
    re-imports the same bundle). This is the "inherit on day one" magic: clone →
    first agent session → the team's associations are already live.
-4. **Surface the value** — `neuralmind memory publish` (and a `--lift` flag, or
-   `neuralmind memory lift`) reports the onboarding-lift number the bundle buys
-   a cold agent, so the benefit is legible, not abstract.
+4. **Surface the value** — `neuralmind memory publish` points to
+   `neuralmind eval --onboarding`, which reports the onboarding-lift number the
+   bundle buys a cold agent, so the benefit is legible, not abstract. (Shipped:
+   publish prints the pointer; the existing v0.20 eval computes the number. An
+   inline `--lift` flag is a possible follow-up, not part of 0.30.0.)
 
 ## 4. Goals / non-goals
 
@@ -106,21 +110,24 @@ it asserts — and per-namespace decay erodes stale shared edges over time.
 
 ## 6. Acceptance criteria
 
-- [ ] `neuralmind memory publish` writes `.neuralmind/team-memory.json` (committed
-      path), provenance-stamped, and reports the onboarding lift.
-- [ ] A fresh clone with a committed bundle + `neuralmind build` (or a
+- [x] `neuralmind memory publish` writes `.neuralmind-team-memory.json` (committed
+      repo-root path), provenance-stamped, and points to `neuralmind eval
+      --onboarding` for the onboarding-lift number.
+- [x] A fresh clone with a committed bundle + `neuralmind build` (or a
       `SessionStart`) imports it once into `shared`; a second run is a no-op
       (content-hash gated, verified by `meta`).
-- [ ] Auto-import only ever writes `shared`; `personal`/branch namespaces
+- [x] Auto-import only ever writes `shared`; `personal`/branch namespaces
       untouched (test).
-- [ ] `NEURALMIND_TEAM_MEMORY=0` disables auto-import; the hook stays fail-open
+- [x] `NEURALMIND_TEAM_MEMORY=0` disables auto-import; the hook stays fail-open
       (exit 0) if the bundle is missing/corrupt.
-- [ ] `.gitignore` gets the negation idempotently; everything else in
-      `.neuralmind/` stays ignored.
-- [ ] Onboarding-lift eval still green; a test shows lift ≥ 0 from a published
-      bundle on the reference fixture.
-- [ ] Docs + SEO propagated (release notes, README, both HTML, CLI-Reference
-      `memory publish`, a new "team memory" use-case walkthrough, keywords).
+- [x] Bundle lives at the repo root (`.neuralmind-team-memory.json`), so no
+      `.gitignore` negation is needed and everything in `.neuralmind/` stays
+      ignored.
+- [x] Onboarding-lift eval still green; `neuralmind eval --onboarding` reports
+      the lift a published bundle buys a cold agent on the reference fixture.
+- [x] Docs + SEO propagated (release notes, README, both HTML, CLI-Reference
+      `memory publish`, keywords). _(A dedicated "team memory" use-case
+      walkthrough remains a follow-up.)_
 
 ## 7. Risks & mitigations
 

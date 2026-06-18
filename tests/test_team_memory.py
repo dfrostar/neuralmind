@@ -135,6 +135,64 @@ class TeamMemoryTests(unittest.TestCase):
         team_bundle_path(self.project).write_text("{ not json")
         self.assertIsNone(maybe_import_team_memory(self.project, b))
 
+    def test_malformed_entries_without_hash_are_fail_open(self) -> None:
+        # A valid JSON object whose entries lack source/target and carries no
+        # precomputed content_hash must be a silent no-op, not an exception.
+        b = _store(self.project)
+        team_bundle_path(self.project).write_text(
+            json.dumps({"format": "neuralmind.synapses", "synapses": [{"weight": 1.0}]})
+        )
+        self.assertIsNone(maybe_import_team_memory(self.project, b))
+
+    def test_meta_write_failure_keeps_successful_import(self) -> None:
+        # If recording the idempotency hash fails *after* a successful import,
+        # the import summary must survive — a meta-write failure can't discard
+        # the inherited edges.
+        a = _store(self.project)
+        self._seed(a)
+        publish_team_memory(self.project, a)
+
+        with tempfile.TemporaryDirectory() as b_dir:
+            b_proj = Path(b_dir)
+            (b_proj / TEAM_BUNDLE_FILENAME).write_text(team_bundle_path(self.project).read_text())
+            b = _store(b_proj)
+
+            original = b.set_meta
+
+            def _boom(*args, **kwargs):  # noqa: ANN002, ANN003
+                raise RuntimeError("meta table is read-only")
+
+            b.set_meta = _boom  # type: ignore[method-assign]
+            try:
+                result = maybe_import_team_memory(b_proj, b)
+            finally:
+                b.set_meta = original  # type: ignore[method-assign]
+            self.assertIsNotNone(result)
+            self.assertGreater(result["synapses"], 0)
+            self.assertTrue(b.edges(namespaces=[SHARED_NAMESPACE]))
+
+    def test_build_preserves_per_field_maxima(self) -> None:
+        # personal asserts a high activation_count at a modest weight; shared
+        # asserts a high weight at a single activation for the SAME pair. The
+        # bundle must keep BOTH maxima, not the whole higher-weight entry (which
+        # would drop the larger count and weaken post-import LTP/decay).
+        store = _store(self.project)
+        for _ in range(10):
+            store.reinforce(["mod/a.py", "mod/b.py"], strength=1.0, namespace=DEFAULT_NAMESPACE)
+        store.reinforce(["mod/a.py", "mod/b.py"], strength=50.0, namespace=SHARED_NAMESPACE)
+
+        bundle = build_team_bundle(store)
+        pair = next(
+            e for e in bundle["synapses"] if {e["source"], e["target"]} == {"mod/a.py", "mod/b.py"}
+        )
+        rows = store.edges(namespaces=[DEFAULT_NAMESPACE]) + store.edges(
+            namespaces=[SHARED_NAMESPACE]
+        )
+        max_weight = max(w for *_e, w, _c in rows)
+        max_count = max(c for *_e, _w, c in rows)
+        self.assertAlmostEqual(pair["weight"], max_weight, places=6)
+        self.assertEqual(pair["activation_count"], max_count)
+
     def test_content_hash_stable_across_republish(self) -> None:
         store = _store(self.project)
         self._seed(store)

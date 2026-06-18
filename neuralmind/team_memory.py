@@ -77,22 +77,35 @@ def _content_hash(bundle: dict[str, Any]) -> str:
 def build_team_bundle(store: Any) -> dict[str, Any]:
     """Build a portable team bundle from the union of ``personal`` + ``shared``.
 
-    Each ``(source, target)`` pair keeps its MAX weight across the two source
+    Each ``(source, target)`` pair keeps the MAX of *each* field — weight and
+    activation_count/count merge independently — across the two source
     namespaces; entries are sorted strongest-first and capped so the committed
     file stays small. The bundle imports into ``shared`` by default.
     """
+
+    def _merge(into: dict[tuple[str, str], dict], e: dict, count_field: str) -> None:
+        # Merge per-field maxima, not whole entries: keeping the higher-weight
+        # entry wholesale could drop a larger activation_count/count from the
+        # other namespace. Since import also MAX-merges count, that would weaken
+        # post-import LTP/decay relative to what the developer actually learned.
+        key = (e["source"], e["target"])
+        cur = into.get(key)
+        if cur is None:
+            into[key] = dict(e)
+            return
+        if float(e.get("weight", 0.0)) > float(cur.get("weight", 0.0)):
+            cur["weight"] = e.get("weight", 0.0)
+        if int(e.get(count_field, 0)) > int(cur.get(count_field, 0)):
+            cur[count_field] = e.get(count_field, 0)
+
     syn: dict[tuple[str, str], dict] = {}
     tr: dict[tuple[str, str], dict] = {}
     for ns in (DEFAULT_NAMESPACE, SHARED_NAMESPACE):
         part = export_synapse_bundle(store, ns)
         for e in part.get("synapses", []):
-            key = (e["source"], e["target"])
-            if key not in syn or e.get("weight", 0.0) > syn[key].get("weight", 0.0):
-                syn[key] = e
+            _merge(syn, e, "activation_count")
         for e in part.get("transitions", []):
-            key = (e["source"], e["target"])
-            if key not in tr or e.get("weight", 0.0) > tr[key].get("weight", 0.0):
-                tr[key] = e
+            _merge(tr, e, "count")
 
     def _top(entries: dict[tuple[str, str], dict]) -> list[dict]:
         ordered = sorted(
@@ -163,7 +176,13 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
         return None
     if not isinstance(bundle, dict):
         return None
-    content_hash = bundle.get("content_hash") or _content_hash(bundle)
+    try:
+        # Recompute defensively: a malformed/newer-schema bundle (missing
+        # source/target) would make _content_hash raise, which must stay a
+        # silent no-op rather than break the session/build path.
+        content_hash = bundle.get("content_hash") or _content_hash(bundle)
+    except Exception:
+        return None
     try:
         if store.get_meta(_META_TEAM_HASH) == content_hash:
             return None  # this exact bundle already inherited
@@ -171,9 +190,15 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
         return None
     try:
         result = import_synapse_bundle(store, bundle, namespace=SHARED_NAMESPACE)
-        store.set_meta(_META_TEAM_HASH, content_hash)
     except Exception:
         return None
+    # Record the idempotency hash in its own try: a meta-write failure must not
+    # discard a successful import (that would lose the summary and re-import the
+    # same bundle on every session/build).
+    try:
+        store.set_meta(_META_TEAM_HASH, content_hash)
+    except Exception:
+        pass
     result["content_hash"] = content_hash
     return result
 
