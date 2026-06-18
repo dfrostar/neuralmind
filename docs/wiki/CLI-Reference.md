@@ -1383,10 +1383,14 @@ neuralmind daemon stop
 NeuralMind's vector store is pluggable. The default is `auto` (an unset config
 behaves the same): it resolves to the **ChromaDB-free** `turbovec` backend when
 its stack (`turbovec` + `onnxruntime` + `tokenizers`) is importable, and
-otherwise falls back to `chroma`. **As of v0.29.0 the turbovec stack is a base
-dependency**, so a plain `pip install neuralmind` resolves to turbovec out of
-the box — ChromaDB is no longer installed by default. Install
-`pip install "neuralmind[chromadb]"` (and pin `backend: graph`) to use ChromaDB.
+otherwise falls back to `chroma`. **As of v0.29.0 the turbovec stack is a
+platform-gated base dependency**, so a plain `pip install neuralmind` resolves
+to turbovec (ChromaDB-free) out of the box on platforms with turbovec wheels
+(Linux, macOS arm64, Windows x86_64). On platforms without a turbovec wheel
+(Intel macOS, Windows ARM) ChromaDB is auto-installed as the fallback backend,
+so the install always works. Install `pip install "neuralmind[chromadb]"` (and
+pin `backend: graph`) to force ChromaDB anywhere. (Alpine/musl Linux: use a
+`python:slim` glibc image or the `[chromadb]` extra — markers can't gate musl.)
 
 To **pin** a backend explicitly (an explicit value always wins over `auto`), drop
 a `neuralmind-backend.yaml` at the project root:
