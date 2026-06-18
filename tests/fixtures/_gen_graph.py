@@ -784,6 +784,38 @@ GO_SPEC = {
 }
 
 
+# --------------------------------------------------------------------------- Rust
+
+# Top-level keys graphify's Python gold carries — the Rust gold is reshaped to
+# match this exact set so test_polyglot_fixtures' schema check passes.
+_GRAPHIFY_TOP_KEYS = (
+    "directed",
+    "multigraph",
+    "graph",
+    "nodes",
+    "links",
+    "hyperedges",
+)
+
+
+def build_rust_gold(fixture_dir: Path) -> dict:
+    """Generate the Rust gold from the built-in tree-sitter extractor.
+
+    graphify cannot parse Rust, so unlike TS/Go (hand-authored to mirror
+    graphify) the Rust gold is the built-in backend's own output, reshaped into
+    graphify's schema (drop ``generated_by``/``schema_version``, stamp the
+    hand-authored commit sentinel). The *independent* correctness oracle is
+    ``tests/test_graphgen.py``'s hand-listed expected symbols; this gold then
+    serves as the parity gate's regression baseline.
+    """
+    from neuralmind import graphgen
+
+    g = graphgen.build_graph(fixture_dir)
+    gold = {k: g[k] for k in _GRAPHIFY_TOP_KEYS}
+    gold["built_at_commit"] = COMMIT
+    return gold
+
+
 def main() -> None:
     for name, spec in (("sample_project_ts", TS_SPEC), ("sample_project_go", GO_SPEC)):
         fixture_dir = HERE / name
@@ -792,6 +824,15 @@ def main() -> None:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(graph, indent=2) + "\n")
         print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
+
+    # Rust: gold is generated from the built-in extractor (graphify can't parse
+    # Rust). Requires the tree-sitter Rust grammar to be importable.
+    rust_dir = HERE / "sample_project_rust"
+    graph = build_rust_gold(rust_dir)
+    out = rust_dir / "graphify-out" / "graph.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(graph, indent=2) + "\n")
+    print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
 
 
 if __name__ == "__main__":

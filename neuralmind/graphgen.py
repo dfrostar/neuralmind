@@ -13,9 +13,10 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 *graph producer*.
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
-per-language extractor (``_EXTRACTORS``). Python, TypeScript, and Go ship today,
-each mapping its grammar's node types onto the same node/edge model; registering
-another grammar adds a language with no change downstream of ``graph.json``.
+per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, and Rust ship
+today, each mapping its grammar's node types onto the same node/edge model;
+registering another grammar adds a language with no change downstream of
+``graph.json``.
 
 Design notes:
 - **Pure Python + tree-sitter** (no networkx). Balanced per-file communities
@@ -25,7 +26,8 @@ Design notes:
   the selector matches on them. So we are free to choose a stable id scheme.
 - **Parity with graphify is *measured*, not asserted** — the faithfulness eval
   (`evals/faithfulness`) + self-benchmark gate Python, and a per-language
-  structural symbol-coverage check gates TypeScript and Go (`evals/parity`).
+  structural symbol-coverage check gates TypeScript, Go, and Rust
+  (`evals/parity`).
 """
 
 from __future__ import annotations
@@ -49,6 +51,8 @@ _DEFAULT_IGNORES: frozenset[str] = frozenset(
         ".ruff_cache",
         "dist",
         "build",
+        # Rust build output (analogous to node_modules/dist/build).
+        "target",
     }
 )
 
@@ -61,12 +65,13 @@ SCHEMA_VERSION = 1
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
-# first; TypeScript and Go are registered here behind the same seam.
+# first; TypeScript, Go, and Rust are registered here behind the same seam.
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
     ".tsx": "typescript",
     ".go": "go",
+    ".rs": "rust",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -95,6 +100,10 @@ def _load_language(name: str):
             return Language(ts.language_typescript())
         if name == "go":
             import tree_sitter_go as ts
+
+            return Language(ts.language())
+        if name == "rust":
+            import tree_sitter_rust as ts
 
             return Language(ts.language())
     except Exception:
@@ -1015,6 +1024,302 @@ def _go_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id
     visit(root_node, None)
 
 
+# --------------------------------------------------------------------------- #
+# Rust extractor
+# --------------------------------------------------------------------------- #
+# Leading path qualifiers in a ``use`` path that name no module of their own —
+# stripped before resolving the remaining segments against the module-key table.
+_RUST_PATH_QUALIFIERS: frozenset[str] = frozenset(
+    {"crate", "self", "super", "std", "core", "alloc"}
+)
+
+
+def _rust_module_keys(rel: str):
+    """Yield the module keys a ``use`` path may name this file by.
+
+    ``src/auth/jwt_utils.rs`` → ``auth::jwt_utils`` and ``jwt_utils``;
+    ``src/auth/mod.rs`` → ``auth``. Crate roots (``lib.rs``/``main.rs``) collapse
+    to their parent path, since ``use crate::x`` names items under the root, not
+    the root file itself."""
+    no_ext = rel[:-3] if rel.endswith(".rs") else rel
+    parts = [p for p in no_ext.split("/") if p]
+    if parts and parts[0] == "src":
+        parts = parts[1:]
+    if parts and parts[-1] in ("mod", "lib", "main"):
+        parts = parts[:-1]
+    if not parts:
+        return
+    yield "::".join(parts)
+    if len(parts) > 1:
+        yield parts[-1]
+
+
+def _rust_type_name(node, src: bytes) -> str:
+    """Bare type name from an impl/trait reference, unwrapping one level of
+    ``generic_type`` / ``scoped_type_identifier`` / ``reference_type``."""
+    if node is None:
+        return ""
+    if node.type == "type_identifier":
+        return _node_text(node, src)
+    inner = node.child_by_field_name("type") or node.child_by_field_name("name")
+    if inner is not None:
+        return _rust_type_name(inner, src)
+    for c in node.named_children:
+        if c.type == "type_identifier":
+            return _node_text(c, src)
+    return _node_text(node, src).strip()
+
+
+def _rust_leading_doc(node, src: bytes) -> str | None:
+    """Rust doc comments are ``line_comment``/``block_comment`` nodes (``///``,
+    ``//!``, ``/** */``) — not the ``comment`` type ``_leading_comment_text``
+    matches — so Rust needs its own contiguous-leading-comment grabber."""
+    comments: list[str] = []
+    sib = node.prev_named_sibling
+    while sib is not None and sib.type in ("line_comment", "block_comment"):
+        comments.append(_node_text(sib, src))
+        sib = sib.prev_named_sibling
+    if not comments:
+        return None
+    return _clean_comment("\n".join(reversed(comments))) or None
+
+
+def _rust_attach_doc(b: _GraphBuilder, node, src: bytes, rel: str, target_id: str) -> None:
+    doc = _rust_leading_doc(node, src)
+    if not doc:
+        return
+    line = node.start_point[0] + 1
+    rid = f"{target_id}__rationale"
+    b.add_node(rid, doc, "rationale", rel, line)
+    b.add_edge("rationale_for", rid, target_id, rel, line)
+
+
+def _rust_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> None:
+    name = _name_of(fn_node, src)
+    if not name:
+        return
+    line = fn_node.start_point[0] + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _rust_attach_doc(b, fn_node, src, rel, fid)
+
+
+def _rust_type_node_id(b: _GraphBuilder, file_id: str, name: str, line: int, rel: str) -> str:
+    """Ensure (idempotently) a type node for ``name`` in this file and return its
+    id. Used by impls, which may precede the type's own declaration."""
+    cid = f"{file_id}__{_slug(name)}_cls"
+    b.add_node(cid, name, "code", rel, line)
+    return cid
+
+
+def _rust_emit_type(b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: str) -> str | None:
+    name = _name_of(type_node, src)
+    if not name:
+        return None
+    line = type_node.start_point[0] + 1
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    b.add_edge("contains", file_id, cid, rel, line)
+    _rust_attach_doc(b, type_node, src, rel, cid)
+    return cid
+
+
+def _rust_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
+
+
+def _rust_emit_struct_fields(b: _GraphBuilder, struct_node, src: bytes, rel: str, cid: str) -> None:
+    body = struct_node.child_by_field_name("body")
+    if body is None:
+        return
+    for fld in body.named_children:
+        if fld.type != "field_declaration":
+            continue
+        nm = fld.child_by_field_name("name")
+        if nm is None:
+            nm = next((c for c in fld.named_children if c.type == "field_identifier"), None)
+        if nm is not None:
+            _rust_emit_sym(b, _node_text(nm, src), fld.start_point[0] + 1, rel, cid)
+
+
+def _rust_emit_enum_variants(b: _GraphBuilder, enum_node, src: bytes, rel: str, cid: str) -> None:
+    body = enum_node.child_by_field_name("body")
+    if body is None:
+        return
+    for v in body.named_children:
+        if v.type != "enum_variant":
+            continue
+        nm = v.child_by_field_name("name") or (v.named_children[0] if v.named_children else None)
+        if nm is not None:
+            _rust_emit_sym(b, _node_text(nm, src), v.start_point[0] + 1, rel, cid)
+
+
+def _rust_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for Rust: register module keys, then emit fns / types / fields /
+    variants / consts, descending into inline ``mod`` blocks and attaching impl
+    methods to their type node."""
+    for key in _rust_module_keys(rel):
+        b.file_by_module.setdefault(key, file_id)
+    _rust_walk_items(b, root_node, src, rel, file_id)
+
+
+def _rust_walk_items(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    for child in node.named_children:
+        t = child.type
+        if t == "function_item":
+            _rust_emit_fn(b, child, src, rel, file_id)
+        elif t in ("struct_item", "union_item", "type_item"):
+            cid = _rust_emit_type(b, child, src, rel, file_id)
+            if cid and t != "type_item":
+                _rust_emit_struct_fields(b, child, src, rel, cid)
+        elif t == "enum_item":
+            cid = _rust_emit_type(b, child, src, rel, file_id)
+            if cid:
+                _rust_emit_enum_variants(b, child, src, rel, cid)
+        elif t == "trait_item":
+            cid = _rust_emit_type(b, child, src, rel, file_id)
+            body = child.child_by_field_name("body")
+            if cid and body is not None:
+                for m in body.named_children:
+                    if m.type in ("function_item", "function_signature_item"):
+                        _rust_emit_fn(b, m, src, rel, cid)
+        elif t in ("const_item", "static_item"):
+            name = _name_of(child, src)
+            if name:
+                _rust_emit_sym(b, name, child.start_point[0] + 1, rel, file_id)
+        elif t == "impl_item":
+            type_node = child.child_by_field_name("type")
+            type_name = _rust_type_name(type_node, src) if type_node is not None else ""
+            if not type_name:
+                continue
+            cid = _rust_type_node_id(b, file_id, type_name, child.start_point[0] + 1, rel)
+            body = child.child_by_field_name("body")
+            if body is not None:
+                for m in body.named_children:
+                    if m.type == "function_item":
+                        _rust_emit_fn(b, m, src, rel, cid)
+        elif t == "mod_item":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _rust_walk_items(b, body, src, rel, file_id)
+
+
+def _rust_use_keys(use_node, src: bytes):
+    """Yield candidate module keys for a ``use`` declaration, longest path first
+    then bare stems, so the resolver matches the most specific module it can."""
+    arg = use_node.child_by_field_name("argument")
+    raw = _node_text(arg if arg is not None else use_node, src)
+    raw = raw.split(" as ")[0].strip()
+    # `prefix::{a, b}` resolves to the prefix module (items live under it).
+    if "{" in raw:
+        raw = raw[: raw.index("{")].strip().rstrip(":")
+    segs = [s.strip() for s in raw.split("::") if s.strip() and s.strip() != "*"]
+    segs = [s for s in segs if s not in _RUST_PATH_QUALIFIERS]
+    if not segs:
+        return
+    for n in range(len(segs), 0, -1):
+        yield "::".join(segs[:n])
+    yield from reversed(segs)
+
+
+def _rust_resolve_imports(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    for child in node.named_children:
+        if child.type == "mod_item":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _rust_resolve_imports(b, body, src, rel, file_id)
+            continue
+        if child.type != "use_declaration":
+            continue
+        line = child.start_point[0] + 1
+        for key in _rust_use_keys(child, src):
+            target = b.file_by_module.get(key)
+            if target and target != file_id:
+                b.add_edge("imports_from", file_id, target, rel, line, context="use")
+                break
+
+
+def _rust_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``impl Trait for Type`` → ``inherits`` edge Type → Trait. External traits
+    are synthesized as nodes so the edge never dangles (mirrors the TS path)."""
+    for child in node.named_children:
+        if child.type == "mod_item":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _rust_resolve_inherits(b, body, src, rel, file_id)
+            continue
+        if child.type != "impl_item":
+            continue
+        trait_node = child.child_by_field_name("trait")
+        type_node = child.child_by_field_name("type")
+        if trait_node is None or type_node is None:
+            continue
+        type_name = _rust_type_name(type_node, src)
+        trait_name = _rust_type_name(trait_node, src)
+        if not type_name or not trait_name:
+            continue
+        line = child.start_point[0] + 1
+        cid = next((c for c in b.class_by_name.get(type_name, []) if c.startswith(file_id)), None)
+        if cid is None:
+            cid = _rust_type_node_id(b, file_id, type_name, line, rel)
+        targets = b.class_by_name.get(trait_name)
+        if targets:
+            for tid in targets:
+                b.add_edge("inherits", cid, tid, rel, line)
+        else:
+            tid = f"ext__{_slug(trait_name)}_cls"
+            b.add_node(tid, trait_name, "code", rel, line)
+            b.add_edge("inherits", cid, tid, rel, line)
+
+
+def _rust_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type == "function_item":
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "call_expression" and current_fn is not None:
+                fn_field = child.child_by_field_name("function")
+                if fn_field is not None:
+                    callee = (
+                        _node_text(fn_field, src)
+                        .split("::")[-1]
+                        .split(".")[-1]
+                        .split("(")[0]
+                        .strip()
+                    )
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+def _rust_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for Rust: ``use`` imports + ``impl Trait`` inherits + calls."""
+    _rust_resolve_imports(b, root_node, src, rel, file_id)
+    _rust_resolve_inherits(b, root_node, src, rel, file_id)
+    _rust_resolve_calls(b, root_node, src, rel, file_id)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -1022,6 +1327,7 @@ _EXTRACTORS: dict[str, tuple] = {
     "python": (_py_extract_symbols, _py_resolve_edges),
     "typescript": (_ts_extract_symbols, _ts_resolve_edges),
     "go": (_go_extract_symbols, _go_resolve_edges),
+    "rust": (_rust_extract_symbols, _rust_resolve_edges),
 }
 
 
@@ -1066,6 +1372,9 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
         elif lang == "go":
             seg = posixpath.basename(posixpath.dirname(sf)) or posixpath.basename(sf)
             b.go_pkg_files.setdefault(seg, []).append(nid)
+        elif lang == "rust":
+            for key in _rust_module_keys(sf):
+                b.file_by_module.setdefault(key, nid)
         return
     if nid.endswith("_fn"):
         b.func_by_name.setdefault(label.rstrip("()"), []).append(nid)

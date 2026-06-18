@@ -49,9 +49,11 @@ entire retrieval pipeline downstream — progressive L0–L3 disclosure, the
 synapse layer, the graph view, the MCP tools — works exactly the same. Only
 the graph *producer* changed.
 
-- **Languages:** Python, TypeScript, and Go out of the box (v0.16.0+) — a
-  mixed-language repo is indexed in one pass. More grammars register behind the
-  same `SUPPORTED_SUFFIXES` seam.
+- **Languages:** Python, TypeScript, Go, and Rust out of the box (Rust added
+  in v0.27.0) — a mixed-language repo is indexed in one pass. Rust structs,
+  enums, traits, `impl` blocks, and `use`/`impl Trait` edges all map onto the
+  same graph model. More grammars register behind the same `SUPPORTED_SUFFIXES`
+  seam.
 - **Edge precision:** `calls`/`inherits` are best-effort by name (no type
   resolution). Whether that costs retrieval quality is **measured** by the
   backend parity gate, not guessed — and an optional LSP/SCIP precision pass
