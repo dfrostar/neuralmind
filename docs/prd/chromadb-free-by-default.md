@@ -157,3 +157,5 @@ A default `pip install neuralmind` is **ChromaDB-free and CVE-tree-free** out of
 the box, using turbovec/ONNX, with ChromaDB one `[chromadb]` extra away — closing
 the packaging half of the competitive gap while keeping every existing setup
 working.
+
+<!-- CI: v0.29.0 ChromaDB-free default. -->
