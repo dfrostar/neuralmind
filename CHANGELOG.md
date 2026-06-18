@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/dfrostar/neuralmind/compare/v0.27.0...v0.28.0) (2026-06-18)
+
+
+### Features
+
+* add Java to the built-in tree-sitter backend ([#246](https://github.com/dfrostar/neuralmind/issues/246)) ([42c9516](https://github.com/dfrostar/neuralmind/commit/42c9516dfad772f958933672f86c0252d70738c1))
+
 ## [0.27.0](https://github.com/dfrostar/neuralmind/compare/v0.26.0...v0.27.0) (2026-06-18)
 
 
