@@ -79,6 +79,7 @@ _LANG_FIXTURES: dict[str, str] = {
     "typescript": "tests/fixtures/sample_project_ts",
     "go": "tests/fixtures/sample_project_go",
     "rust": "tests/fixtures/sample_project_rust",
+    "java": "tests/fixtures/sample_project_java",
 }
 
 

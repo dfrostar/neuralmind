@@ -35,6 +35,7 @@ CASES = [
     ("sample_project_ts", "benchmark_queries_ts.json"),
     ("sample_project_go", "benchmark_queries_go.json"),
     ("sample_project_rust", "benchmark_queries_rust.json"),
+    ("sample_project_java", "benchmark_queries_java.json"),
 ]
 
 
@@ -102,7 +103,7 @@ def test_symbol_lines_point_at_real_definitions(fixture: str, queryfile: str) ->
         # (whose label is the filename). Every other code node is a real symbol
         # we DO validate — including any that lands on L1, since that signals
         # _gen_graph.py failed to locate it and must fail loudly, not be skipped.
-        if src == "<builtin>" or label.endswith((".ts", ".go", ".rs")):
+        if src == "<builtin>" or label.endswith((".ts", ".go", ".rs", ".java")):
             continue
         line_no = int(node["source_location"].lstrip("L"))
         text = (FIXTURES / fixture / src).read_text().splitlines()[line_no - 1]
