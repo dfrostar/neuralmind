@@ -784,10 +784,10 @@ GO_SPEC = {
 }
 
 
-# --------------------------------------------------------------------------- Rust
+# ----------------------------------------------------------------- Rust / Java
 
-# Top-level keys graphify's Python gold carries — the Rust gold is reshaped to
-# match this exact set so test_polyglot_fixtures' schema check passes.
+# Top-level keys graphify's Python gold carries — the Rust/Java golds are
+# reshaped to match this exact set so test_polyglot_fixtures' schema check passes.
 _GRAPHIFY_TOP_KEYS = (
     "directed",
     "multigraph",
@@ -798,11 +798,11 @@ _GRAPHIFY_TOP_KEYS = (
 )
 
 
-def build_rust_gold(fixture_dir: Path) -> dict:
-    """Generate the Rust gold from the built-in tree-sitter extractor.
+def build_builtin_gold(fixture_dir: Path) -> dict:
+    """Generate a gold graph from the built-in tree-sitter extractor.
 
-    graphify cannot parse Rust, so unlike TS/Go (hand-authored to mirror
-    graphify) the Rust gold is the built-in backend's own output, reshaped into
+    graphify cannot parse Rust or Java, so unlike TS/Go (hand-authored to mirror
+    graphify) those golds are the built-in backend's own output, reshaped into
     graphify's schema (drop ``generated_by``/``schema_version``, stamp the
     hand-authored commit sentinel). The *independent* correctness oracle is
     ``tests/test_graphgen.py``'s hand-listed expected symbols; this gold then
@@ -825,14 +825,15 @@ def main() -> None:
         out.write_text(json.dumps(graph, indent=2) + "\n")
         print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
 
-    # Rust: gold is generated from the built-in extractor (graphify can't parse
-    # Rust). Requires the tree-sitter Rust grammar to be importable.
-    rust_dir = HERE / "sample_project_rust"
-    graph = build_rust_gold(rust_dir)
-    out = rust_dir / "graphify-out" / "graph.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(graph, indent=2) + "\n")
-    print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
+    # Rust + Java: golds are generated from the built-in extractor (graphify
+    # can't parse either). Requires the matching tree-sitter grammar to import.
+    for name in ("sample_project_rust", "sample_project_java"):
+        fixture_dir = HERE / name
+        graph = build_builtin_gold(fixture_dir)
+        out = fixture_dir / "graphify-out" / "graph.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(graph, indent=2) + "\n")
+        print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
 
 
 if __name__ == "__main__":
