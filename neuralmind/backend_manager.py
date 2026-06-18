@@ -12,23 +12,27 @@ from .embedding_backend import EmbeddingBackend
 from .in_memory_backend import InMemoryEmbeddingBackend
 
 DEFAULT_BACKEND_CONFIG: dict[str, Any] = {
-    # v0.22: the default is "auto" — prefer the ChromaDB-free turbovec backend
-    # when its optional deps are installed, else fall back to chroma. An explicit
-    # `backend:` in neuralmind-backend.yaml (or a backend= argument) always wins.
+    # The default is "auto" — prefer the ChromaDB-free turbovec backend when its
+    # deps are importable, else fall back to chroma. Since v0.29.0 the turbovec
+    # stack is a *base* dependency, so a default install resolves to turbovec
+    # out of the box. An explicit `backend:` in neuralmind-backend.yaml (or a
+    # backend= argument) always wins.
     "backend": "auto",
     "db_path": None,
     "hybrid_context": False,
     "security": {},
 }
 
-# The optional turbovec stack (the `[turbovec]` extra). All three must import for
-# the turbovec backend to construct, so auto-detection gates on all of them.
+# The turbovec stack. All three must import for the turbovec backend to
+# construct, so auto-detection gates on all of them. Base dependencies since
+# v0.29.0 (previously the `[turbovec]` extra).
 _TURBOVEC_DEPS = ("turbovec", "onnxruntime", "tokenizers")
 
 
 def turbovec_available() -> bool:
-    """True when the optional turbovec stack (turbovec + onnxruntime + tokenizers)
-    is importable, i.e. the user installed ``neuralmind[turbovec]``."""
+    """True when the turbovec stack (turbovec + onnxruntime + tokenizers) is
+    importable. These are base dependencies since v0.29.0, so this is normally
+    True; it can be False only if a user force-uninstalled them."""
     import importlib.util
 
     return all(importlib.util.find_spec(mod) is not None for mod in _TURBOVEC_DEPS)
@@ -37,11 +41,12 @@ def turbovec_available() -> bool:
 def resolve_backend(backend: str | None) -> str:
     """Resolve the ``auto`` default (or ``None``) to a concrete backend name.
 
-    As of v0.22 the shipped default is ``auto``: prefer turbovec when its deps
-    are installed (the ChromaDB-free path), otherwise fall back to ``graph``
-    (the ChromaDB-backed ``GraphEmbedder``). Any explicit, concrete backend name
-    is normalised (lowercased/trimmed) and returned unchanged — so opting into
-    chroma via ``backend: graph`` is always honoured.
+    The shipped default is ``auto``: prefer turbovec when its deps are installed
+    (the ChromaDB-free path — base deps since v0.29.0, so this is the normal
+    default), otherwise fall back to ``graph`` (the ChromaDB-backed
+    ``GraphEmbedder``, now an opt-in ``[chromadb]`` extra). Any explicit,
+    concrete backend name is normalised (lowercased/trimmed) and returned
+    unchanged — so opting into chroma via ``backend: graph`` is always honoured.
     """
     # None, "", or a non-string (e.g. `backend: null` in YAML) all mean "auto".
     if not isinstance(backend, str) or not backend.strip():
@@ -93,15 +98,30 @@ def create_backend(
     if normalized in {"graph", "chroma", "chromadb"}:
         # Lazy import: keeps ChromaDB (a heavy tree) off the import path unless
         # the chroma backend is actually selected, so the turbovec backend can
-        # run without it. See issue #204.
-        from .embedder import GraphEmbedder
+        # run without it. See issue #204. As of v0.29.0 ChromaDB is an opt-in
+        # extra, so a missing import means the user selected the chroma backend
+        # without installing it — surface an actionable hint, not a raw
+        # ModuleNotFoundError from deep in the import.
+        try:
+            from .embedder import GraphEmbedder
+        except ModuleNotFoundError as exc:
+            if exc.name and exc.name.split(".")[0] == "chromadb":
+                raise ModuleNotFoundError(
+                    "the 'graph' (ChromaDB) backend needs ChromaDB, which is no "
+                    "longer installed by default. Install it with "
+                    '`pip install "neuralmind[chromadb]"`, or use the default '
+                    "ChromaDB-free turbovec backend (remove `backend: graph` "
+                    "from neuralmind-backend.yaml).",
+                    name=exc.name,
+                ) from exc
+            raise
 
         return GraphEmbedder(project_path, db_path=db_path)
     if normalized in {"in_memory", "inmemory", "memory"}:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
     if normalized in {"turbovec", "turboquant"}:
-        # Lazy import: keeps the optional turbovec dependency out of the import
-        # path for the default (chroma) backend. POC — see issue #204.
+        # Lazy import, mirroring the chroma branch — keeps construction symmetric
+        # and import-light. turbovec is the default backend since v0.29.0.
         from .turbovec_backend import TurboVecEmbedder
 
         return TurboVecEmbedder(project_path, db_path=db_path)

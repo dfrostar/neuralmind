@@ -184,7 +184,13 @@ def empty_project() -> Generator[Path, None, None]:
 
 @pytest.fixture
 def mock_chromadb(mocker):
-    """Mock ChromaDB for tests that don't need real embeddings."""
+    """Mock ChromaDB for tests that don't need real embeddings.
+
+    ChromaDB is an opt-in extra as of v0.29.0; this fixture patches
+    ``chromadb.PersistentClient``, so tests that depend on it skip cleanly on a
+    ChromaDB-free install and run in the ``[dev,chromadb]`` CI job.
+    """
+    pytest.importorskip("chromadb")
     mock_client = mocker.MagicMock()
     mock_collection = mocker.MagicMock()
     mock_client.get_or_create_collection.return_value = mock_collection

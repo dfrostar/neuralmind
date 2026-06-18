@@ -127,6 +127,10 @@ keywords = [
     "turbovec",
     "turboquant",
     "chromadb-free",
+    "chromadb-free-by-default",
+    "chromadb-optional",
+    "lean-default-install",
+    "cve-free-default",
     "chromadb-alternative",
     "onnx-embeddings",
     "vector-quantization",
@@ -175,10 +179,19 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "chromadb>=0.4.0",
     "pyyaml>=6.0",
     "toml>=0.10",
     "mcp>=1.27.2",
+    # ChromaDB-free vector backend (the default since v0.29.0): TurboQuant
+    # compressed ANN index + a bundled ONNX MiniLM embedder whose vectors are
+    # byte-identical to ChromaDB's all-MiniLM-L6-v2. SQLite (stdlib) holds
+    # metadata. ChromaDB is now an opt-in extra (`neuralmind[chromadb]`); this
+    # keeps the heavy ChromaDB dependency tree (and its recurring CVE surface)
+    # out of the default install. See docs/prd/chromadb-free-by-default.md.
+    "turbovec>=0.7",
+    "numpy>=1.20",
+    "onnxruntime>=1.16",
+    "tokenizers>=0.15",
     # Built-in graph backend: parse a project into a graphify-compatible
     # graph.json with no external graphify install. See neuralmind/graphgen.py.
     # Python + TypeScript + Go + Rust + Java grammars are bundled so
@@ -197,16 +210,16 @@ dependencies = [
 # in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
 # package is now a base dependency.
 mcp = []
-# Opt-in ChromaDB-free vector backend (Google TurboQuant). See issue #204.
-# Fully self-contained: turbovec for the compressed ANN index, onnxruntime +
-# tokenizers for the bundled MiniLM embedder (vectors byte-identical to
-# ChromaDB's), SQLite (stdlib) for metadata. Enable with backend "turbovec".
-turbovec = [
-    "turbovec>=0.7",
-    "numpy>=1.20",
-    "onnxruntime>=1.16",
-    "tokenizers>=0.15",
+# Opt-in ChromaDB backend. As of v0.29.0 the ChromaDB-free turbovec/ONNX stack
+# is the default install; install this extra (and set `backend: graph` in
+# neuralmind-backend.yaml, or pass backend="graph") to use ChromaDB instead.
+chromadb = [
+    "chromadb>=0.4.0",
 ]
+# Back-compat alias: the turbovec/ONNX stack is now a base dependency, so this
+# extra is empty. Existing `pip install "neuralmind[turbovec]"` commands keep
+# resolving (same pattern as the `mcp` extra).
+turbovec = []
 dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
@@ -218,7 +231,7 @@ dev = [
     "pre-commit>=4.6.0"
 ]
 all = [
-    "neuralmind[mcp,dev]"
+    "neuralmind[mcp,chromadb,dev]"
 ]
 
 [project.scripts]

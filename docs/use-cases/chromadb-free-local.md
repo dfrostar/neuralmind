@@ -4,16 +4,18 @@
 who wants fewer moving parts. **Goal:** run NeuralMind's full vector retrieval —
 embedding *and* search — with **zero ChromaDB**.
 
-*Requires v0.21.0+.*
+*The turbovec/ONNX stack is the **default** since v0.29.0; it has existed since v0.21.0.*
 
 ## Why you'd want this
 
-NeuralMind's default vector store is ChromaDB. It works well, but it pulls in a
-large transitive dependency tree (a web server, a kubernetes client,
-OpenTelemetry, gRPC, …) and has carried the recurring **CVE-2026-45829**
-advisory. The opt-in `turbovec` backend replaces it entirely:
+As of **v0.29.0 the default install is ChromaDB-free** — the `turbovec` backend
+ships out of the box and ChromaDB is an opt-in extra. Historically ChromaDB was
+the default; it works well, but pulls in a large transitive dependency tree (a
+web server, a kubernetes client, OpenTelemetry, gRPC, …) and has carried the
+recurring **CVE-2026-45829** advisory. The `turbovec` backend replaces it
+entirely:
 
-| Concern | Default (chroma) | `turbovec` (ChromaDB-free) |
+| Concern | ChromaDB (opt-in `[chromadb]`) | `turbovec` (ChromaDB-free, **default**) |
 |---|---|---|
 | ANN search | ChromaDB HNSW | Google **TurboQuant** compressed index |
 | Embeddings | ChromaDB's MiniLM | bundled `OnnxMiniLMEmbedder` (**byte-identical** vectors) |
