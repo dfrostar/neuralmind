@@ -33,7 +33,13 @@ class ChromaFreeImportTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, "`import neuralmind` eagerly imported chromadb")
 
     def test_graphembedder_still_importable_on_demand(self) -> None:
-        # The lazy export must still resolve when actually accessed.
+        # The lazy export must still resolve when actually accessed — but only
+        # when the optional [chromadb] extra is installed (v0.29.0+). On a
+        # ChromaDB-free install, accessing it raises (the chroma backend is gone).
+        import importlib.util
+
+        if importlib.util.find_spec("chromadb") is None:
+            self.skipTest("needs the optional [chromadb] extra")
         import neuralmind
 
         self.assertEqual(neuralmind.GraphEmbedder.__name__, "GraphEmbedder")

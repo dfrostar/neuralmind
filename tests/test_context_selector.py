@@ -1,5 +1,13 @@
 """Tests for NeuralMind context selector functionality."""
 
+import pytest
+
+# These tests drive the selector through the ChromaDB-backed GraphEmbedder. As
+# of v0.29.0 ChromaDB is an opt-in extra, so skip the module cleanly on a
+# ChromaDB-free install; it runs in the `[dev,chromadb]` CI job. (The default
+# turbovec path is covered by test_turbovec_backend + the integration tests.)
+pytest.importorskip("chromadb")
+
 
 class TestContextSelector:
     """Tests for ContextSelector class."""
