@@ -4,18 +4,36 @@
 
 ## TL;DR
 
-`pip install neuralmind` no longer pulls **ChromaDB**. The default install now
-uses the **ChromaDB-free turbovec/ONNX** backend (TurboQuant compressed index +
-a bundled MiniLM embedder whose vectors are byte-identical to ChromaDB's). This
-removes ChromaDB's large transitive dependency tree — and the recurring
-**chromadb CVE** surface the project already tracks — from the default install.
-
-ChromaDB is now a one-line opt-in:
+On mainstream platforms, `pip install neuralmind` no longer pulls **ChromaDB**.
+The default install now uses the **ChromaDB-free turbovec/ONNX** backend
+(TurboQuant compressed index + a bundled MiniLM embedder whose vectors are
+byte-identical to ChromaDB's), removing ChromaDB's large transitive dependency
+tree — and the recurring **chromadb CVE** surface the project already tracks —
+from the default install.
 
 ```bash
-pip install neuralmind                 # ChromaDB-free (turbovec/ONNX) — the default
-pip install "neuralmind[chromadb]"     # add the ChromaDB backend back
+pip install neuralmind                 # ChromaDB-free (turbovec/ONNX) on wheel-covered platforms
+pip install "neuralmind[chromadb]"     # force the ChromaDB backend anywhere
 ```
+
+## Platform coverage (the install never breaks)
+
+The vector backend is **platform-gated by wheel availability**, so a base
+`pip install neuralmind` always resolves to *prebuilt wheels* (no Rust/C++
+toolchain needed) and a working backend on every platform:
+
+| Platform | Default backend |
+|---|---|
+| Linux x86_64 / aarch64 (glibc ≥ 2.28) | **turbovec/ONNX** (ChromaDB-free) |
+| macOS arm64 (Apple Silicon) | **turbovec/ONNX** (ChromaDB-free) |
+| Windows x86_64 | **turbovec/ONNX** (ChromaDB-free) |
+| macOS x86_64 (Intel), Windows ARM | **ChromaDB** (auto-installed fallback — turbovec has no wheel) |
+
+`auto` backend selection prefers turbovec when present, else ChromaDB — so the
+fallback is transparent. **Caveat:** PEP 508 markers can't distinguish musl from
+glibc, so **Alpine/musl** (and pre-2.28-glibc) Linux still resolve to turbovec
+and need a build toolchain or `pip install "neuralmind[chromadb]"` — use a glibc
+base image (`python:slim`) rather than `python:alpine`.
 
 Everything that was already true stays true: retrieval behaviour is unchanged
 (turbovec vectors are at/above ChromaDB parity on the gold set), and an explicit
@@ -69,9 +87,11 @@ dependency set is installed by default:
 
 ## What ships
 
-- **`pyproject.toml`** — `turbovec`/`onnxruntime`/`tokenizers`/`numpy` promoted
-  to base dependencies; `chromadb` demoted to the **`[chromadb]`** extra;
-  `[turbovec]` kept as an empty back-compat alias.
+- **`pyproject.toml`** — `turbovec`/`onnxruntime`/`tokenizers` are base deps
+  **gated by platform markers** (where wheels exist); `chromadb` is a
+  marker-conditional **fallback** base dep on uncovered platforms (Intel macOS,
+  Windows ARM) *and* the opt-in **`[chromadb]`** extra everywhere; `[turbovec]`
+  kept as an empty back-compat alias.
 - **`neuralmind/backend_manager.py`** — actionable error when the chroma backend
   is selected without the `[chromadb]` extra.
 - **CI** — the test matrix installs `[dev,chromadb]` (both backends exercised);

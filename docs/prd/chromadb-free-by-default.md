@@ -90,6 +90,15 @@ CVE-tree-free default."
     resolving (same pattern already used for the `mcp` extra).
   - `all` includes `chromadb` so `[all]` still exercises every backend.
 
+**Implementation note (platform-gated, added in review).** turbovec/onnx
+publish wheels only for Linux (manylinux_2_28), macOS arm64, and Windows
+x86_64. To avoid regressing `pip install neuralmind` on Intel macOS / Windows
+ARM (sdist build → needs a toolchain), the base deps are **platform-gated by
+PEP 508 markers**: turbovec/onnx where wheels exist, and `chromadb` as a
+marker-conditional fallback elsewhere. Markers can't distinguish musl/glibc, so
+Alpine/pre-2.28-glibc still resolve to turbovec (documented; use `python:slim`).
+Guarded by `tests/test_packaging_backends.py`.
+
 **`neuralmind/backend_manager.py`**
 - In `create_backend`, when the chroma backend is selected but `chromadb` isn't
   importable, raise a clear `ModuleNotFoundError`/`RuntimeError`:
