@@ -239,6 +239,7 @@ class WriteGraphTests(unittest.TestCase):
 
 FIXTURE_TS = _REPO / "tests" / "fixtures" / "sample_project_ts"
 FIXTURE_GO = _REPO / "tests" / "fixtures" / "sample_project_go"
+FIXTURE_RUST = _REPO / "tests" / "fixtures" / "sample_project_rust"
 
 
 @unittest.skipUnless(
@@ -322,6 +323,117 @@ class GoTests(unittest.TestCase):
         for e in self.edges:
             self.assertIn(e["source"], ids)
             self.assertIn(e["target"], ids)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("rust"),
+    "tree-sitter-rust not installed",
+)
+class RustTests(unittest.TestCase):
+    """The Rust extractor behind the SUPPORTED_SUFFIXES seam.
+
+    This is the *independent* correctness oracle for the Rust gold graph: it
+    asserts a hand-listed set of expected symbols, edges, and rationale rather
+    than comparing to a generated baseline, so a broken extractor fails here
+    even though the parity gate's gold is generated from the extractor itself.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_RUST)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_functions_and_methods(self) -> None:
+        # free functions, impl methods, and an internal (private) helper.
+        for want in (
+            "get_connection()",  # impl method
+            "ensure_schema()",  # free fn
+            "encode_token()",
+            "sign()",  # private fn
+            "authenticate_user()",
+            "charge_customer()",  # impl method
+            "build_routes()",
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_types(self) -> None:
+        # struct, trait, and enum all become `code` type nodes.
+        for want in ("Connection", "DataStore", "User", "StripeClient", "Method", "Route"):
+            self.assertIn(want, self.code_labels)
+
+    def test_struct_fields_extracted(self) -> None:
+        for want in ("url", "api_key", "amount_cents", "email"):
+            self.assertIn(want, self.code_labels)
+
+    def test_enum_variants_extracted(self) -> None:
+        for want in ("Get", "Post", "Delete"):
+            self.assertIn(want, self.code_labels)
+
+    def test_doc_comment_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("authentication hot path", rats)
+
+    def test_impl_trait_becomes_inherits(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        inherits = {
+            (label[e["source"]], label[e["target"]])
+            for e in self.edges
+            if e["relation"] == "inherits"
+        }
+        self.assertIn(("Connection", "DataStore"), inherits)
+
+    def test_use_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        import_pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("src/users/crud.rs", "src/db/connection.rs"), import_pairs)
+        self.assertIn(("src/auth/handlers.rs", "src/users/crud.rs"), import_pairs)
+
+    def test_cross_file_call_resolved(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        calls = {
+            (label[e["source"]], label[e["target"]]) for e in self.edges if e["relation"] == "calls"
+        }
+        # authenticate_user() calls get_user_by_email() in another module.
+        self.assertIn(("authenticate_user()", "get_user_by_email()"), calls)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_RUST)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        """The built-in extractor's symbol set must match the committed gold
+        (the parity gate's regression baseline)."""
+        import json
+
+        gold = json.loads(
+            (FIXTURE_RUST / "graphify-out" / "graph.json").read_text(encoding="utf-8")
+        )
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
 
 
 @unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
@@ -416,7 +528,7 @@ class LanguageSeamTests(unittest.TestCase):
     """The suffix→language registry is the only thing a new grammar touches."""
 
     def test_supported_suffixes(self) -> None:
-        for suf in (".py", ".ts", ".tsx", ".go"):
+        for suf in (".py", ".ts", ".tsx", ".go", ".rs"):
             self.assertIn(suf, graphgen.SUPPORTED_SUFFIXES)
 
     def test_every_suffix_has_an_extractor(self) -> None:

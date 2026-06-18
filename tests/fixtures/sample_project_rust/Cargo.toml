@@ -1,0 +1,9 @@
+[package]
+name = "sample_project_rust"
+version = "0.1.0"
+edition = "2021"
+
+# Fixture crate for NeuralMind's Rust retrieval-quality eval. Not built — it
+# exists to be parsed by the built-in tree-sitter backend (neuralmind/graphgen.py).
+
+[dependencies]
