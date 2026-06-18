@@ -101,7 +101,7 @@ from .synapses import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "0.27.0"
+__version__ = "0.28.0"
 __all__ = [
     "NeuralMind",
     "GraphEmbedder",
