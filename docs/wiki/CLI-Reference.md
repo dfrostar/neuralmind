@@ -645,7 +645,7 @@ NeuralMind doctor — /path/to/project
 ============================================================
   [ ok ] Code graph: 1240 nodes at /path/to/project/graphify-out/graph.json
   [ ok ] Semantic index: 1240 nodes embedded (turbovec backend)
-  [ ok ] Backend: turbovec (auto-selected; ChromaDB-free default)
+  [ ok ] Backend: turbovec (auto-selected; turbovec stack available)
   [warn] Synapse memory: no synapses.db yet (nothing learned)
          -> It populates automatically as you query and edit the codebase.
   [ ok ] MCP server: MCP SDK importable (neuralmind-mcp ready)
