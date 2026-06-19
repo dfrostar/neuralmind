@@ -1,0 +1,1484 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "billing.h",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L1",
+      "id": "include_billing_h",
+      "community": 1,
+      "norm_label": "billing.h"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L7",
+      "id": "include_billing_h__invoice_cls",
+      "community": 1,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "A line item plus total for a billing run.",
+      "file_type": "rationale",
+      "source_file": "include/billing.h",
+      "source_location": "L7",
+      "id": "include_billing_h__invoice_cls__rationale",
+      "community": 1,
+      "norm_label": "a line item plus total for a billing run."
+    },
+    {
+      "label": "id",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L8",
+      "id": "include_billing_h__invoice_cls__id_sym",
+      "community": 1,
+      "norm_label": "id"
+    },
+    {
+      "label": "user_id",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L9",
+      "id": "include_billing_h__invoice_cls__user_id_sym",
+      "community": 1,
+      "norm_label": "user_id"
+    },
+    {
+      "label": "amount_cents",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L10",
+      "id": "include_billing_h__invoice_cls__amount_cents_sym",
+      "community": 1,
+      "norm_label": "amount_cents"
+    },
+    {
+      "label": "paid",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L11",
+      "id": "include_billing_h__invoice_cls__paid_sym",
+      "community": 1,
+      "norm_label": "paid"
+    },
+    {
+      "label": "invoice_create()",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L14",
+      "id": "include_billing_h__invoice_create_fn",
+      "community": 1,
+      "norm_label": "invoice_create()"
+    },
+    {
+      "label": "invoice_charge()",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L15",
+      "id": "include_billing_h__invoice_charge_fn",
+      "community": 1,
+      "norm_label": "invoice_charge()"
+    },
+    {
+      "label": "stripe_refund()",
+      "file_type": "code",
+      "source_file": "include/billing.h",
+      "source_location": "L16",
+      "id": "include_billing_h__stripe_refund_fn",
+      "community": 1,
+      "norm_label": "stripe_refund()"
+    },
+    {
+      "label": "db.h",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L1",
+      "id": "include_db_h",
+      "community": 2,
+      "norm_label": "db.h"
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L5",
+      "id": "include_db_h__connection_cls",
+      "community": 2,
+      "norm_label": "connection"
+    },
+    {
+      "label": "An open database connection handle.",
+      "file_type": "rationale",
+      "source_file": "include/db.h",
+      "source_location": "L5",
+      "id": "include_db_h__connection_cls__rationale",
+      "community": 2,
+      "norm_label": "an open database connection handle."
+    },
+    {
+      "label": "dsn",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L6",
+      "id": "include_db_h__connection_cls__dsn_sym",
+      "community": 2,
+      "norm_label": "dsn"
+    },
+    {
+      "label": "socket_fd",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L7",
+      "id": "include_db_h__connection_cls__socket_fd_sym",
+      "community": 2,
+      "norm_label": "socket_fd"
+    },
+    {
+      "label": "in_transaction",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L8",
+      "id": "include_db_h__connection_cls__in_transaction_sym",
+      "community": 2,
+      "norm_label": "in_transaction"
+    },
+    {
+      "label": "db_connect()",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L11",
+      "id": "include_db_h__db_connect_fn",
+      "community": 2,
+      "norm_label": "db_connect()"
+    },
+    {
+      "label": "db_execute()",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L12",
+      "id": "include_db_h__db_execute_fn",
+      "community": 2,
+      "norm_label": "db_execute()"
+    },
+    {
+      "label": "db_close()",
+      "file_type": "code",
+      "source_file": "include/db.h",
+      "source_location": "L13",
+      "id": "include_db_h__db_close_fn",
+      "community": 2,
+      "norm_label": "db_close()"
+    },
+    {
+      "label": "handlers.h",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L1",
+      "id": "include_handlers_h",
+      "community": 3,
+      "norm_label": "handlers.h"
+    },
+    {
+      "label": "AuthResult",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L7",
+      "id": "include_handlers_h__authresult_cls",
+      "community": 3,
+      "norm_label": "authresult"
+    },
+    {
+      "label": "The result of an authentication attempt.",
+      "file_type": "rationale",
+      "source_file": "include/handlers.h",
+      "source_location": "L7",
+      "id": "include_handlers_h__authresult_cls__rationale",
+      "community": 3,
+      "norm_label": "the result of an authentication attempt."
+    },
+    {
+      "label": "AUTH_OK",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L8",
+      "id": "include_handlers_h__authresult_cls__auth_ok_sym",
+      "community": 3,
+      "norm_label": "auth_ok"
+    },
+    {
+      "label": "AUTH_EXPIRED",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L9",
+      "id": "include_handlers_h__authresult_cls__auth_expired_sym",
+      "community": 3,
+      "norm_label": "auth_expired"
+    },
+    {
+      "label": "AUTH_INVALID",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L10",
+      "id": "include_handlers_h__authresult_cls__auth_invalid_sym",
+      "community": 3,
+      "norm_label": "auth_invalid"
+    },
+    {
+      "label": "authenticate()",
+      "file_type": "code",
+      "source_file": "include/handlers.h",
+      "source_location": "L14",
+      "id": "include_handlers_h__authenticate_fn",
+      "community": 3,
+      "norm_label": "authenticate()"
+    },
+    {
+      "label": "Authenticate a bearer token and report the outcome.",
+      "file_type": "rationale",
+      "source_file": "include/handlers.h",
+      "source_location": "L14",
+      "id": "include_handlers_h__authenticate_fn__rationale",
+      "community": 3,
+      "norm_label": "authenticate a bearer token and report the outcome."
+    },
+    {
+      "label": "jwt.h",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L1",
+      "id": "include_jwt_h",
+      "community": 4,
+      "norm_label": "jwt.h"
+    },
+    {
+      "label": "Claims",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L5",
+      "id": "include_jwt_h__claims_cls",
+      "community": 4,
+      "norm_label": "claims"
+    },
+    {
+      "label": "A decoded JSON Web Token claim set.",
+      "file_type": "rationale",
+      "source_file": "include/jwt.h",
+      "source_location": "L5",
+      "id": "include_jwt_h__claims_cls__rationale",
+      "community": 4,
+      "norm_label": "a decoded json web token claim set."
+    },
+    {
+      "label": "subject",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L6",
+      "id": "include_jwt_h__claims_cls__subject_sym",
+      "community": 4,
+      "norm_label": "subject"
+    },
+    {
+      "label": "issued_at",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L7",
+      "id": "include_jwt_h__claims_cls__issued_at_sym",
+      "community": 4,
+      "norm_label": "issued_at"
+    },
+    {
+      "label": "expires_at",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L8",
+      "id": "include_jwt_h__claims_cls__expires_at_sym",
+      "community": 4,
+      "norm_label": "expires_at"
+    },
+    {
+      "label": "jwt_sign()",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L12",
+      "id": "include_jwt_h__jwt_sign_fn",
+      "community": 4,
+      "norm_label": "jwt_sign()"
+    },
+    {
+      "label": "Sign a claim set, returning a newly allocated token string.",
+      "file_type": "rationale",
+      "source_file": "include/jwt.h",
+      "source_location": "L12",
+      "id": "include_jwt_h__jwt_sign_fn__rationale",
+      "community": 4,
+      "norm_label": "sign a claim set, returning a newly allocated token string."
+    },
+    {
+      "label": "jwt_verify()",
+      "file_type": "code",
+      "source_file": "include/jwt.h",
+      "source_location": "L15",
+      "id": "include_jwt_h__jwt_verify_fn",
+      "community": 4,
+      "norm_label": "jwt_verify()"
+    },
+    {
+      "label": "Verify a token against the secret; fills claims on success.",
+      "file_type": "rationale",
+      "source_file": "include/jwt.h",
+      "source_location": "L15",
+      "id": "include_jwt_h__jwt_verify_fn__rationale",
+      "community": 4,
+      "norm_label": "verify a token against the secret; fills claims on success."
+    },
+    {
+      "label": "routes.h",
+      "file_type": "code",
+      "source_file": "include/routes.h",
+      "source_location": "L1",
+      "id": "include_routes_h",
+      "community": 5,
+      "norm_label": "routes.h"
+    },
+    {
+      "label": "route_request()",
+      "file_type": "code",
+      "source_file": "include/routes.h",
+      "source_location": "L5",
+      "id": "include_routes_h__route_request_fn",
+      "community": 5,
+      "norm_label": "route_request()"
+    },
+    {
+      "label": "Dispatch an HTTP request line to its handler; returns a status code.",
+      "file_type": "rationale",
+      "source_file": "include/routes.h",
+      "source_location": "L5",
+      "id": "include_routes_h__route_request_fn__rationale",
+      "community": 5,
+      "norm_label": "dispatch an http request line to its handler; returns a status code."
+    },
+    {
+      "label": "user.h",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L1",
+      "id": "include_user_h",
+      "community": 6,
+      "norm_label": "user.h"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L5",
+      "id": "include_user_h__user_cls",
+      "community": 6,
+      "norm_label": "user"
+    },
+    {
+      "label": "A persisted user record.",
+      "file_type": "rationale",
+      "source_file": "include/user.h",
+      "source_location": "L5",
+      "id": "include_user_h__user_cls__rationale",
+      "community": 6,
+      "norm_label": "a persisted user record."
+    },
+    {
+      "label": "id",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L6",
+      "id": "include_user_h__user_cls__id_sym",
+      "community": 6,
+      "norm_label": "id"
+    },
+    {
+      "label": "email",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L7",
+      "id": "include_user_h__user_cls__email_sym",
+      "community": 6,
+      "norm_label": "email"
+    },
+    {
+      "label": "password_hash",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L8",
+      "id": "include_user_h__user_cls__password_hash_sym",
+      "community": 6,
+      "norm_label": "password_hash"
+    },
+    {
+      "label": "user_create()",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L11",
+      "id": "include_user_h__user_create_fn",
+      "community": 6,
+      "norm_label": "user_create()"
+    },
+    {
+      "label": "user_find_by_email()",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L12",
+      "id": "include_user_h__user_find_by_email_fn",
+      "community": 6,
+      "norm_label": "user_find_by_email()"
+    },
+    {
+      "label": "user_delete()",
+      "file_type": "code",
+      "source_file": "include/user.h",
+      "source_location": "L13",
+      "id": "include_user_h__user_delete_fn",
+      "community": 6,
+      "norm_label": "user_delete()"
+    },
+    {
+      "label": "routes.c",
+      "file_type": "code",
+      "source_file": "src/api/routes.c",
+      "source_location": "L1",
+      "id": "src_api_routes_c",
+      "community": 7,
+      "norm_label": "routes.c"
+    },
+    {
+      "label": "route_request()",
+      "file_type": "code",
+      "source_file": "src/api/routes.c",
+      "source_location": "L7",
+      "id": "src_api_routes_c__route_request_fn",
+      "community": 7,
+      "norm_label": "route_request()"
+    },
+    {
+      "label": "handlers.c",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.c",
+      "source_location": "L1",
+      "id": "src_auth_handlers_c",
+      "community": 8,
+      "norm_label": "handlers.c"
+    },
+    {
+      "label": "authenticate()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.c",
+      "source_location": "L3",
+      "id": "src_auth_handlers_c__authenticate_fn",
+      "community": 8,
+      "norm_label": "authenticate()"
+    },
+    {
+      "label": "jwt.c",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L1",
+      "id": "src_auth_jwt_c",
+      "community": 9,
+      "norm_label": "jwt.c"
+    },
+    {
+      "label": "encode_segment()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L5",
+      "id": "src_auth_jwt_c__encode_segment_fn",
+      "community": 9,
+      "norm_label": "encode_segment()"
+    },
+    {
+      "label": "jwt_sign()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L9",
+      "id": "src_auth_jwt_c__jwt_sign_fn",
+      "community": 9,
+      "norm_label": "jwt_sign()"
+    },
+    {
+      "label": "jwt_verify()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L14",
+      "id": "src_auth_jwt_c__jwt_verify_fn",
+      "community": 9,
+      "norm_label": "jwt_verify()"
+    },
+    {
+      "label": "invoices.c",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L1",
+      "id": "src_billing_invoices_c",
+      "community": 10,
+      "norm_label": "invoices.c"
+    },
+    {
+      "label": "invoice_create()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L4",
+      "id": "src_billing_invoices_c__invoice_create_fn",
+      "community": 10,
+      "norm_label": "invoice_create()"
+    },
+    {
+      "label": "invoice_charge()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L12",
+      "id": "src_billing_invoices_c__invoice_charge_fn",
+      "community": 10,
+      "norm_label": "invoice_charge()"
+    },
+    {
+      "label": "stripe_refund()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L17",
+      "id": "src_billing_invoices_c__stripe_refund_fn",
+      "community": 10,
+      "norm_label": "stripe_refund()"
+    },
+    {
+      "label": "connection.c",
+      "file_type": "code",
+      "source_file": "src/db/connection.c",
+      "source_location": "L1",
+      "id": "src_db_connection_c",
+      "community": 11,
+      "norm_label": "connection.c"
+    },
+    {
+      "label": "db_connect()",
+      "file_type": "code",
+      "source_file": "src/db/connection.c",
+      "source_location": "L5",
+      "id": "src_db_connection_c__db_connect_fn",
+      "community": 11,
+      "norm_label": "db_connect()"
+    },
+    {
+      "label": "db_execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.c",
+      "source_location": "L13",
+      "id": "src_db_connection_c__db_execute_fn",
+      "community": 11,
+      "norm_label": "db_execute()"
+    },
+    {
+      "label": "db_close()",
+      "file_type": "code",
+      "source_file": "src/db/connection.c",
+      "source_location": "L18",
+      "id": "src_db_connection_c__db_close_fn",
+      "community": 11,
+      "norm_label": "db_close()"
+    },
+    {
+      "label": "crud.c",
+      "file_type": "code",
+      "source_file": "src/users/crud.c",
+      "source_location": "L1",
+      "id": "src_users_crud_c",
+      "community": 12,
+      "norm_label": "crud.c"
+    },
+    {
+      "label": "next_id()",
+      "file_type": "code",
+      "source_file": "src/users/crud.c",
+      "source_location": "L5",
+      "id": "src_users_crud_c__next_id_fn",
+      "community": 12,
+      "norm_label": "next_id()"
+    },
+    {
+      "label": "user_create()",
+      "file_type": "code",
+      "source_file": "src/users/crud.c",
+      "source_location": "L10",
+      "id": "src_users_crud_c__user_create_fn",
+      "community": 12,
+      "norm_label": "user_create()"
+    },
+    {
+      "label": "user_find_by_email()",
+      "file_type": "code",
+      "source_file": "src/users/crud.c",
+      "source_location": "L18",
+      "id": "src_users_crud_c__user_find_by_email_fn",
+      "community": 12,
+      "norm_label": "user_find_by_email()"
+    },
+    {
+      "label": "user_delete()",
+      "file_type": "code",
+      "source_file": "src/users/crud.c",
+      "source_location": "L23",
+      "id": "src_users_crud_c__user_delete_fn",
+      "community": 12,
+      "norm_label": "user_delete()"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 0,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "sample_project_c",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md__h1",
+      "community": 0,
+      "norm_label": "sample_project_c"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_billing_h",
+      "target": "include_billing_h__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_billing_h__invoice_cls__rationale",
+      "target": "include_billing_h__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "include_billing_h__invoice_cls",
+      "target": "include_billing_h__invoice_cls__id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "include_billing_h__invoice_cls",
+      "target": "include_billing_h__invoice_cls__user_id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_billing_h__invoice_cls",
+      "target": "include_billing_h__invoice_cls__amount_cents_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_billing_h__invoice_cls",
+      "target": "include_billing_h__invoice_cls__paid_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_billing_h",
+      "target": "include_billing_h__invoice_create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "include_billing_h",
+      "target": "include_billing_h__invoice_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "include_billing_h",
+      "target": "include_billing_h__stripe_refund_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_db_h",
+      "target": "include_db_h__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_db_h__connection_cls__rationale",
+      "target": "include_db_h__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "include_db_h__connection_cls",
+      "target": "include_db_h__connection_cls__dsn_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_db_h__connection_cls",
+      "target": "include_db_h__connection_cls__socket_fd_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "include_db_h__connection_cls",
+      "target": "include_db_h__connection_cls__in_transaction_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_db_h",
+      "target": "include_db_h__db_connect_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_db_h",
+      "target": "include_db_h__db_execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/db.h",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_db_h",
+      "target": "include_db_h__db_close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_handlers_h",
+      "target": "include_handlers_h__authresult_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_handlers_h__authresult_cls__rationale",
+      "target": "include_handlers_h__authresult_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "include_handlers_h__authresult_cls",
+      "target": "include_handlers_h__authresult_cls__auth_ok_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "include_handlers_h__authresult_cls",
+      "target": "include_handlers_h__authresult_cls__auth_expired_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_handlers_h__authresult_cls",
+      "target": "include_handlers_h__authresult_cls__auth_invalid_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_handlers_h",
+      "target": "include_handlers_h__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_handlers_h__authenticate_fn__rationale",
+      "target": "include_handlers_h__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_jwt_h",
+      "target": "include_jwt_h__claims_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_jwt_h__claims_cls__rationale",
+      "target": "include_jwt_h__claims_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "include_jwt_h__claims_cls",
+      "target": "include_jwt_h__claims_cls__subject_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_jwt_h__claims_cls",
+      "target": "include_jwt_h__claims_cls__issued_at_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "include_jwt_h__claims_cls",
+      "target": "include_jwt_h__claims_cls__expires_at_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_jwt_h",
+      "target": "include_jwt_h__jwt_sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_jwt_h__jwt_sign_fn__rationale",
+      "target": "include_jwt_h__jwt_sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "include_jwt_h",
+      "target": "include_jwt_h__jwt_verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/jwt.h",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "include_jwt_h__jwt_verify_fn__rationale",
+      "target": "include_jwt_h__jwt_verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/routes.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_routes_h",
+      "target": "include_routes_h__route_request_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/routes.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_routes_h__route_request_fn__rationale",
+      "target": "include_routes_h__route_request_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_user_h",
+      "target": "include_user_h__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_user_h__user_cls__rationale",
+      "target": "include_user_h__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "include_user_h__user_cls",
+      "target": "include_user_h__user_cls__id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_user_h__user_cls",
+      "target": "include_user_h__user_cls__email_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "include_user_h__user_cls",
+      "target": "include_user_h__user_cls__password_hash_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_user_h",
+      "target": "include_user_h__user_create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_user_h",
+      "target": "include_user_h__user_find_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/user.h",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_user_h",
+      "target": "include_user_h__user_delete_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_api_routes_c",
+      "target": "src_api_routes_c__route_request_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.c",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_auth_handlers_c",
+      "target": "src_auth_handlers_c__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_jwt_c",
+      "target": "src_auth_jwt_c__encode_segment_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwt_c",
+      "target": "src_auth_jwt_c__jwt_sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_jwt_c",
+      "target": "src_auth_jwt_c__jwt_verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_billing_invoices_c",
+      "target": "src_billing_invoices_c__invoice_create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_billing_invoices_c",
+      "target": "src_billing_invoices_c__invoice_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_billing_invoices_c",
+      "target": "src_billing_invoices_c__stripe_refund_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.c",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_db_connection_c",
+      "target": "src_db_connection_c__db_connect_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.c",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_db_connection_c",
+      "target": "src_db_connection_c__db_execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.c",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_db_connection_c",
+      "target": "src_db_connection_c__db_close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_users_crud_c",
+      "target": "src_users_crud_c__next_id_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_users_crud_c",
+      "target": "src_users_crud_c__user_create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_users_crud_c",
+      "target": "src_users_crud_c__user_find_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_users_crud_c",
+      "target": "src_users_crud_c__user_delete_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/billing.h",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "include_billing_h",
+      "target": "include_user_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/handlers.h",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "include_handlers_h",
+      "target": "include_jwt_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_api_routes_c",
+      "target": "include_routes_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_api_routes_c",
+      "target": "include_handlers_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_api_routes_c",
+      "target": "include_user_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_api_routes_c",
+      "target": "include_billing_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_api_routes_c__route_request_fn",
+      "target": "include_handlers_h__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.c",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_api_routes_c__route_request_fn",
+      "target": "include_user_h__user_create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_auth_handlers_c",
+      "target": "include_handlers_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.c",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_handlers_c__authenticate_fn",
+      "target": "include_jwt_h__jwt_verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_auth_jwt_c",
+      "target": "include_jwt_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.c",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_auth_jwt_c__jwt_sign_fn",
+      "target": "src_auth_jwt_c__encode_segment_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_billing_invoices_c",
+      "target": "include_billing_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_db_connection_c",
+      "target": "include_db_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_users_crud_c",
+      "target": "include_user_h",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.c",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_users_crud_c__user_create_fn",
+      "target": "src_users_crud_c__next_id_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}

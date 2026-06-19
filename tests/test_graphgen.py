@@ -241,6 +241,8 @@ FIXTURE_TS = _REPO / "tests" / "fixtures" / "sample_project_ts"
 FIXTURE_GO = _REPO / "tests" / "fixtures" / "sample_project_go"
 FIXTURE_RUST = _REPO / "tests" / "fixtures" / "sample_project_rust"
 FIXTURE_JAVA = _REPO / "tests" / "fixtures" / "sample_project_java"
+FIXTURE_C = _REPO / "tests" / "fixtures" / "sample_project_c"
+FIXTURE_CPP = _REPO / "tests" / "fixtures" / "sample_project_cpp"
 
 
 @unittest.skipUnless(
@@ -536,6 +538,177 @@ class JavaTests(unittest.TestCase):
         self.assertEqual(gold_syms, built_syms)
 
 
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("c"),
+    "tree-sitter-c not installed",
+)
+class CTests(unittest.TestCase):
+    """The C extractor behind the SUPPORTED_SUFFIXES seam — independent oracle
+    for the C gold (hand-listed expected symbols/edges incl. #include imports)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_C)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_functions(self) -> None:
+        for want in (
+            "jwt_sign()",
+            "jwt_verify()",
+            "authenticate()",
+            "user_create()",
+            "db_connect()",
+            "invoice_charge()",
+            "route_request()",
+            "encode_segment()",  # static helper
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_structs_and_enums(self) -> None:
+        for want in ("Claims", "User", "Connection", "Invoice", "AuthResult"):
+            self.assertIn(want, self.code_labels)
+
+    def test_struct_fields_and_enum_constants(self) -> None:
+        for want in ("subject", "email", "amount_cents", "AUTH_OK", "AUTH_INVALID"):
+            self.assertIn(want, self.code_labels)
+
+    def test_local_include_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        # impl includes its own header (shared module key) and the api file
+        # includes several local headers; <system> includes never appear.
+        self.assertIn(("src/auth/jwt.c", "include/jwt.h"), pairs)
+        self.assertIn(("src/api/routes.c", "include/handlers.h"), pairs)
+        self.assertTrue(all(t and not str(t).startswith("<") for _s, t in pairs if t))
+
+    def test_cross_file_call_resolved(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        calls = {
+            (label[e["source"]], label[e["target"]]) for e in self.edges if e["relation"] == "calls"
+        }
+        self.assertIn(("authenticate()", "jwt_verify()"), calls)
+
+    def test_doc_comment_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("json web token", rats)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_C)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        import json
+
+        gold = json.loads((FIXTURE_C / "graphify-out" / "graph.json").read_text(encoding="utf-8"))
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("cpp"),
+    "tree-sitter-cpp not installed",
+)
+class CppTests(unittest.TestCase):
+    """The C++ extractor — independent oracle for the C++ gold: namespaces,
+    classes with inheritance, out-of-line methods, and local-include imports."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_CPP)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_classes(self) -> None:
+        for want in (
+            "JwtCodec",
+            "Authenticator",
+            "BearerAuthenticator",
+            "User",
+            "UserRepository",
+            "Connection",
+            "Invoice",
+            "StripeClient",
+            "Router",
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_methods(self) -> None:
+        # declared in headers and defined out-of-line as `Class::method`.
+        for want in ("sign()", "verify()", "authenticate()", "create()", "dispatch()", "charge()"):
+            self.assertIn(want, self.code_labels)
+
+    def test_member_fields_extracted(self) -> None:
+        for want in ("secret_", "email_", "amount_cents_"):
+            self.assertIn(want, self.code_labels)
+
+    def test_base_class_becomes_inherits(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        inherits = {
+            (label[e["source"]], label[e["target"]])
+            for e in self.edges
+            if e["relation"] == "inherits"
+        }
+        self.assertIn(("BearerAuthenticator", "Authenticator"), inherits)
+
+    def test_local_include_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("src/auth/jwt.cpp", "include/app/jwt.hpp"), pairs)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_CPP)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        import json
+
+        gold = json.loads((FIXTURE_CPP / "graphify-out" / "graph.json").read_text(encoding="utf-8"))
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
+
+
 @unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
 class IncrementalUpdateTests(unittest.TestCase):
     """`update_files` re-parses only changed files (Item 3)."""
@@ -634,6 +807,61 @@ class LanguageSeamTests(unittest.TestCase):
     def test_every_suffix_has_an_extractor(self) -> None:
         langs = set(graphgen._SUFFIX_LANG.values())
         self.assertTrue(langs <= set(graphgen._EXTRACTORS))
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("c"),
+    "tree-sitter-c not installed",
+)
+class CExtractorEdgeCaseTests(unittest.TestCase):
+    """Hermetic regression tests for C/C++ extractor edge cases on tiny temp
+    projects (multi-declarator members; flat-layout header/impl pairing)."""
+
+    def _labels(self, files: dict[str, str]) -> set[str]:
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d)
+            for rel, text in files.items():
+                p = proj / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(text)
+            g = graphgen.build_graph(proj)
+            self._last = g
+            return {n["label"] for n in g["nodes"] if n["file_type"] == "code"}
+
+    def test_multiple_declarators_on_one_line(self) -> None:
+        # `int x, y;` must emit BOTH fields — coverage can't depend on formatting.
+        labels = self._labels({"point.c": "struct Point { int x, y; double z; };\n"})
+        for want in ("x", "y", "z"):
+            self.assertIn(want, labels)
+
+    def test_flat_layout_header_impl_pairing(self) -> None:
+        # foo.c and foo.h in the SAME dir: `#include "foo.h"` must resolve to the
+        # header (which owns the module key), not the impl including itself.
+        self._labels(
+            {
+                "foo.h": "int foo_do(int n);\n",
+                "foo.c": '#include "foo.h"\nint foo_do(int n) { return n; }\n',
+            }
+        )
+        files = {n["id"]: n["source_file"] for n in self._last["nodes"]}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self._last["links"]
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("foo.c", "foo.h"), pairs)
+
+    def test_cmake_build_dirs_ignored_at_build_time(self) -> None:
+        labels = self._labels(
+            {
+                "main.c": "int main(void) { return 0; }\n",
+                "CMakeFiles/probe.c": "int compiler_probe(void) { return 1; }\n",
+                "cmake-build-debug/gen.c": "int generated_artifact(void) { return 2; }\n",
+            }
+        )
+        self.assertIn("main()", labels)
+        self.assertNotIn("compiler_probe()", labels)
+        self.assertNotIn("generated_artifact()", labels)
 
 
 if __name__ == "__main__":
