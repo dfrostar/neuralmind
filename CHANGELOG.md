@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/dfrostar/neuralmind/compare/v0.31.0...v0.32.0) (2026-06-19)
+
+
+### Features
+
+* C and C++ language extractors ([#257](https://github.com/dfrostar/neuralmind/issues/257)) ([424faf9](https://github.com/dfrostar/neuralmind/commit/424faf95d010948fcca10381c9e081d3cc75185f))
+
 ## [0.31.0](https://github.com/dfrostar/neuralmind/compare/v0.29.0...v0.31.0) (2026-06-19)
 
 
