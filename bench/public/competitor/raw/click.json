@@ -1,0 +1,208 @@
+[
+  {
+    "query_id": "command-core",
+    "question": "the base class implementing a CLI command and how it is invoked",
+    "keywords": [
+      "the",
+      "base",
+      "class",
+      "implementing",
+      "cli",
+      "command",
+      "and",
+      "how",
+      "it",
+      "is",
+      "invoked"
+    ],
+    "gold_files": [
+      "core.py"
+    ],
+    "ranked_files": [
+      "core.py",
+      "_compat.py",
+      "termui.py",
+      "utils.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "choice-type",
+    "question": "the parameter type that validates a value against a fixed set of choices",
+    "keywords": [
+      "the",
+      "parameter",
+      "type",
+      "that",
+      "validates",
+      "value",
+      "against",
+      "fixed",
+      "set",
+      "of",
+      "choices"
+    ],
+    "gold_files": [
+      "types.py"
+    ],
+    "ranked_files": [
+      "core.py",
+      "shell_completion.py",
+      "_termui_impl.py",
+      "decorators.py",
+      "testing.py",
+      "termui.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "help-formatter",
+    "question": "the helper that lays out wraps and indents command help text",
+    "keywords": [
+      "the",
+      "helper",
+      "that",
+      "lays",
+      "out",
+      "wraps",
+      "and",
+      "indents",
+      "command",
+      "help",
+      "text"
+    ],
+    "gold_files": [
+      "formatting.py"
+    ],
+    "ranked_files": [
+      "types.py",
+      "_compat.py",
+      "_termui_impl.py",
+      "utils.py",
+      "core.py",
+      "parser.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "echo-util",
+    "question": "the function that prints a message to the terminal and strips color when needed",
+    "keywords": [
+      "the",
+      "function",
+      "that",
+      "prints",
+      "message",
+      "to",
+      "the",
+      "terminal",
+      "and",
+      "strips",
+      "color",
+      "when",
+      "needed"
+    ],
+    "gold_files": [
+      "utils.py"
+    ],
+    "ranked_files": [
+      "termui.py",
+      "formatting.py",
+      "utils.py",
+      "_textwrap.py",
+      "_winconsole.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "ansi-style",
+    "question": "applies ANSI color and style escape codes to a string",
+    "keywords": [
+      "applies",
+      "ansi",
+      "color",
+      "and",
+      "style",
+      "escape",
+      "codes",
+      "to",
+      "string"
+    ],
+    "gold_files": [
+      "termui.py"
+    ],
+    "ranked_files": [
+      "termui.py",
+      "decorators.py",
+      "core.py",
+      "parser.py",
+      "_termui_impl.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "paramtype-base",
+    "question": "the base class for all parameter types that convert raw string input",
+    "keywords": [
+      "the",
+      "base",
+      "class",
+      "for",
+      "all",
+      "parameter",
+      "types",
+      "that",
+      "convert",
+      "raw",
+      "string",
+      "input"
+    ],
+    "gold_files": [
+      "types.py"
+    ],
+    "ranked_files": [
+      "_termui_impl.py",
+      "_compat.py",
+      "_winconsole.py",
+      "utils.py",
+      "types.py",
+      "testing.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "xfile-command-help",
+    "question": "how does a Command render its help page by driving the HelpFormatter",
+    "keywords": [
+      "how",
+      "does",
+      "command",
+      "render",
+      "its",
+      "help",
+      "page",
+      "by",
+      "driving",
+      "the",
+      "helpformatter"
+    ],
+    "gold_files": [
+      "core.py",
+      "formatting.py"
+    ],
+    "ranked_files": [
+      "core.py",
+      "_winconsole.py",
+      "termui.py",
+      "_termui_impl.py"
+    ],
+    "found": false,
+    "recall": 0.5
+  }
+]
