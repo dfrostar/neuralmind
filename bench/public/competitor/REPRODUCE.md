@@ -13,7 +13,7 @@ words). If you can represent it more fairly, open a PR.
 
 - Tool: `codebase-memory-mcp` (DeusData) — https://github.com/DeusData/codebase-memory-mcp
 - Version: **0.8.1** (`codebase-memory-mcp --version`)
-- Install: `pip install codebase-memory-mcp` (thin wrapper; downloads the pinned
+- Install: `pip install codebase-memory-mcp==0.8.1` (thin wrapper; downloads the pinned
   single static binary from GitHub Releases on first run — needs network, no GUI,
   no API key). Docs: https://deusdata.github.io/codebase-memory-mcp/
 
@@ -29,11 +29,11 @@ words). If you can represent it more fairly, open a PR.
 ## Procedure (exactly what the adapter runs)
 
 ```bash
-pip install codebase-memory-mcp        # pins 0.8.1; downloads binary on first run
+pip install codebase-memory-mcp==0.8.1        # pins 0.8.1; downloads binary on first run
 export CBM_CACHE_DIR=.bench-work/cbm-cache
 
 # 1. index the pinned checkout (the runner clones it from the manifest)
-codebase-memory-mcp cli index_repository '{"repo_path": "<abs>/.bench-work/requests/src/requests"}'
+codebase-memory-mcp cli --json index_repository '{"repo_path": "<abs>/.bench-work/requests/src/requests"}'
 
 # 2. one semantic query per question — keywords = ALL words of the question
 codebase-memory-mcp cli --json search_graph \

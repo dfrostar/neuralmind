@@ -15,10 +15,10 @@ Fairness (see ``docs/prd/competitor-benchmark.md``):
 - We pin the exact competitor version, use its documented CLI verbatim, and
   commit the raw per-query JSON traces.
 
-This backend is **off by default** in ``python -m evals.public.run`` (the public
-CI table must never depend on an external binary download); it runs under
-``--competitor`` / ``python -m evals.public.competitor`` and fails closed (clean
-skip) when the binary isn't installed.
+This is a **separate entrypoint**, not part of ``python -m evals.public.run`` (the
+public CI table must never depend on an external binary download): run it with
+``python -m evals.public.competitor``. It fails closed (clean skip) when the
+binary isn't installed.
 """
 
 from __future__ import annotations
@@ -93,27 +93,41 @@ def _cli(args: list[str], cache_dir: Path, timeout: int = 240) -> dict[str, Any]
 
 
 def _unwrap(raw: dict[str, Any]) -> dict[str, Any] | None:
-    """Unwrap the MCP ``content[0].text`` JSON envelope (or pass a bare dict)."""
+    """Unwrap the MCP ``content[0].text`` JSON envelope (or pass a bare dict).
+
+    Returns ``None`` for an **error envelope** (``isError`` true) so a failed tool
+    call fails closed — never accepted as a result that could query a stale
+    cached project."""
     if not isinstance(raw, dict):
+        return None
+    if raw.get("isError"):
         return None
     content = raw.get("content")
     if isinstance(content, list) and content:
         text = content[0].get("text") if isinstance(content[0], dict) else None
         if isinstance(text, str):
             try:
-                return json.loads(text)
+                inner = json.loads(text)
             except ValueError:
                 return None
+            # The inner payload can also carry an error/status even when the
+            # envelope didn't flag it — reject those too.
+            if isinstance(inner, dict) and (inner.get("error") or inner.get("status") == "error"):
+                return None
+            return inner
     return raw  # already-unwrapped shape (defensive)
 
 
 def index_repo(repo_dir: str | Path, cache_dir: Path) -> str | None:
-    """Index ``repo_dir`` with the competitor; return its project name (or None)."""
+    """Index ``repo_dir`` with the competitor; return its project name (or None).
+
+    Requires a confirmed ``status == "indexed"`` and a project name — a partial
+    or errored index never returns a name the query path could reuse stale."""
     result = _cli(
         ["index_repository", json.dumps({"repo_path": str(Path(repo_dir).resolve())})],
         cache_dir,
     )
-    if not result:
+    if not result or result.get("status") != "indexed":
         return None
     return result.get("project")
 
