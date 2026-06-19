@@ -1,5 +1,10 @@
 # NeuralMind v0.31.0 — the honest public benchmark
 
+> **This release also includes team memory** (originally written up as v0.30.0):
+> the 0.30.0 work was rolled into 0.31.0, so this tag ships *both* the public
+> benchmark (below) and team memory — see
+> [`RELEASE_NOTES_v0.30.0.md`](RELEASE_NOTES_v0.30.0.md).
+
 **Release Date:** June 2026
 
 ## TL;DR
