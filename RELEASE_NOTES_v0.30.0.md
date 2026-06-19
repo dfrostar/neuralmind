@@ -1,5 +1,10 @@
 # NeuralMind v0.30.0 — team memory: your agents inherit each other's intuition
 
+> **Shipped in v0.31.0.** The 0.30.0 release was rolled into **v0.31.0**, which
+> bundles this team-memory feature together with the honest public benchmark —
+> so team memory's first published version is `0.31.0`, not a standalone
+> `0.30.0` tag. See [`RELEASE_NOTES_v0.31.0.md`](RELEASE_NOTES_v0.31.0.md).
+
 **Release Date:** June 2026
 
 ## TL;DR
