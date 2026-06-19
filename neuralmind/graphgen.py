@@ -53,6 +53,10 @@ _DEFAULT_IGNORES: frozenset[str] = frozenset(
         "build",
         # Rust build output (analogous to node_modules/dist/build).
         "target",
+        # C/C++ CMake build output (keep in sync with watcher.DEFAULT_IGNORES).
+        "CMakeFiles",
+        "cmake-build-debug",
+        "cmake-build-release",
     }
 )
 
@@ -1600,6 +1604,28 @@ _C_DECL_WRAPPERS: frozenset[str] = frozenset(
 )
 # Leading source-tree dirs stripped so a header and its impl share a module key.
 _C_PATH_PREFIXES: frozenset[str] = frozenset({"include", "src", "source", "lib", "inc"})
+# Header suffixes — when a header and an impl share a module key, the header owns
+# it so an `#include "x.h"` from the impl resolves to the header (not the impl
+# itself), independent of file-walk order or an include/+src/ vs flat layout.
+_C_HEADER_SUFFIXES: frozenset[str] = frozenset({".h", ".hpp", ".hh", ".hxx", ".h++"})
+
+
+def _is_c_header(rel: str) -> bool:
+    name = rel.rsplit("/", 1)[-1]
+    return "." in name and ("." + name.rsplit(".", 1)[-1]) in _C_HEADER_SUFFIXES
+
+
+def _register_c_module_key(b: _GraphBuilder, rel: str, file_id: str) -> None:
+    """Map a C/C++ file's module key to its file node, header-first.
+
+    Headers overwrite (they win the key); impls only fill it if unset — so
+    ``foo.c`` including ``foo.h`` always resolves to the header regardless of
+    walk order, even when both live in the same directory."""
+    key = _c_module_key(rel)
+    if _is_c_header(rel):
+        b.file_by_module[key] = file_id
+    else:
+        b.file_by_module.setdefault(key, file_id)
 
 
 def _c_module_key(rel: str) -> str:
@@ -1737,15 +1763,20 @@ def _c_emit_record_fields(b: _GraphBuilder, body, src: bytes, rel: str, cid: str
             continue
         if t not in ("field_declaration", "declaration"):
             continue
-        fdecl = member.child_by_field_name("declarator")
-        name, nm_node = _c_decl_name(fdecl, src)
-        if not name:
-            continue
-        line = (nm_node.start_point[0] if nm_node else member.start_point[0]) + 1
-        if _has_function_declarator(fdecl):
-            _c_emit_member_fn(b, name, line, rel, cid)
-        elif t == "field_declaration":
-            _c_emit_sym(b, name, line, rel, cid)
+        # One declaration can introduce several declarators (`int x, y;` /
+        # `int a, *b;`) — emit each so coverage doesn't depend on formatting.
+        decls = member.children_by_field_name("declarator") or [
+            member.child_by_field_name("declarator")
+        ]
+        for fdecl in decls:
+            name, nm_node = _c_decl_name(fdecl, src)
+            if not name:
+                continue
+            line = (nm_node.start_point[0] if nm_node else member.start_point[0]) + 1
+            if _has_function_declarator(fdecl):
+                _c_emit_member_fn(b, name, line, rel, cid)
+            elif t == "field_declaration":
+                _c_emit_sym(b, name, line, rel, cid)
 
 
 def _has_function_declarator(node) -> bool:
@@ -1860,7 +1891,7 @@ def _c_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_i
     """Pass 1 for C/C++: register the header/impl module key, then emit
     functions, records (struct/union/class), enums, typedefs, and members,
     descending into namespaces and ``extern "C"``/template wrappers."""
-    b.file_by_module.setdefault(_c_module_key(rel), file_id)
+    _register_c_module_key(b, rel, file_id)
     _c_walk_items(b, root_node, src, rel, file_id)
 
 
@@ -2055,6 +2086,11 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
         elif lang == "rust":
             for key in _rust_module_keys(sf):
                 b.file_by_module.setdefault(key, nid)
+        elif lang in ("c", "cpp"):
+            # Re-seed the C/C++ module key (header-first) so an incremental
+            # reparse of one .c/.cpp still resolves `#include "x.h"` against an
+            # unchanged header instead of silently dropping the import edge.
+            _register_c_module_key(b, sf, nid)
         return
     if nid.endswith("_fn"):
         b.func_by_name.setdefault(label.rstrip("()"), []).append(nid)

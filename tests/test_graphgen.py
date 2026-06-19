@@ -809,5 +809,60 @@ class LanguageSeamTests(unittest.TestCase):
         self.assertTrue(langs <= set(graphgen._EXTRACTORS))
 
 
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("c"),
+    "tree-sitter-c not installed",
+)
+class CExtractorEdgeCaseTests(unittest.TestCase):
+    """Hermetic regression tests for C/C++ extractor edge cases on tiny temp
+    projects (multi-declarator members; flat-layout header/impl pairing)."""
+
+    def _labels(self, files: dict[str, str]) -> set[str]:
+        with tempfile.TemporaryDirectory() as d:
+            proj = Path(d)
+            for rel, text in files.items():
+                p = proj / rel
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_text(text)
+            g = graphgen.build_graph(proj)
+            self._last = g
+            return {n["label"] for n in g["nodes"] if n["file_type"] == "code"}
+
+    def test_multiple_declarators_on_one_line(self) -> None:
+        # `int x, y;` must emit BOTH fields — coverage can't depend on formatting.
+        labels = self._labels({"point.c": "struct Point { int x, y; double z; };\n"})
+        for want in ("x", "y", "z"):
+            self.assertIn(want, labels)
+
+    def test_flat_layout_header_impl_pairing(self) -> None:
+        # foo.c and foo.h in the SAME dir: `#include "foo.h"` must resolve to the
+        # header (which owns the module key), not the impl including itself.
+        self._labels(
+            {
+                "foo.h": "int foo_do(int n);\n",
+                "foo.c": '#include "foo.h"\nint foo_do(int n) { return n; }\n',
+            }
+        )
+        files = {n["id"]: n["source_file"] for n in self._last["nodes"]}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self._last["links"]
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("foo.c", "foo.h"), pairs)
+
+    def test_cmake_build_dirs_ignored_at_build_time(self) -> None:
+        labels = self._labels(
+            {
+                "main.c": "int main(void) { return 0; }\n",
+                "CMakeFiles/probe.c": "int compiler_probe(void) { return 1; }\n",
+                "cmake-build-debug/gen.c": "int generated_artifact(void) { return 2; }\n",
+            }
+        )
+        self.assertIn("main()", labels)
+        self.assertNotIn("compiler_probe()", labels)
+        self.assertNotIn("generated_artifact()", labels)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

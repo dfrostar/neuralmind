@@ -825,8 +825,10 @@ def main() -> None:
         out.write_text(json.dumps(graph, indent=2) + "\n")
         print(f"wrote {out}  ({len(graph['nodes'])} nodes, {len(graph['links'])} links)")
 
-    # Rust + Java: golds are generated from the built-in extractor (graphify
-    # can't parse either). Requires the matching tree-sitter grammar to import.
+    # Rust + Java + C + C++: golds are generated from the built-in extractor
+    # (graphify can't parse these), so unlike TS/Go the gold IS the built-in
+    # output reshaped into graphify's schema; the independent correctness oracle
+    # is tests/test_graphgen.py. Requires the matching tree-sitter grammar.
     for name in (
         "sample_project_rust",
         "sample_project_java",
