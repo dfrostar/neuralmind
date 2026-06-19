@@ -10,6 +10,24 @@ extrapolation, it says so.
 > `python -m evals.onboarding.runner --run` (onboarding lift),
 > `python -m evals.parity.run` (backend parity).
 
+## Four data-backed benefits (the short version)
+
+NeuralMind is more than token reduction; the numbers below back **four**
+benefits. Two run on **real, pinned OSS repos** (`requests`, `click`) and are
+fully reproducible — `python -m evals.public.run`
+([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
+fixture** (real but smaller-scope): **(1) Cheaper context** — 100% gold-file
+recall at **38–85× fewer tokens** than pasting files, beating `ripgrep` on both
+recall and cost; **(2) Finds the right code** — 100% gold-file recall, **MRR
+0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
+vs 0.23); **(3) Learns how you work** — the Hebbian synapse layer lifts top-k
+hit-rate **+11.7 points (71.7%→83.3%), budget-neutral** (reference fixture);
+**(4) Better-grounded answers** — at a matched budget, **faithfulness +0.143,
+grounding 1.00** (reference fixture). We report where NeuralMind *doesn't* win
+too — a well-tuned vector RAG ties it on pure findability and is cheaper on raw
+tokens — and the competitor row is *pure retrieval ranking*, not their LLM-agent
+loop. Full tables and reproduction commands below.
+
 ## The honest headline
 
 **On code questions, NeuralMind sends the agent the few entities that matter

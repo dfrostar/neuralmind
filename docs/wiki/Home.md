@@ -4,6 +4,30 @@
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
+## Why NeuralMind — four data-backed benefits
+
+NeuralMind is more than token reduction. Every claim below ships with a
+committed eval. The first two run on **real, pinned OSS repos** (`requests`,
+`click`) and are fully reproducible — `python -m evals.public.run`. The last
+two are measured A/Bs on the bundled **reference fixture**, so they're real but
+smaller-scope.
+
+| | Benefit | Measured result | Where it's measured |
+|---|---|---|---|
+| 💸 | **Cheaper context** | **100% gold-file recall at 38–85× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost | Public benchmark, **real OSS repos** (`requests`, `click`) |
+| 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+11.7 points (71.7%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (**reference fixture** — smaller scope) |
+
+*Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
+(fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the **learning** and **grounding** rows are
+committed A/Bs on the bundled reference fixture, so they're real but
+smaller-scope. We report where NeuralMind *doesn't* win too — a well-tuned
+vector RAG ties it on pure findability and is cheaper on raw tokens; that's in
+the benchmark table. The competitor comparison is *pure retrieval ranking*, not
+their LLM-agent loop. Full numbers and reproduction commands on the
+**[Benchmarks](Benchmarks)** page.
+
 ## What's New
 
 ### v0.21.0 — ChromaDB-free retrieval
