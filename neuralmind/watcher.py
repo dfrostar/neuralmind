@@ -37,6 +37,7 @@ DEFAULT_IGNORES = (
     "dist",
     "build",
     "target",
+    "CMakeFiles",
 )
 
 

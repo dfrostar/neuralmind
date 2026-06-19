@@ -827,7 +827,12 @@ def main() -> None:
 
     # Rust + Java: golds are generated from the built-in extractor (graphify
     # can't parse either). Requires the matching tree-sitter grammar to import.
-    for name in ("sample_project_rust", "sample_project_java"):
+    for name in (
+        "sample_project_rust",
+        "sample_project_java",
+        "sample_project_c",
+        "sample_project_cpp",
+    ):
         fixture_dir = HERE / name
         graph = build_builtin_gold(fixture_dir)
         out = fixture_dir / "graphify-out" / "graph.json"
