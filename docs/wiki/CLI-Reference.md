@@ -368,6 +368,9 @@ neuralmind benchmark <project_path> [OPTIONS]
 | `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
 | `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
 | `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
+| `--public` | False | *(v0.31.0+)* Public-benchmark mode — reproduce the honest vs-alternatives comparison on pinned real repos (see below). Ignores `project_path` (it uses the pinned corpus, not your project) and requires a **source checkout** — the `evals/public` harness ships in the repo, not the PyPI wheel |
+| `--repo` | (all) | *(v0.31.0+)* With `--public`, scope to one corpus repo: `requests` / `click` |
+| `--seeds` | `1` | *(v0.31.0+)* With `--public`, the seed count recorded in the report. The pipeline is deterministic (synapse injection off), so variance across seeds is exactly 0 — recorded honestly rather than padded with artificial noise |
 
 #### Output
 
@@ -434,6 +437,53 @@ The exit code is non-zero if any suite drops below the floors in
 measured baseline lives at `evals/quality/baseline.json`; the self-benchmark
 workflow runs this on every PR (where real embeddings are available) and posts
 the table + baseline deltas as a PR comment.
+
+#### Public-benchmark mode *(v0.31.0+)*
+
+`--public` runs the **honest public benchmark**: a reproducible, no-cherry-picking
+comparison of how much context different approaches put in an agent's window to
+answer a real code question, and whether the **objectively-correct file** actually
+makes it in. It clones **real, pinned OSS repos** at fixed commit SHAs
+(`requests` @`0e322af877`, `click` @`874ca2bc1c`) and scores **cost _and_
+correctness together** against strong baselines: `full-file` paste, `ripgrep`,
+a same-encoder `embedding-rag`, and `neuralmind`'s progressive disclosure.
+
+Gold-file recall is an **objective def-site oracle** — each query's gold file is
+the definition site of a named symbol, verifiable with one `rg`; there is **no
+LLM judge**. Scoring reuses `neuralmind/quality.py` verbatim — the same metric
+code the CI quality gate runs. Pre-registered queries live in
+`evals/public/manifest.json`; every one is reported, losses included.
+
+```bash
+# Clone the pinned repos and print the full table
+neuralmind benchmark --public
+
+# Scope to one repo
+neuralmind benchmark --public --repo click
+
+# Machine-readable output (for CI / further analysis)
+neuralmind benchmark --public --json
+
+# Equivalent module entrypoint (from a clone)
+python -m evals.public.run
+```
+
+The run is **deterministic** — synapse injection is **OFF** (session-dependent
+learning can't be a fixed, reproducible public number; its **+11.7pt** lift is
+measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
+This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
+[Environment Variables](#environment-variables) table. Re-running matches the
+published table to the token.
+
+**Honest headline:** against what agents actually do today — paste files or grep
+— NeuralMind reaches **100% gold-file recall at 38–85× fewer tokens** than
+pasting files, and beats `ripgrep` on *both* recall and cost. The benchmark also
+reports, without hiding it, that a well-tuned vector RAG is excellent at
+*findability* too (and cheaper on raw tokens). Full methodology, results, honest
+caveats, and "where NeuralMind loses" are published at
+[`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
+raw per-query data is committed at `bench/public/results.json`, and the forkable
+runner is `.github/workflows/bench-public.yml`.
 
 #### Sample Output
 
