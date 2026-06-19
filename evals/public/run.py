@@ -39,47 +39,54 @@ def load_manifest(path: str | Path = MANIFEST) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def ensure_checkout(repo: dict[str, Any], work_dir: Path) -> Path | None:
-    """Return the repo's source dir, cloning the pinned commit if needed.
+def _git(args: list[str], timeout: int = 60) -> subprocess.CompletedProcess:
+    return subprocess.run(args, check=True, capture_output=True, text=True, timeout=timeout)
 
-    Returns ``None`` (never raises) when the checkout can't be produced — e.g.
-    no network — so the caller can skip the repo cleanly.
+
+def _head(dest: Path) -> str | None:
+    try:
+        return _git(["git", "-C", str(dest), "rev-parse", "HEAD"], timeout=30).stdout.strip()
+    except (subprocess.SubprocessError, OSError):
+        return None
+
+
+def _checkout_pinned(dest: Path, commit: str) -> bool:
+    """Fetch + checkout an exact commit in an existing clone. False on failure."""
+    try:
+        _git(["git", "-C", str(dest), "fetch", "--depth", "1", "origin", commit], timeout=180)
+        _git(["git", "-C", str(dest), "checkout", commit], timeout=60)
+        return _head(dest) == commit
+    except (subprocess.SubprocessError, OSError):
+        return False
+
+
+def ensure_checkout(repo: dict[str, Any], work_dir: Path) -> Path | None:
+    """Return the repo's source dir, pinned to ``repo['commit']``.
+
+    Clones the pinned commit if absent, and — critically for reproducibility —
+    **verifies an already-present checkout is at the pinned SHA**, re-pinning it
+    if a prior/stale run left it elsewhere. Returns ``None`` (never raises) when
+    the checkout can't be produced *or can't be confirmed at the pinned commit*,
+    so we never benchmark a stale tree while advertising the pinned SHA.
     """
     dest = work_dir / repo["name"]
     src = dest / repo.get("subdir", "")
+    commit = repo.get("commit")
     if src.exists():
-        return src
+        # Reuse only if it's verifiably the pinned commit; otherwise re-pin it.
+        if not commit or _head(dest) == commit:
+            return src
+        return src if (_checkout_pinned(dest, commit) and src.exists()) else None
     work_dir.mkdir(parents=True, exist_ok=True)
     try:
-        subprocess.run(
+        _git(
             ["git", "clone", "--depth", "1", "--branch", repo["tag"], repo["url"], str(dest)],
-            check=True,
-            capture_output=True,
             timeout=180,
         )
-        # Pin exactly: verify the tag resolved to the committed SHA.
-        head = subprocess.run(
-            ["git", "-C", str(dest), "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        ).stdout.strip()
-        if repo.get("commit") and head != repo["commit"]:
-            # Tag moved or mismatch — fetch the exact pinned commit.
-            subprocess.run(
-                ["git", "-C", str(dest), "fetch", "--depth", "1", "origin", repo["commit"]],
-                check=True,
-                capture_output=True,
-                timeout=180,
-            )
-            subprocess.run(
-                ["git", "-C", str(dest), "checkout", repo["commit"]],
-                check=True,
-                capture_output=True,
-                timeout=60,
-            )
     except (subprocess.SubprocessError, OSError):
+        return None
+    # Pin exactly: if the tag didn't resolve to the committed SHA, re-pin.
+    if commit and _head(dest) != commit and not _checkout_pinned(dest, commit):
         return None
     return src if src.exists() else None
 
@@ -176,19 +183,29 @@ def run_all(
     seeds: int = 1,
 ) -> dict[str, Any]:
     # Determinism is a hard requirement for a reproducible public number, so we
-    # pin synapse injection OFF: synapse weights are session/usage-dependent
-    # (they learn from how *you* work), so they cannot belong in a fixed public
-    # benchmark anyway. The synapse *learning* lift is measured separately by the
-    # synapse A/B eval (`tests/benchmark/run.py` Phase 2) and onboarding eval.
-    os.environ.setdefault("NEURALMIND_SYNAPSE_INJECT", "0")
-    repos = [r for r in manifest["repos"] if (only is None or r["name"] == only)]
-    return {
-        "tokenizer": tokenizer_name(),
-        "oracle": manifest.get("oracle", "def-site"),
-        "synapse_injection": os.environ.get("NEURALMIND_SYNAPSE_INJECT", "0"),
-        "backends": BACKEND_ORDER,
-        "repos": [run_repo(r, work_dir, seeds) for r in repos],
-    }
+    # pin synapse injection OFF *unconditionally*: synapse weights are
+    # session/usage-dependent (they learn from how *you* work), so they cannot
+    # belong in a fixed public benchmark. We override (not setdefault) any
+    # caller's NEURALMIND_SYNAPSE_INJECT so a stray `=1` in the shell/CI can't
+    # silently make the published number user-specific, and restore it after.
+    # The synapse *learning* lift is measured separately by the synapse A/B eval
+    # (`tests/benchmark/run.py` Phase 2) and the onboarding eval.
+    prior_inject = os.environ.get("NEURALMIND_SYNAPSE_INJECT")
+    os.environ["NEURALMIND_SYNAPSE_INJECT"] = "0"
+    try:
+        repos = [r for r in manifest["repos"] if (only is None or r["name"] == only)]
+        return {
+            "tokenizer": tokenizer_name(),
+            "oracle": manifest.get("oracle", "def-site"),
+            "synapse_injection": "0",
+            "backends": BACKEND_ORDER,
+            "repos": [run_repo(r, work_dir, seeds) for r in repos],
+        }
+    finally:
+        if prior_inject is None:
+            os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+        else:
+            os.environ["NEURALMIND_SYNAPSE_INJECT"] = prior_inject
 
 
 # --------------------------------------------------------------------------- #
@@ -264,8 +281,11 @@ def render_markdown(report: dict[str, Any]) -> str:
                     f"| {', '.join(ls['context_files'][:6]) or '—'} |"
                 )
             out.append("")
-        else:
+        elif repo.get("retrieval_stack_available"):
             out.append("_No NeuralMind gold-file misses on this repo._\n")
+        else:
+            # NeuralMind never ran here — don't claim a clean sweep it didn't earn.
+            out.append("_NeuralMind not evaluated (retrieval stack unavailable); no miss data._\n")
     return "\n".join(out)
 
 

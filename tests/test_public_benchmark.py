@@ -160,6 +160,50 @@ class ReportShapeTests(unittest.TestCase):
         self.assertIn("Where NeuralMind loses", md)
         self.assertIn("`x`", md)
 
+    def test_degraded_env_does_not_claim_a_clean_sweep(self) -> None:
+        # When the retrieval stack is unavailable NeuralMind never ran, so the
+        # report must say "not evaluated", never "no misses".
+        report = {
+            "tokenizer": "approx",
+            "oracle": "def-site",
+            "backends": run.BACKEND_ORDER,
+            "repos": [
+                {
+                    "name": "demo",
+                    "commit": "deadbeef0000",
+                    "n_queries": 1,
+                    "retrieval_stack_available": False,
+                    "summary": {
+                        "full-file": {
+                            "mean_recall": 1.0,
+                            "found_rate": 1.0,
+                            "mean_tokens": 40000,
+                            "mean_mrr": 1.0,
+                        },
+                    },
+                    "queries": [],
+                    "losses": [],
+                }
+            ],
+        }
+        md = run.render_markdown(report)
+        self.assertIn("not evaluated", md)
+        self.assertNotIn("No NeuralMind gold-file misses", md)
+
+    def test_run_all_forces_injection_off_and_restores(self) -> None:
+        import os
+
+        manifest = {"repos": []}  # no repos → no builds/network
+        os.environ["NEURALMIND_SYNAPSE_INJECT"] = "1"
+        try:
+            report = run.run_all(manifest, only="none")
+            # Even though the caller set =1, the public run pins it off and says so.
+            self.assertEqual(report["synapse_injection"], "0")
+            # ...and the caller's value is restored afterward (no global leak).
+            self.assertEqual(os.environ["NEURALMIND_SYNAPSE_INJECT"], "1")
+        finally:
+            os.environ.pop("NEURALMIND_SYNAPSE_INJECT", None)
+
     def test_committed_results_match_manifest_repos(self) -> None:
         # The published snapshot must stay in sync with the manifest (no orphans).
         root = Path(__file__).resolve().parent.parent
