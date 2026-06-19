@@ -13,9 +13,11 @@ together** — and shipping the forkable runner + raw data so anyone reproduces 
 without trusting us.
 
 ```bash
-pip install neuralmind tiktoken
-neuralmind benchmark --public          # clones pinned repos, prints the table
-# or, from a clone: python -m evals.public.run
+# The harness ships in the source tree (evals/public), not the PyPI wheel:
+git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+pip install -e . tiktoken
+python -m evals.public.run              # clones pinned repos, prints the table
+# or, from the clone: neuralmind benchmark --public
 ```
 
 ## The result (real numbers, reproduce them yourself)
@@ -55,10 +57,11 @@ Full analysis, caveats, and "where NeuralMind loses" in
   A/B eval). Re-running matches to the token.
 - **Forkable** — `.github/workflows/bench-public.yml` regenerates the table on
   demand; raw per-query data committed at `bench/public/results.json`.
-- **Competitor, fairly** — `codebase-memory-mcp` runs through a documented
-  external harness (`bench/public/competitor/REPRODUCE.md`) with pinned version
-  and linked upstream repro steps, marked "reproduced externally" rather than
-  taken on our word.
+- **Competitor, fairly (fast-follow)** — a `codebase-memory-mcp` head-to-head is
+  **not in this release yet**; its deps don't install in our CI sandbox. The
+  provenance scaffold (`bench/public/competitor/REPRODUCE.md`) defines the pinned,
+  same-query-set procedure so that when it's run the rows land marked "reproduced
+  externally" with committed raw traces — auditable rather than taken on our word.
 
 ## What ships
 

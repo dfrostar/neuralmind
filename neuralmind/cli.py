@@ -1446,7 +1446,9 @@ def main():
         action="store_true",
         help="Public benchmark: NeuralMind vs. full-file / ripgrep / embedding-RAG on "
         "pinned real repos, reporting gold-file recall (objective, no LLM judge) against "
-        "context-token cost. Reproduces docs/benchmarks/public.md (clones pinned repos).",
+        "context-token cost. Reproduces docs/benchmarks/public.md (clones pinned repos). "
+        "Requires a source checkout — the evals/public harness ships in the repo, not the "
+        "PyPI wheel; run it from a clone.",
     )
     bench_p.add_argument(
         "--repo",

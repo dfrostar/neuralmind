@@ -6,17 +6,19 @@ question, and whether the **objectively-correct file** actually makes it in.
 Cost (tokens) and correctness (gold-file recall) are reported **together** — a
 token-reduction number with no correctness number attached is meaningless.
 
-**Reproduce it yourself (one command, no trust required):**
+**Reproduce it yourself (no trust required):**
 
 ```bash
-pip install neuralmind tiktoken
 git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+pip install -e . tiktoken           # source checkout — ships the evals/public harness
 python -m evals.public.run          # clones the pinned repos, prints the table
-# or: neuralmind benchmark --public
+# or, from the clone: neuralmind benchmark --public
 ```
 
-The pinned repos are cloned at fixed commit SHAs; the run is deterministic, so
-your numbers match the table below to the token.
+> The benchmark harness (`evals/public`) ships in the **source tree**, not the
+> PyPI wheel, so run it from a clone — `pip install neuralmind` alone won't have
+> it. The pinned repos are cloned at fixed commit SHAs and the run is
+> deterministic, so your numbers match the table below to the token.
 
 ---
 
@@ -126,11 +128,14 @@ The corpus is intentionally focused, not exhaustive. Add a repo by appending to
 def-site gold file) and re-running. Community-contributed real-repo numbers go
 through the existing `neuralmind benchmark . --contribute` path.
 
-## Competitor comparison
+## Competitor comparison (scaffold — not yet run)
 
-A head-to-head vs. `codebase-memory-mcp` runs through a documented external
-harness (its dependencies don't install in our CI sandbox) — see
-[`bench/public/competitor/REPRODUCE.md`](../../bench/public/competitor/REPRODUCE.md).
-Those rows are marked "reproduced externally," with the exact version, config,
-and the competitor's own reproduction steps linked, so they're auditable rather
-than taken on our word.
+A head-to-head vs. `codebase-memory-mcp` is **not in this release yet**: its
+dependencies don't install in our CI sandbox, so it runs through a *documented
+external* harness rather than live-in-CI. The provenance scaffold —
+[`bench/public/competitor/REPRODUCE.md`](../../bench/public/competitor/REPRODUCE.md)
+— defines the exact procedure (pin the version, reuse this same query set + gold
+files, score with the same `quality.py`). When it's executed, the competitor
+rows will be added and marked "reproduced externally," with raw traces committed
+and the competitor's own steps linked, so they're auditable rather than taken on
+our word. Until then, treat the competitor comparison as a planned fast-follow.

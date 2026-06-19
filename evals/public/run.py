@@ -213,6 +213,18 @@ def run_all(
 # --------------------------------------------------------------------------- #
 
 
+def _ratio_phrase(full_tokens: float, backend_tokens: float) -> str:
+    """Honest "Nx fewer/more" wording — never claims "fewer" when it's actually more."""
+    if not backend_tokens:
+        return "—"
+    factor = full_tokens / backend_tokens
+    if factor >= 1.05:
+        return f"{factor:.1f}× fewer"
+    if factor <= 0.95:
+        return f"{1 / factor:.1f}× more"
+    return "≈ same"
+
+
 def render_markdown(report: dict[str, Any]) -> str:
     out: list[str] = []
     out.append("# NeuralMind — honest public benchmark\n")
@@ -255,7 +267,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 continue
             ratio = ""
             if b != "full-file" and full.get("mean_tokens") and s.get("mean_tokens"):
-                ratio = f"  ({full['mean_tokens'] / s['mean_tokens']:.1f}× fewer)"
+                ratio = f"  ({_ratio_phrase(full['mean_tokens'], s['mean_tokens'])})"
             out.append(
                 f"| `{b}` | {s['mean_recall']:.2f} | {s['found_rate']:.0%} "
                 f"| {s['mean_tokens']:.0f}{ratio} | {s['mean_mrr']:.2f} |"
@@ -263,12 +275,11 @@ def render_markdown(report: dict[str, Any]) -> str:
         out.append("")
         # The honest headline: NeuralMind's recall at its cost vs. the naive ceiling.
         nm_s = repo["summary"].get("neuralmind")
-        if nm_s and full.get("mean_tokens"):
-            factor = full["mean_tokens"] / nm_s["mean_tokens"] if nm_s["mean_tokens"] else 0
+        if nm_s and full.get("mean_tokens") and nm_s.get("mean_tokens"):
             out.append(
                 f"**Headline:** NeuralMind reaches **{nm_s['mean_recall']:.0%} gold-file recall** "
-                f"at **{factor:.0f}× fewer tokens** than pasting every file "
-                f"(which is recall 1.0 by definition, at full cost).\n"
+                f"at **{_ratio_phrase(full['mean_tokens'], nm_s['mean_tokens'])} tokens** than "
+                f"pasting every file (which is recall 1.0 by definition, at full cost).\n"
             )
         losses = repo.get("losses", [])
         if losses:

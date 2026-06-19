@@ -154,24 +154,33 @@ reproducible:
 
 ## 7. Acceptance criteria
 
-- [ ] `bench/public/manifest.json` — real repos pinned to commit SHAs, each with
-      a pre-registered query set committed **before** any tuning.
-- [ ] Objective gold sets per query, with the oracle (def-site / test / commit)
-      documented per query; no hand-waved labels.
-- [ ] `evals/public/run.py` + `neuralmind benchmark --public [--seed N] [--json]
-      [--judge]` assembles all baselines and reports **cost + gold-file recall
-      jointly**, deterministic per seed.
-- [ ] Baseline matrix includes `full-file`, `ripgrep`, `embedding-rag`,
-      `neuralmind`, and `competitor` (per §6).
-- [ ] Multi-seed; report shows mean ± spread, not a single run.
-- [ ] **Every** query in the report, including losses; a "where NeuralMind loses"
-      section is present and non-empty if any losses exist.
-- [ ] `docs/benchmarks/public.md` — methodology + results + exact reproduce
+_Checked items shipped in v0.31.0; unchecked are explicit fast-follows (noted)._
+
+- [x] `evals/public/manifest.json` — real repos (`requests`, `click`) pinned to
+      commit SHAs, each with a pre-registered query set committed **before** any
+      tuning.
+- [x] Objective gold sets per query, with the oracle (def-site) documented per
+      query; no hand-waved labels.
+- [x] `evals/public/run.py` + `neuralmind benchmark --public [--repo NAME]
+      [--seeds N] [--json]` assembles the baselines and reports **cost +
+      gold-file recall jointly**, deterministically. _(An opt-in `--judge`
+      answerability arm is a planned fast-follow, not in 0.31.0.)_
+- [x] Baseline matrix includes `full-file`, `ripgrep`, `embedding-rag`,
+      `neuralmind`. _`competitor` is a documented-external fast-follow (§6) — its
+      deps don't install in CI; scaffolded at `bench/public/competitor/`._
+- [x] Deterministic by design (synapse injection off): re-runs match to the
+      token, so a single run *is* the reproducible result. _(The `--seeds` flag
+      records the seed count; true multi-seed mean ± spread would only matter if
+      a stochastic baseline is added later.)_
+- [x] **Every** query in the report, including losses; a "where NeuralMind loses"
+      section is present (and the degraded-env case says "not evaluated", never a
+      false clean sweep).
+- [x] `docs/benchmarks/public.md` — methodology + results + exact reproduce
       steps; numbers trace to the same `quality.py` metric code as CI.
-- [ ] Forkable `bench-public.yml` (`workflow_dispatch`) regenerates the report.
-- [ ] Reuses `neuralmind/quality.py` for all scoring; no new metric math.
-- [ ] Docs + SEO propagated (release notes, README, both HTML, CLI-Reference
-      `benchmark --public`, keywords) per CLAUDE.md.
+- [x] Forkable `bench-public.yml` (`workflow_dispatch`) regenerates the report.
+- [x] Reuses `neuralmind/quality.py` for all scoring; no new metric math.
+- [x] Docs + SEO propagated (release notes, README, both HTML, CLI-Reference
+      `benchmark --public`, sitemap, keywords) per CLAUDE.md.
 
 ## 8. Risks & mitigations
 

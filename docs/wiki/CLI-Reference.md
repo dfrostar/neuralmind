@@ -368,7 +368,7 @@ neuralmind benchmark <project_path> [OPTIONS]
 | `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
 | `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
 | `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
-| `--public` | False | *(v0.31.0+)* Public-benchmark mode — reproduce the honest vs-alternatives comparison on pinned real repos (see below). No `project_path` needed |
+| `--public` | False | *(v0.31.0+)* Public-benchmark mode — reproduce the honest vs-alternatives comparison on pinned real repos (see below). Ignores `project_path` (it uses the pinned corpus, not your project) and requires a **source checkout** — the `evals/public` harness ships in the repo, not the PyPI wheel |
 | `--repo` | (all) | *(v0.31.0+)* With `--public`, scope to one corpus repo: `requests` / `click` |
 | `--seeds` | `1` | *(v0.31.0+)* With `--public`, the seed count recorded in the report. The pipeline is deterministic (synapse injection off), so variance across seeds is exactly 0 — recorded honestly rather than padded with artificial noise |
 
