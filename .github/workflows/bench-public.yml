@@ -1,0 +1,48 @@
+name: Public benchmark (reproducible)
+
+# Forkable, on-demand reproduction of docs/benchmarks/public.md. This is NOT a
+# gate — it exists so a skeptic can fork the repo, click "Run workflow," and get
+# the same cost/correctness table the docs publish, without trusting our numbers.
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Single repo from the corpus (blank = all)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  public-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install NeuralMind + exact tokenizer
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install tiktoken
+
+      - name: Run the public benchmark
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.repo }}" ]; then
+            ARGS="--repo ${{ github.event.inputs.repo }}"
+          fi
+          python -m evals.public.run $ARGS --out bench/public | tee public-report.md
+
+      - name: Upload report + raw results
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-benchmark
+          path: |
+            public-report.md
+            bench/public/results.json
+            bench/public/report.md
