@@ -37,6 +37,10 @@ DEFAULT_IGNORES = (
     "dist",
     "build",
     "target",
+    # C/C++ CMake build output (keep in sync with graphgen._DEFAULT_IGNORES).
+    "CMakeFiles",
+    "cmake-build-debug",
+    "cmake-build-release",
 )
 
 

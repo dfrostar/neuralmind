@@ -1,0 +1,1947 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "billing.hpp",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L1",
+      "id": "include_app_billing_hpp",
+      "community": 1,
+      "norm_label": "billing.hpp"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L10",
+      "id": "include_app_billing_hpp__invoice_cls",
+      "community": 1,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "A single billing line item.",
+      "file_type": "rationale",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L10",
+      "id": "include_app_billing_hpp__invoice_cls__rationale",
+      "community": 1,
+      "norm_label": "a single billing line item."
+    },
+    {
+      "label": "Invoice()",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L12",
+      "id": "include_app_billing_hpp__invoice_cls__invoice_fn",
+      "community": 1,
+      "norm_label": "invoice()"
+    },
+    {
+      "label": "charge()",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L13",
+      "id": "include_app_billing_hpp__invoice_cls__charge_fn",
+      "community": 1,
+      "norm_label": "charge()"
+    },
+    {
+      "label": "amount_cents()",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L14",
+      "id": "include_app_billing_hpp__invoice_cls__amount_cents_fn",
+      "community": 1,
+      "norm_label": "amount_cents()"
+    },
+    {
+      "label": "user_id_",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L17",
+      "id": "include_app_billing_hpp__invoice_cls__user_id_sym",
+      "community": 1,
+      "norm_label": "user_id_"
+    },
+    {
+      "label": "amount_cents_",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L18",
+      "id": "include_app_billing_hpp__invoice_cls__amount_cents_sym",
+      "community": 1,
+      "norm_label": "amount_cents_"
+    },
+    {
+      "label": "paid_",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L19",
+      "id": "include_app_billing_hpp__invoice_cls__paid_sym",
+      "community": 1,
+      "norm_label": "paid_"
+    },
+    {
+      "label": "StripeClient",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L23",
+      "id": "include_app_billing_hpp__stripeclient_cls",
+      "community": 1,
+      "norm_label": "stripeclient"
+    },
+    {
+      "label": "Talks to the payment processor.",
+      "file_type": "rationale",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L23",
+      "id": "include_app_billing_hpp__stripeclient_cls__rationale",
+      "community": 1,
+      "norm_label": "talks to the payment processor."
+    },
+    {
+      "label": "charge()",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L25",
+      "id": "include_app_billing_hpp__stripeclient_cls__charge_fn",
+      "community": 1,
+      "norm_label": "charge()"
+    },
+    {
+      "label": "refund()",
+      "file_type": "code",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L26",
+      "id": "include_app_billing_hpp__stripeclient_cls__refund_fn",
+      "community": 1,
+      "norm_label": "refund()"
+    },
+    {
+      "label": "db.hpp",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L1",
+      "id": "include_app_db_hpp",
+      "community": 2,
+      "norm_label": "db.hpp"
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L10",
+      "id": "include_app_db_hpp__connection_cls",
+      "community": 2,
+      "norm_label": "connection"
+    },
+    {
+      "label": "An open database connection handle.",
+      "file_type": "rationale",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L10",
+      "id": "include_app_db_hpp__connection_cls__rationale",
+      "community": 2,
+      "norm_label": "an open database connection handle."
+    },
+    {
+      "label": "Connection()",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L12",
+      "id": "include_app_db_hpp__connection_cls__connection_fn",
+      "community": 2,
+      "norm_label": "connection()"
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L13",
+      "id": "include_app_db_hpp__connection_cls__execute_fn",
+      "community": 2,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "close()",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L14",
+      "id": "include_app_db_hpp__connection_cls__close_fn",
+      "community": 2,
+      "norm_label": "close()"
+    },
+    {
+      "label": "dsn_",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L17",
+      "id": "include_app_db_hpp__connection_cls__dsn_sym",
+      "community": 2,
+      "norm_label": "dsn_"
+    },
+    {
+      "label": "in_transaction_",
+      "file_type": "code",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L18",
+      "id": "include_app_db_hpp__connection_cls__in_transaction_sym",
+      "community": 2,
+      "norm_label": "in_transaction_"
+    },
+    {
+      "label": "handlers.hpp",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L1",
+      "id": "include_app_handlers_hpp",
+      "community": 3,
+      "norm_label": "handlers.hpp"
+    },
+    {
+      "label": "Authenticator",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L11",
+      "id": "include_app_handlers_hpp__authenticator_cls",
+      "community": 3,
+      "norm_label": "authenticator"
+    },
+    {
+      "label": "Base class for request authenticators.",
+      "file_type": "rationale",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L11",
+      "id": "include_app_handlers_hpp__authenticator_cls__rationale",
+      "community": 3,
+      "norm_label": "base class for request authenticators."
+    },
+    {
+      "label": "~Authenticator()",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L13",
+      "id": "include_app_handlers_hpp__authenticator_cls__authenticator_fn",
+      "community": 3,
+      "norm_label": "~authenticator()"
+    },
+    {
+      "label": "authenticate()",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L14",
+      "id": "include_app_handlers_hpp__authenticator_cls__authenticate_fn",
+      "community": 3,
+      "norm_label": "authenticate()"
+    },
+    {
+      "label": "BearerAuthenticator",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L18",
+      "id": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "community": 3,
+      "norm_label": "bearerauthenticator"
+    },
+    {
+      "label": "Authenticates bearer tokens using a JwtCodec.",
+      "file_type": "rationale",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L18",
+      "id": "include_app_handlers_hpp__bearerauthenticator_cls__rationale",
+      "community": 3,
+      "norm_label": "authenticates bearer tokens using a jwtcodec."
+    },
+    {
+      "label": "BearerAuthenticator()",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L20",
+      "id": "include_app_handlers_hpp__bearerauthenticator_cls__bearerauthenticator_fn",
+      "community": 3,
+      "norm_label": "bearerauthenticator()"
+    },
+    {
+      "label": "authenticate()",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L21",
+      "id": "include_app_handlers_hpp__bearerauthenticator_cls__authenticate_fn",
+      "community": 3,
+      "norm_label": "authenticate()"
+    },
+    {
+      "label": "codec_",
+      "file_type": "code",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L24",
+      "id": "include_app_handlers_hpp__bearerauthenticator_cls__codec_sym",
+      "community": 3,
+      "norm_label": "codec_"
+    },
+    {
+      "label": "jwt.hpp",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L1",
+      "id": "include_app_jwt_hpp",
+      "community": 4,
+      "norm_label": "jwt.hpp"
+    },
+    {
+      "label": "Claims",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L10",
+      "id": "include_app_jwt_hpp__claims_cls",
+      "community": 4,
+      "norm_label": "claims"
+    },
+    {
+      "label": "A decoded JSON Web Token claim set.",
+      "file_type": "rationale",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L10",
+      "id": "include_app_jwt_hpp__claims_cls__rationale",
+      "community": 4,
+      "norm_label": "a decoded json web token claim set."
+    },
+    {
+      "label": "subject",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L11",
+      "id": "include_app_jwt_hpp__claims_cls__subject_sym",
+      "community": 4,
+      "norm_label": "subject"
+    },
+    {
+      "label": "issued_at",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L12",
+      "id": "include_app_jwt_hpp__claims_cls__issued_at_sym",
+      "community": 4,
+      "norm_label": "issued_at"
+    },
+    {
+      "label": "expires_at",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L13",
+      "id": "include_app_jwt_hpp__claims_cls__expires_at_sym",
+      "community": 4,
+      "norm_label": "expires_at"
+    },
+    {
+      "label": "JwtCodec",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L17",
+      "id": "include_app_jwt_hpp__jwtcodec_cls",
+      "community": 4,
+      "norm_label": "jwtcodec"
+    },
+    {
+      "label": "Signs and verifies JSON Web Tokens.",
+      "file_type": "rationale",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L17",
+      "id": "include_app_jwt_hpp__jwtcodec_cls__rationale",
+      "community": 4,
+      "norm_label": "signs and verifies json web tokens."
+    },
+    {
+      "label": "JwtCodec()",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L19",
+      "id": "include_app_jwt_hpp__jwtcodec_cls__jwtcodec_fn",
+      "community": 4,
+      "norm_label": "jwtcodec()"
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L20",
+      "id": "include_app_jwt_hpp__jwtcodec_cls__sign_fn",
+      "community": 4,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "verify()",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L21",
+      "id": "include_app_jwt_hpp__jwtcodec_cls__verify_fn",
+      "community": 4,
+      "norm_label": "verify()"
+    },
+    {
+      "label": "secret_",
+      "file_type": "code",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L24",
+      "id": "include_app_jwt_hpp__jwtcodec_cls__secret_sym",
+      "community": 4,
+      "norm_label": "secret_"
+    },
+    {
+      "label": "router.hpp",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L1",
+      "id": "include_app_router_hpp",
+      "community": 5,
+      "norm_label": "router.hpp"
+    },
+    {
+      "label": "Router",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L13",
+      "id": "include_app_router_hpp__router_cls",
+      "community": 5,
+      "norm_label": "router"
+    },
+    {
+      "label": "Dispatches HTTP requests to the right subsystem.",
+      "file_type": "rationale",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L13",
+      "id": "include_app_router_hpp__router_cls__rationale",
+      "community": 5,
+      "norm_label": "dispatches http requests to the right subsystem."
+    },
+    {
+      "label": "Router()",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L15",
+      "id": "include_app_router_hpp__router_cls__router_fn",
+      "community": 5,
+      "norm_label": "router()"
+    },
+    {
+      "label": "dispatch()",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L16",
+      "id": "include_app_router_hpp__router_cls__dispatch_fn",
+      "community": 5,
+      "norm_label": "dispatch()"
+    },
+    {
+      "label": "auth_",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L19",
+      "id": "include_app_router_hpp__router_cls__auth_sym",
+      "community": 5,
+      "norm_label": "auth_"
+    },
+    {
+      "label": "users_",
+      "file_type": "code",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L20",
+      "id": "include_app_router_hpp__router_cls__users_sym",
+      "community": 5,
+      "norm_label": "users_"
+    },
+    {
+      "label": "user.hpp",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L1",
+      "id": "include_app_user_hpp",
+      "community": 6,
+      "norm_label": "user.hpp"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L10",
+      "id": "include_app_user_hpp__user_cls",
+      "community": 6,
+      "norm_label": "user"
+    },
+    {
+      "label": "A persisted user record.",
+      "file_type": "rationale",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L10",
+      "id": "include_app_user_hpp__user_cls__rationale",
+      "community": 6,
+      "norm_label": "a persisted user record."
+    },
+    {
+      "label": "User()",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L12",
+      "id": "include_app_user_hpp__user_cls__user_fn",
+      "community": 6,
+      "norm_label": "user()"
+    },
+    {
+      "label": "id()",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L13",
+      "id": "include_app_user_hpp__user_cls__id_fn",
+      "community": 6,
+      "norm_label": "id()"
+    },
+    {
+      "label": "email()",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L14",
+      "id": "include_app_user_hpp__user_cls__email_fn",
+      "community": 6,
+      "norm_label": "email()"
+    },
+    {
+      "label": "id_",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L17",
+      "id": "include_app_user_hpp__user_cls__id_sym",
+      "community": 6,
+      "norm_label": "id_"
+    },
+    {
+      "label": "email_",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L18",
+      "id": "include_app_user_hpp__user_cls__email_sym",
+      "community": 6,
+      "norm_label": "email_"
+    },
+    {
+      "label": "UserRepository",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L22",
+      "id": "include_app_user_hpp__userrepository_cls",
+      "community": 6,
+      "norm_label": "userrepository"
+    },
+    {
+      "label": "Stores and retrieves User records.",
+      "file_type": "rationale",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L22",
+      "id": "include_app_user_hpp__userrepository_cls__rationale",
+      "community": 6,
+      "norm_label": "stores and retrieves user records."
+    },
+    {
+      "label": "create()",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L24",
+      "id": "include_app_user_hpp__userrepository_cls__create_fn",
+      "community": 6,
+      "norm_label": "create()"
+    },
+    {
+      "label": "remove()",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L25",
+      "id": "include_app_user_hpp__userrepository_cls__remove_fn",
+      "community": 6,
+      "norm_label": "remove()"
+    },
+    {
+      "label": "next_id_",
+      "file_type": "code",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L28",
+      "id": "include_app_user_hpp__userrepository_cls__next_id_sym",
+      "community": 6,
+      "norm_label": "next_id_"
+    },
+    {
+      "label": "router.cpp",
+      "file_type": "code",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L1",
+      "id": "src_api_router_cpp",
+      "community": 7,
+      "norm_label": "router.cpp"
+    },
+    {
+      "label": "Router",
+      "file_type": "code",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L6",
+      "id": "src_api_router_cpp__router_cls",
+      "community": 7,
+      "norm_label": "router"
+    },
+    {
+      "label": "Router()",
+      "file_type": "code",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L6",
+      "id": "src_api_router_cpp__router_cls__router_fn",
+      "community": 7,
+      "norm_label": "router()"
+    },
+    {
+      "label": "dispatch()",
+      "file_type": "code",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L9",
+      "id": "src_api_router_cpp__router_cls__dispatch_fn",
+      "community": 7,
+      "norm_label": "dispatch()"
+    },
+    {
+      "label": "handlers.cpp",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L1",
+      "id": "src_auth_handlers_cpp",
+      "community": 8,
+      "norm_label": "handlers.cpp"
+    },
+    {
+      "label": "BearerAuthenticator",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L6",
+      "id": "src_auth_handlers_cpp__bearerauthenticator_cls",
+      "community": 8,
+      "norm_label": "bearerauthenticator"
+    },
+    {
+      "label": "BearerAuthenticator()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L6",
+      "id": "src_auth_handlers_cpp__bearerauthenticator_cls__bearerauthenticator_fn",
+      "community": 8,
+      "norm_label": "bearerauthenticator()"
+    },
+    {
+      "label": "authenticate()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L8",
+      "id": "src_auth_handlers_cpp__bearerauthenticator_cls__authenticate_fn",
+      "community": 8,
+      "norm_label": "authenticate()"
+    },
+    {
+      "label": "jwt.cpp",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L1",
+      "id": "src_auth_jwt_cpp",
+      "community": 9,
+      "norm_label": "jwt.cpp"
+    },
+    {
+      "label": "JwtCodec",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L6",
+      "id": "src_auth_jwt_cpp__jwtcodec_cls",
+      "community": 9,
+      "norm_label": "jwtcodec"
+    },
+    {
+      "label": "JwtCodec()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L6",
+      "id": "src_auth_jwt_cpp__jwtcodec_cls__jwtcodec_fn",
+      "community": 9,
+      "norm_label": "jwtcodec()"
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L8",
+      "id": "src_auth_jwt_cpp__jwtcodec_cls__sign_fn",
+      "community": 9,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "verify()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L12",
+      "id": "src_auth_jwt_cpp__jwtcodec_cls__verify_fn",
+      "community": 9,
+      "norm_label": "verify()"
+    },
+    {
+      "label": "invoices.cpp",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L1",
+      "id": "src_billing_invoices_cpp",
+      "community": 10,
+      "norm_label": "invoices.cpp"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L6",
+      "id": "src_billing_invoices_cpp__invoice_cls",
+      "community": 10,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "Invoice()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L6",
+      "id": "src_billing_invoices_cpp__invoice_cls__invoice_fn",
+      "community": 10,
+      "norm_label": "invoice()"
+    },
+    {
+      "label": "charge()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L9",
+      "id": "src_billing_invoices_cpp__invoice_cls__charge_fn",
+      "community": 10,
+      "norm_label": "charge()"
+    },
+    {
+      "label": "amount_cents()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L14",
+      "id": "src_billing_invoices_cpp__invoice_cls__amount_cents_fn",
+      "community": 10,
+      "norm_label": "amount_cents()"
+    },
+    {
+      "label": "StripeClient",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L18",
+      "id": "src_billing_invoices_cpp__stripeclient_cls",
+      "community": 10,
+      "norm_label": "stripeclient"
+    },
+    {
+      "label": "charge()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L18",
+      "id": "src_billing_invoices_cpp__stripeclient_cls__charge_fn",
+      "community": 10,
+      "norm_label": "charge()"
+    },
+    {
+      "label": "refund()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L22",
+      "id": "src_billing_invoices_cpp__stripeclient_cls__refund_fn",
+      "community": 10,
+      "norm_label": "refund()"
+    },
+    {
+      "label": "connection.cpp",
+      "file_type": "code",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L1",
+      "id": "src_db_connection_cpp",
+      "community": 11,
+      "norm_label": "connection.cpp"
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L6",
+      "id": "src_db_connection_cpp__connection_cls",
+      "community": 11,
+      "norm_label": "connection"
+    },
+    {
+      "label": "Connection()",
+      "file_type": "code",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L6",
+      "id": "src_db_connection_cpp__connection_cls__connection_fn",
+      "community": 11,
+      "norm_label": "connection()"
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L8",
+      "id": "src_db_connection_cpp__connection_cls__execute_fn",
+      "community": 11,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "close()",
+      "file_type": "code",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L12",
+      "id": "src_db_connection_cpp__connection_cls__close_fn",
+      "community": 11,
+      "norm_label": "close()"
+    },
+    {
+      "label": "crud.cpp",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L1",
+      "id": "src_users_crud_cpp",
+      "community": 12,
+      "norm_label": "crud.cpp"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L6",
+      "id": "src_users_crud_cpp__user_cls",
+      "community": 12,
+      "norm_label": "user"
+    },
+    {
+      "label": "User()",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L6",
+      "id": "src_users_crud_cpp__user_cls__user_fn",
+      "community": 12,
+      "norm_label": "user()"
+    },
+    {
+      "label": "id()",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L8",
+      "id": "src_users_crud_cpp__user_cls__id_fn",
+      "community": 12,
+      "norm_label": "id()"
+    },
+    {
+      "label": "email()",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L12",
+      "id": "src_users_crud_cpp__email_fn",
+      "community": 12,
+      "norm_label": "email()"
+    },
+    {
+      "label": "UserRepository",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L16",
+      "id": "src_users_crud_cpp__userrepository_cls",
+      "community": 12,
+      "norm_label": "userrepository"
+    },
+    {
+      "label": "create()",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L16",
+      "id": "src_users_crud_cpp__userrepository_cls__create_fn",
+      "community": 12,
+      "norm_label": "create()"
+    },
+    {
+      "label": "remove()",
+      "file_type": "code",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L21",
+      "id": "src_users_crud_cpp__userrepository_cls__remove_fn",
+      "community": 12,
+      "norm_label": "remove()"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 0,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "sample_project_cpp",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md__h1",
+      "community": 0,
+      "norm_label": "sample_project_cpp"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp",
+      "target": "include_app_billing_hpp__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls__rationale",
+      "target": "include_app_billing_hpp__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__invoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__amount_cents_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__user_id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__amount_cents_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__invoice_cls",
+      "target": "include_app_billing_hpp__invoice_cls__paid_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp",
+      "target": "include_app_billing_hpp__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__stripeclient_cls__rationale",
+      "target": "include_app_billing_hpp__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__stripeclient_cls",
+      "target": "include_app_billing_hpp__stripeclient_cls__charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp__stripeclient_cls",
+      "target": "include_app_billing_hpp__stripeclient_cls__refund_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_db_hpp",
+      "target": "include_app_db_hpp__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls__rationale",
+      "target": "include_app_db_hpp__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls",
+      "target": "include_app_db_hpp__connection_cls__connection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls",
+      "target": "include_app_db_hpp__connection_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls",
+      "target": "include_app_db_hpp__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls",
+      "target": "include_app_db_hpp__connection_cls__dsn_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/db.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_db_hpp__connection_cls",
+      "target": "include_app_db_hpp__connection_cls__in_transaction_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp",
+      "target": "include_app_handlers_hpp__authenticator_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__authenticator_cls__rationale",
+      "target": "include_app_handlers_hpp__authenticator_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__authenticator_cls",
+      "target": "include_app_handlers_hpp__authenticator_cls__authenticator_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__authenticator_cls",
+      "target": "include_app_handlers_hpp__authenticator_cls__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp",
+      "target": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__bearerauthenticator_cls__rationale",
+      "target": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "target": "include_app_handlers_hpp__bearerauthenticator_cls__bearerauthenticator_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "target": "include_app_handlers_hpp__bearerauthenticator_cls__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "target": "include_app_handlers_hpp__bearerauthenticator_cls__codec_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp",
+      "target": "include_app_jwt_hpp__claims_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__claims_cls__rationale",
+      "target": "include_app_jwt_hpp__claims_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__claims_cls",
+      "target": "include_app_jwt_hpp__claims_cls__subject_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__claims_cls",
+      "target": "include_app_jwt_hpp__claims_cls__issued_at_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__claims_cls",
+      "target": "include_app_jwt_hpp__claims_cls__expires_at_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp",
+      "target": "include_app_jwt_hpp__jwtcodec_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__jwtcodec_cls__rationale",
+      "target": "include_app_jwt_hpp__jwtcodec_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__jwtcodec_cls",
+      "target": "include_app_jwt_hpp__jwtcodec_cls__jwtcodec_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__jwtcodec_cls",
+      "target": "include_app_jwt_hpp__jwtcodec_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__jwtcodec_cls",
+      "target": "include_app_jwt_hpp__jwtcodec_cls__verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/jwt.hpp",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "include_app_jwt_hpp__jwtcodec_cls",
+      "target": "include_app_jwt_hpp__jwtcodec_cls__secret_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_router_hpp",
+      "target": "include_app_router_hpp__router_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_router_hpp__router_cls__rationale",
+      "target": "include_app_router_hpp__router_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "include_app_router_hpp__router_cls",
+      "target": "include_app_router_hpp__router_cls__router_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "include_app_router_hpp__router_cls",
+      "target": "include_app_router_hpp__router_cls__dispatch_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "include_app_router_hpp__router_cls",
+      "target": "include_app_router_hpp__router_cls__auth_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "include_app_router_hpp__router_cls",
+      "target": "include_app_router_hpp__router_cls__users_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_user_hpp",
+      "target": "include_app_user_hpp__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls__rationale",
+      "target": "include_app_user_hpp__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls",
+      "target": "include_app_user_hpp__user_cls__user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls",
+      "target": "include_app_user_hpp__user_cls__id_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls",
+      "target": "include_app_user_hpp__user_cls__email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls",
+      "target": "include_app_user_hpp__user_cls__id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__user_cls",
+      "target": "include_app_user_hpp__user_cls__email_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "include_app_user_hpp",
+      "target": "include_app_user_hpp__userrepository_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__userrepository_cls__rationale",
+      "target": "include_app_user_hpp__userrepository_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__userrepository_cls",
+      "target": "include_app_user_hpp__userrepository_cls__create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__userrepository_cls",
+      "target": "include_app_user_hpp__userrepository_cls__remove_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/user.hpp",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "include_app_user_hpp__userrepository_cls",
+      "target": "include_app_user_hpp__userrepository_cls__next_id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_api_router_cpp__router_cls",
+      "target": "src_api_router_cpp__router_cls__router_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_api_router_cpp__router_cls",
+      "target": "src_api_router_cpp__router_cls__dispatch_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_handlers_cpp__bearerauthenticator_cls",
+      "target": "src_auth_handlers_cpp__bearerauthenticator_cls__bearerauthenticator_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_auth_handlers_cpp__bearerauthenticator_cls",
+      "target": "src_auth_handlers_cpp__bearerauthenticator_cls__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_jwt_cpp__jwtcodec_cls",
+      "target": "src_auth_jwt_cpp__jwtcodec_cls__jwtcodec_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_auth_jwt_cpp__jwtcodec_cls",
+      "target": "src_auth_jwt_cpp__jwtcodec_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_auth_jwt_cpp__jwtcodec_cls",
+      "target": "src_auth_jwt_cpp__jwtcodec_cls__verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__invoice_cls",
+      "target": "src_billing_invoices_cpp__invoice_cls__invoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__invoice_cls",
+      "target": "src_billing_invoices_cpp__invoice_cls__charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__invoice_cls",
+      "target": "src_billing_invoices_cpp__invoice_cls__amount_cents_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__stripeclient_cls",
+      "target": "src_billing_invoices_cpp__stripeclient_cls__charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__stripeclient_cls",
+      "target": "src_billing_invoices_cpp__stripeclient_cls__refund_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_db_connection_cpp__connection_cls",
+      "target": "src_db_connection_cpp__connection_cls__connection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_db_connection_cpp__connection_cls",
+      "target": "src_db_connection_cpp__connection_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_db_connection_cpp__connection_cls",
+      "target": "src_db_connection_cpp__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp__user_cls",
+      "target": "src_users_crud_cpp__user_cls__user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp__user_cls",
+      "target": "src_users_crud_cpp__user_cls__id_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp",
+      "target": "src_users_crud_cpp__email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp__userrepository_cls",
+      "target": "src_users_crud_cpp__userrepository_cls__create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp__userrepository_cls",
+      "target": "src_users_crud_cpp__userrepository_cls__remove_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/billing.hpp",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "include_app_billing_hpp",
+      "target": "include_app_user_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp",
+      "target": "include_app_jwt_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "context": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/handlers.hpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "include_app_handlers_hpp__bearerauthenticator_cls",
+      "target": "include_app_handlers_hpp__authenticator_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "include_app_router_hpp",
+      "target": "include_app_handlers_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "include_app_router_hpp",
+      "target": "include_app_user_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "include/app/router.hpp",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "include_app_router_hpp",
+      "target": "include_app_billing_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_api_router_cpp",
+      "target": "include_app_router_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_api_router_cpp__router_cls__dispatch_fn",
+      "target": "include_app_handlers_hpp__authenticator_cls__authenticate_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/router.cpp",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_api_router_cpp__router_cls__dispatch_fn",
+      "target": "include_app_user_hpp__userrepository_cls__create_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_auth_handlers_cpp",
+      "target": "include_app_handlers_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.cpp",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_auth_handlers_cpp__bearerauthenticator_cls__authenticate_fn",
+      "target": "include_app_jwt_hpp__jwtcodec_cls__verify_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_auth_jwt_cpp",
+      "target": "include_app_jwt_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp",
+      "target": "include_app_billing_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.cpp",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_billing_invoices_cpp__invoice_cls__charge_fn",
+      "target": "include_app_billing_hpp__invoice_cls__amount_cents_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_db_connection_cpp",
+      "target": "include_app_db_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "include",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp",
+      "target": "include_app_user_hpp",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.cpp",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_users_crud_cpp__userrepository_cls__create_fn",
+      "target": "include_app_user_hpp__user_cls__user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}

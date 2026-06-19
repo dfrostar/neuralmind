@@ -13,9 +13,9 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 *graph producer*.
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
-per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, and Java
-ship today, each mapping its grammar's node types onto the same node/edge model;
-registering another grammar adds a language with no change downstream of
+per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, Java, C,
+and C++ ship today, each mapping its grammar's node types onto the same node/edge
+model; registering another grammar adds a language with no change downstream of
 ``graph.json``.
 
 Design notes:
@@ -53,6 +53,10 @@ _DEFAULT_IGNORES: frozenset[str] = frozenset(
         "build",
         # Rust build output (analogous to node_modules/dist/build).
         "target",
+        # C/C++ CMake build output (keep in sync with watcher.DEFAULT_IGNORES).
+        "CMakeFiles",
+        "cmake-build-debug",
+        "cmake-build-release",
     }
 )
 
@@ -73,6 +77,14 @@ _SUFFIX_LANG: dict[str, str] = {
     ".go": "go",
     ".rs": "rust",
     ".java": "java",
+    ".c": "c",
+    ".h": "c",
+    ".cpp": "cpp",
+    ".cc": "cpp",
+    ".cxx": "cpp",
+    ".hpp": "cpp",
+    ".hh": "cpp",
+    ".hxx": "cpp",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -109,6 +121,14 @@ def _load_language(name: str):
             return Language(ts.language())
         if name == "java":
             import tree_sitter_java as ts
+
+            return Language(ts.language())
+        if name == "c":
+            import tree_sitter_c as ts
+
+            return Language(ts.language())
+        if name == "cpp":
+            import tree_sitter_cpp as ts
 
             return Language(ts.language())
     except Exception:
@@ -1568,6 +1588,446 @@ def _java_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
     visit(root_node, None)
 
 
+# --------------------------------------------------------------------------- #
+# C / C++ extractors
+# --------------------------------------------------------------------------- #
+# Declarator wrappers a name hides behind (`int *foo()` → pointer→function→id).
+_C_DECL_WRAPPERS: frozenset[str] = frozenset(
+    {
+        "pointer_declarator",
+        "reference_declarator",
+        "array_declarator",
+        "parenthesized_declarator",
+        "init_declarator",
+        "function_declarator",
+    }
+)
+# Leading source-tree dirs stripped so a header and its impl share a module key.
+_C_PATH_PREFIXES: frozenset[str] = frozenset({"include", "src", "source", "lib", "inc"})
+# Header suffixes — when a header and an impl share a module key, the header owns
+# it so an `#include "x.h"` from the impl resolves to the header (not the impl
+# itself), independent of file-walk order or an include/+src/ vs flat layout.
+_C_HEADER_SUFFIXES: frozenset[str] = frozenset({".h", ".hpp", ".hh", ".hxx", ".h++"})
+
+
+def _is_c_header(rel: str) -> bool:
+    name = rel.rsplit("/", 1)[-1]
+    return "." in name and ("." + name.rsplit(".", 1)[-1]) in _C_HEADER_SUFFIXES
+
+
+def _register_c_module_key(b: _GraphBuilder, rel: str, file_id: str) -> None:
+    """Map a C/C++ file's module key to its file node, header-first.
+
+    Headers overwrite (they win the key); impls only fill it if unset — so
+    ``foo.c`` including ``foo.h`` always resolves to the header regardless of
+    walk order, even when both live in the same directory."""
+    key = _c_module_key(rel)
+    if _is_c_header(rel):
+        b.file_by_module[key] = file_id
+    else:
+        b.file_by_module.setdefault(key, file_id)
+
+
+def _c_module_key(rel: str) -> str:
+    """Module key a header/impl pair share, so ``foo.h`` and ``foo.cpp`` collate.
+
+    ``include/auth/jwt.h`` and ``src/auth/jwt.cpp`` both → ``auth/jwt``. The key
+    is the extension-stripped path minus a leading source-tree dir; an
+    ``#include "auth/jwt.h"`` resolves against the same key.
+    """
+    name = rel.rsplit("/", 1)[-1]
+    no_ext = rel[: -(len(name) - name.rindex("."))] if "." in name else rel
+    no_ext = no_ext.rstrip(".")
+    parts = [p for p in no_ext.split("/") if p]
+    if parts and parts[0] in _C_PATH_PREFIXES:
+        parts = parts[1:]
+    return "/".join(parts)
+
+
+def _c_decl_name(node, src: bytes):
+    """Descend a declarator to the defined name. Returns ``(name, name_node)``.
+
+    Handles pointer/reference/array/function wrappers and C++ qualified names
+    (``Foo::bar`` → ``bar``), destructors, and operators."""
+    if node is None:
+        return None, None
+    t = node.type
+    if t in ("identifier", "field_identifier", "type_identifier"):
+        return _node_text(node, src), node
+    if t in ("destructor_name", "operator_name"):
+        return _node_text(node, src), node
+    if t == "qualified_identifier":
+        nm = node.child_by_field_name("name")
+        if nm is not None:
+            return _c_decl_name(nm, src)
+        return _node_text(node, src).split("::")[-1].strip() or None, node
+    inner = node.child_by_field_name("declarator")
+    if inner is not None:
+        return _c_decl_name(inner, src)
+    for c in node.named_children:
+        nm, nn = _c_decl_name(c, src)
+        if nm:
+            return nm, nn
+    return None, None
+
+
+def _c_qualifier(node, src: bytes) -> str:
+    """For an out-of-line C++ method ``Foo::bar``, the class qualifier ``Foo``
+    (last scope segment); ``""`` when the declarator names a bare function."""
+    decl = node.child_by_field_name("declarator")
+    while decl is not None and decl.type in _C_DECL_WRAPPERS:
+        nxt = decl.child_by_field_name("declarator")
+        if nxt is not None and nxt.type == "qualified_identifier":
+            decl = nxt
+            break
+        decl = nxt
+    if decl is not None and decl.type == "qualified_identifier":
+        scope = decl.child_by_field_name("scope")
+        if scope is not None:
+            return _node_text(scope, src).split("::")[-1].strip()
+    return ""
+
+
+def _c_attach_doc(b: _GraphBuilder, node, src: bytes, rel: str, target_id: str) -> None:
+    """C/C++ doc comments are ``comment`` siblings preceding a declaration."""
+    comments: list[str] = []
+    sib = node.prev_named_sibling
+    while sib is not None and sib.type == "comment":
+        comments.append(_node_text(sib, src))
+        sib = sib.prev_named_sibling
+    if not comments:
+        return
+    doc = _clean_comment("\n".join(reversed(comments)))
+    if not doc:
+        return
+    line = node.start_point[0] + 1
+    rid = f"{target_id}__rationale"
+    b.add_node(rid, doc, "rationale", rel, line)
+    b.add_edge("rationale_for", rid, target_id, rel, line)
+
+
+def _c_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> str | None:
+    decl = fn_node.child_by_field_name("declarator")
+    name, nm_node = _c_decl_name(decl, src)
+    if not name:
+        return None
+    line = (nm_node.start_point[0] if nm_node is not None else fn_node.start_point[0]) + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    is_new = fid not in b.nodes
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    if is_new:
+        b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _c_attach_doc(b, fn_node, src, rel, fid)
+    return fid
+
+
+def _c_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
+
+
+def _c_type_node_id(b: _GraphBuilder, file_id: str, name: str, line: int, rel: str) -> str:
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    return cid
+
+
+def _c_emit_member_fn(b: _GraphBuilder, name: str, line: int, rel: str, cid: str) -> None:
+    fid = f"{cid}__{_slug(name)}_fn"
+    is_new = fid not in b.nodes
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    if is_new:
+        b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", cid, fid, rel, line)
+
+
+def _c_emit_record_fields(b: _GraphBuilder, body, src: bytes, rel: str, cid: str) -> None:
+    """Member fields and methods inside a struct/class/union body.
+
+    A declarator carrying a ``function_declarator`` (anywhere down the
+    pointer/reference chain, incl. constructors that parse as a bare
+    ``declaration``) is a method; otherwise a ``field_declaration`` is a data
+    member. Both kinds dedup by id so a header/impl pair never double-counts.
+    """
+    if body is None:
+        return
+    for member in body.named_children:
+        t = member.type
+        if t == "function_definition":  # inline method with a body
+            _c_emit_method(b, member, src, rel, cid)
+            continue
+        if t not in ("field_declaration", "declaration"):
+            continue
+        # One declaration can introduce several declarators (`int x, y;` /
+        # `int a, *b;`) — emit each so coverage doesn't depend on formatting.
+        decls = member.children_by_field_name("declarator") or [
+            member.child_by_field_name("declarator")
+        ]
+        for fdecl in decls:
+            name, nm_node = _c_decl_name(fdecl, src)
+            if not name:
+                continue
+            line = (nm_node.start_point[0] if nm_node else member.start_point[0]) + 1
+            if _has_function_declarator(fdecl):
+                _c_emit_member_fn(b, name, line, rel, cid)
+            elif t == "field_declaration":
+                _c_emit_sym(b, name, line, rel, cid)
+
+
+def _has_function_declarator(node) -> bool:
+    """True if a declarator is (or wraps, through pointer/reference/array) a
+    ``function_declarator`` — i.e. names a function/method, not a data member."""
+    while node is not None:
+        if node.type == "function_declarator":
+            return True
+        nxt = node.child_by_field_name("declarator")
+        if nxt is None:
+            nxt = next((c for c in node.named_children if c.type in _C_DECL_WRAPPERS), None)
+        node = nxt
+    return False
+
+
+def _c_emit_method(b: _GraphBuilder, fn_node, src: bytes, rel: str, cid: str) -> None:
+    decl = fn_node.child_by_field_name("declarator")
+    name, nm_node = _c_decl_name(decl, src)
+    if not name:
+        return
+    line = (nm_node.start_point[0] if nm_node else fn_node.start_point[0]) + 1
+    fid = f"{cid}__{_slug(name)}_fn"
+    is_new = fid not in b.nodes
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    if is_new:
+        b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", cid, fid, rel, line)
+    _c_attach_doc(b, fn_node, src, rel, fid)
+
+
+def _c_emit_record(b: _GraphBuilder, spec, src: bytes, rel: str, file_id: str) -> str | None:
+    """Emit a struct/union/class/enum type node + its members. Returns its id."""
+    nm = spec.child_by_field_name("name")
+    if nm is None:
+        return None
+    name = _node_text(nm, src)
+    if not name:
+        return None
+    line = nm.start_point[0] + 1
+    cid = _c_type_node_id(b, file_id, name, line, rel)
+    b.add_edge("contains", file_id, cid, rel, line)
+    _c_attach_doc(b, spec, src, rel, cid)
+    body = spec.child_by_field_name("body")
+    if spec.type == "enum_specifier":
+        if body is not None:
+            for en in body.named_children:
+                if en.type == "enumerator":
+                    enm = en.child_by_field_name("name") or (
+                        en.named_children[0] if en.named_children else None
+                    )
+                    if enm is not None:
+                        _c_emit_sym(b, _node_text(enm, src), en.start_point[0] + 1, rel, cid)
+    else:
+        _c_emit_record_fields(b, body, src, rel, cid)
+    return cid
+
+
+def _c_walk_items(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    for child in node.named_children:
+        t = child.type
+        if t == "function_definition":
+            qual = _c_qualifier(child, src)
+            if qual:
+                # Out-of-line C++ method `Foo::bar` → attach to class Foo.
+                cid = next(
+                    (c for c in b.class_by_name.get(qual, []) if c.startswith(file_id)),
+                    None,
+                ) or _c_type_node_id(b, file_id, qual, child.start_point[0] + 1, rel)
+                _c_emit_method(b, child, src, rel, cid)
+            else:
+                _c_emit_fn(b, child, src, rel, file_id)
+        elif t in ("struct_specifier", "union_specifier", "class_specifier", "enum_specifier"):
+            _c_emit_record(b, child, src, rel, file_id)
+        elif t == "type_definition":
+            # typedef may wrap an inline struct/enum; emit it, then the alias.
+            for c in child.named_children:
+                if c.type in ("struct_specifier", "union_specifier", "enum_specifier"):
+                    _c_emit_record(b, c, src, rel, file_id)
+            alias = child.child_by_field_name("declarator")
+            aname, anode = _c_decl_name(alias, src)
+            if aname:
+                _c_type_node_id(b, file_id, aname, (anode.start_point[0] if anode else 0) + 1, rel)
+                b.add_edge(
+                    "contains",
+                    file_id,
+                    f"{file_id}__{_slug(aname)}_cls",
+                    rel,
+                    (anode.start_point[0] if anode else 0) + 1,
+                )
+        elif t == "declaration":
+            # Top-level function prototype → register the function name.
+            decl = child.child_by_field_name("declarator")
+            if decl is not None and _has_function_declarator(decl):
+                _c_emit_fn(b, child, src, rel, file_id)
+        elif t == "namespace_definition":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _c_walk_items(b, body, src, rel, file_id)
+        elif t == "template_declaration":
+            # Unwrap `template<...>` to the class/function it qualifies.
+            _c_walk_items(b, child, src, rel, file_id)
+        elif t in ("linkage_specification", "preproc_if", "preproc_ifdef", "preproc_else"):
+            # `extern "C" { ... }` / conditional blocks — index contents as visible.
+            body = child.child_by_field_name("body") or child
+            if body is not child:
+                _c_walk_items(b, body, src, rel, file_id)
+            else:
+                _c_walk_items(b, child, src, rel, file_id)
+
+
+def _c_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for C/C++: register the header/impl module key, then emit
+    functions, records (struct/union/class), enums, typedefs, and members,
+    descending into namespaces and ``extern "C"``/template wrappers."""
+    _register_c_module_key(b, rel, file_id)
+    _c_walk_items(b, root_node, src, rel, file_id)
+
+
+def _c_include_key(inc_node, src: bytes) -> str | None:
+    """The local-include target's module key, or ``None`` for ``<system>`` headers."""
+    path = inc_node.child_by_field_name("path")
+    if path is None or path.type != "string_literal":
+        return None  # system_lib_string (<...>) → external, no edge
+    raw = _node_text(path, src).strip().strip('"').strip()
+    if not raw:
+        return None
+    parts = [p for p in raw.rsplit(".", 1)[0].split("/") if p and p != ".."]
+    if parts and parts[0] in _C_PATH_PREFIXES:
+        parts = parts[1:]
+    return "/".join(parts) or None
+
+
+# Nodes that wrap declarations without being one themselves — the resolve passes
+# descend through them transparently (header include guards, namespaces, `extern
+# "C"`, templates) to reach the includes/classes inside.
+_C_TRANSPARENT: frozenset[str] = frozenset(
+    {
+        "namespace_definition",
+        "declaration_list",
+        "linkage_specification",
+        "template_declaration",
+        "preproc_if",
+        "preproc_ifdef",
+        "preproc_ifndef",
+        "preproc_else",
+        "preproc_elif",
+    }
+)
+
+
+def _c_resolve_includes(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    for child in node.named_children:
+        if child.type == "preproc_include":
+            key = _c_include_key(child, src)
+            if key:
+                target = b.file_by_module.get(key)
+                if target and target != file_id:
+                    b.add_edge(
+                        "imports_from",
+                        file_id,
+                        target,
+                        rel,
+                        child.start_point[0] + 1,
+                        context="include",
+                    )
+        elif child.type in _C_TRANSPARENT:
+            _c_resolve_includes(b, child, src, rel, file_id)
+
+
+def _cpp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    for child in node.named_children:
+        if child.type in _C_TRANSPARENT:
+            _cpp_resolve_inherits(b, child, src, rel, file_id)
+            continue
+        if child.type not in ("class_specifier", "struct_specifier"):
+            continue
+        nm = child.child_by_field_name("name")
+        if nm is None:
+            continue
+        name = _node_text(nm, src)
+        cid = next((c for c in b.class_by_name.get(name, []) if c.startswith(file_id)), None)
+        if cid is None:
+            continue
+        line = child.start_point[0] + 1
+        base_clause = next((c for c in child.named_children if c.type == "base_class_clause"), None)
+        if base_clause is None:
+            continue
+        for bnode in base_clause.named_children:
+            if bnode.type not in ("type_identifier", "qualified_identifier", "template_type"):
+                continue
+            base = _node_text(bnode, src).split("::")[-1].split("<")[0].strip()
+            if not base:
+                continue
+            targets = b.class_by_name.get(base)
+            if targets:
+                for base_id in targets:
+                    b.add_edge("inherits", cid, base_id, rel, line)
+            else:
+                base_id = f"ext__{_slug(base)}_cls"
+                b.add_node(base_id, base, "code", rel, line)
+                b.add_edge("inherits", cid, base_id, rel, line)
+
+
+def _c_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type == "function_definition":
+                decl = child.child_by_field_name("declarator")
+                name, _n = _c_decl_name(decl, src)
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, enclosing_fn_id(name))
+                continue
+            if child.type == "call_expression" and current_fn is not None:
+                fn_field = child.child_by_field_name("function")
+                if fn_field is not None:
+                    callee = (
+                        _node_text(fn_field, src)
+                        .split("::")[-1]
+                        .split(".")[-1]
+                        .split("(")[0]
+                        .strip()
+                    )
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+def _c_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for C: local ``#include`` imports + calls (no inheritance in C)."""
+    _c_resolve_includes(b, root_node, src, rel, file_id)
+    _c_resolve_calls(b, root_node, src, rel, file_id)
+
+
+def _cpp_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for C++: includes + base-class inherits + calls."""
+    _c_resolve_includes(b, root_node, src, rel, file_id)
+    _cpp_resolve_inherits(b, root_node, src, rel, file_id)
+    _c_resolve_calls(b, root_node, src, rel, file_id)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -1577,6 +2037,8 @@ _EXTRACTORS: dict[str, tuple] = {
     "go": (_go_extract_symbols, _go_resolve_edges),
     "rust": (_rust_extract_symbols, _rust_resolve_edges),
     "java": (_java_extract_symbols, _java_resolve_edges),
+    "c": (_c_extract_symbols, _c_resolve_edges),
+    "cpp": (_c_extract_symbols, _cpp_resolve_edges),
 }
 
 
@@ -1624,6 +2086,11 @@ def _register_node_symbol(b: _GraphBuilder, node: dict[str, Any]) -> None:
         elif lang == "rust":
             for key in _rust_module_keys(sf):
                 b.file_by_module.setdefault(key, nid)
+        elif lang in ("c", "cpp"):
+            # Re-seed the C/C++ module key (header-first) so an incremental
+            # reparse of one .c/.cpp still resolves `#include "x.h"` against an
+            # unchanged header instead of silently dropping the import edge.
+            _register_c_module_key(b, sf, nid)
         return
     if nid.endswith("_fn"):
         b.func_by_name.setdefault(label.rstrip("()"), []).append(nid)
