@@ -18,7 +18,7 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 | `embedding-rag` | 1.00 | 100% | 607  (68.8× fewer) | 0.96 |
 | `neuralmind` | 1.00 | 100% | 1095  (38.1× fewer) | 0.96 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **38× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **38.1× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._
 
@@ -33,6 +33,6 @@ _No NeuralMind gold-file misses on this repo._
 | `embedding-rag` | 1.00 | 100% | 649  (121.1× fewer) | 0.60 |
 | `neuralmind` | 1.00 | 100% | 924  (85.0× fewer) | 0.60 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **85× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **85.0× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._

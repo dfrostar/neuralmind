@@ -156,9 +156,14 @@ class ReportShapeTests(unittest.TestCase):
         }
         md = run.render_markdown(report)
         self.assertIn("gold-file recall", md)
-        self.assertIn("40× fewer", md)  # 40000/1000
+        self.assertIn("40.0× fewer", md)  # 40000/1000
         self.assertIn("Where NeuralMind loses", md)
         self.assertIn("`x`", md)
+
+    def test_ratio_phrase_never_says_fewer_when_more(self) -> None:
+        self.assertEqual(run._ratio_phrase(40000, 1000), "40.0× fewer")
+        self.assertEqual(run._ratio_phrase(1000, 2000), "2.0× more")  # backend costlier
+        self.assertEqual(run._ratio_phrase(1000, 1000), "≈ same")
 
     def test_degraded_env_does_not_claim_a_clean_sweep(self) -> None:
         # When the retrieval stack is unavailable NeuralMind never ran, so the

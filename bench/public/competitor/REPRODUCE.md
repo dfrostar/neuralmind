@@ -29,16 +29,18 @@ numbers, we disclose both. If you can represent it more fairly, open a PR.
    commands run, here).
 3. For each query, capture the context the competitor would supply and the files
    it references; score gold-file recall with the **same** `neuralmind.quality`
-   code the other backends use:
+   code the other backends use. A thin `competitor_adapter` shell-out (to be
+   added when this is first executed — it does **not** exist in the repo yet, by
+   design) will do this, e.g.:
 
    ```bash
+   # Illustrative — module not yet implemented; see "Status" below.
    python -m evals.public.competitor_adapter \
        --tool codebase-memory-mcp --repo requests --out raw/requests.json
    ```
 
-   (The `competitor_adapter` is a thin shell-out; it is intentionally NOT wired
-   into the default `python -m evals.public.run` so the public table never
-   silently depends on an un-pinned external tool.)
+   It is intentionally NOT wired into the default `python -m evals.public.run`,
+   so the public table never silently depends on an un-pinned external tool.
 
 4. Commit the raw per-query output under `bench/public/competitor/raw/` and add
    the summarized rows to the report, marked **"reproduced externally."**

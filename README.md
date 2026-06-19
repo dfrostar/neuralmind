@@ -892,11 +892,14 @@ neuralmind benchmark .
 neuralmind benchmark . --json
 ```
 
-**Public benchmark** *(v0.31.0)* — reproduce the honest, no-cherry-picking comparison against the alternatives agents actually use:
+**Public benchmark** *(v0.31.0)* — reproduce the honest, no-cherry-picking comparison against the alternatives agents actually use. The harness ships in the **source tree** (`evals/public`), not the PyPI wheel, so run it from a clone:
 
 ```bash
-neuralmind benchmark --public                 # clone pinned repos, print the table
-neuralmind benchmark --public --repo click    # scope to one repo (requests | click)
+git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+pip install -e . tiktoken
+python -m evals.public.run                     # clone pinned repos, print the table
+# from the clone, the CLI alias also works:
+neuralmind benchmark --public --repo click     # scope to one repo (requests | click)
 neuralmind benchmark --public --seeds 14 --json
 ```
 
