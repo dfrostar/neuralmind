@@ -195,6 +195,10 @@ def cmd_benchmark(args):
         _run_quality_eval(args)
         return
 
+    if getattr(args, "public", False) is True:
+        _run_public_benchmark(args)
+        return
+
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
@@ -214,6 +218,38 @@ def cmd_benchmark(args):
         print(f"Avg query tokens: {result['avg_query_tokens']}")
         print(f"Avg reduction: {result['avg_reduction_ratio']}x")
         print(f"Summary: {result['summary']}")
+
+
+def _run_public_benchmark(args) -> None:
+    """`neuralmind benchmark --public` — the reproducible vs-alternatives benchmark.
+
+    Runs against the pinned real-repo corpus + baseline matrix that ships with
+    the *source* repo (the `evals/public` package), not the installed wheel.
+    Clones the pinned repos on demand; reports gold-file recall (objective,
+    no LLM judge) against context-token cost. See docs/benchmarks/public.md.
+    """
+    try:
+        from evals.public import run as public_run
+    except ImportError:
+        print(
+            "neuralmind benchmark --public runs against the pinned real-repo corpus "
+            "that ships with the source repository (the `evals/public` package), not "
+            "the installed wheel. Clone the repo and run "
+            "`python -m evals.public.run` from its root.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+
+    manifest = public_run.load_manifest()
+    report = public_run.run_all(
+        manifest,
+        only=getattr(args, "repo", None),
+        seeds=getattr(args, "seeds", 1) or 1,
+    )
+    if getattr(args, "json", False):
+        print(json.dumps(report, indent=2))
+    else:
+        print(public_run.render_markdown(report))
 
 
 def _run_quality_eval(args) -> None:
@@ -1404,6 +1440,25 @@ def main():
     bench_p.add_argument(
         "--baseline",
         help="With --quality, a saved suite JSON to compare against (reports metric deltas).",
+    )
+    bench_p.add_argument(
+        "--public",
+        action="store_true",
+        help="Public benchmark: NeuralMind vs. full-file / ripgrep / embedding-RAG on "
+        "pinned real repos, reporting gold-file recall (objective, no LLM judge) against "
+        "context-token cost. Reproduces docs/benchmarks/public.md (clones pinned repos). "
+        "Requires a source checkout — the evals/public harness ships in the repo, not the "
+        "PyPI wheel; run it from a clone.",
+    )
+    bench_p.add_argument(
+        "--repo",
+        help="With --public, run a single repo from the corpus by name (e.g. requests).",
+    )
+    bench_p.add_argument(
+        "--seeds",
+        type=int,
+        default=1,
+        help="With --public, seed count (the pipeline is deterministic; recorded honestly).",
     )
     bench_p.add_argument(
         "--contribute",

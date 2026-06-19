@@ -168,7 +168,10 @@ keywords = [
     "fable-5",
     "self-improvement-engine",
     "selector-autotuning",
-    "adaptive-recall-depth"
+    "adaptive-recall-depth",
+    "code-retrieval-benchmark",
+    "reproducible-benchmark",
+    "token-cost-benchmark"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
