@@ -1,0 +1,157 @@
+{
+  "_about": "Pinned real-repo corpus for the honest public benchmark. Each query's gold_files are the OBJECTIVE definition site(s) of the symbol the question is about, verifiable with ripgrep against the pinned commit (oracle: def-site). Query sets are pre-registered: committed before any tuning, and every query is reported including losses. See docs/prd/public-benchmark.md.",
+  "oracle": "def-site",
+  "repos": [
+    {
+      "name": "requests",
+      "url": "https://github.com/psf/requests",
+      "tag": "v2.32.3",
+      "commit": "0e322af87745eff34caffe4df68456ebc20d9068",
+      "subdir": "src/requests",
+      "language": "python",
+      "queries": [
+        {
+          "id": "basic-auth",
+          "question": "how is HTTP basic authentication applied to an outgoing request",
+          "gold_files": ["auth.py"],
+          "oracle_symbol": "class HTTPBasicAuth"
+        },
+        {
+          "id": "case-insensitive-headers",
+          "question": "the case-insensitive dictionary used to store HTTP headers",
+          "gold_files": ["structures.py"],
+          "oracle_symbol": "class CaseInsensitiveDict"
+        },
+        {
+          "id": "session-persistence",
+          "question": "how does a Session persist cookies and parameters across requests",
+          "gold_files": ["sessions.py"],
+          "oracle_symbol": "class Session"
+        },
+        {
+          "id": "timeout-exception",
+          "question": "the exception raised when a request times out",
+          "gold_files": ["exceptions.py"],
+          "oracle_symbol": "class Timeout"
+        },
+        {
+          "id": "transport-adapter",
+          "question": "how are HTTP transport adapters mounted to send a request over a connection pool",
+          "gold_files": ["adapters.py"],
+          "oracle_symbol": "class HTTPAdapter"
+        },
+        {
+          "id": "cookie-jar",
+          "question": "how are cookies stored in a jar and converted to and from a dict",
+          "gold_files": ["cookies.py"],
+          "oracle_symbol": "class RequestsCookieJar"
+        },
+        {
+          "id": "prepared-request",
+          "question": "how is a PreparedRequest body and headers built from a Request",
+          "gold_files": ["models.py"],
+          "oracle_symbol": "class PreparedRequest"
+        },
+        {
+          "id": "functional-api",
+          "question": "the top-level functional api for get post put and delete helpers",
+          "gold_files": ["api.py"],
+          "oracle_symbol": "def request"
+        },
+        {
+          "id": "status-codes",
+          "question": "the lookup table mapping HTTP status code names to numbers",
+          "gold_files": ["status_codes.py"],
+          "oracle_symbol": "codes"
+        },
+        {
+          "id": "url-encoding-helpers",
+          "question": "helpers that guess the response encoding and handle url percent-encoding",
+          "gold_files": ["utils.py"],
+          "oracle_symbol": "def get_encoding_from_headers"
+        },
+        {
+          "id": "xfile-send-adapter",
+          "question": "how does Session.send select the right HTTPAdapter for a url and dispatch the request to it",
+          "gold_files": ["sessions.py", "adapters.py"],
+          "oracle_symbol": "Session.get_adapter + HTTPAdapter.send",
+          "shape": "cross-file"
+        },
+        {
+          "id": "xfile-prepare-cookies",
+          "question": "how does PreparedRequest.prepare_cookies build the Cookie header from the RequestsCookieJar",
+          "gold_files": ["models.py", "cookies.py"],
+          "oracle_symbol": "PreparedRequest.prepare_cookies + RequestsCookieJar",
+          "shape": "cross-file"
+        },
+        {
+          "id": "xfile-redirect-auth",
+          "question": "how does Session.rebuild_auth reapply or strip HTTPBasicAuth credentials when following a redirect",
+          "gold_files": ["sessions.py", "auth.py"],
+          "oracle_symbol": "Session.rebuild_auth + HTTPBasicAuth",
+          "shape": "cross-file"
+        },
+        {
+          "id": "xfile-status-codes",
+          "question": "how does Response.raise_for_status use the status code lookup table to decide whether to raise",
+          "gold_files": ["models.py", "status_codes.py"],
+          "oracle_symbol": "Response.raise_for_status + codes",
+          "shape": "cross-file"
+        }
+      ]
+    },
+    {
+      "name": "click",
+      "url": "https://github.com/pallets/click",
+      "tag": "8.1.7",
+      "commit": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
+      "subdir": "src/click",
+      "language": "python",
+      "queries": [
+        {
+          "id": "command-core",
+          "question": "the base class implementing a CLI command and how it is invoked",
+          "gold_files": ["core.py"],
+          "oracle_symbol": "class Command"
+        },
+        {
+          "id": "choice-type",
+          "question": "the parameter type that validates a value against a fixed set of choices",
+          "gold_files": ["types.py"],
+          "oracle_symbol": "class Choice"
+        },
+        {
+          "id": "help-formatter",
+          "question": "the helper that lays out wraps and indents command help text",
+          "gold_files": ["formatting.py"],
+          "oracle_symbol": "class HelpFormatter"
+        },
+        {
+          "id": "echo-util",
+          "question": "the function that prints a message to the terminal and strips color when needed",
+          "gold_files": ["utils.py"],
+          "oracle_symbol": "def echo"
+        },
+        {
+          "id": "ansi-style",
+          "question": "applies ANSI color and style escape codes to a string",
+          "gold_files": ["termui.py"],
+          "oracle_symbol": "def style"
+        },
+        {
+          "id": "paramtype-base",
+          "question": "the base class for all parameter types that convert raw string input",
+          "gold_files": ["types.py"],
+          "oracle_symbol": "class ParamType"
+        },
+        {
+          "id": "xfile-command-help",
+          "question": "how does a Command render its help page by driving the HelpFormatter",
+          "gold_files": ["core.py", "formatting.py"],
+          "oracle_symbol": "Command.format_help + HelpFormatter",
+          "shape": "cross-file"
+        }
+      ]
+    }
+  ]
+}
