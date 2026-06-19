@@ -174,7 +174,10 @@ keywords = [
     "adaptive-recall-depth",
     "code-retrieval-benchmark",
     "reproducible-benchmark",
-    "token-cost-benchmark"
+    "token-cost-benchmark",
+    "codebase-memory-mcp-benchmark",
+    "code-mcp-comparison",
+    "mcp-benchmark"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
