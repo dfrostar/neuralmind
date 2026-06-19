@@ -128,14 +128,40 @@ The corpus is intentionally focused, not exhaustive. Add a repo by appending to
 def-site gold file) and re-running. Community-contributed real-repo numbers go
 through the existing `neuralmind benchmark . --contribute` path.
 
-## Competitor comparison (scaffold — not yet run)
+## Competitor head-to-head — `codebase-memory-mcp` 0.8.1
 
-A head-to-head vs. `codebase-memory-mcp` is **not in this release yet**: its
-dependencies don't install in our CI sandbox, so it runs through a *documented
-external* harness rather than live-in-CI. The provenance scaffold —
-[`bench/public/competitor/REPRODUCE.md`](../../bench/public/competitor/REPRODUCE.md)
-— defines the exact procedure (pin the version, reuse this same query set + gold
-files, score with the same `quality.py`). When it's executed, the competitor
-rows will be added and marked "reproduced externally," with raw traces committed
-and the competitor's own steps linked, so they're auditable rather than taken on
-our word. Until then, treat the competitor comparison as a planned fast-follow.
+The obvious incumbent (DeusData, single-binary, on-device embeddings, **no LLM
+API key**) runs headless, so we ran a real, reproducible row on the **same**
+pinned repos, same questions, same objective def-site gold, same `quality.py`
+scorer, retrieval depth matched to `embedding-rag` (top-8). Raw per-query traces:
+[`bench/public/competitor/`](../../bench/public/competitor/). Reproduce:
+`python -m evals.public.competitor`.
+
+| repo | backend | gold-file recall | found-rate | MRR (rank quality) | mean tokens |
+|---|---|---:|---:|---:|---:|
+| requests | `codebase-memory-mcp` | 0.50 | 43% | 0.23 | 25,214 |
+| requests | **neuralmind** | **1.00** | **100%** | **0.96** | **1,095** |
+| click | `codebase-memory-mcp` | 0.64 | 57% | 0.50 | 38,538 |
+| click | **neuralmind** | **1.00** | **100%** | **0.60** | **924** |
+
+**At matched retrieval depth, NeuralMind finds the objectively-correct file every
+time and ranks it far higher** (MRR 0.96 vs 0.23 on requests), while the
+competitor surfaces the gold file in its top-8 only ~half the time — and the
+files it does surface cost an order of magnitude more tokens to read.
+
+### Fairness & honest caveats (don't skip)
+
+- **Most-favorable keyword mapping.** The competitor takes a keyword array, not
+  free text. We tested three reproducible mappings and used the one **best for the
+  competitor** (all question words) — so this can't be dismissed as crippling it.
+- **Pure retrieval on both sides, no agent loop.** This measures retrieval
+  ranking given a question — exactly how we test NeuralMind's own `search`. The
+  competitor's *published* numbers (~90% of an "Explorer" agent across 31 scored
+  languages; C at **0.58**) come from an **LLM-driven** agent loop that isn't
+  reproducible without paying for an LLM; we don't claim to reproduce that, and we
+  cite their figures as-is. Their "158 languages" is vendored grammars, not all
+  benchmarked.
+- **Cost is a proxy** (tokens of the whole files the competitor surfaces at depth
+  8, since it returns paths the agent then reads — analogous to `ripgrep`).
+- Full provenance + pinned version + exact commands:
+  [`bench/public/competitor/REPRODUCE.md`](../../bench/public/competitor/REPRODUCE.md).

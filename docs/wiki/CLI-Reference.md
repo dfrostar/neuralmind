@@ -485,6 +485,31 @@ caveats, and "where NeuralMind loses" are published at
 raw per-query data is committed at `bench/public/results.json`, and the forkable
 runner is `.github/workflows/bench-public.yml`.
 
+##### Competitor head-to-head *(v0.33.0+)*
+
+The benchmark also ships a **live, reproducible row vs. `codebase-memory-mcp`
+0.8.1** (the obvious incumbent), on the same pinned repos, questions, def-site
+gold, and `quality.py` scorer, at retrieval depth matched to `embedding-rag`
+(top-8). It lives in a **separate module** and is **off the default run** because
+it downloads an external binary — invoke it explicitly from a clone:
+
+```bash
+pip install codebase-memory-mcp==0.8.1     # pins 0.8.1 — on-device embeddings, no API key
+python -m evals.public.competitor   # prints the competitor row; fails closed without the binary
+```
+
+On **reproducible retrieval ranking** NeuralMind reaches **100% gold-file recall**
+and ranks the right file far higher (MRR **0.96 vs 0.23** on `requests`, **0.60
+vs 0.50** on `click`), while the competitor surfaces the gold file in its top-8
+only ~half the time, at an order of magnitude more read cost. **Honest framing:**
+this measures *pure retrieval* — no LLM agent loop on either side, exactly how we
+test NeuralMind's own `search`; we used the competitor's **most-favorable**
+reproducible keyword mapping; and we cite its *published* LLM-agent numbers (~90%
+of an "Explorer" agent; C at 0.58) as-is rather than reproduce them. Per-query
+traces and pinned `REPRODUCE.md` are committed under `bench/public/competitor/`;
+full caveats are in the "Competitor head-to-head" section of
+[`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md).
+
 #### Sample Output
 
 ```
