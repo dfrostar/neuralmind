@@ -63,6 +63,20 @@
     </header>
 
     <section>
+        <div class="container" id="four-benefits">
+            <h2>More than token reduction — four data-backed benefits</h2>
+            <p>NeuralMind is not just "fewer tokens." Every claim below ships with a committed eval. The first two run on <strong>real, pinned OSS repos</strong> (<code>requests</code>, <code>click</code>) and are fully reproducible — <code>python -m evals.public.run</code>. The last two are measured A/Bs on the bundled <strong>reference fixture</strong>, so they're real but smaller-scope.</p>
+            <ul>
+                <li><strong>💸 Cheaper context.</strong> <strong>100% gold-file recall at 38–85× fewer tokens</strong> than pasting files — and beats <code>ripgrep</code> on <em>both</em> recall and cost. <em>(Public benchmark, real OSS repos.)</em></li>
+                <li><strong>🎯 Finds the <em>right</em> code, not just less of it.</strong> <strong>100% gold-file recall, MRR 0.96</strong> — ranks the correct file at the top; beats the incumbent <code>codebase-memory-mcp</code> on retrieval ranking (0.96 vs 0.23). <em>(Same public benchmark, real repos.)</em></li>
+                <li><strong>🧠 Learns how you work.</strong> A Hebbian <em>synapse</em> layer that learns co-edited files lifts top-k retrieval hit-rate <strong>+11.7 points (71.7%→83.3%), budget-neutral</strong> (no extra tokens). <em>(Synapse A/B eval — reference fixture, smaller scope.)</em></li>
+                <li><strong>🔬 Better-grounded answers.</strong> At a <em>matched</em> token budget, its context carries more of the gold facts than naive truncation: <strong>faithfulness +0.143, grounding 1.00</strong>. <em>(Faithfulness/parity gate — reference fixture, smaller scope.)</em></li>
+            </ul>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>Honest scope: the cost and accuracy rows run on real, pinned OSS repos (fully reproducible — see the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">methodology</a>); the learning and grounding rows are committed A/Bs on the bundled reference fixture, so they're real but smaller-scope. We report where NeuralMind doesn't win too — a well-tuned vector RAG ties it on pure findability and is cheaper on raw tokens; that's in the benchmark table. The competitor comparison is pure retrieval ranking, not their LLM-agent loop.</em></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="by-the-numbers">
             <h2>By the numbers — measured, not claimed</h2>
             <p>Every figure below is produced by code in the repo and <strong>gated in CI</strong>, so it can't silently regress. Where a number is a real-repo extrapolation or an estimate, it says so. Reproduce them all with <code>python -m tests.benchmark.run</code> and the <code>evals/</code> harnesses — details on the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Benchmarks.md">Benchmarks page</a>.</p>

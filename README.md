@@ -13,6 +13,28 @@
 
 > Works with Claude Code (including Claude Fable 5), Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. The more capable the model, the more every saved token is worth, so context compression and persistent memory pay off more on a frontier model like Fable 5. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
+## Why NeuralMind — four benefits, each backed by an eval you can run
+
+NeuralMind is more than token reduction. Every claim below ships with a
+reproducible eval — run `python -m evals.public.run` yourself; the raw per-query
+traces are committed.
+
+| | Benefit | Measured result | Where it's measured |
+|---|---|---|---|
+| 💸 | **Cheaper context** | **100% gold-file recall at 38–85× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost | Public benchmark, **real OSS repos** (`requests`, `click`) |
+| 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+11.7 points (71.7%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (reference fixture) |
+| 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (reference fixture) |
+
+*Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
+(fully reproducible — [methodology](docs/benchmarks/public.md)); the **learning**
+and **grounding** rows are measured in committed A/Bs on the bundled reference
+fixture, so they're real but smaller-scope. We report where NeuralMind *doesn't*
+win too — a well-tuned vector RAG ties it on pure findability and is cheaper on
+raw tokens; that's in the benchmark table.
+
+
+
 > **🆕 New in v0.33.0** — **The competitor head-to-head, run for real.** The public benchmark's competitor row is no longer a scaffold — it's a **live, reproducible head-to-head vs. `codebase-memory-mcp` 0.8.1** (the obvious incumbent) on the **same** pinned repos, same questions, same objective def-site gold, scored by the same `quality.py` as every other backend. At matched retrieval depth (top-8), **NeuralMind hits 100% gold-file recall and ranks the right file far higher** (MRR **0.96 vs 0.23** on `requests`, **0.60 vs 0.50** on `click`) while the competitor surfaces the gold file only ~half the time — at an order of magnitude more read cost. **Honest framing:** this is **pure retrieval ranking** (no LLM agent loop on either side — same as how we test NeuralMind's own `search`); we used the competitor's **most-favorable** reproducible keyword mapping; and we cite the competitor's *published* LLM-agent numbers (~90% of an "Explorer" agent; C at 0.58) as-is rather than reproduce them. So the win is **on reproducible retrieval ranking**, not on their agent-driven published figures. Reproduce: `python -m evals.public.competitor` (off the default run; `pip install codebase-memory-mcp==0.8.1`, no API key). [Release notes](RELEASE_NOTES_v0.33.0.md) · [methodology](docs/benchmarks/public.md)
 >
 > **v0.32.0** — **Multi-language: C and C++.** The built-in **tree-sitter** backend now indexes **C** (`.c`/`.h`) and **C++** (`.cpp`/`.cc`/`.cxx` + `.hpp`/`.hh`/`.hxx`) out of the box — `neuralmind build .` works standalone on a C/C++ project, no graphify. Functions, `struct`/`union`/`enum` (+ fields and constants), typedefs, C++ `class`es with member methods/fields, and **namespace-qualified ids** become `code` nodes; `#include "local.h"` resolves to **`imports_from`** edges; C++ base classes become **`inherits`** edges; and `foo.h`/`foo.c` pair onto a shared module key so a declaration and its definition land in the same neighborhood. That takes the bundled backend to **seven languages — Python, TypeScript, Go, Rust, Java, C, and C++** — behind the same `SUPPORTED_SUFFIXES` seam, proven at parity by the CI gate (100% symbol coverage, zero dangling edges). **Honest scope:** macros aren't indexed as symbols, templates aren't specialized, and `#ifdef` isn't evaluated — we index the parseable code at full parity and disclose what's out (a competitor advertising 158 languages scored 0.58 on C; we index what we can serve). [Release notes](RELEASE_NOTES_v0.32.0.md)
