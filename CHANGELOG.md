@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.31.0](https://github.com/dfrostar/neuralmind/compare/v0.29.0...v0.31.0) (2026-06-19)
+
+
+### Features
+
+* neuralmind benchmark --public — honest, reproducible benchmark vs alternatives ([#254](https://github.com/dfrostar/neuralmind/issues/254)) ([f8eca9b](https://github.com/dfrostar/neuralmind/commit/f8eca9bd7a651941f4f6d55f16c31d446339fdf2))
+* team memory — agents inherit the team's learned associations ([#252](https://github.com/dfrostar/neuralmind/issues/252)) ([18aac97](https://github.com/dfrostar/neuralmind/commit/18aac97f0b7ae069a524b400f22f6fe38baa0a70))
+
+
+### Miscellaneous Chores
+
+* release as v0.31.0 (roll 0.30.0 into 0.31.0) ([#256](https://github.com/dfrostar/neuralmind/issues/256)) ([e70e157](https://github.com/dfrostar/neuralmind/commit/e70e157da924d1f44704b4da52ec391afb41b7dc))
+
 ## [0.29.0](https://github.com/dfrostar/neuralmind/compare/v0.28.0...v0.29.0) (2026-06-18)
 
 
