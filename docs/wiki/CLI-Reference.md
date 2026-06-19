@@ -494,7 +494,7 @@ gold, and `quality.py` scorer, at retrieval depth matched to `embedding-rag`
 it downloads an external binary — invoke it explicitly from a clone:
 
 ```bash
-pip install codebase-memory-mcp     # pins 0.8.1 — on-device embeddings, no API key
+pip install codebase-memory-mcp==0.8.1     # pins 0.8.1 — on-device embeddings, no API key
 python -m evals.public.competitor   # prints the competitor row; fails closed without the binary
 ```
 

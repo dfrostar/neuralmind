@@ -39,14 +39,15 @@ head-to-head can be a *live, reproducible* row, scored by the **same
    axes (gold-file recall + a token/cost proxy — see §5).
 2. **A documented, fair NL→keyword mapping.** The competitor's semantic interface
    takes a **keyword array**, not free text. We derive keywords from each
-   benchmark question using the **same `_keywords()` extraction the `ripgrep`
-   baseline uses** — no per-query hand-tuning — and disclose this prominently.
-   This is the crux of fairness (§6).
-3. **Live but quarantined.** The competitor backend is **off by default** in
-   `python -m evals.public.run` (the public CI table never depends on an external
-   binary download); it runs under `--competitor` (or `python -m
-   evals.public.competitor`). Its results + **raw per-query traces** are committed
-   under `bench/public/competitor/`, and the row is folded into
+   benchmark question. We tested three reproducible mappings and ship the one
+   **most favorable to the competitor** (all question words, via
+   `competitor_keywords()`) — no per-query hand-tuning — and disclose it
+   prominently. This is the crux of fairness (§6).
+3. **Live but quarantined.** The competitor is a **separate entrypoint**, not
+   part of `python -m evals.public.run` (the public CI table never depends on an
+   external binary download): run it with `python -m evals.public.competitor`.
+   Its results + **raw per-query traces** are committed under
+   `bench/public/competitor/`, and the row is folded into
    `docs/benchmarks/public.md` marked with the pinned competitor version.
 4. **Honest accounting of differences** — index node counts, the keyword-mapping
    caveat, and the competitor's *own* published claims (and where marketing and
@@ -62,9 +63,10 @@ head-to-head can be a *live, reproducible* row, scored by the **same
   hand-tuning; report where it wins too.
 
 **Non-goals**
-- Not gating CI on the competitor (external binary download; stays `--competitor`-
-  only). Not re-implementing its scoring. Not an agentic end-to-end eval — same
-  findability metric (gold-file recall) as the rest of the suite.
+- Not gating CI on the competitor (external binary download; stays a separate
+  `python -m evals.public.competitor` entrypoint). Not re-implementing its
+  scoring. Not an agentic end-to-end eval — same findability metric (gold-file
+  recall) as the rest of the suite.
 
 ## 5. Measuring cost fairly
 
@@ -83,7 +85,7 @@ Hard requirements:
 
 | Risk | Mitigation |
 |------|-----------|
-| "You gave it bad keywords." | Keywords come from the **same mechanical `_keywords()`** the ripgrep baseline uses, on the **same** question — no per-query tuning. The mapping is one published function; a skeptic can change it and re-run. |
+| "You gave it bad keywords." | We tested three reproducible mappings and ship the one **most favorable to the competitor** (`competitor_keywords()` — all question words, no stopword filtering), on the **same** question — no per-query tuning. The mapping is one published function; a skeptic can change it and re-run. |
 | "You used a stale/old version." | **Pin the exact competitor version** (probed: 0.8.1) in the adapter + REPRODUCE.md; print it in the row. |
 | "You misconfigured it." | Use its documented `cli index_repository` + `search_graph` path verbatim; commit the exact commands + raw JSON traces. |
 | "You only showed where you win." | Report **every** query incl. ones where the competitor ties/beats NeuralMind; keep the "where NeuralMind loses" section honest across backends. |
@@ -91,12 +93,12 @@ Hard requirements:
 
 ## 7. Acceptance criteria
 
-- [ ] `evals/public/competitor.py` — pinned-version adapter (index + semantic
-      query), `_keywords()` mapping reused from the ripgrep baseline, returns a
-      `quality.py`-scored `BackendResult`; fails closed (clean skip) if the binary
-      isn't installed.
-- [ ] `neuralmind benchmark --public --competitor` (and `python -m
-      evals.public.competitor`) runs it; **off by default** in the standard run.
+- [x] `evals/public/competitor.py` — pinned-version (0.8.1) adapter (index +
+      semantic query), `competitor_keywords()` all-words mapping (most favorable
+      to the competitor), returns a `quality.py`-scored `BackendResult`; fails
+      closed (clean skip) if the binary isn't installed.
+- [x] `python -m evals.public.competitor` runs it — a **separate entrypoint**,
+      not wired into `python -m evals.public.run` (kept off the CI path).
 - [ ] Real competitor row produced on `requests` + `click`, raw per-query traces
       committed under `bench/public/competitor/raw/`, REPRODUCE.md updated from
       scaffold → executed (pinned version, exact commands).

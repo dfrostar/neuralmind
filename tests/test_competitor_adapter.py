@@ -31,6 +31,40 @@ class CompetitorAdapterTests(unittest.TestCase):
         # Malformed text → None (fail-closed).
         self.assertIsNone(competitor._unwrap({"content": [{"text": "{ not json"}]}))
 
+    def test_unwrap_rejects_error_envelopes(self) -> None:
+        # `isError` envelope → None (fail-closed), even if the text parses.
+        env = {
+            "content": [{"text": json.dumps({"project": "p", "status": "error"})}],
+            "isError": True,
+        }
+        self.assertIsNone(competitor._unwrap(env))
+        # Inner error/status=error without the flag is rejected too.
+        self.assertIsNone(
+            competitor._unwrap(_wrapped({"error": "project not found", "available_projects": []}))
+        )
+        self.assertIsNone(competitor._unwrap(_wrapped({"status": "error"})))
+
+    def test_index_repo_requires_indexed_status(self) -> None:
+        orig = competitor._cli
+        # Errored index (rejected by _unwrap) → None, no project name leaks.
+        competitor._cli = lambda *a, **k: None  # noqa: ARG005
+        try:
+            self.assertIsNone(competitor.index_repo("/x", cache_dir=None))  # type: ignore[arg-type]
+        finally:
+            competitor._cli = orig
+        # A result without status="indexed" is also rejected.
+        competitor._cli = lambda *a, **k: {"project": "p", "status": "partial"}  # noqa: ARG005
+        try:
+            self.assertIsNone(competitor.index_repo("/x", cache_dir=None))  # type: ignore[arg-type]
+        finally:
+            competitor._cli = orig
+        # A confirmed index returns the project name.
+        competitor._cli = lambda *a, **k: {"project": "proj", "status": "indexed"}  # noqa: ARG005
+        try:
+            self.assertEqual(competitor.index_repo("/x", cache_dir=None), "proj")  # type: ignore[arg-type]
+        finally:
+            competitor._cli = orig
+
     def test_competitor_keywords_keeps_all_words(self) -> None:
         # The fair mapping: every word, no stopword filtering (best for the rival).
         kw = competitor.competitor_keywords("How is the HTTP basic auth applied?")

@@ -65,5 +65,5 @@ pip install --upgrade neuralmind
 ```
 
 No runtime changes — this release is **evidence**. To reproduce the competitor
-row, `pip install codebase-memory-mcp` (pins 0.8.1) and run `python -m
+row, `pip install codebase-memory-mcp==0.8.1` (pins 0.8.1) and run `python -m
 evals.public.competitor` from a clone.
