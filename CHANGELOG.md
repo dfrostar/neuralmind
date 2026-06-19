@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/dfrostar/neuralmind/compare/v0.32.0...v0.33.0) (2026-06-19)
+
+
+### Features
+
+* live codebase-memory-mcp head-to-head in the public benchmark ([#259](https://github.com/dfrostar/neuralmind/issues/259)) ([888291d](https://github.com/dfrostar/neuralmind/commit/888291df67e3d5e3db6c3152e5928c42c92a0270))
+
 ## [0.32.0](https://github.com/dfrostar/neuralmind/compare/v0.31.0...v0.32.0) (2026-06-19)
 
 
