@@ -240,12 +240,29 @@ def _run_public_benchmark(args) -> None:
         )
         sys.exit(2)
 
+    judge_client = None
+    if getattr(args, "judge", False):
+        from evals.public import judge as public_judge
+
+        judge_client = public_judge.make_client()
+        if judge_client is None:
+            print(
+                "--judge needs ANTHROPIC_API_KEY and the `anthropic` package; "
+                "skipping the answerability arm (the recall table still runs).",
+                file=sys.stderr,
+            )
+
     manifest = public_run.load_manifest()
     report = public_run.run_all(
         manifest,
         only=getattr(args, "repo", None),
         seeds=getattr(args, "seeds", 1) or 1,
+        judge_client=judge_client,
     )
+    if judge_client is not None:
+        public_run._write_judge_transcripts(
+            report, Path(getattr(args, "judge_out", None) or "bench/public/judge")
+        )
     if getattr(args, "json", False):
         print(json.dumps(report, indent=2))
     else:
@@ -372,8 +389,7 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
     print(f"  Reduction ratio  :  {ratio:.1f}×  (on YOUR codebase, not a demo fixture)")
     print(f"  Tokens per query :  {avg_query_tokens:,}  (vs ~{naive_tokens_estimate:,} raw)")
     print(
-        f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}"
-        f"  (Claude 3.5 Sonnet input, 100 queries/day)"
+        f"  Est. $ saved/mo  :  ~${monthly_saved:,.2f}  (Claude 3.5 Sonnet input, 100 queries/day)"
     )
     print("")
     print("  Different model or volume? Scale linearly: GPT-4o ≈ 5× Sonnet cost;")
@@ -1314,8 +1330,7 @@ def cmd_init_hook(args):
 
     if not os.path.exists(git_hooks_dir):
         print(
-            f"Error: .git/hooks directory not found in {project_path}. "
-            "Are you in a Git repository?"
+            f"Error: .git/hooks directory not found in {project_path}. Are you in a Git repository?"
         )
         sys.exit(1)
 
@@ -1459,6 +1474,19 @@ def main():
         type=int,
         default=1,
         help="With --public, seed count (the pipeline is deterministic; recorded honestly).",
+    )
+    bench_p.add_argument(
+        "--judge",
+        action="store_true",
+        help="With --public, also run the opt-in LLM-judged answerability arm (a secondary "
+        "signal — each backend answered from its real window by a pinned model, graded vs. the "
+        "def-site gold anchor). Needs ANTHROPIC_API_KEY; never runs in CI; the recall table is "
+        "byte-identical with or without it. Transcripts committed under --judge-out.",
+    )
+    bench_p.add_argument(
+        "--judge-out",
+        default="bench/public/judge",
+        help="With --public --judge, where to write answerability transcripts.",
     )
     bench_p.add_argument(
         "--contribute",
