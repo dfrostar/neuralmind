@@ -49,9 +49,9 @@ entire retrieval pipeline downstream — progressive L0–L3 disclosure, the
 synapse layer, the graph view, the MCP tools — works exactly the same. Only
 the graph *producer* changed.
 
-- **Languages:** Python, TypeScript, Go, Rust, Java, C, C++, C#, and Ruby out of
+- **Languages:** Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP out of
   the box (Rust added in v0.27.0, Java in v0.28.0, C/C++ in v0.32.0, C# in
-  v0.35.0, Ruby in v0.36.0)
+  v0.35.0, Ruby in v0.36.0, PHP in v0.37.0)
   — a mixed-language repo is indexed in one pass. Rust structs, enums, traits,
   `impl` blocks, and `use`/`impl Trait` edges all map onto the same graph model;
   C/C++ functions, `struct`/`union`/`enum`s, C++ classes and namespace-qualified
@@ -67,7 +67,15 @@ the graph *producer* changed.
   `imports_from` (relative-path resolved), and `#` doc comments → `rationale`
   map the same way (`.rb` files are indexed zero-install — no Ruby toolchain or
   graphify needed; Ruby is dynamic, so calls are best-effort and mixins
-  via `include`/`extend` aren't modelled as inheritance, disclosed honestly).
+  via `include`/`extend` aren't modelled as inheritance, disclosed honestly);
+  and PHP `class`/`interface`/`trait`/`enum` types, methods/top-level functions,
+  properties (the `$` stripped from the label)/class constants/enum cases (the
+  symbol layer), `extends`/`implements` → `inherits`, `use` namespace imports →
+  `imports_from` (resolved by class name, exactly like Java imports), and
+  `/** */` doc comments → `rationale` map the same way (`.php` files are indexed
+  zero-install — no PHP runtime or graphify needed; calls are best-effort with no
+  `$obj->method` receiver-type resolution, and `require`/`include` path imports
+  aren't modelled — `use` is the edge source — disclosed honestly).
   More grammars register behind the same `SUPPORTED_SUFFIXES` seam.
 - **Edge precision:** `calls`/`inherits` are best-effort by name (no type
   resolution). Whether that costs retrieval quality is **measured** by the
