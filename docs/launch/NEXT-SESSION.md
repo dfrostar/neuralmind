@@ -1,17 +1,39 @@
 # Session handoff — launch readiness
 
-**Last updated:** 2026-06-20 · **Branch of record for this work:** `claude/launch-kit` (PR #263, draft)
+**Last updated:** 2026-06-20 · **State:** v0.30→v0.34 shipped & merged to `main`
 **Copy-paste this whole file into the next session's first message to resume with full context.**
 
 ---
 
+## ▶ Do this first (next session, in order)
+
+1. **Merge the v0.34.0 release-please PR.** It opens automatically after the
+   answerability `feat:` (#264) merged; merging it tags `v0.34.0` and fires the
+   PyPI + GHCR publish. Nothing else ships until this lands. (Tell the session
+   "merge the release-please PR and watch it to green.") Never hand-edit the
+   version/CHANGELOG — release-please owns them.
+2. **Generate + commit the answerability transcripts** (optional but
+   recommended). The `--judge` harness shipped in v0.34.0 but `bench/public/judge/`
+   is empty. Run `neuralmind benchmark --public --judge` with `ANTHROPIC_API_KEY`
+   set (costs real tokens) and commit the transcripts, so the launch posts can
+   show a concrete answerability table, not just "run it yourself."
+3. **Launch — maker's move, disclosed only.** Copy is ready in `docs/launch/`
+   (Show HN, r/LocalLLaMA, awesome-mcp PR, warm-up comments). Post as yourself.
+   The disclosed-maker-only rule below is non-negotiable.
+4. **Pick the next roadmap item** (all four value-ordered ones are shipped),
+   ranked: (a) **more languages** (C#/Ruby/PHP) behind the
+   `_SUFFIX_LANG`→`_EXTRACTORS` seam — additive, parity-gated; (b) **expand the
+   benchmark corpus** beyond `requests`/`click`; (c) **schema.org JSON-LD** on
+   docs pages (the SEO gap in CLAUDE.md).
+
 ## TL;DR for the next session
 
-NeuralMind is **launch-ready**. Four roadmap items shipped (v0.30→v0.33), the
-public-facing positioning is the **four data-backed benefits**, and the launch
-copy lives in `docs/launch/`. The remaining work is **execution** (the maker
-posts to HN / r/LocalLLaMA / awesome-mcp) plus an optional next roadmap item.
-Nothing is blocked on code.
+NeuralMind is **launch-ready**. Five releases shipped (v0.30→v0.34): team
+memory, the honest public benchmark, C/C++, the competitor head-to-head, and the
+opt-in LLM-judged answerability arm. Public-facing positioning is the **four
+data-backed benefits**, and the launch copy lives in `docs/launch/`. The
+remaining work is **execution** (the maker posts to HN / r/LocalLLaMA /
+awesome-mcp) plus the next roadmap item. Nothing is blocked on code.
 
 The one hard standing rule, carried across sessions: **disclosed-maker only**
 for all outreach. No unaffiliated-end-user posts, no sockpuppet/persona
@@ -28,16 +50,17 @@ every time — keep declining it; the benchmark credibility is the whole asset.
 | v0.31.0 | **Honest public benchmark** — `neuralmind benchmark --public`, gold-file recall (objective def-site oracle, no LLM judge), cost+correctness jointly | #257 | `evals/public/`, `docs/benchmarks/public.md` |
 | v0.32.0 | **C / C++ extractors** — tree-sitter backend now 7 languages, proven at parity (100% coverage, 0 dangling) | #259-ish | `tests/test_graphgen.py` (C/CExtractorEdgeCase) |
 | v0.33.0 | **Live competitor head-to-head** vs `codebase-memory-mcp` 0.8.1 — same repos/questions/scorer, raw traces committed | #259/#260 | `evals/public/competitor.py`, `bench/public/competitor/` |
+| v0.34.0 | **Opt-in LLM-judged answerability arm** (`--judge`) — each backend answered from its real window by a pinned model, graded vs. the def-site gold anchor; closes the "recall ≠ answering" gap | #264 | `evals/public/judge.py`, `bench/public/judge/` (transcripts TODO) |
 | (docs) | **Four-benefit positioning** across README + docs + wiki | #261 | README "Why NeuralMind" |
-| (docs) | **Launch kit** — this folder | #263 (draft) | `docs/launch/` |
+| (docs) | **Launch kit** — this folder | #263 | `docs/launch/` |
 
 ## Current state of the repo
 
-- `main` is at the v0.33.0 release (`d56d0bc` was the positioning PR merge).
-- **No open release PR** — release-please is idle; next `feat:` opens one.
-- PR #263 (`claude/launch-kit`) is **draft, docs-only**, both substantive CI
-  gates green (parity gate PASS; self-benchmark PASS, which re-confirmed the
-  +11.7-pt synapse number and faithfulness +0.143 live).
+- `main` includes v0.34.0's `feat:` (#264 merged); the **v0.34.0 release-please PR
+  will open automatically** — merging it tags the release and publishes.
+- PRs #263 (launch kit) and #264 (answerability arm) are **merged**.
+- Outstanding: merge the release PR; optionally generate the `bench/public/judge/`
+  transcripts (needs `ANTHROPIC_API_KEY`). See "▶ Do this first" at the top.
 
 ## The four data-backed benefits (single source of truth: README "Why NeuralMind")
 
