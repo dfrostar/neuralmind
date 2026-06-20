@@ -14,7 +14,7 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
 per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, Java, C,
-C++, C#, and Ruby ship today, each mapping its grammar's node types onto the same
+C++, C#, Ruby, and PHP ship today, each mapping its grammar's node types onto the same
 node/edge model; registering another grammar adds a language with no change downstream of
 ``graph.json``.
 
@@ -69,8 +69,8 @@ SCHEMA_VERSION = 1
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
-# first; TypeScript, Go, Rust, Java, C, C++, C#, and Ruby are registered here
-# behind the same seam.
+# first; TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP are registered
+# here behind the same seam.
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
@@ -88,6 +88,7 @@ _SUFFIX_LANG: dict[str, str] = {
     ".hxx": "cpp",
     ".cs": "csharp",
     ".rb": "ruby",
+    ".php": "php",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -142,6 +143,10 @@ def _load_language(name: str):
             import tree_sitter_ruby as ts
 
             return Language(ts.language())
+        if name == "php":
+            import tree_sitter_php as ts
+
+            return Language(ts.language_php())
     except Exception:
         return None
     return None
@@ -2542,6 +2547,233 @@ def _ruby_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
     _ruby_resolve_calls(b, root_node, src, rel, file_id)
 
 
+# --------------------------------------------------------------------------- #
+# PHP extractor
+# --------------------------------------------------------------------------- #
+# PHP maps onto the Java+namespace shape: class/interface/trait/enum -> type
+# nodes, methods -> functions, properties/constants/enum-cases -> symbols,
+# extends/implements -> inherits, `use` -> imports_from (resolved by class name
+# like Java), /** */ docs -> rationale, calls best-effort.
+_PHP_TYPE_DECLS: frozenset[str] = frozenset(
+    {
+        "class_declaration",
+        "interface_declaration",
+        "trait_declaration",
+        "enum_declaration",
+    }
+)
+
+
+def _php_simple_name(text: str) -> str:
+    """Last segment of a possibly-namespaced PHP name (``Acme\\Db\\Connection``
+    -> ``Connection``; leading ``\\`` stripped)."""
+    return text.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1].strip()
+
+
+def _php_clause_names(clause, src: bytes):
+    """Yield bare type names from a ``base_clause`` / ``class_interface_clause``."""
+    for ch in clause.named_children:
+        if ch.type in ("name", "qualified_name"):
+            yield _php_simple_name(_node_text(ch, src))
+
+
+def _php_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> None:
+    nm = fn_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _attach_comment_rationale(b, fn_node, src, rel, fid)
+
+
+def _php_emit_sym(b: _GraphBuilder, name: str, line: int, rel: str, container: str) -> None:
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
+
+
+def _php_emit_members(b: _GraphBuilder, body, src: bytes, rel: str, file_id: str, cid: str) -> None:
+    for member in body.named_children:
+        t = member.type
+        if t == "method_declaration":
+            _php_emit_fn(b, member, src, rel, cid)
+        elif t == "property_declaration":
+            for pe in member.named_children:
+                if pe.type != "property_element":
+                    continue
+                vn = next((c for c in pe.named_children if c.type == "variable_name"), None)
+                if vn is not None:
+                    name = _node_text(vn, src).lstrip("$")
+                    _php_emit_sym(b, name, vn.start_point[0] + 1, rel, cid)
+        elif t == "const_declaration":
+            for ce in member.named_children:
+                if ce.type != "const_element":
+                    continue
+                nm = next((c for c in ce.named_children if c.type == "name"), None)
+                if nm is not None:
+                    _php_emit_sym(b, _node_text(nm, src), nm.start_point[0] + 1, rel, cid)
+        elif t == "enum_case":
+            nm = member.child_by_field_name("name") or next(
+                (c for c in member.named_children if c.type == "name"), None
+            )
+            if nm is not None:
+                _php_emit_sym(b, _node_text(nm, src), nm.start_point[0] + 1, rel, cid)
+        elif t in _PHP_TYPE_DECLS:
+            _php_emit_type(b, member, src, rel, file_id, cid, "")
+
+
+def _php_emit_type(
+    b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: str, container: str, ns: str
+) -> None:
+    nm = type_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    b.add_edge("contains", container, cid, rel, line)
+    _attach_comment_rationale(b, type_node, src, rel, cid)
+    fqn = f"{ns}\\{name}" if ns else name
+    b.file_by_module.setdefault(fqn, file_id)
+    b.file_by_module.setdefault(name, file_id)
+    body = type_node.child_by_field_name("body") or next(
+        (c for c in type_node.named_children if c.type == "declaration_list"), None
+    )
+    if body is not None:
+        _php_emit_members(b, body, src, rel, file_id, cid)
+
+
+def _php_current_namespace(root_node, src: bytes) -> str:
+    for child in root_node.named_children:
+        if child.type == "namespace_definition":
+            nm = child.child_by_field_name("name") or next(
+                (c for c in child.named_children if c.type == "namespace_name"), None
+            )
+            if nm is not None:
+                return _node_text(nm, src).strip()
+    return ""
+
+
+def _php_iter_types(root_node):
+    """Yield top-level type declarations, descending into block
+    ``namespace { ... }`` bodies as well as file-level namespaces."""
+    for child in root_node.named_children:
+        if child.type in _PHP_TYPE_DECLS:
+            yield child
+        elif child.type == "namespace_definition":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                for inner in body.named_children:
+                    if inner.type in _PHP_TYPE_DECLS:
+                        yield inner
+
+
+def _php_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for PHP: namespace keys + class/interface/trait/enum types, their
+    methods, properties, constants, and enum cases, plus top-level functions."""
+    ns = _php_current_namespace(root_node, src)
+    for type_node in _php_iter_types(root_node):
+        _php_emit_type(b, type_node, src, rel, file_id, file_id, ns)
+    for child in root_node.named_children:
+        if child.type == "function_definition":
+            _php_emit_fn(b, child, src, rel, file_id)
+
+
+def _php_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``extends`` / ``implements`` -> ``inherits`` (external bases synthesized
+    so the edge never dangles). Recurses into type bodies for nested types."""
+    for child in node.named_children:
+        if child.type in _PHP_TYPE_DECLS:
+            name = _name_of(child, src)
+            cid = next(
+                (c for c in b.class_by_name.get(name or "", []) if c.startswith(file_id)), None
+            )
+            if cid is not None:
+                line = child.start_point[0] + 1
+                for clause in child.named_children:
+                    if clause.type not in ("base_clause", "class_interface_clause"):
+                        continue
+                    for base in _php_clause_names(clause, src):
+                        targets = b.class_by_name.get(base)
+                        if targets:
+                            for base_id in targets:
+                                b.add_edge("inherits", cid, base_id, rel, line)
+                        else:
+                            base_id = f"ext__{_slug(base)}_cls"
+                            b.add_node(base_id, base, "code", rel, line)
+                            b.add_edge("inherits", cid, base_id, rel, line)
+            body = child.child_by_field_name("body") or next(
+                (c for c in child.named_children if c.type == "declaration_list"), None
+            )
+            if body is not None:
+                _php_resolve_inherits(b, body, src, rel, file_id)
+        elif child.type == "namespace_definition":
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _php_resolve_inherits(b, body, src, rel, file_id)
+
+
+def _php_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in ("method_declaration", "function_definition"):
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if current_fn is not None and child.type in (
+                "scoped_call_expression",
+                "member_call_expression",
+                "function_call_expression",
+            ):
+                nm = child.child_by_field_name("name") or child.child_by_field_name("function")
+                if nm is not None:
+                    callee = _php_simple_name(_node_text(nm, src))
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+def _php_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for PHP: ``use`` imports (by class name, like Java) + inherits +
+    calls."""
+    for child in root_node.named_children:
+        if child.type != "namespace_use_declaration":
+            continue
+        line = child.start_point[0] + 1
+        for clause in child.named_children:
+            if clause.type != "namespace_use_clause":
+                continue
+            raw = _node_text(clause, src).strip()
+            target = b.file_by_module.get(raw.lstrip("\\")) or b.file_by_module.get(
+                _php_simple_name(raw)
+            )
+            if target and target != file_id:
+                b.add_edge("imports_from", file_id, target, rel, line, context="use")
+
+    _php_resolve_inherits(b, root_node, src, rel, file_id)
+    _php_resolve_calls(b, root_node, src, rel, file_id)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -2555,6 +2787,7 @@ _EXTRACTORS: dict[str, tuple] = {
     "cpp": (_c_extract_symbols, _cpp_resolve_edges),
     "csharp": (_csharp_extract_symbols, _csharp_resolve_edges),
     "ruby": (_ruby_extract_symbols, _ruby_resolve_edges),
+    "php": (_php_extract_symbols, _php_resolve_edges),
 }
 
 
