@@ -14,8 +14,8 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
 per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, Java, C,
-and C++ ship today, each mapping its grammar's node types onto the same node/edge
-model; registering another grammar adds a language with no change downstream of
+C++, and C# ship today, each mapping its grammar's node types onto the same
+node/edge model; registering another grammar adds a language with no change downstream of
 ``graph.json``.
 
 Design notes:
@@ -69,7 +69,8 @@ SCHEMA_VERSION = 1
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
-# first; TypeScript, Go, Rust, and Java are registered here behind the same seam.
+# first; TypeScript, Go, Rust, Java, C, C++, and C# are registered here behind
+# the same seam.
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
@@ -85,6 +86,7 @@ _SUFFIX_LANG: dict[str, str] = {
     ".hpp": "cpp",
     ".hh": "cpp",
     ".hxx": "cpp",
+    ".cs": "csharp",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -129,6 +131,10 @@ def _load_language(name: str):
             return Language(ts.language())
         if name == "cpp":
             import tree_sitter_cpp as ts
+
+            return Language(ts.language())
+        if name == "csharp":
+            import tree_sitter_c_sharp as ts
 
             return Language(ts.language())
     except Exception:
@@ -2028,6 +2034,305 @@ def _cpp_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_i
     _c_resolve_calls(b, root_node, src, rel, file_id)
 
 
+# --------------------------------------------------------------------------- #
+# C# extractor
+# --------------------------------------------------------------------------- #
+# Type-introducing declarations. C# maps onto the Java shape: each becomes a
+# ``…_cls`` node, methods/fields/properties are contained members, ``base_list``
+# yields ``inherits``. Types are contained by the *file* node (like Java), so
+# block vs file-scoped namespaces don't change the node tree.
+_CSHARP_TYPE_DECLS: frozenset[str] = frozenset(
+    {
+        "class_declaration",
+        "interface_declaration",
+        "struct_declaration",
+        "record_declaration",
+        "record_struct_declaration",
+        "enum_declaration",
+    }
+)
+# Method-like members whose bodies hold call expressions.
+_CSHARP_FN_DECLS: frozenset[str] = frozenset(
+    {
+        "method_declaration",
+        "constructor_declaration",
+        "destructor_declaration",
+        "operator_declaration",
+        "local_function_statement",
+    }
+)
+
+
+def _csharp_base_list(type_node):
+    """The ``base_list`` child of a type declaration, or None (it is a plain
+    child node, not addressable by a ``bases`` field)."""
+    return next((c for c in type_node.named_children if c.type == "base_list"), None)
+
+
+def _csharp_base_names(base_list, src: bytes):
+    """Yield bare base type names from a ``base_list`` (``: Base, IFoo<T>``),
+    unwrapping ``qualified_name``/``generic_name`` to the simple name."""
+    for ch in base_list.named_children:
+        t = ch.type
+        if t in ("identifier", "qualified_name"):
+            yield _node_text(ch, src).split(".")[-1].strip()
+        elif t == "generic_name":
+            nm = ch.child_by_field_name("name") or (
+                ch.named_children[0] if ch.named_children else None
+            )
+            if nm is not None:
+                yield _node_text(nm, src).split(".")[-1].strip()
+        else:
+            # primary_constructor_base_type (record `: Base(args)`) and friends:
+            # take the first identifier-ish descendant as the base name.
+            nm = next(
+                (
+                    c
+                    for c in ch.named_children
+                    if c.type in ("identifier", "qualified_name", "generic_name")
+                ),
+                None,
+            )
+            if nm is not None:
+                yield _node_text(nm, src).split(".")[-1].strip()
+
+
+def _csharp_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> None:
+    nm = fn_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    # Anchor on the identifier's line — attributes/modifiers shift start_point.
+    line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _attach_comment_rationale(b, fn_node, src, rel, fid)
+
+
+def _csharp_emit_named_sym(b: _GraphBuilder, node, src: bytes, rel: str, container: str) -> None:
+    """A single-name member (property / enum constant) → a ``…_sym`` node."""
+    nm = node.child_by_field_name("name") or next(
+        (c for c in node.named_children if c.type == "identifier"), None
+    )
+    if nm is None:
+        return
+    name = _node_text(nm, src)
+    line = nm.start_point[0] + 1
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
+
+
+def _csharp_emit_fields(b: _GraphBuilder, field_node, src: bytes, rel: str, container: str) -> None:
+    """Each ``variable_declarator`` in a field/event declaration → a sym node."""
+    for decl in field_node.named_children:
+        if decl.type != "variable_declaration":
+            continue
+        for d in decl.named_children:
+            if d.type != "variable_declarator":
+                continue
+            nm = d.child_by_field_name("name") or next(
+                (c for c in d.named_children if c.type == "identifier"), None
+            )
+            if nm is not None:
+                name = _node_text(nm, src)
+                line = nm.start_point[0] + 1
+                sid = f"{container}__{_slug(name)}_sym"
+                b.add_node(sid, name, "code", rel, line)
+                b.add_edge("contains", container, sid, rel, line)
+
+
+def _csharp_emit_record_params(b: _GraphBuilder, type_node, src: bytes, rel: str, cid: str) -> None:
+    """Positional record parameters (``record User(int Id, string Name)``) are
+    the record's fields — emit each as a sym node."""
+    plist = type_node.child_by_field_name("parameters") or next(
+        (c for c in type_node.named_children if c.type == "parameter_list"), None
+    )
+    if plist is None:
+        return
+    for param in plist.named_children:
+        if param.type != "parameter":
+            continue
+        nm = param.child_by_field_name("name") or next(
+            (c for c in param.named_children if c.type == "identifier"), None
+        )
+        if nm is not None:
+            name = _node_text(nm, src)
+            line = nm.start_point[0] + 1
+            sid = f"{cid}__{_slug(name)}_sym"
+            b.add_node(sid, name, "code", rel, line)
+            b.add_edge("contains", cid, sid, rel, line)
+
+
+def _csharp_emit_type(
+    b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: str, container: str, ns: str
+) -> None:
+    nm = type_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    b.add_edge("contains", container, cid, rel, line)
+    _attach_comment_rationale(b, type_node, src, rel, cid)
+
+    # Register name keys so `using`s resolve to this file: the namespace-
+    # qualified name and the bare simple name.
+    fqn = f"{ns}.{name}" if ns else name
+    b.file_by_module.setdefault(fqn, file_id)
+    b.file_by_module.setdefault(name, file_id)
+
+    _csharp_emit_record_params(b, type_node, src, rel, cid)
+
+    body = type_node.child_by_field_name("body")
+    if body is None:
+        return
+    for member in body.named_children:
+        t = member.type
+        if t in _CSHARP_FN_DECLS:
+            _csharp_emit_fn(b, member, src, rel, cid)
+        elif t == "property_declaration":
+            _csharp_emit_named_sym(b, member, src, rel, cid)
+        elif t in ("field_declaration", "event_field_declaration"):
+            _csharp_emit_fields(b, member, src, rel, cid)
+        elif t == "enum_member_declaration":
+            _csharp_emit_named_sym(b, member, src, rel, cid)
+        elif t in _CSHARP_TYPE_DECLS:
+            # Nested type — contained by the outer type.
+            _csharp_emit_type(b, member, src, rel, file_id, cid, ns)
+
+
+def _csharp_emit_namespace(
+    b: _GraphBuilder, ns_node, src: bytes, rel: str, file_id: str, outer_ns: str
+) -> None:
+    nm = ns_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else ""
+    ns = f"{outer_ns}.{name}" if outer_ns and name else (name or outer_ns)
+    if ns:
+        b.file_by_module.setdefault(ns, file_id)
+    body = ns_node.child_by_field_name("body")
+    if body is None:
+        return
+    for member in body.named_children:
+        if member.type in ("namespace_declaration", "file_scoped_namespace_declaration"):
+            _csharp_emit_namespace(b, member, src, rel, file_id, ns)
+        elif member.type in _CSHARP_TYPE_DECLS:
+            _csharp_emit_type(b, member, src, rel, file_id, file_id, ns)
+
+
+def _csharp_extract_symbols(
+    b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str
+) -> None:
+    """Pass 1 for C#: namespace keys + top-level/nested type declarations, their
+    methods, properties, fields, and enum members."""
+    current_ns = ""
+    for child in root_node.named_children:
+        t = child.type
+        if t == "file_scoped_namespace_declaration":
+            # File-scoped namespace: its members are the *trailing siblings* at
+            # compilation-unit level, so just record the namespace and let the
+            # type-decl branch below pick them up with current_ns.
+            nm = child.child_by_field_name("name")
+            current_ns = _node_text(nm, src) if nm is not None else current_ns
+            if current_ns:
+                b.file_by_module.setdefault(current_ns, file_id)
+        elif t == "namespace_declaration":
+            _csharp_emit_namespace(b, child, src, rel, file_id, current_ns)
+        elif t in _CSHARP_TYPE_DECLS:
+            _csharp_emit_type(b, child, src, rel, file_id, file_id, current_ns)
+
+
+def _csharp_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``: Base, IFoo`` → ``inherits`` edges (external bases synthesized so the
+    edge never dangles). Recurses into namespaces and nested types."""
+    for child in node.named_children:
+        if child.type in _CSHARP_TYPE_DECLS:
+            name = _name_of(child, src)
+            cid = next(
+                (c for c in b.class_by_name.get(name or "", []) if c.startswith(file_id)), None
+            )
+            bl = _csharp_base_list(child)
+            if cid is not None and bl is not None:
+                line = child.start_point[0] + 1
+                for base in _csharp_base_names(bl, src):
+                    targets = b.class_by_name.get(base)
+                    if targets:
+                        for base_id in targets:
+                            b.add_edge("inherits", cid, base_id, rel, line)
+                    else:
+                        base_id = f"ext__{_slug(base)}_cls"
+                        b.add_node(base_id, base, "code", rel, line)
+                        b.add_edge("inherits", cid, base_id, rel, line)
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _csharp_resolve_inherits(b, body, src, rel, file_id)
+        elif child.type in ("namespace_declaration", "file_scoped_namespace_declaration"):
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _csharp_resolve_inherits(b, body, src, rel, file_id)
+
+
+def _csharp_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in _CSHARP_FN_DECLS:
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "invocation_expression" and current_fn is not None:
+                fn = child.child_by_field_name("function")
+                if fn is not None:
+                    callee = _node_text(fn, src).split(".")[-1].strip()
+                    callee = callee.split("(")[0].split("<")[0].strip()
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+def _csharp_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for C#: ``using`` imports (by namespace/type key) + inherits +
+    calls."""
+    for child in root_node.named_children:
+        if child.type != "using_directive":
+            continue
+        # Last name-like child is the imported namespace/type (skip the alias
+        # LHS of `using X = A.B;`).
+        target_name: str | None = None
+        for c in child.named_children:
+            if c.type == "name_equals":
+                continue
+            if c.type in ("identifier", "qualified_name", "generic_name"):
+                target_name = _node_text(c, src)
+        if not target_name:
+            continue
+        line = child.start_point[0] + 1
+        key = target_name.strip()
+        target = b.file_by_module.get(key) or b.file_by_module.get(key.split(".")[-1])
+        if target and target != file_id:
+            b.add_edge("imports_from", file_id, target, rel, line, context="using")
+
+    _csharp_resolve_inherits(b, root_node, src, rel, file_id)
+    _csharp_resolve_calls(b, root_node, src, rel, file_id)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -2039,6 +2344,7 @@ _EXTRACTORS: dict[str, tuple] = {
     "java": (_java_extract_symbols, _java_resolve_edges),
     "c": (_c_extract_symbols, _c_resolve_edges),
     "cpp": (_c_extract_symbols, _cpp_resolve_edges),
+    "csharp": (_csharp_extract_symbols, _csharp_resolve_edges),
 }
 
 
