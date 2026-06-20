@@ -1,8 +1,31 @@
-# NeuralMind v0.37.0 — PHP joins the bundled backend (ten languages)
+# NeuralMind v0.37.0 — ten languages, a bigger benchmark, richer SEO
 
 **Release Date:** June 2026
 
-## TL;DR
+## What's in this release
+
+v0.37.0 lands the full **language-breadth tier** plus benchmark and discovery
+work in one release. The bundled tree-sitter backend goes from seven to **ten
+languages** — adding **C#, Ruby, and PHP**, each proven at the same
+structural-parity gate (100% symbol coverage vs a committed gold, zero dangling
+edges):
+
+| Change | What | Evidence |
+|---|---|---|
+| **C# extractor** | eighth language (`.cs`) | 52/52 symbols (100%), 0 dangling — see [`RELEASE_NOTES_v0.35.0.md`](RELEASE_NOTES_v0.35.0.md) |
+| **Ruby extractor** | ninth language (`.rb`) | 46/46 symbols (100%), 0 dangling — see [`RELEASE_NOTES_v0.36.0.md`](RELEASE_NOTES_v0.36.0.md) |
+| **PHP extractor** | tenth language (`.php`) | 54/54 symbols (100%), 0 dangling — detailed below |
+| **Benchmark corpus** | the honest public benchmark expands `requests`/`click` → **+ `flask` + `rich`** (4 repos, 40 pre-registered def-site queries) | `evals/public/manifest.json`, `docs/benchmarks/public.md` |
+| **SEO** | richer schema.org JSON-LD (`SoftwareApplication` + `WebSite`, `TechArticle`) on the docs pages | `docs/index.html`, `docs/about.html` |
+
+The bundled backend now indexes **Python, TypeScript, Go, Rust, Java, C, C++,
+C#, Ruby, PHP** out of the box, completing the C#/Ruby/PHP breadth tier. The rest
+of this note details the PHP extractor (the headline tenth language); the C# and
+Ruby deep-dives are in their per-language notes linked above.
+
+---
+
+## TL;DR — PHP, the tenth language
 
 The bundled tree-sitter backend now indexes **PHP** (`.php`) — taking NeuralMind
 to **ten languages** (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP)
