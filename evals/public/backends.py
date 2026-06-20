@@ -86,6 +86,12 @@ class BackendResult:
     gold_files: list[str]
     context_files: list[str]  # ordered, dedup'd files the backend puts in context
     tokens: int
+    # The actual text this backend would place in the model's window — whole
+    # files for full-file/ripgrep, retrieved chunks for embedding-rag, the
+    # compact L0–L3 assembly for neuralmind. Used only by the opt-in
+    # answerability arm (``evals/public/judge.py``); never serialized into the
+    # deterministic results, so the default run stays byte-identical.
+    context_text: str = ""
     # Derived (filled by __post_init__).
     recall: float = 0.0  # containment: fraction of gold files present in context
     found: bool = False  # all gold files present
@@ -141,6 +147,19 @@ def _keywords(question: str) -> list[str]:
     return [w for w in words if w not in _STOPWORDS and len(w) > 2]
 
 
+def _assemble_files(files: list[str], repo: RepoFiles) -> str:
+    """The window text for a whole-file backend: each surfaced file, labeled.
+
+    This is exactly what an agent opening these files would read — used so the
+    answerability arm judges each backend on the *real* context it provides."""
+    parts = []
+    for name in files:
+        text = repo.texts.get(name)
+        if text is not None:
+            parts.append(f"# file: {name}\n{text}")
+    return "\n\n".join(parts)
+
+
 # --------------------------------------------------------------------------- #
 # Backends
 # --------------------------------------------------------------------------- #
@@ -155,7 +174,14 @@ def run_full_file(query_id: str, gold_files: list[str], repo: RepoFiles) -> Back
     ordered = [f for f in files if f in set(gold_files)] + [
         f for f in files if f not in set(gold_files)
     ]
-    return BackendResult("full-file", query_id, gold_files, ordered, tokens)
+    return BackendResult(
+        "full-file",
+        query_id,
+        gold_files,
+        ordered,
+        tokens,
+        context_text=_assemble_files(ordered, repo),
+    )
 
 
 def run_ripgrep(
@@ -171,7 +197,14 @@ def run_ripgrep(
             scores[name] = hits
     ranked = sorted(scores, key=lambda n: (-scores[n], n))[:RIPGREP_TOP_N]
     tokens = sum(count_tokens(repo.texts[n]) for n in ranked)
-    return BackendResult("ripgrep", query_id, gold_files, ranked, tokens)
+    return BackendResult(
+        "ripgrep",
+        query_id,
+        gold_files,
+        ranked,
+        tokens,
+        context_text=_assemble_files(ranked, repo),
+    )
 
 
 def run_embedding_rag(
@@ -180,19 +213,31 @@ def run_embedding_rag(
     """Top-k function/class chunks via the same encoder; cost = retrieved chunks."""
     hits = nm.search(question, n=RAG_TOP_K)
     files: list[str] = []
+    chunks: list[str] = []
     tokens = 0
     for h in hits:
         meta = h.get("metadata", {}) or {}
         src = meta.get("source_file")
-        if src:
-            files.append(Path(str(src)).name)
+        name = Path(str(src)).name if src else None
+        if name:
+            files.append(name)
         # Cost of a chunk-RAG is the retrieved chunk text, not whole files.
-        doc = h.get("document") or h.get("text") or ""
-        tokens += count_tokens(str(doc))
+        doc = str(h.get("document") or h.get("text") or "")
+        tokens += count_tokens(doc)
+        # The window text is the retrieved chunks themselves — what the agent
+        # actually receives from a vector-RAG, not the whole files.
+        chunks.append(f"# chunk: {name or '?'}\n{doc}" if doc else "")
     # Dedup files preserving rank; tokens already summed over all retrieved chunks.
     seen: set[str] = set()
     ordered = [f for f in files if not (f in seen or seen.add(f))]
-    return BackendResult("embedding-rag", query_id, gold_files, ordered, tokens)
+    return BackendResult(
+        "embedding-rag",
+        query_id,
+        gold_files,
+        ordered,
+        tokens,
+        context_text="\n\n".join(c for c in chunks if c),
+    )
 
 
 def run_neuralmind(query_id: str, question: str, gold_files: list[str], nm: Any) -> BackendResult:
@@ -207,4 +252,8 @@ def run_neuralmind(query_id: str, question: str, gold_files: list[str], nm: Any)
     seen: set[str] = set()
     ordered = [f for f in files if not (f in seen or seen.add(f))]
     tokens = int(getattr(result, "tokens", 0) or 0)
-    return BackendResult("neuralmind", query_id, gold_files, ordered, tokens)
+    # NeuralMind's real window is the assembled compact L0–L3 context.
+    context_text = str(getattr(result, "context", "") or "")
+    return BackendResult(
+        "neuralmind", query_id, gold_files, ordered, tokens, context_text=context_text
+    )

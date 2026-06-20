@@ -163,6 +163,23 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0340">
+            <h2>What's New in v0.34.0 — answerability, not just findability</h2>
+            <p><strong>Gold-file recall measures whether the <em>right file</em> lands in the window — locating, not answering.</strong> The new opt-in <strong>answerability arm</strong> (<code>python -m evals.public.run --judge</code>) closes that gap honestly, without ever displacing the deterministic recall headline.</p>
+            <h3>How it works</h3>
+            <p>For each query it takes <strong>the real context each backend would put in the window</strong> — whole files for <code>full-file</code>/<code>ripgrep</code>, retrieved chunks for <code>embedding-rag</code>, the compact L0–L3 assembly for <code>neuralmind</code> — and asks a pinned model (<code>claude-opus-4-8</code>) to answer <strong>using only that context</strong> (it must say "insufficient context" when the window can't support an answer). A separate judge call grades each answer against the <strong>same def-site gold anchor</strong> (the query's <code>oracle_symbol</code>) on a 0–2 scale, plus a <code>grounded</code> flag.</p>
+            <h3>Hard to dismiss</h3>
+            <ul>
+                <li><strong>Same prompts, same pinned model, every backend.</strong> Each is judged on its own real window, so a low-recall window scores low instead of being papered over from the model's prior knowledge.</li>
+                <li><strong>Published provenance.</strong> The answerer prompt, the judge rubric, the pinned model id, and <strong>every raw transcript</strong> (question, context tokens, answer, verdict, rationale) are committed under <code>bench/public/judge/</code>. Re-score it, or swap the model, yourself.</li>
+                <li><strong>Off the deterministic path.</strong> It needs <code>ANTHROPIC_API_KEY</code>, never runs in CI, and the recall table is <strong>byte-identical</strong> with or without <code>--judge</code>.</li>
+                <li><strong>Honest about what it is.</strong> LLM-judged (not deterministic like recall); a single judge model is one viewpoint, disclosed, with transcripts so anyone can re-score; it stays a <em>secondary</em> signal.</li>
+            </ul>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.34.0.md">Full v0.34.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0330">
             <h2>What's New in v0.33.0 — the competitor head-to-head, run for real</h2>
             <p><strong>The public benchmark's competitor row is no longer a scaffold — it's a live, reproducible head-to-head vs. <code>codebase-memory-mcp</code> 0.8.1</strong> (the obvious incumbent: DeusData, single-binary, on-device embeddings, no LLM API key). It runs on the <strong>same</strong> pinned repos, same questions, same objective def-site gold, scored by the same <code>quality.py</code> as every other backend, at retrieval depth matched to <code>embedding-rag</code> (top-8).</p>
