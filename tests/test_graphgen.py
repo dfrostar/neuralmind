@@ -243,6 +243,7 @@ FIXTURE_RUST = _REPO / "tests" / "fixtures" / "sample_project_rust"
 FIXTURE_JAVA = _REPO / "tests" / "fixtures" / "sample_project_java"
 FIXTURE_C = _REPO / "tests" / "fixtures" / "sample_project_c"
 FIXTURE_CPP = _REPO / "tests" / "fixtures" / "sample_project_cpp"
+FIXTURE_CSHARP = _REPO / "tests" / "fixtures" / "sample_project_csharp"
 
 
 @unittest.skipUnless(
@@ -532,6 +533,113 @@ class JavaTests(unittest.TestCase):
 
         gold = json.loads(
             (FIXTURE_JAVA / "graphify-out" / "graph.json").read_text(encoding="utf-8")
+        )
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("csharp"),
+    "tree-sitter-c-sharp not installed",
+)
+class CsharpTests(unittest.TestCase):
+    """The C# extractor behind the SUPPORTED_SUFFIXES seam — the independent
+    correctness oracle for the C# gold (hand-listed expected symbols/edges)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_CSHARP)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_methods_and_constructors(self) -> None:
+        for want in (
+            "GetConnection()",  # static method
+            "EnsureSchema()",
+            "EncodeToken()",
+            "Sign()",  # private method
+            "AuthenticateUser()",
+            "ChargeCustomer()",
+            "StripeClient()",  # constructor
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_types(self) -> None:
+        # class, interface, enum, and record all become `code` type nodes.
+        for want in ("Connection", "DataStore", "User", "StripeClient", "Method", "Route"):
+            self.assertIn(want, self.code_labels)
+
+    def test_fields_properties_and_enum_members_extracted(self) -> None:
+        for want in (
+            "Url",  # field
+            "ApiKey",
+            "AmountCents",
+            "Email",
+            "IsActive",  # auto-property
+            "Get",  # enum members
+            "Post",
+            "Delete",
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_doc_comment_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("authentication hot path", rats)
+
+    def test_base_list_becomes_inherits(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        inherits = {
+            (label[e["source"]], label[e["target"]])
+            for e in self.edges
+            if e["relation"] == "inherits"
+        }
+        self.assertIn(("Connection", "DataStore"), inherits)
+
+    def test_using_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("src/Users/Crud.cs", "src/Db/Connection.cs"), pairs)
+        self.assertIn(("src/Api/Routes.cs", "src/Auth/Handlers.cs"), pairs)
+
+    def test_cross_file_call_resolved(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        calls = {
+            (label[e["source"]], label[e["target"]]) for e in self.edges if e["relation"] == "calls"
+        }
+        self.assertIn(("AuthenticateUser()", "GetUserByEmail()"), calls)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_CSHARP)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        import json
+
+        gold = json.loads(
+            (FIXTURE_CSHARP / "graphify-out" / "graph.json").read_text(encoding="utf-8")
         )
         gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
         built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
