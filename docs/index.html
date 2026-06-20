@@ -19,19 +19,53 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "NeuralMind",
-      "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Linux, macOS, Windows",
-      "description": "Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent.",
-      "url": "https://dfrostar.github.io/neuralmind/",
-      "downloadUrl": "https://pypi.org/project/neuralmind/",
-      "softwareVersion": "0.33.0",
-      "license": "https://opensource.org/licenses/MIT",
-      "programmingLanguage": "Python",
-      "operatingSystemRequirements": "Python 3.10+",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-      "author": { "@type": "Person", "name": "Darren Frost" }
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://dfrostar.github.io/neuralmind/#software",
+          "name": "NeuralMind",
+          "applicationCategory": "DeveloperApplication",
+          "applicationSubCategory": "AI coding agent memory & code intelligence",
+          "operatingSystem": "Linux, macOS, Windows",
+          "description": "Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent.",
+          "url": "https://dfrostar.github.io/neuralmind/",
+          "downloadUrl": "https://pypi.org/project/neuralmind/",
+          "installUrl": "https://pypi.org/project/neuralmind/",
+          "softwareVersion": "0.37.0",
+          "datePublished": "2025-05-01",
+          "license": "https://opensource.org/licenses/MIT",
+          "isAccessibleForFree": true,
+          "programmingLanguage": "Python",
+          "operatingSystemRequirements": "Python 3.10+",
+          "codeRepository": "https://github.com/dfrostar/neuralmind",
+          "keywords": "AI coding agent memory, code intelligence, token reduction, RAG, MCP server, knowledge graph, Hebbian synapses, progressive context disclosure, tree-sitter code graph, multi-language code indexing",
+          "featureList": [
+            "Progressive L0–L3 context disclosure for 40–70× per-query token reduction",
+            "Brain-like Hebbian synapse layer that learns associations from how you use the codebase (+11.7 pts hit-rate, budget-neutral)",
+            "Bundled tree-sitter code graph indexing ten languages out of the box: Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP",
+            "Honest public benchmark: 100% gold-file recall at 38–85× fewer tokens vs pasting files, on pinned real OSS repos",
+            "MCP server for Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent",
+            "Obsidian-style local graph view and a recovery cache for dropped tool output",
+            "100% local — no code leaves your machine"
+          ],
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "author": { "@type": "Person", "name": "Darren Frost" },
+          "publisher": { "@type": "Person", "name": "Darren Frost" },
+          "sameAs": [
+            "https://github.com/dfrostar/neuralmind",
+            "https://pypi.org/project/neuralmind/"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://dfrostar.github.io/neuralmind/#website",
+          "name": "NeuralMind",
+          "url": "https://dfrostar.github.io/neuralmind/",
+          "description": "Persistent memory for AI coding agents — 40–70× cheaper code questions, a synapse layer that learns your codebase, and a bundled ten-language code graph.",
+          "about": { "@id": "https://dfrostar.github.io/neuralmind/#software" },
+          "inLanguage": "en"
+        }
+      ]
     }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
