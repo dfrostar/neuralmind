@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.34.0](https://github.com/dfrostar/neuralmind/compare/v0.33.0...v0.34.0) (2026-06-20)
+
+
+### Features
+
+* opt-in LLM-judged answerability arm for the public benchmark ([#264](https://github.com/dfrostar/neuralmind/issues/264)) ([f6e8cd7](https://github.com/dfrostar/neuralmind/commit/f6e8cd7c182808c30476bb88ec60e1f3c719fb7f))
+
+
+### Documentation
+
+* disclosed-maker launch kit under docs/launch/ ([#263](https://github.com/dfrostar/neuralmind/issues/263)) ([948f732](https://github.com/dfrostar/neuralmind/commit/948f73257203176c4831bd8a59637ed1147864ca))
+* position NeuralMind as four data-backed benefits, not just token reduction ([#261](https://github.com/dfrostar/neuralmind/issues/261)) ([d56d0bc](https://github.com/dfrostar/neuralmind/commit/d56d0bcb8a22ceb4bab80959bb83c384979cf6c4))
+* refresh launch handoff with next-session checklist ([#265](https://github.com/dfrostar/neuralmind/issues/265)) ([3fd424a](https://github.com/dfrostar/neuralmind/commit/3fd424a987f53069fe1aa939fe813aa6f9858fb0))
+
 ## [0.33.0](https://github.com/dfrostar/neuralmind/compare/v0.32.0...v0.33.0) (2026-06-19)
 
 
