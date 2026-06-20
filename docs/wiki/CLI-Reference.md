@@ -371,6 +371,8 @@ neuralmind benchmark <project_path> [OPTIONS]
 | `--public` | False | *(v0.31.0+)* Public-benchmark mode — reproduce the honest vs-alternatives comparison on pinned real repos (see below). Ignores `project_path` (it uses the pinned corpus, not your project) and requires a **source checkout** — the `evals/public` harness ships in the repo, not the PyPI wheel |
 | `--repo` | (all) | *(v0.31.0+)* With `--public`, scope to one corpus repo: `requests` / `click` |
 | `--seeds` | `1` | *(v0.31.0+)* With `--public`, the seed count recorded in the report. The pipeline is deterministic (synapse injection off), so variance across seeds is exactly 0 — recorded honestly rather than padded with artificial noise |
+| `--judge` | False | *(v0.34.0+)* With `--public`, also run the opt-in **answerability arm** — each backend answered from its real window by a pinned model (`claude-opus-4-8`), graded vs. the def-site gold anchor (0–2 + `grounded`). A clearly-labeled **secondary** signal. Needs `ANTHROPIC_API_KEY`; **never runs in CI**; the recall table is byte-identical with or without it; skips cleanly without a key (see below) |
+| `--judge-out` | `bench/public/judge` | *(v0.34.0+)* With `--public --judge`, where to write the raw answerability transcripts (question, context tokens, answer, verdict, rationale) |
 
 #### Output
 
@@ -508,6 +510,29 @@ reproducible keyword mapping; and we cite its *published* LLM-agent numbers (~90
 of an "Explorer" agent; C at 0.58) as-is rather than reproduce them. Per-query
 traces and pinned `REPRODUCE.md` are committed under `bench/public/competitor/`;
 full caveats are in the "Competitor head-to-head" section of
+[`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md).
+
+#### Answerability arm — `--judge` *(v0.34.0+)*
+
+Gold-file recall measures *locating* the right file, not *answering* the
+question. The opt-in answerability arm adds the answering signal — a
+clearly-labeled **secondary** to the recall headline:
+
+```bash
+ANTHROPIC_API_KEY=…  python -m evals.public.run --judge   # off by default
+```
+
+For each query it answers from **the real context each backend would put in the
+window** (whole files / retrieved chunks / compact L0–L3 context) using a pinned
+model (`claude-opus-4-8`), constrained to that context only, then a separate
+judge call grades the answer against the same def-site gold anchor on a 0–2 scale
+plus a `grounded` flag. It needs `ANTHROPIC_API_KEY` (and the `anthropic`
+package), **never runs in CI**, and the recall table is byte-identical with or
+without `--judge` — absent a key it skips cleanly and the recall benchmark still
+runs. The answerer prompt, judge rubric, pinned model id, and **every raw
+transcript** are committed under `bench/public/judge/` (transcripts written to
+`--judge-out`, default `bench/public/judge`). Full framing + caveats: the
+"Answerability arm" section of
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md).
 
 #### Sample Output
