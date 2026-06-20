@@ -49,8 +49,9 @@ entire retrieval pipeline downstream — progressive L0–L3 disclosure, the
 synapse layer, the graph view, the MCP tools — works exactly the same. Only
 the graph *producer* changed.
 
-- **Languages:** Python, TypeScript, Go, Rust, Java, C, C++, and C# out of the
-  box (Rust added in v0.27.0, Java in v0.28.0, C/C++ in v0.32.0, C# in v0.35.0)
+- **Languages:** Python, TypeScript, Go, Rust, Java, C, C++, C#, and Ruby out of
+  the box (Rust added in v0.27.0, Java in v0.28.0, C/C++ in v0.32.0, C# in
+  v0.35.0, Ruby in v0.36.0)
   — a mixed-language repo is indexed in one pass. Rust structs, enums, traits,
   `impl` blocks, and `use`/`impl Trait` edges all map onto the same graph model;
   C/C++ functions, `struct`/`union`/`enum`s, C++ classes and namespace-qualified
@@ -60,8 +61,14 @@ the graph *producer* changed.
   classes/interfaces/structs/records/enums, methods/constructors, fields,
   properties and enum members, `base_list` → `inherits`, `using` →
   `imports_from`, and `///` doc comments → `rationale` map on the same way
-  (`.cs` files are indexed zero-install — no .NET SDK or graphify needed). More
-  grammars register behind the same `SUPPORTED_SUFFIXES` seam.
+  (`.cs` files are indexed zero-install — no .NET SDK or graphify needed); and
+  Ruby `class`/`module` types, `def`/`def self.` methods, constant assignments
+  (the symbol layer), `class Foo < Bar` → `inherits`, `require_relative` →
+  `imports_from` (relative-path resolved), and `#` doc comments → `rationale`
+  map the same way (`.rb` files are indexed zero-install — no Ruby toolchain or
+  graphify needed; Ruby is dynamic, so calls are best-effort and mixins
+  via `include`/`extend` aren't modelled as inheritance, disclosed honestly).
+  More grammars register behind the same `SUPPORTED_SUFFIXES` seam.
 - **Edge precision:** `calls`/`inherits` are best-effort by name (no type
   resolution). Whether that costs retrieval quality is **measured** by the
   backend parity gate, not guessed — and an optional LSP/SCIP precision pass
