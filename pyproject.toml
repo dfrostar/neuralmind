@@ -113,6 +113,9 @@ keywords = [
     "c-code-intelligence",
     "cpp-indexing",
     "c-cpp-mcp",
+    "csharp-code-graph",
+    "csharp-code-intelligence",
+    "dotnet-code-search",
     "multi-language-code-intelligence",
     "polyglot-codebase-indexing",
     "scip",
@@ -222,8 +225,8 @@ dependencies = [
     "chromadb>=0.4.0; platform_system != 'Linux' and (platform_system != 'Darwin' or platform_machine != 'arm64') and (platform_system != 'Windows' or platform_machine != 'AMD64')",
     # Built-in graph backend: parse a project into a graphify-compatible
     # graph.json with no external graphify install. See neuralmind/graphgen.py.
-    # Python + TypeScript + Go + Rust + Java + C + C++ grammars are bundled so
-    # multi-language indexing works out of the box; the SUPPORTED_SUFFIXES
+    # Python + TypeScript + Go + Rust + Java + C + C++ + C# grammars are bundled
+    # so multi-language indexing works out of the box; the SUPPORTED_SUFFIXES
     # seam registers more.
     "tree-sitter>=0.21.0",
     "tree-sitter-python>=0.21.0",
@@ -232,7 +235,8 @@ dependencies = [
     "tree-sitter-rust>=0.21.0",
     "tree-sitter-java>=0.21.0",
     "tree-sitter-c>=0.21.0",
-    "tree-sitter-cpp>=0.21.0"
+    "tree-sitter-cpp>=0.21.0",
+    "tree-sitter-c-sharp>=0.21.0"
 ]
 
 [project.optional-dependencies]
