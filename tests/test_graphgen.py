@@ -244,6 +244,7 @@ FIXTURE_JAVA = _REPO / "tests" / "fixtures" / "sample_project_java"
 FIXTURE_C = _REPO / "tests" / "fixtures" / "sample_project_c"
 FIXTURE_CPP = _REPO / "tests" / "fixtures" / "sample_project_cpp"
 FIXTURE_CSHARP = _REPO / "tests" / "fixtures" / "sample_project_csharp"
+FIXTURE_RUBY = _REPO / "tests" / "fixtures" / "sample_project_ruby"
 
 
 @unittest.skipUnless(
@@ -640,6 +641,106 @@ class CsharpTests(unittest.TestCase):
 
         gold = json.loads(
             (FIXTURE_CSHARP / "graphify-out" / "graph.json").read_text(encoding="utf-8")
+        )
+        gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
+        built_syms = {lbl.rstrip("()") for lbl in self.code_labels}
+        self.assertEqual(gold_syms, built_syms)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("ruby"),
+    "tree-sitter-ruby not installed",
+)
+class RubyTests(unittest.TestCase):
+    """The Ruby extractor behind the SUPPORTED_SUFFIXES seam — the independent
+    correctness oracle for the Ruby gold (hand-listed expected symbols/edges)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_RUBY)
+        cls.nodes = cls.graph["nodes"]
+        cls.edges = cls.graph["links"]
+        cls.code_labels = {n["label"] for n in cls.nodes if n["file_type"] == "code"}
+
+    def test_schema_keys(self) -> None:
+        for n in self.nodes:
+            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+        for e in self.edges:
+            self.assertEqual(set(e.keys()), EDGE_KEYS, e)
+
+    def test_finds_methods(self) -> None:
+        for want in (
+            "get_connection()",  # singleton (def self.) method
+            "ensure_schema()",
+            "encode_token()",
+            "sign()",  # private helper
+            "authenticate_user()",
+            "charge_customer()",
+            "initialize()",  # constructor
+        ):
+            self.assertIn(want, self.code_labels)
+
+    def test_finds_classes_and_modules(self) -> None:
+        # class and module both become `code` type nodes.
+        for want in ("Connection", "DataStore", "User", "StripeClient", "Method", "Route"):
+            self.assertIn(want, self.code_labels)
+
+    def test_constants_extracted(self) -> None:
+        for want in ("MAX_EMAIL_LEN", "API_VERSION", "GET", "POST", "DELETE"):
+            self.assertIn(want, self.code_labels)
+
+    def test_doc_comment_becomes_rationale(self) -> None:
+        rats = " || ".join(n["label"].lower() for n in self.nodes if n["file_type"] == "rationale")
+        self.assertIn("authentication hot path", rats)
+        # The leading `#` marker is stripped from the rationale text.
+        self.assertNotIn("#", rats)
+
+    def test_superclass_becomes_inherits(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        inherits = {
+            (label[e["source"]], label[e["target"]])
+            for e in self.edges
+            if e["relation"] == "inherits"
+        }
+        self.assertIn(("Connection", "DataStore"), inherits)
+
+    def test_require_relative_becomes_imports_from(self) -> None:
+        files = {n["id"]: n["source_file"] for n in self.nodes}
+        pairs = {
+            (files.get(e["source"]), files.get(e["target"]))
+            for e in self.edges
+            if e["relation"] == "imports_from"
+        }
+        self.assertIn(("src/users/crud.rb", "src/db/connection.rb"), pairs)
+        self.assertIn(("src/api/routes.rb", "src/auth/handlers.rb"), pairs)
+
+    def test_cross_file_call_resolved(self) -> None:
+        label = {n["id"]: n["label"] for n in self.nodes}
+        calls = {
+            (label[e["source"]], label[e["target"]]) for e in self.edges if e["relation"] == "calls"
+        }
+        self.assertIn(("authenticate_user()", "get_user_by_email()"), calls)
+
+    def test_edge_relations(self) -> None:
+        rels = {e["relation"] for e in self.edges}
+        for want in ("contains", "imports_from", "calls", "inherits", "rationale_for"):
+            self.assertIn(want, rels)
+
+    def test_no_dangling_edges(self) -> None:
+        ids = {n["id"] for n in self.nodes}
+        for e in self.edges:
+            self.assertIn(e["source"], ids)
+            self.assertIn(e["target"], ids)
+
+    def test_deterministic(self) -> None:
+        again = graphgen.build_graph(FIXTURE_RUBY)
+        self.assertEqual(again["nodes"], self.nodes)
+
+    def test_matches_committed_gold(self) -> None:
+        import json
+
+        gold = json.loads(
+            (FIXTURE_RUBY / "graphify-out" / "graph.json").read_text(encoding="utf-8")
         )
         gold_syms = {n["label"].rstrip("()") for n in gold["nodes"] if n["file_type"] == "code"}
         built_syms = {lbl.rstrip("()") for lbl in self.code_labels}

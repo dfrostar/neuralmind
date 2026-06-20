@@ -1,0 +1,1705 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "routes.rb",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L1",
+      "id": "src_api_routes_rb",
+      "community": 1,
+      "norm_label": "routes.rb"
+    },
+    {
+      "label": "Method",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L6",
+      "id": "src_api_routes_rb__method_cls",
+      "community": 1,
+      "norm_label": "method"
+    },
+    {
+      "label": "The HTTP methods the fixture router understands.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L6",
+      "id": "src_api_routes_rb__method_cls__rationale",
+      "community": 1,
+      "norm_label": "the http methods the fixture router understands."
+    },
+    {
+      "label": "GET",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L7",
+      "id": "src_api_routes_rb__method_cls__get_sym",
+      "community": 1,
+      "norm_label": "get"
+    },
+    {
+      "label": "POST",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L8",
+      "id": "src_api_routes_rb__method_cls__post_sym",
+      "community": 1,
+      "norm_label": "post"
+    },
+    {
+      "label": "DELETE",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L9",
+      "id": "src_api_routes_rb__method_cls__delete_sym",
+      "community": 1,
+      "norm_label": "delete"
+    },
+    {
+      "label": "Route",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L13",
+      "id": "src_api_routes_rb__route_cls",
+      "community": 1,
+      "norm_label": "route"
+    },
+    {
+      "label": "A single registered route.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L13",
+      "id": "src_api_routes_rb__route_cls__rationale",
+      "community": 1,
+      "norm_label": "a single registered route."
+    },
+    {
+      "label": "Routes",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L18",
+      "id": "src_api_routes_rb__routes_cls",
+      "community": 1,
+      "norm_label": "routes"
+    },
+    {
+      "label": "HTTP route table wiring auth and billing handlers to paths.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L18",
+      "id": "src_api_routes_rb__routes_cls__rationale",
+      "community": 1,
+      "norm_label": "http route table wiring auth and billing handlers to paths."
+    },
+    {
+      "label": "login_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L20",
+      "id": "src_api_routes_rb__routes_cls__login_endpoint_fn",
+      "community": 1,
+      "norm_label": "login_endpoint()"
+    },
+    {
+      "label": "get_me_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L25",
+      "id": "src_api_routes_rb__routes_cls__get_me_endpoint_fn",
+      "community": 1,
+      "norm_label": "get_me_endpoint()"
+    },
+    {
+      "label": "GET /api/users/me \u2014 requires a valid session token.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L25",
+      "id": "src_api_routes_rb__routes_cls__get_me_endpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "get /api/users/me \u2014 requires a valid session token."
+    },
+    {
+      "label": "charge_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L30",
+      "id": "src_api_routes_rb__routes_cls__charge_endpoint_fn",
+      "community": 1,
+      "norm_label": "charge_endpoint()"
+    },
+    {
+      "label": "POST /api/billing/charge \u2014 charge the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L30",
+      "id": "src_api_routes_rb__routes_cls__charge_endpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "post /api/billing/charge \u2014 charge the authenticated user."
+    },
+    {
+      "label": "handlers.rb",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L1",
+      "id": "src_auth_handlers_rb",
+      "community": 2,
+      "norm_label": "handlers.rb"
+    },
+    {
+      "label": "Handlers",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L6",
+      "id": "src_auth_handlers_rb__handlers_cls",
+      "community": 2,
+      "norm_label": "handlers"
+    },
+    {
+      "label": "Authentication request handlers \u2014 login and session verification.",
+      "file_type": "rationale",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L6",
+      "id": "src_auth_handlers_rb__handlers_cls__rationale",
+      "community": 2,
+      "norm_label": "authentication request handlers \u2014 login and session verification."
+    },
+    {
+      "label": "authenticate_user()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L8",
+      "id": "src_auth_handlers_rb__handlers_cls__authenticate_user_fn",
+      "community": 2,
+      "norm_label": "authenticate_user()"
+    },
+    {
+      "label": "verify_session()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L14",
+      "id": "src_auth_handlers_rb__handlers_cls__verify_session_fn",
+      "community": 2,
+      "norm_label": "verify_session()"
+    },
+    {
+      "label": "Return true if the access token is currently valid.",
+      "file_type": "rationale",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L14",
+      "id": "src_auth_handlers_rb__handlers_cls__verify_session_fn__rationale",
+      "community": 2,
+      "norm_label": "return true if the access token is currently valid."
+    },
+    {
+      "label": "jwt_utils.rb",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L1",
+      "id": "src_auth_jwt_utils_rb",
+      "community": 3,
+      "norm_label": "jwt_utils.rb"
+    },
+    {
+      "label": "JwtUtils",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L2",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "community": 3,
+      "norm_label": "jwtutils"
+    },
+    {
+      "label": "JWT signing and signature verification helpers.",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L2",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__rationale",
+      "community": 3,
+      "norm_label": "jwt signing and signature verification helpers."
+    },
+    {
+      "label": "encode_token()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L4",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__encode_token_fn",
+      "community": 3,
+      "norm_label": "encode_token()"
+    },
+    {
+      "label": "decode_token()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L9",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn",
+      "community": 3,
+      "norm_label": "decode_token()"
+    },
+    {
+      "label": "Verify a JWT signature and return the payload if valid.",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L9",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn__rationale",
+      "community": 3,
+      "norm_label": "verify a jwt signature and return the payload if valid."
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L15",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn",
+      "community": 3,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "Sign a raw payload (internal helper).",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L15",
+      "id": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn__rationale",
+      "community": 3,
+      "norm_label": "sign a raw payload (internal helper)."
+    },
+    {
+      "label": "invoices.rb",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L1",
+      "id": "src_billing_invoices_rb",
+      "community": 4,
+      "norm_label": "invoices.rb"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L5",
+      "id": "src_billing_invoices_rb__invoice_cls",
+      "community": 4,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "A billing invoice for a user.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L5",
+      "id": "src_billing_invoices_rb__invoice_cls__rationale",
+      "community": 4,
+      "norm_label": "a billing invoice for a user."
+    },
+    {
+      "label": "Invoices",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L10",
+      "id": "src_billing_invoices_rb__invoices_cls",
+      "community": 4,
+      "norm_label": "invoices"
+    },
+    {
+      "label": "Invoice generation and delivery, built on the Stripe client.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L10",
+      "id": "src_billing_invoices_rb__invoices_cls__rationale",
+      "community": 4,
+      "norm_label": "invoice generation and delivery, built on the stripe client."
+    },
+    {
+      "label": "charge_invoice()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L12",
+      "id": "src_billing_invoices_rb__invoices_cls__charge_invoice_fn",
+      "community": 4,
+      "norm_label": "charge_invoice()"
+    },
+    {
+      "label": "send_invoice_email()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L17",
+      "id": "src_billing_invoices_rb__invoices_cls__send_invoice_email_fn",
+      "community": 4,
+      "norm_label": "send_invoice_email()"
+    },
+    {
+      "label": "Render an invoice and hand it to the email transport.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L17",
+      "id": "src_billing_invoices_rb__invoices_cls__send_invoice_email_fn__rationale",
+      "community": 4,
+      "norm_label": "render an invoice and hand it to the email transport."
+    },
+    {
+      "label": "stripe_client.rb",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L1",
+      "id": "src_billing_stripe_client_rb",
+      "community": 5,
+      "norm_label": "stripe_client.rb"
+    },
+    {
+      "label": "StripeClient",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L2",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls",
+      "community": 5,
+      "norm_label": "stripeclient"
+    },
+    {
+      "label": "Stripe API client \u2014 charges, refunds, and webhook verification.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L2",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__rationale",
+      "community": 5,
+      "norm_label": "stripe api client \u2014 charges, refunds, and webhook verification."
+    },
+    {
+      "label": "API_VERSION",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L4",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__api_version_sym",
+      "community": 5,
+      "norm_label": "api_version"
+    },
+    {
+      "label": "initialize()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L7",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__initialize_fn",
+      "community": 5,
+      "norm_label": "initialize()"
+    },
+    {
+      "label": "Create a client with the given secret API key.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L7",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__initialize_fn__rationale",
+      "community": 5,
+      "norm_label": "create a client with the given secret api key."
+    },
+    {
+      "label": "charge_customer()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L12",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn",
+      "community": 5,
+      "norm_label": "charge_customer()"
+    },
+    {
+      "label": "Charge a customer a number of cents; returns the charge id.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L12",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn__rationale",
+      "community": 5,
+      "norm_label": "charge a customer a number of cents; returns the charge id."
+    },
+    {
+      "label": "refund_charge()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L17",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__refund_charge_fn",
+      "community": 5,
+      "norm_label": "refund_charge()"
+    },
+    {
+      "label": "Issue a full refund for a previous charge.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L17",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__refund_charge_fn__rationale",
+      "community": 5,
+      "norm_label": "issue a full refund for a previous charge."
+    },
+    {
+      "label": "verify_webhook()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L22",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__verify_webhook_fn",
+      "community": 5,
+      "norm_label": "verify_webhook()"
+    },
+    {
+      "label": "Validate a Stripe webhook signature and return the event kind.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L22",
+      "id": "src_billing_stripe_client_rb__stripeclient_cls__verify_webhook_fn__rationale",
+      "community": 5,
+      "norm_label": "validate a stripe webhook signature and return the event kind."
+    },
+    {
+      "label": "connection.rb",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L1",
+      "id": "src_db_connection_rb",
+      "community": 6,
+      "norm_label": "connection.rb"
+    },
+    {
+      "label": "DataStore",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L2",
+      "id": "src_db_connection_rb__datastore_cls",
+      "community": 6,
+      "norm_label": "datastore"
+    },
+    {
+      "label": "Behaviour every backing store must provide.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L2",
+      "id": "src_db_connection_rb__datastore_cls__rationale",
+      "community": 6,
+      "norm_label": "behaviour every backing store must provide."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L4",
+      "id": "src_db_connection_rb__datastore_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L10",
+      "id": "src_db_connection_rb__connection_cls",
+      "community": 6,
+      "norm_label": "connection"
+    },
+    {
+      "label": "A pooled connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L10",
+      "id": "src_db_connection_rb__connection_cls__rationale",
+      "community": 6,
+      "norm_label": "a pooled connection to the fixture database."
+    },
+    {
+      "label": "get_connection()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L12",
+      "id": "src_db_connection_rb__connection_cls__get_connection_fn",
+      "community": 6,
+      "norm_label": "get_connection()"
+    },
+    {
+      "label": "close()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L17",
+      "id": "src_db_connection_rb__connection_cls__close_fn",
+      "community": 6,
+      "norm_label": "close()"
+    },
+    {
+      "label": "Close the connection and release the pool slot.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L17",
+      "id": "src_db_connection_rb__connection_cls__close_fn__rationale",
+      "community": 6,
+      "norm_label": "close the connection and release the pool slot."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L21",
+      "id": "src_db_connection_rb__connection_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "ensure_schema()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L26",
+      "id": "src_db_connection_rb__connection_cls__ensure_schema_fn",
+      "community": 6,
+      "norm_label": "ensure_schema()"
+    },
+    {
+      "label": "Create the fixture tables if they don't exist yet.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L26",
+      "id": "src_db_connection_rb__connection_cls__ensure_schema_fn__rationale",
+      "community": 6,
+      "norm_label": "create the fixture tables if they don't exist yet."
+    },
+    {
+      "label": "crud.rb",
+      "file_type": "code",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L1",
+      "id": "src_users_crud_rb",
+      "community": 7,
+      "norm_label": "crud.rb"
+    },
+    {
+      "label": "Crud",
+      "file_type": "code",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L5",
+      "id": "src_users_crud_rb__crud_cls",
+      "community": 7,
+      "norm_label": "crud"
+    },
+    {
+      "label": "User CRUD operations backed by the database connection.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L5",
+      "id": "src_users_crud_rb__crud_cls__rationale",
+      "community": 7,
+      "norm_label": "user crud operations backed by the database connection."
+    },
+    {
+      "label": "create_user()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L7",
+      "id": "src_users_crud_rb__crud_cls__create_user_fn",
+      "community": 7,
+      "norm_label": "create_user()"
+    },
+    {
+      "label": "get_user_by_email()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L15",
+      "id": "src_users_crud_rb__crud_cls__get_user_by_email_fn",
+      "community": 7,
+      "norm_label": "get_user_by_email()"
+    },
+    {
+      "label": "Fetch a user by email \u2014 the authentication hot path.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L15",
+      "id": "src_users_crud_rb__crud_cls__get_user_by_email_fn__rationale",
+      "community": 7,
+      "norm_label": "fetch a user by email \u2014 the authentication hot path."
+    },
+    {
+      "label": "get_user()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L23",
+      "id": "src_users_crud_rb__crud_cls__get_user_fn",
+      "community": 7,
+      "norm_label": "get_user()"
+    },
+    {
+      "label": "Fetch a user by primary key.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L23",
+      "id": "src_users_crud_rb__crud_cls__get_user_fn__rationale",
+      "community": 7,
+      "norm_label": "fetch a user by primary key."
+    },
+    {
+      "label": "user.rb",
+      "file_type": "code",
+      "source_file": "src/users/user.rb",
+      "source_location": "L1",
+      "id": "src_users_user_rb",
+      "community": 8,
+      "norm_label": "user.rb"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "src/users/user.rb",
+      "source_location": "L2",
+      "id": "src_users_user_rb__user_cls",
+      "community": 8,
+      "norm_label": "user"
+    },
+    {
+      "label": "A persisted user record.",
+      "file_type": "rationale",
+      "source_file": "src/users/user.rb",
+      "source_location": "L2",
+      "id": "src_users_user_rb__user_cls__rationale",
+      "community": 8,
+      "norm_label": "a persisted user record."
+    },
+    {
+      "label": "MAX_EMAIL_LEN",
+      "file_type": "code",
+      "source_file": "src/users/user.rb",
+      "source_location": "L4",
+      "id": "src_users_user_rb__user_cls__max_email_len_sym",
+      "community": 8,
+      "norm_label": "max_email_len"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 0,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "sample_project_ruby",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md__h1",
+      "community": 0,
+      "norm_label": "sample_project_ruby"
+    },
+    {
+      "label": "Why this fixture?",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L9",
+      "id": "readme_md__h9",
+      "community": 0,
+      "norm_label": "why this fixture?"
+    },
+    {
+      "label": "Shape",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "id": "readme_md__h17",
+      "community": 0,
+      "norm_label": "shape"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_api_routes_rb__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__method_cls__rationale",
+      "target": "src_api_routes_rb__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__method_cls",
+      "target": "src_api_routes_rb__method_cls__get_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__method_cls",
+      "target": "src_api_routes_rb__method_cls__post_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__method_cls",
+      "target": "src_api_routes_rb__method_cls__delete_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_api_routes_rb__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__route_cls__rationale",
+      "target": "src_api_routes_rb__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_api_routes_rb__routes_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__rationale",
+      "target": "src_api_routes_rb__routes_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls",
+      "target": "src_api_routes_rb__routes_cls__login_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls",
+      "target": "src_api_routes_rb__routes_cls__get_me_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__get_me_endpoint_fn__rationale",
+      "target": "src_api_routes_rb__routes_cls__get_me_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls",
+      "target": "src_api_routes_rb__routes_cls__charge_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__charge_endpoint_fn__rationale",
+      "target": "src_api_routes_rb__routes_cls__charge_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb",
+      "target": "src_auth_handlers_rb__handlers_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls__rationale",
+      "target": "src_auth_handlers_rb__handlers_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls",
+      "target": "src_auth_handlers_rb__handlers_cls__authenticate_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls",
+      "target": "src_auth_handlers_rb__handlers_cls__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls__verify_session_fn__rationale",
+      "target": "src_auth_handlers_rb__handlers_cls__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls__rationale",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__encode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn__rationale",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn__rationale",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb",
+      "target": "src_billing_invoices_rb__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoice_cls__rationale",
+      "target": "src_billing_invoices_rb__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb",
+      "target": "src_billing_invoices_rb__invoices_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoices_cls__rationale",
+      "target": "src_billing_invoices_rb__invoices_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoices_cls",
+      "target": "src_billing_invoices_rb__invoices_cls__charge_invoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoices_cls",
+      "target": "src_billing_invoices_rb__invoices_cls__send_invoice_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoices_cls__send_invoice_email_fn__rationale",
+      "target": "src_billing_invoices_rb__invoices_cls__send_invoice_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls__rationale",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__api_version_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__initialize_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls__initialize_fn__rationale",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__initialize_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn__rationale",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__refund_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls__refund_charge_fn__rationale",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__refund_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__verify_webhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rb",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rb__stripeclient_cls__verify_webhook_fn__rationale",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__verify_webhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_db_connection_rb",
+      "target": "src_db_connection_rb__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__datastore_cls__rationale",
+      "target": "src_db_connection_rb__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__datastore_cls",
+      "target": "src_db_connection_rb__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_db_connection_rb",
+      "target": "src_db_connection_rb__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls__rationale",
+      "target": "src_db_connection_rb__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls",
+      "target": "src_db_connection_rb__connection_cls__get_connection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls",
+      "target": "src_db_connection_rb__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls__close_fn__rationale",
+      "target": "src_db_connection_rb__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls",
+      "target": "src_db_connection_rb__connection_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls",
+      "target": "src_db_connection_rb__connection_cls__ensure_schema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls__ensure_schema_fn__rationale",
+      "target": "src_db_connection_rb__connection_cls__ensure_schema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_users_crud_rb",
+      "target": "src_users_crud_rb__crud_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__rationale",
+      "target": "src_users_crud_rb__crud_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls",
+      "target": "src_users_crud_rb__crud_cls__create_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls",
+      "target": "src_users_crud_rb__crud_cls__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__get_user_by_email_fn__rationale",
+      "target": "src_users_crud_rb__crud_cls__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls",
+      "target": "src_users_crud_rb__crud_cls__get_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__get_user_fn__rationale",
+      "target": "src_users_crud_rb__crud_cls__get_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/user.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_users_user_rb",
+      "target": "src_users_user_rb__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/user.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_users_user_rb__user_cls__rationale",
+      "target": "src_users_user_rb__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/user.rb",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_users_user_rb__user_cls",
+      "target": "src_users_user_rb__user_cls__max_email_len_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_auth_handlers_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_billing_stripe_client_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_api_routes_rb",
+      "target": "src_db_connection_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__login_endpoint_fn",
+      "target": "src_auth_handlers_rb__handlers_cls__authenticate_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__get_me_endpoint_fn",
+      "target": "src_auth_handlers_rb__handlers_cls__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rb",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "src_api_routes_rb__routes_cls__charge_endpoint_fn",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb",
+      "target": "src_db_connection_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb",
+      "target": "src_users_crud_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb",
+      "target": "src_auth_jwt_utils_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls__authenticate_user_fn",
+      "target": "src_users_crud_rb__crud_cls__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls__authenticate_user_fn",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__encode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rb",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rb__handlers_cls__verify_session_fn",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rb",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rb__jwtutils_cls__encode_token_fn",
+      "target": "src_auth_jwt_utils_rb__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb",
+      "target": "src_users_user_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb",
+      "target": "src_billing_stripe_client_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rb",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rb__invoices_cls__charge_invoice_fn",
+      "target": "src_billing_stripe_client_rb__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "context": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls",
+      "target": "src_db_connection_rb__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rb",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_db_connection_rb__connection_cls__ensure_schema_fn",
+      "target": "src_db_connection_rb__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "src_users_crud_rb",
+      "target": "src_db_connection_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "require",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L2",
+      "weight": 1.0,
+      "source": "src_users_crud_rb",
+      "target": "src_users_user_rb",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__create_user_fn",
+      "target": "src_db_connection_rb__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__get_user_by_email_fn",
+      "target": "src_db_connection_rb__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rb",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_users_crud_rb__crud_cls__get_user_fn",
+      "target": "src_db_connection_rb__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h17",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}

@@ -14,7 +14,7 @@ graphify clone/install. Everything downstream is unchanged: we only replace the
 
 Multi-language: each file is dispatched by suffix (``_SUFFIX_LANG``) to a
 per-language extractor (``_EXTRACTORS``). Python, TypeScript, Go, Rust, Java, C,
-C++, and C# ship today, each mapping its grammar's node types onto the same
+C++, C#, and Ruby ship today, each mapping its grammar's node types onto the same
 node/edge model; registering another grammar adds a language with no change downstream of
 ``graph.json``.
 
@@ -69,8 +69,8 @@ SCHEMA_VERSION = 1
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
-# first; TypeScript, Go, Rust, Java, C, C++, and C# are registered here behind
-# the same seam.
+# first; TypeScript, Go, Rust, Java, C, C++, C#, and Ruby are registered here
+# behind the same seam.
 _SUFFIX_LANG: dict[str, str] = {
     ".py": "python",
     ".ts": "typescript",
@@ -87,6 +87,7 @@ _SUFFIX_LANG: dict[str, str] = {
     ".hh": "cpp",
     ".hxx": "cpp",
     ".cs": "csharp",
+    ".rb": "ruby",
 }
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
@@ -135,6 +136,10 @@ def _load_language(name: str):
             return Language(ts.language())
         if name == "csharp":
             import tree_sitter_c_sharp as ts
+
+            return Language(ts.language())
+        if name == "ruby":
+            import tree_sitter_ruby as ts
 
             return Language(ts.language())
     except Exception:
@@ -681,8 +686,10 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
 # immediately preceding a declaration, not in a first-statement string literal.
 # --------------------------------------------------------------------------- #
 def _clean_comment(raw: str) -> str:
-    """Strip ``//`` / ``/* */`` / leading-``*`` markers from a comment and
-    collapse it to a single capped line."""
+    """Strip ``//`` / ``/* */`` / leading-``*`` / ``#`` markers from a comment
+    and collapse it to a single capped line. The leading-``#`` strip covers
+    Ruby (and shell-style) ``#`` doc comments; the other languages don't use it,
+    so their rationale text is unaffected."""
     raw = raw.strip()
     if raw.startswith("/*"):
         raw = raw[2:]
@@ -690,7 +697,7 @@ def _clean_comment(raw: str) -> str:
             raw = raw[:-2]
     out: list[str] = []
     for ln in raw.splitlines():
-        s = ln.strip().lstrip("/*").strip()
+        s = ln.strip().lstrip("/*#").strip()
         if s.endswith("*/"):
             s = s[:-2].strip()
         if s:
@@ -2333,6 +2340,208 @@ def _csharp_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, fil
     _csharp_resolve_calls(b, root_node, src, rel, file_id)
 
 
+# --------------------------------------------------------------------------- #
+# Ruby extractor
+# --------------------------------------------------------------------------- #
+# Ruby is dynamic — class/module/method structure is clean, but call edges are
+# best-effort (no receiver-type resolution). `module`/`class` -> type nodes,
+# `def`/`def self.` -> function nodes, constant assignments -> symbol nodes,
+# `< Super` -> inherits, `require_relative` -> imports_from, `#` docs -> rationale.
+def _ruby_module_key(rel: str) -> str:
+    """``lib/db/connection.rb`` → ``lib/db/connection`` (extension dropped)."""
+    return rel[:-3] if rel.endswith(".rb") else rel
+
+
+def _ruby_const_name(node, src: bytes) -> str | None:
+    """Simple name of a ``constant`` / ``scope_resolution`` (``Acme::Foo`` → Foo)."""
+    if node is None:
+        return None
+    return _node_text(node, src).split("::")[-1].strip() or None
+
+
+def _ruby_emit_fn(b: _GraphBuilder, fn_node, src: bytes, rel: str, container: str) -> None:
+    nm = fn_node.child_by_field_name("name")
+    name = _node_text(nm, src) if nm is not None else None
+    if not name:
+        return
+    line = (nm.start_point[0] if nm is not None else fn_node.start_point[0]) + 1
+    fid = f"{container}__{_slug(name)}_fn"
+    b.add_node(fid, f"{name}()", "code", rel, line)
+    b.func_by_name.setdefault(name, []).append(fid)
+    b.add_edge("contains", container, fid, rel, line)
+    _attach_comment_rationale(b, fn_node, src, rel, fid)
+
+
+def _ruby_emit_const(b: _GraphBuilder, assign_node, src: bytes, rel: str, container: str) -> None:
+    """A constant assignment (``ATTEMPTS = 3``) → a symbol node."""
+    lhs = assign_node.child_by_field_name("left")
+    if lhs is None or lhs.type != "constant":
+        return
+    name = _node_text(lhs, src)
+    line = lhs.start_point[0] + 1
+    sid = f"{container}__{_slug(name)}_sym"
+    b.add_node(sid, name, "code", rel, line)
+    b.add_edge("contains", container, sid, rel, line)
+
+
+def _ruby_body_of(type_node):
+    """The ``body_statement`` member container of a class/module, or None."""
+    return next((c for c in type_node.named_children if c.type == "body_statement"), None)
+
+
+def _ruby_emit_type(
+    b: _GraphBuilder, type_node, src: bytes, rel: str, file_id: str, container: str
+) -> None:
+    nm = type_node.child_by_field_name("name")
+    name = _ruby_const_name(nm, src)
+    if not name:
+        return
+    line = (nm.start_point[0] if nm is not None else type_node.start_point[0]) + 1
+    cid = f"{file_id}__{_slug(name)}_cls"
+    is_new = cid not in b.nodes
+    b.add_node(cid, name, "code", rel, line)
+    if is_new:
+        b.class_by_name.setdefault(name, []).append(cid)
+    b.add_edge("contains", container, cid, rel, line)
+    _attach_comment_rationale(b, type_node, src, rel, cid)
+    b.file_by_module.setdefault(name, file_id)
+
+    body = _ruby_body_of(type_node)
+    if body is None:
+        return
+    for member in body.named_children:
+        t = member.type
+        if t in ("method", "singleton_method"):
+            _ruby_emit_fn(b, member, src, rel, cid)
+        elif t == "assignment":
+            _ruby_emit_const(b, member, src, rel, cid)
+        elif t in ("class", "module"):
+            _ruby_emit_type(b, member, src, rel, file_id, cid)
+
+
+def _ruby_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 1 for Ruby: module/class types + their methods and constants, plus
+    top-level methods and constants."""
+    b.file_by_module[_ruby_module_key(rel)] = file_id
+    for child in root_node.named_children:
+        t = child.type
+        if t in ("class", "module"):
+            _ruby_emit_type(b, child, src, rel, file_id, file_id)
+        elif t in ("method", "singleton_method"):
+            _ruby_emit_fn(b, child, src, rel, file_id)
+        elif t == "assignment":
+            _ruby_emit_const(b, child, src, rel, file_id)
+
+
+def _ruby_superclass_name(type_node, src: bytes) -> str | None:
+    """Base class name from a ``class Foo < Bar`` superclass clause."""
+    sup = type_node.child_by_field_name("superclass")
+    if sup is None:
+        return None
+    base = next((c for c in sup.named_children if c.type in ("constant", "scope_resolution")), None)
+    return _ruby_const_name(base, src)
+
+
+def _ruby_resolve_inherits(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``class Foo < Bar`` → ``inherits`` edge (external bases synthesized so the
+    edge never dangles). Recurses into module/class bodies for nested types."""
+    for child in node.named_children:
+        if child.type == "class":
+            name = _ruby_const_name(child.child_by_field_name("name"), src)
+            base = _ruby_superclass_name(child, src)
+            cid = next(
+                (c for c in b.class_by_name.get(name or "", []) if c.startswith(file_id)), None
+            )
+            if cid is not None and base:
+                line = child.start_point[0] + 1
+                targets = b.class_by_name.get(base)
+                if targets:
+                    for base_id in targets:
+                        b.add_edge("inherits", cid, base_id, rel, line)
+                else:
+                    base_id = f"ext__{_slug(base)}_cls"
+                    b.add_node(base_id, base, "code", rel, line)
+                    b.add_edge("inherits", cid, base_id, rel, line)
+        if child.type in ("class", "module"):
+            body = _ruby_body_of(child)
+            if body is not None:
+                _ruby_resolve_inherits(b, body, src, rel, file_id)
+
+
+def _ruby_call_method_name(call_node, src: bytes) -> str | None:
+    """The invoked method name of a ``call`` node (field ``method`` for
+    ``recv.foo`` / ``foo(...)``; the leading identifier for a command call)."""
+    m = call_node.child_by_field_name("method")
+    if m is not None:
+        return _node_text(m, src)
+    first = call_node.named_children[0] if call_node.named_children else None
+    if first is not None and first.type == "identifier":
+        return _node_text(first, src)
+    return None
+
+
+def _ruby_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    def enclosing_fn_id(name: str | None) -> str | None:
+        if not name:
+            return None
+        cands = b.func_by_name.get(name, [])
+        return next((c for c in cands if c.startswith(file_id)), cands[0] if cands else None)
+
+    def visit(node, current_fn: str | None) -> None:
+        for child in node.named_children:
+            if child.type in ("method", "singleton_method"):
+                fid = enclosing_fn_id(_name_of(child, src))
+                body = _ruby_body_of(child) or child.child_by_field_name("body")
+                if body is not None:
+                    visit(body, fid)
+                continue
+            if child.type == "call" and current_fn is not None:
+                callee = _ruby_call_method_name(child, src)
+                if callee and callee not in ("require", "require_relative", "include"):
+                    for target in b.func_by_name.get(callee, []):
+                        if target != current_fn:
+                            b.add_edge("calls", current_fn, target, rel, child.start_point[0] + 1)
+                            break
+            visit(child, current_fn)
+
+    visit(root_node, None)
+
+
+def _ruby_resolve_requires(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
+    """``require_relative "x"`` → ``imports_from`` (resolved to the project file
+    by relative path; emitted only to existing file ids, so never dangles)."""
+    for child in node.named_children:
+        if child.type == "call" and _ruby_call_method_name(child, src) == "require_relative":
+            args = child.child_by_field_name("arguments") or next(
+                (c for c in child.named_children if c.type == "argument_list"), None
+            )
+            if args is None:
+                continue
+            str_node = next((c for c in args.named_children if c.type == "string"), None)
+            if str_node is None:
+                continue
+            spec = _node_text(str_node, src).strip().strip("\"'")
+            key = _ts_resolve_import(rel, spec if spec.startswith(".") else "./" + spec)
+            target = b.file_by_module.get(key) if key else None
+            if target and target != file_id:
+                b.add_edge(
+                    "imports_from",
+                    file_id,
+                    target,
+                    rel,
+                    child.start_point[0] + 1,
+                    context="require",
+                )
+        # require_relative is always top-level in the fixtures; no recursion needed.
+
+
+def _ruby_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
+    """Pass 2 for Ruby: require_relative imports + inherits + calls."""
+    _ruby_resolve_requires(b, root_node, src, rel, file_id)
+    _ruby_resolve_inherits(b, root_node, src, rel, file_id)
+    _ruby_resolve_calls(b, root_node, src, rel, file_id)
+
+
 # Suffix-language → (pass-1 symbol extractor, pass-2 edge resolver). The seam:
 # registering a grammar + a pair of functions adds a language with no change to
 # anything downstream of graph.json.
@@ -2345,6 +2554,7 @@ _EXTRACTORS: dict[str, tuple] = {
     "c": (_c_extract_symbols, _c_resolve_edges),
     "cpp": (_c_extract_symbols, _cpp_resolve_edges),
     "csharp": (_csharp_extract_symbols, _csharp_resolve_edges),
+    "ruby": (_ruby_extract_symbols, _ruby_resolve_edges),
 }
 
 
