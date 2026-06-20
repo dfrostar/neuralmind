@@ -836,6 +836,7 @@ def main() -> None:
         "sample_project_cpp",
         "sample_project_csharp",
         "sample_project_ruby",
+        "sample_project_php",
     ):
         fixture_dir = HERE / name
         graph = build_builtin_gold(fixture_dir)
