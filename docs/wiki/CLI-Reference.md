@@ -116,7 +116,7 @@ neuralmind build /path/to/project --force
 
 Backend precedence:
 1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
-2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, and Ruby** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass.
+2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`, `.php`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0; PHP in v0.37.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass.
 3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.

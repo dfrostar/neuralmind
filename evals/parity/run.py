@@ -84,6 +84,7 @@ _LANG_FIXTURES: dict[str, str] = {
     "cpp": "tests/fixtures/sample_project_cpp",
     "csharp": "tests/fixtures/sample_project_csharp",
     "ruby": "tests/fixtures/sample_project_ruby",
+    "php": "tests/fixtures/sample_project_php",
 }
 
 

@@ -1,0 +1,1972 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "Routes.php",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L1",
+      "id": "src_api_routes_php",
+      "community": 1,
+      "norm_label": "routes.php"
+    },
+    {
+      "label": "Method",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L10",
+      "id": "src_api_routes_php__method_cls",
+      "community": 1,
+      "norm_label": "method"
+    },
+    {
+      "label": "The HTTP methods the fixture router understands.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L10",
+      "id": "src_api_routes_php__method_cls__rationale",
+      "community": 1,
+      "norm_label": "the http methods the fixture router understands."
+    },
+    {
+      "label": "GET",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L12",
+      "id": "src_api_routes_php__method_cls__get_sym",
+      "community": 1,
+      "norm_label": "get"
+    },
+    {
+      "label": "POST",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L13",
+      "id": "src_api_routes_php__method_cls__post_sym",
+      "community": 1,
+      "norm_label": "post"
+    },
+    {
+      "label": "DELETE",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L14",
+      "id": "src_api_routes_php__method_cls__delete_sym",
+      "community": 1,
+      "norm_label": "delete"
+    },
+    {
+      "label": "Route",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L18",
+      "id": "src_api_routes_php__route_cls",
+      "community": 1,
+      "norm_label": "route"
+    },
+    {
+      "label": "A single registered route.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L18",
+      "id": "src_api_routes_php__route_cls__rationale",
+      "community": 1,
+      "norm_label": "a single registered route."
+    },
+    {
+      "label": "path",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L21",
+      "id": "src_api_routes_php__route_cls__path_sym",
+      "community": 1,
+      "norm_label": "path"
+    },
+    {
+      "label": "verb",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L23",
+      "id": "src_api_routes_php__route_cls__verb_sym",
+      "community": 1,
+      "norm_label": "verb"
+    },
+    {
+      "label": "Routes",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L27",
+      "id": "src_api_routes_php__routes_cls",
+      "community": 1,
+      "norm_label": "routes"
+    },
+    {
+      "label": "HTTP route table wiring auth and billing handlers to paths.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L27",
+      "id": "src_api_routes_php__routes_cls__rationale",
+      "community": 1,
+      "norm_label": "http route table wiring auth and billing handlers to paths."
+    },
+    {
+      "label": "loginEndpoint()",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L30",
+      "id": "src_api_routes_php__routes_cls__loginendpoint_fn",
+      "community": 1,
+      "norm_label": "loginendpoint()"
+    },
+    {
+      "label": "POST /api/auth/login \u2014 issue a token for valid credentials.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L30",
+      "id": "src_api_routes_php__routes_cls__loginendpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "post /api/auth/login \u2014 issue a token for valid credentials."
+    },
+    {
+      "label": "getMeEndpoint()",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L36",
+      "id": "src_api_routes_php__routes_cls__getmeendpoint_fn",
+      "community": 1,
+      "norm_label": "getmeendpoint()"
+    },
+    {
+      "label": "GET /api/users/me \u2014 requires a valid session token.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L36",
+      "id": "src_api_routes_php__routes_cls__getmeendpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "get /api/users/me \u2014 requires a valid session token."
+    },
+    {
+      "label": "chargeEndpoint()",
+      "file_type": "code",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L42",
+      "id": "src_api_routes_php__routes_cls__chargeendpoint_fn",
+      "community": 1,
+      "norm_label": "chargeendpoint()"
+    },
+    {
+      "label": "POST /api/billing/charge \u2014 charge the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L42",
+      "id": "src_api_routes_php__routes_cls__chargeendpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "post /api/billing/charge \u2014 charge the authenticated user."
+    },
+    {
+      "label": "Handlers.php",
+      "file_type": "code",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L1",
+      "id": "src_auth_handlers_php",
+      "community": 2,
+      "norm_label": "handlers.php"
+    },
+    {
+      "label": "Handlers",
+      "file_type": "code",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L9",
+      "id": "src_auth_handlers_php__handlers_cls",
+      "community": 2,
+      "norm_label": "handlers"
+    },
+    {
+      "label": "Authentication request handlers \u2014 login and session verification.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L9",
+      "id": "src_auth_handlers_php__handlers_cls__rationale",
+      "community": 2,
+      "norm_label": "authentication request handlers \u2014 login and session verification."
+    },
+    {
+      "label": "authenticateUser()",
+      "file_type": "code",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L12",
+      "id": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "community": 2,
+      "norm_label": "authenticateuser()"
+    },
+    {
+      "label": "Validate credentials and issue an access token.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L12",
+      "id": "src_auth_handlers_php__handlers_cls__authenticateuser_fn__rationale",
+      "community": 2,
+      "norm_label": "validate credentials and issue an access token."
+    },
+    {
+      "label": "verifySession()",
+      "file_type": "code",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L19",
+      "id": "src_auth_handlers_php__handlers_cls__verifysession_fn",
+      "community": 2,
+      "norm_label": "verifysession()"
+    },
+    {
+      "label": "Return true if the access token is currently valid.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L19",
+      "id": "src_auth_handlers_php__handlers_cls__verifysession_fn__rationale",
+      "community": 2,
+      "norm_label": "return true if the access token is currently valid."
+    },
+    {
+      "label": "JwtUtils.php",
+      "file_type": "code",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L1",
+      "id": "src_auth_jwtutils_php",
+      "community": 3,
+      "norm_label": "jwtutils.php"
+    },
+    {
+      "label": "JwtUtils",
+      "file_type": "code",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L6",
+      "id": "src_auth_jwtutils_php__jwtutils_cls",
+      "community": 3,
+      "norm_label": "jwtutils"
+    },
+    {
+      "label": "JWT signing and signature verification helpers.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L6",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__rationale",
+      "community": 3,
+      "norm_label": "jwt signing and signature verification helpers."
+    },
+    {
+      "label": "encodeToken()",
+      "file_type": "code",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L9",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn",
+      "community": 3,
+      "norm_label": "encodetoken()"
+    },
+    {
+      "label": "Produce a signed JWT string from a subject claim.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L9",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn__rationale",
+      "community": 3,
+      "norm_label": "produce a signed jwt string from a subject claim."
+    },
+    {
+      "label": "decodeToken()",
+      "file_type": "code",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L15",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn",
+      "community": 3,
+      "norm_label": "decodetoken()"
+    },
+    {
+      "label": "Verify a JWT signature and return the payload if valid.",
+      "file_type": "rationale",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L15",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn__rationale",
+      "community": 3,
+      "norm_label": "verify a jwt signature and return the payload if valid."
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L24",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__sign_fn",
+      "community": 3,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "Sign a raw payload (internal helper).",
+      "file_type": "rationale",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L24",
+      "id": "src_auth_jwtutils_php__jwtutils_cls__sign_fn__rationale",
+      "community": 3,
+      "norm_label": "sign a raw payload (internal helper)."
+    },
+    {
+      "label": "Invoices.php",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L1",
+      "id": "src_billing_invoices_php",
+      "community": 4,
+      "norm_label": "invoices.php"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L8",
+      "id": "src_billing_invoices_php__invoice_cls",
+      "community": 4,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "A billing invoice for a user.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L8",
+      "id": "src_billing_invoices_php__invoice_cls__rationale",
+      "community": 4,
+      "norm_label": "a billing invoice for a user."
+    },
+    {
+      "label": "userId",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L10",
+      "id": "src_billing_invoices_php__invoice_cls__userid_sym",
+      "community": 4,
+      "norm_label": "userid"
+    },
+    {
+      "label": "amountCents",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L11",
+      "id": "src_billing_invoices_php__invoice_cls__amountcents_sym",
+      "community": 4,
+      "norm_label": "amountcents"
+    },
+    {
+      "label": "Invoices",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L15",
+      "id": "src_billing_invoices_php__invoices_cls",
+      "community": 4,
+      "norm_label": "invoices"
+    },
+    {
+      "label": "Invoice generation and delivery, built on the Stripe client.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L15",
+      "id": "src_billing_invoices_php__invoices_cls__rationale",
+      "community": 4,
+      "norm_label": "invoice generation and delivery, built on the stripe client."
+    },
+    {
+      "label": "chargeInvoice()",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L18",
+      "id": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn",
+      "community": 4,
+      "norm_label": "chargeinvoice()"
+    },
+    {
+      "label": "Charge a user's invoice through Stripe and return the charge id.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L18",
+      "id": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn__rationale",
+      "community": 4,
+      "norm_label": "charge a user's invoice through stripe and return the charge id."
+    },
+    {
+      "label": "sendInvoiceEmail()",
+      "file_type": "code",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L24",
+      "id": "src_billing_invoices_php__invoices_cls__sendinvoiceemail_fn",
+      "community": 4,
+      "norm_label": "sendinvoiceemail()"
+    },
+    {
+      "label": "Render an invoice and hand it to the email transport.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L24",
+      "id": "src_billing_invoices_php__invoices_cls__sendinvoiceemail_fn__rationale",
+      "community": 4,
+      "norm_label": "render an invoice and hand it to the email transport."
+    },
+    {
+      "label": "StripeClient.php",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L1",
+      "id": "src_billing_stripeclient_php",
+      "community": 5,
+      "norm_label": "stripeclient.php"
+    },
+    {
+      "label": "StripeClient",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L6",
+      "id": "src_billing_stripeclient_php__stripeclient_cls",
+      "community": 5,
+      "norm_label": "stripeclient"
+    },
+    {
+      "label": "Stripe API client \u2014 charges, refunds, and webhook verification.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L6",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__rationale",
+      "community": 5,
+      "norm_label": "stripe api client \u2014 charges, refunds, and webhook verification."
+    },
+    {
+      "label": "API_VERSION",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L9",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__api_version_sym",
+      "community": 5,
+      "norm_label": "api_version"
+    },
+    {
+      "label": "apiKey",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L12",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__apikey_sym",
+      "community": 5,
+      "norm_label": "apikey"
+    },
+    {
+      "label": "__construct()",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L15",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__construct_fn",
+      "community": 5,
+      "norm_label": "__construct()"
+    },
+    {
+      "label": "Create a client with the given secret API key.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L15",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__construct_fn__rationale",
+      "community": 5,
+      "norm_label": "create a client with the given secret api key."
+    },
+    {
+      "label": "chargeCustomer()",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L21",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn",
+      "community": 5,
+      "norm_label": "chargecustomer()"
+    },
+    {
+      "label": "Charge a customer a number of cents; returns the charge id.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L21",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn__rationale",
+      "community": 5,
+      "norm_label": "charge a customer a number of cents; returns the charge id."
+    },
+    {
+      "label": "refundCharge()",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L27",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__refundcharge_fn",
+      "community": 5,
+      "norm_label": "refundcharge()"
+    },
+    {
+      "label": "Issue a full refund for a previous charge.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L27",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__refundcharge_fn__rationale",
+      "community": 5,
+      "norm_label": "issue a full refund for a previous charge."
+    },
+    {
+      "label": "verifyWebhook()",
+      "file_type": "code",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L33",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__verifywebhook_fn",
+      "community": 5,
+      "norm_label": "verifywebhook()"
+    },
+    {
+      "label": "Validate a Stripe webhook signature and return the event kind.",
+      "file_type": "rationale",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L33",
+      "id": "src_billing_stripeclient_php__stripeclient_cls__verifywebhook_fn__rationale",
+      "community": 5,
+      "norm_label": "validate a stripe webhook signature and return the event kind."
+    },
+    {
+      "label": "Connection.php",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L1",
+      "id": "src_db_connection_php",
+      "community": 6,
+      "norm_label": "connection.php"
+    },
+    {
+      "label": "DataStore",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L6",
+      "id": "src_db_connection_php__datastore_cls",
+      "community": 6,
+      "norm_label": "datastore"
+    },
+    {
+      "label": "Behaviour every backing store must provide.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L6",
+      "id": "src_db_connection_php__datastore_cls__rationale",
+      "community": 6,
+      "norm_label": "behaviour every backing store must provide."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L9",
+      "id": "src_db_connection_php__datastore_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "Run a statement and return the number of affected rows.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L9",
+      "id": "src_db_connection_php__datastore_cls__execute_fn__rationale",
+      "community": 6,
+      "norm_label": "run a statement and return the number of affected rows."
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L13",
+      "id": "src_db_connection_php__connection_cls",
+      "community": 6,
+      "norm_label": "connection"
+    },
+    {
+      "label": "A pooled connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L13",
+      "id": "src_db_connection_php__connection_cls__rationale",
+      "community": 6,
+      "norm_label": "a pooled connection to the fixture database."
+    },
+    {
+      "label": "url",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L16",
+      "id": "src_db_connection_php__connection_cls__url_sym",
+      "community": 6,
+      "norm_label": "url"
+    },
+    {
+      "label": "getConnection()",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L19",
+      "id": "src_db_connection_php__connection_cls__getconnection_fn",
+      "community": 6,
+      "norm_label": "getconnection()"
+    },
+    {
+      "label": "Return a process-wide connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L19",
+      "id": "src_db_connection_php__connection_cls__getconnection_fn__rationale",
+      "community": 6,
+      "norm_label": "return a process-wide connection to the fixture database."
+    },
+    {
+      "label": "close()",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L25",
+      "id": "src_db_connection_php__connection_cls__close_fn",
+      "community": 6,
+      "norm_label": "close()"
+    },
+    {
+      "label": "Close the connection and release the pool slot.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L25",
+      "id": "src_db_connection_php__connection_cls__close_fn__rationale",
+      "community": 6,
+      "norm_label": "close the connection and release the pool slot."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L30",
+      "id": "src_db_connection_php__connection_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "ensureSchema()",
+      "file_type": "code",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L36",
+      "id": "src_db_connection_php__connection_cls__ensureschema_fn",
+      "community": 6,
+      "norm_label": "ensureschema()"
+    },
+    {
+      "label": "Create the fixture tables if they don't exist yet.",
+      "file_type": "rationale",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L36",
+      "id": "src_db_connection_php__connection_cls__ensureschema_fn__rationale",
+      "community": 6,
+      "norm_label": "create the fixture tables if they don't exist yet."
+    },
+    {
+      "label": "Crud.php",
+      "file_type": "code",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L1",
+      "id": "src_users_crud_php",
+      "community": 7,
+      "norm_label": "crud.php"
+    },
+    {
+      "label": "Crud",
+      "file_type": "code",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L8",
+      "id": "src_users_crud_php__crud_cls",
+      "community": 7,
+      "norm_label": "crud"
+    },
+    {
+      "label": "User CRUD operations backed by the database connection.",
+      "file_type": "rationale",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L8",
+      "id": "src_users_crud_php__crud_cls__rationale",
+      "community": 7,
+      "norm_label": "user crud operations backed by the database connection."
+    },
+    {
+      "label": "createUser()",
+      "file_type": "code",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L11",
+      "id": "src_users_crud_php__crud_cls__createuser_fn",
+      "community": 7,
+      "norm_label": "createuser()"
+    },
+    {
+      "label": "Insert a new user and return the created record.",
+      "file_type": "rationale",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L11",
+      "id": "src_users_crud_php__crud_cls__createuser_fn__rationale",
+      "community": 7,
+      "norm_label": "insert a new user and return the created record."
+    },
+    {
+      "label": "getUserByEmail()",
+      "file_type": "code",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L20",
+      "id": "src_users_crud_php__crud_cls__getuserbyemail_fn",
+      "community": 7,
+      "norm_label": "getuserbyemail()"
+    },
+    {
+      "label": "Fetch a user by email \u2014 the authentication hot path.",
+      "file_type": "rationale",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L20",
+      "id": "src_users_crud_php__crud_cls__getuserbyemail_fn__rationale",
+      "community": 7,
+      "norm_label": "fetch a user by email \u2014 the authentication hot path."
+    },
+    {
+      "label": "getUser()",
+      "file_type": "code",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L29",
+      "id": "src_users_crud_php__crud_cls__getuser_fn",
+      "community": 7,
+      "norm_label": "getuser()"
+    },
+    {
+      "label": "Fetch a user by primary key.",
+      "file_type": "rationale",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L29",
+      "id": "src_users_crud_php__crud_cls__getuser_fn__rationale",
+      "community": 7,
+      "norm_label": "fetch a user by primary key."
+    },
+    {
+      "label": "User.php",
+      "file_type": "code",
+      "source_file": "src/Users/User.php",
+      "source_location": "L1",
+      "id": "src_users_user_php",
+      "community": 8,
+      "norm_label": "user.php"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "src/Users/User.php",
+      "source_location": "L6",
+      "id": "src_users_user_php__user_cls",
+      "community": 8,
+      "norm_label": "user"
+    },
+    {
+      "label": "A persisted user record.",
+      "file_type": "rationale",
+      "source_file": "src/Users/User.php",
+      "source_location": "L6",
+      "id": "src_users_user_php__user_cls__rationale",
+      "community": 8,
+      "norm_label": "a persisted user record."
+    },
+    {
+      "label": "MAX_EMAIL_LEN",
+      "file_type": "code",
+      "source_file": "src/Users/User.php",
+      "source_location": "L9",
+      "id": "src_users_user_php__user_cls__max_email_len_sym",
+      "community": 8,
+      "norm_label": "max_email_len"
+    },
+    {
+      "label": "id",
+      "file_type": "code",
+      "source_file": "src/Users/User.php",
+      "source_location": "L12",
+      "id": "src_users_user_php__user_cls__id_sym",
+      "community": 8,
+      "norm_label": "id"
+    },
+    {
+      "label": "email",
+      "file_type": "code",
+      "source_file": "src/Users/User.php",
+      "source_location": "L14",
+      "id": "src_users_user_php__user_cls__email_sym",
+      "community": 8,
+      "norm_label": "email"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 0,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "sample_project_php",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md__h1",
+      "community": 0,
+      "norm_label": "sample_project_php"
+    },
+    {
+      "label": "Why this fixture?",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L9",
+      "id": "readme_md__h9",
+      "community": 0,
+      "norm_label": "why this fixture?"
+    },
+    {
+      "label": "Shape",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "id": "readme_md__h17",
+      "community": 0,
+      "norm_label": "shape"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_api_routes_php__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_api_routes_php__method_cls__rationale",
+      "target": "src_api_routes_php__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_api_routes_php__method_cls",
+      "target": "src_api_routes_php__method_cls__get_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_api_routes_php__method_cls",
+      "target": "src_api_routes_php__method_cls__post_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_api_routes_php__method_cls",
+      "target": "src_api_routes_php__method_cls__delete_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_api_routes_php__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_api_routes_php__route_cls__rationale",
+      "target": "src_api_routes_php__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_api_routes_php__route_cls",
+      "target": "src_api_routes_php__route_cls__path_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_api_routes_php__route_cls",
+      "target": "src_api_routes_php__route_cls__verb_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_api_routes_php__routes_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__rationale",
+      "target": "src_api_routes_php__routes_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls",
+      "target": "src_api_routes_php__routes_cls__loginendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__loginendpoint_fn__rationale",
+      "target": "src_api_routes_php__routes_cls__loginendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls",
+      "target": "src_api_routes_php__routes_cls__getmeendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__getmeendpoint_fn__rationale",
+      "target": "src_api_routes_php__routes_cls__getmeendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls",
+      "target": "src_api_routes_php__routes_cls__chargeendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__chargeendpoint_fn__rationale",
+      "target": "src_api_routes_php__routes_cls__chargeendpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php",
+      "target": "src_auth_handlers_php__handlers_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__rationale",
+      "target": "src_auth_handlers_php__handlers_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls",
+      "target": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__authenticateuser_fn__rationale",
+      "target": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls",
+      "target": "src_auth_handlers_php__handlers_cls__verifysession_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__verifysession_fn__rationale",
+      "target": "src_auth_handlers_php__handlers_cls__verifysession_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php",
+      "target": "src_auth_jwtutils_php__jwtutils_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls__rationale",
+      "target": "src_auth_jwtutils_php__jwtutils_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn__rationale",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn__rationale",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls__sign_fn__rationale",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php",
+      "target": "src_billing_invoices_php__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoice_cls__rationale",
+      "target": "src_billing_invoices_php__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoice_cls",
+      "target": "src_billing_invoices_php__invoice_cls__userid_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoice_cls",
+      "target": "src_billing_invoices_php__invoice_cls__amountcents_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php",
+      "target": "src_billing_invoices_php__invoices_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls__rationale",
+      "target": "src_billing_invoices_php__invoices_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls",
+      "target": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn__rationale",
+      "target": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls",
+      "target": "src_billing_invoices_php__invoices_cls__sendinvoiceemail_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls__sendinvoiceemail_fn__rationale",
+      "target": "src_billing_invoices_php__invoices_cls__sendinvoiceemail_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php",
+      "target": "src_billing_stripeclient_php__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls__rationale",
+      "target": "src_billing_stripeclient_php__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__api_version_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__apikey_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__construct_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls__construct_fn__rationale",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__construct_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn__rationale",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__refundcharge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls__refundcharge_fn__rationale",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__refundcharge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__verifywebhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/StripeClient.php",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_billing_stripeclient_php__stripeclient_cls__verifywebhook_fn__rationale",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__verifywebhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_db_connection_php",
+      "target": "src_db_connection_php__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_db_connection_php__datastore_cls__rationale",
+      "target": "src_db_connection_php__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_db_connection_php__datastore_cls",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_db_connection_php__datastore_cls__execute_fn__rationale",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_db_connection_php",
+      "target": "src_db_connection_php__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls__rationale",
+      "target": "src_db_connection_php__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__connection_cls__url_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__connection_cls__getconnection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls__getconnection_fn__rationale",
+      "target": "src_db_connection_php__connection_cls__getconnection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls__close_fn__rationale",
+      "target": "src_db_connection_php__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__connection_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__connection_cls__ensureschema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls__ensureschema_fn__rationale",
+      "target": "src_db_connection_php__connection_cls__ensureschema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_users_crud_php",
+      "target": "src_users_crud_php__crud_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__rationale",
+      "target": "src_users_crud_php__crud_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls",
+      "target": "src_users_crud_php__crud_cls__createuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__createuser_fn__rationale",
+      "target": "src_users_crud_php__crud_cls__createuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls",
+      "target": "src_users_crud_php__crud_cls__getuserbyemail_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__getuserbyemail_fn__rationale",
+      "target": "src_users_crud_php__crud_cls__getuserbyemail_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls",
+      "target": "src_users_crud_php__crud_cls__getuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__getuser_fn__rationale",
+      "target": "src_users_crud_php__crud_cls__getuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/User.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_users_user_php",
+      "target": "src_users_user_php__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/User.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_users_user_php__user_cls__rationale",
+      "target": "src_users_user_php__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/User.php",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_users_user_php__user_cls",
+      "target": "src_users_user_php__user_cls__max_email_len_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/User.php",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_users_user_php__user_cls",
+      "target": "src_users_user_php__user_cls__id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/User.php",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_users_user_php__user_cls",
+      "target": "src_users_user_php__user_cls__email_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_auth_handlers_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_billing_stripeclient_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_api_routes_php",
+      "target": "src_db_connection_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__loginendpoint_fn",
+      "target": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__getmeendpoint_fn",
+      "target": "src_auth_handlers_php__handlers_cls__verifysession_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Api/Routes.php",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "src_api_routes_php__routes_cls__chargeendpoint_fn",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php",
+      "target": "src_db_connection_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php",
+      "target": "src_users_crud_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "target": "src_users_crud_php__crud_cls__getuserbyemail_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__authenticateuser_fn",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/Handlers.php",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "src_auth_handlers_php__handlers_cls__verifysession_fn",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__decodetoken_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Auth/JwtUtils.php",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_auth_jwtutils_php__jwtutils_cls__encodetoken_fn",
+      "target": "src_auth_jwtutils_php__jwtutils_cls__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php",
+      "target": "src_users_user_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Billing/Invoices.php",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_billing_invoices_php__invoices_cls__chargeinvoice_fn",
+      "target": "src_billing_stripeclient_php__stripeclient_cls__chargecustomer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "context": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls",
+      "target": "src_db_connection_php__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Db/Connection.php",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_db_connection_php__connection_cls__ensureschema_fn",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_users_crud_php",
+      "target": "src_db_connection_php",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__createuser_fn",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__getuserbyemail_fn",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/Users/Crud.php",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "src_users_crud_php__crud_cls__getuser_fn",
+      "target": "src_db_connection_php__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h17",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}
