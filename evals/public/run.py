@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import backends
+from . import backends, judge
 from .backends import BackendResult, RepoFiles
 from .tokens import tokenizer_name
 
@@ -139,13 +139,21 @@ def _aggregate(per_query: list[BackendResult]) -> dict[str, Any]:
     }
 
 
-def run_repo(repo: dict[str, Any], work_dir: Path, seeds: int = 1) -> dict[str, Any] | None:
-    """Run every backend over every query for one repo. ``None`` if skipped."""
+def run_repo(
+    repo: dict[str, Any], work_dir: Path, seeds: int = 1, judge_client: Any | None = None
+) -> dict[str, Any] | None:
+    """Run every backend over every query for one repo. ``None`` if skipped.
+
+    When ``judge_client`` is provided, the opt-in answerability arm also runs:
+    each backend's *real* window text is answered + graded (see
+    ``evals/public/judge.py``). This is off the deterministic path — the recall
+    numbers above are byte-identical with or without the arm."""
     src = ensure_checkout(repo, work_dir)
     if src is None:
         return {"name": repo["name"], "skipped": "checkout unavailable (no network?)"}
     repo_files = RepoFiles.load(src)
     nm = _build_nm(src)
+    arm = judge.JudgeArm(judge_client) if judge_client is not None else None
     by_backend: dict[str, list[BackendResult]] = {b: [] for b in BACKEND_ORDER}
     rows: list[dict[str, Any]] = []
     for query in repo["queries"]:
@@ -155,6 +163,8 @@ def run_repo(repo: dict[str, Any], work_dir: Path, seeds: int = 1) -> dict[str, 
         rows.append(
             {"query_id": query["id"], "results": {r.backend: r.to_dict() for r in qresults}}
         )
+        if arm is not None:
+            arm.judge_query(query, qresults)
     summary = {b: _aggregate(rs) for b, rs in by_backend.items() if rs}
     return {
         "name": repo["name"],
@@ -166,6 +176,9 @@ def run_repo(repo: dict[str, Any], work_dir: Path, seeds: int = 1) -> dict[str, 
         # We record the seed count honestly rather than inject artificial noise.
         "seeds": seeds,
         "summary": summary,
+        # Answerability arm (only when --judge ran); a clearly-labeled secondary
+        # signal, never folded into the recall headline above.
+        **({"judge_summary": arm.summary(), "judge_raw": arm.raw} if arm is not None else {}),
         "queries": rows,
         "losses": [
             {"query_id": q["query_id"], "backend": b, **r}
@@ -181,6 +194,7 @@ def run_all(
     work_dir: Path = DEFAULT_WORK_DIR,
     only: str | None = None,
     seeds: int = 1,
+    judge_client: Any | None = None,
 ) -> dict[str, Any]:
     # Determinism is a hard requirement for a reproducible public number, so we
     # pin synapse injection OFF *unconditionally*: synapse weights are
@@ -199,7 +213,7 @@ def run_all(
             "oracle": manifest.get("oracle", "def-site"),
             "synapse_injection": "0",
             "backends": BACKEND_ORDER,
-            "repos": [run_repo(r, work_dir, seeds) for r in repos],
+            "repos": [run_repo(r, work_dir, seeds, judge_client) for r in repos],
         }
     finally:
         if prior_inject is None:
@@ -281,6 +295,26 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"at **{_ratio_phrase(full['mean_tokens'], nm_s['mean_tokens'])} tokens** than "
                 f"pasting every file (which is recall 1.0 by definition, at full cost).\n"
             )
+        judge_summary = repo.get("judge_summary")
+        if judge_summary:
+            out.append("### Answerability (LLM-judged — *secondary signal*)\n")
+            out.append(
+                "_Not the headline. Each backend is judged on its **real window** "
+                f"(whole files / chunks / compact context) by `{judge.JUDGE_MODEL}`, "
+                "answering from that context only. Published prompts + raw transcripts: "
+                "`bench/public/judge/`._\n"
+            )
+            out.append("| backend | mean score | answered-rate | grounded-rate |")
+            out.append("|---|---:|---:|---:|")
+            for b in report["backends"]:
+                js = judge_summary.get(b)
+                if not js:
+                    continue
+                out.append(
+                    f"| `{b}` | {js['mean_score']:.2f} | {js['answered_rate']:.0%} "
+                    f"| {js['grounded_rate']:.0%} |"
+                )
+            out.append("")
         losses = repo.get("losses", [])
         if losses:
             out.append("### Where NeuralMind loses\n")
@@ -300,6 +334,33 @@ def render_markdown(report: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
+def _write_judge_transcripts(report: dict[str, Any], out_dir: Path) -> None:
+    """Commit the answerability arm's raw per-query transcripts + a summary.
+
+    Provenance the docs point skeptics at: every (question, context tokens,
+    answer, verdict, rationale) plus the pinned judge model id."""
+    raw_dir = out_dir / "raw"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for repo in report.get("repos", []):
+        raw = repo.get("judge_raw")
+        if not raw:
+            continue
+        (raw_dir / f"{repo['name']}.json").write_text(
+            json.dumps(raw, indent=2) + "\n", encoding="utf-8"
+        )
+        rows.append(
+            {
+                "name": repo["name"],
+                "commit": repo.get("commit"),
+                "judge_model": judge.JUDGE_MODEL,
+                "summary": repo.get("judge_summary", {}),
+            }
+        )
+    (out_dir / "results.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+    print(f"wrote answerability transcripts under {out_dir}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="NeuralMind honest public benchmark")
     ap.add_argument("--json", action="store_true", help="emit machine-readable JSON to stdout")
@@ -309,17 +370,42 @@ def main(argv: list[str] | None = None) -> int:
         "--work-dir", default=str(DEFAULT_WORK_DIR), help="where pinned repos are cloned"
     )
     ap.add_argument("--out", default=None, help="write results.json + report.md under this dir")
+    ap.add_argument(
+        "--judge",
+        action="store_true",
+        help="also run the opt-in LLM-judged answerability arm (needs ANTHROPIC_API_KEY)",
+    )
+    ap.add_argument(
+        "--judge-out",
+        default="bench/public/judge",
+        help="where to write answerability transcripts (with --judge)",
+    )
     args = ap.parse_args(argv)
 
+    judge_client = None
+    if args.judge:
+        judge_client = judge.make_client()
+        if judge_client is None:
+            print(
+                "--judge needs ANTHROPIC_API_KEY and the `anthropic` package; "
+                "skipping the answerability arm (the recall table still runs).",
+                file=sys.stderr,
+            )
+
     manifest = load_manifest()
-    report = run_all(manifest, Path(args.work_dir), only=args.repo, seeds=args.seeds)
+    report = run_all(
+        manifest, Path(args.work_dir), only=args.repo, seeds=args.seeds, judge_client=judge_client
+    )
+
+    if judge_client is not None:
+        _write_judge_transcripts(report, Path(args.judge_out))
 
     if args.out:
         out_dir = Path(args.out)
         out_dir.mkdir(parents=True, exist_ok=True)
         (out_dir / "results.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         (out_dir / "report.md").write_text(render_markdown(report), encoding="utf-8")
-        print(f"wrote {out_dir/'results.json'} and {out_dir/'report.md'}", file=sys.stderr)
+        print(f"wrote {out_dir / 'results.json'} and {out_dir / 'report.md'}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(report, indent=2))

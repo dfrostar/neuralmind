@@ -117,9 +117,44 @@ is "which file," a bare vector index is cheaper.
   neutral, on the reference fixture. That is the differentiator a static index
   structurally cannot copy.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
-  metric (objective, no judge). An optional, opt-in LLM-judged answerability arm
-  (`--judge`, with the model + prompt + transcripts published) is planned as a
-  clearly-labeled *secondary* signal — never the headline.
+  metric (objective, no judge). The opt-in **answerability arm** (`--judge`) adds
+  the *answering* signal — see below — but it stays a clearly-labeled secondary,
+  never the headline.
+
+## Answerability arm — `--judge` (opt-in, secondary signal)
+
+Gold-file recall measures *locating* the right file, not *answering* the
+question. The opt-in answerability arm closes that gap honestly:
+
+```bash
+ANTHROPIC_API_KEY=… python -m evals.public.run --judge   # off by default
+```
+
+For each query it takes **the real context each backend would put in the
+window** — whole files for `full-file`/`ripgrep`, retrieved chunks for
+`embedding-rag`, the compact L0–L3 assembly for `neuralmind` — and asks a pinned
+model (`claude-opus-4-8`) to answer **using only that context** (it must say
+"insufficient context" when the window can't support an answer). A separate judge
+call grades each answer against the **same def-site gold anchor** (the
+`oracle_symbol`) on a 0–2 scale, plus a `grounded` flag.
+
+**Why it's hard to dismiss:**
+
+- **Same prompts, same pinned model, every backend** — each is judged on its own
+  real window, so a low-recall window scores low instead of being papered over
+  from the model's prior knowledge.
+- **Published provenance** — the answerer prompt, the judge rubric, the pinned
+  model id, and **every raw transcript** (question, context tokens, answer,
+  verdict, rationale) are committed under
+  [`bench/public/judge/`](../../bench/public/judge/). Re-score it, or swap the
+  model, yourself.
+- **Off the deterministic path** — needs `ANTHROPIC_API_KEY`, never runs in CI,
+  and the recall table above is byte-identical with or without `--judge`.
+
+**Honest caveats:** it's LLM-judged (not deterministic like recall); a single
+judge model is one viewpoint (disclosed, transcripts committed so anyone can
+re-score with another); and it's a *secondary* signal — the recall-at-N×-tokens
+headline stays primary.
 
 ## Extending the corpus
 
