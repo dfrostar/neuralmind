@@ -188,8 +188,16 @@ keywords = [
     "reproducible-benchmark",
     "token-cost-benchmark",
     "codebase-memory-mcp-benchmark",
+    "codebase-memory-mcp-alternative",
+    "code-memory-mcp",
     "code-mcp-comparison",
-    "mcp-benchmark"
+    "mcp-benchmark",
+    "headroom-alternative",
+    "neuralmind-vs-headroom",
+    "ponytail-alternative",
+    "context-engineering-stack",
+    "retrieval-transport-generation",
+    "complementary-context-tools"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
