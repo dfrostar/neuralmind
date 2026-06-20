@@ -38,11 +38,26 @@ jobs:
       # guard, so dispatch the publish explicitly against the new tag —
       # the same recovery path release.yml already supports for manual
       # runs (its `tag` input).
-      - name: Dispatch PyPI/GHCR publish for the new tag
+      - name: Dispatch PyPI publish for the new tag
         if: ${{ steps.release.outputs.release_created }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh workflow run release.yml \
+            --repo "${{ github.repository }}" \
+            -f tag="${{ steps.release.outputs.tag_name }}"
+
+      # docker-publish.yml has the same push:tags blind spot as release.yml:
+      # release-please's GITHUB_TOKEN-created tag can't fire its push:tags
+      # trigger, so the GHCR image silently never built on a release (the
+      # tags drifted v0.22 → nothing until backfilled by hand). Dispatch it
+      # explicitly here, exactly like the PyPI publish above, so the
+      # multi-arch image lands on every release without a manual run.
+      - name: Dispatch GHCR image build for the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run docker-publish.yml \
             --repo "${{ github.repository }}" \
             -f tag="${{ steps.release.outputs.tag_name }}"
