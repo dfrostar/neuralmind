@@ -16,11 +16,11 @@ checks it rises to that gold.
 
 ## Shape
 
-- `lib/db/connection.rb` — `DataStore` base class + `Connection` (`< DataStore`).
-- `lib/users/` — `User` + `Crud` class methods.
-- `lib/auth/` — `JwtUtils` signing + `Handlers` login/session flow.
-- `lib/billing/` — `StripeClient` + `Invoices`/`Invoice`.
-- `lib/api/routes.rb` — `Method` module of constants, `Route`, and the `Routes`
+- `src/db/connection.rb` — `DataStore` base class + `Connection` (`< DataStore`).
+- `src/users/` — `User` + `Crud` class methods.
+- `src/auth/` — `JwtUtils` signing + `Handlers` login/session flow.
+- `src/billing/` — `StripeClient` + `Invoices`/`Invoice`.
+- `src/api/routes.rb` — `Method` module of constants, `Route`, and the `Routes`
   table that wires auth + billing handlers to endpoints.
 
 Cross-file `require_relative`, `class Foo < Bar` inheritance, best-effort `calls`,

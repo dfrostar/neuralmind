@@ -711,8 +711,8 @@ class RubyTests(unittest.TestCase):
             for e in self.edges
             if e["relation"] == "imports_from"
         }
-        self.assertIn(("lib/users/crud.rb", "lib/db/connection.rb"), pairs)
-        self.assertIn(("lib/api/routes.rb", "lib/auth/handlers.rb"), pairs)
+        self.assertIn(("src/users/crud.rb", "src/db/connection.rb"), pairs)
+        self.assertIn(("src/api/routes.rb", "src/auth/handlers.rb"), pairs)
 
     def test_cross_file_call_resolved(self) -> None:
         label = {n["id"]: n["label"] for n in self.nodes}
