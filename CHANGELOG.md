@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.37.0](https://github.com/dfrostar/neuralmind/compare/v0.34.0...v0.37.0) (2026-06-20)
+
+
+### Features
+
+* C# extractor — eighth language behind the tree-sitter seam ([#267](https://github.com/dfrostar/neuralmind/issues/267)) ([d5b5c65](https://github.com/dfrostar/neuralmind/commit/d5b5c6534321efe6409934f32ab16c56006e4b78))
+* expand public benchmark corpus with flask + rich ([#271](https://github.com/dfrostar/neuralmind/issues/271)) ([3ce219f](https://github.com/dfrostar/neuralmind/commit/3ce219f990560efb902d48b99b12292ca363034f))
+* PHP extractor — tenth language behind the tree-sitter seam ([#270](https://github.com/dfrostar/neuralmind/issues/270)) ([f33b87c](https://github.com/dfrostar/neuralmind/commit/f33b87c83686d2ffc3f6fc95eb731826a63b6462))
+* Ruby extractor — ninth language behind the tree-sitter seam ([#269](https://github.com/dfrostar/neuralmind/issues/269)) ([b27c7d7](https://github.com/dfrostar/neuralmind/commit/b27c7d7ec47c0d9b96eed3a9725cb4eca9aa0bfd))
+
+
+### Documentation
+
+* enrich schema.org JSON-LD on docs pages (SEO) ([#272](https://github.com/dfrostar/neuralmind/issues/272)) ([19b3eb5](https://github.com/dfrostar/neuralmind/commit/19b3eb500cd9ff58a94a2924527d8b2eb13c3a94))
+* umbrella v0.37.0 release notes + Release-As 0.37.0 ([#273](https://github.com/dfrostar/neuralmind/issues/273)) ([f9c19ea](https://github.com/dfrostar/neuralmind/commit/f9c19ea078967df804d0a915d1db4224a905d3b4))
+
 ## [0.34.0](https://github.com/dfrostar/neuralmind/compare/v0.33.0...v0.34.0) (2026-06-20)
 
 
