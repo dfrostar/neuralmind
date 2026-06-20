@@ -152,6 +152,142 @@
           "shape": "cross-file"
         }
       ]
+    },
+    {
+      "name": "flask",
+      "url": "https://github.com/pallets/flask",
+      "tag": "3.0.3",
+      "commit": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
+      "subdir": "src/flask",
+      "language": "python",
+      "queries": [
+        {
+          "id": "application-object",
+          "question": "the central WSGI application object you create configure and run",
+          "gold_files": ["app.py"],
+          "oracle_symbol": "class Flask"
+        },
+        {
+          "id": "blueprint-component",
+          "question": "how are modular groups of routes registered as a reusable component",
+          "gold_files": ["blueprints.py"],
+          "oracle_symbol": "class Blueprint"
+        },
+        {
+          "id": "config-object",
+          "question": "the dict-like object that loads and stores application configuration",
+          "gold_files": ["config.py"],
+          "oracle_symbol": "class Config"
+        },
+        {
+          "id": "app-context",
+          "question": "the object that binds the application to the current context so current_app works",
+          "gold_files": ["ctx.py"],
+          "oracle_symbol": "class AppContext"
+        },
+        {
+          "id": "method-view",
+          "question": "the base class for class-based views dispatched by HTTP method",
+          "gold_files": ["views.py"],
+          "oracle_symbol": "class MethodView"
+        },
+        {
+          "id": "request-wrapper",
+          "question": "the request object wrapping the incoming WSGI environ",
+          "gold_files": ["wrappers.py"],
+          "oracle_symbol": "class Request"
+        },
+        {
+          "id": "cli-group",
+          "question": "the click command group that loads the app and runs flask cli commands",
+          "gold_files": ["cli.py"],
+          "oracle_symbol": "class FlaskGroup"
+        },
+        {
+          "id": "session-interface",
+          "question": "the interface that serializes the user session into a signed secure cookie",
+          "gold_files": ["sessions.py"],
+          "oracle_symbol": "class SecureCookieSessionInterface"
+        },
+        {
+          "id": "url-building",
+          "question": "the helper that builds a url for a given endpoint by name",
+          "gold_files": ["helpers.py"],
+          "oracle_symbol": "def url_for"
+        },
+        {
+          "id": "xfile-dispatch-context",
+          "question": "how does full_dispatch_request run the view inside the RequestContext pushed for the request",
+          "gold_files": ["app.py", "ctx.py"],
+          "oracle_symbol": "Flask.full_dispatch_request + RequestContext",
+          "shape": "cross-file"
+        }
+      ]
+    },
+    {
+      "name": "rich",
+      "url": "https://github.com/Textualize/rich",
+      "tag": "v13.7.1",
+      "commit": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf",
+      "subdir": "rich",
+      "language": "python",
+      "queries": [
+        {
+          "id": "console-core",
+          "question": "the central object that renders and prints rich content to the terminal",
+          "gold_files": ["console.py"],
+          "oracle_symbol": "class Console"
+        },
+        {
+          "id": "table-renderable",
+          "question": "the renderable that lays out data in rows and columns as a table",
+          "gold_files": ["table.py"],
+          "oracle_symbol": "class Table"
+        },
+        {
+          "id": "styled-text",
+          "question": "the class holding a string together with its style spans",
+          "gold_files": ["text.py"],
+          "oracle_symbol": "class Text"
+        },
+        {
+          "id": "panel-box",
+          "question": "the renderable that draws a box with a border around content",
+          "gold_files": ["panel.py"],
+          "oracle_symbol": "class Panel"
+        },
+        {
+          "id": "color-model",
+          "question": "the type representing a parsed terminal color and its rgb triplet",
+          "gold_files": ["color.py"],
+          "oracle_symbol": "class Color"
+        },
+        {
+          "id": "syntax-highlight",
+          "question": "the renderable that syntax-highlights source code with a theme",
+          "gold_files": ["syntax.py"],
+          "oracle_symbol": "class Syntax"
+        },
+        {
+          "id": "progress-bars",
+          "question": "the class that drives animated progress bars with multiple tasks",
+          "gold_files": ["progress.py"],
+          "oracle_symbol": "class Progress"
+        },
+        {
+          "id": "markdown-render",
+          "question": "the renderable that parses and displays markdown in the terminal",
+          "gold_files": ["markdown.py"],
+          "oracle_symbol": "class Markdown"
+        },
+        {
+          "id": "xfile-console-table",
+          "question": "how does Console.render drive a Table's __rich_console__ to produce segments",
+          "gold_files": ["console.py", "table.py"],
+          "oracle_symbol": "Console.render + Table.__rich_console__",
+          "shape": "cross-file"
+        }
+      ]
     }
   ]
 }
