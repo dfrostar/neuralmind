@@ -26,7 +26,7 @@ python -m evals.public.run          # clones the pinned repos, prints the table
 
 | Decision | Why |
 |---|---|
-| **Real, recognizable repos** — `requests`, `click`, pinned to release SHAs | Anyone can `git checkout <sha>` and audit. No vendor fixture. |
+| **Real, recognizable repos** — `requests`, `click`, `flask`, `rich`, pinned to release SHAs | Anyone can `git checkout <sha>` and audit. No vendor fixture. Household-name repos, not cherry-picked easy ones. |
 | **Objective gold, no LLM judge** | Each query's gold file is the **definition site** of a named symbol, verifiable with one `rg` command. A baseline "answers" iff the gold file lands in its assembled context. Deterministic, nothing to rig. |
 | **Cost + correctness reported jointly** | The headline is "recall at N× fewer tokens," never a lone ratio. |
 | **Strong baselines, disclosed** | Not just naive whole-file dumps — we include keyword (`ripgrep`) and a function-level vector RAG using the *same encoder* NeuralMind uses. |
@@ -158,10 +158,22 @@ headline stays primary.
 
 ## Extending the corpus
 
-The corpus is intentionally focused, not exhaustive. Add a repo by appending to
-`evals/public/manifest.json` (pin the commit, give each query an objective
-def-site gold file) and re-running. Community-contributed real-repo numbers go
-through the existing `neuralmind benchmark . --contribute` path.
+The corpus spans **four pinned repos / 40 pre-registered queries**: `requests`
+(14) and `click` (7) — the original headline pair, with committed numbers above
+— plus **`flask` @ `c12a5d87` (10)** and **`rich` @ `7f580bdc` (9)**, added to
+harden the "you picked easy repos" critique with two more household-name
+projects. Every `flask`/`rich` query's gold file is the **objective definition
+site** of its named symbol, verified with `rg` against the pinned commit (e.g.
+`class Flask` in `app.py`, `class Console` in `console.py`) — pre-registered in
+`evals/public/manifest.json` *before* any run, exactly as the methodology
+requires (gold first, numbers second). Their cost+correctness rows regenerate
+with `python -m evals.public.run` (the committed `requests`/`click` snapshot
+stays a subset of the manifest, so nothing is fabricated in between).
+
+Add a repo the same way: append to `evals/public/manifest.json` (pin the commit,
+give each query an objective def-site gold file) and re-run. Community-contributed
+real-repo numbers go through the existing `neuralmind benchmark . --contribute`
+path.
 
 ## Competitor head-to-head — `codebase-memory-mcp` 0.8.1
 
