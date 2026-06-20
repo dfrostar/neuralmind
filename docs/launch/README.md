@@ -19,6 +19,7 @@ post there — we don't post under a disguise.
 | [`r-localllama.md`](r-localllama.md) | r/LocalLLaMA | Self-post, maker-disclosed, four-benefit block with live links. |
 | [`awesome-mcp-servers.md`](awesome-mcp-servers.md) | `awesome-mcp-servers` PR | One-line directory entry + PR description. |
 | [`hn-warmup-comments.md`](hn-warmup-comments.md) | Hacker News (other threads) | Genuine, on-topic, disclosed comments on adjacent posts. Not drive-by promo. |
+| [`NEXT-SESSION.md`](NEXT-SESSION.md) | (internal) | Session handoff + "what we did" record + recommended next steps. Copy-paste to resume. |
 
 ## Live anchors (keep these accurate)
 
