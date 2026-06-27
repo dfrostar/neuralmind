@@ -1,0 +1,75 @@
+{
+  "_comment": "Golden queries template for neuralmind benchmark --quality. Copy this to tests/fixtures/benchmark_queries_custom.json and register the suite in evals/quality/runner.py. See tests/benchmark/golden_queries.yaml for a fully-documented 40-query reference example.",
+  "version": "1.0",
+  "repo": "your-repo-name",
+  "queries": [
+    {
+      "id": "auth-001",
+      "question": "How does JWT authentication work in this codebase?",
+      "shape": "cross-file",
+      "category": "architecture",
+      "expected_modules": [
+        "src/auth/middleware.py",
+        "src/models/user.py",
+        "config/jwt.py"
+      ]
+    },
+    {
+      "id": "db-001",
+      "question": "Where is the database connection pool configured?",
+      "shape": "focused",
+      "category": "architecture",
+      "expected_modules": [
+        "src/db/pool.py"
+      ]
+    },
+    {
+      "id": "api-rate-limit",
+      "question": "How do we handle rate limiting on the /orders endpoint?",
+      "shape": "cross-file",
+      "category": "architecture",
+      "expected_modules": [
+        "src/routes/orders.py",
+        "src/middleware/rate_limit.py"
+      ]
+    },
+    {
+      "id": "debug-auth-fail",
+      "question": "A user login is failing without any error message — which file contains credential validation?",
+      "shape": "focused",
+      "category": "bug-localization",
+      "expected_modules": [
+        "src/auth/middleware.py"
+      ]
+    },
+    {
+      "id": "refactor-add-field",
+      "question": "I need to add an email_verified column to users — which files would change?",
+      "shape": "cross-file",
+      "category": "refactor",
+      "expected_modules": [
+        "src/models/user.py",
+        "src/db/migrations.py"
+      ]
+    },
+    {
+      "id": "next-after-auth-change",
+      "question": "I just changed how JWT tokens are signed — what other files should I review?",
+      "shape": "cross-file",
+      "category": "next-edit",
+      "expected_modules": [
+        "src/auth/jwt_utils.py",
+        "src/auth/middleware.py"
+      ]
+    }
+  ],
+  "_usage": {
+    "step_1": "Write 20-30 queries based on real questions your team asks each week. Favor questions where getting the wrong file would waste time — auth, billing, core data models.",
+    "step_2": "Set expected_modules to the file paths (no line numbers) that must appear in the top-5 results. Two or three files per cross-file query; one for focused queries.",
+    "step_3": "Set shape: 'focused' (one expected module), 'cross-file' (2-3 modules), or 'identity' (exact-symbol lookup like a function name).",
+    "step_4": "Set category to one of: 'architecture' (how does X work?), 'bug-localization' (where is the bug?), 'refactor' (what files change?), or 'next-edit' (what else should I review?).",
+    "step_5": "Save as tests/fixtures/benchmark_queries_custom.json, register in evals/quality/runner.py SUITES, then run: neuralmind benchmark --quality",
+    "target": "recall@5 >= 0.75, MRR >= 0.65 (CI hard gates are 0.50 / 0.50)",
+    "pro_tip": "Start with 5 queries around your #1 bug area. If auth bugs happen most, write 5 auth queries — that's where ROI shows fastest."
+  }
+}
