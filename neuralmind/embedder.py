@@ -91,9 +91,7 @@ class GraphEmbedder(EmbeddingBackend):
 
         # BM25 keyword index — lazy-loaded on first bm25_search call
         self._bm25: BM25Index | None = None
-        self._bm25_path = (
-            Path(project_path) / ".neuralmind" / "bm25_index.json"
-        )
+        self._bm25_path = Path(project_path) / ".neuralmind" / "bm25_index.json"
 
     @property
     def project_path(self) -> Path:
