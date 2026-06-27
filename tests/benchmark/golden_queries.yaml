@@ -1,342 +1,330 @@
-# golden_queries.yaml — 30-query golden set for neuralmind benchmark --quality
+# golden_queries.yaml — 40-query golden set for neuralmind benchmark --quality
 #
 # Scope: Python sample fixture (tests/fixtures/sample_project).
-# Copy and adapt `expected_modules` for your own codebase.
+# This is the human-readable companion to tests/fixtures/benchmark_queries.json,
+# which is the file the quality eval runner actually loads. Copy and adapt
+# `expected_modules` for your own codebase.
 #
-# Query shapes
-# ────────────
-#   focused    — retrieval must surface one specific module; tests depth
-#   cross-file — 2–3 modules expected anywhere in top-5; tests breadth
-#   identity   — exact-symbol lookup (e.g. class name, endpoint path);
-#                validates BM25 exact-name scoring over pure vector search
+# Fields
+# ──────
+#   id               unique slug used in metric reports
+#   question         natural-language query sent to the retrieval stack
+#   shape            structural pattern:
+#                      focused    — single module expected at rank 1
+#                      cross-file — 2-3 modules expected anywhere in top-5
+#                      identity   — exact-symbol lookup; validates BM25 scoring
+#   category         PRD 2 task type (four required shapes from the BRD):
+#                      architecture    — "how does X work?"
+#                      bug-localization — "where is the bug / validation?"
+#                      refactor        — "what files would change if…?"
+#                      next-edit       — "what should I look at next?"
+#   expected_modules list of source-file paths expected in the top-k results
 #
-# Thresholds (BRD acceptance criterion #2)
-# ─────────────────────────────────────────
-#   recall@5  ≥ 0.75
+# Thresholds (BRD / PRD 2 acceptance criteria)
+# ─────────────────────────────────────────────
+#   recall@5  ≥ 0.75   (CI hard gate is ≥ 0.50 per evals/quality/harness.py)
 #   MRR       ≥ 0.65
 #
 # Running
 # ───────
-#   neuralmind benchmark . --quality              # all suites
-#   neuralmind benchmark . --quality --suite python-extended
+#   neuralmind benchmark . --quality              # runs all registered suites
 #   python -m evals.quality.runner --selfcheck    # validate without retrieval stack
+#
+# Note: the quality runner reads from tests/fixtures/benchmark_queries.json
+# (JSON format). This YAML is the documented reference; keep both in sync.
 
 meta:
   suite: python-extended
   fixture: tests/fixtures/sample_project
   description: >
-    Extended 30-query golden set for the Python sample fixture. Expands the
-    10-query CI baseline with deeper coverage of auth flows, billing, user
-    management, database schema, error handling, and exact-symbol retrieval.
+    40-query golden set for the Python sample fixture. Covers all four
+    PRD 2 task categories — architecture, bug-localization, refactor, and
+    next-edit — across focused, cross-file, and identity structural patterns.
+  category_breakdown:
+    architecture: 10
+    bug-localization: 4
+    refactor: 3
+    next-edit: 3
   thresholds:
     min_recall_at_5: 0.75
     min_mrr: 0.65
 
 queries:
 
-  # ── Auth ──────────────────────────────────────────────────────────────────
+  # ── Architecture: auth ────────────────────────────────────────────────────
 
-  - id: authenticate-user
-    question: "How is a user authenticated with email and password?"
-    shape: focused
+  - id: auth-flow
+    question: "How does authentication work in this codebase?"
+    shape: cross-file
+    category: architecture
     expected_modules:
       - auth/handlers.py
-    notes: >
-      Covers authenticate_user(), verify_password(), and the credential
-      lookup path. Should surface handlers.py at rank 1.
+      - auth/jwt_utils.py
+      - users/crud.py
 
   - id: token-expiry
     question: "What is the access token TTL and where is it set?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - auth/handlers.py
       - auth/jwt_utils.py
-    notes: >
-      SESSION_TTL is defined in handlers.py; exp claim encoding lives in
-      jwt_utils.py. Tests cross-module retrieval within the auth domain.
 
   - id: session-refresh
     question: "How does token refresh work?"
     shape: focused
+    category: architecture
     expected_modules:
       - auth/handlers.py
-    notes: >
-      refresh_session() validates the refresh-token kind claim and issues
-      a new access token. Tests a focused query that doesn't require
-      spreading into jwt_utils.
 
   - id: token-revocation
     question: "How are revoked tokens tracked in the database?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - auth/handlers.py
       - db/connection.py
-    notes: >
-      logout() inserts into revoked_tokens; the table is defined in
-      db/connection.py. Tests the auth→db cross-file edge.
 
   - id: password-verify
     question: "How does the system verify a password without timing attacks?"
     shape: focused
+    category: architecture
     expected_modules:
       - auth/handlers.py
-    notes: >
-      verify_password() uses hmac.compare_digest for constant-time
-      comparison. An exact-concept query with a single expected file.
 
   - id: jwt-algorithm
     question: "What HMAC algorithm does the JWT implementation use?"
     shape: identity
+    category: architecture
     expected_modules:
       - auth/jwt_utils.py
-    notes: >
-      ALGORITHM = "HS256" is an exact constant. BM25 should rank
-      jwt_utils.py at position 1 via the "HS256" / "HMAC" token match.
 
   - id: token-decode
     question: "How does token decoding and signature verification work?"
     shape: focused
+    category: architecture
     expected_modules:
       - auth/jwt_utils.py
-    notes: >
-      decode_token() splits segments, re-derives the HMAC, and checks
-      expiry. Pure jwt_utils responsibility.
 
-  # ── API / routing ─────────────────────────────────────────────────────────
+  # ── Architecture: API / routing ───────────────────────────────────────────
 
-  - id: auth-endpoints
-    question: "What are the authentication API endpoints?"
+  - id: api-endpoints
+    question: "What are the main API endpoints?"
     shape: focused
+    category: architecture
     expected_modules:
       - api/routes.py
-    notes: >
-      /api/auth/login, /api/auth/refresh, /api/auth/logout are all wired
-      in routes.py. Tests that the routes file tops the ranking.
-
-  - id: billing-endpoints
-    question: "Which endpoints handle billing and payments?"
-    shape: cross-file
-    expected_modules:
-      - api/routes.py
-      - billing/stripe_client.py
-    notes: >
-      Charge, refund, and invoice-list endpoints are in routes.py; their
-      implementation is in stripe_client.py. Tests the routing→billing edge.
-
-  - id: user-endpoints
-    question: "What HTTP endpoints are exposed for user management?"
-    shape: cross-file
-    expected_modules:
-      - api/routes.py
-      - users/crud.py
-    notes: >
-      POST /api/users, GET /api/users/me, DELETE /api/users/me are in
-      routes.py and call users/crud.py. Tests the routing→users edge.
 
   - id: me-endpoint
     question: "How does GET /api/users/me work?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - api/routes.py
       - auth/handlers.py
-    notes: >
-      get_me_endpoint() calls verify_session() to extract user_id before
-      calling get_user(). Tests the routing→auth cross-file retrieval.
 
   - id: webhook-endpoint
     question: "Where is the Stripe webhook entry point and how does it dispatch?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - api/routes.py
       - billing/stripe_client.py
-    notes: >
-      stripe_webhook_endpoint() calls verify_webhook() then
-      handle_webhook_event() — both live in stripe_client.py.
 
-  # ── Billing ───────────────────────────────────────────────────────────────
+  # ── Architecture: billing ─────────────────────────────────────────────────
 
-  - id: charge-flow
-    question: "How does charging a customer work end-to-end?"
+  - id: billing-flow
+    question: "Explain the billing flow from a user perspective."
     shape: cross-file
+    category: architecture
     expected_modules:
       - billing/stripe_client.py
       - billing/invoices.py
       - users/crud.py
-    notes: >
-      charge_customer() validates the user, calls the Stripe API, writes a
-      charge row, then calls create_invoice(). Tests the widest billing fan-out.
 
-  - id: webhook-verification
-    question: "How is the Stripe webhook signature verified?"
+  - id: stripe-webhook
+    question: "What happens when a Stripe webhook fires?"
     shape: focused
+    category: architecture
     expected_modules:
       - billing/stripe_client.py
-    notes: >
-      verify_webhook() checks timestamp tolerance and HMAC signature.
-      Single-file focused query.
 
-  - id: webhook-dispatch
-    question: "What Stripe event types are handled and how?"
+  - id: refund
+    question: "Show me the refund logic."
     shape: focused
+    category: architecture
     expected_modules:
       - billing/stripe_client.py
-    notes: >
-      handle_webhook_event() dispatches charge.succeeded / charge.failed /
-      charge.refunded. Tests event-type knowledge retrieval.
 
-  - id: invoice-create
-    question: "How is an invoice created after a successful charge?"
+  - id: invoice-send
+    question: "How are invoices sent to users?"
     shape: cross-file
-    expected_modules:
-      - billing/stripe_client.py
-      - billing/invoices.py
-    notes: >
-      charge_customer() calls create_invoice(). Tests the inter-billing
-      module edge without pulling in users/crud.
-
-  - id: invoice-list
-    question: "How do I list invoices for a specific user?"
-    shape: cross-file
-    expected_modules:
-      - billing/invoices.py
-      - api/routes.py
-    notes: >
-      list_user_invoices() is in invoices.py; it's exposed via GET
-      /api/billing/invoices in routes.py.
-
-  - id: refund-guard
-    question: "How does the system prevent double-refunds?"
-    shape: focused
-    expected_modules:
-      - billing/stripe_client.py
-    notes: >
-      refund_charge() checks `status == 'refunded'` before proceeding.
-      Tests guard-condition knowledge retrieval.
-
-  - id: invoice-email
-    question: "How are invoice emails sent to users?"
-    shape: cross-file
+    category: architecture
     expected_modules:
       - billing/invoices.py
       - users/crud.py
-    notes: >
-      send_invoice_email() fetches the user record via get_user() to
-      resolve the email address before calling _render_and_queue().
 
-  # ── User management ───────────────────────────────────────────────────────
+  # ── Architecture: users / DB ──────────────────────────────────────────────
 
-  - id: user-deactivate
-    question: "How is a user soft-deleted from the system?"
+  - id: create-user
+    question: "How do I create a new user?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - users/crud.py
       - api/routes.py
-    notes: >
-      deactivate_user() flips is_active=0; it is called from
-      delete_me_endpoint() after verify_session(). Tests the user→auth→route
-      chain.
 
-  - id: user-lookup-email
-    question: "How is a user looked up by email address?"
-    shape: focused
-    expected_modules:
-      - users/crud.py
-    notes: >
-      get_user_by_email() returns a raw dict for hot-path speed. Single-file
-      focused query.
-
-  - id: last-login-update
-    question: "When and how is the last_login timestamp updated?"
+  - id: user-storage
+    question: "How are users stored in the database?"
     shape: cross-file
+    category: architecture
     expected_modules:
       - users/crud.py
-      - auth/handlers.py
-    notes: >
-      update_last_login() is in crud.py; it is called from
-      authenticate_user() in handlers.py after a successful credential check.
+      - db/connection.py
+
+  - id: db-choice
+    question: "What database does this project use?"
+    shape: identity
+    category: architecture
+    expected_modules:
+      - db/connection.py
 
   - id: user-model
     question: "What fields does the User dataclass have?"
     shape: identity
+    category: architecture
     expected_modules:
       - users/crud.py
-    notes: >
-      The User dataclass is defined in users/crud.py with id, email,
-      password_hash, created_at, last_login, is_active. Tests exact-class
-      retrieval — BM25 should match "User" at rank 1.
-
-  - id: user-active-guard
-    question: "How does the system check if a user is active before charging them?"
-    shape: cross-file
-    expected_modules:
-      - billing/stripe_client.py
-      - users/crud.py
-    notes: >
-      charge_customer() calls get_user() and checks user.is_active.
-      Tests the billing→users dependency retrieval.
-
-  # ── Database ──────────────────────────────────────────────────────────────
 
   - id: db-tables
     question: "What tables exist in the database schema?"
     shape: focused
+    category: architecture
     expected_modules:
       - db/connection.py
-    notes: >
-      _ensure_schema() creates users, revoked_tokens, charges, refunds,
-      invoices. Tests schema-knowledge retrieval.
-
-  - id: db-threading
-    question: "How does the database handle concurrent thread access?"
-    shape: focused
-    expected_modules:
-      - db/connection.py
-    notes: >
-      threading.local() gives each thread its own connection. Tests
-      concurrency-mechanism retrieval.
-
-  - id: revoked-tokens-schema
-    question: "How are revoked tokens stored and checked after logout?"
-    shape: cross-file
-    expected_modules:
-      - db/connection.py
-      - auth/handlers.py
-    notes: >
-      The revoked_tokens table is defined in db/connection.py; logout()
-      inserts into it in auth/handlers.py. Tests the auth→db schema edge.
-
-  - id: charges-table
-    question: "What columns are in the charges table?"
-    shape: focused
-    expected_modules:
-      - db/connection.py
-    notes: >
-      CREATE TABLE charges: id, user_id, stripe_id, amount_cents, status,
-      created_at. Tests precise schema-column retrieval.
-
-  # ── Config / secrets ──────────────────────────────────────────────────────
 
   - id: stripe-keys-config
     question: "Where are the Stripe API keys and webhook secrets configured?"
     shape: identity
+    category: architecture
+    expected_modules:
+      - billing/stripe_client.py
+
+  # ── Bug-localization ──────────────────────────────────────────────────────
+
+  - id: debug-login-silent
+    question: "A user login is failing without any error message — which file contains credential validation?"
+    shape: focused
+    category: bug-localization
+    expected_modules:
+      - auth/handlers.py
+    notes: >
+      authenticate_user() raises InvalidCredentialsError; verify_password() does
+      the constant-time check. The bug site is localized to handlers.py.
+
+  - id: debug-webhook-reject
+    question: "Stripe webhooks are being rejected — where is the signature verified?"
+    shape: focused
+    category: bug-localization
     expected_modules:
       - billing/stripe_client.py
     notes: >
-      STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are module-level
-      constants. BM25 should score stripe_client.py at rank 1 via exact
-      token matches.
+      verify_webhook() checks timestamp tolerance and HMAC. A replay attack
+      or clock skew bug lives here.
 
-  - id: auth-error-types
-    question: "What exception types does authentication raise?"
+  - id: debug-invoice-missing
+    question: "Invoices are not appearing for a user — which files handle invoice retrieval?"
     shape: cross-file
+    category: bug-localization
+    expected_modules:
+      - billing/invoices.py
+      - users/crud.py
+    notes: >
+      list_user_invoices() queries by user_id; get_user() supplies the user
+      record. A missing-invoice bug spans both.
+
+  - id: debug-token-expire
+    question: "Users are being logged out unexpectedly — where is token expiry enforced?"
+    shape: focused
+    category: bug-localization
+    expected_modules:
+      - auth/jwt_utils.py
+    notes: >
+      decode_token() checks exp claim vs time.time(). A clock-skew or
+      off-by-one expiry bug lives here.
+
+  # ── Refactor-scope ────────────────────────────────────────────────────────
+
+  - id: refactor-add-user-field
+    question: "I need to add an email_verified column to users — which files would change?"
+    shape: cross-file
+    category: refactor
+    expected_modules:
+      - users/crud.py
+      - db/connection.py
+    notes: >
+      Schema change in _ensure_schema() (db/connection.py) and model +
+      CRUD updates in users/crud.py. Routes would also need updating but
+      are the third priority.
+
+  - id: refactor-swap-database
+    question: "I need to replace the database backend — which file owns the connection pool?"
+    shape: focused
+    category: refactor
+    expected_modules:
+      - db/connection.py
+    notes: >
+      get_connection(), close_all(), and _ensure_schema() all live here.
+      Swapping PostgreSQL for SQLite only requires changing this file.
+
+  - id: refactor-add-mfa
+    question: "I want to add multi-factor authentication to the login flow — which files would I modify?"
+    shape: cross-file
+    category: refactor
     expected_modules:
       - auth/handlers.py
       - auth/jwt_utils.py
     notes: >
-      handlers.py defines InvalidCredentialsError and InvalidTokenError;
-      jwt_utils.py defines TokenExpiredError, InvalidSignatureError,
-      MalformedTokenError. Tests error-taxonomy retrieval across both
-      auth modules.
+      MFA would modify authenticate_user() (handlers.py) and likely add
+      a new claim to the JWT payload (jwt_utils.py).
+
+  # ── Next-edit ─────────────────────────────────────────────────────────────
+
+  - id: next-after-jwt-change
+    question: "I just changed how JWT tokens are signed — what other files should I review?"
+    shape: cross-file
+    category: next-edit
+    expected_modules:
+      - auth/handlers.py
+      - api/routes.py
+    notes: >
+      handlers.py calls encode_token/decode_token; api/routes.py calls
+      verify_session() which calls decode_token(). Both would be affected
+      by a signing algorithm change.
+
+  - id: next-after-charge-change
+    question: "I updated the charge_customer function — what else commonly changes with billing?"
+    shape: cross-file
+    category: next-edit
+    expected_modules:
+      - billing/invoices.py
+      - billing/stripe_client.py
+    notes: >
+      charge_customer() calls create_invoice(); billing/invoices.py and
+      billing/stripe_client.py are co-edited whenever billing logic shifts.
+
+  - id: next-co-edit-users
+    question: "What files are commonly changed alongside the user CRUD module?"
+    shape: cross-file
+    category: next-edit
+    expected_modules:
+      - auth/handlers.py
+      - billing/stripe_client.py
+      - db/connection.py
+    notes: >
+      users/crud.py is the hub touched by auth (get_user_by_email,
+      update_last_login), billing (get_user before charge), and the DB
+      layer (all CRUD goes through db/connection).
 
 learning_seed:
   # Queries used to warm the Hebbian synapse store before Phase 2 of the
