@@ -1,0 +1,12 @@
+{
+  "format": "neuralmind.synapse-bundle",
+  "version": 1,
+  "namespace": "personal",
+  "exported_at": "2026-06-27T14:58:08.192427+00:00",
+  "synapses": [],
+  "transitions": [],
+  "counts": {
+    "synapses": 0,
+    "transitions": 0
+  }
+}
