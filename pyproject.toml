@@ -212,7 +212,14 @@ keywords = [
     "ci-auto-index",
     "github-action-index",
     "automated-indexing",
-    "team-memory-ci"
+    "team-memory-ci",
+    "retrieval-self-probe",
+    "label-free-retrieval-eval",
+    "recall-at-k",
+    "codebase-retrieval-test",
+    "needle-in-haystack",
+    "unified-token-optimization",
+    "ponytail-headroom-integration"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

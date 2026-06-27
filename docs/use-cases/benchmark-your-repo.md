@@ -7,6 +7,7 @@ This walkthrough gets you from zero to a real before/after number on your reposi
 ## What you'll have at the end
 
 - A measured **reduction ratio** on your actual code (typical: 30–80×)
+- A **retrieval-quality score** (recall@k / MRR / answerability) on your own code, plus a list of any symbols the index can't find — via `neuralmind probe`
 - An **estimated monthly savings** in dollars, at your query volume and your model's pricing
 - A **JSON blob** you can share with your team (or contribute back to the public community benchmarks — your choice, zero telemetry)
 
@@ -106,6 +107,65 @@ If recall@5 is low on a particular category, it tells you where the retrieval in
 
 **Automate it in CI (v0.38.0):** The bundled `.github/workflows/neuralmind-autoindex.yml` action rebuilds the index, runs the quality gate, and commits updated team memory on every push to main — no manual refresh needed. Copy it from the NeuralMind repo and add your project path to the workflow inputs.
 
+## Step 3c — Probe retrieval on your own code (`neuralmind probe`)
+
+Reduction proves NeuralMind is **cheap**. It says nothing about whether the
+context it returns is **correct**. A 46× reduction that drops the one file your
+question needed is a bad trade. `neuralmind probe` measures that second
+dimension — on *your* code, with no labeling required:
+
+```bash
+neuralmind probe .
+```
+
+It samples indexed symbols, turns each one into a plain-English query from its
+own name (`authenticate_user` → `"authenticate user"`), asks the index to
+retrieve it back, and scores whether the right file came up:
+
+```
+Retrieval self-probe — your-project
+Sampled 50 of 1247 indexed symbols, retrieval depth k=10
+============================================================
+  answerability  : 92%  (file found in top-10)
+  MRR            : 0.810
+  recall@1/3/5   : 0.740 / 0.860 / 0.900
+  blind spots    : 4
+------------------------------------------------------------
+Symbols the index couldn't retrieve from their own description (4 total):
+  - parseConfig  (cfg/loader.py)   query: "parse config"
+  - RetryPolicy  (net/retry.py)    query: "retry policy"
+  …
+```
+
+**What those numbers mean for you:**
+
+| Metric | What it says |
+|---|---|
+| **answerability** | Of the symbols probed, the fraction whose own file showed up in the top-k. High = the agent can find things by description. |
+| **MRR** | How *high* the right file ranks on average (1.0 = always first). |
+| **recall@1/3/5** | The right file in the top 1 / 3 / 5 hits. |
+| **blind spots** | The symbols that fell through entirely — the concrete places an agent would come up empty. |
+
+The blind-spot list is the actionable part: those are real symbols in your repo
+the index can't surface from a natural-language description. If a critical one
+shows up there, that's a retrieval gap worth an issue.
+
+**Track it over time.** The probe is deterministic per `--seed`, so you can save
+a baseline and diff it after a refactor or a backend switch to catch a
+regression before it ships:
+
+```bash
+neuralmind probe . --sample-size 100 --json > probe-baseline.json
+# …later…
+neuralmind probe . --sample-size 100 --baseline probe-baseline.json
+```
+
+Because `--json` is stable and machine-readable, you can also gate CI on a
+per-repo recall or MRR floor. Unlike `neuralmind benchmark --quality` (which
+scores ranking against the project's *golden* fixtures and is a contributor/CI
+self-test), `probe` needs no labels and runs on **any** repo.
+
+
 ## Step 4 — Translate to real money
 
 At **100 queries/day** on **Claude 3.5 Sonnet** ($3/MTok input):
@@ -160,7 +220,7 @@ A few things to check before giving up:
 2. **Tiny repos don't need this.** If your whole codebase is under 5K tokens, just paste it into the chat — there's nothing for NeuralMind to compress.
 3. **Try a larger query set.** The default 5-query benchmark is representative, not exhaustive. Pass `sample_queries` if you use the Python API.
 4. **Enable PostToolUse hooks** (Claude Code only) — that's the second compression phase. Retrieval-only numbers miss half the story.
-5. **Open an issue** with your numbers and repo characteristics. Retrieval quality is the thing we most want to improve.
+5. **Measure retrieval quality directly** with `neuralmind probe .` (see [Step 3b](#step-3b--is-it-retrieving-the-right-code-neuralmind-probe)). If answerability is high but reduction is low, retrieval is fine and the issue is elsewhere; if the blind-spot list is long, that's the gap. **Open an issue** with your probe numbers and repo characteristics — retrieval quality is the thing we most want to improve.
 
 ## Related
 
