@@ -69,6 +69,43 @@ Summary: NeuralMind query returns 46x less context than loading files naively
 | **Avg query tokens** | Cost of one code question (across NeuralMind's default 5-query sample). ~900 tokens = ~$0.0027 per question. |
 | **Avg reduction** | How many times smaller NeuralMind's context is vs loading whole files. 46× means your bill drops by ~97.8% per query. |
 
+## Step 3b — Verify retrieval quality (v0.38.0+)
+
+The plain benchmark tells you *how many tokens* NeuralMind saves. The `--quality` flag tells you *whether NeuralMind finds the right code*. Token reduction is the headline claim; retrieval quality is the fine print that makes it meaningful.
+
+```bash
+neuralmind benchmark . --quality
+```
+
+This runs 57 golden queries across three language fixtures, scores them against hand-labeled expected modules, and prints a markdown table:
+
+```
+| Suite      | Queries | MRR   | Answerability | Recall@5 | Gate |
+|------------|--------:|------:|--------------:|---------:|:----:|
+| go         |      19 | 0.939 |          100% |    0.860 | PASS |
+| python     |      19 | 0.974 |          100% |    0.781 | PASS |
+| typescript |      19 | 0.947 |          100% |    0.807 | PASS |
+```
+
+The CI gate (recall@5 ≥ 0.50, MRR ≥ 0.50) is a conservative floor that catches genuine ranking regressions — your baseline numbers will be well above it. The `--baseline` flag lets you track deltas across commits:
+
+```bash
+neuralmind benchmark . --quality --baseline evals/quality/baseline.json
+```
+
+**Four query categories (PRD 2 task types)** are tested — not just "how does X work?" but also:
+
+| Category | Example query |
+|---|---|
+| **architecture** | "How does authentication work in this codebase?" |
+| **bug-localization** | "Stripe webhooks are being rejected — where is the signature verified?" |
+| **refactor** | "I need to add an email_verified column to users — which files would change?" |
+| **next-edit** | "I just changed how JWT tokens are signed — what other files should I review?" |
+
+If recall@5 is low on a particular category, it tells you where the retrieval index has blind spots.
+
+**Automate it in CI (v0.38.0):** The bundled `.github/workflows/neuralmind-autoindex.yml` action rebuilds the index, runs the quality gate, and commits updated team memory on every push to main — no manual refresh needed. Copy it from the NeuralMind repo and add your project path to the workflow inputs.
+
 ## Step 4 — Translate to real money
 
 At **100 queries/day** on **Claude 3.5 Sonnet** ($3/MTok input):
