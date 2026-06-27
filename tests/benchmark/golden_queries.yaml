@@ -1,0 +1,360 @@
+# golden_queries.yaml — 30-query golden set for neuralmind benchmark --quality
+#
+# Scope: Python sample fixture (tests/fixtures/sample_project).
+# Copy and adapt `expected_modules` for your own codebase.
+#
+# Query shapes
+# ────────────
+#   focused    — retrieval must surface one specific module; tests depth
+#   cross-file — 2–3 modules expected anywhere in top-5; tests breadth
+#   identity   — exact-symbol lookup (e.g. class name, endpoint path);
+#                validates BM25 exact-name scoring over pure vector search
+#
+# Thresholds (BRD acceptance criterion #2)
+# ─────────────────────────────────────────
+#   recall@5  ≥ 0.75
+#   MRR       ≥ 0.65
+#
+# Running
+# ───────
+#   neuralmind benchmark . --quality              # all suites
+#   neuralmind benchmark . --quality --suite python-extended
+#   python -m evals.quality.runner --selfcheck    # validate without retrieval stack
+
+meta:
+  suite: python-extended
+  fixture: tests/fixtures/sample_project
+  description: >
+    Extended 30-query golden set for the Python sample fixture. Expands the
+    10-query CI baseline with deeper coverage of auth flows, billing, user
+    management, database schema, error handling, and exact-symbol retrieval.
+  thresholds:
+    min_recall_at_5: 0.75
+    min_mrr: 0.65
+
+queries:
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+
+  - id: authenticate-user
+    question: "How is a user authenticated with email and password?"
+    shape: focused
+    expected_modules:
+      - auth/handlers.py
+    notes: >
+      Covers authenticate_user(), verify_password(), and the credential
+      lookup path. Should surface handlers.py at rank 1.
+
+  - id: token-expiry
+    question: "What is the access token TTL and where is it set?"
+    shape: cross-file
+    expected_modules:
+      - auth/handlers.py
+      - auth/jwt_utils.py
+    notes: >
+      SESSION_TTL is defined in handlers.py; exp claim encoding lives in
+      jwt_utils.py. Tests cross-module retrieval within the auth domain.
+
+  - id: session-refresh
+    question: "How does token refresh work?"
+    shape: focused
+    expected_modules:
+      - auth/handlers.py
+    notes: >
+      refresh_session() validates the refresh-token kind claim and issues
+      a new access token. Tests a focused query that doesn't require
+      spreading into jwt_utils.
+
+  - id: token-revocation
+    question: "How are revoked tokens tracked in the database?"
+    shape: cross-file
+    expected_modules:
+      - auth/handlers.py
+      - db/connection.py
+    notes: >
+      logout() inserts into revoked_tokens; the table is defined in
+      db/connection.py. Tests the auth→db cross-file edge.
+
+  - id: password-verify
+    question: "How does the system verify a password without timing attacks?"
+    shape: focused
+    expected_modules:
+      - auth/handlers.py
+    notes: >
+      verify_password() uses hmac.compare_digest for constant-time
+      comparison. An exact-concept query with a single expected file.
+
+  - id: jwt-algorithm
+    question: "What HMAC algorithm does the JWT implementation use?"
+    shape: identity
+    expected_modules:
+      - auth/jwt_utils.py
+    notes: >
+      ALGORITHM = "HS256" is an exact constant. BM25 should rank
+      jwt_utils.py at position 1 via the "HS256" / "HMAC" token match.
+
+  - id: token-decode
+    question: "How does token decoding and signature verification work?"
+    shape: focused
+    expected_modules:
+      - auth/jwt_utils.py
+    notes: >
+      decode_token() splits segments, re-derives the HMAC, and checks
+      expiry. Pure jwt_utils responsibility.
+
+  # ── API / routing ─────────────────────────────────────────────────────────
+
+  - id: auth-endpoints
+    question: "What are the authentication API endpoints?"
+    shape: focused
+    expected_modules:
+      - api/routes.py
+    notes: >
+      /api/auth/login, /api/auth/refresh, /api/auth/logout are all wired
+      in routes.py. Tests that the routes file tops the ranking.
+
+  - id: billing-endpoints
+    question: "Which endpoints handle billing and payments?"
+    shape: cross-file
+    expected_modules:
+      - api/routes.py
+      - billing/stripe_client.py
+    notes: >
+      Charge, refund, and invoice-list endpoints are in routes.py; their
+      implementation is in stripe_client.py. Tests the routing→billing edge.
+
+  - id: user-endpoints
+    question: "What HTTP endpoints are exposed for user management?"
+    shape: cross-file
+    expected_modules:
+      - api/routes.py
+      - users/crud.py
+    notes: >
+      POST /api/users, GET /api/users/me, DELETE /api/users/me are in
+      routes.py and call users/crud.py. Tests the routing→users edge.
+
+  - id: me-endpoint
+    question: "How does GET /api/users/me work?"
+    shape: cross-file
+    expected_modules:
+      - api/routes.py
+      - auth/handlers.py
+    notes: >
+      get_me_endpoint() calls verify_session() to extract user_id before
+      calling get_user(). Tests the routing→auth cross-file retrieval.
+
+  - id: webhook-endpoint
+    question: "Where is the Stripe webhook entry point and how does it dispatch?"
+    shape: cross-file
+    expected_modules:
+      - api/routes.py
+      - billing/stripe_client.py
+    notes: >
+      stripe_webhook_endpoint() calls verify_webhook() then
+      handle_webhook_event() — both live in stripe_client.py.
+
+  # ── Billing ───────────────────────────────────────────────────────────────
+
+  - id: charge-flow
+    question: "How does charging a customer work end-to-end?"
+    shape: cross-file
+    expected_modules:
+      - billing/stripe_client.py
+      - billing/invoices.py
+      - users/crud.py
+    notes: >
+      charge_customer() validates the user, calls the Stripe API, writes a
+      charge row, then calls create_invoice(). Tests the widest billing fan-out.
+
+  - id: webhook-verification
+    question: "How is the Stripe webhook signature verified?"
+    shape: focused
+    expected_modules:
+      - billing/stripe_client.py
+    notes: >
+      verify_webhook() checks timestamp tolerance and HMAC signature.
+      Single-file focused query.
+
+  - id: webhook-dispatch
+    question: "What Stripe event types are handled and how?"
+    shape: focused
+    expected_modules:
+      - billing/stripe_client.py
+    notes: >
+      handle_webhook_event() dispatches charge.succeeded / charge.failed /
+      charge.refunded. Tests event-type knowledge retrieval.
+
+  - id: invoice-create
+    question: "How is an invoice created after a successful charge?"
+    shape: cross-file
+    expected_modules:
+      - billing/stripe_client.py
+      - billing/invoices.py
+    notes: >
+      charge_customer() calls create_invoice(). Tests the inter-billing
+      module edge without pulling in users/crud.
+
+  - id: invoice-list
+    question: "How do I list invoices for a specific user?"
+    shape: cross-file
+    expected_modules:
+      - billing/invoices.py
+      - api/routes.py
+    notes: >
+      list_user_invoices() is in invoices.py; it's exposed via GET
+      /api/billing/invoices in routes.py.
+
+  - id: refund-guard
+    question: "How does the system prevent double-refunds?"
+    shape: focused
+    expected_modules:
+      - billing/stripe_client.py
+    notes: >
+      refund_charge() checks `status == 'refunded'` before proceeding.
+      Tests guard-condition knowledge retrieval.
+
+  - id: invoice-email
+    question: "How are invoice emails sent to users?"
+    shape: cross-file
+    expected_modules:
+      - billing/invoices.py
+      - users/crud.py
+    notes: >
+      send_invoice_email() fetches the user record via get_user() to
+      resolve the email address before calling _render_and_queue().
+
+  # ── User management ───────────────────────────────────────────────────────
+
+  - id: user-deactivate
+    question: "How is a user soft-deleted from the system?"
+    shape: cross-file
+    expected_modules:
+      - users/crud.py
+      - api/routes.py
+    notes: >
+      deactivate_user() flips is_active=0; it is called from
+      delete_me_endpoint() after verify_session(). Tests the user→auth→route
+      chain.
+
+  - id: user-lookup-email
+    question: "How is a user looked up by email address?"
+    shape: focused
+    expected_modules:
+      - users/crud.py
+    notes: >
+      get_user_by_email() returns a raw dict for hot-path speed. Single-file
+      focused query.
+
+  - id: last-login-update
+    question: "When and how is the last_login timestamp updated?"
+    shape: cross-file
+    expected_modules:
+      - users/crud.py
+      - auth/handlers.py
+    notes: >
+      update_last_login() is in crud.py; it is called from
+      authenticate_user() in handlers.py after a successful credential check.
+
+  - id: user-model
+    question: "What fields does the User dataclass have?"
+    shape: identity
+    expected_modules:
+      - users/crud.py
+    notes: >
+      The User dataclass is defined in users/crud.py with id, email,
+      password_hash, created_at, last_login, is_active. Tests exact-class
+      retrieval — BM25 should match "User" at rank 1.
+
+  - id: user-active-guard
+    question: "How does the system check if a user is active before charging them?"
+    shape: cross-file
+    expected_modules:
+      - billing/stripe_client.py
+      - users/crud.py
+    notes: >
+      charge_customer() calls get_user() and checks user.is_active.
+      Tests the billing→users dependency retrieval.
+
+  # ── Database ──────────────────────────────────────────────────────────────
+
+  - id: db-tables
+    question: "What tables exist in the database schema?"
+    shape: focused
+    expected_modules:
+      - db/connection.py
+    notes: >
+      _ensure_schema() creates users, revoked_tokens, charges, refunds,
+      invoices. Tests schema-knowledge retrieval.
+
+  - id: db-threading
+    question: "How does the database handle concurrent thread access?"
+    shape: focused
+    expected_modules:
+      - db/connection.py
+    notes: >
+      threading.local() gives each thread its own connection. Tests
+      concurrency-mechanism retrieval.
+
+  - id: revoked-tokens-schema
+    question: "How are revoked tokens stored and checked after logout?"
+    shape: cross-file
+    expected_modules:
+      - db/connection.py
+      - auth/handlers.py
+    notes: >
+      The revoked_tokens table is defined in db/connection.py; logout()
+      inserts into it in auth/handlers.py. Tests the auth→db schema edge.
+
+  - id: charges-table
+    question: "What columns are in the charges table?"
+    shape: focused
+    expected_modules:
+      - db/connection.py
+    notes: >
+      CREATE TABLE charges: id, user_id, stripe_id, amount_cents, status,
+      created_at. Tests precise schema-column retrieval.
+
+  # ── Config / secrets ──────────────────────────────────────────────────────
+
+  - id: stripe-keys-config
+    question: "Where are the Stripe API keys and webhook secrets configured?"
+    shape: identity
+    expected_modules:
+      - billing/stripe_client.py
+    notes: >
+      STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are module-level
+      constants. BM25 should score stripe_client.py at rank 1 via exact
+      token matches.
+
+  - id: auth-error-types
+    question: "What exception types does authentication raise?"
+    shape: cross-file
+    expected_modules:
+      - auth/handlers.py
+      - auth/jwt_utils.py
+    notes: >
+      handlers.py defines InvalidCredentialsError and InvalidTokenError;
+      jwt_utils.py defines TokenExpiredError, InvalidSignatureError,
+      MalformedTokenError. Tests error-taxonomy retrieval across both
+      auth modules.
+
+learning_seed:
+  # Queries used to warm the Hebbian synapse store before Phase 2 of the
+  # benchmark. Heavier on auth + billing than on users to create realistic
+  # co-activation signal for the reranker.
+  history:
+    - "How does the JWT token get signed?"
+    - "Where is password hashing done?"
+    - "Can a user log in with an expired token?"
+    - "How do I charge a customer?"
+    - "What happens if a Stripe charge fails?"
+    - "How do I issue a partial refund?"
+    - "Where are invoices stored?"
+    - "How does the login endpoint work?"
+    - "What middleware runs before /api/billing/charge?"
+    - "How is a user session revoked?"
+    - "What does deactivate_user do?"
+    - "How is the webhook timestamp tolerance enforced?"
+    - "Where is ALGORITHM defined?"
+    - "What does verify_session return?"
+    - "How does the invoice email get the user's email address?"
