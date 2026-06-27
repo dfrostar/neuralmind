@@ -126,6 +126,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://dfrostar.github.io/neuralmind/use-cases/unified-stack.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://dfrostar.github.io/neuralmind/use-cases/chromadb-free-local.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
