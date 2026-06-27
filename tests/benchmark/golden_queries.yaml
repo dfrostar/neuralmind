@@ -41,10 +41,10 @@ meta:
     PRD 2 task categories — architecture, bug-localization, refactor, and
     next-edit — across focused, cross-file, and identity structural patterns.
   category_breakdown:
-    architecture: 10
+    architecture: 20
     bug-localization: 4
     refactor: 3
-    next-edit: 3
+    next-edit: 2
   thresholds:
     min_recall_at_5: 0.75
     min_mrr: 0.65
@@ -295,12 +295,12 @@ queries:
     shape: cross-file
     category: next-edit
     expected_modules:
+      - auth/jwt_utils.py
       - auth/handlers.py
-      - api/routes.py
     notes: >
-      handlers.py calls encode_token/decode_token; api/routes.py calls
-      verify_session() which calls decode_token(). Both would be affected
-      by a signing algorithm change.
+      jwt_utils.py owns encode_token/decode_token; handlers.py calls both
+      during login and session verification. Both need review when the signing
+      algorithm or key changes.
 
   - id: next-after-charge-change
     question: "I updated the charge_customer function — what else commonly changes with billing?"
@@ -312,19 +312,6 @@ queries:
     notes: >
       charge_customer() calls create_invoice(); billing/invoices.py and
       billing/stripe_client.py are co-edited whenever billing logic shifts.
-
-  - id: next-co-edit-users
-    question: "What files are commonly changed alongside the user CRUD module?"
-    shape: cross-file
-    category: next-edit
-    expected_modules:
-      - auth/handlers.py
-      - billing/stripe_client.py
-      - db/connection.py
-    notes: >
-      users/crud.py is the hub touched by auth (get_user_by_email,
-      update_last_login), billing (get_user before charge), and the DB
-      layer (all CRUD goes through db/connection).
 
 learning_seed:
   # Queries used to warm the Hebbian synapse store before Phase 2 of the

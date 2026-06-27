@@ -7,61 +7,174 @@
       "id": "auth-flow",
       "question": "How does authentication work in this codebase?",
       "shape": "cross-file",
-      "expected_modules": ["src/main/java/com/example/auth/Handlers.java", "src/main/java/com/example/auth/JwtUtils.java", "src/main/java/com/example/users/Crud.java"]
+      "expected_modules": [
+        "src/main/java/com/example/auth/Handlers.java",
+        "src/main/java/com/example/auth/JwtUtils.java",
+        "src/main/java/com/example/users/Crud.java"
+      ]
     },
     {
       "id": "api-endpoints",
       "question": "What are the main API endpoints?",
       "shape": "focused",
-      "expected_modules": ["src/main/java/com/example/api/Routes.java"]
+      "expected_modules": [
+        "src/main/java/com/example/api/Routes.java"
+      ]
     },
     {
       "id": "billing-flow",
       "question": "Explain the billing flow from a user perspective.",
       "shape": "cross-file",
-      "expected_modules": ["src/main/java/com/example/billing/StripeClient.java", "src/main/java/com/example/billing/Invoices.java", "src/main/java/com/example/users/Crud.java"]
+      "expected_modules": [
+        "src/main/java/com/example/billing/StripeClient.java",
+        "src/main/java/com/example/billing/Invoices.java",
+        "src/main/java/com/example/users/Crud.java"
+      ]
     },
     {
       "id": "user-storage",
       "question": "How are users stored in the database?",
       "shape": "cross-file",
-      "expected_modules": ["src/main/java/com/example/users/Crud.java", "src/main/java/com/example/db/Connection.java"]
+      "expected_modules": [
+        "src/main/java/com/example/users/Crud.java",
+        "src/main/java/com/example/db/Connection.java"
+      ]
     },
     {
       "id": "jwt-verify",
       "question": "How does JWT signature verification work?",
       "shape": "focused",
-      "expected_modules": ["src/main/java/com/example/auth/JwtUtils.java"]
+      "expected_modules": [
+        "src/main/java/com/example/auth/JwtUtils.java"
+      ]
     },
     {
       "id": "stripe-webhook",
       "question": "What happens when a Stripe webhook fires?",
       "shape": "focused",
-      "expected_modules": ["src/main/java/com/example/billing/StripeClient.java"]
+      "expected_modules": [
+        "src/main/java/com/example/billing/StripeClient.java"
+      ]
     },
     {
       "id": "create-user",
       "question": "How do I create a new user?",
       "shape": "cross-file",
-      "expected_modules": ["src/main/java/com/example/users/Crud.java", "src/main/java/com/example/api/Routes.java"]
+      "expected_modules": [
+        "src/main/java/com/example/users/Crud.java",
+        "src/main/java/com/example/api/Routes.java"
+      ]
     },
     {
       "id": "refund",
       "question": "Show me the refund logic.",
       "shape": "focused",
-      "expected_modules": ["src/main/java/com/example/billing/StripeClient.java"]
+      "expected_modules": [
+        "src/main/java/com/example/billing/StripeClient.java"
+      ]
     },
     {
       "id": "db-choice",
       "question": "What database does this project use?",
       "shape": "identity",
-      "expected_modules": ["src/main/java/com/example/db/Connection.java"]
+      "expected_modules": [
+        "src/main/java/com/example/db/Connection.java"
+      ]
     },
     {
       "id": "invoice-send",
       "question": "How are invoices sent to users?",
       "shape": "cross-file",
-      "expected_modules": ["src/main/java/com/example/billing/Invoices.java", "src/main/java/com/example/users/Crud.java"]
+      "expected_modules": [
+        "src/main/java/com/example/billing/Invoices.java",
+        "src/main/java/com/example/users/Crud.java"
+      ]
+    },
+    {
+      "id": "debug-login-silent",
+      "question": "A user login is failing without any error message \u2014 which file contains credential validation?",
+      "shape": "focused",
+      "category": "bug-localization",
+      "expected_modules": [
+        "src/main/java/com/example/auth/Handlers.java"
+      ]
+    },
+    {
+      "id": "debug-webhook-reject",
+      "question": "Stripe webhooks are being rejected \u2014 where is the signature verified?",
+      "shape": "focused",
+      "category": "bug-localization",
+      "expected_modules": [
+        "src/main/java/com/example/billing/StripeClient.java"
+      ]
+    },
+    {
+      "id": "debug-invoice-missing",
+      "question": "Invoices are not appearing for a user \u2014 which files handle invoice retrieval?",
+      "shape": "cross-file",
+      "category": "bug-localization",
+      "expected_modules": [
+        "src/main/java/com/example/billing/Invoices.java",
+        "src/main/java/com/example/users/Crud.java"
+      ]
+    },
+    {
+      "id": "debug-token-expire",
+      "question": "Users are being logged out unexpectedly \u2014 where is token expiry enforced?",
+      "shape": "focused",
+      "category": "bug-localization",
+      "expected_modules": [
+        "src/main/java/com/example/auth/JwtUtils.java"
+      ]
+    },
+    {
+      "id": "refactor-add-user-field",
+      "question": "I need to add an email_verified column to users \u2014 which files would change?",
+      "shape": "cross-file",
+      "category": "refactor",
+      "expected_modules": [
+        "src/main/java/com/example/users/Crud.java",
+        "src/main/java/com/example/db/Connection.java"
+      ]
+    },
+    {
+      "id": "refactor-swap-database",
+      "question": "I need to replace the database backend \u2014 which file owns the connection pool?",
+      "shape": "focused",
+      "category": "refactor",
+      "expected_modules": [
+        "src/main/java/com/example/db/Connection.java"
+      ]
+    },
+    {
+      "id": "refactor-add-mfa",
+      "question": "I want to add multi-factor authentication to the login flow \u2014 which files would I modify?",
+      "shape": "cross-file",
+      "category": "refactor",
+      "expected_modules": [
+        "src/main/java/com/example/auth/Handlers.java",
+        "src/main/java/com/example/auth/JwtUtils.java"
+      ]
+    },
+    {
+      "id": "next-after-jwt-change",
+      "question": "I just changed how JWT tokens are signed \u2014 what other files should I review?",
+      "shape": "cross-file",
+      "category": "next-edit",
+      "expected_modules": [
+        "src/main/java/com/example/auth/JwtUtils.java",
+        "src/main/java/com/example/auth/Handlers.java"
+      ]
+    },
+    {
+      "id": "next-after-charge-change",
+      "question": "I updated the charge_customer function \u2014 what else commonly changes with billing?",
+      "shape": "cross-file",
+      "category": "next-edit",
+      "expected_modules": [
+        "src/main/java/com/example/billing/Invoices.java",
+        "src/main/java/com/example/billing/StripeClient.java"
+      ]
     }
   ],
   "learning_seed": {

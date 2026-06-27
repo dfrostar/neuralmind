@@ -1,5 +1,5 @@
 {
-  "_comment": "Committed query set for the self-benchmarking suite. Each query carries the modules we expect to see in the top retrieval hits — used by the regression test to verify retrieval quality on top of raw token reduction. Keep the shape small; CI runs this on every PR.",
+  "_comment": "Committed query set for the self-benchmarking suite. Each query carries the modules we expect to see in the top retrieval hits \u2014 used by the regression test to verify retrieval quality on top of raw token reduction. Keep the shape small; CI runs this on every PR.",
   "_shapes": "shape = structural pattern (focused/cross-file/identity); category = PRD 2 task type (architecture/bug-localization/refactor/next-edit). CI gates on recall@5 and MRR across all categories.",
   "queries": [
     {
@@ -7,140 +7,183 @@
       "question": "How does authentication work in this codebase?",
       "shape": "cross-file",
       "category": "architecture",
-      "expected_modules": ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"]
+      "expected_modules": [
+        "auth/handlers.py",
+        "auth/jwt_utils.py",
+        "users/crud.py"
+      ]
     },
     {
       "id": "api-endpoints",
       "question": "What are the main API endpoints?",
       "shape": "focused",
       "category": "architecture",
-      "expected_modules": ["api/routes.py"]
+      "expected_modules": [
+        "api/routes.py"
+      ]
     },
     {
       "id": "billing-flow",
       "question": "Explain the billing flow from a user perspective.",
       "shape": "cross-file",
       "category": "architecture",
-      "expected_modules": ["billing/stripe_client.py", "billing/invoices.py", "users/crud.py"]
+      "expected_modules": [
+        "billing/stripe_client.py",
+        "billing/invoices.py",
+        "users/crud.py"
+      ]
     },
     {
       "id": "user-storage",
       "question": "How are users stored in the database?",
       "shape": "cross-file",
       "category": "architecture",
-      "expected_modules": ["users/crud.py", "db/connection.py"]
+      "expected_modules": [
+        "users/crud.py",
+        "db/connection.py"
+      ]
     },
     {
       "id": "jwt-verify",
       "question": "How does JWT signature verification work?",
       "shape": "focused",
       "category": "architecture",
-      "expected_modules": ["auth/jwt_utils.py"]
+      "expected_modules": [
+        "auth/jwt_utils.py"
+      ]
     },
     {
       "id": "stripe-webhook",
       "question": "What happens when a Stripe webhook fires?",
       "shape": "focused",
       "category": "architecture",
-      "expected_modules": ["billing/stripe_client.py"]
+      "expected_modules": [
+        "billing/stripe_client.py"
+      ]
     },
     {
       "id": "create-user",
       "question": "How do I create a new user?",
       "shape": "cross-file",
       "category": "architecture",
-      "expected_modules": ["users/crud.py", "api/routes.py"]
+      "expected_modules": [
+        "users/crud.py",
+        "api/routes.py"
+      ]
     },
     {
       "id": "refund",
       "question": "Show me the refund logic.",
       "shape": "focused",
       "category": "architecture",
-      "expected_modules": ["billing/stripe_client.py"]
+      "expected_modules": [
+        "billing/stripe_client.py"
+      ]
     },
     {
       "id": "db-choice",
       "question": "What database does this project use?",
       "shape": "identity",
       "category": "architecture",
-      "expected_modules": ["db/connection.py"]
+      "expected_modules": [
+        "db/connection.py"
+      ]
     },
     {
       "id": "invoice-send",
       "question": "How are invoices sent to users?",
       "shape": "cross-file",
       "category": "architecture",
-      "expected_modules": ["billing/invoices.py", "users/crud.py"]
+      "expected_modules": [
+        "billing/invoices.py",
+        "users/crud.py"
+      ]
     },
     {
       "id": "debug-login-silent",
-      "question": "A user login is failing without any error message — which file contains credential validation?",
+      "question": "A user login is failing without any error message \u2014 which file contains credential validation?",
       "shape": "focused",
       "category": "bug-localization",
-      "expected_modules": ["auth/handlers.py"]
+      "expected_modules": [
+        "auth/handlers.py"
+      ]
     },
     {
       "id": "debug-webhook-reject",
-      "question": "Stripe webhooks are being rejected — where is the signature verified?",
+      "question": "Stripe webhooks are being rejected \u2014 where is the signature verified?",
       "shape": "focused",
       "category": "bug-localization",
-      "expected_modules": ["billing/stripe_client.py"]
+      "expected_modules": [
+        "billing/stripe_client.py"
+      ]
     },
     {
       "id": "debug-invoice-missing",
-      "question": "Invoices are not appearing for a user — which files handle invoice retrieval?",
+      "question": "Invoices are not appearing for a user \u2014 which files handle invoice retrieval?",
       "shape": "cross-file",
       "category": "bug-localization",
-      "expected_modules": ["billing/invoices.py", "users/crud.py"]
+      "expected_modules": [
+        "billing/invoices.py",
+        "users/crud.py"
+      ]
     },
     {
       "id": "debug-token-expire",
-      "question": "Users are being logged out unexpectedly — where is token expiry enforced?",
+      "question": "Users are being logged out unexpectedly \u2014 where is token expiry enforced?",
       "shape": "focused",
       "category": "bug-localization",
-      "expected_modules": ["auth/jwt_utils.py"]
+      "expected_modules": [
+        "auth/jwt_utils.py"
+      ]
     },
     {
       "id": "refactor-add-user-field",
-      "question": "I need to add an email_verified column to users — which files would change?",
+      "question": "I need to add an email_verified column to users \u2014 which files would change?",
       "shape": "cross-file",
       "category": "refactor",
-      "expected_modules": ["users/crud.py", "db/connection.py"]
+      "expected_modules": [
+        "users/crud.py",
+        "db/connection.py"
+      ]
     },
     {
       "id": "refactor-swap-database",
-      "question": "I need to replace the database backend — which file owns the connection pool?",
+      "question": "I need to replace the database backend \u2014 which file owns the connection pool?",
       "shape": "focused",
       "category": "refactor",
-      "expected_modules": ["db/connection.py"]
+      "expected_modules": [
+        "db/connection.py"
+      ]
     },
     {
       "id": "refactor-add-mfa",
-      "question": "I want to add multi-factor authentication to the login flow — which files would I modify?",
+      "question": "I want to add multi-factor authentication to the login flow \u2014 which files would I modify?",
       "shape": "cross-file",
       "category": "refactor",
-      "expected_modules": ["auth/handlers.py", "auth/jwt_utils.py"]
+      "expected_modules": [
+        "auth/handlers.py",
+        "auth/jwt_utils.py"
+      ]
     },
     {
       "id": "next-after-jwt-change",
-      "question": "I just changed how JWT tokens are signed — what other files should I review?",
+      "question": "I just changed how JWT tokens are signed \u2014 what other files should I review?",
       "shape": "cross-file",
       "category": "next-edit",
-      "expected_modules": ["auth/handlers.py", "api/routes.py"]
+      "expected_modules": [
+        "auth/jwt_utils.py",
+        "auth/handlers.py"
+      ]
     },
     {
       "id": "next-after-charge-change",
-      "question": "I updated the charge_customer function — what else commonly changes with billing?",
+      "question": "I updated the charge_customer function \u2014 what else commonly changes with billing?",
       "shape": "cross-file",
       "category": "next-edit",
-      "expected_modules": ["billing/invoices.py", "billing/stripe_client.py"]
-    },
-    {
-      "id": "next-co-edit-users",
-      "question": "What files are commonly changed alongside the user CRUD module?",
-      "shape": "cross-file",
-      "category": "next-edit",
-      "expected_modules": ["auth/handlers.py", "billing/stripe_client.py", "db/connection.py"]
+      "expected_modules": [
+        "billing/invoices.py",
+        "billing/stripe_client.py"
+      ]
     }
   ],
   "learning_seed": {
