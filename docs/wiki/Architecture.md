@@ -259,17 +259,19 @@ productivity tools.
 **Token Budget**: ~200-500 tokens (variable based on results)
 
 **Content**:
-- Top semantic search matches
+- Top semantic + keyword matches
 - Code snippets with context
 - Entity descriptions
 - File paths and locations
 
-**Search Strategy**:
-1. Embed query using same model as index
-2. Vector similarity search in ChromaDB
-3. Rank by relevance score
+**Search Strategy** *(v0.38.0 hybrid)*:
+1. Embed query using same model as index → vector results
+2. BM25 keyword search (code-aware tokenisation) → keyword results
+3. Merge both lists via Reciprocal Rank Fusion (RRF, k=60)
 4. Filter duplicates from L2
 5. Format top N results
+
+Set `NEURALMIND_BM25=0` to revert to pure vector search.
 
 **Example Output** (for query "How does authentication work?"):
 ```markdown
@@ -860,9 +862,52 @@ for the day-by-day walkthrough.
 
 ---
 
+## Hybrid Search (v0.38.0)
+
+Pure vector search excels at semantic similarity ("how does authentication
+work?") but underperforms on exact identifiers ("UserService", "get_auth_token").
+v0.38.0 adds a BM25 sparse keyword index that runs alongside the vector search
+and whose results are merged at query time via **Reciprocal Rank Fusion**.
+
+### BM25 index
+
+- **Code-aware tokenisation**: camelCase (`UserService` → `["user","service"]`),
+  snake_case, dots, digits handled; short/digit-only tokens dropped.
+- **Atire BM25 formulation** (k1=1.5, b=0.75): standard parameters with strong
+  prior performance on short, structured text.
+- **Persisted** to `<project>/.neuralmind/bm25_index.json` at end of
+  `neuralmind build` — survives daemon restarts.
+- **Kill switch**: `NEURALMIND_BM25=0` disables the merge; the vector path is
+  unaffected.
+
+### Reciprocal Rank Fusion merge
+
+```
+score(d) = Σ_list  1 / (k + rank(d, list))    k = 60
+```
+
+The merged list is re-normalised to [0, 1]. Results present in both lists get an
+`_hybrid_kw_rank` annotation in the trace output for debugging.
+
+### Explicit feedback loop (v0.38.0)
+
+The `neuralmind_feedback` MCP tool closes the learning loop:
+
+| Signal | Effect |
+|---|---|
+| `positive` + `context_node_ids` | `SynapseStore.reinforce([node_id] + context_node_ids)` — strengthens associations |
+| `negative` | `SynapseStore.decay_node(node_id)` — weakens edges without deleting LTP-protected ones |
+
+Agents call this tool after using a retrieval result. Over time, nodes the agent
+finds useful accumulate stronger synapse weights; nodes that produce bad results
+have their edges softened so they surface less.
+
+---
+
 ## See Also
 
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
 - [Release Notes v0.4.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes
+- [Release Notes v0.38.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md) - Hybrid search + feedback loop

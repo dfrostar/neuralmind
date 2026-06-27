@@ -1,0 +1,91 @@
+name: NeuralMind Auto-Index
+
+# Rebuilds the NeuralMind code graph on every push to the default branch and
+# caches the result so teammates (and agents) always have a warm index ready.
+#
+# Two outputs ship from each run:
+#   1. The .neuralmind/ cache is stored under the GitHub Actions cache key —
+#      next build skips unchanged embeddings (hash-gated incremental update).
+#   2. .neuralmind-team-memory.json is committed back when it changes, so a
+#      fresh `git clone` starts with the team's earned synapse intuition already
+#      in place (same as `neuralmind memory publish` on your laptop, but fully
+#      automated).
+#
+# Usage: copy this file into .github/workflows/ and push. No secrets needed —
+# NeuralMind is 100% local; nothing is sent to an external service.
+#
+# Optional env vars (set as repo/environment secrets or vars):
+#   NEURALMIND_BYPASS=1        skip context compression (index only)
+#   NEURALMIND_TEAM_MEMORY=0   disable the auto-commit of team memory
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force full re-index (skip change detection)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write   # needed to commit .neuralmind-team-memory.json
+
+jobs:
+  autoindex:
+    name: Build NeuralMind index
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history so the watcher can detect changed files
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Restore NeuralMind index cache
+        id: cache-neuralmind
+        uses: actions/cache@v4
+        with:
+          path: .neuralmind/
+          # Key changes whenever any source file changes — forces re-index
+          # only when something actually changed, matching NeuralMind's own
+          # hash-gated incremental update logic.
+          key: neuralmind-${{ runner.os }}-${{ hashFiles('**/*.py', '**/*.ts', '**/*.tsx', '**/*.go', '**/*.rs', '**/*.java', '**/*.cs', '**/*.rb', '**/*.php', '**/*.c', '**/*.cpp', '**/*.h') }}
+          restore-keys: |
+            neuralmind-${{ runner.os }}-
+
+      - name: Install NeuralMind
+        run: pip install "neuralmind>=0.38.0"
+
+      - name: Build index
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            neuralmind build . --force
+          else
+            neuralmind build .
+          fi
+
+      - name: Export team memory snapshot
+        # Writes .neuralmind-team-memory.json with the earned synapse graph so
+        # teammates auto-inherit it on their next build.
+        run: neuralmind memory export --output .neuralmind-team-memory.json
+        continue-on-error: true   # non-fatal if memory store is cold
+
+      - name: Commit team memory snapshot
+        # Only commits when .neuralmind-team-memory.json actually changed.
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update NeuralMind team memory snapshot [skip ci]"
+          file_pattern: ".neuralmind-team-memory.json"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
+        continue-on-error: true
