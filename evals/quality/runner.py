@@ -43,6 +43,7 @@ class Query:
     id: str
     question: str
     shape: str
+    category: str  # PRD 2 task type: architecture / bug-localization / refactor / next-edit
     expected_modules: list[str]
 
 
@@ -82,6 +83,7 @@ def load_suite(name: str) -> Suite:
                 id=q["id"],
                 question=q["question"],
                 shape=q.get("shape", "unknown"),
+                category=q.get("category", "architecture"),
                 expected_modules=list(q["expected_modules"]),
             )
         )
