@@ -197,7 +197,22 @@ keywords = [
     "ponytail-alternative",
     "context-engineering-stack",
     "retrieval-transport-generation",
-    "complementary-context-tools"
+    "complementary-context-tools",
+    "hybrid-search",
+    "bm25",
+    "bm25-keyword-search",
+    "keyword-vector-hybrid",
+    "reciprocal-rank-fusion",
+    "rrf-merge",
+    "exact-name-code-search",
+    "retrieval-feedback",
+    "explicit-feedback",
+    "positive-negative-feedback",
+    "feedback-loop",
+    "ci-auto-index",
+    "github-action-index",
+    "automated-indexing",
+    "team-memory-ci"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

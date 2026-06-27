@@ -72,14 +72,21 @@ neuralmind query . "How is data validation handled throughout the codebase?"
 
 ---
 
-### "Can I search for exact strings?"
+### "Can I search for exact strings or exact identifiers?"
 
-**Answer:** Use `neuralmind search` for semantic search:
+**Answer:** Yes — since v0.38.0, NeuralMind uses **hybrid search** (BM25 + vector) by
+default. BM25 uses code-aware tokenisation, so queries like `"UserService"` or
+`"get_auth_token"` score exact name matches above semantically similar but
+textually different nodes.
+
 ```bash
-neuralmind search . "authentication"   # Semantic: finds related code
+neuralmind search . "UserService"      # BM25 exact-name match + semantic, merged via RRF
+neuralmind query  . "UserService"      # Full 4-layer context, hybrid L3 search
 ```
 
-For exact string matching, use your editor or `grep`:
+Set `NEURALMIND_BM25=0` to revert to pure vector search if needed.
+
+For raw string grep across files (not structured retrieval):
 ```bash
 grep -r "authenticate" src/
 ```

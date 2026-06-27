@@ -32,10 +32,11 @@ NeuralMind provides a Python API for building neural indexes from code knowledge
 neuralmind/
 ├── __init__.py          # Main exports: NeuralMind, ContextResult, TokenBudget
 ├── core.py              # NeuralMind class implementation
-├── embedder.py          # GraphEmbedder for vector storage
-├── context_selector.py  # ContextSelector for 4-layer context generation
+├── embedder.py          # GraphEmbedder for vector storage + BM25 index build
+├── bm25.py              # BM25 sparse keyword index (code-aware tokenisation)
+├── context_selector.py  # ContextSelector for 4-layer context generation + RRF hybrid merge
 ├── cli.py               # Command-line interface
-└── mcp_server.py        # MCP server for AI tool integration
+└── mcp_server.py        # MCP server for AI tool integration (13 tools)
 ```
 
 ### Main Exports
@@ -513,6 +514,24 @@ class GraphEmbedder:
         Returns:
             List of matching nodes with scores
         """
+    
+    def build_bm25_index(self) -> None:
+        """
+        Build and persist the BM25 keyword index from current nodes. *(v0.38.0+)*
+        
+        Called automatically at the end of embed_nodes(). Code-aware tokenisation
+        splits camelCase/snake_case/dots so "UserService" matches queries for
+        "user" or "service". Persists to <project>/.neuralmind/bm25_index.json.
+        """
+    
+    def bm25_search(self, query: str, n: int = 10) -> List[Dict]:
+        """
+        Keyword search via BM25 (Okapi BM25, k1=1.5, b=0.75). *(v0.38.0+)*
+        
+        Returns results in the same shape as search() so the context selector
+        can merge the two lists via Reciprocal Rank Fusion (RRF). Returns []
+        when NEURALMIND_BM25=0 or the index hasn't been built yet.
+        """
 ```
 
 ---
@@ -710,6 +729,19 @@ def transitions(
 Raw read-only listing of `(from, to, weight, count)` rows. Strongest
 first. Filter by `from_node` for a single source, omit for the full
 table. Used by the graph-view UI to overlay directional edges.
+
+#### Methods — explicit feedback *(v0.38.0+)*
+
+```python
+def decay_node(node_id: str) -> dict
+```
+
+Apply accelerated per-node decay to all edges touching `node_id`. Edges
+below the prune threshold and not LTP-protected are deleted. Use this when
+an agent signals that a retrieval result was wrong (the `neuralmind_feedback`
+MCP tool calls this on `signal="negative"`).
+
+Returns `{"node_id": str, "pruned": int}`.
 
 #### Methods — lifecycle
 
