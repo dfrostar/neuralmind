@@ -8,7 +8,7 @@ Purely syntactic: tree-sitter parses source into AST, ctags builds a symbol inde
 
 | Dimension | Tree-sitter / ctags / grep | NeuralMind |
 |---|---|---|
-| Query type | Exact / regex / symbol name | Natural language ("how does auth work") |
+| Query type | Exact / regex / symbol name | Natural language + BM25 exact-symbol hybrid (v0.38.0+) |
 | Underlying signal | Syntax | Syntax (via graphify) **+** semantic embeddings |
 | Output | List of matches | Structured, token-budgeted context for an LLM |
 | Agent integration | You parse results yourself | MCP server + PostToolUse hooks |
@@ -18,8 +18,8 @@ Purely syntactic: tree-sitter parses source into AST, ctags builds a symbol inde
 
 ## When to pick which
 
-- **Pick grep/ctags/tree-sitter** when you know the exact symbol or pattern and want a 5ms deterministic answer.
-- **Pick NeuralMind** when the question is natural language, spans multiple files, or is the kind of thing an LLM agent needs to orient itself.
+- **Pick grep/ctags/tree-sitter** when you need a deterministic, exhaustive answer — every occurrence of a symbol, 5ms, zero deps.
+- **Pick NeuralMind** when the question is natural language, spans multiple files, or is the kind of thing an LLM agent needs to orient itself. Since v0.38.0, NeuralMind also handles exact-symbol queries better via BM25 hybrid ranking (RRF merge of BM25 + embedding results), so the gap on identifier-heavy queries is narrower — but grep is still the right tool for "find *all* occurrences."
 
 They are complementary. NeuralMind's `search` command gives you ranked semantic results; `grep` gives you every literal hit. Most real agent loops benefit from both — which is why NeuralMind's PostToolUse hooks leave `Grep` output intact (just capped at 25 matches) rather than replacing it.
 
