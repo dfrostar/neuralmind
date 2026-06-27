@@ -14,6 +14,7 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 | [Offline / regulated work](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | 100% local, zero telemetry, compliance properties table |
 | [Growing monorepo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/growing-monorepo.md) | Your codebase grows fast and drifts often | Three freshness strategies + large-repo tuning |
 | [Slim & sovereign: ChromaDB-free local stack](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) | Security-sensitive teams, tiny-footprint installs (v0.21.0+) | Embed + search with zero ChromaDB — smaller deps, 8–16× smaller index, fewer advisories |
+| [Team memory via CI auto-index *(v0.38.0+)*](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ci-auto-index.md) | You want every developer's NeuralMind index to stay fresh automatically | On-push GitHub Action rebuilds incrementally + commits shared team memory bundle |
 
 ## Decision helpers
 
@@ -25,7 +26,7 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 | **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
 | **Keep all code local** | Default install — no extra config | 100% offline; nothing leaves the machine |
 | **Work across Claude + GPT + Gemini** | Build once, pipe output into any model | Model-agnostic |
-| **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) | The synapse layer learns from usage automatically; recall improves over time, no manual step |
+| **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) + `neuralmind_feedback` MCP tool | The synapse layer learns from usage automatically; positive/negative feedback sharpens associations |
 | **Measure savings** for a stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios |
 | **Auto-refresh** the index | `neuralmind init-hook .` | Every commit rebuilds incrementally |
 
