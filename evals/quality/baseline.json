@@ -18,6 +18,7 @@
       "n_queries": 10
     },
     "python": {
+      "_note": "Metrics measured on 10-query architecture-only set; suite expanded to 19 queries (adds bug-localization, refactor, next-edit categories). Refresh with: neuralmind benchmark --quality --json.",
       "mrr": 0.9,
       "answerability": 1.0,
       "mean_precision": {
@@ -30,7 +31,7 @@
         "3": 0.8333,
         "5": 0.8333
       },
-      "n_queries": 10
+      "n_queries": 19
     },
     "typescript": {
       "mrr": 0.9,
