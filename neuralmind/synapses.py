@@ -710,6 +710,57 @@ class SynapseStore:
             "remaining_transitions": remaining_transitions,
         }
 
+    def decay_node(self, node_id: str) -> dict:
+        """Apply one targeted decay tick to all edges touching ``node_id``.
+
+        Used by the explicit feedback tool (``neuralmind_feedback signal=negative``)
+        to soften a node that the agent marked as unhelpful. The same policy as
+        ``decay()`` applies — LTP-protected edges (activation_count >= LTP_THRESHOLD)
+        are floored at LTP_FLOOR, so long-established associations can't be
+        wiped out by a single negative signal. Non-LTP edges below PRUNE_THRESHOLD
+        after decay are pruned. Transitions from this node are also decayed one tick.
+        """
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                # Decay synapse edges where node_id is either endpoint
+                conn.execute(
+                    """
+                    UPDATE synapses
+                    SET weight = MAX(?, weight * (1.0 - ?))
+                    WHERE (node_a = ? OR node_b = ?) AND activation_count >= ?
+                    """,
+                    (LTP_FLOOR, LTP_DECAY_RATE, node_id, node_id, LTP_THRESHOLD),
+                )
+                conn.execute(
+                    """
+                    UPDATE synapses
+                    SET weight = weight * (1.0 - ?)
+                    WHERE (node_a = ? OR node_b = ?) AND activation_count < ?
+                    """,
+                    (DECAY_RATE, node_id, node_id, LTP_THRESHOLD),
+                )
+                pruned_cur = conn.execute(
+                    """
+                    DELETE FROM synapses
+                    WHERE (node_a = ? OR node_b = ?) AND weight < ? AND activation_count < ?
+                    """,
+                    (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD),
+                )
+                pruned = pruned_cur.rowcount
+                # Decay outgoing transitions for this node
+                conn.execute(
+                    "UPDATE synapse_transitions SET weight = weight * (1.0 - ?) "
+                    "WHERE from_node = ?",
+                    (DECAY_RATE, node_id),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+
+        return {"node_id": node_id, "pruned": pruned}
+
     # ----------------------------------------------------------------- #
     # Reads
     # ----------------------------------------------------------------- #

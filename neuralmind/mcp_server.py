@@ -211,6 +211,56 @@ def tool_synapse_decay(project_path: str) -> dict[str, Any]:
     return {"enabled": True, **store.decay()}
 
 
+def tool_feedback(
+    project_path: str,
+    node_id: str,
+    signal: str,
+    context_node_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """Record explicit retrieval feedback to strengthen or weaken synapse weights.
+
+    ``signal`` is ``"positive"`` or ``"negative"``.
+
+    Positive: reinforces co-activation between ``node_id`` and every node
+    in ``context_node_ids`` (the other results the agent saw in the same
+    retrieval round).  Use this when a result was genuinely helpful.
+
+    Negative: applies one decay tick to all edges touching ``node_id`` so
+    it surfaces less often in spreading-activation recall.  Use this when
+    a result was irrelevant — the weight drifts down over time rather than
+    being hard-removed, preserving LTP-protected edges.
+
+    Both no-op gracefully when the synapse store is absent (cold graph).
+    """
+    mind = get_mind(project_path, auto_build=False)
+    store = mind.synapses
+    if store is None:
+        return {"enabled": False, "node_id": node_id, "signal": signal}
+
+    if signal == "positive" and context_node_ids:
+        all_ids = [node_id] + [c for c in context_node_ids if c != node_id]
+        store.reinforce(all_ids)
+        return {
+            "enabled": True,
+            "signal": "positive",
+            "node_id": node_id,
+            "reinforced_with": context_node_ids,
+        }
+    elif signal == "negative":
+        store.decay_node(node_id)
+        return {
+            "enabled": True,
+            "signal": "negative",
+            "node_id": node_id,
+        }
+    return {
+        "enabled": True,
+        "signal": signal,
+        "node_id": node_id,
+        "note": "no-op: positive requires context_node_ids; negative requires only node_id",
+    }
+
+
 def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     """Render the synapse store as markdown for Claude Code auto-memory.
 
@@ -411,6 +461,40 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_feedback",
+        "description": (
+            "Record explicit retrieval feedback to strengthen or weaken synapse weights. "
+            "Use signal='positive' with context_node_ids (the other results from the same "
+            "query) to reinforce co-activation for a helpful node. Use signal='negative' to "
+            "apply a targeted decay tick to an unhelpful node. LTP-protected edges (heavily "
+            "co-activated) are never fully removed by a single negative signal."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "node_id": {
+                    "type": "string",
+                    "description": "ID of the node to give feedback on (from search results)",
+                },
+                "signal": {
+                    "type": "string",
+                    "enum": ["positive", "negative"],
+                    "description": "'positive' to reinforce co-activation; 'negative' to decay",
+                },
+                "context_node_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Other node IDs from the same retrieval round (required for positive signal)",
+                },
+            },
+            "required": ["project_path", "node_id", "signal"],
+        },
+    },
+    {
         "name": "neuralmind_export_synapse_memory",
         "description": (
             "Render the learned synapse graph as markdown and write it to "
@@ -454,6 +538,12 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_export_synapse_memory": lambda args: tool_export_synapse_memory(
             args["project_path"]
+        ),
+        "neuralmind_feedback": lambda args: tool_feedback(
+            args["project_path"],
+            args["node_id"],
+            args["signal"],
+            args.get("context_node_ids"),
         ),
     }
 
