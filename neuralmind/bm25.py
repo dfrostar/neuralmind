@@ -26,7 +26,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 _CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
 
@@ -72,7 +71,7 @@ class BM25Index:
         self._dl: list[int] = []
 
         # Collection-level stats, rebuilt by build()
-        self._df: dict[str, int] = {}   # document frequency per term
+        self._df: dict[str, int] = {}  # document frequency per term
         self._idf: dict[str, float] = {}  # cached IDF per term
         self._avgdl: float = 0.0
         self._N: int = 0
