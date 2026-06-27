@@ -89,7 +89,7 @@ class BM25Index:
         """Append documents to the index (call build() afterwards)."""
         if metadatas is None:
             metadatas = [{} for _ in doc_ids]
-        for doc_id, text, meta in zip(doc_ids, texts, metadatas):
+        for doc_id, text, meta in zip(doc_ids, texts, metadatas, strict=True):
             tokens = _tokenize(text)
             tf: dict[str, int] = {}
             for t in tokens:
@@ -198,7 +198,7 @@ class BM25Index:
             idx._ids = d["ids"]
             idx._docs = d["docs"]
             idx._metadatas = d["metadatas"]
-            idx._tf = [{k: v for k, v in tf.items()} for tf in d["tf"]]
+            idx._tf = [dict(tf) for tf in d["tf"]]
             idx._dl = d["dl"]
             idx._df = d["df"]
             idx._idf = d["idf"]
