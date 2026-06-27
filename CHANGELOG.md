@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.38.0](https://github.com/dfrostar/neuralmind/compare/v0.37.0...v0.38.0) (2026-06-27)
+
+
+### Features
+
+* hybrid BM25 search, explicit feedback MCP tool, CI auto-index action (v0.38.0) ([438bacd](https://github.com/dfrostar/neuralmind/commit/438bacd8d40ea97101c548f924dbd894586e3c7f))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([8e4fc98](https://github.com/dfrostar/neuralmind/commit/8e4fc98f5b6d5bfbdd4107614f7ffd181970892c))
+* refresh launch handoff to v0.37.0 state ([#275](https://github.com/dfrostar/neuralmind/issues/275)) ([8dff2c1](https://github.com/dfrostar/neuralmind/commit/8dff2c1221bdca6779908669b095ed3abc140d3a))
+
 ## [0.37.0](https://github.com/dfrostar/neuralmind/compare/v0.34.0...v0.37.0) (2026-06-20)
 
 
