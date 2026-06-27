@@ -246,7 +246,7 @@ def tool_feedback(
             "node_id": node_id,
             "reinforced_with": context_node_ids,
         }
-    elif signal == "negative":
+    if signal == "negative":
         store.decay_node(node_id)
         return {
             "enabled": True,

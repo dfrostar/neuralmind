@@ -254,7 +254,7 @@ class ContextSelector:
         bm25_search = getattr(self.embedder, "bm25_search", None)
         if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
             kw_results = bm25_search(query, n=fetch_n)
-            if kw_results:
+            if kw_results and isinstance(kw_results, list):
                 merged = self._rrf_merge(vec_results, kw_results)
                 results = merged[:fetch_n]
             else:
