@@ -8,7 +8,7 @@ export interface CliResult {
 
 export function spawnCli(args: string[], pythonPath: string): Promise<CliResult> {
   return new Promise((resolve) => {
-    const proc = spawn(pythonPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(pythonPath, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
 
