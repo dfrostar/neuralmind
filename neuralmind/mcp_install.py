@@ -55,7 +55,11 @@ def _vscode_settings_path() -> Path:
     if sys.platform == "darwin":
         base = _home() / "Library" / "Application Support" / "Code" / "User"
     elif os.name == "nt":
-        base = Path(os.environ.get("APPDATA") or str(_home() / "AppData" / "Roaming")) / "Code" / "User"
+        base = (
+            Path(os.environ.get("APPDATA") or str(_home() / "AppData" / "Roaming"))
+            / "Code"
+            / "User"
+        )
     else:
         base = _home() / ".config" / "Code" / "User"
     return base / "settings.json"
