@@ -118,24 +118,29 @@ dimension — on *your* code, with no labeling required:
 neuralmind probe .
 ```
 
-It samples indexed symbols, turns each one into a plain-English query from its
-own name (`authenticate_user` → `"authenticate user"`), asks the index to
-retrieve it back, and scores whether the right file came up:
+It samples indexed symbols, queries each one by its **docstring/intent** (e.g.
+*"Raised when the exp claim is in the past"* — note that doesn't contain the
+symbol name, so it's a real plain-English → code test, not a string match), asks
+the index to retrieve the code back, and scores whether the right file came up:
 
 ```
 Retrieval self-probe — your-project
-Sampled 50 of 1247 indexed symbols, retrieval depth k=10
+Sampled 63 of 64 indexed symbols, retrieval depth k=10
+Query source: 51 rationale, 12 label
 ============================================================
-  answerability  : 92%  (file found in top-10)
-  MRR            : 0.810
-  recall@1/3/5   : 0.740 / 0.860 / 0.900
-  blind spots    : 4
+  answerability  : 98%  (file found in top-10)
+  MRR            : 0.789
+  recall@1/3/5   : 0.667 / 0.905 / 0.968
+  blind spots    : 1
 ------------------------------------------------------------
-Symbols the index couldn't retrieve from their own description (4 total):
-  - parseConfig  (cfg/loader.py)   query: "parse config"
-  - RetryPolicy  (net/retry.py)    query: "retry policy"
-  …
+Symbols the index couldn't retrieve from their own description (1 total):
+  - get_me_endpoint()  (api/routes.py)   query: "GET /api/users/me — requires Authorization: Bearer header"
 ```
+
+The `Query source` line is the honesty knob: `rationale` probes ask by docstring
+(a real test), `label` probes fall back to the symbol name (weaker) for
+undocumented code. A run that's mostly `label` is a sanity check, not a quality
+score.
 
 **What those numbers mean for you:**
 

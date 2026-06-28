@@ -218,6 +218,8 @@ keywords = [
     "recall-at-k",
     "codebase-retrieval-test",
     "needle-in-haystack",
+    "docstring-to-code-retrieval",
+    "natural-language-code-search-eval",
     "unified-token-optimization",
     "ponytail-headroom-integration"
 ]

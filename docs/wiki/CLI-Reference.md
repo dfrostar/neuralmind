@@ -573,13 +573,18 @@ annotation — so it works on **any** built project.
 neuralmind probe [project_path] [OPTIONS]
 ```
 
-For a deterministic sample of indexed symbols, it synthesizes a natural-language
-query from each symbol's identity (the *humanized* label — `authenticate_user` →
-`"authenticate user"`, never its node id), retrieves the top-k hits, and scores
-whether the symbol's own source file came back. It reports **recall@1/3/5**,
-**MRR**, and **answerability@k** (reusing the `neuralmind.quality` metrics), plus
-a **blind-spot list**: the sampled symbols the index couldn't retrieve from
-their description — i.e. where an agent would come up empty.
+For a deterministic sample of indexed symbols, it queries each one by its
+*intent* — the symbol's **rationale** (the docstring text NeuralMind stores as
+`rationale` nodes, e.g. `"Raised when the exp claim is in the past"`), which
+doesn't contain the symbol name, so it's a real **natural-language → code** test
+rather than a string match. It asks the backend for code hits directly, then
+scores whether the symbol's source file came back: **recall@1/3/5**, **MRR**, and
+**answerability@k** (reusing the `neuralmind.quality` metrics). Undocumented
+symbols fall back to a humanized label, and the report **discloses the
+rationale-vs-name split** so a mostly-fallback run reads as a sanity check, not a
+quality score. The most actionable output is the **blind-spot list**: the sampled
+symbols the index couldn't retrieve from their description — i.e. where an agent
+would come up empty. `--k` must be ≥ 1 and `--sample-size` ≥ 0 (`0` = all).
 
 The idea is borrowed from long-context "needle-in-a-haystack" evals (e.g. S-NIAH
 in the *Recursive Language Models* paper): rather than measuring cost, it
@@ -619,23 +624,25 @@ neuralmind probe . --sample-size 100 --baseline probe-baseline.json
 #### Sample Output
 
 ```
-Retrieval self-probe — my-project
-Sampled 50 of 1240 indexed symbols, retrieval depth k=10
+Retrieval self-probe — sample_project
+Sampled 63 of 64 indexed symbols, retrieval depth k=10
+Query source: 51 rationale, 12 label
 ============================================================
-  answerability  : 92%  (file found in top-10)
-  MRR            : 0.810
-  recall@1/3/5   : 0.740 / 0.860 / 0.900
-  blind spots    : 4
+  answerability  : 98%  (file found in top-10)
+  MRR            : 0.789
+  recall@1/3/5   : 0.667 / 0.905 / 0.968
+  blind spots    : 1
 ------------------------------------------------------------
-Symbols the index couldn't retrieve from their own description (4 total):
-  - parseConfig  (cfg/loader.py)   query: "parse config"
-  - RetryPolicy  (net/retry.py)    query: "retry policy"
-  …
+Symbols the index couldn't retrieve from their own description (1 total):
+  - get_me_endpoint()  (api/routes.py)   query: "GET /api/users/me — requires Authorization: Bearer header"
 ```
 
-Because the probe is deterministic per `--seed` and emits `--json`, you can gate
-CI on a per-repo recall/MRR floor, or diff two runs with `--baseline` to catch a
-retrieval regression before it ships.
+The `Query source` line discloses how strong the run was: `rationale` probes are
+real NL→code tests; `label` probes are a weaker name-based fallback for
+undocumented symbols. Because the probe is deterministic per `--seed` and emits
+`--json` (with a `query_sources` tally), you can gate CI on a per-repo recall/MRR
+floor, or diff two runs with `--baseline` to catch a retrieval regression before
+it ships.
 
 ---
 

@@ -225,22 +225,41 @@ def cmd_probe(args):
 
     Unlike `benchmark` (which measures token reduction) and `benchmark
     --quality` (which scores ranking against committed golden fixtures), this
-    runs label-free on the current project: it samples indexed symbols, asks
-    the index to retrieve each one back from a natural-language query, and
-    reports recall@k / MRR / answerability plus the symbols it couldn't find.
+    runs label-free on the current project: it samples indexed symbols, queries
+    each by its docstring/intent, and reports recall@k / MRR / answerability
+    plus the symbols it couldn't find.
     """
     import contextlib
+
+    # Validate early — before the (potentially slow) build — so a bad depth or
+    # an accidental full-repo probe fails fast with a clear message.
+    if args.k < 1:
+        print(f"probe: --k must be >= 1 (got {args.k})", file=sys.stderr)
+        sys.exit(2)
+    if args.sample_size < 0:
+        print(
+            f"probe: --sample-size must be >= 0 (got {args.sample_size}; 0 means 'all')",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     # The embedder prints graph-load / embedding progress to stdout, which would
     # corrupt --json and clutter the human report. Redirect that to stderr (the
     # same trick the quality harness uses) so stdout carries only the report.
-    with contextlib.redirect_stdout(sys.stderr):
-        mind = create_mind(args.project_path, auto_build=True)
-        report = mind.retrieval_probe(
-            sample_size=args.sample_size,
-            k=args.k,
-            seed=args.seed,
-        )
+    try:
+        with contextlib.redirect_stdout(sys.stderr):
+            mind = create_mind(args.project_path, auto_build=True)
+            report = mind.retrieval_probe(
+                sample_size=args.sample_size,
+                k=args.k,
+                seed=args.seed,
+            )
+    except ValueError as exc:
+        # Bad --k / --sample-size: report cleanly and exit non-zero rather than
+        # emitting a valid-looking zero-recall report (which would corrupt
+        # baseline data).
+        print(f"probe: {exc}", file=sys.stderr)
+        sys.exit(2)
     data = report.to_dict()
 
     baseline = None
@@ -272,6 +291,12 @@ def cmd_probe(args):
         f"Sampled {data['sample_size']} of {data['index_size']} indexed symbols, "
         f"retrieval depth k={data['k']}"
     )
+    sources = data.get("query_sources") or {}
+    if sources:
+        # Disclose query provenance: rationale = real NL→code test; label/file =
+        # weaker, more circular fallback. A mostly-label run is a sanity check.
+        src_str = ", ".join(f"{n} {s}" for s, n in sorted(sources.items(), key=lambda x: -x[1]))
+        print(f"Query source: {src_str}")
     print("=" * 60)
     print(f"  answerability  : {data['answerability']:.0%}  (file found in top-{data['k']})")
     print(f"  MRR            : {data['mrr']:.3f}")
