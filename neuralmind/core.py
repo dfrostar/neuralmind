@@ -1507,30 +1507,68 @@ class NeuralMind:
 
         Token reduction proves NeuralMind is *cheap* and the golden-suite
         quality eval proves the ranking is *good* on a labeled fixture — but
-        neither tells a user whether retrieval finds the right file on *their*
-        codebase. This does: it samples indexed symbols, synthesizes a
-        natural-language query from each symbol's identity (never its id), asks
-        the index to retrieve it back, and scores whether the symbol's own
-        source file surfaced in the top-``k`` (see :mod:`neuralmind.probe`).
+        neither tells a user whether retrieval finds the right code on *their*
+        codebase. This does: it samples indexed symbols, queries each by its
+        **rationale** (the docstring/intent text, which doesn't contain the
+        symbol name — a real natural-language→code test rather than a
+        string-match tautology; falls back to a humanized name), asks the index
+        to retrieve it back, and scores whether the symbol's source file
+        surfaced in the top-``k`` (see :mod:`neuralmind.probe`).
 
-        The pure logic lives in :mod:`neuralmind.probe`; here we just inject the
-        embedder's ``search`` as the retrieval round trip. Returns a
-        :class:`~neuralmind.probe.ProbeReport`.
+        The pure logic lives in :mod:`neuralmind.probe`; here we inject the
+        embedder's ``search`` (filtered to code) as the retrieval round trip.
+        Returns a :class:`~neuralmind.probe.ProbeReport`.
         """
         from . import probe
 
+        # Validate up front: ``k < 1`` would score every symbol as a miss
+        # (answerability always 0), and a negative ``sample_size`` would be
+        # silently treated as "all" and trigger an accidental full-repo probe.
+        if k < 1:
+            raise ValueError(f"k must be >= 1 (got {k})")
+        if sample_size < 0:
+            raise ValueError(f"sample_size must be >= 0 (got {sample_size}; 0 means 'all')")
+
         self._ensure_built()
         nodes = list(getattr(self.embedder, "nodes", []) or [])
-        samples = probe.sample_nodes(nodes, sample_size, seed=seed)
+        edges = list(getattr(self.embedder, "edges", []) or [])
+        # Query symbols by their docstring/intent (rationale) when available —
+        # that text doesn't contain the symbol name, so it's a real NL→code
+        # test, not a string-match tautology. Falls back to the humanized name.
+        rationales = probe.extract_rationales(nodes, edges)
+        # "Sampled X of Y indexed symbols" should count only what the probe can
+        # actually draw from — code nodes — not rationale/document pseudo-nodes.
+        code_node_count = sum(1 for n in nodes if n.get("file_type") == "code")
+        # Retrieval is hard-filtered to code, so a project with no code nodes has
+        # nothing answerable: sample nothing (n_queries == 0 → the CLI prints the
+        # "no probeable symbols" guidance) rather than sampling non-code symbols
+        # that could never be retrieved and scoring them all as blind spots.
+        if code_node_count == 0:
+            samples: list[dict] = []
+        else:
+            samples = probe.sample_nodes(nodes, sample_size, seed=seed, rationales=rationales)
 
         def retrieve(query: str) -> list[str]:
+            # Ask the backend for code hits directly: a rationale-sourced query
+            # can rank rationale/document nodes above its own code, so a fixed
+            # over-fetch-then-filter window could miss the file even when a
+            # code-only top-k would contain it. The built-in backends accept the
+            # ``file_type`` keyword; a backend that only implements the base
+            # ``search(query, n, where=...)`` contract raises TypeError, so fall
+            # back to over-fetching and filtering to code here. Real backend /
+            # index errors still propagate (we only catch the signature
+            # mismatch) rather than being scored as a retrieval blind spot.
             try:
-                hits = self.embedder.search(query, n=k)
-            except Exception:
-                return []
+                hits = self.embedder.search(query, n=k, file_type="code")
+            except TypeError:
+                raw = self.embedder.search(query, n=k * 4)
+                code = [h for h in raw if h.get("metadata", {}).get("file_type") == "code"]
+                hits = (code or raw)[:k]
             return [str(h.get("metadata", {}).get("source_file", "")) for h in hits]
 
-        report = probe.run_probe(samples, retrieve, ks=ks, k=k, index_size=len(nodes))
+        report = probe.run_probe(
+            samples, retrieve, ks=ks, k=k, index_size=code_node_count, rationales=rationales
+        )
         self._emit_audit(
             category="audit",
             action="probe",
@@ -1541,6 +1579,7 @@ class NeuralMind:
                 "mrr": round(report.suite.mrr, 4),
                 "answerability": round(report.suite.answerability, 4),
                 "blind_spots": report.blind_spot_total,
+                "query_sources": report.query_sources,
             },
         )
         return report
