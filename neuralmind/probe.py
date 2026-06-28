@@ -1,28 +1,38 @@
-"""Label-free retrieval self-probe: does the index retrieve its own symbols?
+"""Label-free retrieval self-probe: does the index retrieve the right code?
 
 Token reduction proves NeuralMind is *cheap*. The golden-suite quality eval
 (``evals/quality``) proves the ranking is *good* — but only against a set of
 hand-labeled ``expected_modules`` that ship with the source repo. Neither one
 answers the question a user actually has: **on my codebase, can the agent find
-the right file when it asks about a symbol?**
+the right code when it asks about it in plain English?**
 
-This module is that missing, label-free probe. It samples indexed symbols,
-synthesizes a natural-language query from each symbol's own identity (the
-humanized label — never its node id), asks the index to retrieve it back, and
-scores whether the symbol's source file came up in the top-k. No fixtures, no
-hand labeling: it works on any built project.
+This module is that missing, label-free probe. For a deterministic sample of
+indexed symbols it builds a natural-language query, asks the index to retrieve
+the symbol's code back, and scores whether it surfaced in the top-k — reusing
+the metric math in :mod:`neuralmind.quality`. No fixtures, no hand labeling: it
+works on any built project.
 
-The idea is borrowed from long-context "needle-in-a-haystack" evals (e.g.
-S-NIAH in the Recursive Language Models paper): rather than measuring cost, it
-measures whether the right node still surfaces as the index grows — the
-retrieval analog of context rot. The most useful output is the **blind-spot
-list**: sampled symbols whose own file the index failed to retrieve, i.e. the
-places an agent would come up empty.
+**Query source matters, and we are honest about it.** The strongest query is the
+symbol's own *rationale* — the docstring/intent text NeuralMind already stores
+as ``rationale`` nodes (e.g. "Insert a new user and return the created record").
+That text does **not** contain the symbol name, so retrieving the right code
+from it is a real natural-language→code test, not a string-match tautology. When
+a symbol has no rationale we fall back to a *humanized* label
+(``authenticate_user`` -> "authenticate user"); that fallback is weaker (the
+label is part of what's embedded), so the report counts how many probes used
+each source — a run that's mostly label-fallback should be read as a sanity
+check, not a quality score.
+
+The idea is borrowed from long-context "needle-in-a-haystack" evals (e.g. S-NIAH
+in the Recursive Language Models paper): rather than measuring cost, it measures
+whether the right node still surfaces as the index grows — the retrieval analog
+of context rot. The most useful output is the **blind-spot list**: sampled
+symbols whose code the index failed to retrieve, i.e. where an agent would come
+up empty.
 
 Pure + stdlib-only (query synthesis, sampling, scoring), mirroring the synapse,
 IR, and quality layers: the embedding round trip is injected as a callable, so
-everything here is testable without the vector stack. The metric math is reused
-wholesale from :mod:`neuralmind.quality`.
+everything here is testable without the vector stack.
 """
 
 from __future__ import annotations
@@ -39,6 +49,15 @@ from . import quality
 DEFAULT_K = 10
 DEFAULT_KS: tuple[int, ...] = (1, 3, 5)
 DEFAULT_SAMPLE_SIZE = 50
+
+# A rationale longer than this is truncated before it becomes a query — a long
+# docstring's tail is noise for retrieval and inflates the embedding round trip.
+MAX_RATIONALE_CHARS = 160
+
+# Cap on how many blind spots we keep in the report so a pathological index
+# (everything misses) can't produce an unbounded blob. The total count is
+# always reported via ``blind_spot_total``.
+MAX_BLIND_SPOTS = 25
 
 # Code-like extensions we strip off a file-level label so "auth.py" probes as
 # "auth", not "auth py".
@@ -72,6 +91,12 @@ _CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 # snake_case underscores, etc.).
 _NON_WORD_RE = re.compile(r"[^0-9A-Za-z]+")
 
+# Query provenance, surfaced per-probe and tallied in the report so a reader can
+# tell a real NL→code test (rationale) from the weaker name-based fallback.
+SOURCE_RATIONALE = "rationale"
+SOURCE_LABEL = "label"
+SOURCE_FILE = "file"
+
 
 def humanize_label(label: str) -> str:
     """Turn a code identifier into the words a developer would actually type.
@@ -99,21 +124,74 @@ def humanize_label(label: str) -> str:
     return " ".join(words)
 
 
-def synthesize_query(node: dict) -> str:
-    """Build the probe query for one node from its identity, never its id.
+def normalize_rationale(text: str) -> str:
+    """Clean a docstring/rationale into a compact query string.
 
-    Prefers the humanized label; falls back to the humanized file stem so a
-    node with an opaque label (but a real source file) is still probeable.
+    Collapses whitespace, trims to :data:`MAX_RATIONALE_CHARS`, and drops a
+    trailing period — it's already natural language, so (unlike a label) it is
+    used as-is rather than tokenized.
     """
-    query = humanize_label(str(node.get("label", "")))
-    if query:
-        return query
+    cleaned = " ".join(str(text).split()).strip()
+    if len(cleaned) > MAX_RATIONALE_CHARS:
+        cleaned = cleaned[:MAX_RATIONALE_CHARS].rsplit(" ", 1)[0].strip()
+    return cleaned.rstrip(".").strip()
+
+
+def extract_rationales(nodes: Iterable[dict], edges: Iterable[dict]) -> dict[str, str]:
+    """Map each code node id to its rationale (docstring) text.
+
+    NeuralMind stores docstrings as separate ``rationale`` nodes joined to the
+    code they describe by ``rationale_for`` edges (see ``core.skeleton``). We
+    invert that into ``{code_node_id: rationale_text}`` so the probe can query a
+    symbol by what it *does*, not what it's *called*. The first non-empty
+    rationale per code node wins; later ones are ignored.
+    """
+    rationale_text = {
+        str(n.get("id")): str(n.get("label", "")).strip()
+        for n in nodes
+        if n.get("file_type") == "rationale"
+    }
+    out: dict[str, str] = {}
+    for e in edges:
+        if e.get("relation") != "rationale_for":
+            continue
+        src = e.get("_src") or e.get("source")
+        tgt = e.get("_tgt") or e.get("target")
+        # Exactly one endpoint is the rationale node; the other is the code node.
+        if src in rationale_text:
+            rid, cid = src, tgt
+        elif tgt in rationale_text:
+            rid, cid = tgt, src
+        else:
+            continue
+        text = normalize_rationale(rationale_text.get(str(rid), ""))
+        if text and str(cid) not in out:
+            out[str(cid)] = text
+    return out
+
+
+def synthesize_query(node: dict, rationales: dict[str, str] | None = None) -> tuple[str, str]:
+    """Build the probe query for one node and report where it came from.
+
+    Returns ``(query, source)`` where ``source`` is one of
+    :data:`SOURCE_RATIONALE` / :data:`SOURCE_LABEL` / :data:`SOURCE_FILE`.
+    Prefers the symbol's rationale (a real NL→code test); falls back to the
+    humanized label, then the file stem, so an undocumented symbol is still
+    probeable — just via a weaker signal.
+    """
+    if rationales:
+        text = rationales.get(str(node.get("id", "")))
+        if text:
+            return text, SOURCE_RATIONALE
+    label_query = humanize_label(str(node.get("label", "")))
+    if label_query:
+        return label_query, SOURCE_LABEL
     source = str(node.get("source_file", ""))
     stem = source.replace("\\", "/").rsplit("/", 1)[-1]
-    return humanize_label(stem)
+    return humanize_label(stem), SOURCE_FILE
 
 
-def is_probeable(node: dict) -> bool:
+def is_probeable(node: dict, rationales: dict[str, str] | None = None) -> bool:
     """A node can be probed when it has a source file and a non-empty query.
 
     Rationale/doc pseudo-nodes without a ``source_file`` are skipped — there's
@@ -121,7 +199,8 @@ def is_probeable(node: dict) -> bool:
     """
     if not node.get("source_file"):
         return False
-    return bool(synthesize_query(node))
+    query, _ = synthesize_query(node, rationales)
+    return bool(query)
 
 
 def sample_nodes(
@@ -130,20 +209,32 @@ def sample_nodes(
     *,
     seed: int = 0,
     code_only: bool = True,
+    rationales: dict[str, str] | None = None,
 ) -> list[dict]:
-    """Deterministically sample probeable nodes.
+    """Deterministically sample probeable nodes, preferring documented ones.
 
     ``code_only`` keeps the probe focused on code symbols (``file_type ==
-    "code"``) when any exist, falling back to every probeable node otherwise so
-    a docs-only or oddly-typed graph still yields a sample. The sample is
-    reproducible for a given ``seed`` so a probe number is stable across runs
-    and comparable over time.
+    "code"``) when any exist. When ``rationales`` is given and there are enough
+    rationale-bearing symbols to fill the sample, we draw only from those — the
+    strongest, least-circular probes — falling back to the full probeable pool
+    otherwise. The sample is reproducible for a given ``seed`` so a probe number
+    is stable across runs and comparable over time.
     """
-    pool = [n for n in nodes if is_probeable(n)]
+    pool = [n for n in nodes if is_probeable(n, rationales)]
     if code_only:
         code = [n for n in pool if n.get("file_type") == "code"]
         if code:
             pool = code
+
+    # Prefer rationale-backed symbols when there are enough of them to fill the
+    # requested sample; this keeps the headline metric honest (NL→code) rather
+    # than diluting it with name-based fallbacks.
+    if rationales:
+        documented = [n for n in pool if str(n.get("id", "")) in rationales]
+        target = len(pool) if sample_size <= 0 else sample_size
+        if len(documented) >= target:
+            pool = documented
+
     if sample_size <= 0 or sample_size >= len(pool):
         # Sort for determinism before returning the whole pool — embedder node
         # order is insertion order, which is stable, but be explicit.
@@ -162,6 +253,10 @@ class ProbeReport:
     k: int
     sample_size: int = 0
     blind_spot_total: int = 0
+    # How many probes drew their query from each source (rationale/label/file).
+    # A run dominated by `label` is a weaker, more circular test — disclosed so
+    # the headline number is never read as stronger than it is.
+    query_sources: dict[str, int] | None = None
 
     def to_dict(self) -> dict:
         d = self.suite.to_dict()
@@ -170,15 +265,10 @@ class ProbeReport:
         d["index_size"] = self.index_size
         d["k"] = self.k
         d["sample_size"] = self.sample_size
+        d["query_sources"] = self.query_sources or {}
         d["blind_spots"] = self.blind_spots
         d["blind_spot_total"] = self.blind_spot_total
         return d
-
-
-# Cap on how many blind spots we keep in the report so a pathological index
-# (everything misses) can't produce an unbounded blob. The total count is
-# always reported via ``blind_spot_total``.
-MAX_BLIND_SPOTS = 25
 
 
 def run_probe(
@@ -188,20 +278,25 @@ def run_probe(
     ks: tuple[int, ...] = DEFAULT_KS,
     k: int = DEFAULT_K,
     index_size: int = 0,
+    rationales: dict[str, str] | None = None,
 ) -> ProbeReport:
     """Score a sampled self-probe.
 
     ``retrieve`` maps a query string to a ranked list of source-file modules
-    (the embedding round trip, injected so this stays testable). For each
-    sample the relevant set is the symbol's own source file; answerability is
-    measured at ``k`` (the retrieval depth). Returns a :class:`ProbeReport`
-    whose ``suite`` carries the aggregate metrics and whose ``blind_spots``
-    names the samples whose file never surfaced.
+    (the embedding round trip, injected so this stays testable). For each sample
+    the relevant set is the symbol's own source file; answerability is measured
+    at ``k`` (the retrieval depth). ``rationales`` (``{code_id: text}``) lets the
+    probe query symbols by intent rather than name. Returns a
+    :class:`ProbeReport` whose ``suite`` carries the aggregate metrics, whose
+    ``query_sources`` tallies how strong each probe was, and whose
+    ``blind_spots`` names the samples whose file never surfaced.
     """
     per_query: list[quality.QueryQuality] = []
     blind_spots: list[dict] = []
+    query_sources: dict[str, int] = {}
     for node in samples:
-        query = synthesize_query(node)
+        query, source = synthesize_query(node, rationales)
+        query_sources[source] = query_sources.get(source, 0) + 1
         relevant = str(node.get("source_file", ""))
         ranked = retrieve(query)
         qq = quality.evaluate_query(
@@ -212,16 +307,16 @@ def run_probe(
             answer_k=k,
         )
         per_query.append(qq)
-        if not qq.answerable:
-            if len(blind_spots) < MAX_BLIND_SPOTS:
-                blind_spots.append(
-                    {
-                        "id": str(node.get("id", "")),
-                        "label": str(node.get("label", "")),
-                        "source_file": relevant,
-                        "query": query,
-                    }
-                )
+        if not qq.answerable and len(blind_spots) < MAX_BLIND_SPOTS:
+            blind_spots.append(
+                {
+                    "id": str(node.get("id", "")),
+                    "label": str(node.get("label", "")),
+                    "source_file": relevant,
+                    "query": query,
+                    "query_source": source,
+                }
+            )
     agg = quality.aggregate("self-probe", per_query, ks=ks)
     return ProbeReport(
         suite=agg,
@@ -230,4 +325,5 @@ def run_probe(
         k=k,
         sample_size=len(samples),
         blind_spot_total=sum(1 for q in per_query if not q.answerable),
+        query_sources=query_sources,
     )
