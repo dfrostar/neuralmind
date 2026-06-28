@@ -32,6 +32,7 @@ and the file activity watcher.
 - `neuralmind/hooks.py` — Claude Code hook registration + runtime
 - `neuralmind/mcp_server.py` — MCP tools for any agent
 - `neuralmind/cli.py` — `neuralmind {build,query,watch,serve,install-hooks,…}`
+- `editors/vscode/` — VS Code extension: status bar, command palette, graph panel, hover provider
 
 ## Local conventions
 

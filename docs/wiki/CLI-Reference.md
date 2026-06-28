@@ -1183,6 +1183,7 @@ neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 | `cursor` | project | `.cursor/mcp.json` |
 | `claude-desktop` | user | platform `claude_desktop_config.json` |
 | `cline` | user | VS Code `cline_mcp_settings.json` |
+| `vscode` | user | VS Code `settings.json` (`mcp.servers` key, requires VS Code 1.99+) |
 
 #### Options
 
