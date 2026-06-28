@@ -1496,6 +1496,55 @@ class NeuralMind:
             "summary": f"{avg_reduction:.1f}x average token reduction",
         }
 
+    def retrieval_probe(
+        self,
+        sample_size: int = 50,
+        k: int = 10,
+        ks: tuple[int, ...] = (1, 3, 5),
+        seed: int = 0,
+    ):
+        """Run a label-free retrieval self-probe on this project's own symbols.
+
+        Token reduction proves NeuralMind is *cheap* and the golden-suite
+        quality eval proves the ranking is *good* on a labeled fixture — but
+        neither tells a user whether retrieval finds the right file on *their*
+        codebase. This does: it samples indexed symbols, synthesizes a
+        natural-language query from each symbol's identity (never its id), asks
+        the index to retrieve it back, and scores whether the symbol's own
+        source file surfaced in the top-``k`` (see :mod:`neuralmind.probe`).
+
+        The pure logic lives in :mod:`neuralmind.probe`; here we just inject the
+        embedder's ``search`` as the retrieval round trip. Returns a
+        :class:`~neuralmind.probe.ProbeReport`.
+        """
+        from . import probe
+
+        self._ensure_built()
+        nodes = list(getattr(self.embedder, "nodes", []) or [])
+        samples = probe.sample_nodes(nodes, sample_size, seed=seed)
+
+        def retrieve(query: str) -> list[str]:
+            try:
+                hits = self.embedder.search(query, n=k)
+            except Exception:
+                return []
+            return [str(h.get("metadata", {}).get("source_file", "")) for h in hits]
+
+        report = probe.run_probe(samples, retrieve, ks=ks, k=k, index_size=len(nodes))
+        self._emit_audit(
+            category="audit",
+            action="probe",
+            status="success",
+            target=self.project_path.name,
+            details={
+                "sample_size": report.sample_size,
+                "mrr": round(report.suite.mrr, 4),
+                "answerability": round(report.suite.answerability, 4),
+                "blind_spots": report.blind_spot_total,
+            },
+        )
+        return report
+
     def export_context(self, query: str = None, output_path: str = None) -> str:
         """
         Export context to a file for use with other tools.
