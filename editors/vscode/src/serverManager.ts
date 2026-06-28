@@ -17,6 +17,7 @@ export class ServerManager implements vscode.Disposable {
   get isReady(): boolean { return this._ready; }
 
   async start(): Promise<void> {
+    if (this.proc !== null) return; // already running — start() is idempotent
     if (!this.projectRoot) return;
     const config = vscode.workspace.getConfiguration('neuralmind');
     const pythonPath = config.get<string>('pythonPath', 'python');
@@ -48,7 +49,7 @@ export class ServerManager implements vscode.Disposable {
         this._ready = false;
       });
 
-      this.proc.on('exit', () => { this._ready = false; });
+      this.proc.on('exit', () => { this._ready = false; this.proc = null; this._port = null; });
 
       const healthy = await waitForHealthy(port);
       this._ready = healthy;

@@ -77,14 +77,10 @@ function formatK(n: number): string {
 
 function checkStale(projectRoot: string, thresholdHours: number): boolean {
   const thresholdMs = thresholdHours * 3600 * 1000;
-  for (const candidate of [
-    path.join(projectRoot, '.neuralmind'),
-    path.join(projectRoot, 'graphify-out', 'graph.json'),
-  ]) {
-    try {
-      const stat = fs.statSync(candidate);
-      return Date.now() - stat.mtimeMs > thresholdMs;
-    } catch { /* try next */ }
+  try {
+    const stat = fs.statSync(path.join(projectRoot, 'graphify-out', 'graph.json'));
+    return Date.now() - stat.mtimeMs > thresholdMs;
+  } catch {
+    return true; // no index file → treat as stale
   }
-  return true;
 }

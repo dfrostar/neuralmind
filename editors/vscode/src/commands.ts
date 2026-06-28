@@ -142,18 +142,20 @@ export function registerCommands(
       }
       try {
         const parsed = JSON.parse(result.stdout);
+        const mr = parsed.mean_recall as Record<string, number> | undefined;
         outputChannel.appendLine([
-          `answerability : ${((parsed.answerability_pct ?? 0) as number).toFixed(1)}%`,
+          `answerability : ${(((parsed.answerability ?? 0) as number) * 100).toFixed(1)}%`,
           `MRR           : ${((parsed.mrr ?? 0) as number).toFixed(3)}`,
-          `recall@1/3/5  : ${parsed['recall@1'] ?? '?'} / ${parsed['recall@3'] ?? '?'} / ${parsed['recall@5'] ?? '?'}`,
-          `blind spots   : ${(parsed.blind_spots as unknown[])?.length ?? 0}`,
+          `recall@1/3/5  : ${mr?.['1']?.toFixed(3) ?? '?'} / ${mr?.['3']?.toFixed(3) ?? '?'} / ${mr?.['5']?.toFixed(3) ?? '?'}`,
+          `blind spots   : ${(parsed.blind_spot_total as number | undefined) ?? (parsed.blind_spots as unknown[])?.length ?? 0}`,
         ].join('\n'));
       } catch {
         outputChannel.appendLine(result.stdout);
       }
     }),
 
-    vscode.commands.registerCommand('neuralmind.openGraph', () => {
+    vscode.commands.registerCommand('neuralmind.openGraph', async () => {
+      await serverManager.start(); // idempotent — ensures server is up before showing panel
       GraphPanel.createOrShow(context.extensionUri, serverManager);
     }),
 

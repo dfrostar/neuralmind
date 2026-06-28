@@ -31,6 +31,9 @@ export class NeuralMindHoverProvider implements vscode.HoverProvider {
 
     const cached = this.cache.get(filePath);
     if (cached && cached.expiry > now) {
+      // Move to MRU position (JS Maps iterate in insertion order)
+      this.cache.delete(filePath);
+      this.cache.set(filePath, cached);
       return buildHover(cached.skeleton, filePath);
     }
 
@@ -49,6 +52,7 @@ export class NeuralMindHoverProvider implements vscode.HoverProvider {
     }
     if (!skeleton) return undefined;
 
+    this.cache.delete(filePath); // remove expired entry if present before re-inserting
     if (this.cache.size >= this.cacheMax) {
       const oldest = this.cache.keys().next().value;
       if (oldest !== undefined) this.cache.delete(oldest);

@@ -49,16 +49,10 @@ function checkStaleness(projectRoot: string): void {
   const thresholdMs = thresholdHours * 3600 * 1000;
 
   let isStale = true;
-  for (const candidate of [
-    path.join(projectRoot, '.neuralmind'),
-    path.join(projectRoot, 'graphify-out', 'graph.json'),
-  ]) {
-    try {
-      const stat = fs.statSync(candidate);
-      isStale = Date.now() - stat.mtimeMs > thresholdMs;
-      break;
-    } catch { /* try next */ }
-  }
+  try {
+    const stat = fs.statSync(path.join(projectRoot, 'graphify-out', 'graph.json'));
+    isStale = Date.now() - stat.mtimeMs > thresholdMs;
+  } catch { /* no index file → stale */ }
 
   if (isStale) {
     vscode.window.showInformationMessage(

@@ -168,6 +168,29 @@ def _read_config(path: Path) -> dict:
         return {}
 
 
+def _read_vscode_config(path: Path) -> tuple[dict, bool]:
+    """Read VS Code settings.json.  Returns ``(config, is_strict_json)``.
+
+    ``is_strict_json`` is False when the file exists, is non-empty, but fails
+    JSON parsing — i.e. it is JSONC (comments/trailing commas).  In that case
+    we must NOT overwrite it: Python's ``json`` module cannot round-trip JSONC
+    and we would destroy the user's settings.
+    """
+    if not path.exists():
+        return {}, True
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return {}, True
+    if not text.strip():
+        return {}, True
+    try:
+        data = json.loads(text)
+        return (data if isinstance(data, dict) else {}), True
+    except ValueError:
+        return {}, False
+
+
 @dataclass
 class InstallResult:
     client: str
@@ -187,10 +210,23 @@ def install(
 ) -> InstallResult:
     """Merge NeuralMind into ``client``'s config, writing the file."""
     path = config_path(client, project_dir)
-    config = _read_config(path)
     if client == "vscode":
+        config, is_json = _read_vscode_config(path)
+        if not is_json:
+            # settings.json uses JSONC (comments/trailing commas) — Python's json
+            # module cannot round-trip it, so we refuse rather than clobber the file.
+            import warnings
+
+            warnings.warn(
+                f"NeuralMind: {path} appears to be JSONC (comments or trailing commas). "
+                "Add the MCP entry manually:\n"
+                '  "mcp.servers": {"neuralmind": {"command": "neuralmind-mcp", "args": []}}',
+                stacklevel=2,
+            )
+            return InstallResult(client=client, path=path, action="skipped-jsonc")
         config, action = merge_server_vscode(config, command)
     else:
+        config = _read_config(path)
         config, action = merge_server(config, command)
     if action != "already-present":
         if create_parents:
