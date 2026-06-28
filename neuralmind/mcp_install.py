@@ -24,7 +24,7 @@ SERVER_COMMAND = "neuralmind-mcp"
 
 # The clients we know how to register with. Each reads a JSON document with a
 # top-level ``mcpServers`` object mapping a name → a launch spec.
-CLIENTS = ("claude-code", "cursor", "cline", "claude-desktop")
+CLIENTS = ("claude-code", "cursor", "cline", "claude-desktop", "vscode")
 
 
 def server_entry(command: str = SERVER_COMMAND) -> dict:
@@ -48,6 +48,17 @@ def _claude_desktop_path() -> Path:
         base = os.environ.get("APPDATA") or str(_home() / "AppData" / "Roaming")
         return Path(base) / "Claude" / "claude_desktop_config.json"
     return _home() / ".config" / "Claude" / "claude_desktop_config.json"
+
+
+def _vscode_settings_path() -> Path:
+    """VS Code user settings.json (native MCP support added in VS Code 1.99)."""
+    if sys.platform == "darwin":
+        base = _home() / "Library" / "Application Support" / "Code" / "User"
+    elif os.name == "nt":
+        base = Path(os.environ.get("APPDATA") or str(_home() / "AppData" / "Roaming")) / "Code" / "User"
+    else:
+        base = _home() / ".config" / "Code" / "User"
+    return base / "settings.json"
 
 
 def _cline_path() -> Path:
@@ -83,6 +94,8 @@ def config_path(client: str, project_dir: Path) -> Path:
         return _claude_desktop_path()
     if client == "cline":
         return _cline_path()
+    if client == "vscode":
+        return _vscode_settings_path()
     raise ValueError(f"unknown client {client!r}; known: {', '.join(CLIENTS)}")
 
 
@@ -94,7 +107,7 @@ def is_detected(client: str, project_dir: Path) -> bool:
         return True
     # Project-scoped clients aren't "detected" until they have a file; for
     # user-scoped clients, the presence of the app's config dir is the signal.
-    if client in ("claude-desktop", "cline"):
+    if client in ("claude-desktop", "cline", "vscode"):
         return path.parent.exists()
     return False
 
@@ -113,6 +126,25 @@ def merge_server(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str
     if not isinstance(servers, dict):
         servers = {}
         config["mcpServers"] = servers
+    entry = server_entry(command)
+    existing = servers.get(SERVER_NAME)
+    if existing == entry:
+        return config, "already-present"
+    action = "updated" if SERVER_NAME in servers else "installed"
+    servers[SERVER_NAME] = entry
+    return config, action
+
+
+def merge_server_vscode(config: dict, command: str = SERVER_COMMAND) -> tuple[dict, str]:
+    """Add/update NeuralMind's entry in a VS Code settings.json dict.
+
+    VS Code 1.99+ uses the ``"mcp.servers"`` top-level key (not ``"mcpServers"``).
+    Other settings in the file are preserved untouched.
+    """
+    servers = config.get("mcp.servers")
+    if not isinstance(servers, dict):
+        servers = {}
+        config["mcp.servers"] = servers
     entry = server_entry(command)
     existing = servers.get(SERVER_NAME)
     if existing == entry:
@@ -152,7 +184,10 @@ def install(
     """Merge NeuralMind into ``client``'s config, writing the file."""
     path = config_path(client, project_dir)
     config = _read_config(path)
-    config, action = merge_server(config, command)
+    if client == "vscode":
+        config, action = merge_server_vscode(config, command)
+    else:
+        config, action = merge_server(config, command)
     if action != "already-present":
         if create_parents:
             path.parent.mkdir(parents=True, exist_ok=True)
