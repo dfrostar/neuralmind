@@ -1536,19 +1536,34 @@ class NeuralMind:
         # that text doesn't contain the symbol name, so it's a real NL→code
         # test, not a string-match tautology. Falls back to the humanized name.
         rationales = probe.extract_rationales(nodes, edges)
-        samples = probe.sample_nodes(nodes, sample_size, seed=seed, rationales=rationales)
         # "Sampled X of Y indexed symbols" should count only what the probe can
         # actually draw from — code nodes — not rationale/document pseudo-nodes.
         code_node_count = sum(1 for n in nodes if n.get("file_type") == "code")
+        # Retrieval is hard-filtered to code, so a project with no code nodes has
+        # nothing answerable: sample nothing (n_queries == 0 → the CLI prints the
+        # "no probeable symbols" guidance) rather than sampling non-code symbols
+        # that could never be retrieved and scoring them all as blind spots.
+        if code_node_count == 0:
+            samples: list[dict] = []
+        else:
+            samples = probe.sample_nodes(nodes, sample_size, seed=seed, rationales=rationales)
 
         def retrieve(query: str) -> list[str]:
             # Ask the backend for code hits directly: a rationale-sourced query
             # can rank rationale/document nodes above its own code, so a fixed
             # over-fetch-then-filter window could miss the file even when a
-            # code-only top-k would contain it. Let backend/index errors
-            # propagate rather than scoring an infrastructure failure as a
-            # retrieval blind spot.
-            hits = self.embedder.search(query, n=k, file_type="code")
+            # code-only top-k would contain it. The built-in backends accept the
+            # ``file_type`` keyword; a backend that only implements the base
+            # ``search(query, n, where=...)`` contract raises TypeError, so fall
+            # back to over-fetching and filtering to code here. Real backend /
+            # index errors still propagate (we only catch the signature
+            # mismatch) rather than being scored as a retrieval blind spot.
+            try:
+                hits = self.embedder.search(query, n=k, file_type="code")
+            except TypeError:
+                raw = self.embedder.search(query, n=k * 4)
+                code = [h for h in raw if h.get("metadata", {}).get("file_type") == "code"]
+                hits = (code or raw)[:k]
             return [str(h.get("metadata", {}).get("source_file", "")) for h in hits]
 
         report = probe.run_probe(
