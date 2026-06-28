@@ -6,7 +6,7 @@ turns the probe from a near-tautology into a real measurement of whether the
 index can find code from a plain-English description — and a round of review
 feedback hardened the edges.
 
-## Why this changes
+## Why this change
 
 The first version of `probe` queried each symbol by its *humanized name*
 (`authenticate_user` → `"authenticate user"`) and checked the file came back.

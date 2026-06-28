@@ -292,6 +292,71 @@ def test_retrieval_probe_wiring_uses_rationale_and_filters_noncode():
     assert report.index_size == 2
 
 
+class _ABCOnlyEmbedder:
+    """Backend that only honors the base ``search(query, n, where=...)``
+    contract — it raises TypeError on the ``file_type`` keyword, exercising the
+    probe's over-fetch-and-filter fallback."""
+
+    def __init__(self, nodes):
+        self.nodes = nodes
+        self.edges = []
+
+    def search(self, query, n=10, where=None):
+        ranked = [x for x in self.nodes if x.get("file_type") == "code"]
+        ranked += [x for x in self.nodes if x.get("file_type") != "code"]
+        return [
+            {
+                "id": x["id"],
+                "metadata": {"source_file": x["source_file"], "file_type": x["file_type"]},
+            }
+            for x in ranked[:n]
+        ]
+
+
+def test_retrieval_probe_falls_back_when_backend_rejects_file_type():
+    from neuralmind.core import NeuralMind
+
+    nodes = [
+        {"id": "c0", "label": "insert", "file_type": "code", "source_file": "crud.py"},
+        {
+            "id": "r0",
+            "label": "insert a record",
+            "file_type": "rationale",
+            "source_file": "crud.py",
+        },
+    ]
+    mind = NeuralMind.__new__(NeuralMind)
+    mind.embedder = _ABCOnlyEmbedder(nodes)
+    mind.project_path = __import__("pathlib").Path(".")
+    mind._ensure_built = lambda: None
+    mind._emit_audit = lambda **_: None
+
+    # search(file_type=...) -> TypeError -> over-fetch + python-side code filter;
+    # the code node is still retrieved, so the symbol isn't a blind spot.
+    report = mind.retrieval_probe(sample_size=0, k=5)
+    assert report.index_size == 1
+    assert report.blind_spot_total == 0
+
+
+def test_retrieval_probe_no_code_nodes_samples_nothing():
+    # Retrieval is hard-filtered to code; a docs-only project has nothing
+    # answerable, so the probe must sample nothing (n_queries == 0) rather than
+    # sample non-code symbols and score them all as blind spots.
+    from neuralmind.core import NeuralMind
+
+    docs = [{"id": "d0", "label": "readme", "file_type": "doc", "source_file": "README.md"}]
+    mind = NeuralMind.__new__(NeuralMind)
+    mind.embedder = _FakeEmbedder(docs, [])
+    mind.project_path = __import__("pathlib").Path(".")
+    mind._ensure_built = lambda: None
+    mind._emit_audit = lambda **_: None
+
+    report = mind.retrieval_probe(sample_size=0, k=5)
+    assert report.sample_size == 0
+    assert report.index_size == 0
+    assert report.suite.n_queries == 0
+
+
 def test_retrieval_probe_rejects_bad_arguments():
     from neuralmind.core import NeuralMind
 
