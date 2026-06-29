@@ -1,15 +1,23 @@
 # Session handoff — launch readiness
 
-**Last updated:** 2026-06-21 · **State:** v0.30→v0.37 shipped & merged to `main`
+**Last updated:** 2026-06-29 · **State:** v0.30→v0.40 shipped & merged to `main`
 **Copy-paste this whole file into the next session's first message to resume with full context.**
 
 ---
 
 ## ▶ Do this first (next session, in order)
 
-1. **Nothing is blocked on code.** The value-ordered roadmap *and* the next
-   breadth tier are all shipped and released (v0.30→v0.37, see table below).
-   The remaining work is **execution + proof + discovery**, not engineering.
+0. **Confirm the v0.40.0 publish went green.** The schema-artifact feature (#296)
+   and the release PR #297 (`chore(main): release 0.40.0`) are both **merged** to
+   `main`; release-please has bumped the version markers and tags `v0.40.0`, which
+   fires the PyPI + GHCR publish. Verify that publish workflow succeeded (check the
+   GitHub Release for `v0.40.0` + the `release.yml` run) — that's the last step
+   between "merged" and "actually shipped to users."
+1. **Nothing is blocked on code.** The value-ordered roadmap, the breadth tier,
+   the trust/transparency arc, *and* schema-artifact indexing are all shipped:
+   **released through v0.39.0**, with **v0.40.0 merged and its tag/publish in
+   flight** (see step 0 and the table below). The remaining work is **execution +
+   proof + discovery**, not engineering.
 2. **Generate + commit the answerability transcripts** (the one remaining
    *proof* item). The `--judge` harness shipped in v0.34.0 but
    `bench/public/judge/` is still empty. Run
@@ -32,12 +40,17 @@
 
 ## TL;DR for the next session
 
-NeuralMind is **launch-ready and feature-complete for this arc**. Eight releases
-shipped (v0.30→v0.37): team memory, the honest public benchmark, C/C++, the
-live competitor head-to-head, the opt-in LLM-judged answerability arm, then the
+NeuralMind is **launch-ready and feature-complete for this arc**. Eleven releases
+(v0.30→v0.40) — **published through v0.39.0; v0.40.0 merged and tagging** — cover
+team memory, the honest public benchmark, C/C++, the
+live competitor head-to-head, the opt-in LLM-judged answerability arm, the
 **full language-breadth tier (C#, Ruby, PHP → ten languages)**, a **4-repo /
-40-query benchmark corpus** (`requests`, `click`, `flask`, `rich`), and
-**schema.org JSON-LD** on the docs pages. Public-facing positioning is the
+40-query benchmark corpus** (`requests`, `click`, `flask`, `rich`),
+**schema.org JSON-LD** on the docs pages, then **hybrid BM25 search + explicit
+feedback + CI auto-index + a VS Code extension** (v0.38), the **trust/transparency
+six** (`--dry-run`, `--explain`, `review`, `savings`, rationale-`probe`, instant
+deletion decay — v0.39), and **schema-artifact indexing** (OpenAPI/SQL/Protobuf
+as `document` nodes — v0.40). Public-facing positioning is the
 **four data-backed benefits**, and the launch copy lives in `docs/launch/`. The
 remaining work is **execution** (the maker posts to HN / r/LocalLLaMA /
 awesome-mcp), the **answerability transcripts** (needs a key), and two
@@ -50,7 +63,7 @@ every time — keep declining it; the benchmark credibility is the whole asset.
 
 ---
 
-## What shipped this arc (done — on `main`, released)
+## What shipped this arc (on `main`; released through v0.39.0, v0.40.0 tag/publish in flight)
 
 | Version | Feature | Evidence |
 |---|---|---|
@@ -62,6 +75,9 @@ every time — keep declining it; the benchmark credibility is the whole asset.
 | v0.35.0 | **C# extractor** — eighth language (`.cs`), 52/52 symbols (100%), 0 dangling | `RELEASE_NOTES_v0.35.0.md` |
 | v0.36.0 | **Ruby extractor** — ninth language (`.rb`), 46/46 symbols (100%), 0 dangling | `RELEASE_NOTES_v0.36.0.md` |
 | v0.37.0 | **PHP extractor** — tenth language (`.php`), 54/54 symbols (100%), 0 dangling; **benchmark corpus → 4 repos / 40 queries** (`flask` + `rich`); **schema.org JSON-LD** on docs pages | `RELEASE_NOTES_v0.37.0.md` (umbrella) |
+| v0.38.0 | **Hybrid search + explicit feedback + CI auto-index** — BM25 keyword index merged via RRF; `neuralmind_feedback` MCP tool (instant ±signal); `neuralmind-autoindex.yml` GitHub Action; **VS Code native extension** (`editors/vscode/`) | `RELEASE_NOTES_v0.38.0.md`, `tests/test_mcp_server.py` |
+| v0.39.0 | **Trust/transparency — six** — `build --dry-run`, instant synapse decay on file deletion, `query --explain`, `neuralmind review` (+ `neuralmind_review` MCP tool) diff-aware co-break, `neuralmind savings` dashboard, `probe` queries by rationale | `RELEASE_NOTES_v0.39.0.md` |
+| v0.40.0 *(merged; tag/publish in flight)* | **Schema-artifact indexing** — OpenAPI/AsyncAPI (`.yaml`), SQL DDL (`.sql`), Protobuf (`.proto`) → `document` nodes; closes the non-code-artifact gap from the v0.38 audit; no new MCP tools | `RELEASE_NOTES_v0.40.0.md`, `tests/test_graphgen.py::SchemaArtifactTests` (#296; release #297) |
 | (seo) | **Complementary-app comparison keywords** propagated to PyPI metadata (Headroom / Ponytail / codebase-memory-mcp / graphify), matching the docs `<meta>` cluster | `pyproject.toml` keywords (PR #274) |
 | (docs) | **Four-benefit positioning** + **launch kit** | README "Why NeuralMind", `docs/launch/` |
 
@@ -71,7 +87,11 @@ breadth tier is **complete**.
 
 ## Current state of the repo
 
-- `main` is at **v0.37.0** (PyPI + GHCR published, GitHub Release tagged).
+- **v0.40.0 is merged, publish in flight.** The feature (#296) and the
+  release PR #297 are both merged; release-please has bumped the version markers
+  (`pyproject.toml`, `neuralmind/__init__.py`) to `0.40.0` and tags `v0.40.0`,
+  triggering the PyPI + GHCR publish. Until that `release.yml` run is green,
+  treat v0.40.0 as "merged, not yet on PyPI." Everything ≤ v0.39.0 is published.
 - The GHCR auto-publish gap is permanently fixed (the release-please workflow
   dispatches the GHCR build on tag).
 - Outstanding (all non-code): answerability transcripts (needs
@@ -134,6 +154,22 @@ Paste-ready GitHub copy (the maker applies these by hand):
    - Use the warm-up comments (`docs/launch/hn-warmup-comments.md`) only on
      genuinely relevant threads, disclosed.
 4. **Pick the next roadmap item** when ready (the breadth tier is done):
+   - **Finish the schema-artifact arc (v0.41 candidate)** — v0.40 shipped
+     OpenAPI/SQL/Protobuf as `document` nodes; the disclosed follow-ups are:
+     **(a) GraphQL** (`.graphql`) — already promised "planned for v0.41.0" in
+     `RELEASE_NOTES_v0.40.0.md`; same `document`-node pattern, ~1 extractor +
+     tests, smallest next step. **(b) OpenAPI `$ref` resolution** — components
+     are indexed as named nodes but `$ref` chains aren't followed into edges;
+     medium effort (cross-node edge resolution). **(c) Proto `import` edges** —
+     `.proto` files are indexed independently; cross-file message refs aren't
+     graph edges; medium. All three live in `neuralmind/graphgen.py`
+     (`_SCHEMA_EXTRACTORS`, `_extract_openapi`/`_extract_sql`/`_extract_proto`).
+   - **Close the remaining v0.38-audit gaps** — **NIST formal attestation doc**
+     (the audit-trail / RBAC / SBOM *components* ship; a formal control-mapping
+     document does not — pure docs work, no code), and **C++ macro/template
+     indexing** (disclosed gap since v0.32; larger, touches the tree-sitter
+     extractor). Cross-repo memory stays **intentionally out of scope** per
+     `docs/HONEST-ASSESSMENT.md` — don't reopen it without a strategy decision.
    - **Deepen the proof** — more benchmark repos / languages in the public
      corpus; publish the answerability arm as a standing secondary signal.
    - **Compiler-accurate calls** — promote the opt-in SCIP precision pass from
