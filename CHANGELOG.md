@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.41.1](https://github.com/dfrostar/neuralmind/compare/v0.41.0...v0.41.1) (2026-06-29)
+
+
+### Documentation
+
+* bump GraphQL roadmap target v0.41.0 → v0.42.0 ([#301](https://github.com/dfrostar/neuralmind/issues/301)) ([d641459](https://github.com/dfrostar/neuralmind/commit/d641459a63780e70ecadb2617d5cf824e1d01437))
+
 ## [0.41.0](https://github.com/dfrostar/neuralmind/compare/v0.40.0...v0.41.0) (2026-06-29)
 
 
