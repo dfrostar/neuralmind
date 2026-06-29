@@ -212,7 +212,7 @@ def _print_explain(result) -> None:
     budget = result.budget
     est_full = 50_000  # NeuralMind's internal reference baseline
     saved = est_full - budget.total
-    print(f"  Token budget breakdown:")
+    print("  Token budget breakdown:")
     if budget.l0_identity:
         print(f"    L0 identity   : {budget.l0_identity:>6} tokens")
     if budget.l1_summary:
@@ -460,7 +460,7 @@ def cmd_savings(args):
     print(f"  Tokens saved         : {total_saved:>10,}")
     if queries:
         print()
-        print(f"  Most recent queries:")
+        print("  Most recent queries:")
         for q in queries[-5:]:
             ratio_str = f"{q['ratio']:.1f}x" if q["ratio"] else "?"
             ts = q["ts"][:10] if q["ts"] else ""
