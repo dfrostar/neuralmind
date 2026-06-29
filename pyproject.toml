@@ -228,7 +228,13 @@ keywords = [
     "native-editor-ux",
     "dry-run-indexing",
     "co-break-detection",
-    "token-savings-dashboard"
+    "token-savings-dashboard",
+    "openapi-indexing",
+    "sql-schema-indexing",
+    "protobuf-indexing",
+    "schema-artifact-search",
+    "api-spec-search",
+    "non-code-artifact-indexing"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

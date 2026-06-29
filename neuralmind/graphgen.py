@@ -99,6 +99,14 @@ SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
 # code symbols alone don't (architecture notes, "why", endpoint descriptions).
 _DOC_SUFFIXES: frozenset[str] = frozenset({".md", ".markdown"})
 
+# Non-code schema/spec artifacts that emit ``document`` nodes without a
+# tree-sitter parse.  Each suffix maps to an extractor registered below.
+_SCHEMA_SUFFIXES: frozenset[str] = frozenset({
+    ".yaml", ".yml",   # OpenAPI / AsyncAPI specs
+    ".sql",            # DDL — CREATE TABLE / VIEW / PROCEDURE
+    ".proto",          # Protocol Buffers service/message definitions
+})
+
 
 def _load_language(name: str):
     """Return the tree-sitter ``Language`` for ``name``, or None if its grammar
@@ -369,6 +377,167 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
         b.add_edge("contains", file_id, hid, rel, i)
 
 
+def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Emit ``document`` nodes for an OpenAPI/AsyncAPI YAML or JSON spec.
+
+    Emits a file-level node plus one node per path/operation and one per
+    top-level schema component — the granularity agents actually query
+    (``POST /payments/charge``, ``schema:Payment``).
+    """
+    import json as _json
+
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    # Parse YAML or JSON without hard-requiring PyYAML: try yaml first, fall
+    # back to json, silently skip if neither can parse it.
+    spec: dict | None = None
+    try:
+        import yaml  # type: ignore[import-untyped]
+        spec = yaml.safe_load(text)
+    except Exception:
+        try:
+            spec = _json.loads(text)
+        except Exception:
+            return
+
+    if not isinstance(spec, dict):
+        return
+    # Only index files that look like OpenAPI/AsyncAPI.
+    if "openapi" not in spec and "asyncapi" not in spec and "swagger" not in spec:
+        return
+
+    file_id = _slug(rel)
+    title = spec.get("info", {}).get("title", path.name) if isinstance(spec.get("info"), dict) else path.name
+    b.add_node(file_id, title, "document", rel, 1)
+
+    # Paths / operations (OpenAPI 2/3)
+    for api_path, path_item in (spec.get("paths") or {}).items():
+        if not isinstance(path_item, dict):
+            continue
+        for method in ("get", "post", "put", "patch", "delete", "head", "options", "trace"):
+            op = path_item.get(method)
+            if not isinstance(op, dict):
+                continue
+            summary = op.get("summary") or op.get("operationId") or f"{method.upper()} {api_path}"
+            nid = f"{file_id}__{_slug(method + '_' + api_path)}"
+            b.add_node(nid, summary, "document", rel, 1)
+            b.add_edge("contains", file_id, nid, rel, 1)
+
+    # AsyncAPI channels
+    for channel, channel_item in (spec.get("channels") or {}).items():
+        if not isinstance(channel_item, dict):
+            continue
+        nid = f"{file_id}__{_slug('channel_' + channel)}"
+        b.add_node(nid, f"channel:{channel}", "document", rel, 1)
+        b.add_edge("contains", file_id, nid, rel, 1)
+
+    # Schema components (OpenAPI 3.x)
+    schemas = {}
+    try:
+        schemas = spec.get("components", {}).get("schemas", {}) or {}
+    except AttributeError:
+        pass
+    # OpenAPI 2.x definitions
+    if not schemas:
+        schemas = spec.get("definitions", {}) or {}
+    for schema_name in schemas:
+        nid = f"{file_id}__schema_{_slug(schema_name)}"
+        b.add_node(nid, f"schema:{schema_name}", "document", rel, 1)
+        b.add_edge("contains", file_id, nid, rel, 1)
+
+
+_SQL_CREATE_RE = re.compile(
+    r"CREATE\s+(?:OR\s+REPLACE\s+)?(?P<kind>TABLE|VIEW|PROCEDURE|FUNCTION|INDEX|TRIGGER|TYPE)\s+"
+    r"(?:IF\s+NOT\s+EXISTS\s+)?(?P<name>[`\"\[]?[\w.]+[`\"\]]?)",
+    re.IGNORECASE,
+)
+
+
+def _extract_sql(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Emit ``document`` nodes for SQL DDL files.
+
+    One node per CREATE TABLE/VIEW/PROCEDURE/FUNCTION/TRIGGER/INDEX/TYPE.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    file_id = _slug(rel)
+    b.add_node(file_id, path.name, "document", rel, 1)
+
+    for i, line in enumerate(text.splitlines(), 1):
+        m = _SQL_CREATE_RE.search(line)
+        if not m:
+            continue
+        kind = m.group("kind").upper()
+        name = m.group("name").strip("`\"[]")
+        nid = f"{file_id}__{_slug(kind + '_' + name)}"
+        b.add_node(nid, f"{kind}:{name}", "document", rel, i)
+        b.add_edge("contains", file_id, nid, rel, i)
+
+
+_PROTO_MESSAGE_RE = re.compile(r"^\s*message\s+(\w+)\s*\{", re.MULTILINE)
+_PROTO_SERVICE_RE = re.compile(r"^\s*service\s+(\w+)\s*\{", re.MULTILINE)
+_PROTO_RPC_RE = re.compile(r"^\s*rpc\s+(\w+)\s*\(", re.MULTILINE)
+_PROTO_ENUM_RE = re.compile(r"^\s*enum\s+(\w+)\s*\{", re.MULTILINE)
+
+
+def _extract_proto(b: _GraphBuilder, path: Path, rel: str) -> None:
+    """Emit ``document`` nodes for Protocol Buffer definitions.
+
+    One node per message, service, rpc, and enum.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return
+
+    file_id = _slug(rel)
+    b.add_node(file_id, path.name, "document", rel, 1)
+
+    for m in _PROTO_MESSAGE_RE.finditer(text):
+        name = m.group(1)
+        line = text[: m.start()].count("\n") + 1
+        nid = f"{file_id}__msg_{_slug(name)}"
+        b.add_node(nid, f"message:{name}", "document", rel, line)
+        b.add_edge("contains", file_id, nid, rel, line)
+
+    for m in _PROTO_SERVICE_RE.finditer(text):
+        name = m.group(1)
+        line = text[: m.start()].count("\n") + 1
+        svc_id = f"{file_id}__svc_{_slug(name)}"
+        b.add_node(svc_id, f"service:{name}", "document", rel, line)
+        b.add_edge("contains", file_id, svc_id, rel, line)
+
+    for m in _PROTO_RPC_RE.finditer(text):
+        name = m.group(1)
+        line = text[: m.start()].count("\n") + 1
+        nid = f"{file_id}__rpc_{_slug(name)}"
+        b.add_node(nid, f"rpc:{name}", "document", rel, line)
+        b.add_edge("contains", file_id, nid, rel, line)
+
+    for m in _PROTO_ENUM_RE.finditer(text):
+        name = m.group(1)
+        line = text[: m.start()].count("\n") + 1
+        nid = f"{file_id}__enum_{_slug(name)}"
+        b.add_node(nid, f"enum:{name}", "document", rel, line)
+        b.add_edge("contains", file_id, nid, rel, line)
+
+
+# Registry: suffix → extractor.  _extract_markdown not listed here because it
+# uses _DOC_SUFFIXES directly; schema extractors share the _SCHEMA_SUFFIXES set.
+_SCHEMA_EXTRACTORS: dict[str, Any] = {
+    ".yaml": _extract_openapi,
+    ".yml": _extract_openapi,
+    ".sql": _extract_sql,
+    ".proto": _extract_proto,
+}
+
+
 def _assign_communities(b: _GraphBuilder) -> None:
     """Assign each node a community keyed by its source file.
 
@@ -450,6 +619,13 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # ---- markdown → document nodes ---------------------------------------- #
     for md_path in _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES):
         _extract_markdown(b, md_path, md_path.relative_to(root).as_posix())
+
+    # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
+    for sa_path in _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES):
+        rel = sa_path.relative_to(root).as_posix()
+        extractor = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
+        if extractor:
+            extractor(b, sa_path, rel)
 
     # ---- communities (per-file, balanced) --------------------------------- #
     _assign_communities(b)
@@ -2898,6 +3074,12 @@ def update_files(
             continue
         if fpath.suffix in _DOC_SUFFIXES:
             _extract_markdown(b, fpath, rel)
+            stats.files_reparsed += 1
+            continue
+        if fpath.suffix in _SCHEMA_SUFFIXES:
+            extractor = _SCHEMA_EXTRACTORS.get(fpath.suffix)
+            if extractor:
+                extractor(b, fpath, rel)
             stats.files_reparsed += 1
             continue
         lang = _SUFFIX_LANG.get(fpath.suffix)
