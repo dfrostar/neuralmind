@@ -95,12 +95,17 @@ class TestQueryRelevanceSidecar:
             out = tool_query("/proj", "q")
         assert "relevance" not in out
 
-    def test_dispatch_threads_include_relevance(self):
-        """handle_tool_call forwards include_relevance from arguments."""
+    def test_dispatch_threads_include_relevance(self, temp_project):
+        """handle_tool_call forwards include_relevance from arguments.
+
+        Uses a real project path (not a synthetic one) so the MCP security
+        manager's filesystem check passes on a non-root CI runner — the
+        dispatch, not security, is what's under test here.
+        """
         with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
             raw = handle_tool_call(
                 "neuralmind_query",
-                {"project_path": "/proj", "question": "q", "include_relevance": True},
+                {"project_path": str(temp_project), "question": "q", "include_relevance": True},
             )
         assert "relevance" in json.loads(raw)
 
