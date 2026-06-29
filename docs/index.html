@@ -389,7 +389,7 @@
     </div>
     <div class="container hero-grid">
         <div>
-            <p class="badge"><span class="dot"></span> v0.39.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md">release notes</a></p>
+            <p class="badge"><span class="dot"></span> v0.40.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md">release notes</a></p>
             <h1>Persistent memory for <span class="grad">AI coding agents</span></h1>
             <p class="hero-sub">Your agent learns your codebase the way a senior engineer would — <strong>what files go together, what you usually edit next, what patterns matter</strong>. The memory persists across sessions and surfaces automatically.</p>
             <p class="hero-local"><strong>100% local.</strong> Your code never leaves your machine. Side effect: <strong>40–70× cheaper code questions</strong>, measured in CI on every commit.</p>
@@ -653,7 +653,11 @@ bash scripts/demo.sh">Copy</button>
         <p class="lede">Shipped in small, verifiable increments — every release gated by the CI benchmark.</p>
         <div class="timeline">
             <div class="tl-item dev">
-                <div class="tl-head"><b>v0.39.0</b><span class="pill pill-latest">Latest release</span></div>
+                <div class="tl-head"><b>v0.40.0</b><span class="pill pill-latest">Latest release</span></div>
+                <p><b>Schema artifact indexing: OpenAPI, SQL, and Protocol Buffers.</b> NeuralMind now indexes non-code schema artifacts alongside source. <b>(1) OpenAPI/AsyncAPI</b> (<code>.yaml</code>/<code>.yml</code>) — one node per path+method (<code>POST /payments/charge</code>), one per schema component (<code>schema:Payment</code>), one per AsyncAPI channel; plain YAML config files silently skipped. <b>(2) SQL DDL</b> (<code>.sql</code>) — one node per <code>CREATE TABLE/VIEW/PROCEDURE/FUNCTION/TRIGGER/INDEX/TYPE</code>. <b>(3) Protocol Buffers</b> (<code>.proto</code>) — one node per <code>message</code>, <code>service</code>, <code>rpc</code>, and <code>enum</code>. All three use the existing <code>document</code> node type; <code>neuralmind_query</code> and <code>neuralmind_search</code> surface them automatically — no new tools, no config change. Synapse layer learns cross-artifact associations automatically. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md">Release notes &rarr;</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.39.0</b></div>
                 <p><b>Trust, transparency, and quality — six improvements in one release.</b> <b>(1) <code>neuralmind build --dry-run</code></b> — scans the project and reports estimated token savings before touching the index; safe for CI gating. <b>(2) Faster synapse decay on file deletion</b> — the file watcher now fires <code>decay_node()</code> immediately when a file is removed, so stale memory never outlasts the code that created it. <b>(3) <code>neuralmind query --explain</code></b> — structured trace of how the L0–L3 budget was spent, communities loaded, top search hits, and synapses that fired. <b>(4) <code>neuralmind review</code></b> — diff-aware co-break detection via spreading activation from <code>git diff</code> changed nodes; also available as the <code>neuralmind_review</code> MCP tool. <b>(5) <code>neuralmind savings</code></b> — cumulative token savings dashboard from the opt-in JSONL event log. <b>(6) <code>neuralmind probe</code> now queries by rationale</b> — the label-free self-test uses each symbol's <em>docstring/intent</em> as the query (not its name), turning a string-match near-tautology into a genuine NL→code measurement. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md">Release notes &rarr;</a></p>
             </div>
             <div class="tl-item">

@@ -1182,5 +1182,165 @@ class CExtractorEdgeCaseTests(unittest.TestCase):
         self.assertNotIn("generated_artifact()", labels)
 
 
+class SchemaArtifactTests(unittest.TestCase):
+    """OpenAPI YAML/JSON, SQL DDL, and Protobuf indexing produce document nodes.
+
+    Tests call extractors directly on _GraphBuilder — no tree-sitter needed.
+    """
+
+    def _extract(self, filename: str, content: str) -> graphgen._GraphBuilder:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / filename
+            path.write_text(content, encoding="utf-8")
+            b = graphgen._GraphBuilder()
+            extractor = graphgen._SCHEMA_EXTRACTORS.get(Path(filename).suffix)
+            if extractor:
+                extractor(b, path, filename)
+            return b
+
+    def _labels(self, filename: str, content: str) -> set[str]:
+        return {n["label"] for n in self._extract(filename, content).nodes.values()}
+
+    def _file_types(self, filename: str, content: str) -> set[str]:
+        return {n["file_type"] for n in self._extract(filename, content).nodes.values()}
+
+    # ---- OpenAPI ---------------------------------------------------------- #
+
+    def test_openapi_file_node(self) -> None:
+        labels = self._labels(
+            "api.yaml",
+            "openapi: '3.0.0'\ninfo:\n  title: MyAPI\n  version: '1'\npaths: {}\n",
+        )
+        self.assertIn("MyAPI", labels)
+
+    def test_openapi_path_operations(self) -> None:
+        spec = (
+            "openapi: '3.0.0'\n"
+            "info:\n  title: T\n  version: '1'\n"
+            "paths:\n"
+            "  /users:\n"
+            "    get:\n      summary: List users\n"
+            "    post:\n      summary: Create user\n"
+        )
+        labels = self._labels("openapi.yaml", spec)
+        self.assertIn("List users", labels)
+        self.assertIn("Create user", labels)
+
+    def test_openapi_schema_components(self) -> None:
+        spec = (
+            "openapi: '3.0.0'\n"
+            "info:\n  title: T\n  version: '1'\n"
+            "paths: {}\n"
+            "components:\n"
+            "  schemas:\n"
+            "    User:\n      type: object\n"
+            "    Payment:\n      type: object\n"
+        )
+        labels = self._labels("spec.yaml", spec)
+        self.assertIn("schema:User", labels)
+        self.assertIn("schema:Payment", labels)
+
+    def test_non_openapi_yaml_skipped(self) -> None:
+        b = self._extract("config.yaml", "database:\n  host: localhost\n  port: 5432\n")
+        self.assertEqual(len(b.nodes), 0)
+
+    def test_openapi_all_nodes_are_document_type(self) -> None:
+        spec = (
+            "openapi: '3.0.0'\ninfo:\n  title: T\n  version: '1'\n"
+            "paths:\n  /ping:\n    get:\n      summary: Ping\n"
+        )
+        b = self._extract("api.yaml", spec)
+        for n in b.nodes.values():
+            self.assertEqual(n["file_type"], "document", n)
+
+    # ---- SQL -------------------------------------------------------------- #
+
+    def test_sql_table_node(self) -> None:
+        labels = self._labels(
+            "schema.sql",
+            "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT);\n",
+        )
+        self.assertIn("TABLE:users", labels)
+
+    def test_sql_view_and_procedure(self) -> None:
+        ddl = (
+            "CREATE VIEW active_users AS SELECT * FROM users WHERE active=1;\n"
+            "CREATE PROCEDURE cleanup() BEGIN DELETE FROM logs; END;\n"
+        )
+        labels = self._labels("db.sql", ddl)
+        self.assertIn("VIEW:active_users", labels)
+        self.assertIn("PROCEDURE:cleanup", labels)
+
+    def test_sql_multiple_tables(self) -> None:
+        ddl = (
+            "CREATE TABLE accounts (id INT);\n"
+            "CREATE TABLE transactions (id INT, amount DECIMAL);\n"
+        )
+        labels = self._labels("migrations.sql", ddl)
+        self.assertIn("TABLE:accounts", labels)
+        self.assertIn("TABLE:transactions", labels)
+
+    def test_sql_nodes_are_document_type(self) -> None:
+        b = self._extract("foo.sql", "CREATE TABLE foo (id INT);\n")
+        for n in b.nodes.values():
+            self.assertEqual(n["file_type"], "document")
+
+    def test_sql_contains_edges(self) -> None:
+        b = self._extract("schema.sql", "CREATE TABLE orders (id INT);\n")
+        relations = {e["relation"] for e in b.edges}
+        self.assertIn("contains", relations)
+
+    # ---- Protobuf --------------------------------------------------------- #
+
+    def test_proto_message_node(self) -> None:
+        labels = self._labels(
+            "types.proto",
+            'syntax = "proto3";\nmessage User { string name = 1; }\n',
+        )
+        self.assertIn("message:User", labels)
+
+    def test_proto_service_and_rpc(self) -> None:
+        proto = (
+            'syntax = "proto3";\n'
+            "service UserService {\n"
+            "  rpc GetUser (GetUserRequest) returns (User);\n"
+            "}\n"
+            "message GetUserRequest { string id = 1; }\n"
+            "message User { string name = 1; }\n"
+        )
+        labels = self._labels("service.proto", proto)
+        self.assertIn("service:UserService", labels)
+        self.assertIn("rpc:GetUser", labels)
+
+    def test_proto_enum_node(self) -> None:
+        labels = self._labels(
+            "enums.proto",
+            'syntax = "proto3";\nenum Status { UNKNOWN = 0; ACTIVE = 1; }\n',
+        )
+        self.assertIn("enum:Status", labels)
+
+    def test_proto_nodes_are_document_type(self) -> None:
+        b = self._extract("ping.proto", 'syntax = "proto3";\nmessage Ping {}\n')
+        for n in b.nodes.values():
+            self.assertEqual(n["file_type"], "document")
+
+    # ---- Registry completeness -------------------------------------------- #
+
+    def test_schema_suffix_set(self) -> None:
+        self.assertIn(".yaml", graphgen._SCHEMA_SUFFIXES)
+        self.assertIn(".yml", graphgen._SCHEMA_SUFFIXES)
+        self.assertIn(".sql", graphgen._SCHEMA_SUFFIXES)
+        self.assertIn(".proto", graphgen._SCHEMA_SUFFIXES)
+
+    def test_schema_extractor_registry_complete(self) -> None:
+        for suffix in graphgen._SCHEMA_SUFFIXES:
+            self.assertIn(
+                suffix,
+                graphgen._SCHEMA_EXTRACTORS,
+                f"_SCHEMA_SUFFIXES contains {suffix!r} but _SCHEMA_EXTRACTORS has no entry for it",
+            )
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
