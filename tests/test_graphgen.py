@@ -1336,7 +1336,8 @@ class SchemaArtifactTests(unittest.TestCase):
     def test_schema_extractor_registry_complete(self) -> None:
         for suffix in graphgen._SCHEMA_SUFFIXES:
             self.assertIn(
-                suffix, graphgen._SCHEMA_EXTRACTORS,
+                suffix,
+                graphgen._SCHEMA_EXTRACTORS,
                 f"_SCHEMA_SUFFIXES contains {suffix!r} but _SCHEMA_EXTRACTORS has no entry for it",
             )
 

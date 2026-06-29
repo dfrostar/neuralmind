@@ -101,11 +101,14 @@ _DOC_SUFFIXES: frozenset[str] = frozenset({".md", ".markdown"})
 
 # Non-code schema/spec artifacts that emit ``document`` nodes without a
 # tree-sitter parse.  Each suffix maps to an extractor registered below.
-_SCHEMA_SUFFIXES: frozenset[str] = frozenset({
-    ".yaml", ".yml",   # OpenAPI / AsyncAPI specs
-    ".sql",            # DDL — CREATE TABLE / VIEW / PROCEDURE
-    ".proto",          # Protocol Buffers service/message definitions
-})
+_SCHEMA_SUFFIXES: frozenset[str] = frozenset(
+    {
+        ".yaml",
+        ".yml",  # OpenAPI / AsyncAPI specs
+        ".sql",  # DDL — CREATE TABLE / VIEW / PROCEDURE
+        ".proto",  # Protocol Buffers service/message definitions
+    }
+)
 
 
 def _load_language(name: str):
@@ -396,6 +399,7 @@ def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
     spec: dict | None = None
     try:
         import yaml  # type: ignore[import-untyped]
+
         spec = yaml.safe_load(text)
     except Exception:
         try:
@@ -410,7 +414,11 @@ def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
         return
 
     file_id = _slug(rel)
-    title = spec.get("info", {}).get("title", path.name) if isinstance(spec.get("info"), dict) else path.name
+    title = (
+        spec.get("info", {}).get("title", path.name)
+        if isinstance(spec.get("info"), dict)
+        else path.name
+    )
     b.add_node(file_id, title, "document", rel, 1)
 
     # Paths / operations (OpenAPI 2/3)
@@ -474,7 +482,7 @@ def _extract_sql(b: _GraphBuilder, path: Path, rel: str) -> None:
         if not m:
             continue
         kind = m.group("kind").upper()
-        name = m.group("name").strip("`\"[]")
+        name = m.group("name").strip('`"[]')
         nid = f"{file_id}__{_slug(kind + '_' + name)}"
         b.add_node(nid, f"{kind}:{name}", "document", rel, i)
         b.add_edge("contains", file_id, nid, rel, i)
