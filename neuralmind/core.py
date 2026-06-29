@@ -24,6 +24,7 @@ Usage:
 
 import json
 import os
+import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -159,6 +160,12 @@ class NeuralMind:
     """
 
     MAX_HYBRID_HIGHLIGHT_RESULTS = 3
+
+    # Strength of the reuse-feedback co-activation (Edit/Write hook). Kept
+    # below the default reinforce strength of 1.0: the signal is heuristic
+    # (identifier-token cross-reference, not static resolution), so we nudge
+    # the synapse weight gently and let decay wash out false positives.
+    REUSE_FEEDBACK_STRENGTH = 0.5
 
     # Canonical IR artifacts (PRD 1). The IR is materialized from graph.json at
     # build time and validated; the embedder still reads graph.json directly
@@ -349,6 +356,126 @@ class NeuralMind:
         if len(node_ids) < 2:
             return 0
         return self.activate(node_ids, strength=strength)
+
+    # Language-agnostic identifier tokenizer for reuse detection: we never
+    # parse source syntax, only match bare identifiers against graph labels,
+    # so this works uniformly across every tree-sitter extractor.
+    _REUSE_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+    # Graph node file_types that are prose, not symbols — their labels are
+    # docstrings/file paths, never identifiers, so they're excluded from the
+    # reuse index.
+    _NON_SYMBOL_FILE_TYPES = frozenset({"rationale", "document"})
+
+    @classmethod
+    def _symbol_name(cls, label: str) -> str:
+        """Bare identifier for a graph label ("login_endpoint()" -> "login_endpoint").
+
+        Generated graphs label functions with signature punctuation; the code we
+        tokenize yields bare identifiers, so we key the reuse index on the
+        leading identifier of each label to make the two comparable.
+        """
+        m = cls._REUSE_IDENT_RE.search(str(label or ""))
+        return m.group(0) if m else ""
+
+    def _external_symbol_index(self) -> dict[str, list[str]]:
+        """Map normalized symbol name -> node ids that define it, across the graph.
+
+        Cached on the instance and invalidated when the node count changes
+        (build/reindex), so repeated Edit/Write feedback calls don't re-scan the
+        whole graph each time — per-edit work is then ~O(#tokens), not O(#nodes).
+        Edited-file ownership is filtered at match time, not here.
+        """
+        nodes = getattr(self.embedder, "nodes", None) or []
+        sig = len(nodes)
+        cached = getattr(self, "_symbol_index_cache", None)
+        if cached is not None and getattr(self, "_symbol_index_sig", None) == sig:
+            return cached
+        index: dict[str, list[str]] = {}
+        for n in nodes:
+            if n.get("file_type") in self._NON_SYMBOL_FILE_TYPES:
+                continue
+            nid = str(n.get("id", ""))
+            if not nid:
+                continue
+            name = self._symbol_name(n.get("label", ""))
+            if name:
+                index.setdefault(name, []).append(nid)
+        self._symbol_index_cache = index
+        self._symbol_index_sig = sig
+        return index
+
+    def record_edit_activity(self, file_path: str, new_code: str) -> dict:
+        """Learn from an Edit/Write: did the new code reuse existing symbols?
+
+        When an agent edits ``file_path``, identifiers in ``new_code`` that
+        already name a symbol defined *elsewhere* in the graph are treated as
+        a **reuse** signal — the edited file and the reused definitions fired
+        together in one thought, so we reinforce their synapse edges. The
+        existing L2/L3 synapse boost then surfaces those reused nodes more
+        readily on future queries, closing the loop between what got reused
+        and what is worth remembering.
+
+        Symbols ``new_code`` *defines* whose name also exists in another file
+        are reported as possible duplication, but in this MVP that is surfaced
+        only in the return value — not acted on.
+
+        Operates on graph nodes + identifier tokens, never on source syntax,
+        so it is language-agnostic. A **pure side effect**: it never triggers a
+        build (only the cheap graph load via ``get_file_nodes``), and fails open
+        — if the graph isn't available it returns empty rather than pay build
+        cost in a hook. Writes land in the project's active namespace (same as
+        ``activate``). Returns a summary dict for the hook to log and tests to
+        assert on.
+        """
+        empty = {"reused": [], "possible_dupes": [], "pairs": 0}
+        if self.synapses is None or not file_path or not new_code:
+            return empty
+
+        # Nodes already defined in the edited file. get_file_nodes lazily loads
+        # graph.json (cheap) but never embeds — so no build is forced here.
+        try:
+            file_nodes = self.embedder.get_file_nodes(file_path)
+        except Exception:
+            file_nodes = []
+        file_node_ids = {str(n.get("id")) for n in file_nodes if n.get("id")}
+
+        index = self._external_symbol_index()
+        if not index:
+            return empty
+
+        tokens = set(self._REUSE_IDENT_RE.findall(new_code))
+
+        reused_ids: list[str] = []
+        reused_labels: list[str] = []
+        for name in tokens & index.keys():
+            ext_ids = [i for i in index[name] if i not in file_node_ids]
+            if ext_ids:
+                reused_ids.extend(ext_ids)
+                reused_labels.append(name)
+
+        # Possible duplication: a symbol defined in this file whose name also
+        # exists in another file. Reported only (MVP does not penalize).
+        possible_dupes = sorted(
+            {
+                name
+                for n in file_nodes
+                if n.get("file_type") not in self._NON_SYMBOL_FILE_TYPES
+                and (name := self._symbol_name(n.get("label", ""))) in index
+                and any(i not in file_node_ids for i in index[name])
+            }
+        )
+
+        pairs = 0
+        coactivate = list(file_node_ids) + reused_ids
+        if reused_ids and len(coactivate) >= 2:
+            pairs = self.activate(coactivate, strength=self.REUSE_FEEDBACK_STRENGTH)
+
+        return {
+            "reused": sorted(set(reused_labels)),
+            "possible_dupes": possible_dupes,
+            "pairs": pairs,
+        }
 
     def deactivate_files(self, file_paths: list[str]) -> int:
         """Accelerate synapse decay for nodes belonging to deleted files.

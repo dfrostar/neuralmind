@@ -51,6 +51,65 @@ class TestGetMind:
         assert mind1 is not mind2
 
 
+class TestQueryRelevanceSidecar:
+    """tool_query gains an opt-in structured relevance sidecar (v0.38.0)."""
+
+    def _mock_mind(self):
+        mind = MagicMock()
+        result = MagicMock()
+        result.context = "ctx"
+        result.budget.total = 100
+        result.reduction_ratio = 5.0
+        result.layers_used = ["L0"]
+        result.communities_loaded = [1]
+        result.search_hits = 1
+        result.top_search_hits = [
+            {
+                "id": "n1",
+                "score": 0.8,
+                "_synapse_boost": 0.0,
+                "_synapse_recalled": False,
+                "metadata": {"label": "f", "source_file": "a.py", "node_id": "n1"},
+            }
+        ]
+        mind.query.return_value = result
+        mind.embedder.get_file_nodes.return_value = []  # no line spans
+        return mind
+
+    def test_include_relevance_attaches_sidecar(self):
+        from neuralmind.mcp_server import tool_query
+
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
+            out = tool_query("/proj", "q", include_relevance=True)
+        assert "relevance" in out
+        assert out["relevance"]["version"] == 1
+        node = out["relevance"]["files"]["a.py"]["nodes"][0]
+        assert node["label"] == "f"
+        assert node["score"] == 0.8
+
+    def test_default_omits_sidecar(self):
+        """Backward-compatible: no relevance key unless requested."""
+        from neuralmind.mcp_server import tool_query
+
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
+            out = tool_query("/proj", "q")
+        assert "relevance" not in out
+
+    def test_dispatch_threads_include_relevance(self, temp_project):
+        """handle_tool_call forwards include_relevance from arguments.
+
+        Uses a real project path (not a synthetic one) so the MCP security
+        manager's filesystem check passes on a non-root CI runner — the
+        dispatch, not security, is what's under test here.
+        """
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind()):
+            raw = handle_tool_call(
+                "neuralmind_query",
+                {"project_path": str(temp_project), "question": "q", "include_relevance": True},
+            )
+        assert "relevance" in json.loads(raw)
+
+
 class TestHandleToolCall:
     """Tests for handle_tool_call() dispatcher."""
 

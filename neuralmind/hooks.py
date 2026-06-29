@@ -33,7 +33,10 @@ from .compressors import (
 # Sentinels delimit the neuralmind block so we can upgrade/remove without
 # clobbering other tools' hook contributions.
 BLOCK_KEY = "__neuralmind_managed__"
-HOOK_VERSION = "1"
+# v2 (v0.38.0): add Edit/Write matchers for the reuse-vs-rewrite feedback
+# loop. Bumping the version makes `install-hooks` re-write the managed block
+# on upgrade so existing installs pick up the new matchers.
+HOOK_VERSION = "2"
 
 
 def _hook_block() -> dict:
@@ -68,6 +71,18 @@ def _hook_block() -> dict:
             {
                 "matcher": "Grep",
                 "hooks": [{"type": "command", "command": "neuralmind _hook cap-search"}],
+            },
+            # Edit/Write feed the reuse-vs-rewrite feedback loop: did the new
+            # code reach for existing graph symbols (reuse) or duplicate them?
+            # The signal reinforces synapse edges so retrieval prefers what was
+            # actually reused. Opt-out via NEURALMIND_REUSE_FEEDBACK=0.
+            {
+                "matcher": "Edit",
+                "hooks": [{"type": "command", "command": "neuralmind _hook edit-activity"}],
+            },
+            {
+                "matcher": "Write",
+                "hooks": [{"type": "command", "command": "neuralmind _hook edit-activity"}],
             },
         ],
         "SessionStart": [
@@ -274,6 +289,27 @@ def run_hook(action: str) -> int:
             _emit(compressed)
         return 0
 
+    if action == "edit-activity":
+        # PostToolUse on Edit/Write: feed the reuse-vs-rewrite signal back
+        # into the synapse layer (v0.38.0). Pure side effect — we emit nothing
+        # and swallow every error so a feedback miss never disrupts the agent.
+        # Opt-out via NEURALMIND_REUSE_FEEDBACK=0.
+        if os.environ.get("NEURALMIND_REUSE_FEEDBACK") == "0":
+            return 0
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        new_code = (
+            tool_input.get("new_string")
+            or tool_input.get("content")
+            or tool_input.get("new_str")
+            or tool_input.get("file_text")
+            or ""
+        )
+        if not (file_path and new_code):
+            return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        _record_edit_activity(cwd, file_path, new_code)
+        return 0
+
     if action == "session-start":
         # Warm the synapse store, run one decay tick, then export the
         # learned associations as a markdown memory file so Claude Code's
@@ -399,6 +435,27 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
     for node_id, energy in ranked:
         lines.append(f"- {node_id} (activation {energy:.2f})")
     return "\n".join(lines)
+
+
+def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> None:
+    """Run reuse-vs-rewrite feedback for an Edit/Write, fail-open.
+
+    Instantiating NeuralMind loads the graph; we suppress any incidental
+    embedder chatter so the hook's stdout stays clean (this branch emits
+    nothing), and swallow every error — a feedback miss must never disrupt
+    the agent's tool flow.
+    """
+    import contextlib
+    import io
+
+    try:
+        from .core import NeuralMind
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            mind = NeuralMind(project_path)
+            mind.record_edit_activity(file_path, new_code)
+    except Exception:
+        return
 
 
 def _emit_for_event(event_name: str, content: str) -> None:

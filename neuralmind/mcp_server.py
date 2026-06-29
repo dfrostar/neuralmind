@@ -78,11 +78,17 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
     }
 
 
-def tool_query(project_path: str, question: str) -> dict[str, Any]:
-    """Get optimized context for a specific question."""
+def tool_query(project_path: str, question: str, include_relevance: bool = False) -> dict[str, Any]:
+    """Get optimized context for a specific question.
+
+    When ``include_relevance`` is set, attach a structured relevance sidecar
+    (per-file, per-node score / synapse-boost / recall + line spans) so a
+    downstream compressor can protect the load-bearing spans instead of
+    shrinking them away. Off by default to keep responses small.
+    """
     mind = get_mind(project_path)
     result = mind.query(question)
-    return {
+    out: dict[str, Any] = {
         "context": result.context,
         "tokens": result.budget.total,
         "reduction_ratio": round(result.reduction_ratio, 1),
@@ -90,6 +96,11 @@ def tool_query(project_path: str, question: str) -> dict[str, Any]:
         "communities_loaded": result.communities_loaded,
         "search_hits": result.search_hits,
     }
+    if include_relevance:
+        from .relevance import build_relevance_sidecar
+
+        out["relevance"] = build_relevance_sidecar(result.top_search_hits, mind)
+    return out
 
 
 def tool_search(project_path: str, query: str, n: int = 10) -> list[dict[str, Any]]:
@@ -374,6 +385,12 @@ TOOLS = [
                     "type": "string",
                     "description": "Natural language question about the codebase",
                 },
+                "include_relevance": {
+                    "type": "boolean",
+                    "description": "Attach a structured relevance sidecar (per-file, per-node "
+                    "score / synapse-boost / recall + line spans) so a downstream compressor "
+                    "can protect the load-bearing spans. Default false.",
+                },
             },
             "required": ["project_path", "question"],
         },
@@ -613,7 +630,9 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a tool call and return the result as JSON string."""
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
-        "neuralmind_query": lambda args: tool_query(args["project_path"], args["question"]),
+        "neuralmind_query": lambda args: tool_query(
+            args["project_path"], args["question"], args.get("include_relevance", False)
+        ),
         "neuralmind_search": lambda args: tool_search(
             args["project_path"], args["query"], args.get("n", 10)
         ),

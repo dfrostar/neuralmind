@@ -263,12 +263,17 @@ def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     trace = getattr(args, "trace", False) is True
     trace_verbose = getattr(args, "trace_verbose", False) is True
+    relevance = getattr(args, "relevance", False) is True
     explain = getattr(args, "explain", False) is True
     # --explain needs trace data to show synapse firings; enable it implicitly
     if explain and not trace:
         trace = True
 
-    client = _try_daemon()
+    # --relevance (sidecar from ContextResult.top_search_hits) and --explain
+    # (full per-layer breakdown) both need the full result object, which the
+    # daemon's thin query response does not carry — fall back to direct mode
+    # when either is requested.
+    client = None if (relevance or explain) else _try_daemon()
     if client is not None:
         try:
             out = client.query(
@@ -316,6 +321,10 @@ def cmd_query(args):
             "context": result.context,
             "trace": result.trace,
         }
+        if relevance:
+            from .relevance import build_relevance_sidecar
+
+            output["relevance"] = build_relevance_sidecar(result.top_search_hits, mind)
         print(json.dumps(output, indent=2))
     else:
         print(f"Query: {args.question}")
@@ -1789,7 +1798,10 @@ def cmd_install_hooks(args):
         path = result["path"]
         print(f"✓ NeuralMind hooks {action} at {path}")
         if action == "installed":
-            print("  PostToolUse hooks active: compress-read, compress-bash, cap-search")
+            print(
+                "  PostToolUse hooks active: compress-read, compress-bash, "
+                "cap-search, edit-activity (reuse feedback)"
+            )
             print("  Run `neuralmind install-hooks --uninstall` to remove.")
             print("  Set NEURALMIND_BYPASS=1 env var to disable compression temporarily.")
     except Exception as e:
@@ -1967,6 +1979,13 @@ def main():
         "--trace-verbose",
         action="store_true",
         help="With --trace, keep full candidate/hit lists in the trace.",
+    )
+    query_p.add_argument(
+        "--relevance",
+        action="store_true",
+        help="With --json, attach a structured relevance sidecar (per-file, "
+        "per-node score/synapse-boost/recall + line spans) so a downstream "
+        "compressor can protect the load-bearing spans.",
     )
     query_p.add_argument(
         "--explain",
@@ -2489,6 +2508,7 @@ def main():
             "compress-bash",
             "cap-search",
             "offload",
+            "edit-activity",
             "session-start",
             "prompt-submit",
             "pre-compact",

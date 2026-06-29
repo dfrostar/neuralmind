@@ -234,7 +234,12 @@ keywords = [
     "protobuf-indexing",
     "schema-artifact-search",
     "api-spec-search",
-    "non-code-artifact-indexing"
+    "non-code-artifact-indexing",
+    "reuse-feedback",
+    "reuse-vs-rewrite",
+    "relevance-sidecar",
+    "agent-memory-feedback-loop",
+    "load-bearing-span-protection"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
