@@ -197,7 +197,12 @@ keywords = [
     "ponytail-alternative",
     "context-engineering-stack",
     "retrieval-transport-generation",
-    "complementary-context-tools"
+    "complementary-context-tools",
+    "reuse-feedback",
+    "reuse-vs-rewrite",
+    "relevance-sidecar",
+    "agent-memory-feedback-loop",
+    "load-bearing-span-protection"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

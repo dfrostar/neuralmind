@@ -145,6 +145,7 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
+| `--relevance` | False | *(v0.38.0+)* With `--json`, attach a structured `relevance` sidecar (see below) |
 
 #### Output
 
@@ -172,6 +173,38 @@ sharing in bug reports). Tracing is off by default and zero-overhead. The
 daemon's `/query` honors `trace` too, so daemon and direct mode return the same
 attribution.
 
+#### Relevance sidecar *(v0.38.0+)*
+
+`--relevance` (with `--json`) attaches a structured `relevance` block so a
+**downstream compressor** can tell which spans are load-bearing and must
+survive compression. NeuralMind already computes a vector **score**, a learned
+**synapse boost**, and a **recall flag** per retrieved node; the sidecar exposes
+them as machine-readable metadata keyed by source file (plus best-effort line
+spans from the graph), rather than the prose the context string renders:
+
+```json
+{
+  "relevance": {
+    "version": 1,
+    "files": {
+      "auth/handlers.py": {
+        "max_score": 1.02,
+        "nodes": [
+          {"node_id": "…", "label": "authenticate", "score": 0.87,
+           "synapse_boost": 0.15, "recalled": true, "lines": [42, 68]}
+        ]
+      }
+    }
+  }
+}
+```
+
+The `version` field guards the wire shape; the stable `files{}` / `node_id`
+keys let a tool running *after* NeuralMind re-associate the signal regardless of
+pipeline order. The same block is available over MCP via
+`neuralmind_query(include_relevance=true)`. Off by default — default `query`
+output is unchanged.
+
 #### Examples
 
 ```bash
@@ -184,6 +217,9 @@ neuralmind query /path/to/project "What are the main API endpoints?" --json
 # Explain the retrieval path
 neuralmind query /path/to/project "How does billing work?" --trace
 neuralmind query /path/to/project "How does billing work?" --trace --json
+
+# Attach the relevance sidecar for a downstream compressor
+neuralmind query /path/to/project "How does auth work?" --relevance --json
 ```
 
 #### Sample Output
@@ -1118,7 +1154,7 @@ NeuralMind block, leaving any user hooks untouched):
 
 | Event | What runs | Purpose |
 |-------|-----------|---------|
-| `PostToolUse` | Read/Bash/Grep compressors | Token reduction on tool output |
+| `PostToolUse` | Read/Bash/Grep compressors; Edit/Write reuse feedback *(v0.38.0)* | Token reduction on tool output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
@@ -1464,6 +1500,7 @@ neuralmind daemon stop
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
+| `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.38.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. Language-agnostic, best-effort, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |

@@ -54,7 +54,10 @@ What it handles that NeuralMind doesn't:
 
 NeuralMind's PostToolUse hooks and Headroom complement each other: hooks compress
 *before* the agent's context is assembled; Headroom compresses the *assembled payload*
-in transit. Both run; neither interferes with the other.
+in transit. Both run; neither interferes with the other. As of **v0.38.0**, NeuralMind
+also emits a **structured relevance sidecar** Headroom can read so it doesn't compress
+away the exact spans that were the reason for retrieval — see
+[Step 3.5](#step-35--close-the-seams-shared-relevance--reuse-feedback-v0380) below.
 
 ## Step 3 — Install Ponytail (generation layer)
 
@@ -75,6 +78,45 @@ Recommended profile by project phase:
 On advanced reasoning models (GPT-5.5, o3, Claude Fable 5 extended thinking), prefer
 `Full` over `Ultra`. The deliberation cost of `Ultra`'s YAGNI challenges can exceed the
 output savings on models that use internal thinking tokens to evaluate the ladder.
+
+## Step 3.5 — close the seams: shared relevance + reuse feedback *(v0.38.0+)*
+
+The common objection to a *modular* stack is that the layers can't see each other:
+Headroom compresses a span without knowing **why** NeuralMind fetched it (so it can
+shrink away the load-bearing lines), and nothing feeds **what the agent reused vs.
+rewrote** back into what's worth remembering. v0.38.0 closes NeuralMind's half of both
+seams — without collapsing the layers into one black box.
+
+### A shared relevance signal → Headroom
+
+NeuralMind already computes, per retrieved node, a vector **score**, a learned
+**synapse boost**, and a **recall flag**. It now exposes them as a machine-readable
+sidecar that travels alongside the payload:
+
+```bash
+neuralmind query . "How does auth work?" --relevance --json
+# → adds a `relevance` block: per-file, per-node {score, synapse_boost, recalled, lines}
+```
+
+(Over MCP: `neuralmind_query` with `include_relevance: true`.) A compressor downstream
+reads `relevance.files[].nodes[].lines` and **protects the load-bearing spans** instead
+of squeezing them — the exact failure mode a blind compressor hits. The block is
+**versioned and stably keyed**, so a tool running *after* NeuralMind can re-associate the
+signal regardless of pipeline order: the seam is order-independent by design, not a
+function of which layer happens to run first.
+
+### A feedback loop: reuse vs. rewrite → memory
+
+NeuralMind's `install-hooks` now registers an **`Edit`/`Write`** PostToolUse hook. When
+the agent's new code reaches for a symbol already defined elsewhere in the graph, that
+**reuse** is fed back into the synapse layer — so future retrieval (and the generation
+guardrail judging "reuse what exists") sees the helpers and modules the team actually
+reuses, not just what scores well semantically. It's language-agnostic, best-effort, and
+a pure side effect (emits nothing to the agent). Disable with
+`NEURALMIND_REUSE_FEEDBACK=0`.
+
+This is the loop that connects the **generation** stage back to **retrieval**: what the
+agent did with the context becomes a signal about what context to surface next time.
 
 ## Step 4 — Verify the stack end-to-end
 
