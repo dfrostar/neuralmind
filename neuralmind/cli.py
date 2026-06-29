@@ -50,8 +50,18 @@ _LANG_EXTS: dict[str, str] = {
 }
 
 _IGNORED_DIRS = {
-    ".git", ".neuralmind", "graphify-out", "__pycache__", "node_modules",
-    ".venv", "venv", "dist", "build", "target", ".mypy_cache", ".pytest_cache",
+    ".git",
+    ".neuralmind",
+    "graphify-out",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "target",
+    ".mypy_cache",
+    ".pytest_cache",
 }
 
 
@@ -373,9 +383,7 @@ def cmd_savings(args):
             print(json.dumps({"error": "no event log found", "path": str(events_file)}))
         else:
             print(f"No savings log found at {events_file}")
-            print(
-                "Enable memory logging (answer yes when prompted) and run some queries first."
-            )
+            print("Enable memory logging (answer yes when prompted) and run some queries first.")
         return
 
     est_full = 50_000  # NeuralMind's internal reference baseline per query
@@ -420,9 +428,7 @@ def cmd_savings(args):
     total_tokens_used = sum(e["tokens"] for e in queries + wakeups)
     total_full_cost = total_events * est_full
     total_saved = total_full_cost - total_tokens_used
-    avg_ratio = (
-        sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
-    )
+    avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
 
     if args.json:
         print(
@@ -485,9 +491,7 @@ def cmd_review(args):
         cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
         changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
         changed_files = [
-            str(project_path / p.strip())
-            for p in changed_raw.splitlines()
-            if p.strip()
+            str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
         ]
     except subprocess.CalledProcessError:
         # Try staged changes
@@ -495,9 +499,7 @@ def cmd_review(args):
             cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
             changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
             changed_files = [
-                str(project_path / p.strip())
-                for p in changed_raw.splitlines()
-                if p.strip()
+                str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
             ]
         except Exception as exc:
             print(f"review: could not read git diff: {exc}", file=sys.stderr)
@@ -553,7 +555,11 @@ def cmd_review(args):
                     pass
                 if not node_file:
                     continue
-                abs_file = str(project_path / node_file) if not Path(node_file).is_absolute() else node_file
+                abs_file = (
+                    str(project_path / node_file)
+                    if not Path(node_file).is_absolute()
+                    else node_file
+                )
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
                 seen_files.add(abs_file)
@@ -567,9 +573,7 @@ def cmd_review(args):
     if args.json:
         changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
         print(
-            json.dumps(
-                {"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2
-            )
+            json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
         )
         return
 

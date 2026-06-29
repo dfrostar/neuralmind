@@ -325,9 +325,7 @@ def tool_review(
                 if not node_file:
                     continue
                 abs_file = (
-                    str(abs_project / node_file)
-                    if not Path(node_file).is_absolute()
-                    else node_file
+                    str(abs_project / node_file) if not Path(node_file).is_absolute() else node_file
                 )
                 if abs_file in changed_set or abs_file in seen_files:
                     continue
