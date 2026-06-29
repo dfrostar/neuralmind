@@ -141,6 +141,16 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://dfrostar.github.io/neuralmind/use-cases/review-before-push.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://dfrostar.github.io/neuralmind/use-cases/cost-optimization.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

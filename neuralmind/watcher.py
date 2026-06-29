@@ -10,6 +10,14 @@ NeuralMind directly.
 The watcher uses ``watchdog`` if installed and falls back to a polling
 loop based on file mtimes when it isn't, so it works in lightweight
 environments without an extra dependency.
+
+Deletion detection (v0.11+):
+
+When a file is deleted, the watcher calls an optional ``deletion_callback``
+so callers can accelerate decay on the deleted file's synapse edges. Stale
+memory (associations pointing at a refactored-away file) is worse than no
+memory — targeted decay prevents the dead file from continuing to surface
+in context or spread-activation recall.
 """
 
 from __future__ import annotations
@@ -59,6 +67,10 @@ class FileActivityWatcher:
     Edits arriving within ``debounce`` seconds of each other are grouped
     and delivered as a single batch to ``callback``. The callback runs on
     the watcher thread and should be cheap (just enqueue the work).
+
+    When ``deletion_callback`` is supplied it is called immediately (not
+    debounced) whenever a tracked file disappears, so callers can schedule
+    targeted synapse decay for the dead file before the next regular tick.
     """
 
     def __init__(
@@ -68,9 +80,11 @@ class FileActivityWatcher:
         debounce: float = DEFAULT_DEBOUNCE,
         poll_interval: float = DEFAULT_POLL_INTERVAL,
         ignores: Iterable[str] = DEFAULT_IGNORES,
+        deletion_callback: CoActivationCallback | None = None,
     ):
         self.project_path = Path(project_path).resolve()
         self.callback = callback
+        self.deletion_callback = deletion_callback
         self.debounce = debounce
         self.poll_interval = poll_interval
         self.ignores = tuple(ignores)
@@ -89,6 +103,17 @@ class FileActivityWatcher:
             return
         with self._lock:
             self._pending[str(path)] = time.time()
+
+    def _record_deletion(self, path: Path) -> None:
+        """Fire the deletion callback immediately (no debounce — file is gone)."""
+        if _is_ignored(path, self.project_path, self.ignores):
+            return
+        if self.deletion_callback is None:
+            return
+        try:
+            self.deletion_callback([str(path)])
+        except Exception:
+            pass
 
     def _flush_loop(self) -> None:
         while not self._stop.is_set():
@@ -112,6 +137,7 @@ class FileActivityWatcher:
     def _poll_loop(self) -> None:
         while not self._stop.is_set():
             try:
+                current_keys: set[str] = set()
                 for path in self.project_path.rglob("*"):
                     if _is_ignored(path, self.project_path, self.ignores):
                         continue
@@ -122,6 +148,7 @@ class FileActivityWatcher:
                     except OSError:
                         continue
                     key = str(path)
+                    current_keys.add(key)
                     prev = self._mtimes.get(key)
                     if prev is None:
                         self._mtimes[key] = mtime
@@ -129,6 +156,11 @@ class FileActivityWatcher:
                     if mtime > prev:
                         self._mtimes[key] = mtime
                         self._record(path)
+                # Detect deletions: keys tracked last cycle that no longer exist
+                if self.deletion_callback is not None:
+                    for gone_key in set(self._mtimes) - current_keys:
+                        self._mtimes.pop(gone_key, None)
+                        self._record_deletion(Path(gone_key))
             except Exception:
                 pass
             self._stop.wait(self.poll_interval)
@@ -157,6 +189,11 @@ class FileActivityWatcher:
                     if event.is_directory:
                         return
                     self.outer._record(Path(event.src_path))
+
+                def on_deleted(self, event):
+                    if event.is_directory:
+                        return
+                    self.outer._record_deletion(Path(event.src_path))
 
             self._observer = Observer()
             self._observer.schedule(_Handler(self), str(self.project_path), recursive=True)

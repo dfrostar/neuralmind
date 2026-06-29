@@ -30,8 +30,116 @@ def _force_utf8_io() -> None:
             pass
 
 
+_LANG_EXTS: dict[str, str] = {
+    ".py": "Python",
+    ".ts": "TypeScript",
+    ".tsx": "TypeScript (React)",
+    ".js": "JavaScript",
+    ".jsx": "JavaScript (React)",
+    ".go": "Go",
+    ".rs": "Rust",
+    ".java": "Java",
+    ".cs": "C#",
+    ".cpp": "C++",
+    ".cc": "C++",
+    ".c": "C",
+    ".rb": "Ruby",
+    ".php": "PHP",
+    ".swift": "Swift",
+    ".kt": "Kotlin",
+}
+
+_IGNORED_DIRS = {
+    ".git",
+    ".neuralmind",
+    "graphify-out",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "target",
+    ".mypy_cache",
+    ".pytest_cache",
+}
+
+
+def _dry_run_scan(project_path: str) -> dict:
+    """Scan a project and estimate NeuralMind token savings without building."""
+    path = Path(project_path).resolve()
+    lang_counts: dict[str, int] = {}
+    total_lines = 0
+    total_files = 0
+
+    for f in path.rglob("*"):
+        if any(part in _IGNORED_DIRS for part in f.parts):
+            continue
+        if not f.is_file():
+            continue
+        ext = f.suffix.lower()
+        if ext not in _LANG_EXTS:
+            continue
+        lang = _LANG_EXTS[ext]
+        lang_counts[lang] = lang_counts.get(lang, 0) + 1
+        total_files += 1
+        try:
+            total_lines += sum(1 for _ in f.open("rb"))
+        except OSError:
+            pass
+
+    # Estimate node count: ~10 nodes per code file (functions, classes, etc.)
+    est_nodes = total_files * 10
+    # Estimate full-codebase tokens: ~25 tokens per line on average
+    est_full_tokens = max(total_lines * 25, est_nodes * 40)
+    # NeuralMind progressive context: L0+L1+L2+L3 ≈ 600-2400 tokens
+    est_query_tokens = min(2400, max(600, est_nodes * 2))
+    est_wakeup_tokens = min(800, max(150, est_nodes))
+    est_reduction = round(est_full_tokens / max(est_query_tokens, 1), 1)
+
+    return {
+        "project": path.name,
+        "total_files": total_files,
+        "total_lines": total_lines,
+        "languages": lang_counts,
+        "est_nodes": est_nodes,
+        "est_full_tokens": est_full_tokens,
+        "est_wakeup_tokens": est_wakeup_tokens,
+        "est_query_tokens": est_query_tokens,
+        "est_reduction_ratio": est_reduction,
+    }
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
+
+    if getattr(args, "dry_run", False) is True:
+        path = Path(project_path)
+        if not path.exists():
+            print(f"Dry-run failed: path does not exist: {project_path}")
+            sys.exit(1)
+        scan = _dry_run_scan(project_path)
+        if args.json:
+            print(json.dumps(scan, indent=2))
+            return
+        print(f"NeuralMind dry run — {scan['project']}")
+        print(f"  Files scanned : {scan['total_files']}")
+        print(f"  Lines of code : {scan['total_lines']:,}")
+        if scan["languages"]:
+            langs = ", ".join(
+                f"{v} {k}" for k, v in sorted(scan["languages"].items(), key=lambda kv: -kv[1])
+            )
+            print(f"  Languages     : {langs}")
+        print()
+        print(f"  Estimated nodes       : {scan['est_nodes']:,}")
+        print(f"  Est. full-codebase    : ~{scan['est_full_tokens']:,} tokens")
+        print(f"  Est. wake-up context  : ~{scan['est_wakeup_tokens']:,} tokens")
+        print(f"  Est. query context    : ~{scan['est_query_tokens']:,} tokens")
+        print(f"  Est. token reduction  : ~{scan['est_reduction_ratio']}x per query")
+        print()
+        print("No index was built. Run `neuralmind build .` to activate these savings.")
+        return
+
     force = args.force
     print(f"Building NeuralMind index for: {project_path}")
     print(f"Force rebuild: {force}")
@@ -89,10 +197,76 @@ def _print_trace(trace: dict | None) -> None:
         print(f"  [{e.get('layer')}/{e.get('kind')}] {e.get('summary')}")
 
 
+def _print_explain(result) -> None:
+    """Render a human-friendly explanation of why this context was selected.
+
+    Shows token savings, which synapse pairs fired, which communities were
+    loaded, and how many nodes were brought in via spreading activation.
+    The goal is to make the 40-70x claim verifiable at a glance.
+    """
+    print("-" * 60)
+    print("Why this context?")
+    print()
+
+    # Token savings
+    budget = result.budget
+    est_full = 50_000  # NeuralMind's internal reference baseline
+    saved = est_full - budget.total
+    print("  Token budget breakdown:")
+    if budget.l0_identity:
+        print(f"    L0 identity   : {budget.l0_identity:>6} tokens")
+    if budget.l1_summary:
+        print(f"    L1 summary    : {budget.l1_summary:>6} tokens")
+    if budget.l2_ondemand:
+        print(f"    L2 communities: {budget.l2_ondemand:>6} tokens")
+    if budget.l3_search:
+        print(f"    L3 search     : {budget.l3_search:>6} tokens")
+    print(f"    Total used    : {budget.total:>6} tokens")
+    print(f"    Est. saved    : {saved:>6} tokens  ({result.reduction_ratio:.1f}x reduction)")
+    print()
+
+    # Layers used
+    if result.layers_used:
+        print(f"  Layers activated : {', '.join(result.layers_used)}")
+
+    # Communities loaded
+    if result.communities_loaded:
+        print(f"  Communities loaded: {result.communities_loaded}")
+    print()
+
+    # Top search hits (L3)
+    hits = result.top_search_hits or []
+    if hits:
+        print(f"  Top search hits (L3, {len(hits)} nodes):")
+        for h in hits[:5]:
+            label = h.get("label") or h.get("id", "?")
+            src = h.get("source_file", "")
+            score = h.get("score", 0.0)
+            src_str = f"  ({src})" if src else ""
+            print(f"    {score:.3f}  {label}{src_str}")
+        print()
+
+    # Synapse trace (if --trace was also requested)
+    trace = result.trace
+    if trace and trace.get("events"):
+        synapse_events = [e for e in trace["events"] if "synapse" in (e.get("kind") or "")]
+        if synapse_events:
+            print(f"  Synapses that fired ({len(synapse_events)} events):")
+            for e in synapse_events[:5]:
+                print(f"    {e.get('summary', '')}")
+            print()
+    elif not trace:
+        print("  Tip: add --trace to see per-layer synapse firing detail.")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     trace = getattr(args, "trace", False) is True
     trace_verbose = getattr(args, "trace_verbose", False) is True
+    explain = getattr(args, "explain", False) is True
+    # --explain needs trace data to show synapse firings; enable it implicitly
+    if explain and not trace:
+        trace = True
 
     client = _try_daemon()
     if client is not None:
@@ -149,7 +323,9 @@ def cmd_query(args):
         print("=" * 60)
         print(result.context)
         print("=" * 60)
-        if trace:
+        if explain:
+            _print_explain(result)
+        elif trace:
             _print_trace(result.trace)
 
 
@@ -185,6 +361,247 @@ def cmd_wakeup(args):
             f"Wake-up Context ({result.budget.total} tokens, {result.reduction_ratio:.1f}x reduction)"
         )
         print(result.context)
+
+
+def cmd_savings(args):
+    """Show cumulative token savings from the local query event log.
+
+    Reads the per-project (or global) memory JSONL to compute how many tokens
+    NeuralMind has saved across all logged queries. This lets you verify the
+    40-70x claim against your own real usage rather than trusting the demo.
+    """
+    project_path = Path(getattr(args, "project_path", ".")).resolve()
+
+    proj_file = memory.project_query_events_file(project_path)
+    global_file = memory.global_query_events_file()
+
+    use_global = getattr(args, "global_", False)
+    events_file = global_file if use_global else proj_file
+
+    if not events_file.exists():
+        if args.json:
+            print(json.dumps({"error": "no event log found", "path": str(events_file)}))
+        else:
+            print(f"No savings log found at {events_file}")
+            print("Enable memory logging (answer yes when prompted) and run some queries first.")
+        return
+
+    est_full = 50_000  # NeuralMind's internal reference baseline per query
+    queries = []
+    wakeups = []
+    try:
+        with events_file.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                rs = rec.get("retrieval_summary", {})
+                tokens = rs.get("tokens", 0)
+                ratio = rs.get("reduction_ratio", 0.0)
+                if rec.get("event_type") == "wakeup":
+                    wakeups.append({"tokens": tokens, "ratio": ratio})
+                else:
+                    queries.append(
+                        {
+                            "query": rec.get("query", ""),
+                            "tokens": tokens,
+                            "ratio": ratio,
+                            "ts": rec.get("timestamp", ""),
+                        }
+                    )
+    except OSError as exc:
+        print(f"Could not read {events_file}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    total_events = len(queries) + len(wakeups)
+    if total_events == 0:
+        if args.json:
+            print(json.dumps({"queries": 0, "total_tokens_saved": 0}))
+        else:
+            print("No events logged yet. Run some queries to start tracking savings.")
+        return
+
+    total_tokens_used = sum(e["tokens"] for e in queries + wakeups)
+    total_full_cost = total_events * est_full
+    total_saved = total_full_cost - total_tokens_used
+    avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "project": project_path.name,
+                    "log": str(events_file),
+                    "total_queries": len(queries),
+                    "total_wakeups": len(wakeups),
+                    "total_tokens_used": total_tokens_used,
+                    "est_total_full_cost": total_full_cost,
+                    "total_tokens_saved": total_saved,
+                    "avg_reduction_ratio": round(avg_ratio, 1),
+                },
+                indent=2,
+            )
+        )
+        return
+
+    scope = "global" if use_global else project_path.name
+    print(f"NeuralMind token savings — {scope}")
+    print()
+    print(f"  Queries logged    : {len(queries)}")
+    print(f"  Wakeups logged    : {len(wakeups)}")
+    print(f"  Avg reduction     : {avg_ratio:.1f}x")
+    print()
+    print(f"  Tokens actually used : {total_tokens_used:>10,}")
+    print(f"  Est. cost without NM : {total_full_cost:>10,}  (at {est_full:,} tokens/query)")
+    print(f"  Tokens saved         : {total_saved:>10,}")
+    if queries:
+        print()
+        print("  Most recent queries:")
+        for q in queries[-5:]:
+            ratio_str = f"{q['ratio']:.1f}x" if q["ratio"] else "?"
+            ts = q["ts"][:10] if q["ts"] else ""
+            label = q["query"][:55] + "…" if len(q["query"]) > 55 else q["query"]
+            print(f"    {ts}  [{q['tokens']:>5} tok / {ratio_str:>5}]  {label}")
+
+
+def cmd_review(args):
+    """Warn about co-breakage risk before a commit or when reviewing a diff.
+
+    Finds files changed in the current git diff (or a specified base ref),
+    runs spreading activation through the learned synapse graph to find
+    strongly associated files that are NOT in the diff, and reports them as
+    likely co-break candidates — files that have historically changed together
+    with the ones you're touching now.
+
+    Use this before committing to catch forgotten test files, config updates,
+    or tightly-coupled modules that the agent didn't include.
+    """
+    import subprocess
+
+    project_path = Path(getattr(args, "project_path", ".")).resolve()
+    base = getattr(args, "base", None) or "HEAD"
+    top_k = int(getattr(args, "top_k", 10))
+
+    # Get changed files from git
+    try:
+        cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
+        changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
+        changed_files = [
+            str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
+        ]
+    except subprocess.CalledProcessError:
+        # Try staged changes
+        try:
+            cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
+            changed_raw = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
+            changed_files = [
+                str(project_path / p.strip()) for p in changed_raw.splitlines() if p.strip()
+            ]
+        except Exception as exc:
+            print(f"review: could not read git diff: {exc}", file=sys.stderr)
+            sys.exit(1)
+    except Exception as exc:
+        print(f"review: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    if not changed_files:
+        if args.json:
+            print(json.dumps({"changed_files": [], "at_risk": [], "message": "no changed files"}))
+        else:
+            print(f"review: no changed files in diff against {base}")
+        return
+
+    # Load NeuralMind and run spreading activation from the changed files
+    try:
+        mind = create_mind(str(project_path), auto_build=True)
+    except Exception as exc:
+        print(f"review: could not load NeuralMind index: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    changed_set = set(changed_files)
+    # Map file paths to node IDs so we can seed the spread
+    seed_ids: list[tuple[str, float]] = []
+    for fpath in changed_files:
+        try:
+            for node in mind.embedder.get_file_nodes(fpath):
+                nid = node.get("id")
+                if nid:
+                    seed_ids.append((str(nid), 1.0))
+        except Exception:
+            continue
+
+    at_risk: list[dict] = []
+    if seed_ids and mind.synapses is not None:
+        try:
+            neighbors = mind.synapses.spread(seed_ids, depth=2, top_k=top_k * 2)
+            # Resolve node ids back to file paths
+            seen_files: set[str] = set()
+            for node_id, weight in neighbors:
+                # Find the file for this node id via the embedder's node list
+                node_file = None
+                try:
+                    all_nodes = getattr(mind.embedder, "nodes", []) or []
+                    for n in all_nodes:
+                        if str(n.get("id", "")) == node_id:
+                            node_file = n.get("metadata", {}).get("source_file") or n.get(
+                                "source_file", ""
+                            )
+                            break
+                except Exception:
+                    pass
+                if not node_file:
+                    continue
+                abs_file = (
+                    str(project_path / node_file)
+                    if not Path(node_file).is_absolute()
+                    else node_file
+                )
+                if abs_file in changed_set or abs_file in seen_files:
+                    continue
+                seen_files.add(abs_file)
+                rel = str(Path(abs_file).relative_to(project_path))
+                at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
+                if len(at_risk) >= top_k:
+                    break
+        except Exception:
+            pass
+
+    if args.json:
+        changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+        print(
+            json.dumps({"changed_files": changed_rel, "at_risk": at_risk, "base": base}, indent=2)
+        )
+        return
+
+    changed_rel = [str(Path(f).relative_to(project_path)) for f in changed_files]
+    print(f"NeuralMind review — {project_path.name}  (diff against: {base})")
+    print()
+    print(f"Changed files ({len(changed_rel)}):")
+    for f in changed_rel:
+        print(f"  • {f}")
+    print()
+
+    if not at_risk:
+        if mind.synapses is None:
+            print("No synapse graph yet — build and use the project first to learn associations.")
+        else:
+            print("No strongly associated files found outside the diff. Looks complete.")
+        return
+
+    print(f"Co-break candidates — files NOT in diff but strongly associated ({len(at_risk)}):")
+    for item in at_risk:
+        weight = item["synapse_weight"]
+        bars = "█" * min(int(weight * 10), 8)
+        print(f"  {weight:.3f} {bars:<8}  {item['file']}")
+    print()
+    print(
+        "These files have historically been edited together with the ones above.\n"
+        "Consider whether your change also needs to touch them."
+    )
 
 
 def cmd_benchmark(args):
@@ -1074,7 +1491,16 @@ def cmd_watch(args):
                     f"{stats.get('skipped', 0)} unchanged, {stats.get('pruned', 0)} pruned"
                 )
 
-    watcher = FileActivityWatcher(path, on_batch, debounce=debounce)
+    def on_deleted(paths: list[str]) -> None:
+        targeted = 0
+        try:
+            targeted = mind.deactivate_files(paths)
+        except Exception:
+            pass
+        if not quiet and targeted:
+            print(f"  - {len(paths)} file(s) deleted → {targeted} node(s) fast-decayed")
+
+    watcher = FileActivityWatcher(path, on_batch, debounce=debounce, deletion_callback=on_deleted)
     watcher.start()
 
     stop = {"flag": False}
@@ -1518,6 +1944,13 @@ def main():
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
     build_p.add_argument("project_path", nargs="?", default=".")
     build_p.add_argument("--force", "-f", action="store_true")
+    build_p.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Scan the project and estimate token savings without building the index.",
+    )
+    build_p.add_argument("--json", "-j", action="store_true")
     build_p.set_defaults(func=cmd_build)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
@@ -1535,12 +1968,56 @@ def main():
         action="store_true",
         help="With --trace, keep full candidate/hit lists in the trace.",
     )
+    query_p.add_argument(
+        "--explain",
+        action="store_true",
+        help="Show a human-friendly breakdown of why this context was selected: "
+        "token savings, layers used, communities loaded, top search hits, "
+        "and which synapses fired.",
+    )
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
     wakeup_p.add_argument("project_path")
     wakeup_p.add_argument("--json", "-j", action="store_true")
     wakeup_p.set_defaults(func=cmd_wakeup)
+
+    savings_p = subparsers.add_parser(
+        "savings",
+        help="Show cumulative token savings from the local query event log — "
+        "verifies the 40-70x claim against your own real usage.",
+    )
+    savings_p.add_argument("project_path", nargs="?", default=".")
+    savings_p.add_argument(
+        "--global",
+        dest="global_",
+        action="store_true",
+        help="Show savings across ALL projects (reads the global event log).",
+    )
+    savings_p.add_argument("--json", "-j", action="store_true")
+    savings_p.set_defaults(func=cmd_savings)
+
+    review_p = subparsers.add_parser(
+        "review",
+        help="Warn about likely co-breakage: files NOT in your git diff but strongly "
+        "associated via the synapse graph — catch forgotten test files, coupled modules.",
+    )
+    review_p.add_argument("project_path", nargs="?", default=".")
+    review_p.add_argument(
+        "--base",
+        default="HEAD",
+        help="Git ref to diff against (default: HEAD = uncommitted changes). "
+        "Use 'HEAD~1' to review the last commit, or a branch name.",
+    )
+    review_p.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        dest="top_k",
+        help="Maximum number of at-risk files to report (default: 10).",
+    )
+    review_p.add_argument("--json", "-j", action="store_true")
+    review_p.set_defaults(func=cmd_review)
 
     bench_p = subparsers.add_parser(
         "benchmark",

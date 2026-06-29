@@ -91,6 +91,55 @@ def test_stop_is_idempotent(tmp_path):
     w.stop()  # second stop must not raise
 
 
+def test_deletion_callback_fires_when_file_removed(tmp_path):
+    """deletion_callback must be called immediately when a tracked file disappears."""
+    deleted: list[list[str]] = []
+
+    def on_delete(paths):
+        deleted.append(list(paths))
+
+    target = tmp_path / "victim.py"
+    target.write_text("hello")
+
+    w = FileActivityWatcher(
+        tmp_path,
+        lambda paths: None,
+        debounce=0.1,
+        poll_interval=0.3,
+        deletion_callback=on_delete,
+    )
+    w.start()
+    try:
+        # Seed the mtime table so the file is "known" to the poll loop
+        time.sleep(0.5)
+        target.unlink()
+        # Poll loop must detect the deletion within poll_interval + a small margin
+        deadline = time.time() + 3.0
+        while time.time() < deadline and not deleted:
+            time.sleep(0.1)
+    finally:
+        w.stop()
+
+    assert deleted, "deletion_callback was never fired"
+    flat = [p for batch in deleted for p in batch]
+    assert any(str(target) == p for p in flat), f"deleted file not in callback: {flat}"
+
+
+def test_no_deletion_callback_no_crash(tmp_path):
+    """Watcher without deletion_callback must not crash when files disappear."""
+    target = tmp_path / "ephemeral.py"
+    target.write_text("v0")
+
+    w = FileActivityWatcher(tmp_path, lambda paths: None, debounce=0.1, poll_interval=0.3)
+    w.start()
+    try:
+        time.sleep(0.5)
+        target.unlink()
+        time.sleep(0.5)
+    finally:
+        w.stop()  # should not raise
+
+
 def test_flush_delivers_batch_sorted_by_timestamp(tmp_path):
     """The flush loop must order ready paths by edit timestamp, not dict-
     insertion order. A file that was touched then re-touched should appear

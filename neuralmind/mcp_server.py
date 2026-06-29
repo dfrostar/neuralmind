@@ -277,6 +277,73 @@ def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     return {"enabled": True, "written": [str(p) for p in paths]}
 
 
+def tool_review(
+    project_path: str,
+    changed_files: list[str],
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Warn about likely co-breakage given a set of changed files.
+
+    Runs spreading activation through the learned synapse graph seeded at
+    the provided changed files. Returns files NOT in ``changed_files`` that
+    are strongly associated — historical co-edit partners that may also need
+    to change. Use before committing or as part of a code-review workflow.
+
+    ``changed_files`` should be project-relative paths or absolute paths.
+    Use the CLI ``neuralmind review`` to derive them automatically from
+    ``git diff``.
+    """
+    mind = get_mind(project_path)
+    abs_project = Path(project_path).resolve()
+    changed_set = {str(abs_project / f) if not Path(f).is_absolute() else f for f in changed_files}
+
+    # Resolve file paths to node IDs
+    seed_ids: list[tuple[str, float]] = []
+    for fpath in changed_set:
+        try:
+            for node in mind.embedder.get_file_nodes(fpath):
+                nid = node.get("id")
+                if nid:
+                    seed_ids.append((str(nid), 1.0))
+        except Exception:
+            continue
+
+    at_risk: list[dict] = []
+    if seed_ids and mind.synapses is not None:
+        try:
+            neighbors = mind.synapses.spread(seed_ids, depth=2, top_k=top_k * 2)
+            seen_files: set[str] = set()
+            all_nodes = getattr(mind.embedder, "nodes", []) or []
+            node_file_map = {
+                str(n.get("id", "")): (
+                    n.get("metadata", {}).get("source_file") or n.get("source_file", "")
+                )
+                for n in all_nodes
+            }
+            for node_id, weight in neighbors:
+                node_file = node_file_map.get(node_id)
+                if not node_file:
+                    continue
+                abs_file = (
+                    str(abs_project / node_file) if not Path(node_file).is_absolute() else node_file
+                )
+                if abs_file in changed_set or abs_file in seen_files:
+                    continue
+                seen_files.add(abs_file)
+                rel = str(Path(abs_file).relative_to(abs_project))
+                at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
+                if len(at_risk) >= top_k:
+                    break
+        except Exception:
+            pass
+
+    return {
+        "changed_files": [str(Path(f).relative_to(abs_project)) for f in sorted(changed_set)],
+        "at_risk": at_risk,
+        "synapse_graph_available": mind.synapses is not None,
+    }
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -508,6 +575,37 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_review",
+        "description": (
+            "Warn about likely co-breakage before a commit or code review. "
+            "Given a list of changed files, runs spreading activation through "
+            "the learned synapse graph and returns files NOT in the diff that "
+            "have historically been edited together with the changed files. "
+            "Use this to catch forgotten test files, tightly-coupled modules, "
+            "or config updates that should accompany the current change."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "changed_files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Project-relative or absolute paths of files being changed",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum number of at-risk files to return (default: 10)",
+                    "default": 10,
+                },
+            },
+            "required": ["project_path", "changed_files"],
+        },
+    },
 ]
 
 
@@ -538,6 +636,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_export_synapse_memory": lambda args: tool_export_synapse_memory(
             args["project_path"]
+        ),
+        "neuralmind_review": lambda args: tool_review(
+            args["project_path"],
+            args["changed_files"],
+            args.get("top_k", 10),
         ),
         "neuralmind_feedback": lambda args: tool_feedback(
             args["project_path"],

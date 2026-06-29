@@ -28,6 +28,8 @@ Complete command-line interface documentation for NeuralMind.
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
+  - [savings](#savings-v0400)
+  - [review](#review-v0400)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -85,6 +87,8 @@ neuralmind build <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
+| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.40.0+) |
+| `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
 
@@ -103,6 +107,15 @@ neuralmind build /path/to/project
 
 # Force complete rebuild
 neuralmind build /path/to/project --force
+
+# Estimate token savings without building (Gap 1: 1-click setup)
+neuralmind build /path/to/project --dry-run
+# → NeuralMind dry run — my-project
+# →   Files scanned : 142
+# →   Lines of code : 18,342
+# →   Languages     : 89 Python, 53 TypeScript
+# →   Est. token reduction  : ~42x per query
+# →   No index was built. Run `neuralmind build .` to activate these savings.
 ```
 
 #### Prerequisites
@@ -146,6 +159,7 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
+| `--explain` | False | *(v0.40.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 
 #### Output
 
@@ -182,9 +196,23 @@ neuralmind query /path/to/project "How does authentication work?"
 # JSON output
 neuralmind query /path/to/project "What are the main API endpoints?" --json
 
-# Explain the retrieval path
+# Explain the retrieval path (raw trace)
 neuralmind query /path/to/project "How does billing work?" --trace
 neuralmind query /path/to/project "How does billing work?" --trace --json
+
+# Human-friendly explanation of why this context was chosen (v0.40.0+)
+neuralmind query /path/to/project "auth flow" --explain
+# → Why this context?
+# →   Token budget breakdown:
+# →     L0 identity   :    142 tokens
+# →     L1 summary    :    513 tokens
+# →     L2 communities:    800 tokens
+# →     L3 search     :    980 tokens
+# →     Total used    :  2,435 tokens
+# →     Est. saved    : 47,565 tokens  (20.5x reduction)
+# →   Top search hits (L3, 4 nodes):
+# →     0.912  authenticate  (auth/handlers.py)
+# →     0.887  JWTMiddleware  (auth/middleware.py)
 ```
 
 #### Sample Output
@@ -1526,6 +1554,102 @@ neuralmind query . "how does auth work?"   # served warm (via: daemon)
 neuralmind daemon status --json
 neuralmind daemon stop
 ```
+
+---
+
+### savings *(v0.40.0+)*
+
+Show cumulative token savings from the local query event log. Verifies the 40-70x claim against your own real usage rather than trusting the demo.
+
+```bash
+neuralmind savings [project_path] [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--global` | False | Show savings across ALL projects (reads the global event log at `~/.neuralmind/memory/`) |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Show project-level savings
+neuralmind savings .
+# → NeuralMind token savings — my-project
+# →   Queries logged    : 47
+# →   Avg reduction     : 38.2x
+# →   Tokens actually used :     83,140
+# →   Est. cost without NM : 2,350,000
+# →   Tokens saved         : 2,266,860
+
+# Global savings across all projects
+neuralmind savings --global
+
+# JSON for dashboards or scripting
+neuralmind savings . --json
+```
+
+Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
+
+---
+
+### review *(v0.40.0+)*
+
+Warn about likely co-breakage before a commit or when reviewing a diff.
+
+Reads the current `git diff` (or a specified base ref), finds changed files, and runs spreading activation through the learned synapse graph to surface files that are **strongly associated but NOT in your diff** — files that have historically been edited together with the ones you're changing.
+
+```bash
+neuralmind review [project_path] [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--base` | `HEAD` | Git ref to diff against. Use `HEAD~1` to review the last commit or a branch name to review a feature branch. |
+| `--top-k` | `10` | Maximum number of at-risk files to report |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Review uncommitted changes (diff against HEAD)
+neuralmind review .
+
+# Review the last commit
+neuralmind review . --base HEAD~1
+
+# Review changes on a feature branch vs main
+neuralmind review . --base main
+
+# JSON output for CI integration
+neuralmind review . --json
+```
+
+#### Sample Output
+
+```
+NeuralMind review — my-project  (diff against: HEAD)
+
+Changed files (3):
+  • auth/middleware.py
+  • auth/handlers.py
+  • tests/test_auth.py
+
+Co-break candidates — files NOT in diff but strongly associated (4):
+  0.782 ████████  auth/tokens.py
+  0.654 ██████    auth/models.py
+  0.431 ████      config/settings.py
+  0.198 ██        docs/auth.md
+
+These files have historically been edited together with the ones above.
+Consider whether your change also needs to touch them.
+```
+
+Requires the synapse graph to have accumulated edges. Cold graphs (first few sessions) return empty results. Also available as the `neuralmind_review` MCP tool.
 
 ---
 

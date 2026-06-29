@@ -225,7 +225,10 @@ keywords = [
     "vscode-extension",
     "vscode-plugin",
     "editor-integration",
-    "native-editor-ux"
+    "native-editor-ux",
+    "dry-run-indexing",
+    "co-break-detection",
+    "token-savings-dashboard"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

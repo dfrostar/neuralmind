@@ -90,6 +90,57 @@ neuralmind self-improve status .        # read-only: current depth, re-query rat
 It's off by default and does zero extra hot-path work when unset, so it's safe to
 try and trivial to turn back off.
 
+## Understand why a retrieval answered the way it did *(v0.40.0+)*
+
+Add `--explain` to any `query` call to get a structured trace of how the budget was spent:
+
+```bash
+neuralmind query . "How does authentication flow through the middleware?" --explain
+```
+
+Output appended after the normal context block:
+
+```
+  Token budget breakdown:
+    L0 (identity):   42 tok
+    L1 (summary):   180 tok
+    L2 (communities): 410 tok  [auth, middleware, session]
+    L3 (search):    268 tok    [handlers.py:authenticate, session.py:validate_token, ...]
+  Synapse recall:  +3 edges injected
+  Reduction ratio: 6.1×
+```
+
+The trace is the primary tool for diagnosing a retrieval that felt wrong or incomplete — it shows you exactly which clusters loaded and which search hits scored, so you know where to look.
+
+## Catch co-breaks before you push *(v0.40.0+)*
+
+Before opening a PR, run:
+
+```bash
+neuralmind review .
+```
+
+NeuralMind reads `git diff --name-only main`, maps each changed file to its graph nodes, runs spreading activation, and surfaces the nodes most strongly associated with your changes that you haven't touched yet — the most likely co-break candidates:
+
+```
+Co-break candidates for 3 changed files:
+  1. src/session/store.py          (weight 0.84, 12 activations)
+  2. tests/test_auth_middleware.py (weight 0.71,  8 activations)
+  3. src/auth/token_validator.py   (weight 0.58,  6 activations)
+```
+
+Same data via the `neuralmind_review` MCP tool — Claude Code can call it automatically after editing a file, before a commit or push.
+
+## Track cumulative savings *(v0.40.0+, requires NEURALMIND_MEMORY=1)*
+
+```bash
+export NEURALMIND_MEMORY=1   # enables the JSONL event log (off by default)
+# … work for a week …
+neuralmind savings .
+```
+
+Shows total sessions tracked, total tokens saved, average reduction ratio, and a table of the most recent queries with individual ratios. A concrete number for the cost you've avoided.
+
 ## Escape hatches
 
 Need the raw file body for a specific command?
