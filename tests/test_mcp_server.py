@@ -299,11 +299,11 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 12 tools (7 retrieval + 4 v0.4 synapse +
-        1 v0.11 directional-transition tool)."""
+        """TOOLS should define 14 tools (7 retrieval + 4 v0.4 synapse +
+        1 v0.11 directional-transition + 1 v0.38 feedback + 1 review)."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 12
+        assert len(TOOLS) == 14
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -336,5 +336,9 @@ class TestToolDefinitions:
             "neuralmind_export_synapse_memory",
             # v0.11.0 directional transitions
             "neuralmind_next_likely",
+            # v0.38.0 explicit feedback loop
+            "neuralmind_feedback",
+            # co-break risk review
+            "neuralmind_review",
         }
         assert tool_names == expected

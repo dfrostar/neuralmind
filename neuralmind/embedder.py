@@ -21,6 +21,7 @@ from typing import Any
 import chromadb
 from chromadb.config import Settings
 
+from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
 
 
@@ -87,6 +88,10 @@ class GraphEmbedder(EmbeddingBackend):
         )
 
         self._collection = None
+
+        # BM25 keyword index — lazy-loaded on first bm25_search call
+        self._bm25: BM25Index | None = None
+        self._bm25_path = Path(project_path) / ".neuralmind" / "bm25_index.json"
 
     @property
     def project_path(self) -> Path:
@@ -254,6 +259,7 @@ class GraphEmbedder(EmbeddingBackend):
             self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
 
         print(f"Embedding complete: {stats}")
+        self.build_bm25_index()
         return stats
 
     def search(
@@ -479,6 +485,48 @@ class GraphEmbedder(EmbeddingBackend):
             "community_distribution": communities,
             "db_path": self.db_path,
         }
+
+    # ------------------------------------------------------------------
+    # BM25 keyword index
+    # ------------------------------------------------------------------
+
+    def build_bm25_index(self) -> None:
+        """Build and persist the BM25 keyword index from currently loaded nodes.
+
+        Called automatically at the end of embed_nodes() so the BM25 index
+        stays in sync with the vector index. Safe to call standalone when only
+        a keyword re-index is needed.
+        """
+        if not self.nodes:
+            return
+        idx = BM25Index()
+        ids, texts, metas = [], [], []
+        for node in self.nodes:
+            node_id = str(node.get("id", node.get("label", "")))
+            if not node_id:
+                continue
+            ids.append(node_id)
+            texts.append(self._node_to_text(node))
+            metas.append(self._node_metadata(node))
+        idx.add_documents(ids, texts, metas)
+        idx.build()
+        idx.save(self._bm25_path)
+        self._bm25 = idx
+
+    def _load_bm25(self) -> BM25Index:
+        """Lazy-load the persisted BM25 index (or return an empty one)."""
+        if self._bm25 is not None:
+            return self._bm25
+        self._bm25 = BM25Index.load(self._bm25_path)
+        return self._bm25
+
+    def bm25_search(self, query: str, n: int = 10) -> list[dict]:
+        """BM25 keyword search — same result shape as search().
+
+        Returns an empty list when the index hasn't been built yet or when
+        NEURALMIND_BM25=0 is set.
+        """
+        return self._load_bm25().search(query, top_k=n)
 
     def delete_nodes(self, node_ids) -> int:
         """Delete embeddings for the given node ids (e.g. symbols removed by an

@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.40.0](https://github.com/dfrostar/neuralmind/compare/v0.39.0...v0.40.0) (2026-06-29)
+
+
+### Features
+
+* index OpenAPI, SQL DDL, and Protobuf schema artifacts (v0.40.0) ([#296](https://github.com/dfrostar/neuralmind/issues/296)) ([a482ffd](https://github.com/dfrostar/neuralmind/commit/a482ffd0df10a5267674f5edd5a721a4b0443e44))
+
+## [0.39.0](https://github.com/dfrostar/neuralmind/compare/v0.38.0...v0.39.0) (2026-06-29)
+
+
+### Features
+
+* `neuralmind probe` queries by docstring/rationale + review hardening ([#292](https://github.com/dfrostar/neuralmind/issues/292)) ([745169a](https://github.com/dfrostar/neuralmind/commit/745169a18b53b3678d2c6b329d974617d8f38859))
+* add neuralmind probe — label-free retrieval self-test on your own codebase ([4dceb99](https://github.com/dfrostar/neuralmind/commit/4dceb99c57c3551630fa0a0b27f643e1a08c0713)), closes [#241](https://github.com/dfrostar/neuralmind/issues/241)
+* v0.40.0 — dry-run build, deletion decay, --explain, review, savings dashboard ([e92a9f5](https://github.com/dfrostar/neuralmind/commit/e92a9f5577b041e8ee666f89e1c478c0f633aea0))
+* VS Code native extension, BM25 hybrid search, explicit feedback, CI auto-index (v0.38.0) ([716c422](https://github.com/dfrostar/neuralmind/commit/716c4224ead33593d436359addacb4932a40c08f))
+
+
+### Documentation
+
+* NeuralMind ↔ OpenHuman concept note ([1cf4595](https://github.com/dfrostar/neuralmind/commit/1cf45958e9e1747116e7d71402184a664c523720))
+* **pilot:** corrected BRD and golden queries template ([#285](https://github.com/dfrostar/neuralmind/issues/285)) ([bfd34b3](https://github.com/dfrostar/neuralmind/commit/bfd34b30b397bfbfb3a98bf1489d407809bf86e9))
+* refresh benchmark chart [skip ci] ([27cb48c](https://github.com/dfrostar/neuralmind/commit/27cb48c00b262226a1db7dcdc33428b79904e453))
+* refresh SEO structured data and sitemap to v0.38.0 state ([#288](https://github.com/dfrostar/neuralmind/issues/288)) ([82cb1e2](https://github.com/dfrostar/neuralmind/commit/82cb1e27372bc3cbdba12d10521e7bd9a562e9b5))
+* rename v0.40.0 → v0.39.0 across all public-facing surfaces ([#295](https://github.com/dfrostar/neuralmind/issues/295)) ([08f8f82](https://github.com/dfrostar/neuralmind/commit/08f8f82aa45ac0ab2706981d42be2776e50ad451))
+* **roadmap:** language expansion, impact tool, broader agent installs ([47df6e2](https://github.com/dfrostar/neuralmind/commit/47df6e21b85841b00d00b81f27919665c2ec5407))
+
+## [0.38.0](https://github.com/dfrostar/neuralmind/compare/v0.37.0...v0.38.0) (2026-06-27)
+
+
+### Features
+
+* hybrid BM25 search, explicit feedback MCP tool, CI auto-index action (v0.38.0) ([438bacd](https://github.com/dfrostar/neuralmind/commit/438bacd8d40ea97101c548f924dbd894586e3c7f))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([8e4fc98](https://github.com/dfrostar/neuralmind/commit/8e4fc98f5b6d5bfbdd4107614f7ffd181970892c))
+* refresh launch handoff to v0.37.0 state ([#275](https://github.com/dfrostar/neuralmind/issues/275)) ([8dff2c1](https://github.com/dfrostar/neuralmind/commit/8dff2c1221bdca6779908669b095ed3abc140d3a))
+
 ## [0.37.0](https://github.com/dfrostar/neuralmind/compare/v0.34.0...v0.37.0) (2026-06-20)
 
 

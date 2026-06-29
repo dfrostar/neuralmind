@@ -116,7 +116,10 @@ def build_relevance_sidecar(top_search_hits: list[dict] | None, mind: Any = None
         boost = round(float(hit.get("_synapse_boost", 0.0) or 0.0), 4)
         recalled = bool(hit.get("_synapse_recalled", False))
 
-        entry = files.setdefault(source_file, {"max_score": 0.0, "nodes": []})
+        # Seed max_score with the first hit's score (not 0.0) so a file whose
+        # scores are all negative — possible for distance-derived similarity —
+        # still reports a correct per-file max for downstream consumers.
+        entry = files.setdefault(source_file, {"max_score": score, "nodes": []})
         node = {
             "node_id": str(node_id),
             "label": str(label),

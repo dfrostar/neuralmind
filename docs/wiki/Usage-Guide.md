@@ -209,7 +209,63 @@ neuralmind query . "Describe each React component and its purpose" >> docs/COMPO
 
 ---
 
-### Use Case 5: CI/CD Integration
+### Use Case 5: Team Memory via CI Auto-Index *(v0.38.0+)*
+
+**When**: You want every developer on a team to have an up-to-date NeuralMind
+index without running `neuralmind build` manually.
+
+**How**: Drop the bundled GitHub Action into your repo — it runs on every push
+to `main`, rebuilds the index incrementally (source-hash cache skips unchanged
+files), exports the synapse memory as `.neuralmind-team-memory.json`, and
+commits it back so the next developer's `git pull` picks it up:
+
+```yaml
+# .github/workflows/neuralmind-autoindex.yml
+name: NeuralMind Auto-Index
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force full re-embed
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  autoindex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: .neuralmind/
+          key: neuralmind-${{ hashFiles('**/*.py','**/*.ts','**/*.go','**/*.rs') }}
+      - run: pip install "neuralmind>=0.38.0"
+      - run: neuralmind build .
+      - run: neuralmind memory export
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update team memory [skip ci]"
+          file_pattern: ".neuralmind-team-memory.json"
+```
+
+**Benefit**: The synapse layer's learned associations are shared across the
+whole team — no one starts cold. Agent sessions inherit the team's collective
+knowledge of which files go together.
+
+---
+
+### Use Case 6: CI/CD Integration
 
 **When**: Automated context generation in pipelines
 
@@ -254,7 +310,7 @@ jobs:
 
 ---
 
-### Use Case 6: Watch the brain learn (v0.6.0+)
+### Use Case 7: Watch the brain learn (v0.6.0+)
 
 **When**: You want a "second screen" for your AI coding session — a
 live view of which parts of your codebase the agent is using, in
@@ -316,7 +372,7 @@ writer (you still get the in-process feed for the agent running
 
 ---
 
-### Use Case 7: IDE Integration (MCP Server)
+### Use Case 8: IDE Integration (MCP Server)
 
 **When**: Direct AI integration in Claude Desktop or Cursor
 
@@ -635,14 +691,21 @@ pip install neuralmind
 
 ### Available MCP Tools
 
-| Tool | Description |
-|------|-------------|
-| `neuralmind_wakeup` | Get project overview |
-| `neuralmind_query` | Query with natural language |
-| `neuralmind_search` | Direct semantic search |
-| `neuralmind_build` | Rebuild index |
-| `neuralmind_stats` | Show index statistics |
-| `neuralmind_benchmark` | Run token benchmark |
+| Tool | Since | Description |
+|------|-------|-------------|
+| `neuralmind_wakeup` | v0.1 | Get project overview (~600 tokens) |
+| `neuralmind_query` | v0.1 | Query with natural language (all 4 layers) |
+| `neuralmind_search` | v0.1 | Direct semantic search |
+| `neuralmind_build` | v0.1 | Rebuild index |
+| `neuralmind_stats` | v0.1 | Show index statistics |
+| `neuralmind_benchmark` | v0.1 | Run token benchmark |
+| `neuralmind_skeleton` | v0.3 | File skeleton view for structure-only context |
+| `neuralmind_synaptic_neighbors` | v0.4 | Strongest synapse neighbors of a node |
+| `neuralmind_synapse_stats` | v0.4 | Synapse graph statistics |
+| `neuralmind_synapse_decay` | v0.4 | Trigger manual synapse decay |
+| `neuralmind_export_synapse_memory` | v0.4 | Export learned associations to markdown |
+| `neuralmind_next_likely` | v0.11 | Predict next file/node from directional transitions |
+| `neuralmind_feedback` | v0.38 | Send positive/negative retrieval feedback to the synapse layer |
 
 ### Usage in Claude Desktop
 

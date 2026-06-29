@@ -12,6 +12,7 @@ Complete command-line interface documentation for NeuralMind.
   - [wakeup](#wakeup)
   - [search](#search)
   - [benchmark](#benchmark)
+  - [probe](#probe-v0270)
   - [stats](#stats)
   - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
@@ -27,6 +28,8 @@ Complete command-line interface documentation for NeuralMind.
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
+  - [savings](#savings-v0400)
+  - [review](#review-v0400)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -84,6 +87,8 @@ neuralmind build <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
+| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
+| `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
 
@@ -102,6 +107,15 @@ neuralmind build /path/to/project
 
 # Force complete rebuild
 neuralmind build /path/to/project --force
+
+# Estimate token savings without building (Gap 1: 1-click setup)
+neuralmind build /path/to/project --dry-run
+# → NeuralMind dry run — my-project
+# →   Files scanned : 142
+# →   Lines of code : 18,342
+# →   Languages     : 89 Python, 53 TypeScript
+# →   Est. token reduction  : ~42x per query
+# →   No index was built. Run `neuralmind build .` to activate these savings.
 ```
 
 #### Prerequisites
@@ -116,7 +130,7 @@ neuralmind build /path/to/project --force
 
 Backend precedence:
 1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
-2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`, `.php`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0; PHP in v0.37.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass.
+2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`, `.php`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0; PHP in v0.37.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass. **Schema artifacts** (v0.40.0+) are indexed alongside code as `document` nodes: **OpenAPI/AsyncAPI specs** (`.yaml`/`.yml` with an `openapi`/`asyncapi`/`swagger` key) emit nodes per path+method, schema component, and channel; **SQL DDL** (`.sql`) emits one node per `CREATE` object; **Protocol Buffers** (`.proto`) emit nodes per `message`, `service`, `rpc`, and `enum`. Plain YAML config files are silently skipped.
 3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.
@@ -145,7 +159,8 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
-| `--relevance` | False | *(v0.38.0+)* With `--json`, attach a structured `relevance` sidecar (see below) |
+| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
+| `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
 
 #### Output
 
@@ -173,14 +188,15 @@ sharing in bug reports). Tracing is off by default and zero-overhead. The
 daemon's `/query` honors `trace` too, so daemon and direct mode return the same
 attribution.
 
-#### Relevance sidecar *(v0.38.0+)*
+#### Relevance sidecar *(v0.41.0+)*
 
 `--relevance` (with `--json`) attaches a structured `relevance` block so a
 **downstream compressor** can tell which spans are load-bearing and must
 survive compression. NeuralMind already computes a vector **score**, a learned
 **synapse boost**, and a **recall flag** per retrieved node; the sidecar exposes
 them as machine-readable metadata keyed by source file (plus best-effort line
-spans from the graph), rather than the prose the context string renders:
+spans from the graph), built from the **post-boost** L3 hits so it reflects the
+same signals the rendered context used:
 
 ```json
 {
@@ -202,8 +218,9 @@ spans from the graph), rather than the prose the context string renders:
 The `version` field guards the wire shape; the stable `files{}` / `node_id`
 keys let a tool running *after* NeuralMind re-associate the signal regardless of
 pipeline order. The same block is available over MCP via
-`neuralmind_query(include_relevance=true)`. Off by default — default `query`
-output is unchanged.
+`neuralmind_query(include_relevance=true)`. Off by default — `query` output is
+unchanged unless requested. `--relevance` and `--explain` both run in direct
+mode (they need the full result the daemon's thin response omits).
 
 #### Examples
 
@@ -214,12 +231,23 @@ neuralmind query /path/to/project "How does authentication work?"
 # JSON output
 neuralmind query /path/to/project "What are the main API endpoints?" --json
 
-# Explain the retrieval path
+# Explain the retrieval path (raw trace)
 neuralmind query /path/to/project "How does billing work?" --trace
 neuralmind query /path/to/project "How does billing work?" --trace --json
 
-# Attach the relevance sidecar for a downstream compressor
-neuralmind query /path/to/project "How does auth work?" --relevance --json
+# Human-friendly explanation of why this context was chosen (v0.39.0+)
+neuralmind query /path/to/project "auth flow" --explain
+# → Why this context?
+# →   Token budget breakdown:
+# →     L0 identity   :    142 tokens
+# →     L1 summary    :    513 tokens
+# →     L2 communities:    800 tokens
+# →     L3 search     :    980 tokens
+# →     Total used    :  2,435 tokens
+# →     Est. saved    : 47,565 tokens  (20.5x reduction)
+# →   Top search hits (L3, 4 nodes):
+# →     0.912  authenticate  (auth/handlers.py)
+# →     0.887  JWTMiddleware  (auth/middleware.py)
 ```
 
 #### Sample Output
@@ -593,6 +621,91 @@ Estimated Full Codebase: 50,000 tokens
 ---
 Benchmark completed in 625ms
 ```
+
+---
+
+### probe *(v0.27.0+)*
+
+Run a **retrieval self-probe** on your own codebase: does the index actually
+find the right file when the agent asks about a symbol? Unlike `benchmark`
+(which measures token reduction) and `benchmark --quality` (which scores ranking
+against committed golden fixtures), `probe` runs **label-free** — no hand
+annotation — so it works on **any** built project.
+
+```bash
+neuralmind probe [project_path] [OPTIONS]
+```
+
+For a deterministic sample of indexed symbols, it queries each one by its
+*intent* — the symbol's **rationale** (the docstring text NeuralMind stores as
+`rationale` nodes, e.g. `"Raised when the exp claim is in the past"`), which
+doesn't contain the symbol name, so it's a real **natural-language → code** test
+rather than a string match. It asks the backend for code hits directly, then
+scores whether the symbol's source file came back: **recall@1/3/5**, **MRR**, and
+**answerability@k** (reusing the `neuralmind.quality` metrics). Undocumented
+symbols fall back to a humanized label, and the report **discloses the
+rationale-vs-name split** so a mostly-fallback run reads as a sanity check, not a
+quality score. The most actionable output is the **blind-spot list**: the sampled
+symbols the index couldn't retrieve from their description — i.e. where an agent
+would come up empty. `--k` must be ≥ 1 and `--sample-size` ≥ 0 (`0` = all).
+
+The idea is borrowed from long-context "needle-in-a-haystack" evals (e.g. S-NIAH
+in the *Recursive Language Models* paper): rather than measuring cost, it
+measures whether the right node still surfaces as the index grows. It is
+**read-only** — it never mutates the index or the synapse store.
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Path to project root (default: `.`) |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sample-size` | 50 | How many indexed symbols to probe (`0` = all) |
+| `--k` | 10 | Retrieval depth — a symbol's file must surface in the top-k |
+| `--seed` | 0 | Sampling seed; same seed = same sample, for stable/comparable runs |
+| `--baseline` | — | A saved probe JSON to compare against (reports recall/MRR deltas) |
+| `--json`, `-j` | False | Output the full report (including every blind spot) as JSON |
+
+#### Examples
+
+```bash
+# Probe the current project
+neuralmind probe .
+
+# Tighter: the right file must be the #1 hit
+neuralmind probe . --k 1
+
+# Save a baseline, then check whether a refactor moved retrieval
+neuralmind probe . --sample-size 100 --json > probe-baseline.json
+neuralmind probe . --sample-size 100 --baseline probe-baseline.json
+```
+
+#### Sample Output
+
+```
+Retrieval self-probe — sample_project
+Sampled 63 of 64 indexed symbols, retrieval depth k=10
+Query source: 51 rationale, 12 label
+============================================================
+  answerability  : 98%  (file found in top-10)
+  MRR            : 0.789
+  recall@1/3/5   : 0.667 / 0.905 / 0.968
+  blind spots    : 1
+------------------------------------------------------------
+Symbols the index couldn't retrieve from their own description (1 total):
+  - get_me_endpoint()  (api/routes.py)   query: "GET /api/users/me — requires Authorization: Bearer header"
+```
+
+The `Query source` line discloses how strong the run was: `rationale` probes are
+real NL→code tests; `label` probes are a weaker name-based fallback for
+undocumented symbols. Because the probe is deterministic per `--seed` and emits
+`--json` (with a `query_sources` tally), you can gate CI on a per-repo recall/MRR
+floor, or diff two runs with `--baseline` to catch a retrieval regression before
+it ships.
 
 ---
 
@@ -1154,7 +1267,7 @@ NeuralMind block, leaving any user hooks untouched):
 
 | Event | What runs | Purpose |
 |-------|-----------|---------|
-| `PostToolUse` | Read/Bash/Grep compressors; Edit/Write reuse feedback *(v0.38.0)* | Token reduction on tool output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
+| `PostToolUse` | Read/Bash/Grep compressors; Edit/Write reuse feedback *(v0.41.0)* | Token reduction on tool output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
@@ -1219,6 +1332,7 @@ neuralmind install-mcp [project_path] [--client NAME] [--all] [--print]
 | `cursor` | project | `.cursor/mcp.json` |
 | `claude-desktop` | user | platform `claude_desktop_config.json` |
 | `cline` | user | VS Code `cline_mcp_settings.json` |
+| `vscode` | user | VS Code `settings.json` (`mcp.servers` key, requires VS Code 1.99+) |
 
 #### Options
 
@@ -1478,6 +1592,102 @@ neuralmind daemon stop
 
 ---
 
+### savings *(v0.39.0+)*
+
+Show cumulative token savings from the local query event log. Verifies the 40-70x claim against your own real usage rather than trusting the demo.
+
+```bash
+neuralmind savings [project_path] [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--global` | False | Show savings across ALL projects (reads the global event log at `~/.neuralmind/memory/`) |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Show project-level savings
+neuralmind savings .
+# → NeuralMind token savings — my-project
+# →   Queries logged    : 47
+# →   Avg reduction     : 38.2x
+# →   Tokens actually used :     83,140
+# →   Est. cost without NM : 2,350,000
+# →   Tokens saved         : 2,266,860
+
+# Global savings across all projects
+neuralmind savings --global
+
+# JSON for dashboards or scripting
+neuralmind savings . --json
+```
+
+Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
+
+---
+
+### review *(v0.39.0+)*
+
+Warn about likely co-breakage before a commit or when reviewing a diff.
+
+Reads the current `git diff` (or a specified base ref), finds changed files, and runs spreading activation through the learned synapse graph to surface files that are **strongly associated but NOT in your diff** — files that have historically been edited together with the ones you're changing.
+
+```bash
+neuralmind review [project_path] [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--base` | `HEAD` | Git ref to diff against. Use `HEAD~1` to review the last commit or a branch name to review a feature branch. |
+| `--top-k` | `10` | Maximum number of at-risk files to report |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Review uncommitted changes (diff against HEAD)
+neuralmind review .
+
+# Review the last commit
+neuralmind review . --base HEAD~1
+
+# Review changes on a feature branch vs main
+neuralmind review . --base main
+
+# JSON output for CI integration
+neuralmind review . --json
+```
+
+#### Sample Output
+
+```
+NeuralMind review — my-project  (diff against: HEAD)
+
+Changed files (3):
+  • auth/middleware.py
+  • auth/handlers.py
+  • tests/test_auth.py
+
+Co-break candidates — files NOT in diff but strongly associated (4):
+  0.782 ████████  auth/tokens.py
+  0.654 ██████    auth/models.py
+  0.431 ████      config/settings.py
+  0.198 ██        docs/auth.md
+
+These files have historically been edited together with the ones above.
+Consider whether your change also needs to touch them.
+```
+
+Requires the synapse graph to have accumulated edges. Cold graphs (first few sessions) return empty results. Also available as the `neuralmind_review` MCP tool.
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -1500,7 +1710,7 @@ neuralmind daemon stop
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
-| `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.38.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. Language-agnostic, best-effort, fail-open. |
+| `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
 | `NEURALMIND_EVENT_LOG` | `1` | *(v0.6.0+)* Set to `0` to disable the cross-process JSONL event-bridge writer at `<project>/.neuralmind/events.jsonl`. The in-process event bus is unaffected; `serve` running in the same process as the activity source still gets a live feed. |
 | `NEURALMIND_OUTPUT_CACHE` | `1` | *(v0.10.0+)* Set to `0` to disable the recovery cache that backs `neuralmind last`. |
@@ -1519,6 +1729,7 @@ neuralmind daemon stop
 | `NEURALMIND_NO_DAEMON` | unset | *(v0.23.0+)* Set to `1` to force CLI commands to run in direct mode even when a daemon is running (skips the daemon auto-preference for `query`/`stats`). |
 | `NEURALMIND_NAMESPACE` | unset | *(v0.24.0+)* Pin the active memory namespace for this process (e.g. `ephemeral` for throwaway exploration, `shared` on a CI box building team baseline). Overrides config and git-branch detection. Resolution order: this var → `memory_namespace:` in `neuralmind-backend.yaml` → `branch:<name>` on a non-default git branch → `personal`. |
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
+| `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. |
 | `NEURALMIND_SELECTOR_AUTOTUNE` | `0` | *(v0.26.0+)* Set to `1` to enable the self-improvement engine's selector auto-tuner: the `SessionStart` hook adjusts the L2 recall depth from the re-query rate (once per session), and `build()` threads the persisted value into the selector. Opt-in (`== "1"`, not the `!= "0"` pattern) because it is net behavior change. With it unset the hot path does **zero** extra I/O and the selector keeps its hard-coded default. Inspect state with `neuralmind self-improve status`. |
 
 ---

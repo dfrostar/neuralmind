@@ -292,6 +292,24 @@ items before the graph view took over.
 - **More languages in the fixture suite.** Python is covered; add
   TypeScript and Go fixtures so the per-language numbers in
   `tests/benchmark/multi_model.py` reflect real differences.
+- **Language coverage expansion.** Add JS/JSX first (grammar
+  available, extractor is close to the existing TS path), then Rust,
+  Java, and Ruby as an `[extra-langs]` optional install.
+  `ir.py` already maps all the suffixes; only `graphgen.py` needs the
+  extractors and grammar deps. Graceful fallback is already wired so
+  new grammars are additive with no breakage.
+- **`neuralmind_impact` blast-radius tool.** Reverse-edge traversal
+  from any node — "what code depends on this?" The forward graph is
+  fully built at index time; materialise the reverse index during
+  `neuralmind build` and expose it as a new MCP tool
+  (`neuralmind_impact`) and CLI command (`neuralmind impact`). Closes
+  the one structural capability gap vs. dependency-graph peers.
+- **Broader `install-mcp` targets.** Add Windsurf
+  (`.windsurf/mcp.json`), Continue.dev (`~/.continue/config.json`),
+  and Zed (`~/.config/zed/settings.json`) to `mcp_install.py`. The
+  JSON config format is identical across all MCP hosts; only the
+  destination path differs. Gets from 4 to 7 agents with no logic
+  changes.
 
 ## Where we want help
 

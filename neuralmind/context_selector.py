@@ -21,6 +21,7 @@ Token Budget Management:
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -171,6 +172,51 @@ class ContextSelector:
         self._query_search_cache: dict[str, list[dict]] = {}
         self._query_search_max_n = 10
 
+    # RRF constant — rank 60 contribution = 1/61 ≈ 0.016.  Lower values
+    # weight the top positions more aggressively; 60 is the de-facto standard.
+    RRF_K = 60
+
+    def _rrf_merge(
+        self,
+        vec_results: list[dict[str, Any]],
+        kw_results: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Merge vector and BM25 result lists via Reciprocal Rank Fusion.
+
+        Budget-neutral: the output has at most max(len(vec), len(kw)) unique
+        nodes, deduplicated by id, so we never add tokens to the budget
+        relative to the vector-only baseline.
+        """
+        scores: dict[str, float] = {}
+        by_id: dict[str, dict[str, Any]] = {}
+
+        for rank, r in enumerate(vec_results):
+            nid = r.get("id", "")
+            scores[nid] = scores.get(nid, 0.0) + 1.0 / (self.RRF_K + rank + 1)
+            by_id.setdefault(nid, r)
+
+        for rank, r in enumerate(kw_results):
+            nid = r.get("id", "")
+            scores[nid] = scores.get(nid, 0.0) + 1.0 / (self.RRF_K + rank + 1)
+            if nid not in by_id:
+                by_id[nid] = r
+            else:
+                # Annotate that both signals agree — visible in --trace output
+                by_id[nid] = dict(by_id[nid])
+                by_id[nid]["_hybrid_kw_rank"] = rank + 1
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        # Normalise RRF score into [0, 1] so downstream score comparisons
+        # stay meaningful (same range as the old pure-vector score).
+        max_score = ranked[0][1] if ranked else 1.0
+        results = []
+        for nid, rrf in ranked:
+            node = dict(by_id[nid])
+            node["score"] = rrf / max_score
+            node["_rrf_score"] = rrf
+            results.append(node)
+        return results
+
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text."""
         return len(text) // self.CHARS_PER_TOKEN
@@ -189,18 +235,33 @@ class ContextSelector:
         return self._graph_stats
 
     def _fetch_search(self, query: str, n: int) -> list[dict]:
-        """Fetch embedder search results, sharing one round trip per query.
+        """Fetch search results, sharing one round trip per query.
 
-        Vector search returns a ranked list and ``n`` only truncates it,
-        so we issue one large query and slice for smaller asks. The cache
-        is cleared at the start of each get_query_context call to avoid
-        cross-query bleed.
+        When the embedder supports BM25 and NEURALMIND_BM25 != 0, the
+        vector results are merged with keyword results via Reciprocal Rank
+        Fusion before caching — so code-specific queries like "UserService"
+        score exact-name matches above semantically similar but textually
+        distant nodes. The merge is budget-neutral: the output length is
+        capped at max(n, _query_search_max_n) unique nodes.
         """
         cached = self._query_search_cache.get(query)
         if cached is not None and len(cached) >= n:
             return cached[:n]
         fetch_n = max(n, self._query_search_max_n)
-        results = self.embedder.search(query, n=fetch_n)
+        vec_results = self.embedder.search(query, n=fetch_n)
+
+        # Hybrid: merge with BM25 when the backend supports it
+        bm25_search = getattr(self.embedder, "bm25_search", None)
+        if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
+            kw_results = bm25_search(query, n=fetch_n)
+            if kw_results and isinstance(kw_results, list):
+                merged = self._rrf_merge(vec_results, kw_results)
+                results = merged[:fetch_n]
+            else:
+                results = vec_results
+        else:
+            results = vec_results
+
         self._query_search_cache[query] = results
         if self._trace is not None:
             self._trace.record_candidates(results)
@@ -589,6 +650,12 @@ class ContextSelector:
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
 
+        # Stash the post-boost hits so ContextResult.top_search_hits (and the
+        # relevance sidecar built from it) carry the same synapse_boost /
+        # recalled signals — and any recall-swapped-in nodes — that the
+        # rendered L3 context shows, not the pre-boost vector cache.
+        self._last_l3_boosted = results
+
         if self._trace is not None:
             self._trace.record_hits(results)
 
@@ -647,6 +714,8 @@ class ContextSelector:
         # ever holds hits relevant to this specific query.
         if query:
             self._query_search_cache.clear()
+            # Reset the boosted-hit snapshot; get_l3_search repopulates it.
+            self._last_l3_boosted = []
 
         # L0: Identity (always fast)
         if include_l0:
@@ -686,11 +755,15 @@ class ContextSelector:
         if self._trace is not None:
             self._trace.record_budget(layers_used, budget, reduction_ratio)
 
-        # Surface the cached search hits so downstream layers (synapses,
-        # MCP responses) can reuse them instead of re-querying the embedder.
+        # Surface the search hits so downstream layers (synapses, MCP
+        # responses, the relevance sidecar) can reuse them instead of
+        # re-querying the embedder. Prefer the post-boost L3 hits (carrying
+        # synapse_boost / recalled signals); fall back to the pre-boost vector
+        # cache when L3 didn't run this call.
         top_hits: list[dict] = []
         if query:
-            top_hits = list(self._query_search_cache.get(query, []))
+            boosted = getattr(self, "_last_l3_boosted", None)
+            top_hits = list(boosted) if boosted else list(self._query_search_cache.get(query, []))
 
         return ContextResult(
             context="\n".join(context_parts),

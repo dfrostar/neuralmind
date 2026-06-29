@@ -56,3 +56,19 @@ class TestRecordEditActivity:
         mind = _build_mind(temp_project)
         result = mind.record_edit_activity("api/routes.py", "User = 1\n")
         assert isinstance(result["possible_dupes"], list)
+
+
+class TestSymbolNameNormalization:
+    """Generated graphs label functions with signature punctuation; the reuse
+    index must key on the bare identifier so edited code's tokens can match."""
+
+    def test_strips_signature_punctuation(self):
+        from neuralmind import NeuralMind
+
+        # Real fixtures carry labels like "login_endpoint()" — without
+        # normalization the bare token "login_endpoint" never matched.
+        assert NeuralMind._symbol_name("login_endpoint()") == "login_endpoint"
+        assert NeuralMind._symbol_name("getConnection()") == "getConnection"
+        assert NeuralMind._symbol_name("authenticate_user") == "authenticate_user"
+        assert NeuralMind._symbol_name("Routes.php") == "Routes"
+        assert NeuralMind._symbol_name("") == ""

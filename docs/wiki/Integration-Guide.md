@@ -517,7 +517,33 @@ repos:
 
 ### VS Code
 
-#### Task Configuration
+#### Native Extension (recommended)
+
+Install the NeuralMind VS Code extension for a first-class editor experience — no task configuration needed.
+
+```bash
+# From the editors/vscode directory in the repo:
+cd editors/vscode && npm install && npm run compile
+```
+
+Then load the extension in VS Code via **Extensions: Install from VSIX** or open `editors/vscode/` as a workspace and press **F5** to launch a debug session.
+
+**What you get:**
+- **Status bar** (`$(check) NeuralMind · 2.1k nodes`) — green/yellow/red shows index freshness; click to open graph view
+- **Command palette** — `NeuralMind: Query`, `Wakeup`, `Skeleton`, `Build Index`, `Probe`, `Open Graph View`
+- **Graph panel** — embedded force-directed graph (the same `neuralmind serve` UI) in a WebviewPanel
+- **Auto-build prompt** — notifies when the index is stale (configurable threshold)
+- **Hover cards** — opt-in (`neuralmind.enableHover: true`) skeleton view on hover
+
+**Settings** (`Ctrl+,` → search "NeuralMind"):
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `neuralmind.pythonPath` | `python` | Python executable for neuralmind commands |
+| `neuralmind.enableHover` | `false` | Skeleton hover cards on symbols |
+| `neuralmind.autoBuildThresholdHours` | `24` | Stale-index prompt threshold |
+
+#### Task Configuration (fallback, no extension required)
 
 Create `.vscode/tasks.json`:
 

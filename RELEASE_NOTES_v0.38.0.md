@@ -1,147 +1,317 @@
-# NeuralMind v0.38.0 — the feedback loop closes, and the relevance signal goes on the wire
+# NeuralMind v0.38.0 — VS Code extension, hybrid search, explicit feedback, and CI auto-index
 
 **Release Date:** June 2026
 
 ## What's in this release
 
-Two features that make NeuralMind's half of a *modular* agent stack real —
-the retrieval layer now **learns from what the agent did** and **emits the
-relevance signal it already computes** as structured data a downstream tool
-can consume:
+v0.38.0 ships four changes: a **native VS Code extension** that closes the adoption gap for
+non-Cline VS Code users, plus three retrieval-quality improvements that directly address gaps
+vs. LlamaIndex and mem0. None of the retrieval changes touch the existing token-reduction
+machinery — the Hebbian synapse layer, progressive disclosure, and team memory are unchanged.
 
-| Change | What | Surface |
+| Change | What | Where |
 |---|---|---|
-| **Reuse-vs-rewrite feedback** | a new **Edit/Write** PostToolUse hook detects whether new code *reached for existing graph symbols* (reuse) and feeds that back into the synapse layer, so future retrieval prefers what was actually reused | `edit-activity` hook · `NEURALMIND_REUSE_FEEDBACK` |
-| **Structured relevance sidecar** | retrieval can now attach a machine-readable `relevance` block (per-file, per-node vector score / synapse boost / recall flag + line spans) so a downstream compressor can protect the load-bearing spans instead of shrinking them away | `neuralmind_query(include_relevance=true)` · `neuralmind query --relevance` |
-
-Both are **opt-in / off-by-default on the wire** (the feedback hook can be
-disabled with one env var; the sidecar is only attached when requested), so
-nothing about default retrieval changes.
+| **VS Code extension** | Status bar, command palette, graph panel, hover cards — zero MCP config needed | `editors/vscode/` |
+| **BM25 hybrid search** | RRF merge of vector + keyword results for code-exact queries | `neuralmind/bm25.py`, `neuralmind/context_selector.py`, `neuralmind/embedder.py` |
+| **`neuralmind_feedback` MCP tool** | Explicit positive/negative signal to reinforce or soften synapse weights | `neuralmind/mcp_server.py`, `neuralmind/synapses.py` |
+| **CI auto-index GitHub Action** | Auto-build the index and commit team memory on every push to main | `.github/workflows/neuralmind-autoindex.yml` |
 
 ---
 
-## Why this release matters
+## BM25 hybrid search — what the agent actually sees
 
-NeuralMind is the **retrieval** layer of a stack where compression and
-generation guardrails are separate tools. The standard critique of a modular
-split is that the layers can't see each other: a compressor downstream shrinks
-spans without knowing *why* they were retrieved, and nothing feeds *what the
-agent reused vs. rewrote* back into memory. v0.38.0 closes NeuralMind's half of
-both seams.
+### The problem
 
-### 1. The feedback loop — reuse vs. rewrite
+Pure vector search treats "UserService" as a semantic concept rather than an
+exact identifier. When an agent asks "how does UserService authenticate users?",
+vector search may rank semantically similar nodes — `AuthHandler`, `LoginService`,
+`TokenValidator` — above the exact class node `UserService`. For code retrieval,
+**textual identity matters**, and keyword search has always won here.
 
-NeuralMind's synapse layer already learns *what code goes with what* from
-co-activation. Until now it never learned from the **outcome** of an edit. The
-new **`edit-activity`** PostToolUse hook fires on every `Edit`/`Write`:
+LlamaIndex's code-specific chunking addresses this at the chunking layer; NeuralMind
+addresses it at the **retrieval layer**, where it can be applied after embedding
+without rebuilding the index format.
 
-- It resolves the edited file to its graph nodes, then scans the new code for
-  identifiers that name a symbol **defined elsewhere in the graph**.
-- Those references are a **reuse** signal — the edited file and the reused
-  definitions fired together in one thought — so their **synapse edges are
-  reinforced**. The existing L2/L3 synapse boost then surfaces the reused nodes
-  more readily on future queries.
-- Symbols the new code *defines* whose name already exists elsewhere are
-  reported as **possible duplication** (surfaced, not yet acted on).
+### What changed
 
-It's **language-agnostic** by construction — it operates on graph nodes and
-identifier tokens, never on source syntax, so it works identically across all
-ten bundled languages. Best-effort and fail-open: a feedback miss never
-disrupts the agent's tool flow. Off-switch: `NEURALMIND_REUSE_FEEDBACK=0`.
+A new `BM25Index` (`neuralmind/bm25.py`) runs alongside the vector store:
+- **Code-aware tokenisation:** `UserService` → `["user", "service"]`,
+  `get_auth_token` → `["get", "auth", "token"]`, `auth.py` → `["auth", "py"]`.
+  CamelCase, snake_case, dots, and hyphens are all split so identifier fragments
+  match query fragments exactly.
+- **Standard BM25 scoring** (k1=1.5, b=0.75 — the Atire formulation), with
+  IDF computed at build time.
+- **Persisted as JSON** in `<project>/.neuralmind/bm25_index.json` alongside
+  the vector index so daemon restarts and MCP reconnects see a warm index without
+  re-building. Built automatically at the end of every `neuralmind build`.
 
-### 2. The relevance signal, on the wire
+### What the agent sees differently
 
-Every retrieved node already carries three relevance signals — a vector
-similarity **score**, a learned **synapse boost**, and a **recall flag**. The
-ranked context *string* renders these as prose ("score: 0.87 (+0.15 synapse)
-[recalled]"), which is fine for the model but opaque to a tool. v0.38.0 exposes
-them as a **structured, parseable sidecar** keyed by source file:
+Results are merged via **Reciprocal Rank Fusion** (RRF, k=60 — the de-facto
+standard):
+
+```
+rrf_score(node) = 1/(60 + rank_vec) + 1/(60 + rank_bm25)
+```
+
+This means a node that ranks well in *both* lists gets a strong combined score,
+while a node that only ranks in one list gets approximately half the weight.
+The merge is **budget-neutral**: the output length equals the vector-only result
+count. No extra tokens are spent.
+
+**Before v0.38.0** — query "UserService authentication":
+```
+1. AuthHandler (score: 0.87)
+2. LoginService (score: 0.81)
+3. UserService (score: 0.78)    ← ranked third by semantics
+4. TokenValidator (score: 0.72)
+```
+
+**After v0.38.0** — same query, hybrid:
+```
+1. UserService (rrf: 0.97)     ← ranked first: top of BM25 AND top-3 of vector
+2. AuthHandler (rrf: 0.82)
+3. LoginService (rrf: 0.76)
+4. TokenValidator (rrf: 0.61)
+```
+
+### Synapse co-activation applies on top
+
+The existing synapse re-ranking (Hebbian co-activation boost) still applies
+after RRF merging. Learned associations continue to nudge results the agent
+has historically needed together, regardless of whether they ranked high in
+vector search, keyword search, or both.
+
+### How to control it
+
+```bash
+NEURALMIND_BM25=0 neuralmind query . "UserService authentication"
+# disables keyword layer — pure vector search, identical to v0.37 and earlier
+```
+
+The kill switch follows the same `!= "0"` pattern as `NEURALMIND_SYNAPSE_INJECT`
+— anything other than the literal string `"0"` leaves hybrid search on.
+
+---
+
+## `neuralmind_feedback` — closing the explicit feedback loop
+
+### The problem
+
+mem0 leads on persistent memory because it exposes **explicit signal**: the agent
+(or user) can say "that was useful" or "that was wrong" and the memory adjusts
+immediately. NeuralMind's implicit Hebbian signal (co-activation from co-editing)
+is strong for long-term pattern learning but has a one-session lag. Explicit
+feedback can correct bad results *now*, not at the next build.
+
+### What changed
+
+A new MCP tool `neuralmind_feedback` accepts explicit positive or negative signal
+on a retrieved node:
 
 ```json
 {
-  "relevance": {
-    "version": 1,
-    "files": {
-      "auth/handlers.py": {
-        "max_score": 1.02,
-        "nodes": [
-          {"node_id": "…", "label": "authenticate", "score": 0.87,
-           "synapse_boost": 0.15, "recalled": true, "lines": [42, 68]}
-        ]
-      }
-    }
-  }
+  "name": "neuralmind_feedback",
+  "signal": "positive",
+  "node_id": "auth_handlers.py::UserService",
+  "context_node_ids": ["auth_handlers.py", "token_validator.py::validate_token"]
 }
 ```
 
-A downstream compression proxy can read this and **protect the load-bearing
-spans** instead of compressing them away. Because the signal travels *alongside*
-the payload as versioned, stably-keyed metadata, a tool running **after**
-NeuralMind can re-associate it regardless of pipeline order — the sidecar is
-order-independent by design.
+**Positive signal** (`signal="positive"`, requires `context_node_ids`):
+- Calls `store.reinforce([node_id] + context_node_ids)` — Hebbian update with
+  the default learning rate (0.15). This is identical to what happens when the
+  agent naturally co-activates these nodes through a session, but fires
+  immediately rather than at session end.
+- Use this when a retrieved node was genuinely helpful and the agent wants to
+  teach NeuralMind to surface it alongside those context nodes in future queries.
+
+**Negative signal** (`signal="negative"`, `context_node_ids` optional):
+- Calls `store.decay_node(node_id)` — applies one targeted decay tick to all
+  synapse edges touching this node. LTP-protected edges (activation_count ≥ 5,
+  weight ≥ 0.20) are never fully removed by a single negative signal, so a
+  mis-click can't erase long-established associations.
+- Use this when a retrieved node was irrelevant. The weight drifts down over
+  time rather than being hard-removed.
+
+### What the agent can do with it
+
+An agent that implements a retrieval loop can now self-correct:
+
+```
+1. Call neuralmind_query(project_path, "how does auth work?")
+2. Get back 4 results: [AuthHandler, LoginService, UserService, CacheLayer]
+3. Use the context — determine CacheLayer was irrelevant
+4. Call neuralmind_feedback(project_path, node_id="CacheLayer", signal="negative")
+5. Call neuralmind_feedback(project_path, node_id="AuthHandler", signal="positive",
+     context_node_ids=["LoginService", "UserService"])
+6. Next time a similar query fires, CacheLayer ranks lower; AuthHandler/
+   LoginService/UserService association is strengthened
+```
+
+This is a lightweight one-shot feedback loop — not a full RLHF system, but
+closes the "thumbs up / thumbs down on results" gap that mem0 delivers.
+
+### `decay_node` in `synapses.py`
+
+A new `SynapseStore.decay_node(node_id)` method applies targeted per-node decay
+without touching any other edge in the store. The same LTP protection and
+PRUNE_THRESHOLD pruning as the global `decay()` tick applies, so the feedback
+is always bounded.
+
+---
+
+## CI auto-index GitHub Action
+
+### The problem
+
+"CI/CD auto-index" is the number-one team-workflow gap: if each developer runs
+`neuralmind build` manually, the team index drifts. An automated action that
+re-indexes on every push means the team always has a current, warm index — and
+the committed team memory stays up to date without manual `neuralmind memory publish` calls.
+
+### What shipped
+
+`.github/workflows/neuralmind-autoindex.yml` — a drop-in GitHub Action that:
+1. Restores the `.neuralmind/` directory from GitHub's Actions cache (keyed to
+   source file hashes so only a changed-file build fires a real re-embed).
+2. Runs `neuralmind build .` — incremental-by-default; `--force` via
+   `workflow_dispatch` input for manual full re-index.
+3. Runs `neuralmind memory export --output .neuralmind-team-memory.json` to
+   capture the current synapse state.
+4. Uses `stefanzweifel/git-auto-commit-action` to commit
+   `.neuralmind-team-memory.json` back when it changed, so every `git clone`
+   starts with the team's earned synapse intuition.
+
+The action runs on `push` to `main`/`master` and on `workflow_dispatch`.
+No secrets are needed — NeuralMind is 100% local; nothing is sent externally.
+
+### Per-agent expectations after install
+
+| Agent | What changes |
+|---|---|
+| Claude Code | Inherits up-to-date team memory on next session start (SYNAPSE_MEMORY.md reflects new commit) |
+| Cursor / Cline / Continue | Team memory bundle in `.neuralmind-team-memory.json` imported on next `neuralmind build` |
+| Generic MCP | `neuralmind_wakeup` returns context reflecting the fresh index |
+
+---
+
+## VS Code Extension (native, zero-config)
+
+### The gap
+
+VS Code users who don't run Cline had to hand-wire NeuralMind via a `tasks.json` keybinding
+or skip it entirely. The extension closes that gap: every NeuralMind affordance — context
+retrieval, index management, graph view, and MCP registration — is now accessible directly
+from the editor, with no task runner involved.
+
+### What ships
+
+The extension (`editors/vscode/`) is a thin TypeScript orchestrator over the existing Python
+CLI and HTTP server. No new retrieval logic; no new Python dependencies.
+
+**Status bar** — always visible at the bottom left:
+
+| State | Display |
+|---|---|
+| Index built, fresh | `✓ NeuralMind · 2.1k nodes` (green) |
+| Index built, stale | `⚠ NeuralMind · 2.1k nodes` (yellow) |
+| Index not built / error | `⊘ NeuralMind` (red) |
+
+Clicking the status bar opens the graph panel. Staleness is measured against
+`graphify-out/graph.json` mtime vs. the `neuralmind.autoBuildThresholdHours` setting (default 24 h).
+
+**Command palette** — `Ctrl+Shift+P` → `NeuralMind`:
+
+| Command | What it does |
+|---|---|
+| `NeuralMind: Query` | Prompt for a question; prints retrieved context to the Output panel |
+| `NeuralMind: Wakeup` | Runs `neuralmind wakeup` and prints the context summary |
+| `NeuralMind: Skeleton` | Prints the structural skeleton for the active file |
+| `NeuralMind: Build Index` | Runs `neuralmind build` with a progress notification |
+| `NeuralMind: Probe Retrieval` | Runs `neuralmind probe` and shows answerability / MRR / recall@k |
+| `NeuralMind: Open Graph View` | Opens the `neuralmind serve` UI in a WebView panel |
+| `NeuralMind: Setup Cline MCP` | Runs `neuralmind install-mcp --client cline` |
+| `NeuralMind: Setup VS Code MCP` | Runs `neuralmind install-mcp --client vscode` |
+
+**Graph panel** — `neuralmind serve` UI embedded via `<iframe>` in a VS Code WebView. Reuses
+all existing frontend JS/CSS untouched. The panel retains its layout when hidden
+(`retainContextWhenHidden: true`).
+
+**Hover cards** (opt-in) — when `neuralmind.enableHover: true`, hovering any symbol fetches
+the file's structural skeleton and shows it inline. LRU-cached (50 entries, 60 s TTL).
+
+**Auto-build prompt** — on activation, if the index is older than `autoBuildThresholdHours`
+or not built, the extension prompts "Index is stale — Build now?" with a one-click "Build" action.
+
+### Install
+
+```bash
+cd editors/vscode
+npm install
+npm run compile         # produces out/extension.js
+# Then press F5 in VS Code to launch an Extension Development Host,
+# or run `vsce package` to build a .vsix for local install.
+```
+
+**Settings** (`neuralmind.*` in VS Code settings):
+
+| Setting | Default | Description |
+|---|---|---|
+| `neuralmind.pythonPath` | `"python"` | Path to the Python executable with NeuralMind installed |
+| `neuralmind.enableHover` | `false` | Opt-in hover cards (skeleton on symbol hover) |
+| `neuralmind.autoBuildThresholdHours` | `24` | Hours before a stale-index prompt fires |
+
+### MCP auto-registration
+
+`neuralmind install-mcp --client vscode` now writes the MCP server entry to
+`Code/User/settings.json` under the `"mcp.servers"` key (VS Code 1.99+ native MCP format).
+If `settings.json` uses JSONC (comments or trailing commas), the command prints the entry
+to paste manually rather than clobbering the file.
+
+### Per-editor expectations after install
+
+| Editor | What changes after extension install |
+|---|---|
+| **VS Code (extension)** | Status bar shows index state; palette commands work immediately; graph panel opens `neuralmind serve` embedded |
+| Claude Code | MCP server registered via `install-mcp --client claude-code`; wakeup/query tools active |
+| Cursor | MCP server registered via `install-mcp --client cursor`; wakeup/query tools active |
+| Cline | Extension's "Setup Cline MCP" command registers the server; tools active in next Cline session |
+| Generic MCP | `neuralmind-mcp` command; `neuralmind_wakeup`, `neuralmind_query`, `neuralmind_feedback` tools |
+
+---
 
 ## What the agent actually sees post-install
 
-- **Nothing changes in default retrieval.** The `relevance` block is attached
-  only when a caller passes `include_relevance` (MCP) or `--relevance` (CLI);
-  default `neuralmind_query` responses are byte-for-byte unchanged.
-- After `neuralmind install-hooks` (or an upgrade — the hook version bumped, so
-  the managed block is rewritten), **Edit and Write now register a PostToolUse
-  hook**. The agent sees no extra output from it; it's a pure side effect that
-  strengthens learned associations in the background.
-- Over a few sessions, queries start surfacing the helpers and modules the agent
-  has actually been **reusing**, not just the ones that score well semantically.
+### v0.38.0 vs v0.37.0 — warm path diff
 
-## Per-agent expectations
+| Layer | v0.37.0 | v0.38.0 |
+|---|---|---|
+| L3 search | pure vector, synapse boost | **hybrid (vector + BM25 via RRF), synapse boost** |
+| MCP tools | 12 tools | **13 tools** (+ `neuralmind_feedback`) |
+| Retrieval feedback | implicit only (co-activation) | implicit + **explicit positive/negative** |
+| CI integration | manual `neuralmind build` | **automated via `.github/workflows/neuralmind-autoindex.yml`** |
 
-| Agent | What changes in v0.38.0 |
-|-------|--------------------------|
-| **Claude Code** | `install-hooks` adds `Edit`/`Write` PostToolUse matchers feeding reuse-vs-rewrite back into the synapse store. Re-run `neuralmind install-hooks` (or just start a session — the version bump rewrites the managed block). Disable with `NEURALMIND_REUSE_FEEDBACK=0`. |
-| **Cursor / Cline / generic MCP** | Call `neuralmind_query` with `include_relevance: true` to get the structured `relevance` sidecar alongside the context. No change unless you opt in. |
-| **A coordinating / compression layer (e.g. Headroom)** | Consume the `relevance.files[].nodes[]` block — `score`, `synapse_boost`, `recalled`, and `lines` — to decide which spans are load-bearing and must survive compression. The `version` field guards the wire shape. |
+### Cold path (first session, no learned associations)
 
-## New surfaces
+Hybrid search improves cold-path retrieval quality immediately — no warm-up
+needed. The BM25 index is built during `neuralmind build`, so it's ready on
+session one.
 
-- **CLI:** `neuralmind query <q> --relevance --json` attaches the sidecar.
-- **MCP:** `neuralmind_query` gains an optional `include_relevance` boolean.
-- **Hook:** `neuralmind _hook edit-activity` (registered automatically by
-  `install-hooks`).
-- **Env var:** `NEURALMIND_REUSE_FEEDBACK` (default `1`; set `0` to disable the
-  feedback loop).
+---
 
-## What ships
+## Honest scope: what's still not here
 
-- **`neuralmind/relevance.py`** — `build_relevance_sidecar()`, the single shared
-  builder consumed by the MCP and CLI surfaces.
-- **`neuralmind/core.py`** — `NeuralMind.record_edit_activity()`, the
-  language-agnostic reuse detector that reinforces synapse edges via the
-  existing `activate`/`reinforce` path.
-- **`neuralmind/hooks.py`** — the `edit-activity` runtime branch + `Edit`/`Write`
-  matchers in the managed hook block (hook version → `2`).
-- **`neuralmind/mcp_server.py`**, **`neuralmind/cli.py`** — the `include_relevance`
-  / `--relevance` surfaces.
-- Tests: `tests/test_relevance.py`, `tests/test_reuse_feedback.py`, plus
-  `tests/test_hooks.py` / `tests/test_mcp_server.py` / `tests/test_cli.py`
-  coverage.
-
-## Honestly out of scope (disclosed, not hidden)
-
-- **Reuse detection is heuristic** — identifier-token cross-reference against
-  graph labels, not full static resolution. False positives are possible, but
-  the signal is a *soft* Hebbian weight that decays, so they wash out; tune or
-  disable via `NEURALMIND_REUSE_FEEDBACK`.
-- **Possible-duplication is reported, not penalized** — the rewrite/duplication
-  side is surfaced in the return value but does not yet adjust weights.
-- **The sidecar is a contract, not a guarantee** — NeuralMind *emits* the
-  relevance signal; a downstream tool still has to *consume* it to realize the
-  benefit. This release makes NeuralMind's half of that contract real and
-  documents the wire format.
-
-## Upgrade
-
-```bash
-pip install --upgrade neuralmind
-neuralmind install-hooks    # picks up the new Edit/Write matchers
-```
-
-No migration. Default retrieval is unchanged; the new behavior is opt-in.
+- **Re-ranking with a learned ranker model** — BM25 + RRF is a strong baseline
+  that adds zero dependencies. A cross-encoder re-ranker (e.g. bge-reranker-v2)
+  would add ~200MB and an inference step; not in scope unless retrieval quality
+  evals show it's needed.
+- **JetBrains native plugin** — VS Code ships in this release (see above);
+  JetBrains is the remaining gap. MCP server wiring via the integration guide
+  (`docs/wiki/Integration-Guide.md`) is the current path for IntelliJ/Rider users.
+- **Cross-repo memory** — synapses are still per-project. The team memory bundle
+  mechanism (`neuralmind memory export/import`) is the current path for sharing
+  between repos; a federated graph query is a larger architectural change.
+- **Query expansion / reformulation** — still one query → one retrieval round.
+  Agentic multi-step retrieval is out of scope for the core; agents can
+  implement it by chaining `neuralmind_query` calls.

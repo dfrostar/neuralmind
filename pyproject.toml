@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.37.0"
+version = "0.40.0"
 description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 40-70x cheaper code questions."
 readme = "README.md"
 license = "MIT"
@@ -198,6 +198,43 @@ keywords = [
     "context-engineering-stack",
     "retrieval-transport-generation",
     "complementary-context-tools",
+    "hybrid-search",
+    "bm25",
+    "bm25-keyword-search",
+    "keyword-vector-hybrid",
+    "reciprocal-rank-fusion",
+    "rrf-merge",
+    "exact-name-code-search",
+    "retrieval-feedback",
+    "explicit-feedback",
+    "positive-negative-feedback",
+    "feedback-loop",
+    "ci-auto-index",
+    "github-action-index",
+    "automated-indexing",
+    "team-memory-ci",
+    "retrieval-self-probe",
+    "label-free-retrieval-eval",
+    "recall-at-k",
+    "codebase-retrieval-test",
+    "needle-in-haystack",
+    "docstring-to-code-retrieval",
+    "natural-language-code-search-eval",
+    "unified-token-optimization",
+    "ponytail-headroom-integration",
+    "vscode-extension",
+    "vscode-plugin",
+    "editor-integration",
+    "native-editor-ux",
+    "dry-run-indexing",
+    "co-break-detection",
+    "token-savings-dashboard",
+    "openapi-indexing",
+    "sql-schema-indexing",
+    "protobuf-indexing",
+    "schema-artifact-search",
+    "api-spec-search",
+    "non-code-artifact-indexing",
     "reuse-feedback",
     "reuse-vs-rewrite",
     "relevance-sidecar",

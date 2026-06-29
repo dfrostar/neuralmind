@@ -63,6 +63,23 @@ class TestBuildRelevanceSidecar:
         sidecar = build_relevance_sidecar(hits)
         assert sidecar["files"]["auth/handlers.py"]["max_score"] == 0.95
 
+    def test_max_score_handles_negative_scores(self):
+        """A file whose scores are all negative reports the max, not 0.0."""
+        hits = [
+            {
+                "id": "n1",
+                "score": -0.5,
+                "metadata": {"label": "a", "source_file": "f.py", "node_id": "n1"},
+            },
+            {
+                "id": "n2",
+                "score": -0.2,
+                "metadata": {"label": "b", "source_file": "f.py", "node_id": "n2"},
+            },
+        ]
+        sidecar = build_relevance_sidecar(hits)
+        assert sidecar["files"]["f.py"]["max_score"] == -0.2
+
     def test_empty_and_none_inputs(self):
         assert build_relevance_sidecar(None) == {"version": SIDECAR_VERSION, "files": {}}
         assert build_relevance_sidecar([]) == {"version": SIDECAR_VERSION, "files": {}}

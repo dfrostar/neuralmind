@@ -54,10 +54,10 @@ What it handles that NeuralMind doesn't:
 
 NeuralMind's PostToolUse hooks and Headroom complement each other: hooks compress
 *before* the agent's context is assembled; Headroom compresses the *assembled payload*
-in transit. Both run; neither interferes with the other. As of **v0.38.0**, NeuralMind
+in transit. Both run; neither interferes with the other. As of **v0.41.0**, NeuralMind
 also emits a **structured relevance sidecar** Headroom can read so it doesn't compress
 away the exact spans that were the reason for retrieval — see
-[Step 3.5](#step-35--close-the-seams-shared-relevance--reuse-feedback-v0380) below.
+[Step 3.5](#step-35--close-the-seams-shared-relevance--reuse-feedback-v0410) below.
 
 ## Step 3 — Install Ponytail (generation layer)
 
@@ -79,12 +79,12 @@ On advanced reasoning models (GPT-5.5, o3, Claude Fable 5 extended thinking), pr
 `Full` over `Ultra`. The deliberation cost of `Ultra`'s YAGNI challenges can exceed the
 output savings on models that use internal thinking tokens to evaluate the ladder.
 
-## Step 3.5 — close the seams: shared relevance + reuse feedback *(v0.38.0+)*
+## Step 3.5 — close the seams: shared relevance + reuse feedback *(v0.41.0+)*
 
 The common objection to a *modular* stack is that the layers can't see each other:
 Headroom compresses a span without knowing **why** NeuralMind fetched it (so it can
 shrink away the load-bearing lines), and nothing feeds **what the agent reused vs.
-rewrote** back into what's worth remembering. v0.38.0 closes NeuralMind's half of both
+rewrote** back into what's worth remembering. v0.41.0 closes NeuralMind's half of both
 seams — without collapsing the layers into one black box.
 
 ### A shared relevance signal → Headroom

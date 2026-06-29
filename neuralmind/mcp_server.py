@@ -222,6 +222,56 @@ def tool_synapse_decay(project_path: str) -> dict[str, Any]:
     return {"enabled": True, **store.decay()}
 
 
+def tool_feedback(
+    project_path: str,
+    node_id: str,
+    signal: str,
+    context_node_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """Record explicit retrieval feedback to strengthen or weaken synapse weights.
+
+    ``signal`` is ``"positive"`` or ``"negative"``.
+
+    Positive: reinforces co-activation between ``node_id`` and every node
+    in ``context_node_ids`` (the other results the agent saw in the same
+    retrieval round).  Use this when a result was genuinely helpful.
+
+    Negative: applies one decay tick to all edges touching ``node_id`` so
+    it surfaces less often in spreading-activation recall.  Use this when
+    a result was irrelevant — the weight drifts down over time rather than
+    being hard-removed, preserving LTP-protected edges.
+
+    Both no-op gracefully when the synapse store is absent (cold graph).
+    """
+    mind = get_mind(project_path, auto_build=False)
+    store = mind.synapses
+    if store is None:
+        return {"enabled": False, "node_id": node_id, "signal": signal}
+
+    if signal == "positive" and context_node_ids:
+        all_ids = [node_id] + [c for c in context_node_ids if c != node_id]
+        store.reinforce(all_ids)
+        return {
+            "enabled": True,
+            "signal": "positive",
+            "node_id": node_id,
+            "reinforced_with": context_node_ids,
+        }
+    if signal == "negative":
+        store.decay_node(node_id)
+        return {
+            "enabled": True,
+            "signal": "negative",
+            "node_id": node_id,
+        }
+    return {
+        "enabled": True,
+        "signal": signal,
+        "node_id": node_id,
+        "note": "no-op: positive requires context_node_ids; negative requires only node_id",
+    }
+
+
 def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     """Render the synapse store as markdown for Claude Code auto-memory.
 
@@ -236,6 +286,73 @@ def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
         return {"enabled": False, "written": []}
     paths = export_synapse_memory(project_path, embedder=mind.embedder)
     return {"enabled": True, "written": [str(p) for p in paths]}
+
+
+def tool_review(
+    project_path: str,
+    changed_files: list[str],
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Warn about likely co-breakage given a set of changed files.
+
+    Runs spreading activation through the learned synapse graph seeded at
+    the provided changed files. Returns files NOT in ``changed_files`` that
+    are strongly associated — historical co-edit partners that may also need
+    to change. Use before committing or as part of a code-review workflow.
+
+    ``changed_files`` should be project-relative paths or absolute paths.
+    Use the CLI ``neuralmind review`` to derive them automatically from
+    ``git diff``.
+    """
+    mind = get_mind(project_path)
+    abs_project = Path(project_path).resolve()
+    changed_set = {str(abs_project / f) if not Path(f).is_absolute() else f for f in changed_files}
+
+    # Resolve file paths to node IDs
+    seed_ids: list[tuple[str, float]] = []
+    for fpath in changed_set:
+        try:
+            for node in mind.embedder.get_file_nodes(fpath):
+                nid = node.get("id")
+                if nid:
+                    seed_ids.append((str(nid), 1.0))
+        except Exception:
+            continue
+
+    at_risk: list[dict] = []
+    if seed_ids and mind.synapses is not None:
+        try:
+            neighbors = mind.synapses.spread(seed_ids, depth=2, top_k=top_k * 2)
+            seen_files: set[str] = set()
+            all_nodes = getattr(mind.embedder, "nodes", []) or []
+            node_file_map = {
+                str(n.get("id", "")): (
+                    n.get("metadata", {}).get("source_file") or n.get("source_file", "")
+                )
+                for n in all_nodes
+            }
+            for node_id, weight in neighbors:
+                node_file = node_file_map.get(node_id)
+                if not node_file:
+                    continue
+                abs_file = (
+                    str(abs_project / node_file) if not Path(node_file).is_absolute() else node_file
+                )
+                if abs_file in changed_set or abs_file in seen_files:
+                    continue
+                seen_files.add(abs_file)
+                rel = str(Path(abs_file).relative_to(abs_project))
+                at_risk.append({"file": rel, "synapse_weight": round(weight, 3)})
+                if len(at_risk) >= top_k:
+                    break
+        except Exception:
+            pass
+
+    return {
+        "changed_files": [str(Path(f).relative_to(abs_project)) for f in sorted(changed_set)],
+        "at_risk": at_risk,
+        "synapse_graph_available": mind.synapses is not None,
+    }
 
 
 # Tool definitions for MCP
@@ -428,6 +545,40 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_feedback",
+        "description": (
+            "Record explicit retrieval feedback to strengthen or weaken synapse weights. "
+            "Use signal='positive' with context_node_ids (the other results from the same "
+            "query) to reinforce co-activation for a helpful node. Use signal='negative' to "
+            "apply a targeted decay tick to an unhelpful node. LTP-protected edges (heavily "
+            "co-activated) are never fully removed by a single negative signal."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "node_id": {
+                    "type": "string",
+                    "description": "ID of the node to give feedback on (from search results)",
+                },
+                "signal": {
+                    "type": "string",
+                    "enum": ["positive", "negative"],
+                    "description": "'positive' to reinforce co-activation; 'negative' to decay",
+                },
+                "context_node_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Other node IDs from the same retrieval round (required for positive signal)",
+                },
+            },
+            "required": ["project_path", "node_id", "signal"],
+        },
+    },
+    {
         "name": "neuralmind_export_synapse_memory",
         "description": (
             "Render the learned synapse graph as markdown and write it to "
@@ -439,6 +590,37 @@ TOOLS = [
             "type": "object",
             "properties": {"project_path": {"type": "string"}},
             "required": ["project_path"],
+        },
+    },
+    {
+        "name": "neuralmind_review",
+        "description": (
+            "Warn about likely co-breakage before a commit or code review. "
+            "Given a list of changed files, runs spreading activation through "
+            "the learned synapse graph and returns files NOT in the diff that "
+            "have historically been edited together with the changed files. "
+            "Use this to catch forgotten test files, tightly-coupled modules, "
+            "or config updates that should accompany the current change."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "changed_files": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Project-relative or absolute paths of files being changed",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum number of at-risk files to return (default: 10)",
+                    "default": 10,
+                },
+            },
+            "required": ["project_path", "changed_files"],
         },
     },
 ]
@@ -473,6 +655,17 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_export_synapse_memory": lambda args: tool_export_synapse_memory(
             args["project_path"]
+        ),
+        "neuralmind_review": lambda args: tool_review(
+            args["project_path"],
+            args["changed_files"],
+            args.get("top_k", 10),
+        ),
+        "neuralmind_feedback": lambda args: tool_feedback(
+            args["project_path"],
+            args["node_id"],
+            args["signal"],
+            args.get("context_node_ids"),
         ),
     }
 

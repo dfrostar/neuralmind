@@ -36,6 +36,7 @@ DEFAULT_THRESHOLDS = quality.QualityThresholds(
 class SuiteReport:
     suite: quality.SuiteQuality
     failures: list[str]
+    queries: list = None  # populated by run_suite for category breakdown
 
     @property
     def passed(self) -> bool:
@@ -104,7 +105,9 @@ def run_suite(
             per_query.append(quality.evaluate_query(q.id, ranked, q.expected_modules, ks=REPORT_KS))
 
     agg = quality.aggregate(name, per_query, ks=REPORT_KS)
-    return SuiteReport(suite=agg, failures=thresholds.check(agg))
+    report = SuiteReport(suite=agg, failures=thresholds.check(agg))
+    report.queries = suite.queries
+    return report
 
 
 # --------------------------------------------------------------------------- #
@@ -143,6 +146,20 @@ def render_json(reports: list[SuiteReport], baseline: dict | None = None) -> str
     return json.dumps(out, indent=2)
 
 
+def _category_breakdown(rep: SuiteReport) -> list[str]:
+    """Return a per-category query-count summary for the markdown report."""
+    if not rep.queries:
+        return []
+    counts: dict[str, int] = {}
+    for q in rep.queries:
+        cat = getattr(q, "category", "architecture")
+        counts[cat] = counts.get(cat, 0) + 1
+    order = ["architecture", "bug-localization", "refactor", "next-edit"]
+    parts = [f"{c}: {counts[c]}" for c in order if c in counts]
+    extras = [f"{c}: {counts[c]}" for c in counts if c not in order]
+    return parts + extras
+
+
 def render_markdown(reports: list[SuiteReport], baseline: dict | None = None) -> str:
     lines = ["## NeuralMind retrieval-quality eval", ""]
     lines.append("| Suite | Queries | MRR | Answerability | Recall@5 | Precision@5 | Gate |")
@@ -154,6 +171,12 @@ def render_markdown(reports: list[SuiteReport], baseline: dict | None = None) ->
             f"{s.answerability:.0%} | {s.mean_recall.get(5, 0):.3f} | "
             f"{s.mean_precision.get(5, 0):.3f} | {'PASS' if rep.passed else 'FAIL'} |"
         )
+    lines.append("")
+    lines.append("**Query category coverage (PRD 2):**")
+    for rep in reports:
+        cats = _category_breakdown(rep)
+        if cats:
+            lines.append(f"- `{rep.suite.suite}`: {', '.join(cats)}")
     lines.append("")
     for rep in reports:
         if rep.failures:
