@@ -350,6 +350,42 @@ class NeuralMind:
             return 0
         return self.activate(node_ids, strength=strength)
 
+    def deactivate_files(self, file_paths: list[str]) -> int:
+        """Accelerate synapse decay for nodes belonging to deleted files.
+
+        When a file is removed from the project (rename, refactor, deletion),
+        its graph nodes should lose influence quickly so they stop surfacing in
+        context and spreading activation. Calls ``decay_node`` once per node
+        found in the deleted files — one targeted tick is enough to sink
+        non-LTP edges below the prune threshold within a few normal decay
+        cycles, while LTP-protected edges (heavily-used, long-established)
+        survive and fade gracefully.
+
+        Returns the number of nodes targeted.
+        """
+        if not file_paths:
+            return 0
+        store = self.synapses
+        if store is None:
+            return 0
+        if not self._built:
+            return 0
+
+        targeted = 0
+        for path in file_paths:
+            try:
+                for node in self.embedder.get_file_nodes(path):
+                    nid = node.get("id")
+                    if nid:
+                        try:
+                            store.decay_node(str(nid))
+                            targeted += 1
+                        except Exception:
+                            pass
+            except Exception:
+                continue
+        return targeted
+
     def _emit_audit(
         self,
         category: str,

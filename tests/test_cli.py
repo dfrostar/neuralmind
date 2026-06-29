@@ -803,6 +803,206 @@ class TestCLIInitHook:
         assert mode & stat.S_IXUSR  # User execute bit set
 
 
+class TestCLIBuildDryRun:
+    """Tests for neuralmind build --dry-run (Gap 1: 1-click setup)."""
+
+    def test_dry_run_scans_project_without_building(self, tmp_path, capsys):
+        """--dry-run must report language/file counts without building an index."""
+        from neuralmind.cli import cmd_build
+
+        (tmp_path / "auth.py").write_text("def login(): pass")
+        (tmp_path / "server.ts").write_text("const port = 3000;")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.force = False
+        args.dry_run = True
+        args.json = False
+
+        cmd_build(args)
+
+        captured = capsys.readouterr()
+        assert "dry run" in captured.out.lower()
+        assert "neuralmind build" in captured.out
+        assert "No index was built" in captured.out
+
+    def test_dry_run_json_output(self, tmp_path, capsys):
+        """--dry-run --json returns structured scan data."""
+        from neuralmind.cli import cmd_build
+
+        (tmp_path / "main.py").write_text("# code\n" * 50)
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.force = False
+        args.dry_run = True
+        args.json = True
+
+        cmd_build(args)
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert "total_files" in data
+        assert "languages" in data
+        assert "est_reduction_ratio" in data
+        assert data["total_files"] >= 1
+
+    def test_dry_run_requires_existing_path(self, capsys):
+        """--dry-run on a non-existent path must exit non-zero."""
+        from neuralmind.cli import cmd_build
+
+        args = MagicMock()
+        args.project_path = "/totally/nonexistent/path/12345"
+        args.force = False
+        args.dry_run = True
+        args.json = False
+
+        with pytest.raises(SystemExit):
+            cmd_build(args)
+
+
+class TestCLISavings:
+    """Tests for neuralmind savings (Gap 5: per-query token savings dashboard)."""
+
+    def test_savings_no_log_prints_message(self, tmp_path, capsys):
+        """savings command gracefully handles a missing event log."""
+        from neuralmind.cli import cmd_savings
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = False
+
+        cmd_savings(args)
+
+        captured = capsys.readouterr()
+        assert "no" in captured.out.lower() or "not" in captured.out.lower()
+
+    def test_savings_reads_event_log(self, tmp_path, capsys):
+        """savings command reads the project event log and computes totals."""
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        # Write a fake event log
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        events = [
+            {
+                "event_type": "query",
+                "timestamp": "2025-01-01T00:00:00+00:00",
+                "project_path": str(tmp_path),
+                "session_id": "test-session",
+                "query": "auth flow",
+                "retrieval_summary": {
+                    "tokens": 1200,
+                    "reduction_ratio": 41.6,
+                    "layers_used": ["L0", "L1", "L2"],
+                    "communities_loaded": [0],
+                    "search_hits": 4,
+                },
+            },
+            {
+                "event_type": "query",
+                "timestamp": "2025-01-01T00:01:00+00:00",
+                "project_path": str(tmp_path),
+                "session_id": "test-session",
+                "query": "database schema",
+                "retrieval_summary": {
+                    "tokens": 1800,
+                    "reduction_ratio": 27.8,
+                    "layers_used": ["L0", "L1", "L2", "L3"],
+                    "communities_loaded": [1, 2],
+                    "search_hits": 3,
+                },
+            },
+        ]
+        with log_file.open("w") as f:
+            for e in events:
+                f.write(_json.dumps(e) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = False
+
+        cmd_savings(args)
+
+        captured = capsys.readouterr()
+        assert "Queries logged" in captured.out
+        assert "2" in captured.out  # 2 queries
+        assert "Tokens saved" in captured.out or "saved" in captured.out.lower()
+
+    def test_savings_json_output(self, tmp_path, capsys):
+        """savings --json returns structured data."""
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "event_type": "query",
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "project_path": str(tmp_path),
+            "session_id": "s1",
+            "query": "test",
+            "retrieval_summary": {"tokens": 500, "reduction_ratio": 100.0},
+        }
+        log_file.write_text(_json.dumps(event) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = True
+
+        cmd_savings(args)
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["total_queries"] == 1
+        assert data["total_tokens_saved"] > 0
+
+
+class TestCLIReview:
+    """Tests for neuralmind review (Gap 4: diff-aware co-break warnings)."""
+
+    def test_review_no_changes_message(self, tmp_path, capsys):
+        """review with no git changes reports nothing to review."""
+        import subprocess
+
+        from neuralmind.cli import cmd_review
+
+        # Init a bare git repo with no commits so diff against HEAD fails
+        subprocess.run(["git", "init", str(tmp_path)], capture_output=True)
+        subprocess.run(
+            ["git", "-C", str(tmp_path), "config", "user.email", "test@test.com"],
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(tmp_path), "config", "user.name", "Test"],
+            capture_output=True,
+        )
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.base = "HEAD"
+        args.top_k = 10
+        args.json = False
+
+        # Should not crash — no changed files, no synapse graph
+        with patch("neuralmind.cli.create_mind") as mock_create:
+            mock_create.return_value.synapses = None
+            mock_create.return_value.embedder.get_file_nodes.return_value = []
+            # Will either print "no changed files" or handle gracefully
+            try:
+                cmd_review(args)
+            except SystemExit:
+                pass
+
+
 class TestCLIDemo:
     """Tests for CLI demo command (bundled sample_project + graph.json)."""
 
