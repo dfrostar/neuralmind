@@ -24,6 +24,7 @@ Usage:
 
 import json
 import os
+import re
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -159,6 +160,12 @@ class NeuralMind:
     """
 
     MAX_HYBRID_HIGHLIGHT_RESULTS = 3
+
+    # Strength of the reuse-feedback co-activation (Edit/Write hook). Kept
+    # below the default reinforce strength of 1.0: the signal is heuristic
+    # (identifier-token cross-reference, not static resolution), so we nudge
+    # the synapse weight gently and let decay wash out false positives.
+    REUSE_FEEDBACK_STRENGTH = 0.5
 
     # Canonical IR artifacts (PRD 1). The IR is materialized from graph.json at
     # build time and validated; the embedder still reads graph.json directly
@@ -349,6 +356,91 @@ class NeuralMind:
         if len(node_ids) < 2:
             return 0
         return self.activate(node_ids, strength=strength)
+
+    # Language-agnostic identifier tokenizer for reuse detection: we never
+    # parse source syntax, only match bare identifiers against graph labels,
+    # so this works uniformly across every tree-sitter extractor.
+    _REUSE_IDENT_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+    def record_edit_activity(self, file_path: str, new_code: str) -> dict:
+        """Learn from an Edit/Write: did the new code reuse existing symbols?
+
+        When an agent edits ``file_path``, identifiers in ``new_code`` that
+        already name a symbol defined *elsewhere* in the graph are treated as
+        a **reuse** signal — the edited file and the reused definitions fired
+        together in one thought, so we reinforce their synapse edges. The
+        existing L2/L3 synapse boost then surfaces those reused nodes more
+        readily on future queries, closing the loop between what got reused
+        and what is worth remembering.
+
+        Symbols ``new_code`` *defines* (already-present nodes in this file)
+        whose label collides with an external node are reported as possible
+        duplication, but in this MVP that is surfaced only in the return value
+        — not acted on.
+
+        Operates on graph nodes + identifier tokens, never on source syntax,
+        so it is language-agnostic. Best-effort and side-effect-light; writes
+        land in the project's active namespace (same as ``activate``). Returns
+        a summary dict for the hook to log and tests to assert on.
+        """
+        empty = {"reused": [], "possible_dupes": [], "pairs": 0}
+        if self.synapses is None or not file_path or not new_code:
+            return empty
+        try:
+            self._ensure_built()
+        except Exception:
+            return empty
+
+        # Nodes already defined in the edited file.
+        try:
+            file_nodes = self.embedder.get_file_nodes(file_path)
+        except Exception:
+            file_nodes = []
+        file_node_ids = {str(n.get("id")) for n in file_nodes if n.get("id")}
+
+        # label -> external code node ids (symbols defined in *other* files).
+        label_to_ext: dict[str, list[str]] = {}
+        all_nodes = getattr(self.embedder, "nodes", None) or []
+        for n in all_nodes:
+            nid = str(n.get("id", ""))
+            # Skip rationale/doc nodes — their labels are truncated docstrings,
+            # not symbol names. Everything else is a candidate definition.
+            if not nid or nid in file_node_ids or n.get("file_type") == "rationale":
+                continue
+            label = str(n.get("label", "")).strip()
+            if label:
+                label_to_ext.setdefault(label, []).append(nid)
+
+        tokens = set(self._REUSE_IDENT_RE.findall(new_code))
+
+        reused_ids: list[str] = []
+        reused_labels: list[str] = []
+        for label, ids in label_to_ext.items():
+            if label in tokens:
+                reused_ids.extend(ids)
+                reused_labels.append(label)
+
+        # Possible duplication: a symbol defined in this file whose label
+        # already exists externally. Reported only (MVP does not penalize).
+        possible_dupes = sorted(
+            {
+                lbl
+                for n in file_nodes
+                if n.get("file_type") != "rationale"
+                and (lbl := str(n.get("label", "")).strip()) in label_to_ext
+            }
+        )
+
+        pairs = 0
+        coactivate = list(file_node_ids) + reused_ids
+        if reused_ids and len(coactivate) >= 2:
+            pairs = self.activate(coactivate, strength=self.REUSE_FEEDBACK_STRENGTH)
+
+        return {
+            "reused": sorted(set(reused_labels)),
+            "possible_dupes": possible_dupes,
+            "pairs": pairs,
+        }
 
     def _emit_audit(
         self,

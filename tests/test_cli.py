@@ -147,6 +147,34 @@ class TestCLIQuery:
         assert "reduction_ratio" in data
         assert data["query"] == "function"
 
+    def test_cmd_query_relevance_sidecar(self, temp_project, capsys):
+        """--relevance --json attaches a structured relevance sidecar."""
+        from neuralmind.cli import cmd_build, cmd_query
+
+        build_args = MagicMock()
+        build_args.project_path = str(temp_project)
+        build_args.force = False
+        cmd_build(build_args)
+        capsys.readouterr()  # Clear build output
+
+        args = MagicMock()
+        args.project_path = str(temp_project)
+        args.question = "authentication"
+        args.json = True
+        args.relevance = True
+        args.trace = False
+        args.trace_verbose = False
+
+        cmd_query(args)
+
+        captured = capsys.readouterr()
+        lines = captured.out.split("\n")
+        json_start = next(i for i, line in enumerate(lines) if line.strip().startswith("{"))
+        data = json.loads("\n".join(lines[json_start:]))
+        assert "relevance" in data
+        assert data["relevance"]["version"] == 1
+        assert "files" in data["relevance"]
+
     def test_cmd_query_has_token_reduction(self, temp_project, capsys):
         """Test cmd_query reports token reduction ratio."""
         from neuralmind.cli import cmd_build, cmd_query
