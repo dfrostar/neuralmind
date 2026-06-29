@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.41.0](https://github.com/dfrostar/neuralmind/compare/v0.40.0...v0.41.0) (2026-06-29)
+
+
+### Features
+
+* reuse-vs-rewrite feedback loop + structured relevance sidecar (v0.41.0) ([a27dc57](https://github.com/dfrostar/neuralmind/commit/a27dc57adf888d79a82ecb2cf56f0131c20465b0))
+
+
+### Documentation
+
+* **handoff:** refresh session handoff for v0.40 + next-session roadmap ([#298](https://github.com/dfrostar/neuralmind/issues/298)) ([e3c2e15](https://github.com/dfrostar/neuralmind/commit/e3c2e156c49b5b564158f3faf5e70bd2c75bd4c6))
+
 ## [0.40.0](https://github.com/dfrostar/neuralmind/compare/v0.39.0...v0.40.0) (2026-06-29)
 
 
