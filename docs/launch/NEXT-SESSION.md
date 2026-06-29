@@ -154,9 +154,9 @@ Paste-ready GitHub copy (the maker applies these by hand):
    - Use the warm-up comments (`docs/launch/hn-warmup-comments.md`) only on
      genuinely relevant threads, disclosed.
 4. **Pick the next roadmap item** when ready (the breadth tier is done):
-   - **Finish the schema-artifact arc (v0.41 candidate)** — v0.40 shipped
+   - **Finish the schema-artifact arc (v0.42 candidate)** — v0.40 shipped
      OpenAPI/SQL/Protobuf as `document` nodes; the disclosed follow-ups are:
-     **(a) GraphQL** (`.graphql`) — already promised "planned for v0.41.0" in
+     **(a) GraphQL** (`.graphql`) — already promised "planned for v0.42.0" in
      `RELEASE_NOTES_v0.40.0.md`; same `document`-node pattern, ~1 extractor +
      tests, smallest next step. **(b) OpenAPI `$ref` resolution** — components
      are indexed as named nodes but `$ref` chains aren't followed into edges;
