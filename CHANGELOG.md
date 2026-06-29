@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.40.0](https://github.com/dfrostar/neuralmind/compare/v0.39.0...v0.40.0) (2026-06-29)
+
+
+### Features
+
+* index OpenAPI, SQL DDL, and Protobuf schema artifacts (v0.40.0) ([#296](https://github.com/dfrostar/neuralmind/issues/296)) ([a482ffd](https://github.com/dfrostar/neuralmind/commit/a482ffd0df10a5267674f5edd5a721a4b0443e44))
+
 ## [0.39.0](https://github.com/dfrostar/neuralmind/compare/v0.38.0...v0.39.0) (2026-06-29)
 
 
