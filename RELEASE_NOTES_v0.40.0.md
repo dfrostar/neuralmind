@@ -77,7 +77,7 @@ code co-activation: if an agent retrieves `POST /payments/charge` and then
   message references are not resolved as graph edges
 - `application/json` schemas embedded inline in response bodies — only
   top-level `components/schemas` (OAS 3.x) and `definitions` (OAS 2.x) are indexed
-- GraphQL schemas (`.graphql`) — planned for v0.41.0
+- GraphQL schemas (`.graphql`) — planned for v0.42.0
 
 ### Incremental rebuild support
 
