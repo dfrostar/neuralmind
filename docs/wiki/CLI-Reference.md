@@ -87,7 +87,7 @@ neuralmind build <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
-| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.40.0+) |
+| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
@@ -159,7 +159,7 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | `--json`, `-j` | False | Output results as JSON |
 | `--trace` | False | *(v0.23.0+)* Attach a per-layer retrieval trace (see below) |
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
-| `--explain` | False | *(v0.40.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
+| `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 
 #### Output
 
@@ -200,7 +200,7 @@ neuralmind query /path/to/project "What are the main API endpoints?" --json
 neuralmind query /path/to/project "How does billing work?" --trace
 neuralmind query /path/to/project "How does billing work?" --trace --json
 
-# Human-friendly explanation of why this context was chosen (v0.40.0+)
+# Human-friendly explanation of why this context was chosen (v0.39.0+)
 neuralmind query /path/to/project "auth flow" --explain
 # → Why this context?
 # →   Token budget breakdown:
@@ -1557,7 +1557,7 @@ neuralmind daemon stop
 
 ---
 
-### savings *(v0.40.0+)*
+### savings *(v0.39.0+)*
 
 Show cumulative token savings from the local query event log. Verifies the 40-70x claim against your own real usage rather than trusting the demo.
 
@@ -1595,7 +1595,7 @@ Memory logging must be enabled (answer yes when first prompted, or set `NEURALMI
 
 ---
 
-### review *(v0.40.0+)*
+### review *(v0.39.0+)*
 
 Warn about likely co-breakage before a commit or when reviewing a diff.
 

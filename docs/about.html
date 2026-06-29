@@ -176,7 +176,7 @@
 
     <section>
         <div class="container" id="whats-new-v0400">
-            <h2>What's New in v0.40.0 — Trust, transparency, and quality gaps closed</h2>
+            <h2>What's New in v0.39.0 — Trust, transparency, and quality gaps closed</h2>
             <p><strong>Five developer-experience improvements shipped together: dry-run indexing, instant synapse decay on file deletion, retrieval explainability, diff-aware co-break detection, and a cumulative token savings dashboard.</strong> None change the retrieval path — progressive disclosure, Hebbian synapses, and team memory are unchanged. Each improvement closes a specific gap in how transparent and trustworthy NeuralMind is to work with daily.</p>
             <h3><code>neuralmind build --dry-run</code></h3>
             <p>Scans the project, counts files and lines by language, and prints an estimated token savings table — without touching the vector store or synapses. Safe to run in CI as a pre-build gate. Pass <code>--json</code> for machine-readable output. Typical output: <code>Estimated savings: 6.2× (89,400 tokens → 14,400 tokens) across 247 files</code>.</p>
@@ -188,7 +188,7 @@
             <p>Reads <code>git diff --name-only &lt;base&gt;</code>, maps each changed file to its graph nodes, runs spreading activation (depth 2, top-<em>k</em> configurable) from those seed nodes, and surfaces the most likely co-break candidates — the nodes most strongly associated with the changed code but not themselves in the diff. Prints a ranked table of candidates with their edge weights. Also available as the <code>neuralmind_review</code> MCP tool, so agents can call it automatically before a commit or push. Handles cold (unbuilt) graphs gracefully.</p>
             <h3><code>neuralmind savings</code> — cumulative token savings dashboard</h3>
             <p>Reads the JSONL event log (<code>NEURALMIND_MEMORY=1</code>), groups events by session, and prints a dashboard: total sessions tracked, total tokens saved, average reduction ratio, and a table of the most recent queries with their individual ratios. Run it after a week of use to get a concrete, cumulative number for the token cost you've avoided.</p>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md">Full v0.40.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.html">Claude Code walkthrough &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md">Full v0.39.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.html">Claude Code walkthrough &rarr;</a></p>
         </div>
     </section>
 
