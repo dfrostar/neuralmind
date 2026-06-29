@@ -23,10 +23,10 @@ class TestInstallProject:
         settings_path = tmp_path / ".claude" / "settings.json"
         assert settings_path.exists()
         settings = json.loads(settings_path.read_text())
-        # Our three matchers should be present
+        # Compressor matchers + reuse-feedback Edit/Write matchers (v0.38.0)
         post_tool = settings["hooks"]["PostToolUse"]
         matchers = {block["matcher"] for block in post_tool}
-        assert matchers == {"Read", "Bash", "Grep"}
+        assert matchers == {"Read", "Bash", "Grep", "Edit", "Write"}
 
     def test_install_preserves_user_hooks(self, tmp_path):
         """Installing should not clobber user's existing hooks."""
@@ -49,15 +49,16 @@ class TestInstallProject:
         install_hooks(scope="project", project_path=str(tmp_path))
 
         updated = json.loads(settings_path.read_text())
-        # User's hook still there
-        edit_hook = [b for b in updated["hooks"]["PostToolUse"] if b["matcher"] == "Edit"]
-        assert len(edit_hook) == 1
-        assert edit_hook[0]["hooks"][0]["command"] == "prettier --write"
+        # User's Edit hook still there. NeuralMind now also registers an Edit
+        # matcher (reuse feedback), so identify the user's block by its command.
+        edit_hooks = [b for b in updated["hooks"]["PostToolUse"] if b["matcher"] == "Edit"]
+        user_edit = [b for b in edit_hooks if b["hooks"][0]["command"] == "prettier --write"]
+        assert len(user_edit) == 1
         # Other top-level settings preserved
         assert updated.get("someOtherSetting") == "keep-me"
         # Neuralmind matchers added
         matchers = {b["matcher"] for b in updated["hooks"]["PostToolUse"]}
-        assert "Read" in matchers and "Bash" in matchers and "Grep" in matchers
+        assert {"Read", "Bash", "Grep", "Edit", "Write"} <= matchers
 
     def test_install_idempotent(self, tmp_path):
         """Running install twice shouldn't duplicate hooks."""
@@ -70,6 +71,8 @@ class TestInstallProject:
         assert matchers.count("Read") == 1
         assert matchers.count("Bash") == 1
         assert matchers.count("Grep") == 1
+        assert matchers.count("Edit") == 1
+        assert matchers.count("Write") == 1
 
     def test_uninstall_removes_only_ours(self, tmp_path):
         """Uninstall should leave user's hooks untouched."""
@@ -213,6 +216,45 @@ class TestRunHook:
         captured = io.StringIO()
         monkeypatch.setattr(sys, "stdout", captured)
         assert run_hook("nonsense-action") == 0
+
+    def test_edit_activity_invokes_feedback(self, monkeypatch):
+        """Edit/Write route to record_edit_activity and emit nothing."""
+        import neuralmind.hooks as hooks_mod
+
+        calls = []
+        monkeypatch.setattr(
+            hooks_mod,
+            "_record_edit_activity",
+            lambda cwd, fp, code: calls.append((cwd, fp, code)),
+        )
+        payload = {
+            "tool_name": "Edit",
+            "tool_input": {"file_path": "api/routes.py", "new_string": "authenticate_user()"},
+            "tool_response": {},
+            "cwd": "/proj",
+        }
+        exit_code, output = self._invoke("edit-activity", payload, monkeypatch)
+        assert exit_code == 0
+        assert output == ""  # pure side effect, emits nothing
+        assert calls == [("/proj", "api/routes.py", "authenticate_user()")]
+
+    def test_edit_activity_opt_out(self, monkeypatch):
+        """NEURALMIND_REUSE_FEEDBACK=0 makes the branch a no-op."""
+        import neuralmind.hooks as hooks_mod
+
+        monkeypatch.setenv("NEURALMIND_REUSE_FEEDBACK", "0")
+        calls = []
+        monkeypatch.setattr(hooks_mod, "_record_edit_activity", lambda *a: calls.append(a))
+        payload = {
+            "tool_name": "Write",
+            "tool_input": {"file_path": "x.py", "content": "def f(): pass"},
+            "tool_response": {},
+            "cwd": "/proj",
+        }
+        exit_code, output = self._invoke("edit-activity", payload, monkeypatch)
+        assert exit_code == 0
+        assert output == ""
+        assert calls == []  # gated off — feedback never runs
 
     def test_compress_bash_populates_recovery_cache(self, monkeypatch, tmp_path):
         """The compress-bash hook stashes raw output to .neuralmind/last_output.json.

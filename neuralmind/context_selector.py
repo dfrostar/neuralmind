@@ -650,6 +650,12 @@ class ContextSelector:
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
 
+        # Stash the post-boost hits so ContextResult.top_search_hits (and the
+        # relevance sidecar built from it) carry the same synapse_boost /
+        # recalled signals — and any recall-swapped-in nodes — that the
+        # rendered L3 context shows, not the pre-boost vector cache.
+        self._last_l3_boosted = results
+
         if self._trace is not None:
             self._trace.record_hits(results)
 
@@ -708,6 +714,8 @@ class ContextSelector:
         # ever holds hits relevant to this specific query.
         if query:
             self._query_search_cache.clear()
+            # Reset the boosted-hit snapshot; get_l3_search repopulates it.
+            self._last_l3_boosted = []
 
         # L0: Identity (always fast)
         if include_l0:
@@ -747,11 +755,15 @@ class ContextSelector:
         if self._trace is not None:
             self._trace.record_budget(layers_used, budget, reduction_ratio)
 
-        # Surface the cached search hits so downstream layers (synapses,
-        # MCP responses) can reuse them instead of re-querying the embedder.
+        # Surface the search hits so downstream layers (synapses, MCP
+        # responses, the relevance sidecar) can reuse them instead of
+        # re-querying the embedder. Prefer the post-boost L3 hits (carrying
+        # synapse_boost / recalled signals); fall back to the pre-boost vector
+        # cache when L3 didn't run this call.
         top_hits: list[dict] = []
         if query:
-            top_hits = list(self._query_search_cache.get(query, []))
+            boosted = getattr(self, "_last_l3_boosted", None)
+            top_hits = list(boosted) if boosted else list(self._query_search_cache.get(query, []))
 
         return ContextResult(
             context="\n".join(context_parts),
