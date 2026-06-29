@@ -90,7 +90,7 @@ neuralmind self-improve status .        # read-only: current depth, re-query rat
 It's off by default and does zero extra hot-path work when unset, so it's safe to
 try and trivial to turn back off.
 
-## Understand why a retrieval answered the way it did *(v0.40.0+)*
+## Understand why a retrieval answered the way it did *(v0.39.0+)*
 
 Add `--explain` to any `query` call to get a structured trace of how the budget was spent:
 
@@ -112,7 +112,7 @@ Output appended after the normal context block:
 
 The trace is the primary tool for diagnosing a retrieval that felt wrong or incomplete — it shows you exactly which clusters loaded and which search hits scored, so you know where to look.
 
-## Catch co-breaks before you push *(v0.40.0+)*
+## Catch co-breaks before you push *(v0.39.0+)*
 
 Before opening a PR, run:
 
@@ -131,7 +131,7 @@ Co-break candidates for 3 changed files:
 
 Same data via the `neuralmind_review` MCP tool — Claude Code can call it automatically after editing a file, before a commit or push.
 
-## Track cumulative savings *(v0.40.0+, requires NEURALMIND_MEMORY=1)*
+## Track cumulative savings *(v0.39.0+, requires NEURALMIND_MEMORY=1)*
 
 ```bash
 export NEURALMIND_MEMORY=1   # enables the JSONL event log (off by default)

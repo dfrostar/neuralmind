@@ -37,7 +37,7 @@ Co-break candidates:
 
 Higher weight = stronger learned association. Activations = how many co-editing sessions established the link.
 
-## Dry-run first (v0.40.0+)
+## Dry-run first (v0.39.0+)
 
 To estimate savings before building the index:
 
@@ -73,4 +73,4 @@ The agent can call this automatically after editing a file, get the co-break can
 
 - [`neuralmind query --explain`](claude-code.md#understand-why-a-retrieval-answered-the-way-it-did-v0400) — understand why a specific retrieval answered the way it did
 - [`neuralmind savings`](claude-code.md#track-cumulative-savings-v0400-requires-neuralmind_memory1) — track cumulative token savings across sessions
-- [Full v0.40.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md)
+- [Full v0.39.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md)
