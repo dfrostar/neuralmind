@@ -1983,7 +1983,7 @@ def main():
     )
     mcp_p.add_argument(
         "--client",
-        choices=("claude-code", "cursor", "cline", "claude-desktop"),
+        choices=("claude-code", "cursor", "cline", "claude-desktop", "vscode"),
         default="claude-code",
         help="Which client to register with (default: claude-code)",
     )

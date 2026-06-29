@@ -221,7 +221,11 @@ keywords = [
     "docstring-to-code-retrieval",
     "natural-language-code-search-eval",
     "unified-token-optimization",
-    "ponytail-headroom-integration"
+    "ponytail-headroom-integration",
+    "vscode-extension",
+    "vscode-plugin",
+    "editor-integration",
+    "native-editor-ux"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

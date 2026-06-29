@@ -175,6 +175,24 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0380-vscode">
+            <h2>What's New in v0.38.0 — VS Code native extension</h2>
+            <p><strong>VS Code users now get first-class NeuralMind integration without Cline or a hand-wired <code>tasks.json</code>.</strong> The extension (<code>editors/vscode/</code>) is a thin TypeScript shell over the existing Python CLI and HTTP server — no new retrieval logic, no new Python dependencies.</p>
+            <h3>Status bar</h3>
+            <p>A persistent status bar item shows index state at a glance: <code>✓ NeuralMind · 2.1k nodes</code> (green, fresh), <code>⚠ NeuralMind · 2.1k nodes</code> (yellow, stale), or <code>⊘ NeuralMind</code> (red, not built). Staleness is measured against <code>graphify-out/graph.json</code> mtime vs. the <code>neuralmind.autoBuildThresholdHours</code> setting. Clicking opens the graph panel.</p>
+            <h3>Command palette</h3>
+            <p><code>Ctrl+Shift+P → NeuralMind</code> exposes eight commands: Query (retrieved context to the Output panel), Wakeup, Skeleton (structural outline of the active file), Build Index (with a progress notification), Probe Retrieval (answerability / MRR / recall@k), Open Graph View, Setup Cline MCP, and Setup VS Code MCP.</p>
+            <h3>Graph panel</h3>
+            <p>The <code>neuralmind serve</code> UI is embedded in a VS Code WebView via <code>&lt;iframe&gt;</code> — all existing frontend JS and CSS reused untouched. The panel retains its graph layout when hidden (<code>retainContextWhenHidden: true</code>).</p>
+            <h3>Hover cards (opt-in)</h3>
+            <p>Set <code>"neuralmind.enableHover": true</code> in VS Code settings to get structural skeleton cards on symbol hover, LRU-cached (50 entries, 60 s TTL).</p>
+            <h3>MCP registration</h3>
+            <p><code>neuralmind install-mcp --client vscode</code> writes the server entry to <code>Code/User/settings.json</code> under <code>"mcp.servers"</code> (VS Code 1.99+ native MCP format). If <code>settings.json</code> is JSONC, the command prints the entry to paste manually rather than clobbering the file.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/vs-code-native-intelligence.md">VS Code extension walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md">Full v0.38.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0380">
             <h2>What's New in v0.38.0 — hybrid search, explicit feedback, and CI auto-index</h2>
             <p><strong>Three retrieval-quality improvements that directly address the gaps between NeuralMind and LlamaIndex/mem0 on code-specific retrieval.</strong> None touch the existing token-reduction machinery — progressive disclosure, Hebbian synapses, and team memory are unchanged.</p>

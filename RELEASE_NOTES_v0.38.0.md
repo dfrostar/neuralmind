@@ -1,18 +1,17 @@
-# NeuralMind v0.38.0 — hybrid search, explicit feedback, and CI auto-index
+# NeuralMind v0.38.0 — VS Code extension, hybrid search, explicit feedback, and CI auto-index
 
 **Release Date:** June 2026
 
 ## What's in this release
 
-v0.38.0 closes the three retrieval-quality gaps most often cited in comparisons
-with LlamaIndex and mem0: **keyword blindness** on exact-name code queries,
-**no explicit feedback channel** to reinforce good results, and **no automated
-indexing** in CI pipelines. None of these touch the existing token-reduction
-machinery — the Hebbian synapse layer, progressive disclosure, and team memory
-are unchanged.
+v0.38.0 ships four changes: a **native VS Code extension** that closes the adoption gap for
+non-Cline VS Code users, plus three retrieval-quality improvements that directly address gaps
+vs. LlamaIndex and mem0. None of the retrieval changes touch the existing token-reduction
+machinery — the Hebbian synapse layer, progressive disclosure, and team memory are unchanged.
 
 | Change | What | Where |
 |---|---|---|
+| **VS Code extension** | Status bar, command palette, graph panel, hover cards — zero MCP config needed | `editors/vscode/` |
 | **BM25 hybrid search** | RRF merge of vector + keyword results for code-exact queries | `neuralmind/bm25.py`, `neuralmind/context_selector.py`, `neuralmind/embedder.py` |
 | **`neuralmind_feedback` MCP tool** | Explicit positive/negative signal to reinforce or soften synapse weights | `neuralmind/mcp_server.py`, `neuralmind/synapses.py` |
 | **CI auto-index GitHub Action** | Auto-build the index and commit team memory on every push to main | `.github/workflows/neuralmind-autoindex.yml` |
@@ -197,6 +196,91 @@ No secrets are needed — NeuralMind is 100% local; nothing is sent externally.
 
 ---
 
+## VS Code Extension (native, zero-config)
+
+### The gap
+
+VS Code users who don't run Cline had to hand-wire NeuralMind via a `tasks.json` keybinding
+or skip it entirely. The extension closes that gap: every NeuralMind affordance — context
+retrieval, index management, graph view, and MCP registration — is now accessible directly
+from the editor, with no task runner involved.
+
+### What ships
+
+The extension (`editors/vscode/`) is a thin TypeScript orchestrator over the existing Python
+CLI and HTTP server. No new retrieval logic; no new Python dependencies.
+
+**Status bar** — always visible at the bottom left:
+
+| State | Display |
+|---|---|
+| Index built, fresh | `✓ NeuralMind · 2.1k nodes` (green) |
+| Index built, stale | `⚠ NeuralMind · 2.1k nodes` (yellow) |
+| Index not built / error | `⊘ NeuralMind` (red) |
+
+Clicking the status bar opens the graph panel. Staleness is measured against
+`graphify-out/graph.json` mtime vs. the `neuralmind.autoBuildThresholdHours` setting (default 24 h).
+
+**Command palette** — `Ctrl+Shift+P` → `NeuralMind`:
+
+| Command | What it does |
+|---|---|
+| `NeuralMind: Query` | Prompt for a question; prints retrieved context to the Output panel |
+| `NeuralMind: Wakeup` | Runs `neuralmind wakeup` and prints the context summary |
+| `NeuralMind: Skeleton` | Prints the structural skeleton for the active file |
+| `NeuralMind: Build Index` | Runs `neuralmind build` with a progress notification |
+| `NeuralMind: Probe Retrieval` | Runs `neuralmind probe` and shows answerability / MRR / recall@k |
+| `NeuralMind: Open Graph View` | Opens the `neuralmind serve` UI in a WebView panel |
+| `NeuralMind: Setup Cline MCP` | Runs `neuralmind install-mcp --client cline` |
+| `NeuralMind: Setup VS Code MCP` | Runs `neuralmind install-mcp --client vscode` |
+
+**Graph panel** — `neuralmind serve` UI embedded via `<iframe>` in a VS Code WebView. Reuses
+all existing frontend JS/CSS untouched. The panel retains its layout when hidden
+(`retainContextWhenHidden: true`).
+
+**Hover cards** (opt-in) — when `neuralmind.enableHover: true`, hovering any symbol fetches
+the file's structural skeleton and shows it inline. LRU-cached (50 entries, 60 s TTL).
+
+**Auto-build prompt** — on activation, if the index is older than `autoBuildThresholdHours`
+or not built, the extension prompts "Index is stale — Build now?" with a one-click "Build" action.
+
+### Install
+
+```bash
+cd editors/vscode
+npm install
+npm run compile         # produces out/extension.js
+# Then press F5 in VS Code to launch an Extension Development Host,
+# or run `vsce package` to build a .vsix for local install.
+```
+
+**Settings** (`neuralmind.*` in VS Code settings):
+
+| Setting | Default | Description |
+|---|---|---|
+| `neuralmind.pythonPath` | `"python"` | Path to the Python executable with NeuralMind installed |
+| `neuralmind.enableHover` | `false` | Opt-in hover cards (skeleton on symbol hover) |
+| `neuralmind.autoBuildThresholdHours` | `24` | Hours before a stale-index prompt fires |
+
+### MCP auto-registration
+
+`neuralmind install-mcp --client vscode` now writes the MCP server entry to
+`Code/User/settings.json` under the `"mcp.servers"` key (VS Code 1.99+ native MCP format).
+If `settings.json` uses JSONC (comments or trailing commas), the command prints the entry
+to paste manually rather than clobbering the file.
+
+### Per-editor expectations after install
+
+| Editor | What changes after extension install |
+|---|---|
+| **VS Code (extension)** | Status bar shows index state; palette commands work immediately; graph panel opens `neuralmind serve` embedded |
+| Claude Code | MCP server registered via `install-mcp --client claude-code`; wakeup/query tools active |
+| Cursor | MCP server registered via `install-mcp --client cursor`; wakeup/query tools active |
+| Cline | Extension's "Setup Cline MCP" command registers the server; tools active in next Cline session |
+| Generic MCP | `neuralmind-mcp` command; `neuralmind_wakeup`, `neuralmind_query`, `neuralmind_feedback` tools |
+
+---
+
 ## What the agent actually sees post-install
 
 ### v0.38.0 vs v0.37.0 — warm path diff
@@ -222,9 +306,9 @@ session one.
   that adds zero dependencies. A cross-encoder re-ranker (e.g. bge-reranker-v2)
   would add ~200MB and an inference step; not in scope unless retrieval quality
   evals show it's needed.
-- **VS Code / JetBrains native plugin** — the integration guide at
-  `docs/wiki/Integration-Guide.md` covers editor wiring via the MCP server.
-  A native plugin is on the roadmap but not in this release.
+- **JetBrains native plugin** — VS Code ships in this release (see above);
+  JetBrains is the remaining gap. MCP server wiring via the integration guide
+  (`docs/wiki/Integration-Guide.md`) is the current path for IntelliJ/Rider users.
 - **Cross-repo memory** — synapses are still per-project. The team memory bundle
   mechanism (`neuralmind memory export/import`) is the current path for sharing
   between repos; a federated graph query is a larger architectural change.
