@@ -778,6 +778,37 @@ synapse co-activations. Full plan in [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## 🖥️ VS Code Extension (`editors/vscode/`)
+
+A native VS Code extension ships in `editors/vscode/` — a thin TypeScript shell
+over the existing Python CLI and HTTP server. No new retrieval logic; no new Python
+dependencies beyond `pip install neuralmind`.
+
+**What you get:**
+
+| Surface | Detail |
+|---|---|
+| **Status bar** | `✓ NeuralMind · 2.1k nodes` — green/yellow/red freshness; polls `neuralmind stats --json` every 60 s; click opens graph panel |
+| **Command palette** | Query, Wakeup, Skeleton, Build Index, Probe, Open Graph View, Setup Cline/VS Code MCP |
+| **Graph panel** | `neuralmind serve` UI embedded in a WebView via `<iframe>` — reuses all existing JS/CSS untouched |
+| **Hover cards** | Opt-in (`neuralmind.enableHover: true`); structural skeleton on symbol hover, LRU-cached |
+| **Auto-build prompt** | On activation: if index is older than `autoBuildThresholdHours` (default 24 h), offers one-click build |
+| **MCP registration** | `neuralmind install-mcp --client vscode` writes to `Code/User/settings.json` under `"mcp.servers"` |
+
+**Install:**
+
+```bash
+cd editors/vscode
+npm install
+npm run compile         # produces out/extension.js
+# Press F5 in VS Code to launch an Extension Development Host
+# or: vsce package && code --install-extension neuralmind-*.vsix
+```
+
+Full walkthrough: [docs/use-cases/vs-code-native-intelligence.md](docs/use-cases/vs-code-native-intelligence.md)
+
+---
+
 ## 🔧 How It Works
 
 NeuralMind wraps a knowledge graph (`graphify-out/graph.json`) in a local vector store (the default turbovec/ONNX backend; ChromaDB optional).
@@ -1877,7 +1908,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Learning Guide](https://github.com/dfrostar/neuralmind/wiki/Learning-Guide)** | Continual learning details |
 | **[API Reference](https://github.com/dfrostar/neuralmind/wiki/API-Reference)** | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |
 | **[Architecture](https://github.com/dfrostar/neuralmind/wiki/Architecture)** | 4-layer progressive disclosure design |
-| **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code, JetBrains |
+| **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code native extension, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
 | **[Roadmap](ROADMAP.md)** | What's shipping next, where we want help, what's out of scope |
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
