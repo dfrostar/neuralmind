@@ -176,6 +176,22 @@
 
     <section>
         <div class="container" id="whats-new-v0400">
+            <h2>What's New in v0.40.0 — Schema artifact indexing: OpenAPI, SQL, and Protocol Buffers</h2>
+            <p><strong>NeuralMind now indexes non-code schema artifacts alongside your source, closing the most-requested documentation gap from the v0.38 audit.</strong> Three new extractors join the document layer: OpenAPI/AsyncAPI YAML specs, SQL DDL files, and Protocol Buffer definitions. All three reuse the existing <code>document</code> node type — no new MCP tools, no config changes, no new retrieval concepts. The synapse layer learns cross-artifact associations automatically, so <code>POST /payments/charge</code> co-activated with <code>process_payment()</code> strengthens the synapse edge without any manual wiring.</p>
+            <h3>OpenAPI / AsyncAPI (<code>.yaml</code>, <code>.yml</code>)</h3>
+            <p>Parses files that carry an <code>openapi</code>, <code>asyncapi</code>, or <code>swagger</code> key using PyYAML (falls back to JSON). Emits one file-level node labelled by <code>info.title</code>, one node per path+method labelled by <code>summary</code> or <code>operationId</code> (e.g. <code>Charge a card</code>), one node per schema component (e.g. <code>schema:Payment</code>), and one node per AsyncAPI channel. Plain YAML config files (no API key) are silently skipped — NeuralMind never indexes infrastructure config as API documentation. Honest scope: <code>$ref</code> resolution and inline response body schemas are not modelled.</p>
+            <h3>SQL DDL (<code>.sql</code>)</h3>
+            <p>Regex-matches <code>CREATE TABLE</code>, <code>CREATE VIEW</code>, <code>CREATE PROCEDURE</code>, <code>CREATE FUNCTION</code>, <code>CREATE TRIGGER</code>, <code>CREATE INDEX</code>, and <code>CREATE TYPE</code> statements (case-insensitive; handles <code>OR REPLACE</code> and <code>IF NOT EXISTS</code> variants). Emits one node per database object (e.g. <code>TABLE:accounts</code>, <code>VIEW:active_users</code>). <code>ALTER TABLE</code>, <code>INSERT</code>, and <code>SELECT</code> are not indexed — only DDL <code>CREATE</code> is the object layer agents actually query.</p>
+            <h3>Protocol Buffers (<code>.proto</code>)</h3>
+            <p>Regex-extracts <code>message</code>, <code>service</code>, <code>rpc</code>, and <code>enum</code> block headers (proto2 + proto3). Emits one node per definition (e.g. <code>service:UserService</code>, <code>rpc:GetUser</code>, <code>message:GetUserRequest</code>, <code>enum:Status</code>). Proto <code>import</code> edges (cross-file message references) are not modelled as graph edges; GraphQL support is planned for v0.41.0.</p>
+            <h3>Incremental rebuild and synapse integration</h3>
+            <p>Schema files participate in <code>neuralmind watch --reindex</code>. A changed <code>.yaml</code>, <code>.sql</code>, or <code>.proto</code> re-extracts only that file's nodes on the next incremental build pass — same as <code>.py</code>/<code>.ts</code> files. The synapse layer applies the same Hebbian co-activation to schema nodes: if an agent retrieves <code>schema:Payment</code> and then <code>process_payment()</code>, that association strengthens automatically over queries.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md">Full v0.40.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0390">
             <h2>What's New in v0.39.0 — Trust, transparency, and quality gaps closed</h2>
             <p><strong>Five developer-experience improvements shipped together: dry-run indexing, instant synapse decay on file deletion, retrieval explainability, diff-aware co-break detection, and a cumulative token savings dashboard.</strong> None change the retrieval path — progressive disclosure, Hebbian synapses, and team memory are unchanged. Each improvement closes a specific gap in how transparent and trustworthy NeuralMind is to work with daily.</p>
             <h3><code>neuralmind build --dry-run</code></h3>
