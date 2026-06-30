@@ -98,10 +98,21 @@ The opt-in `turbovec` backend (Google **TurboQuant**) can embed *and* search wit
 | Python | (gold-fact eval above) | — | — |
 | TypeScript | 54 | **54 (100%)** | 0 |
 | Go | 45 | **45 (100%)** | 0 |
+| Rust | 49 | **49 (100%)** | 0 |
+| Java | 52 | **52 (100%)** | 0 |
+| C | 47 | **47 (100%)** | 0 |
+| C++ | 51 | **51 (100%)** | 0 |
+| C# | 52 | **52 (100%)** | 0 |
+| Ruby | 46 | **46 (100%)** | 0 |
+| PHP | 54 | **54 (100%)** | 0 |
 
 The built-in tree-sitter backend matches graphify symbol-for-symbol on the
-reference fixtures; an optional SCIP pass replaces heuristic call edges with
-compiler-accurate ones. All gated by `evals/parity/run.py`.
+reference fixtures for **all ten bundled languages** (Python plus the nine above);
+an optional SCIP pass replaces heuristic call edges with compiler-accurate ones.
+All gated by `evals/parity/run.py` (coverage floor 90%, zero dangling edges) — the
+numbers above are emitted live by the parity gate on every PR. Per-language *answer
+quality* (vs structural coverage) is still Python-first; see
+[Limits & Failure Modes](Limits-and-Failure-Modes#3-language-support-matrix).
 
 ## What we *don't* claim
 
