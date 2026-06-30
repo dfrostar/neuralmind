@@ -10,6 +10,13 @@ This document represents the project's stance, drafted with AI
 assistance and reviewed by the maintainer. Pull requests that
 sharpen the honesty are welcome.
 
+> **Operational companion:** this page is about *whether to install*.
+> For *where it stops working once installed* — when a single query
+> isn't enough, the repo-size envelope, and the per-language support
+> matrix with explicitly-unsupported features — see
+> [Limits & Failure Modes](wiki/Limits-and-Failure-Modes.md). For the
+> reproducible numbers, see [`benchmarks/`](../benchmarks/README.md).
+
 ---
 
 ## TL;DR

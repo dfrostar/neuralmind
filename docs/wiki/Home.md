@@ -154,7 +154,8 @@ sections.
 | [Usage Guide](Usage-Guide) | End-to-end examples for every command |
 | [CLI Reference](CLI-Reference) | All CLI commands, flags, and output shapes |
 | [API Reference](API-Reference) | Python API (`NeuralMind`, `ContextResult`, `TokenBudget`) |
-| [Architecture](Architecture) | How the 4-layer progressive disclosure system works |
+| [Architecture](Architecture) | How the 4-layer progressive disclosure system works — incl. the embedding-model spec + index inspection/debugging reference |
+| [Limits & Failure Modes](Limits-and-Failure-Modes) | Where it stops working: when one query isn't enough, the repo-size envelope, and the per-language support matrix |
 | [Integration Guide](Integration-Guide) | MCP, CI/CD, VS Code, JetBrains, any-LLM piping |
 | [Scheduling Guide](Scheduling-Guide) | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
 | [Learning Guide](Learning-Guide) | Opt-in memory + the brain-like synapse layer that learns associations from how you use the codebase (Hebbian co-activation with decay), the single learning system since v0.25.0 |

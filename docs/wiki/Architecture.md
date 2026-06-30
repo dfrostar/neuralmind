@@ -477,10 +477,31 @@ def allocate_budget(query_complexity: float) -> TokenBudget:
 
 ### Embedding Model
 
-NeuralMind uses ChromaDB's default embedding function, which typically uses:
-- **Model**: `all-MiniLM-L6-v2` (or similar)
-- **Dimensions**: 384
-- **Type**: Sentence transformers
+NeuralMind embeds **100% locally** — there is **no cloud embedding API call**, on
+any backend ([`SECURITY.md`](https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md)).
+The model is **pinned**, not "default / or similar":
+
+- **Model**: `all-MiniLM-L6-v2` — `_MODEL_NAME` in
+  [`neuralmind/onnx_embedder.py`](https://github.com/dfrostar/neuralmind/blob/main/neuralmind/onnx_embedder.py)
+- **Dimensions**: 384 (`OnnxMiniLMEmbedder.dim`)
+- **Max tokens / batch**: 256 / 32
+- **Runtime**: `onnxruntime` (CPU), tokenized with `tokenizers` — the bundled
+  ChromaDB-free path (default on Linux / Apple Silicon / Windows x64 since v0.29.0)
+- **Model fetch**: one-time download of a **SHA256-pinned** archive
+  (`_ARCHIVE_SHA256`) into `~/.cache/neuralmind/onnx_models/`; a corrupted or swapped
+  download **fails loudly**. Pre-stage it for air-gapped installs via
+  `NEURALMIND_ONNX_MODEL_DIR` — no network at build, query, or runtime thereafter.
+- **Backend parity**: the ONNX embedder produces vectors **byte-identical** to
+  ChromaDB's `all-MiniLM-L6-v2` (verified cosine 1.0, max elementwise diff 0.0), so
+  the `turbovec` (TurboQuant, 8–16× smaller index) and `chroma` backends retrieve
+  equivalently — only the index representation differs.
+
+**Can I swap the model?** Not as a supported knob today, and deliberately so: the
+embedder is the same one ChromaDB pins, and the community-detection ids and synapse
+edge keys are computed against *these* vectors. Swapping the encoder would
+invalidate a warm synapse store and the parity guarantee above. If you need a
+different encoder, that's a code change to `onnx_embedder.py` / the backend, not a
+config flag — and you'd rebuild the index and re-warm memory from scratch.
 
 ### What Gets Embedded
 
@@ -904,8 +925,55 @@ have their edges softened so they surface less.
 
 ---
 
+## Index format & debugging (power-user reference)
+
+You don't have to treat the index as a black box. Everything below is on-disk and
+inspectable, and there's a command for "why did my query miss?"
+
+### What's on disk
+
+| Artifact | Path | Format | Inspect with |
+|---|---|---|---|
+| **Code graph** | `graphify-out/graph.json` | plain JSON (nodes + edges + rationale) | any JSON tool; `embedder.get_file_nodes()` / `get_file_edges()` |
+| **Vector index** | `graphify-out/neuralmind_db/` | ChromaDB `PersistentClient` (SQLite) **or** turbovec (TurboQuant) | `neuralmind stats`; backend-specific |
+| **Synapse store** | `.neuralmind/synapses.db` | SQLite (edge weights + directional transitions + namespaces + tuner meta) | `neuralmind memory inspect`; `sqlite3` |
+| **Memory export** | `.neuralmind/SYNAPSE_MEMORY.md` | Markdown (auto-loaded by Claude Code) | read it directly |
+| **Event log** | `.neuralmind/events.jsonl` | JSONL activity stream | `neuralmind savings`; the graph view |
+
+The IR is **schema-versioned** and round-trips losslessly — `neuralmind validate`
+checks the contract **without a vector backend**, so you can verify graph integrity
+in CI before embedding.
+
+### "Why did this query return *that*?"
+
+The retrieval path is transparent and reproducible (same query + same index ⇒ same
+context). The inspection surface, from cheapest to deepest:
+
+| Command | Answers |
+|---|---|
+| `neuralmind stats` | node count, community distribution, resolved backend, db path |
+| `neuralmind doctor` | is every subsystem healthy (graph, index, synapses, MCP, hooks)? + exact fix commands |
+| `neuralmind validate` | does the graph satisfy the versioned IR contract? (no backend needed) |
+| `neuralmind query … --trace` | per-layer candidates, cluster scoring with **vector-vs-synapse attribution**, final hits |
+| `neuralmind query … --explain` | human-readable "why this context" — L0–L3 token budget, communities loaded, top search hits, synapses that fired (implies `--trace`) |
+| `neuralmind query … --relevance` | machine-readable per-file/per-node `relevance` sidecar: vector **score**, synapse **boost**, **recall flag**, **line spans** (also `neuralmind_query(include_relevance=true)`) |
+| `neuralmind probe` | label-free self-test — queries each symbol by its *rationale* (not its name) and reports retrieval blind spots (~0.79 MRR with real gaps disclosed) |
+| `neuralmind savings` | cumulative token savings vs estimated full-codebase cost, per query, from the event log |
+| `neuralmind review` | spreading-activation co-break candidates for the current `git diff` (also `neuralmind_review` MCP tool) |
+| `neuralmind memory inspect` | synapse contribution by namespace (`branch:` / `personal` / `shared` / `ephemeral`); `memory export` dumps a versioned JSON bundle |
+
+If `--trace` shows the gold file *did* embed but ranked low, the usual causes are:
+a weak/missing docstring (the rationale layer carries semantic signal — see
+[Embedding Strategy](#embedding-strategy)), a cold synapse store (recall warms with
+use — [Learning Guide](Learning-Guide)), or a question that needs more breadth than
+one budget holds (see [Limits & Failure Modes](Limits-and-Failure-Modes)).
+
+---
+
 ## See Also
 
+- [Limits & Failure Modes](Limits-and-Failure-Modes.md) - Where it stops working, and what to do then
+- [Benchmarks & Results](Benchmarks.md) - Every measured, CI-gated number + reproduction commands
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations

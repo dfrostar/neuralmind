@@ -170,6 +170,7 @@ Two docs you should read before forming an opinion. Both are linked from this se
 
 - **[docs/BUSINESS-CASE.md](docs/BUSINESS-CASE.md)** — the compelling pitch, with provable numbers. Every claim is a single command away from being verified on your own code. ROI math with assumptions you can change. Three concrete scenarios. Read this if you're evaluating whether to bring NeuralMind to your team.
 - **[docs/HONEST-ASSESSMENT.md](docs/HONEST-ASSESSMENT.md)** — the skeptic's companion. When NeuralMind isn't worth installing. What "40–70×" actually means (and doesn't). Where the community-benchmark sample is too small to extrapolate. Read this if you want to know what could go wrong before adopting.
+- **[docs/wiki/Limits-and-Failure-Modes.md](docs/wiki/Limits-and-Failure-Modes.md)** — once installed, *where it stops working*: when a single ~2.5K-token query isn't enough (wide multi-file refactors) and what to do instead, the repo-size/index-time envelope, and the per-language support matrix listing what's **explicitly not modeled** (C/C++ macros & templates, dynamic-dispatch resolution, SQL `ALTER`, proto imports). The runnable evidence lives in **[benchmarks/](benchmarks/README.md)**.
 
 The headline you can stand on: **retrieval reduction is measured in CI on every commit** (open any closed PR in the [PR list](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr+is%3Aclosed) — each one has a sticky benchmark comment with current numbers) and **reproduces in 30 seconds on a fresh clone** via `bash scripts/demo.sh`. Real-world repos have submitted **46–66×** but n=2 — your number comes from `neuralmind benchmark . --contribute` on your code.
 
@@ -1917,6 +1918,8 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Architecture](https://github.com/dfrostar/neuralmind/wiki/Architecture)** | 4-layer progressive disclosure design |
 | **[Integration Guide](https://github.com/dfrostar/neuralmind/wiki/Integration-Guide)** | MCP, CI/CD, VS Code native extension, JetBrains |
 | **[Troubleshooting](https://github.com/dfrostar/neuralmind/wiki/Troubleshooting)** | Common issues and fixes |
+| **[Limits & Failure Modes](https://github.com/dfrostar/neuralmind/wiki/Limits-and-Failure-Modes)** | Where it stops working: when one query isn't enough, the repo-size envelope, and the per-language support matrix (what's indexed *and what isn't*) |
+| **[Benchmarks (run them yourself)](benchmarks/README.md)** | One-command index + runner for every benchmark harness, plus an honest "what we don't measure yet" (SWE-bench, Aider agent-loop, multi-competitor) |
 | **[Roadmap](ROADMAP.md)** | What's shipping next, where we want help, what's out of scope |
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
