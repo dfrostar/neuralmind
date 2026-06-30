@@ -236,6 +236,11 @@
     <priority>0.5</priority>
   </url>
   <url>
+    <loc>https://dfrostar.github.io/neuralmind/wiki/Limits-and-Failure-Modes.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://dfrostar.github.io/neuralmind/wiki/Scheduling-Guide.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>

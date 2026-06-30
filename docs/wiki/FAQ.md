@@ -148,6 +148,9 @@ neuralmind build . --backend postgres --db-url postgresql://...
 - 1M LOC → 500MB-2GB
 - 10M LOC → 5-20GB
 
+> Full size / index-time / memory envelope — with the honest "not yet measured at
+> scale" caveats — is on the [Limits & Failure Modes](Limits-and-Failure-Modes#2-repo-size-index-time-memory--disk-envelope) page.
+
 **Compress if needed:**
 ```bash
 # Delete old indexes
@@ -163,11 +166,17 @@ neuralmind build . --optimize
 
 ### "Does NeuralMind support my language?"
 
-**Supported:**
-- Python, JavaScript/TypeScript, Java, C++, Go, Rust, C#, PHP, Ruby, SQL
+**Supported (built-in tree-sitter, no graphify needed):**
+- Python, TypeScript/JavaScript, Go, Rust, Java, C, C++, C#, Ruby, PHP
+- Plus schema/doc artifacts: Markdown, OpenAPI/AsyncAPI (YAML), SQL DDL, Protocol Buffers
 
 **Partial support:**
-- Other languages (graphify has limited AST extraction)
+- Other languages can be indexed as plaintext (less precise)
+
+> The per-language [support matrix](Limits-and-Failure-Modes#3-language-support-matrix)
+> spells out exactly what's indexed *and what's explicitly not modeled* per language
+> (C/C++ macros & templates, dynamic-dispatch call resolution, SQL `ALTER`/`SELECT`,
+> proto imports, OpenAPI `$ref`, …).
 
 **If not supported:**
 ```bash
