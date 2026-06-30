@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.41.1](https://github.com/dfrostar/neuralmind/compare/v0.41.0...v0.41.1) (2026-06-30)
+
+
+### Documentation
+
+* bump GraphQL roadmap target v0.41.0 → v0.42.0 ([#301](https://github.com/dfrostar/neuralmind/issues/301)) ([d641459](https://github.com/dfrostar/neuralmind/commit/d641459a63780e70ecadb2617d5cf824e1d01437))
+* close the recurring critique — limits page, runnable benchmarks/, SWE-bench retrieval harness, security refresh + coverage scorecard ([#303](https://github.com/dfrostar/neuralmind/issues/303)) ([c5f9b4f](https://github.com/dfrostar/neuralmind/commit/c5f9b4faf7a53f14294365b0764fdcdde0ee00fc))
+
 ## [0.41.0](https://github.com/dfrostar/neuralmind/compare/v0.40.0...v0.41.0) (2026-06-29)
 
 
