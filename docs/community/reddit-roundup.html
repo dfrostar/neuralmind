@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<!--
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  STATUS: STAGING DRAFT — DO NOT LINK / DO NOT ADD TO sitemap.xml YET.  │
+  │                                                                        │
+  │  This page aggregates real developer discussion of NeuralMind on       │
+  │  Reddit. As of the last edit there are ~zero public NeuralMind         │
+  │  Reddit threads (verified by search), so the page has nothing honest   │
+  │  to aggregate and is intentionally UNPUBLISHED.                        │
+  │                                                                        │
+  │  GATE — publish (add to sitemap.xml + nav + homepage link) only once:  │
+  │    1. At least ~3–5 REAL Reddit threads mentioning NeuralMind exist.   │
+  │    2. Every quote below is a REAL quote with a REAL https://reddit.com │
+  │       permalink. No invented usernames, no "real-style" placeholders.  │
+  │                                                                        │
+  │  HARD RULES (the whole point of this page):                            │
+  │    • Never fabricate a quote, username, upvote count, or benchmark.    │
+  │    • Every benchmark number must trace to a committed source in this   │
+  │      repo (benchmarks/public.md, HONEST-ASSESSMENT.md). Cited inline.  │
+  │    • Criticism stays honest — only real NeuralMind limitations, never  │
+  │      invented competitor flaws.                                        │
+  │    • Keep the "not affiliated with Reddit" disclosure visible.         │
+  │                                                                        │
+  │  Placeholders to replace are marked:  [[ ADD REAL THREAD ]]            │
+  └──────────────────────────────────────────────────────────────────────┘
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- TODO before publishing: update the year/date in title, meta, visible "Last reviewed", and JSON-LD dateModified. -->
+    <title>NeuralMind on Reddit: Developer Reviews, Costs, Speed &amp; Honest Criticism</title>
+    <meta name="description" content="An honest, maintainer-published summary of what developers say about NeuralMind on Reddit — token/cost reduction, indexing speed, and the real limitations. Every quote links to its original thread. Not affiliated with Reddit, Inc.">
+    <meta name="keywords" content="neuralmind reddit, neuralmind review, neuralmind vs, is neuralmind good, neuralmind token reduction reddit, neuralmind ClaudeAI, neuralmind LocalLLaMA, ai coding agent memory reddit">
+    <meta name="robots" content="noindex,nofollow"><!-- STAGING: remove this line to publish. Keeps the draft out of search until it has real threads. -->
+    <link rel="canonical" href="https://dfrostar.github.io/neuralmind/community/reddit-roundup.html">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="NeuralMind on Reddit: Honest Developer Reviews + Benchmarks">
+    <meta property="og:description" content="What developers actually say about NeuralMind on Reddit — with real thread links, committed benchmarks, and the limitations we acknowledge. Published by the maintainer; not affiliated with Reddit.">
+    <meta property="og:url" content="https://dfrostar.github.io/neuralmind/community/reddit-roundup.html">
+
+    <!--
+      JSON-LD: Article + FAQPage.
+      Deliberately NOT DiscussionForumPosting — this is our summary, not a forum
+      post, and claiming otherwise would impersonate Reddit. Article is correct.
+      Replace dateModified before each publish/refresh.
+    -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "NeuralMind on Reddit: Honest Developer Reviews + Benchmarks",
+      "description": "A maintainer-published summary of real developer discussion of NeuralMind on Reddit, with linked threads, committed benchmarks, and acknowledged limitations.",
+      "author": { "@type": "Person", "name": "Darren Frost" },
+      "publisher": {
+        "@type": "Person",
+        "name": "Darren Frost",
+        "url": "https://github.com/dfrostar/neuralmind"
+      },
+      "dateModified": "REPLACE-BEFORE-PUBLISH",
+      "mainEntityOfPage": "https://dfrostar.github.io/neuralmind/community/reddit-roundup.html",
+      "about": {
+        "@type": "SoftwareApplication",
+        "name": "NeuralMind",
+        "applicationCategory": "DeveloperApplication",
+        "url": "https://dfrostar.github.io/neuralmind/"
+      },
+      "isPartOf": { "@type": "WebSite", "url": "https://dfrostar.github.io/neuralmind/" }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Does NeuralMind work with Claude Code, Cursor, Cline, and Continue?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. NeuralMind ships an MCP server and Claude Code lifecycle hooks. Run 'neuralmind install-mcp' to auto-detect and register with Claude Code, Cursor, Cline, and Claude Desktop, or point any MCP-compatible agent at the server. It also works as a plain CLI for any LLM."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the 40-70x token reduction a 40-70x cut in my LLM bill?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. The 40-70x figure is a reduction in retrieval-stage input tokens versus loading whole files, measured with tiktoken. Output tokens and conversation history are unchanged, so realistic end-to-end cost reduction for a typical agent session is about 3-10x, not 40-70x. This is stated openly in the project's honest assessment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is NeuralMind just embeddings plus vector search?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Retrieval is a 4-layer progressive disclosure graph (identity, summary, clusters, search) over a tree-sitter code graph, and since v0.38 it uses hybrid BM25 + vector search merged via Reciprocal Rank Fusion. A Hebbian synapse layer also learns associations from how you use the codebase."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Will NeuralMind stay free and open source?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The CLI core is MIT licensed with no subscription and no usage limits. Commercial support (priority fixes, deployment consulting, SLAs) is planned for v1.0 but self-hosting stays free."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <style>
+        :root{
+            --bg:#070b15;--bg-raised:#0c1322;--bg-card:#0e1626;--border:#1b2740;--border-strong:#28395c;
+            --text:#e7ecf5;--text-dim:#97a3ba;--text-faint:#67748f;--accent:#8b7cf8;--accent-bright:#a99cff;
+            --accent-deep:#6d5ae6;--green:#4ade80;--red:#f87171;--amber:#fbbf24;
+            --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+            --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;}
+        .container{max-width:920px;margin:0 auto;padding:0 1.5rem;}
+        a{color:var(--accent-bright);text-decoration:none;}
+        a:hover{text-decoration:underline;}
+        code{font-family:var(--mono);font-size:.875em;background:rgba(139,124,248,.1);border:1px solid rgba(139,124,248,.18);padding:.1em .35em;border-radius:4px;color:var(--accent-bright);}
+        header.hero{padding:3.5rem 0 1.5rem;border-bottom:1px solid var(--border);}
+        .eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:.8rem;}
+        h1{font-size:2.4rem;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin-bottom:1rem;}
+        h2{font-size:1.5rem;font-weight:800;letter-spacing:-.01em;margin:2.6rem 0 .9rem;}
+        h3{font-size:1.05rem;font-weight:700;margin:1.6rem 0 .5rem;}
+        p{color:var(--text-dim);margin-bottom:1rem;}
+        p strong,li strong{color:var(--text);}
+        ul,ol{color:var(--text-dim);margin:0 0 1rem 1.2rem;}
+        li{margin-bottom:.5rem;}
+        .disclosure{background:rgba(139,124,248,.07);border:1px solid var(--border-strong);border-left:3px solid var(--accent);border-radius:10px;padding:1.1rem 1.3rem;margin:1.4rem 0;font-size:.92rem;}
+        .disclosure b{color:var(--text);}
+        .staging{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.4);border-radius:10px;padding:1rem 1.3rem;margin:1.4rem 0;font-size:.9rem;color:var(--amber);}
+        .staging b{color:#ffd166;}
+        .tldr{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:1.3rem 1.4rem;margin:1.6rem 0;}
+        .tldr p:last-child{margin-bottom:0;}
+        blockquote{border-left:3px solid var(--border-strong);background:var(--bg-card);border-radius:0 8px 8px 0;padding:.8rem 1.1rem;margin:1rem 0;color:var(--text);font-style:italic;}
+        blockquote .src{display:block;font-style:normal;font-size:.82rem;color:var(--text-faint);margin-top:.4rem;}
+        .placeholder{border:1px dashed var(--border-strong);border-radius:8px;padding:.8rem 1rem;margin:1rem 0;color:var(--text-faint);font-family:var(--mono);font-size:.82rem;background:rgba(255,255,255,.015);}
+        .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;margin:1.2rem 0;}
+        table{width:100%;border-collapse:collapse;font-size:.9rem;min-width:560px;}
+        th,td{padding:.8rem 1rem;text-align:left;}
+        thead th{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);border-bottom:1px solid var(--border-strong);}
+        tbody tr+tr td{border-top:1px solid var(--border);}
+        td:first-child{color:var(--text);font-weight:600;}
+        td{color:var(--text-dim);}
+        .src-tag{font-size:.78rem;color:var(--text-faint);}
+        footer{border-top:1px solid var(--border);background:var(--bg-raised);padding:2.2rem 0;margin-top:3rem;font-size:.85rem;color:var(--text-faint);}
+        footer a{color:var(--text-dim);}
+        .meta{font-size:.85rem;color:var(--text-faint);margin-top:.5rem;}
+    </style>
+</head>
+<body>
+
+<header class="hero">
+    <div class="container">
+        <p class="eyebrow">Community · Independent summary</p>
+        <h1>NeuralMind on Reddit: developer reviews, costs &amp; honest criticism</h1>
+        <p class="meta">Maintained by the NeuralMind project · Last reviewed: <!-- REPLACE-BEFORE-PUBLISH -->REPLACE-DATE</p>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- VISIBLE STAGING NOTICE — delete this whole block when the page goes live with real threads. -->
+    <div class="staging">
+        <b>⚠ Staging draft.</b> This page is not yet published. As of the last review there were no
+        substantial public Reddit threads about NeuralMind to summarize, so it is intentionally
+        kept out of search (<code>noindex</code>) and the sitemap. It goes live only once real,
+        linkable threads exist — see the build comment at the top of this file for the publish gate.
+    </div>
+
+    <div class="disclosure">
+        <b>About this page.</b> This is an independent summary published by the NeuralMind
+        maintainer (<a href="https://github.com/dfrostar/neuralmind">github.com/dfrostar/neuralmind</a>).
+        It is <b>not affiliated with, endorsed by, or sponsored by Reddit, Inc.</b> Every quote links
+        to its original thread — if a claim here has no link, treat it as our summary, not a Reddit
+        quote. Benchmark numbers link to committed, reproducible sources in the repo. We include real
+        criticism of NeuralMind on purpose; if you spot a thread we missed or a summary you disagree
+        with, open an issue.
+        <br><br>
+        Reddit and the Reddit logo are trademarks of Reddit, Inc., used here nominatively to refer
+        to the platform.
+    </div>
+
+    <h2>Quick summary (for skimmers and LLMs)</h2>
+    <div class="tldr">
+        <p><strong>What is NeuralMind?</strong> An open-source, 100% local memory + code-intelligence
+        layer for AI coding agents (Claude Code, Cursor, Cline, Continue, any MCP agent). It indexes a
+        codebase into a 4-layer progressive-disclosure graph so an agent reads ~800 tokens for a code
+        question instead of 50,000+, and a Hebbian "synapse" layer learns which files go together from
+        how you actually work. MIT licensed.
+        <span class="src-tag">Source: <a href="../index.html">project homepage</a>, <a href="https://github.com/dfrostar/neuralmind">repo</a>.</span></p>
+        <p><strong>The honest take:</strong> Strongest for agent users on repos &gt;~10K lines who pay
+        per token. The headline "40–70×" is a retrieval-token reduction, not a 40–70× bill cut —
+        realistic end-to-end savings are <strong>~3–10×</strong>. Language coverage is strongest on
+        Python/TypeScript; the public benchmark table is still small. <span class="src-tag">Source:
+        <a href="../HONEST-ASSESSMENT.md">HONEST-ASSESSMENT.md</a>.</span></p>
+    </div>
+
+    <h2>Live Reddit threads about NeuralMind</h2>
+    <p>We track <code>r/LocalLLaMA</code>, <code>r/ClaudeAI</code>, <code>r/ChatGPTCoding</code>,
+    <code>r/programming</code>, and <code>r/selfhosted</code>. This table lists only real threads with
+    working permalinks.</p>
+
+    <div class="placeholder">
+        [[ ADD REAL THREADS ]] — none populated yet. Each row must be a real thread with a real
+        permalink, real title, and real score read from the page on the date you add it. Do not invent
+        rows. When you have ≥3 real threads, delete this placeholder and the staging notices, then
+        publish (see gate at top of file).
+    </div>
+
+    <div class="table-wrap" hidden><!-- unhide and fill when real threads exist -->
+        <table>
+            <thead><tr><th>Thread</th><th>Subreddit</th><th>Date</th><th>Key takeaway</th></tr></thead>
+            <tbody>
+                <tr><td>[[ real thread title ]]</td><td>r/…</td><td>—</td><td>—</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h2>What developers like</h2>
+    <p>To be populated with <strong>real, linked quotes</strong>. The themes below are the ones the
+    project's own data supports, so they're the claims to look for and cite — not to invent.</p>
+
+    <h3>1. Token / cost reduction on real repos</h3>
+    <p>Verifiable today from the committed public benchmark: <strong>100% gold-file recall at 38–85×
+    fewer tokens</strong> than pasting files, on pinned real OSS repos (<code>requests</code>,
+    <code>click</code>), beating <code>ripgrep</code> on both recall and cost.
+    <span class="src-tag">Source: <a href="../benchmarks/public.md">benchmarks/public.md</a> —
+    reproducible via <code>python -m evals.public.run</code>.</span></p>
+    <div class="placeholder">[[ ADD REAL QUOTE + reddit permalink, or delete this subsection ]]</div>
+
+    <h3>2. Local-first / privacy</h3>
+    <p>100% local indexing, no telemetry, nothing leaves the machine — the basis for the GDPR/HIPAA-
+    friendly and NIST AI RMF framing. <span class="src-tag">Source: <a href="../wiki/FAQ.md">FAQ</a>,
+    homepage.</span></p>
+    <div class="placeholder">[[ ADD REAL QUOTE + reddit permalink, or delete this subsection ]]</div>
+
+    <h3>3. Finds the right code, not just less of it</h3>
+    <p><strong>MRR 0.96</strong> on the public benchmark (ranks the correct file at the top), vs
+    <strong>0.23</strong> for the incumbent <code>codebase-memory-mcp</code> on the same pinned repos
+    and scorer. <span class="src-tag">Source: <a href="../benchmarks/public.md">benchmarks/public.md</a>
+    — pure retrieval ranking, no LLM agent loop.</span></p>
+    <div class="placeholder">[[ ADD REAL QUOTE + reddit permalink, or delete this subsection ]]</div>
+
+    <h2>Common criticism (and our response)</h2>
+    <p><strong>These are real, acknowledged limitations</strong> — drawn from the project's own
+    <a href="../HONEST-ASSESSMENT.md">honest assessment</a>, not attributed to any Reddit user. As real
+    threads raising these appear, add the linked quote above each response. We keep this section even
+    when it stings, because a page that admits flaws gets trusted (and cited) more than one that
+    doesn't.</p>
+
+    <h3>1. "40–70× sounds like marketing"</h3>
+    <p><strong>Fair.</strong> The number is real <em>for what it measures</em> — retrieval input tokens
+    vs. loading every file — but it is not a 40–70× cut to your bill. Output tokens and conversation
+    history are unchanged, so realistic end-to-end savings are <strong>~3–10×</strong> for a typical
+    session. We say this in our own docs. <span class="src-tag">Source:
+    <a href="../HONEST-ASSESSMENT.md">HONEST-ASSESSMENT.md</a>.</span></p>
+
+    <h3>2. "Weaker on Rust / C++ / polyglot than on Python &amp; TypeScript"</h3>
+    <p><strong>True.</strong> Ten languages are indexed by the bundled tree-sitter backend, but
+    structural depth varies — e.g. C/C++ macros aren't indexed, templates aren't specialized, and
+    dynamic-language call edges are best-effort. Retrieval quality tracks graph quality, which tracks
+    per-language parser coverage. <span class="src-tag">Source: <a href="../HONEST-ASSESSMENT.md">
+    HONEST-ASSESSMENT.md</a>, homepage language notes.</span></p>
+
+    <h3>3. "The benchmark table is mostly the maintainer's own repos"</h3>
+    <p><strong>True, and disclosed.</strong> Outside benchmarks take time to accumulate; until there
+    are 10+ external entries, treat the headline range as directional, not predictive. Contributing
+    your own numbers — even disappointing ones — is the single most useful thing you can give back:
+    <code>neuralmind benchmark . --contribute</code>. <span class="src-tag">Source:
+    <a href="../HONEST-ASSESSMENT.md">HONEST-ASSESSMENT.md</a>.</span></p>
+
+    <h3>4. "Prompt caching already solves most of the cost problem"</h3>
+    <p><strong>Partly.</strong> Long-context + prompt caching is the most honest competitor — it gets
+    ~80–90% of the cost reduction with no retrieval infrastructure. NeuralMind composes with caching
+    (a smaller cached prompt is cheaper to read) but the marginal win is smaller than the headline.
+    Measure on your own workload before assuming. <span class="src-tag">Source:
+    <a href="../comparisons/vs-prompt-caching.md">vs-prompt-caching</a>.</span></p>
+
+    <h2>Reddit FAQ</h2>
+    <p>Answers below are sourced from the project <a href="../wiki/FAQ.md">FAQ</a> and
+    <a href="../HONEST-ASSESSMENT.md">honest assessment</a>. Link a real thread next to any question
+    once one exists.</p>
+
+    <h3>Does it work with Claude Code / Cursor / Cline / Continue?</h3>
+    <p>Yes — via the bundled MCP server and Claude Code hooks. <code>neuralmind install-mcp</code>
+    auto-detects and registers with Claude Code, Cursor, Cline, and Claude Desktop; any MCP agent or
+    plain CLI works too.</p>
+
+    <h3>Is it just embeddings + vector search?</h3>
+    <p>No. It's a 4-layer progressive-disclosure graph over a tree-sitter code graph, with hybrid
+    BM25 + vector retrieval (Reciprocal Rank Fusion, since v0.38) and a Hebbian synapse layer that
+    learns co-edited associations.</p>
+
+    <h3>Will it stay free / open source?</h3>
+    <p>The CLI core is MIT, no subscription, no usage limits. Commercial support is planned for v1.0;
+    self-hosting stays free.</p>
+
+    <h2>Benchmarks: what's actually measured</h2>
+    <p>Every number here is committed and reproducible. We do <strong>not</strong> publish numbers we
+    haven't run (there is, for example, no SWE-bench score — that hasn't been measured, so it isn't
+    claimed).</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Metric</th><th>Measured result</th><th>Scope / caveat</th></tr></thead>
+            <tbody>
+                <tr><td>Gold-file recall</td><td>100%</td><td>Pinned OSS repos (requests, click), def-site oracle, no LLM judge</td></tr>
+                <tr><td>Token reduction vs file-paste</td><td>38–85×</td><td>Same public benchmark; retrieval-stage tokens</td></tr>
+                <tr><td>Retrieval ranking (MRR)</td><td>0.96 vs 0.23</td><td>vs codebase-memory-mcp, matched depth, pure retrieval</td></tr>
+                <tr><td>Synapse hit-rate lift</td><td>+11.7 pts (71.7→83.3%)</td><td>A/B on bundled reference fixture (smaller scope)</td></tr>
+                <tr><td>Realistic end-to-end cost</td><td>~3–10×</td><td>Not 40–70× — output + history unchanged</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="src-tag">Sources: <a href="../benchmarks/public.md">benchmarks/public.md</a>,
+    <a href="../HONEST-ASSESSMENT.md">HONEST-ASSESSMENT.md</a>. Run it yourself:
+    <code>neuralmind benchmark --public</code>.</p>
+
+    <h2>Contribute</h2>
+    <p>Found a Reddit thread we missed, or disagree with a summary here? Open an issue or PR on
+    <a href="https://github.com/dfrostar/neuralmind">GitHub</a>. We update this page when real threads
+    appear — not on a fixed schedule, and never with invented quotes.</p>
+
+</main>
+
+<footer>
+    <div class="container">
+        <p><a href="../index.html">← NeuralMind home</a> · <a href="../comparisons/README.md">Comparisons</a> · <a href="../HONEST-ASSESSMENT.md">Honest assessment</a> · <a href="https://github.com/dfrostar/neuralmind">GitHub</a></p>
+        <p style="margin-top:.8rem;">Independent summary by the NeuralMind project. Not affiliated with Reddit, Inc.</p>
+    </div>
+</footer>
+
+</body>
+</html>

@@ -25,6 +25,14 @@ Cursor's `@codebase` feature indexes your repository and injects relevant chunks
 
 They are not mutually exclusive: run NeuralMind's MCP server inside Cursor and you get compression on top of Cursor's own indexing.
 
+## What developers say on Reddit
+
+> **Honest note:** this section lists only real, linked threads comparing NeuralMind and Cursor `@codebase`. None are populated yet — we don't invent quotes or usernames. Found a relevant thread? [Open an issue](https://github.com/dfrostar/neuralmind/issues) and we'll add it with a link to the original.
+
+<!-- When a real thread exists, replace the note above with linked quotes, e.g.:
+> "actual quote text" — u/realusername on [r/ClaudeAI](https://reddit.com/r/ClaudeAI/comments/...)
+Rules: real permalink, real quote, no fabrication. See ../community/README.md. -->
+
 ---
 
 [← Back to comparison index](./README.md)
