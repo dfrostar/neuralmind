@@ -19,7 +19,13 @@ post there — we don't post under a disguise.
 | [`r-localllama.md`](r-localllama.md) | r/LocalLLaMA | Self-post, maker-disclosed, four-benefit block with live links. |
 | [`awesome-mcp-servers.md`](awesome-mcp-servers.md) | `awesome-mcp-servers` PR | One-line directory entry + PR description. |
 | [`hn-warmup-comments.md`](hn-warmup-comments.md) | Hacker News (other threads) | Genuine, on-topic, disclosed comments on adjacent posts. Not drive-by promo. |
+| [`reddit-seed-kit.md`](reddit-seed-kit.md) | Reddit (r/LocalLLaMA, r/ClaudeAI, …) | Disclosed-maker question post, post-release AMA, and support-answer comments that seed the real threads summarized on the [community Reddit roundup](../community/reddit-roundup.html). |
 | [`NEXT-SESSION.md`](NEXT-SESSION.md) | (internal) | Session handoff + "what we did" record + recommended next steps. Copy-paste to resume. |
+
+> **Reddit roundup page:** the threads these Reddit posts produce feed
+> [`../community/reddit-roundup.html`](../community/reddit-roundup.html) (an
+> honest, maintainer-disclosed summary, currently staging/unpublished). Setup
+> runbook: [`../community/SETUP.md`](../community/SETUP.md).
 
 ## Live anchors (keep these accurate)
 
