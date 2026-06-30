@@ -1,0 +1,23 @@
+{
+  "_about": "SYNTHETIC fixture for `runner.py --selfcheck` and the hermetic unit test. These are NOT real SWE-bench tasks and carry no SHAs — the real corpus is derived from the canonical SWE-bench dataset at `--run` time (see README.md), so we never hardcode (and risk mis-stating) instance base_commits or gold patches. This fixture exists only to validate the patch→gold-files parser and the recall metric math offline, with zero network and zero heavy deps.",
+  "tasks": [
+    {
+      "instance_id": "synthetic__demo-1",
+      "repo": "synthetic/demo",
+      "base_commit": "0000000000000000000000000000000000000000",
+      "language": "python",
+      "problem_statement": "Session does not persist cookies across redirects; fix the rebuild step.",
+      "patch": "diff --git a/src/demo/sessions.py b/src/demo/sessions.py\n--- a/src/demo/sessions.py\n+++ b/src/demo/sessions.py\n@@ -10,6 +10,7 @@ class Session:\n     def rebuild_auth(self, prepared_request, response):\n-        pass\n+        prepared_request.headers.update(self.cookies)\ndiff --git a/src/demo/cookies.py b/src/demo/cookies.py\n--- a/src/demo/cookies.py\n+++ b/src/demo/cookies.py\n@@ -1,2 +1,3 @@\n class CookieJar:\n+    persist = True\n",
+      "expected_gold_files": ["sessions.py", "cookies.py"]
+    },
+    {
+      "instance_id": "synthetic__demo-2",
+      "repo": "synthetic/demo",
+      "base_commit": "1111111111111111111111111111111111111111",
+      "language": "python",
+      "problem_statement": "Timeout exception is not raised when the connect deadline elapses.",
+      "patch": "diff --git a/src/demo/exceptions.py b/src/demo/exceptions.py\n--- a/src/demo/exceptions.py\n+++ b/src/demo/exceptions.py\n@@ -5,3 +5,5 @@ class RequestError(Exception):\n+class Timeout(RequestError):\n+    pass\n",
+      "expected_gold_files": ["exceptions.py"]
+    }
+  ]
+}

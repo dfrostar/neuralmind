@@ -21,11 +21,11 @@ guidance is "stay on latest." Because NeuralMind is local-first with
 no exfiltration surface, the patch urgency for older versions is
 typically low.
 
-| Version | Status              | Notes                                        |
-| ------- | ------------------- | -------------------------------------------- |
-| 0.11.x  | :white_check_mark:  | Current release; fixes land here.            |
-| 0.10.x  | :warning:           | Critical fixes only.                         |
-| ≤ 0.9.x | :x:                 | Unsupported — `pip install --upgrade neuralmind`. |
+| Version  | Status              | Notes                                        |
+| -------- | ------------------- | -------------------------------------------- |
+| 0.41.x   | :white_check_mark:  | Current release; fixes land here.            |
+| 0.40.x   | :warning:           | Critical fixes only.                         |
+| ≤ 0.39.x | :x:                 | Unsupported — `pip install --upgrade neuralmind`. |
 
 The supported window will widen when we tag v1.0.0.
 
@@ -82,15 +82,19 @@ Please include the following information:
 
 NeuralMind processes code from your projects. Here's what you should know:
 
-1. **Local Processing.** All embeddings are generated and stored locally using ChromaDB. The Hebbian synapse layer (v0.4+) and the directional transitions table (v0.11+) are SQLite-backed and also local.
-2. **No External Transmission.** Code is not sent to external servers (unless you point ChromaDB at a remote backend yourself).
-3. **Storage Locations.**
-   - Vector index: `<project>/graphify-out/neuralmind_db/`
-   - Synapse store + transitions: `<project>/.neuralmind/synapses.db`
+1. **Local Processing.** All embeddings are generated and stored locally. Since v0.29 the default backend is **ChromaDB-free** — embeddings come from a bundled `all-MiniLM-L6-v2` **ONNX** model run on `onnxruntime` (CPU), and vectors are stored in the on-disk `turbovec` index. There is **no cloud embedding API call** on any backend. The Hebbian synapse layer (v0.4+) and the directional transitions table (v0.11+) are SQLite-backed and also local.
+2. **No External Transmission.** Code is not sent to external servers. The only outbound network event in the default install is a **one-time, SHA256-pinned** download of the ONNX model archive into `~/.cache/neuralmind/onnx_models/` (a static S3 artifact, not an API; a corrupted/swapped download fails loudly). Pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` for air-gapped installs and there is **no network at install, build, query, or runtime**.
+3. **Storage Locations** (all under the project, never committed unless noted):
+   - Vector index (turbovec default, or ChromaDB if selected): `<project>/graphify-out/neuralmind_db/`
+   - Input graph: `<project>/graphify-out/graph.json`; canonical IR (v0.23+): `<project>/.neuralmind/ir.json` (+ `ir.meta.json`)
+   - Synapse store + directional transitions + namespaces: `<project>/.neuralmind/synapses.db`
+   - BM25 keyword index (v0.38+): `<project>/.neuralmind/bm25_index.json`
    - Auto-memory file consumed by Claude Code: `<project>/.neuralmind/SYNAPSE_MEMORY.md`
    - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes)
    - Event log for the graph-view stream (v0.6+): `<project>/.neuralmind/events.jsonl`
-4. **What gets persisted.** Edge weights, transition counts, and the most recent Bash command's stdout/stderr (the latter capped). Source code itself is not duplicated into these files — only references (node ids, file paths).
+   - MCP audit trail (v0.41): `<project>/.neuralmind/audit_events.jsonl`
+   - **Committed** team-memory bundle (v0.30+, opt-in): `<project>/.neuralmind-team-memory.json` — travels with `git clone` (learned weights only, no source)
+4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped), and MCP audit events. Source code itself is **not** duplicated into these files — only references (node ids, file paths). The committed team-memory bundle holds learned associations, not code.
 
 ### Best Practices for Enterprise Deployments
 
@@ -136,10 +140,16 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 ### Known Security Considerations
 
-1. **ChromaDB.** We rely on ChromaDB for vector storage. Monitor their security advisories.
+1. **ChromaDB (opt-in fallback since v0.29).** ChromaDB is **no longer the default
+   backend**. On mainstream platforms (Linux, Apple Silicon, Windows x64) the default
+   is the ChromaDB-free `turbovec`/ONNX stack, so ChromaDB's dependency tree — and the
+   advisory below — are **absent from the default install** entirely. ChromaDB is only
+   pulled in as a transparent fallback on platforms turbovec has no wheel for (Intel
+   macOS, Windows ARM) or when you explicitly select the `chroma` backend. If you do
+   run ChromaDB, monitor their advisories.
 
    - **CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c (chromadb ≥ 1.0.0, CRITICAL) —
-     not exploitable in NeuralMind.**
+     not in the default install, and not exploitable even when ChromaDB is used.**
      This is a pre-authentication remote code-execution flaw in ChromaDB's
      *client/server* HTTP API (`/api/v2/.../collections`), triggered by a
      malicious model repository when `trust_remote_code=true`. NeuralMind
@@ -158,11 +168,21 @@ NeuralMind processes code from your projects. Here's what you should know:
        [GHSA-f4j7-r4q5-qw2c](https://github.com/advisories/GHSA-f4j7-r4q5-qw2c) ·
        [upstream issue](https://github.com/chroma-core/chroma/issues/6717).
 
-2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`), be aware:
+2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened.
-   - RBAC is enabled by default with three roles: `admin` (all tools), `builder` (retrieval tools — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`), `reader` (read-only retrieval). The synapse-family tools (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`, `export_synapse_memory`) are **admin-only by default**.
-   - If you customize the role policy in `neuralmind/mcp_security.py`, audit it the same way you would any access-control change.
-   - Audit events are written to `<project>/.neuralmind/audit.jsonl` on every tool call.
+   - RBAC is enabled by default (`neuralmind/mcp_security.py`) with three roles:
+     - `admin` — all tools.
+     - `builder` — `wakeup`, `query`, `search`, `build`, `stats`, `benchmark`, `skeleton`.
+     - `reader` — the same retrieval set **minus `build`**.
+     - Everything else is **admin-only by default**: the synapse family
+       (`synaptic_neighbors`, `synapse_stats`, `synapse_decay`, `next_likely`,
+       `export_synapse_memory`) plus the learning/feedback tools (`feedback`, `review`).
+   - A per-actor **rate limiter** (`RateLimiter`, default 60 calls/min) is enforced
+     alongside RBAC.
+   - If you customize the role policy (backend config `security.roles` or
+     `neuralmind/mcp_security.py`), audit it the same way you would any access-control change.
+   - Audit events — actor, role, tool, RBAC decision, rate-limit hits — are written to
+     `<project>/.neuralmind/audit_events.jsonl` on every tool call.
 
 3. **Claude Code hooks (PostToolUse, UserPromptSubmit, SessionStart, PreCompact).** Hooks execute the `neuralmind` CLI locally with the agent's environment.
    - Hooks are installed by explicit user action (`neuralmind install-hooks`) — never silently.
@@ -179,11 +199,46 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 6. **Directional transitions (v0.11+).** The `synapse_transitions` table records `(from_node, to_node)` pairs derived from the watcher's edit order. The data shape is the same as the existing undirected synapses; the same local-only / no-exfiltration guarantees apply.
 
-7. **Dependencies.** Keep them updated:
-   ```bash
-   pip install --upgrade neuralmind
-   ```
-   CycloneDX SBOM is attached to every release ([air-gapped install walkthrough](docs/use-cases/air-gapped.md)).
+7. **Team memory bundle (v0.30+).** `neuralmind memory publish` writes a **committed** `<project>/.neuralmind-team-memory.json` that teammates inherit on their next session/build. Threat model: import is **MAX-merge only** (it can never *weaken* a teammate's existing weights), is written **only** to the `shared` namespace (never `personal`/`branch`), is content-hash-gated (imported once), and is subject to normal decay — so a malicious or over-eager bundle cannot permanently distort recall. It carries learned associations, **not source code**. Disable inheritance with `NEURALMIND_TEAM_MEMORY=0` (fail-open). Namespaces (v0.24+) keep `branch:`/`personal`/`shared`/`ephemeral` memory partitioned so a branch spike can't pollute `main`.
+
+8. **Schema/artifact indexing (v0.40+).** OpenAPI/AsyncAPI (`.yaml`/`.yml`), SQL DDL (`.sql`), and Protocol Buffers (`.proto`) are indexed as `document` nodes alongside code. These can surface API/DB schemas in query results — apply the same secret-scanning hygiene you would for code (strip credentials from spec files before indexing). Plain YAML config without an `openapi`/`asyncapi`/`swagger` key is silently skipped.
+
+9. **Reuse-feedback hook (v0.38+).** Edit/Write PostToolUse matchers detect when freshly-written code reaches for symbols already in the graph and feed that **reuse** signal into the synapse layer. Data flow is local only: file path + extracted symbol tokens → a synapse weight update; no diff or file content is stored. Disable with `NEURALMIND_REUSE_FEEDBACK=0`. The opt-in selector autotuner (`NEURALMIND_SELECTOR_AUTOTUNE=1`, v0.26+) likewise reads only local query-success signals to adjust L2 recall depth.
+
+10. **Dependencies.** Keep them updated:
+    ```bash
+    pip install --upgrade neuralmind
+    ```
+    A **CycloneDX JSON** SBOM (`neuralmind-vX.Y.Z.sbom.json`, generated by Anchore `syft` over the full transitive tree) is attached to every release — see `.github/workflows/sbom.yml` and the [air-gapped install walkthrough](docs/use-cases/air-gapped.md).
+
+### Privacy & behaviour controls (environment variables)
+
+Every persistence/learning surface has an off-switch. For a locked-down or
+air-gapped deployment, these are the knobs a security reviewer cares about
+(defaults reflect a normal install; all are read from the process environment):
+
+| Variable | Effect | Default |
+|---|---|---|
+| `NEURALMIND_MEMORY=0` | Disable local query-event logging | on |
+| `NEURALMIND_LEARNING=0` | Disable Hebbian synapse learning from interactions | on |
+| `NEURALMIND_SYNAPSE_INJECT=0` | Don't inject spreading-activation recall at prompt time | on |
+| `NEURALMIND_SYNAPSE_EXPORT=0` | Don't write `SYNAPSE_MEMORY.md` / Claude Code auto-memory | on |
+| `NEURALMIND_TEAM_MEMORY=0` | Don't import the committed team-memory bundle | on |
+| `NEURALMIND_REUSE_FEEDBACK=0` | Disable the Edit/Write reuse-feedback signal | on |
+| `NEURALMIND_OUTPUT_CACHE=0` | Disable the Bash recovery cache (`last_output.json`) | on |
+| `NEURALMIND_EVENT_LOG=0` | Disable the `events.jsonl` graph-view bridge | on |
+| `NEURALMIND_BYPASS=1` | Skip output compression for a single command | off |
+| `NEURALMIND_SELECTOR_AUTOTUNE=1` | Opt **in** to selector auto-tuning (local query signals only) | off |
+| `NEURALMIND_PRECISION=1` | Opt **in** to SCIP compiler-accurate call edges | off |
+| `NEURALMIND_BM25=0` | Disable BM25 hybrid keyword search | on |
+| `NEURALMIND_NAMESPACE=<name>` | Override the memory namespace (else resolved from git branch) | branch-resolved |
+| `NEURALMIND_ONNX_MODEL_DIR=<dir>` | Use a pre-staged ONNX model (air-gapped; skips the one-time download) | `~/.cache/neuralmind/onnx_models/` |
+| `NEURALMIND_NO_DAEMON=1` | Force direct mode (no warm-state daemon) | off |
+
+Compression-tuning knobs (`NEURALMIND_BASH_TAIL`, `NEURALMIND_BASH_MAX_CHARS`,
+`NEURALMIND_BASH_SMALL`, `NEURALMIND_SEARCH_MAX`, `NEURALMIND_OFFLOAD_THRESHOLD`,
+`NEURALMIND_OUTPUT_CACHE_MAX`) change *how much* output is kept locally, not
+*whether* anything leaves the machine — nothing does.
 
 ---
 
@@ -289,4 +344,4 @@ We thank all security researchers who help keep NeuralMind and its users safe.
 
 ---
 
-_This security policy is subject to change. Last updated: 2026-05-28 (v0.11.0 — covers PostToolUse hooks, MCP RBAC defaults, directional transitions, recovery cache, watcher trust model)._
+_This security policy is subject to change. Last updated: 2026-06-30 (v0.41.0 — ChromaDB-free ONNX default + no-cloud embedding story, the 14-tool MCP surface with builder/reader RBAC + per-actor rate limiting + `audit_events.jsonl`, the team-memory bundle threat model, schema-artifact indexing, the reuse-feedback hook, memory namespaces, and the full privacy/behaviour env-var table)._
