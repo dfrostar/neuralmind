@@ -26,6 +26,14 @@ GitHub Copilot is Microsoft/GitHub's AI pair programmer: inline completions in y
 
 They are complementary: Copilot handles inline suggestions, NeuralMind handles the "explain / plan / refactor" conversations in whatever agent you prefer. If you are paying per-token for a non-Copilot agent, NeuralMind's savings compound with every query.
 
+## What developers say on Reddit
+
+> **Honest note:** this section lists only real, linked threads comparing NeuralMind and GitHub Copilot. None are populated yet — we don't invent quotes or usernames. Found a relevant thread? [Open an issue](https://github.com/dfrostar/neuralmind/issues) and we'll add it with a link to the original.
+
+<!-- When a real thread exists, replace the note above with linked quotes, e.g.:
+> "actual quote text" — u/realusername on [r/ChatGPTCoding](https://reddit.com/r/ChatGPTCoding/comments/...)
+Rules: real permalink, real quote, no fabrication. See ../community/README.md. -->
+
 ---
 
 [← Back to comparison index](./README.md)
