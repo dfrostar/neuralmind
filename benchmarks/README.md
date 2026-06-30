@@ -51,6 +51,7 @@ the same checks that run on every PR.
 | 6 | **Competitor head-to-head** — scored retrieval ranking vs `codebase-memory-mcp 0.8.1` | `python -m evals.public.competitor` | `pip install codebase-memory-mcp==0.8.1` | [`bench/public/competitor/`](../bench/public/competitor/) |
 | 7 | **Latency / memory / disk** — turbovec vs chroma index size, search p50/p95, RSS | `python benchmark_turbovec.py --out results.json` | none | [`BENCHMARK_TURBOVEC.md`](../BENCHMARK_TURBOVEC.md) |
 | 8 | **Your own repo** — reduction ratio, tokens/query, est. monthly savings | `neuralmind benchmark .` | none | — |
+| 9 | **SWE-bench retrieval** — does NeuralMind surface the files a real fix edits? (gold-patch-file recall@k / MRR) | `python -m evals.swe_bench.runner --run` | `pip install datasets` + network | [`bench/swe_bench/`](../bench/swe_bench/REPRODUCE.md) (offline gate: `--selfcheck`) |
 
 Useful variants of #8:
 
@@ -84,20 +85,22 @@ The critique that asks "where are the independent benchmarks?" is partly right.
 These gaps are real and **not** papered over with invented numbers — they're
 tracked on [`ROADMAP.md`](../ROADMAP.md):
 
-- **SWE-bench / agent-loop task completion.** Every harness here scores
-  **retrieval** (does the right code land in the window?), not end-to-end
-  **issue-resolution** accuracy. NeuralMind is a context layer; wiring it behind a
-  full agent on SWE-bench and reporting solve-rate deltas is unbuilt.
+- **SWE-bench *solve-rate*.** Harness #9 now scores SWE-bench **retrieval**
+  (gold-patch-file recall) — the layer NeuralMind controls. The end-to-end
+  **issue-resolution solve-rate** (wiring NeuralMind behind a full coding agent and
+  running the SWE-bench test harness) is **scaffolded but unbuilt**: it needs an LLM
+  API key and a sandboxed agent loop. We won't publish a solve-rate we haven't run —
+  see [`evals/swe_bench/README.md`](../evals/swe_bench/README.md).
 - **Aider polyglot *agent* accuracy.** We compare *features* against Aider's
   repo-map ([`docs/comparisons/vs-aider-repomap.md`](../docs/comparisons/vs-aider-repomap.md))
   and score our own retrieval, but there is no head-to-head "Aider+LLM vs
   NeuralMind+LLM solve-rate per language" number.
 - **Scored head-to-heads beyond one competitor.** Harness #6 scores exactly one
-  incumbent (`codebase-memory-mcp`). Bloop, Sourcegraph Cody, Continue/Cline, and
-  Headroom have **qualitative** comparison pages
-  ([`docs/comparisons/`](../docs/comparisons/README.md)) but no reproducible scored
-  runs — their differing interfaces (server, IDE extension, HTTP proxy) make
-  fair-play normalization real work.
+  incumbent (`codebase-memory-mcp`). The exact reproducibility status of Bloop,
+  Sourcegraph Cody, Continue/Cline, and Headroom — what's adaptable vs. blocked by
+  accounts / no headless interface / wrong axis — is documented in
+  [`evals/public/COMPETITORS.md`](../evals/public/COMPETITORS.md), with the
+  fairness contract a new adapter must meet.
 - **Independent third-party runs.** The public benchmark is reproducible, but the
   published numbers are still maintainer-run. Outside runs — *especially*
   disappointing ones (e.g. "8× not 50× on my Rust monorepo") — are the single most
@@ -111,3 +114,6 @@ tracked on [`ROADMAP.md`](../ROADMAP.md):
 
 If you close any of these with real data, a PR is welcome — that's exactly the
 contribution the project most needs.
+
+> The full external critique mapped point-by-point to coverage (closed / partial /
+> deferred) lives in [`docs/CRITIQUE-COVERAGE.md`](../docs/CRITIQUE-COVERAGE.md).

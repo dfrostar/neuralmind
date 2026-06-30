@@ -15,7 +15,10 @@ sharpen the honesty are welcome.
 > isn't enough, the repo-size envelope, and the per-language support
 > matrix with explicitly-unsupported features — see
 > [Limits & Failure Modes](wiki/Limits-and-Failure-Modes.md). For the
-> reproducible numbers, see [`benchmarks/`](../benchmarks/README.md).
+> reproducible numbers, see [`benchmarks/`](../benchmarks/README.md). For the
+> recurring external critique mapped point-by-point to where each item is
+> addressed (or honestly deferred), see
+> [Critique Coverage](CRITIQUE-COVERAGE.md).
 
 ---
 

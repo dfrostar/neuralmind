@@ -1907,6 +1907,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 |----------|---------|
 | **[Business Case](docs/BUSINESS-CASE.md)** | Fact-based ROI argument with provable claims, math you can plug your numbers into, and three concrete scenarios |
 | **[Honest Assessment](docs/HONEST-ASSESSMENT.md)** | Skeptic's companion — when NeuralMind isn't worth installing, what the headline numbers don't measure |
+| **[Critique Coverage](docs/CRITIQUE-COVERAGE.md)** | The recurring external critique mapped point-by-point to where it's addressed, what's partial, and what's honestly deferred (and why) |
 | **[Enterprise Use Cases](docs/ENTERPRISE.md)** | Regulated industries, on-premise, multi-team — what to know before pitching internally |
 | **[Setup Guide](https://github.com/dfrostar/neuralmind/wiki/Setup-Guide)** | First-time setup for Claude Code, Claude Desktop, Cursor, any LLM |
 | **[CLI Reference](https://github.com/dfrostar/neuralmind/wiki/CLI-Reference)** | All commands and options |
