@@ -53,7 +53,7 @@ jobs:
 
       - name: Restore NeuralMind index cache
         id: cache-neuralmind
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .neuralmind/
           # Key changes whenever any source file changes — forces re-index
