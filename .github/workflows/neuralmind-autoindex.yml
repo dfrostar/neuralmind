@@ -82,7 +82,7 @@ jobs:
 
       - name: Commit team memory snapshot
         # Only commits when .neuralmind-team-memory.json actually changed.
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update NeuralMind team memory snapshot [skip ci]"
           file_pattern: ".neuralmind-team-memory.json"
