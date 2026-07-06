@@ -125,6 +125,18 @@ The brain layer learns continuously from how you actually work — file co-edits
 
 This is not "another RAG tool." It's the memory layer that everything else assumes the agent already has.
 
+### Who writes what — the memory trust boundary
+
+**Agents learn in their own store; the human layer only changes through review.** That one sentence is enforced mechanically, not requested politely:
+
+| Layer | Who writes it | Where it lives |
+|---|---|---|
+| **Human-curated** | You — hooks and agents never write it | `CLAUDE.md`, docs, config |
+| **Agent-learned** | The synapse layer — auto-learned, weighted, decays when stale | `.neuralmind/synapses.db` (`personal` / `branch:*` namespaces, git-ignored) |
+| **Team-ratified** | Agent-learned signal promoted only through a PR a human merges | `.neuralmind-team-memory.json` (provenance-stamped, MAX-merged) |
+
+So a memory the agent invented can never silently become a memory your team trusts — the only path upward is a reviewable diff. This separation is also the practical defense against memory poisoning: an agent-writable store the agent also trusts on read is a prompt-injection persistence mechanism; here the writable and trusted layers are different files with different gatekeepers. Background on why this boundary matters (and how others state it as policy where NeuralMind enforces it as mechanism): [TRINODE.md](TRINODE.md).
+
 ---
 
 ## ⚡ 30-second proof — see the memory work
@@ -187,6 +199,7 @@ The headline you can stand on: **retrieval reduction is measured in CI on every 
 - **Explainable AI** – Every context decision is auditable. Know exactly which code was retrieved (Extracted) vs. inferred by the model.
 - **Open-Source & MIT Licensed** – Full transparency. No hidden clauses, no vendor lock-in. Audit the code yourself.
 - **GDPR/HIPAA-Friendly** – Process sensitive code without compliance concerns. All data stays under your control.
+- **Trust-Separated Memory** – Agents learn in their own decaying store; human-curated files are never written by hooks, and learned memory reaches the shared team layer only through a PR-reviewed, provenance-stamped bundle ([details](#who-writes-what--the-memory-trust-boundary)).
 
 **For CTOs & Security Teams:**
 - ✅ Zero external dependencies for code storage

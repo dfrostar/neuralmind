@@ -128,12 +128,15 @@ portable cross-agent memory format and the team-memory arc
 
 ## Recommendation
 
-1. **Positioning hygiene (now, costless):** state the write policy in one
-   sentence in `README.md` and the wiki, and name the three layers we
-   already have — human-curated (read-only to agents), agent-learned
-   (decaying synapse store), team-ratified (PR-reviewed bundle). We
-   independently built the stronger version of Tri-Node's headline; say so
-   plainly, and credit the convergence where it's visible.
+1. **Positioning hygiene (shipped alongside this note):** state the write
+   policy in one sentence in `README.md` and the wiki, and name the three
+   layers we already have — human-curated (read-only to agents),
+   agent-learned (decaying synapse store), team-ratified (PR-reviewed
+   bundle). We independently built the stronger version of Tri-Node's
+   headline; say so plainly, and credit the convergence where it's visible.
+   Done in the same PR as this note: README "Who writes what — the memory
+   trust boundary" section + Security & Compliance bullet, and the wiki
+   Learning-Guide's "Write policy" section.
 2. **Feature (measured, then shipped):** the promotion protocol above —
    agent-proposed, human-ratified memory promotion as a reviewable diff —
    gated on the v0.13 harness, aligned with #175 and the v0.16 portable
