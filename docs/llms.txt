@@ -1,0 +1,52 @@
+# NeuralMind
+
+> Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and compresses tool output before the model reads it. Side effect: 40–70× cheaper code questions, measured by a reproducible public benchmark on real pinned OSS repos. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. MIT-licensed, `pip install neuralmind`.
+
+Key facts, each backed by a runnable eval (raw traces committed):
+
+- Cheaper context: 100% gold-file recall at 38–85× fewer tokens than pasting files; beats ripgrep on both recall and cost (public benchmark on `requests` and `click`).
+- Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (pure retrieval ranking, reproducible).
+- Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate +11.7 points, budget-neutral (reference fixture A/B).
+- Better-grounded answers: faithfulness +0.143 at a matched token budget (reference fixture parity gate).
+- 100% local: no code leaves the machine; ChromaDB-free default install on Linux, Apple Silicon (macOS arm64), and Windows x64 (ChromaDB is the automatic fallback on other platforms); NIST AI RMF mapped.
+- Indexes ten languages out of the box via bundled tree-sitter (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) plus OpenAPI, SQL DDL, and Protocol Buffers schema artifacts.
+
+## Docs
+
+- [Homepage](https://dfrostar.github.io/neuralmind/): overview, benefits, what's new
+- [About / how it works](https://dfrostar.github.io/neuralmind/about.html): architecture, synapse layer, release history
+- [Installation](https://dfrostar.github.io/neuralmind/wiki/Installation.html): pip install, one-command MCP setup for Claude Code, Cursor, Cline, Claude Desktop
+- [CLI reference](https://dfrostar.github.io/neuralmind/wiki/CLI-Reference.html): every command and environment variable
+- [Architecture](https://dfrostar.github.io/neuralmind/wiki/Architecture.html): progressive L0–L3 context disclosure, graph + vector + BM25 hybrid retrieval
+- [FAQ](https://dfrostar.github.io/neuralmind/wiki/FAQ.html)
+- [Limits and failure modes](https://dfrostar.github.io/neuralmind/wiki/Limits-and-Failure-Modes.html): honest scope — where NeuralMind does not win
+
+## Benchmarks
+
+- [Public benchmark methodology and results](https://dfrostar.github.io/neuralmind/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
+- [Live benchmark dashboard](https://dfrostar.github.io/neuralmind/benchmarks/): charts, per-query traces
+
+## Comparisons
+
+- [vs long-context models](https://dfrostar.github.io/neuralmind/comparisons/vs-long-context.html)
+- [vs prompt caching](https://dfrostar.github.io/neuralmind/comparisons/vs-prompt-caching.html)
+- [vs vanilla RAG](https://dfrostar.github.io/neuralmind/comparisons/vs-rag.html)
+- [vs Cursor codebase indexing](https://dfrostar.github.io/neuralmind/comparisons/vs-cursor-codebase.html)
+- [vs GitHub Copilot](https://dfrostar.github.io/neuralmind/comparisons/vs-github-copilot.html)
+- [vs Aider repo-map](https://dfrostar.github.io/neuralmind/comparisons/vs-aider-repomap.html)
+- [Context-engineering stack guide](https://dfrostar.github.io/neuralmind/comparisons/context-engineering-stack.html): where NeuralMind sits next to Ponytail and Headroom
+
+## Use cases
+
+- [Claude Code daily driver](https://dfrostar.github.io/neuralmind/use-cases/claude-code.html): hooks, tool-output compression, synapse memory on session start
+- [Cost optimization](https://dfrostar.github.io/neuralmind/use-cases/cost-optimization.html)
+- [Growing monorepo](https://dfrostar.github.io/neuralmind/use-cases/growing-monorepo.html)
+- [Offline / regulated environments](https://dfrostar.github.io/neuralmind/use-cases/offline-regulated.html)
+- [Team memory across a squad of agents](https://dfrostar.github.io/neuralmind/use-cases/multi-agent.html)
+- [Benchmark your own repo](https://dfrostar.github.io/neuralmind/use-cases/benchmark-your-repo.html)
+
+## Get it
+
+- [PyPI package](https://pypi.org/project/neuralmind/)
+- [GitHub repository](https://github.com/dfrostar/neuralmind)
+- [Changelog](https://github.com/dfrostar/neuralmind/blob/main/CHANGELOG.md)

@@ -32,9 +32,13 @@ jobs:
           cache: pip
 
       - name: Install package + benchmark deps
+        # graphifyy is pinned: 0.9.6+ writes source_file paths relative to the
+        # invocation CWD instead of the project root, which breaks the quality
+        # eval's node→module mapping (python suite scores 0.000 across the
+        # board). Unpin once upstream restores project-relative paths.
         run: |
           python -m pip install --upgrade pip
-          pip install ".[dev]" tiktoken matplotlib graphifyy
+          pip install ".[dev]" tiktoken matplotlib "graphifyy==0.9.5"
 
       - name: Pre-fetch tiktoken vocab
         # tiktoken lazily downloads vocab files from Azure Blob Storage on
@@ -217,10 +221,11 @@ jobs:
       - name: Install package + both backends
         # graphifyy provides the `graphify` CLI (the reference backend);
         # tree-sitter ships as a core dep so the built-in backend is already
-        # installed with the package itself.
+        # installed with the package itself. Pinned to 0.9.5 — see the
+        # benchmark job's install step for why.
         run: |
           python -m pip install --upgrade pip
-          pip install ".[dev]" tiktoken graphifyy
+          pip install ".[dev]" tiktoken "graphifyy==0.9.5"
 
       - name: Pre-fetch tiktoken vocab
         continue-on-error: true
