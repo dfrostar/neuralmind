@@ -1063,3 +1063,142 @@ class TestCLIDemo:
         assert "How does authentication work" in captured.out
         assert "API endpoints" in captured.out
         assert "billing flow" in captured.out
+
+
+class TestCLIQuickstart:
+    """Tests for the one-command onboarding flow (build → mcp → hooks → doctor)."""
+
+    @staticmethod
+    def _args(project_path, **overrides):
+        args = MagicMock()
+        args.project_path = str(project_path)
+        args.force = False
+        args.global_hooks = False
+        args.skip_build = False
+        args.skip_mcp = False
+        args.skip_hooks = False
+        for key, value in overrides.items():
+            setattr(args, key, value)
+        return args
+
+    def test_quickstart_full_flow(self, temp_project, capsys):
+        """All four steps run; project-scoped hooks land in the project;
+        the run ends on the doctor verdict."""
+        from neuralmind.cli import cmd_quickstart
+
+        with patch("neuralmind.mcp_install.detect_clients", return_value=[]):
+            cmd_quickstart(self._args(temp_project))
+
+        captured = capsys.readouterr()
+        assert "[1/4] Building the index" in captured.out
+        assert "[2/4] Registering the MCP server" in captured.out
+        assert "[3/4] Installing Claude Code compression hooks" in captured.out
+        assert "[4/4] Verifying the setup" in captured.out
+        assert "Quickstart complete" in captured.out
+        assert (temp_project / ".claude" / "settings.json").is_file()
+
+    def test_quickstart_registers_detected_clients(self, temp_project, capsys):
+        """Every detected MCP client is registered and reported."""
+        from neuralmind.cli import cmd_quickstart
+
+        install_result = MagicMock()
+        install_result.action = "installed"
+        install_result.path = "/tmp/.mcp.json"
+        with (
+            patch(
+                "neuralmind.mcp_install.detect_clients",
+                return_value=["claude-code", "cursor"],
+            ),
+            patch("neuralmind.mcp_install.install", return_value=install_result) as install,
+        ):
+            cmd_quickstart(self._args(temp_project))
+
+        captured = capsys.readouterr()
+        assert install.call_count == 2
+        assert "claude-code: installed" in captured.out
+        assert "cursor: installed" in captured.out
+
+    def test_quickstart_skip_flags_leave_only_doctor(self, temp_project, capsys):
+        """With every optional step skipped, only the doctor pass runs."""
+        from neuralmind import doctor
+        from neuralmind.cli import cmd_quickstart
+
+        with (
+            patch("neuralmind.doctor.run_diagnostics", return_value=[]),
+            patch("neuralmind.doctor.overall_status", return_value=doctor.OK),
+        ):
+            cmd_quickstart(
+                self._args(temp_project, skip_build=True, skip_mcp=True, skip_hooks=True)
+            )
+
+        captured = capsys.readouterr()
+        assert "[1/1] Verifying the setup" in captured.out
+        assert "Building the index" not in captured.out
+        assert "Registering the MCP server" not in captured.out
+        assert "compression hooks" not in captured.out
+
+    def test_quickstart_nonexistent_path_fails(self, capsys):
+        from neuralmind.cli import cmd_quickstart
+
+        with pytest.raises(SystemExit):
+            cmd_quickstart(self._args("/nonexistent/path/12345"))
+
+        captured = capsys.readouterr()
+        assert "not a directory" in captured.out
+
+    def test_quickstart_build_failure_is_fatal(self, temp_project, capsys):
+        """A failed build stops quickstart — nothing downstream can work."""
+        from neuralmind.cli import cmd_quickstart
+
+        with patch("neuralmind.cli.NeuralMind") as mind_cls:
+            mind_cls.return_value.build.return_value = {
+                "success": False,
+                "error": "boom",
+            }
+            with pytest.raises(SystemExit):
+                cmd_quickstart(self._args(temp_project))
+
+        captured = capsys.readouterr()
+        assert "Build failed: boom" in captured.out
+        assert "Registering the MCP server" not in captured.out
+
+    def test_quickstart_hook_failure_is_not_fatal(self, temp_project, capsys):
+        """Hooks are a Claude-Code convenience: a failure is reported, and
+        quickstart still reaches the doctor pass."""
+        from neuralmind.cli import cmd_quickstart
+
+        with (
+            patch("neuralmind.mcp_install.detect_clients", return_value=[]),
+            patch("neuralmind.hooks.install_hooks", side_effect=OSError("disk full")),
+        ):
+            cmd_quickstart(self._args(temp_project))
+
+        captured = capsys.readouterr()
+        assert "✗ hooks not installed: disk full" in captured.out
+        assert "[4/4] Verifying the setup" in captured.out
+
+    def test_quickstart_parser_wiring(self, temp_project, monkeypatch, capsys):
+        """`neuralmind quickstart <path> --skip-*` parses and dispatches."""
+        from neuralmind import cli, doctor
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "neuralmind",
+                "quickstart",
+                str(temp_project),
+                "--skip-build",
+                "--skip-mcp",
+                "--skip-hooks",
+            ],
+        )
+        with (
+            patch("neuralmind.doctor.run_diagnostics", return_value=[]),
+            patch("neuralmind.doctor.overall_status", return_value=doctor.OK),
+        ):
+            cli.main()
+
+        captured = capsys.readouterr()
+        assert "NeuralMind quickstart" in captured.out
+        assert "Quickstart complete" in captured.out

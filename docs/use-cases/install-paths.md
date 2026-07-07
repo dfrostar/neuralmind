@@ -1,19 +1,43 @@
 # Install NeuralMind anywhere
 
-NeuralMind ships through five install paths. They all deliver the
+NeuralMind ships through six install paths. They all deliver the
 same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and
 the Python module. Pick the one that fits how you already manage
 Python on this machine.
 
-> tl;dr: **pipx** for "always on PATH", **uv** for speed, **pip** for
-> the default, **Docker** for "no Python on the host", and **source**
-> for hacking on NeuralMind itself.
+> tl;dr: **uvx** to try it with zero install, **pipx** for "always on
+> PATH", **uv** for speed, **pip** for the default, **Docker** for "no
+> Python on the host", and **source** for hacking on NeuralMind itself.
+>
+> Whichever path you pick, `neuralmind quickstart .` (v0.42.0+) finishes
+> the job in one command: build → MCP registration → Claude Code hooks →
+> doctor.
 
 > **v0.15.0+:** `graphifyy` is now **optional**. NeuralMind ships a
 > built-in tree-sitter graph backend, so `pip install neuralmind` alone
 > can build an index — no second tool to install. The commands below add
 > `graphifyy` only where you want graphify's richer graph (it takes
 > priority where present). Drop it for the leanest install.
+
+---
+
+## 0. `uvx` — zero-install, try it first
+
+```bash
+uvx neuralmind build .                     # index a repo, nothing installed
+uvx neuralmind query . "how does auth work?"
+uvx neuralmind quickstart .                # full setup from a cold machine
+```
+
+Runs NeuralMind from an ephemeral environment that `uv` creates and caches
+for you — nothing lands on your PATH, nothing to uninstall. Prebuilt wheels
+on Linux, macOS arm64, and Windows x64 mean no compile step. `pipx run
+neuralmind …` behaves the same if you have pipx instead of uv.
+
+**Trade-offs:** the first invocation resolves the environment (a few
+seconds; cached afterwards). Long-lived setups (hooks, watch mode, the
+daemon) deserve a real install — when it sticks, graduate to `pipx
+install` or `pip install` below.
 
 ---
 

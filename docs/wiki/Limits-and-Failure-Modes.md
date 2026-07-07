@@ -159,7 +159,7 @@ TypeScript / Go, set `NEURALMIND_PRECISION=1` with a SCIP index (off by default,
 | **Protocol Buffers** | `.proto` | one node per `message` / `service` / `rpc` / `enum` | **`import` edges not modeled** |
 
 **GraphQL** is planned for
-[v0.42.0](https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md). Any other
+[v0.43.0](https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md). Any other
 file type can be indexed as plaintext (less precise) rather than parsed.
 
 ### Polyglot-monorepo guidance

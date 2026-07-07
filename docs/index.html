@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuralMind — Persistent Memory for AI Coding Agents | 40–70× Token Reduction</title>
     <meta name="description" content="Persistent, 100% local memory for AI coding agents — NeuralMind learns your codebase like a senior engineer and cuts token costs 40–70×. Works with Claude Code, Cursor, Cline, and any MCP agent.">
-    <meta name="keywords" content="AI coding agent memory, persistent agent memory, semantic code search, code intelligence, token reduction, context compression, MCP server, Claude Code memory, Cursor, Cline, tree-sitter code graph, Hebbian learning, synapse layer, local-first, hybrid search, BM25, code retrieval benchmark, team memory, progressive context disclosure, tool output compression">
+    <meta name="keywords" content="AI coding agent memory, persistent agent memory, semantic code search, code intelligence, token reduction, context compression, MCP server, Claude Code memory, Cursor, Cline, tree-sitter code graph, Hebbian learning, synapse layer, local-first, hybrid search, BM25, code retrieval benchmark, team memory, progressive context disclosure, tool output compression, one-command setup, zero-install">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://dfrostar.github.io/neuralmind/">
     <meta property="og:title" content="NeuralMind — Persistent Memory for AI Coding Agents">
@@ -31,7 +31,7 @@
           "url": "https://dfrostar.github.io/neuralmind/",
           "downloadUrl": "https://pypi.org/project/neuralmind/",
           "installUrl": "https://pypi.org/project/neuralmind/",
-          "softwareVersion": "0.41.0",
+          "softwareVersion": "0.42.0",
           "datePublished": "2025-05-01",
           "dateModified": "2026-07-06",
           "license": "https://opensource.org/licenses/MIT",
@@ -390,7 +390,7 @@
     </div>
     <div class="container hero-grid">
         <div>
-            <p class="badge"><span class="dot"></span> v0.41.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.41.0.md">release notes</a></p>
+            <p class="badge"><span class="dot"></span> v0.42.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md">release notes</a></p>
             <h1>Persistent memory for <span class="grad">AI coding agents</span></h1>
             <p class="hero-sub">Your agent learns your codebase the way a senior engineer would — <strong>what files go together, what you usually edit next, what patterns matter</strong>. The memory persists across sessions and surfaces automatically.</p>
             <p class="hero-local"><strong>100% local.</strong> Your code never leaves your machine. Side effect: <strong>40–70× cheaper code questions</strong>, measured in CI on every commit.</p>
@@ -654,7 +654,11 @@ bash scripts/demo.sh">Copy</button>
         <p class="lede">Shipped in small, verifiable increments — every release gated by the CI benchmark.</p>
         <div class="timeline">
             <div class="tl-item dev">
-                <div class="tl-head"><b>v0.41.0</b><span class="pill pill-latest">Latest release</span></div>
+                <div class="tl-head"><b>v0.42.0</b><span class="pill pill-latest">Latest release</span></div>
+                <p><b>One-command setup: <code>neuralmind quickstart</code>.</b> Setup collapses from four commands to one — <code>quickstart</code> builds the index, registers the MCP server with every detected agent (Claude Code, Cursor, Cline, Claude Desktop, VS Code), installs the Claude Code compression hooks, and runs <code>doctor</code> to prove the result, with a numbered <code>[1/4]…[4/4]</code> report of exactly what it did. Deliberate failure semantics: only the build is fatal; the MCP and hook steps report and carry on, and the closing doctor verdict is the exit code. Every step stays available as its own command (<code>--skip-build</code>/<code>--skip-mcp</code>/<code>--skip-hooks</code>, <code>--global-hooks</code>, <code>--force</code>). Ships with a zero-install docs pass — <code>uvx neuralmind quickstart .</code> sets up a cold machine with nothing permanently installed. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md">Release notes &rarr;</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.41.0</b></div>
                 <p><b>Reuse-vs-rewrite feedback loop and a structured relevance sidecar.</b> Two features that make NeuralMind's half of a <em>modular</em> agent stack real — the retrieval layer now learns from what the agent did, and emits the relevance signal it already computes. <b>(1) Reuse-vs-rewrite feedback</b> — a new <code>Edit</code>/<code>Write</code> PostToolUse hook (<code>edit-activity</code>) detects when new code reaches for existing graph symbols (reuse) and feeds that back into the synapse layer, so future retrieval prefers what was actually reused; the <b>implicit</b> complement to v0.38.0's explicit <code>neuralmind_feedback</code> MCP tool. Language-agnostic, never forces a build, fails open; off-switch <code>NEURALMIND_REUSE_FEEDBACK=0</code>. <b>(2) Structured relevance sidecar</b> — retrieval can attach a machine-readable <code>relevance</code> block (per-file, per-node vector score / synapse boost / recall flag + line spans, built from post-boost L3 hits) via <code>neuralmind_query(include_relevance=true)</code> (MCP) or <code>neuralmind query --relevance</code> (CLI), so a downstream compressor can protect the load-bearing spans; versioned and stably-keyed, so it's order-independent. Both opt-in; default retrieval is unchanged. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.41.0.md">Release notes &rarr;</a></p>
             </div>
             <div class="tl-item">

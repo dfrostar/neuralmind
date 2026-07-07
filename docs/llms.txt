@@ -1,6 +1,6 @@
 # NeuralMind
 
-> Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and compresses tool output before the model reads it. Side effect: 40–70× cheaper code questions, measured by a reproducible public benchmark on real pinned OSS repos. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. MIT-licensed, `pip install neuralmind`.
+> Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and compresses tool output before the model reads it. Side effect: 40–70× cheaper code questions, measured by a reproducible public benchmark on real pinned OSS repos. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. MIT-licensed; setup is one command: `pip install neuralmind && neuralmind quickstart .` (zero-install: `uvx neuralmind quickstart .`).
 
 Key facts, each backed by a runnable eval (raw traces committed):
 
