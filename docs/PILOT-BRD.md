@@ -29,6 +29,7 @@ ROI-defensible.
 - [ ] `pip install neuralmind && neuralmind doctor` passes on 3 dev machines
 - [ ] `benchmark --quality` recall@5 ≥ 0.75 on your 30 golden queries
 - [ ] `benchmark --public` shows ≥ 38× token reduction vs full paste on `requests`/`click`
+- [ ] `neuralmind eval` shows faithfulness delta ≥ 0.0 on the committed reference fixture after upgrades
 - [ ] `eval --onboarding` shows +5pt lift with team memory import
 - [ ] `self-improve status` shows autotune active after 50+ queries
 - [ ] Branch namespace isolated from main namespace
