@@ -660,6 +660,11 @@ Must include:
 
 ## PRD 8: Durable Team Memory Portability
 
+**Status:** In progress — v0.30.0+ already ships `neuralmind memory publish`
+as the first committed-team-memory workflow; this PRD extends that shipped
+baseline into portable, policy-aware import/export across machines and
+environments.
+
 ### Problem
 
 NeuralMind's learned synapses, transitions, and query patterns become more
@@ -672,6 +677,16 @@ copying raw source material.
 
 Add portable, policy-aware memory bundles for exporting and importing learned
 context.
+
+### Prior art / external reference
+
+The broader local-memory ecosystem now frames durable agent memory as
+neuron-like recall driven by spreading activation across stored associations.
+NeuralMind already implements that pattern in-repo through its synapse layer,
+transition memory, and `memory publish` workflow; the gap here is not "whether
+NeuralMind has local neural memory" but how to make that learned state portable,
+inspectable, and policy-safe across machines, CI agents, and other ephemeral
+environments.
 
 ### Users
 
@@ -794,6 +809,20 @@ Must include:
 - Backward-compatible mapping for current MCP tools and hooks.
 - Adapter test harness.
 - Clear separation between lifecycle events and memory/index internals.
+
+### Distributed agent framework integration
+
+NeuralMind should assume that future agent stacks may be distributed rather
+than single-process or single-machine. The orchestration contract therefore
+needs a framework-neutral seam where an external coordinator can:
+
+- request retrieval/context assembly from NeuralMind as a standalone service,
+- provide lifecycle events from remote workers or hot-swapped models,
+- consume memory signals without reimplementing synapse logic, and
+- preserve local-first guarantees even when orchestration is modular.
+
+This keeps NeuralMind compatible with emerging distributed agent frameworks
+without coupling the core to any one runtime or vendor-specific architecture.
 
 ### Success metrics
 

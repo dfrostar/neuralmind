@@ -64,6 +64,11 @@ This plan ensures NeuralMind remains robust, scalable, and maintainable as the p
 - [ ] Document any breaking changes or new behavior
 - [ ] Provide rollback instructions for each update
 
+### 2.2.1 Freshness Verification
+- [ ] Run [`neuralmind eval`](wiki/CLI-Reference.md#eval-v0140) against the committed reference fixture after each NeuralMind upgrade to verify faithfulness stays at or above baseline parity
+- [ ] Treat eval regressions as release blockers for context-compression or memory-surface changes
+- [ ] Record the eval result alongside benchmark and upgrade notes so retrieval freshness is auditable over time
+
 ### 2.3 Security Updates
 - [ ] Monitor for security advisories (dependabot, snyk)
 - [ ] Fast-track critical security patches
@@ -138,6 +143,12 @@ This plan ensures NeuralMind remains robust, scalable, and maintainable as the p
 - [ ] Monitor storage usage for audit logs
 - [ ] Create compliance dashboard
 
+### 4.5 Human Review Gate for Agent-Generated Patches
+- [ ] Keep agent tasks narrowly scoped so automated changes stay reviewable and bounded
+- [ ] Require manual human review of every agent-generated patch before merge to production
+- [ ] Run `neuralmind review .` as the required pre-PR check so likely co-break files and missed edits are surfaced before a reviewer signs off
+- [ ] Document exceptions policy explicitly: no autonomous fast-path around the review gate for production-critical changes
+
 **Owner:** Compliance/Security Team  
 **Frequency:** Quarterly audit  
 **Priority:** Critical for enterprise
@@ -167,7 +178,7 @@ This plan ensures NeuralMind remains robust, scalable, and maintainable as the p
 - [ ] Monitor disk usage trends
 
 ### 5.4 Distributed Indexing
-- [ ] Research parallel graph processing
+- [ ] Define NeuralMind's distributed retrieval interface contract so the memory/retrieval layer can plug into external orchestration frameworks without depending on any one runtime (see PRD 9 in `docs/plans/2026-06-10-future-proofing-prd-pack.md`)
 - [ ] Evaluate Apache Spark/Dask integration
 - [ ] Document multi-machine deployment
 - [ ] Test with organization-scale codebases
@@ -193,6 +204,11 @@ This plan ensures NeuralMind remains robust, scalable, and maintainable as the p
 - [ ] Monitor node/edge growth trends
 - [ ] Detect duplicate or orphaned nodes
 - [ ] Alert on index corruption
+
+### 6.2.1 Weekly Maintenance
+- [ ] Treat `SYNAPSE_MEMORY.md` as a derived memory artifact that can drift as the codebase changes
+- [ ] Run `neuralmind build .` at least weekly, and after significant code changes, to rebuild the graph/index and refresh the memory the agent loads on session start
+- [ ] Make the weekly rebuild part of scheduled maintenance so the graph view, retrieval state, and persisted memory stay aligned with the current repository
 
 ### 6.3 Query Quality Metrics
 - [ ] Track query latency (p50, p95, p99)
@@ -348,4 +364,3 @@ This plan ensures NeuralMind remains robust, scalable, and maintainable as the p
 3. Assign owners to each area
 4. Establish baseline metrics
 5. Begin Q2 implementation
-
