@@ -26,6 +26,19 @@ Automate NeuralMind commands to run on a schedule for continuous codebase monito
 
 ## Quick Start
 
+### Canonical Memory-Freshness Step
+
+NeuralMind's persisted session-start memory (`SYNAPSE_MEMORY.md`) is derived
+from the current graph and learned state, so it can drift after meaningful
+repository changes. The canonical maintenance step is:
+
+```bash
+neuralmind build .
+```
+
+Run it **weekly** and after significant code changes to refresh the index, the
+graph view, and the memory artifact the agent loads on session startup.
+
 ### On Windows
 ```powershell
 # 1. Create a PowerShell script (see below)
@@ -449,6 +462,9 @@ Add entries for each project:
 
 # Weekly audit reports - every Sunday at 1 AM
 0 1 * * 0 cd ~/projects/video_toolkit && neuralmind audit-report . --format json --output ~/neuralmind-logs/audit-$(date +\%Y\%m\%d).json 2>&1
+
+# Weekly memory freshness rebuild - every Sunday at 12:30 AM
+30 0 * * 0 cd ~/projects/video_toolkit && neuralmind build . >> ~/neuralmind-logs/video_toolkit-build.log 2>&1
 ```
 
 ### Bash Script Wrapper
