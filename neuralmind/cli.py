@@ -1851,6 +1851,98 @@ def cmd_install_mcp(args):
         )
 
 
+def cmd_quickstart(args):
+    """One-command onboarding: build → install-mcp → install-hooks → doctor.
+
+    Only the build is fatal — nothing downstream works without an index.
+    MCP registration and hook installation are per-agent conveniences, so
+    a failure there is reported and quickstart carries on; the closing
+    doctor pass is the single source of truth for what actually got set up.
+    """
+    project_path = args.project_path or "."
+    project_dir = Path(project_path).resolve()
+    if not project_dir.is_dir():
+        print(f"Quickstart failed: not a directory: {project_path}")
+        sys.exit(1)
+
+    steps_total = 4 - sum((args.skip_build, args.skip_mcp, args.skip_hooks))
+    step = 0
+
+    def banner(title):
+        nonlocal step
+        step += 1
+        print(f"\n[{step}/{steps_total}] {title}")
+
+    print(f"NeuralMind quickstart — {project_dir}")
+
+    if not args.skip_build:
+        banner("Building the index")
+        mind = NeuralMind(str(project_dir))
+        result = mind.build(force=args.force)
+        if not result.get("success"):
+            print(f"  Build failed: {result.get('error', 'Unknown error')}")
+            sys.exit(1)
+        print(
+            f"  ✓ {result.get('nodes_total')} nodes, "
+            f"{result.get('communities')} communities "
+            f"({result.get('duration_seconds')}s)"
+        )
+
+    if not args.skip_mcp:
+        banner("Registering the MCP server with detected agents")
+        from . import mcp_install
+
+        clients = mcp_install.detect_clients(project_dir)
+        if not clients:
+            print(
+                "  • No MCP clients detected. Run `neuralmind install-mcp --print` "
+                "for a snippet to paste manually."
+            )
+        for client in clients:
+            try:
+                result = mcp_install.install(client, project_dir)
+            except ValueError as exc:
+                print(f"  ✗ {client}: {exc}")
+                continue
+            symbol = "✓" if result.action != "already-present" else "•"
+            print(f"  {symbol} {client}: {result.action} → {result.path}")
+
+    if not args.skip_hooks:
+        banner("Installing Claude Code compression hooks")
+        from .hooks import install_hooks
+
+        scope = "global" if args.global_hooks else "project"
+        try:
+            result = install_hooks(
+                scope=scope,
+                project_path=None if scope == "global" else str(project_dir),
+            )
+            print(f"  ✓ hooks {result['action']} at {result['path']}")
+        except Exception as e:
+            print(f"  ✗ hooks not installed: {e}")
+
+    banner("Verifying the setup")
+    from neuralmind import doctor
+
+    checks = doctor.run_diagnostics(str(project_dir))
+    status = doctor.overall_status(checks)
+    markers = {doctor.OK: "[ ok ]", doctor.WARN: "[warn]", doctor.FAIL: "[FAIL]"}
+    for c in checks:
+        print(f"  {markers.get(c.status, '[ ?? ]')} {c.name}: {c.detail}")
+        if c.fix and c.status != doctor.OK:
+            print(f"         -> {c.fix}")
+
+    print()
+    if status == doctor.FAIL:
+        print(
+            "Quickstart finished with problems — apply the fixes above, "
+            "then `neuralmind doctor` to re-check."
+        )
+        sys.exit(1)
+    print("Quickstart complete. Restart your agent to pick up the MCP server —")
+    print("it boots with NeuralMind's wakeup context and learns as you work.")
+
+
 def cmd_hook(args):
     """Internal: runtime entrypoint invoked by Claude Code hooks."""
     from .hooks import run_hook
@@ -2495,6 +2587,36 @@ def main():
         help="Print the config snippet to paste manually instead of writing files",
     )
     mcp_p.set_defaults(func=cmd_install_mcp)
+
+    # quickstart command — one-command onboarding
+    qs_p = subparsers.add_parser(
+        "quickstart",
+        help="One-command setup: build the index, register the MCP server, "
+        "install Claude Code hooks, verify with doctor",
+    )
+    qs_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    qs_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Force a full index rebuild instead of an incremental build",
+    )
+    qs_p.add_argument(
+        "--global-hooks",
+        dest="global_hooks",
+        action="store_true",
+        help="Install Claude Code hooks in ~/.claude/settings.json instead of the project",
+    )
+    qs_p.add_argument("--skip-build", action="store_true", help="Skip the index build step")
+    qs_p.add_argument("--skip-mcp", action="store_true", help="Skip MCP server registration")
+    qs_p.add_argument(
+        "--skip-hooks", action="store_true", help="Skip Claude Code hook installation"
+    )
+    qs_p.set_defaults(func=cmd_quickstart)
 
     # Internal hook runtime (invoked by Claude Code, not user-facing)
     hook_p = subparsers.add_parser(

@@ -22,6 +22,15 @@ cd /path/to/your-repo
 neuralmind build .
 ```
 
+Even faster — **zero install** (v0.42.0 docs pass): skip pip entirely and
+run from an ephemeral env:
+
+```bash
+cd /path/to/your-repo
+uvx neuralmind build .          # or: pipx run neuralmind build .
+uvx neuralmind quickstart .     # full agent setup in one command
+```
+
 On the first `build` with no `graphify-out/graph.json` present, NeuralMind
 parses your code with the bundled tree-sitter backend and prints:
 

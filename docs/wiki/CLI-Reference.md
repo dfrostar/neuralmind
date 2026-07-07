@@ -24,6 +24,7 @@ Complete command-line interface documentation for NeuralMind.
   - [skeleton](#skeleton)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
+  - [quickstart](#quickstart-v0420)
   - [init-hook](#init-hook)
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
@@ -1361,6 +1362,57 @@ neuralmind install-mcp --print
 Restart the client after registering so it picks up the new server. The agent
 then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 `build`, `stats`, …).
+
+---
+
+### quickstart *(v0.42.0+)*
+
+One-command onboarding: chains **build → install-mcp → install-hooks → doctor**
+with a numbered `[1/4]…[4/4]` report of each step. Only the build is fatal —
+MCP registration and hook installation report failures and carry on, and the
+closing `doctor` verdict is quickstart's exit code. Idempotent: re-running on
+a configured project reports `already-present` instead of duplicating.
+
+```bash
+neuralmind quickstart [project_path] [--force] [--global-hooks]
+                      [--skip-build] [--skip-mcp] [--skip-hooks]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--force` | False | Full index rebuild instead of incremental |
+| `--global-hooks` | False | Install Claude Code hooks in `~/.claude/settings.json` instead of the project |
+| `--skip-build` | False | Skip the index build step |
+| `--skip-mcp` | False | Skip MCP server registration |
+| `--skip-hooks` | False | Skip Claude Code hook installation (the doctor pass always runs) |
+
+#### Examples
+
+```bash
+# Full setup for the current project
+neuralmind quickstart .
+
+# Zero-install, from a cold machine
+uvx neuralmind quickstart .
+
+# Machine-wide hooks, forced rebuild
+neuralmind quickstart . --global-hooks --force
+
+# Re-verify an existing setup without rebuilding
+neuralmind quickstart . --skip-build
+```
+
+Every step remains available as its own command (`build`,
+[`install-mcp`](#install-mcp-v0190), [`install-hooks`](#install-hooks),
+[`doctor`](#doctor-v0120)) — quickstart chains them, it doesn't replace them.
 
 ---
 
