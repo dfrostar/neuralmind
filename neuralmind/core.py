@@ -572,11 +572,11 @@ class NeuralMind:
         """
         start_time = datetime.now()
 
-        # Built-in backend: when there's no graphify output yet, generate a
-        # graphify-compatible graph.json from a tree-sitter parse so that
-        # `pip install neuralmind && neuralmind build` works with no separate
-        # graphify install. A pre-existing graphify graph always takes priority.
-        self._maybe_generate_builtin_graph(force=force)
+        # Built-in backend: generate (or refresh) a graphify-compatible
+        # graph.json from a tree-sitter parse so that `pip install neuralmind &&
+        # neuralmind build` works with no separate graphify install. A
+        # pre-existing graphify graph always takes priority and is left alone.
+        self._maybe_generate_builtin_graph()
 
         # Load graph
         if not self.embedder.load_graph():
@@ -796,27 +796,30 @@ class NeuralMind:
             file=sys.stderr,
         )
 
-    def _maybe_generate_builtin_graph(self, force: bool = False) -> None:
+    def _maybe_generate_builtin_graph(self) -> None:
         """Generate ``graphify-out/graph.json`` with the built-in tree-sitter
         backend when there's no graphify output to consume.
 
-        A graphify-produced graph always wins: we only generate when none
-        exists, or — on ``force`` — when the existing graph is one *we* wrote
-        (never clobber a real graphify build). Silently no-ops when tree-sitter
-        isn't importable, leaving the existing "no graph" path to advise the user.
+        Ownership, not ``force``, decides whether we may write. A graphify-produced
+        graph always wins and is never touched. A graph *we* wrote is ours to
+        refresh on every build — otherwise `neuralmind build` would re-embed a
+        stale map and silently miss every file added since the first build.
+        (``force`` still controls whether the *embedder* re-embeds unchanged
+        nodes; see `build()`. For the cheap path, use `update_files()`.)
+
+        Silently no-ops when tree-sitter isn't importable, leaving the existing
+        "no graph" path to advise the user.
         """
         import sys
 
         graph_path = self.project_path / "graphify-out" / "graph.json"
         if graph_path.exists():
-            if not force:
-                return
             try:
                 existing = json.loads(graph_path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 existing = {}
             if "neuralmind.graphgen" not in str(existing.get("generated_by", "")):
-                return  # force-rebuild must not overwrite a graphify graph
+                return  # graphify owns this graph — never overwrite it
 
         from . import graphgen
 
@@ -1303,7 +1306,6 @@ class NeuralMind:
         for e in edges:
             if e.get("relation") != "calls":
                 continue
-            # Graph stores calls as target calls source (reversed semantics per exploration)
             src = e.get("_src") or e.get("source")
             tgt = e.get("_tgt") or e.get("target")
             if src in node_ids and tgt in node_ids:
