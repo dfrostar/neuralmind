@@ -736,6 +736,88 @@ class TestCLIHook:
             mock_run.assert_called_once_with("compress-bash")
 
 
+class TestWatchReindexDefault:
+    """`neuralmind watch` re-indexes by default (v0.42).
+
+    A watcher that reinforces synapses while the graph goes stale is worse
+    than useless: retrieval gets more confident about a map that no longer
+    matches the code. --reindex stays accepted as a no-op for back-compat.
+    """
+
+    def _parse(self, argv):
+        from neuralmind import cli
+
+        captured = {}
+        with (
+            patch.object(sys, "argv", argv),
+            patch.object(cli, "cmd_watch", lambda args: captured.update(reindex=args.reindex)),
+        ):
+            try:
+                cli.main()
+            except SystemExit:
+                pass
+        return captured.get("reindex")
+
+    def test_reindex_on_by_default(self):
+        assert self._parse(["neuralmind", "watch", "."]) is True
+
+    def test_reindex_flag_still_accepted(self):
+        """Existing scripts and docs pass --reindex; it must not error."""
+        assert self._parse(["neuralmind", "watch", ".", "--reindex"]) is True
+
+    def test_no_reindex_opts_out(self):
+        assert self._parse(["neuralmind", "watch", ".", "--no-reindex"]) is False
+
+
+class TestCLIUpdate:
+    """`neuralmind update` — the incremental fast path used by the git hook."""
+
+    def test_exits_nonzero_when_no_graph(self, tmp_path, capsys):
+        """No graph yet → exit 1 so the git hook falls back to a full build."""
+        from neuralmind.cli import cmd_update
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+        args = MagicMock(project=str(tmp_path), paths=["a.py"], stdin=False, json=False)
+        with pytest.raises(SystemExit) as exc:
+            cmd_update(args)
+        assert exc.value.code == 1
+        assert "no graph" in capsys.readouterr().err
+
+    def test_exits_nonzero_with_no_paths(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_update
+
+        args = MagicMock(project=str(tmp_path), paths=[], stdin=False, json=False)
+        with pytest.raises(SystemExit) as exc:
+            cmd_update(args)
+        assert exc.value.code == 1
+        assert "no paths given" in capsys.readouterr().err
+
+    def test_reads_newline_delimited_paths_from_stdin(self, tmp_path, monkeypatch):
+        """The git hook pipes `git diff-tree` output in. Filenames contain
+        spaces; newline delimiting is what keeps that safe."""
+        import io
+
+        from neuralmind import cli
+
+        seen = {}
+
+        class FakeMind:
+            def __init__(self, _p):
+                pass
+
+            def update_files(self, paths):
+                seen["paths"] = list(paths)
+                return {"success": True, "files_reparsed": 2, "embedded": 3}
+
+        monkeypatch.setattr(cli, "NeuralMind", FakeMind)
+        monkeypatch.setattr(sys, "stdin", io.StringIO("my module.py\nb.py\n\n"))
+
+        args = MagicMock(project=str(tmp_path), paths=[], stdin=True, json=False)
+        cli.cmd_update(args)
+
+        assert seen["paths"] == ["my module.py", "b.py"]
+
+
 class TestCLIInitHook:
     """Tests for CLI init-hook command."""
 
@@ -760,6 +842,27 @@ class TestCLIInitHook:
         content = hook_path.read_text()
         assert "neuralmind-hook-start" in content
         assert "neuralmind build" in content
+
+    def test_hook_prefers_incremental_update_over_full_build(self, tmp_path, capsys):
+        """The post-commit hook must try `neuralmind update` on the commit's
+        changed files and only fall back to `build`. Before v0.42 it ran a bare
+        `neuralmind build .`, which never regenerated the graph at all."""
+        from neuralmind.cli import cmd_init_hook
+
+        hooks_dir = tmp_path / ".git" / "hooks"
+        hooks_dir.mkdir(parents=True)
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        cmd_init_hook(args)
+
+        content = (hooks_dir / "post-commit").read_text()
+        # Incremental path, fed by the commit's own file list.
+        assert "git diff-tree --no-commit-id --name-only -r HEAD" in content
+        assert "neuralmind update --stdin" in content
+        # ...and a fallback for root commits, merges, and graphify-owned graphs.
+        assert "neuralmind build ." in content
+        # `update` must be attempted before `build` in the if/elif chain.
+        assert content.index("neuralmind update") < content.index("neuralmind build .")
 
     def test_cmd_init_hook_idempotent(self, tmp_path, capsys):
         """Running init-hook twice updates the block without duplicating."""

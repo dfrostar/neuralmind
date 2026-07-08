@@ -1404,6 +1404,58 @@ def cmd_skeleton(args):
         print(skeleton)
 
 
+def cmd_update(args):
+    """Incrementally re-index only the named files into the existing graph.
+
+    The fast path behind `neuralmind watch` and the git post-commit hook:
+    re-parses just the changed files, prunes embeddings for symbols that
+    disappeared, and re-embeds only what actually changed.
+
+    Exits non-zero when the incremental path doesn't apply (no graph yet,
+    graphify-owned graph, tree-sitter missing) so callers can fall back to
+    a full `neuralmind build`.
+    """
+    project_path = getattr(args, "project", ".")
+    path = Path(project_path).resolve()
+    if not path.is_dir():
+        print(f"update failed: not a directory: {project_path}", file=sys.stderr)
+        sys.exit(1)
+
+    paths = list(getattr(args, "paths", None) or [])
+    if getattr(args, "stdin", False):
+        # Newline-delimited paths. Sidesteps shell quoting entirely, which
+        # matters for the git hook: filenames with spaces are ordinary.
+        paths.extend(line.strip() for line in sys.stdin.read().splitlines() if line.strip())
+
+    if not paths:
+        print("update failed: no paths given (pass paths or --stdin)", file=sys.stderr)
+        sys.exit(1)
+
+    mind = NeuralMind(str(path))
+    try:
+        stats = mind.update_files(paths)
+    except Exception as exc:  # pragma: no cover - defensive
+        stats = {"success": False, "error": str(exc)}
+
+    if getattr(args, "json", False):
+        print(json.dumps(stats, indent=2))
+    elif not stats.get("success"):
+        print(f"update failed: {stats.get('error')}", file=sys.stderr)
+    else:
+        reparsed = stats.get("files_reparsed", 0)
+        if not reparsed and not stats.get("files_removed"):
+            print(f"Nothing to update ({stats.get('reason', 'no changes')}).")
+        else:
+            print(
+                f"Re-indexed {reparsed} file(s): "
+                f"{stats.get('embedded', 0)} node(s) re-embedded, "
+                f"{stats.get('skipped', 0)} unchanged, {stats.get('pruned', 0)} pruned"
+            )
+
+    if not stats.get("success"):
+        sys.exit(1)
+
+
 def cmd_watch(args):
     """Run the file watcher → synapse co-activation daemon in the foreground.
 
@@ -1426,13 +1478,15 @@ def cmd_watch(args):
     quiet = bool(getattr(args, "quiet", False))
     decay_interval = float(getattr(args, "decay_interval", 600))
     debounce = float(getattr(args, "debounce", 0.75))
-    reindex = bool(getattr(args, "reindex", False))
+    reindex = bool(getattr(args, "reindex", True))
 
     if not quiet:
         print(f"NeuralMind watcher starting for: {path}")
         print(f"  debounce: {debounce}s   decay every: {decay_interval}s")
         if reindex:
             print("  incremental re-index: on (edited files re-parsed into the graph)")
+        else:
+            print("  incremental re-index: off (--no-reindex) — the graph will go stale")
         print("  Ctrl-C to stop.\n")
 
     mind = NeuralMind(str(path))
@@ -1467,9 +1521,12 @@ def cmd_watch(args):
         pass
 
     activations_total = 0
+    # A re-index that can never succeed (graphify-owned graph, missing
+    # tree-sitter) must say so once rather than fail silently on every batch.
+    reindex_warned = False
 
     def on_batch(paths: list[str]) -> None:
-        nonlocal activations_total
+        nonlocal activations_total, reindex_warned
         # Surface the raw file edits to the cross-process bridge first
         # so the server can echo them even if no synapse pair fires.
         try:
@@ -1486,14 +1543,23 @@ def cmd_watch(args):
         if not quiet and pairs:
             print(f"  + {len(paths)} file(s) → {pairs} synapse pair(s) reinforced")
         # Incremental re-index: re-parse just the edited files into the built-in
-        # graph + re-embed only their nodes. Opt-in (--reindex) since it needs
-        # the retrieval stack in the watch process.
+        # graph + re-embed only their nodes. On by default — opt out with
+        # --no-reindex.
         if reindex:
             try:
                 stats = mind.update_files(paths)
             except Exception as exc:  # pragma: no cover - defensive
                 stats = {"success": False, "error": str(exc)}
-            if not quiet and stats.get("success") and stats.get("files_reparsed"):
+            if not stats.get("success"):
+                if not reindex_warned:
+                    reindex_warned = True
+                    print(
+                        f"  ! incremental re-index unavailable: {stats.get('error')}\n"
+                        "    Synapses still reinforce, but the graph will not track "
+                        "your edits. Pass --no-reindex to silence this.",
+                        file=sys.stderr,
+                    )
+            elif not quiet and stats.get("files_reparsed"):
                 print(
                     f"  ↻ re-indexed {stats['files_reparsed']} file(s): "
                     f"{stats.get('embedded', 0)} node(s) re-embedded, "
@@ -1884,16 +1950,25 @@ def cmd_init_hook(args):
     # the block in place and coexist with other tools' hook contributions
     # (e.g. `graphify hook install`).
     #
+    # Fast path: re-index only what the commit touched. `git diff-tree` prints
+    # nothing for root commits and merges, and `neuralmind update` exits 1 when
+    # the incremental path doesn't apply (no graph yet, graphify-owned graph) —
+    # both fall through to a full build. `echo "$var"` preserves the embedded
+    # newlines, so paths with spaces survive without quoting games.
+    #
     # Note: `neuralmind build` has no --quiet flag; we redirect output to
-    # /dev/null instead. Using --force keeps it fast (skips nothing) but
-    # still reuses existing embeddings for unchanged nodes via hash checks.
+    # /dev/null instead.
     nm_block = """# neuralmind-hook-start
-# Auto-rebuild NeuralMind index after each commit. Managed by `neuralmind init-hook`.
+# Auto-update NeuralMind index after each commit. Managed by `neuralmind init-hook`.
 if command -v neuralmind >/dev/null 2>&1; then
-    echo "[neuralmind] Rebuilding neural index..."
-    neuralmind build . >/dev/null 2>&1 && \\
-        echo "[neuralmind] OK" || \\
-        echo "[neuralmind] Rebuild failed (non-critical)"
+    nm_changed=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+    if [ -n "$nm_changed" ] && echo "$nm_changed" | neuralmind update --stdin >/dev/null 2>&1; then
+        echo "[neuralmind] Index updated"
+    elif neuralmind build . >/dev/null 2>&1; then
+        echo "[neuralmind] Index rebuilt"
+    else
+        echo "[neuralmind] Index update failed (non-critical)"
+    fi
 fi
 # neuralmind-hook-end
 """
@@ -1929,7 +2004,8 @@ fi
         current_mode = os.stat(hook_path).st_mode
         os.chmod(hook_path, current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
         print(f"✓ NeuralMind post-commit hook {action} at {hook_path}")
-        print("  The index will rebuild automatically after every commit.")
+        print("  Files touched by each commit are re-indexed incrementally")
+        print("  (full rebuild only when the incremental path doesn't apply).")
     except Exception as e:
         print(f"Error installing hook: {e}")
         sys.exit(1)
@@ -1964,6 +2040,28 @@ def main():
     )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.set_defaults(func=cmd_build)
+
+    update_p = subparsers.add_parser(
+        "update",
+        help="Incrementally re-index only the given changed files (fast path)",
+    )
+    update_p.add_argument(
+        "paths",
+        nargs="*",
+        help="Files that changed. Deleted paths are pruned from the graph.",
+    )
+    update_p.add_argument(
+        "--project",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    update_p.add_argument(
+        "--stdin",
+        action="store_true",
+        help="Read newline-delimited paths from stdin instead of arguments",
+    )
+    update_p.add_argument("--json", "-j", action="store_true")
+    update_p.set_defaults(func=cmd_update)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
     query_p.add_argument("project_path")
@@ -2343,11 +2441,23 @@ def main():
         action="store_true",
         help="Suppress per-batch logging",
     )
+    # Incremental re-index is ON by default: a watcher that reinforces synapses
+    # but leaves the graph stale is the worst of both worlds — retrieval gets
+    # smarter about a map that no longer matches the code. --reindex is kept as
+    # an accepted no-op so existing scripts and docs don't break.
     watch_p.add_argument(
         "--reindex",
+        dest="reindex",
         action="store_true",
-        help="Incrementally re-index edited files into the built-in graph as they "
-        "change (re-parses just those files, re-embeds only their nodes)",
+        default=True,
+        help=argparse.SUPPRESS,  # deprecated: now the default
+    )
+    watch_p.add_argument(
+        "--no-reindex",
+        dest="reindex",
+        action="store_false",
+        help="Don't re-index edited files into the graph; only reinforce synapse "
+        "weights. The graph goes stale as you edit (pre-v0.42 behavior).",
     )
     watch_p.set_defaults(func=cmd_watch)
 
