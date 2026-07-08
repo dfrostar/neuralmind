@@ -13,30 +13,47 @@ nine-initiative durability arc beyond that (versioned IR, retrieval quality
 harness, daemon-first architecture, and more), see
 [`docs/plans/2026-06-10-future-proofing-prd-pack.md`](docs/plans/2026-06-10-future-proofing-prd-pack.md).
 
-## Next — v0.13 → v0.16 (the eval-first arc)
+## Next — durability & hardening (post-v0.41)
 
-The spine is *measure, then change, then measure again.* Full detail,
-epics, and acceptance criteria in
-[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md); tracked in
-issues [#171](https://github.com/dfrostar/neuralmind/issues/171)–[#175](https://github.com/dfrostar/neuralmind/issues/175).
+The eval-first arc (v0.13 "Measure" → v0.16 "Anticipate") and most of the
+nine-initiative durability pack (versioned IR, retrieval-quality harness,
+explainability traces, memory namespaces, daemon-first architecture, portable
+team memory) have **shipped** across v0.13 → v0.41 — see *Shipped* below. The
+[**2026-07 future-proofing review**](docs/plans/2026-07-future-proofing-review.md)
+reconciles each planned initiative against the module/command/test that now
+delivers it, and sets the forward plan. The next horizon is hardening the
+scaffolding around that shipped surface:
 
-| Release | Theme | What it does |
-|---|---|---|
-| **v0.13** | **Measure** | CI-gated faithfulness + retrieval-quality eval harness (100%-local offline judge; opt-in API judge). Polyglot TS/Go fixtures. The fitness function everything else depends on. |
-| **v0.14** | **Decouple** | A `GraphSource` adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness. Reduces the single-graph-backend dependency, widens language coverage. |
-| **v0.15** | **Endure** | Host-capabilities adapter + integration-contract tests pinning Claude Code hook / MCP behaviour, so upstream drift is a one-adapter swap. |
-| **v0.16** | **Anticipate** | Promote directional "what you edit next" recall to first-class; ship a portable cross-agent memory format. |
+| Focus | What it does |
+|---|---|
+| **Offline-first model asset** | Remove the single point of failure where the "100% local" default still fetches the MiniLM ONNX model from a hardcoded third-party S3 bucket on first run (`neuralmind/onnx_embedder.py`). Mirror / bundle / offline-cache path. |
+| **Type-strictness ratchet** | Make the mypy CI gate real (done — grandfather list in `pyproject.toml`), then remove the baseline relaxations module-by-module until the whole package type-checks strictly. |
+| **Observability** | Route the ~60 broad `except Exception → pass` swallows (in `core.py`, `hooks.py`, `server.py`, `cli.py`) through a debug logger so failures are diagnosable without breaking the "never crash the host" contract. |
+| **Dependency resilience** | Cap the ten `>=`-floored `tree-sitter-*` grammars; migrate TOML reads off the unmaintained `toml` package to stdlib `tomllib`; keep tracking the ChromaDB CVE until a fixed release exists. |
+| **Structural refactors** | Split the largest modules (`core.py`, `cli.py`, `mcp_server.py`'s `tool_review`) behind the existing test coverage. |
+| **VS Code extension** | Decide the fate of the dormant `editors/vscode/` (v0.1.0, unpublished, no CI): invest + add a build/test/publish pipeline, or mark it experimental. |
 
-**Team/shared memory — approved in principle, gated on measurement.**
-An opt-in, git-committed team baseline (reviewed in PRs, no SaaS) overlaid
-by each developer's private personal layer. Its day-one onboarding lift is
-*measured* by the v0.13 harness before the design is locked — see
-[#175](https://github.com/dfrostar/neuralmind/issues/175). This is what
-un-gates an honest enterprise lane: the compliance surface (RBAC, audit
-of the shared layer) sequences *after* a real multi-writer surface exists,
-not in anticipation of one.
+**Team/shared memory — shipped and evolving.** The opt-in, git-committed team
+baseline overlaid by each developer's private personal layer landed with
+`neuralmind memory publish` (v0.30.0+) and the namespace/branch-isolation work;
+portable cross-machine import/export continues under PRD 8 in the
+[future-proofing PRD pack](docs/plans/2026-06-10-future-proofing-prd-pack.md).
 
 ## Shipped since v0.9.0
+
+The eval-first arc and the bulk of the durability pack landed across
+**v0.13 → v0.41** — faithfulness/retrieval eval harness (`neuralmind eval`),
+built-in tree-sitter graph backend (no external graphify), versioned IR
+(`neuralmind validate`), retrieval traces (`--trace`/`--explain`),
+memory namespaces + branch isolation, daemon-first architecture
+(`neuralmind-daemon`), committed team memory (`neuralmind memory publish`),
+directional "what comes next" recall (`neuralmind next`), BM25 hybrid search,
+schema-artifact indexing (OpenAPI/SQL/proto), and the reuse-vs-rewrite feedback
+loop. The per-initiative mapping lives in the
+[2026-07 future-proofing review](docs/plans/2026-07-future-proofing-review.md);
+per-release detail is in each [`RELEASE_NOTES_v*.md`](.) and `CHANGELOG.md`.
+
+Selected earlier milestones:
 
 - **v0.12.0 — install doctor.** `neuralmind doctor` inspects an install
   and reports each piece with a status + exact fix; friendlier first-run
