@@ -567,3 +567,94 @@ class TestTurbovecMigrationNotice:
         # No legacy graphify-out/neuralmind_db -> fresh project, no notice.
         mind._maybe_announce_turbovec_migration()
         assert capsys.readouterr().err == ""
+
+
+class TestBuiltinGraphRefresh:
+    """`_maybe_generate_builtin_graph` decides by *ownership*, not by `force`.
+
+    Regression: before v0.42 it returned early whenever a graph existed and
+    `force` was False, so `neuralmind build .` silently re-embedded a stale
+    graph and never picked up files added since the first build. The shipped
+    post-commit hook ran exactly that command, making it a structural no-op.
+    """
+
+    def _graph_labels(self, project):
+        import json
+
+        graph = json.loads((project / "graphify-out" / "graph.json").read_text())
+        return sorted(n["label"] for n in graph["nodes"])
+
+    def _mind(self, project):
+        from neuralmind import NeuralMind
+
+        return NeuralMind(str(project))
+
+    def test_plain_build_refreshes_our_own_graph(self, tmp_path):
+        import pytest
+
+        from neuralmind import graphgen
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+        mind = self._mind(tmp_path)
+        mind._maybe_generate_builtin_graph()
+        assert "one()" in self._graph_labels(tmp_path)
+
+        # A new file must appear without --force.
+        (tmp_path / "b.py").write_text("def two():\n    return 2\n")
+        mind._maybe_generate_builtin_graph()
+        labels = self._graph_labels(tmp_path)
+        assert "two()" in labels, "plain build must refresh a graph we own"
+        assert "one()" in labels
+
+    def test_deleted_file_drops_out_on_refresh(self, tmp_path):
+        import pytest
+
+        from neuralmind import graphgen
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+        (tmp_path / "b.py").write_text("def two():\n    return 2\n")
+        mind = self._mind(tmp_path)
+        mind._maybe_generate_builtin_graph()
+        assert "two()" in self._graph_labels(tmp_path)
+
+        (tmp_path / "b.py").unlink()
+        mind._maybe_generate_builtin_graph()
+        assert "two()" not in self._graph_labels(tmp_path)
+
+    def test_never_overwrites_a_graphify_owned_graph(self, tmp_path):
+        """A real graphify build always wins — refresh must not touch it."""
+        import json
+
+        import pytest
+
+        from neuralmind import graphgen
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+        out = tmp_path / "graphify-out"
+        out.mkdir()
+        (out / "graph.json").write_text(
+            json.dumps(
+                {
+                    "generated_by": "graphify v1.2.3",
+                    "directed": True,
+                    "multigraph": False,
+                    "nodes": [{"id": "s", "label": "GRAPHIFY_SENTINEL", "file_type": "code"}],
+                    "links": [],
+                }
+            )
+        )
+
+        self._mind(tmp_path)._maybe_generate_builtin_graph()
+
+        graph = json.loads((out / "graph.json").read_text())
+        assert graph["generated_by"] == "graphify v1.2.3"
+        assert self._graph_labels(tmp_path) == ["GRAPHIFY_SENTINEL"]
