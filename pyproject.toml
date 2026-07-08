@@ -345,6 +345,7 @@ Changelog = "https://github.com/dfrostar/neuralmind/releases"
 # under the package, but JSON/Markdown need an explicit pattern.
 packages = ["neuralmind"]
 include = [
+    "neuralmind/py.typed",
     "neuralmind/demo_data/**",
     "neuralmind/web/**",
 ]
@@ -352,6 +353,7 @@ include = [
 [tool.hatch.build.targets.sdist]
 include = [
     "neuralmind/**/*.py",
+    "neuralmind/py.typed",
     "neuralmind/demo_data/**",
     "neuralmind/web/**",
     "README.md",
@@ -418,6 +420,9 @@ ignore = [
 
 [tool.mypy]
 python_version = "3.10"
+# demo_data ships a deliberately-simple sample project (fixture code, not library
+# code) that is bundled for `neuralmind demo`; it is not part of the typed API.
+exclude = ["neuralmind/demo_data/"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -431,6 +436,33 @@ show_error_codes = true
 [[tool.mypy.overrides]]
 module = ["chromadb.*", "mcp.*"]
 ignore_missing_imports = true
+
+# Type-debt grandfather list. As of v0.41.0 these modules still carry type
+# errors under the baseline flags; they are ignored so the mypy CI job can GATE
+# (fail the build) on every other module and on any NEW module, instead of being
+# a non-blocking no-op. This is the "make mypy actually gate" step from
+# docs/plans/2026-07-future-proofing-review.md — remove modules from this list
+# as they are cleaned up (the "incremental mypy strictness" roadmap item). Do
+# not add new modules here without a tracking note.
+[[tool.mypy.overrides]]
+module = [
+    "neuralmind.core",
+    "neuralmind.embedder",
+    "neuralmind.daemon",
+    "neuralmind.server",
+    "neuralmind.event_log",
+    "neuralmind.cli",
+    "neuralmind.graphgen",
+    "neuralmind.context_selector",
+    "neuralmind.watcher",
+    "neuralmind.daemon_client",
+    "neuralmind.turbovec_backend",
+    "neuralmind.onnx_embedder",
+    "neuralmind.local_client",
+    "neuralmind.in_memory_backend",
+    "neuralmind.compressors",
+]
+ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"

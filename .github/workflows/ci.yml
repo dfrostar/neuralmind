@@ -90,8 +90,13 @@ jobs:
           pip install mypy
 
       - name: Run mypy
-        run: mypy neuralmind --ignore-missing-imports --disable-error-code=no-untyped-def --implicit-optional
-        continue-on-error: true
+        # Gates the neuralmind package: fails the build on type errors in any
+        # non-grandfathered module (grandfather list + baseline flags live in
+        # pyproject.toml [tool.mypy]). --follow-imports=silent type-checks the
+        # imported eval harnesses without gating on them. Was previously a
+        # non-blocking no-op (continue-on-error); see
+        # docs/plans/2026-07-future-proofing-review.md.
+        run: mypy neuralmind --ignore-missing-imports --disable-error-code=no-untyped-def --implicit-optional --follow-imports=silent
 
   fresh-install:
     name: Fresh Install (${{ matrix.os }}, Python ${{ matrix.python-version }})
