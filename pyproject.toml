@@ -449,6 +449,7 @@ module = [
     "neuralmind.core",
     "neuralmind.embedder",
     "neuralmind.daemon",
+    "neuralmind.mcp_server",
     "neuralmind.server",
     "neuralmind.event_log",
     "neuralmind.cli",
