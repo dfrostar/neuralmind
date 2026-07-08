@@ -813,7 +813,8 @@ class NeuralMind:
         import sys
 
         graph_path = self.project_path / "graphify-out" / "graph.json"
-        if graph_path.exists():
+        graph_existed = graph_path.exists()
+        if graph_existed:
             try:
                 existing = json.loads(graph_path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
@@ -845,22 +846,33 @@ class NeuralMind:
         from . import precision
 
         graph, pstats = precision.maybe_refine(self.project_path, graph)
-        if pstats is not None:
+        if pstats is not None and not graph_existed:
             print(
                 "[neuralmind] SCIP precision pass: "
                 f"+{pstats.calls_added} calls, +{pstats.inherits_added} inherits "
                 f"(replaced {pstats.heuristic_calls_removed} heuristic calls, "
                 f"{pstats.heuristic_inherits_removed} inherits across "
-                f"{pstats.documents} document(s))"
+                f"{pstats.documents} document(s))",
+                file=sys.stderr,
             )
 
         out_dir = self.project_path / "graphify-out"
         out_dir.mkdir(parents=True, exist_ok=True)
         graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
-        print(
-            "[neuralmind] generated code graph via the built-in tree-sitter "
-            f"backend → {graph_path}"
-        )
+
+        # Announce only the *first* generation. Every later build refreshes the
+        # graph in place (v0.42.0), and a line per build would be pure noise.
+        #
+        # stderr, and ASCII-only: this runs under the MCP server (whose stdout
+        # carries JSON-RPC), under Claude Code hooks, and from the VS Code
+        # extension — none of which install the CLI's UTF-8 stdout guard, so a
+        # `→` here raises UnicodeEncodeError on a Windows cp1252 console.
+        if not graph_existed:
+            print(
+                "[neuralmind] generated code graph via the built-in tree-sitter "
+                f"backend -> {graph_path}",
+                file=sys.stderr,
+            )
 
     def update_files(self, paths) -> dict:
         """Incrementally re-index only the given changed files (built-in graph).
