@@ -658,3 +658,63 @@ class TestBuiltinGraphRefresh:
         graph = json.loads((out / "graph.json").read_text())
         assert graph["generated_by"] == "graphify v1.2.3"
         assert self._graph_labels(tmp_path) == ["GRAPHIFY_SENTINEL"]
+
+    def test_refresh_is_silent_and_never_writes_stdout(self, tmp_path, capsys):
+        """The graph-generation notice fires once, on stdout-free stderr.
+
+        Two regressions guarded here, both introduced when v0.42.0 made every
+        build refresh the graph:
+
+        1. The notice used to fire only on first generation. Printing it on
+           every build is noise.
+        2. It printed to **stdout** with a `->` arrow that was once `→`.
+           `build()` runs under the MCP server (whose stdout carries JSON-RPC),
+           Claude Code hooks, and the VS Code extension — none of which install
+           the CLI's UTF-8 stdout guard. A non-ASCII byte there raises
+           UnicodeEncodeError on a Windows cp1252 console, and *any* stdout
+           byte corrupts the MCP wire protocol.
+        """
+        import pytest
+
+        from neuralmind import graphgen
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+        mind = self._mind(tmp_path)
+
+        mind._maybe_generate_builtin_graph()  # first generation: announces
+        first = capsys.readouterr()
+        assert first.out == "", "graph generation must never write to stdout"
+        assert "generated code graph" in first.err
+
+        (tmp_path / "b.py").write_text("def two():\n    return 2\n")
+        mind._maybe_generate_builtin_graph()  # refresh: silent
+        second = capsys.readouterr()
+        assert second.out == ""
+        assert second.err == "", "refresh must not re-announce on every build"
+
+        # The refresh still happened, silence notwithstanding.
+        assert "two()" in self._graph_labels(tmp_path)
+
+    def test_generation_notice_survives_a_cp1252_stream(self, tmp_path, monkeypatch):
+        """The exact crash: a cp1252 stderr must be able to encode the notice."""
+        import io
+        import sys
+
+        import pytest
+
+        from neuralmind import graphgen
+
+        if not graphgen.is_available():
+            pytest.skip("tree-sitter not installed")
+
+        (tmp_path / "a.py").write_text("def one():\n    return 1\n")
+
+        buf = io.BytesIO()
+        monkeypatch.setattr(sys, "stderr", io.TextIOWrapper(buf, encoding="cp1252"))
+        self._mind(tmp_path)._maybe_generate_builtin_graph()
+        sys.stderr.flush()
+
+        assert b"generated code graph" in buf.getvalue()
