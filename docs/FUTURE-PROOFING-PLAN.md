@@ -1,8 +1,15 @@
 # NeuralMind Future-Proofing Plan
 
+> **Historical planning artifact (April 2026).** The product has since shipped
+> through v0.41. For current status — plan-vs-shipped reconciliation, the ranked
+> gap catalog, and the forward plan — see
+> [`plans/2026-07-future-proofing-review.md`](plans/2026-07-future-proofing-review.md).
+> This document is retained as a record of the original enterprise-readiness
+> framing (much of which was intentionally deferred; see `NEXT-RELEASE-PLAN.md §1`).
+
 **Version:** 1.0  
 **Date:** April 2026  
-**Status:** In Development  
+**Status:** Historical — see the 2026-07 review for current status  
 **Owner:** NeuralMind Project
 
 ---

@@ -1,6 +1,12 @@
 # NeuralMind — Next-Release Plan & Feature Map
 
-**Status:** Proposed · **Owner:** Project-Manager agent · **Horizon:** v0.13 → v0.16
+> **Historical planning artifact.** The v0.13 → v0.16 arc this plan sequences has
+> **shipped** (the product is now at v0.41). Retained as a record of the eval-first
+> strategy that framed those releases. For current plan-vs-shipped status and the
+> forward plan, see
+> [`plans/2026-07-future-proofing-review.md`](plans/2026-07-future-proofing-review.md).
+
+**Status:** Historical (arc shipped) · **Owner:** Project-Manager agent · **Horizon:** v0.13 → v0.16
 **Supersedes the relevant parts of:** `docs/FUTURE-PROOFING-PLAN.md` (see "Why this
 replaces the old plan" below). **Reads alongside:** `ROADMAP.md`,
 `docs/HONEST-ASSESSMENT.md`.

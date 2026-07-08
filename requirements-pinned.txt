@@ -1,7 +1,13 @@
 # NeuralMind - Pinned Production Dependencies
-# Generated: 2026-04-22
+# Generated: 2026-07-08 (for v0.41.0)
 # Used for: reproducible builds, CI/CD testing
 # Install with: pip install -r requirements-pinned.txt
+#
+# NOTE: as of v0.29.0 the default backend is the ChromaDB-free turbovec/ONNX
+# stack (installed automatically by `pip install neuralmind` where wheels
+# exist). chromadb below is the fallback/opt-in backend; it is pinned here for
+# environments that use it. The authoritative dependency constraints live in
+# pyproject.toml — this file is a pinned snapshot, not the source of truth.
 
 # Core dependencies
 # chromadb pinned at 1.5.8. CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c (CRITICAL,
@@ -16,8 +22,8 @@ chromadb==1.5.8
 pyyaml==6.0.3
 toml==0.10.2
 
-# Optional: MCP Server
-# Bumped from 0.1.0 to 1.23.0 to resolve three GHSA alerts on the MCP SDK:
+# MCP Server (base dependency; pyproject requires mcp>=1.27.2)
+# Pinned to 1.28.1, which clears the three GHSA alerts on the MCP SDK:
 #   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
 mcp==1.28.1
 
@@ -31,8 +37,11 @@ black==26.5.1
 ruff==0.15.18
 mypy==1.20.2
 
-# External tools (required separately)
-# graphify - install from: git clone https://github.com/safishamsi/graphify.git && cd graphify && pip install -e .
+# External tools
+# graphify is NO LONGER required. Since v0.15.0 NeuralMind ships a built-in
+# tree-sitter graph backend (neuralmind/graphgen.py); `neuralmind build .`
+# works with no external graphify install. graphify remains an optional
+# alternate producer of graph.json.
 
 # Documentation
 # sphinx==7.2.6

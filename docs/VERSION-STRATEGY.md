@@ -1,276 +1,127 @@
 # NeuralMind Version Strategy
 
-**Status:** Active  
-**Version:** 0.4.x (current)  
-**Support Policy:** Semantic Versioning (SemVer)
+**Status:** Active
+**Version:** 0.41.x (current)
+**Support Policy:** Semantic Versioning (SemVer), automated via release-please
 
 ---
 
 ## Versioning Scheme
 
-NeuralMind uses **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH`
+NeuralMind uses **Semantic Versioning**: `MAJOR.MINOR.PATCH`.
 
 ```
-v0.4.2
-│ │ └─ PATCH: bug fixes, security patches (auto-deployed)
-│ └──── MINOR: new features, non-breaking changes (quarterly)
-└────── MAJOR: breaking changes, major architecture shifts (annually)
+v0.41.0
+ │  │ └─ PATCH: bug fixes, security patches
+ │  └─── MINOR: new features (and, while pre-1.0, occasional breaking changes)
+ └────── MAJOR: reserved for the 1.0 stability guarantee
 ```
 
-### Version Lifecycle
+While the project is pre-1.0, release-please is configured with
+`bump-minor-pre-major: true` (`release-please-config.json`), so `feat:` commits
+bump the **minor** version and breaking changes are called out in the release
+notes rather than forcing a `1.0` bump. A `1.0` release will mark the point at
+which the CLI / MCP tool surface carries a stability guarantee.
 
-- **Current (v0.4.x):** Active development
-- **Previous (v0.3.x):** 6 months LTS (bug fixes only)
-- **Older:** Unsupported
+---
+
+## How releases actually happen (automated)
+
+**Do not bump versions or edit `CHANGELOG.md` by hand — release-please owns
+both.** The flow, per [`CLAUDE.md`](../CLAUDE.md) and the workflows in
+`.github/workflows/`:
+
+1. Land work as Conventional-Commit `feat:` / `fix:` commits on `main`.
+2. **release-please** (`release-please.yml`) opens/updates a release PR that
+   bumps `pyproject.toml` `[project].version`, updates
+   `.release-please-manifest.json`, and writes `CHANGELOG.md` from the commit
+   bodies.
+3. Merging that PR tags `vX.Y.Z`, which fires:
+   - **PyPI publish** (`release.yml`) via **OIDC trusted publishing** — no
+     stored token; a `validate-version` job enforces that the tag matches
+     `pyproject.toml`.
+   - **GHCR publish** (`docker-publish.yml`) — multi-arch (`linux/amd64` +
+     `linux/arm64`); `:latest` excludes pre-releases.
+   - **SBOM** (`sbom.yml`) — a CycloneDX SBOM attached to the GitHub Release.
+4. Documentation + SEO for a user-facing change ships in the **same PR as the
+   feature** (the five-surface checklist in `CLAUDE.md`), not as a follow-up.
+
+The single source of truth for the version is `pyproject.toml`;
+`.release-please-manifest.json` mirrors it, and `release.yml` fails the release
+if the tag disagrees.
 
 ---
 
 ## Breaking Changes Policy
 
 **A breaking change is:**
-- Removing a command or flag
-- Changing output format in non-backward-compatible way
-- Changing required dependencies
-- Changing minimum Python version
-- Changing default behavior (that apps rely on)
+- Removing or renaming a command, flag, or MCP tool
+- Changing an output format (CLI or MCP) in a non-backward-compatible way
+- Changing required dependencies or the minimum Python version
+- Changing a default behaviour that callers rely on
 
-**When releasing a breaking change:**
-1. Announce 1 version in advance (v0.4.x with deprecation warning)
-2. Provide migration guide
-3. Release as MAJOR version bump
-4. Maintain compatibility guide in docs
+**When shipping one (pre-1.0):**
+1. Prefer a deprecation window — keep the old surface working for at least one
+   minor release with a warning (e.g. `neuralmind learn` is retained as a
+   deprecated no-op).
+2. Mark the commit `feat!:` / include a `BREAKING CHANGE:` footer so
+   release-please surfaces it prominently in the notes.
+3. Provide migration guidance in the release notes.
 
-**Example:**
-```
-v0.4.5: neuralmind query --old-flag (deprecated, use --new-flag)
-v0.5.0: --old-flag removed (BREAKING)
-docs/MIGRATIONS.md: "v0.4 → v0.5 migration guide"
-```
+Behaviour is gated via **environment variables**, not a feature-flag config
+file (see `SECURITY.md` for the full off-switch inventory), e.g.
+`NEURALMIND_BYPASS=1`, `NEURALMIND_SYNAPSE_INJECT=0`, `NEURALMIND_BM25=0`,
+`NEURALMIND_REUSE_FEEDBACK=0`.
 
 ---
 
 ## Dependency Management
 
-### Core Dependencies
+### Runtime dependencies (`pyproject.toml`)
 
-| Package | Min Version | Max Version | Why |
-|---------|------------|-------------|-----|
-| Python | 3.10 | 3.13 | Type hints, walrus operator |
-| chromadb | 0.4.0 | latest | Vector storage |
-| pyyaml | 6.0 | latest | Config parsing |
-| toml | 0.10 | latest | TOML support |
-| mcp | 1.23.0 | latest | MCP server (since v0.5.0) |
+| Package | Constraint | Role |
+|---------|-----------|------|
+| Python | `>=3.10` | Baseline (tested 3.10–3.12) |
+| `mcp` | `>=1.27.2` | MCP server (base dependency; `[mcp]` extra is a no-op alias) |
+| `turbovec`, `onnxruntime`, `tokenizers` | `>=0.7` / `>=1.16` / `>=0.15` | Default ChromaDB-free vector backend (platform-gated) |
+| `chromadb` | `>=0.4.0` | Fallback backend on platforms without a turbovec wheel; opt-in elsewhere via `[chromadb]` |
+| `numpy` | `>=1.20` | Vector math |
+| `tree-sitter` + 10 grammars | `>=0.21` (PHP `>=0.22`) | Built-in graph backend (`graphgen.py`) |
+| `pyyaml`, `toml` | `>=6.0` / `>=0.10` | Config parsing |
 
-### Optional Dependencies
+A pinned reproducible set lives in [`requirements-pinned.txt`](../requirements-pinned.txt),
+annotated with CVE rationale where a version is held.
 
-| Extra | Package | Min Version | Use Case |
-|-------|---------|------------|----------|
-| `[dev]` | pytest | 7.0 | Testing |
-| `[dev]` | black | 23.0 | Formatting |
-| `[dev]` | ruff | 0.1.0 | Linting |
-| `[mcp]` | _(empty)_ | — | Legacy alias preserved for backwards compatibility |
+### Optional extras
 
-### Compatibility Matrix
+| Extra | Contents | Use |
+|-------|----------|-----|
+| `[chromadb]` | `chromadb>=0.4.0` | Force the ChromaDB backend |
+| `[mcp]`, `[turbovec]` | _(empty)_ | Back-compat aliases — the packages are now base deps |
+| `[dev]` | pytest, black, ruff, mypy, pre-commit, … | Development / testing |
+| `[all]` | everything | Convenience |
 
-Generated monthly (in `docs/COMPATIBILITY.md`):
-
-```
-| NeuralMind | graphify | Python | Status |
-|------------|----------|--------|--------|
-| v0.4.x | v1.2+ | 3.10-3.13 | ✅ Tested |
-| v0.3.x | v1.1-v1.2 | 3.10-3.12 | ⚠️ Maintained |
-| v0.2.x | v1.0-v1.1 | 3.10-3.11 | ❌ EOL |
-```
-
----
-
-## Release Process
-
-### 1. Preparation (1 week before)
-
-- [ ] Run full test suite
-- [ ] Run benchmarks (confirm no regression)
-- [ ] Update CHANGELOG.md
-- [ ] Update version in `__init__.py`
-- [ ] Create release notes (highlights, migration guide if breaking)
-
-### 2. Tag & Release (Release Day)
-
-```bash
-# Tag the commit
-git tag -a v0.4.3 -m "Release v0.4.3: bug fixes and performance"
-
-# GitHub Actions auto-publishes to PyPI
-# Creates release page with notes and artifacts
-```
-
-### 3. Post-Release (Day 1-2)
-
-- [ ] Verify PyPI package
-- [ ] Run install test on fresh venv
-- [ ] Update docs/wiki to reference new version
-- [ ] Announce in Discussions
-- [ ] Update compatibility matrix
+Dependabot (`.github/workflows` / `dependabot.yml`) watches pip + GitHub Actions
+weekly; a dedicated `chromadb-cve-watch.yml` tracks the held ChromaDB CVE.
 
 ---
 
 ## Security Updates
 
-**Critical security fixes:** Released same-day as patches  
-**Public disclosure:** After patch is released
-
-```bash
-# Example: CVE in dependency
-v0.4.2: chromadb 0.4.5 (has CVE-2024-1234)
-v0.4.3: chromadb 0.4.7 (patch)  ← Released same day
-```
-
----
-
-## Feature Flags (for gradual rollout)
-
-For risky features, use feature flags:
-
-```python
-# In config
-[features]
-enable_pgvector_backend = false  # Experimental
-enable_new_ranking_algo = false  # Opt-in
-
-# Code
-if config.get("features.enable_pgvector_backend"):
-    use_pgvector()
-```
-
----
-
-## Deprecation Timeline
-
-When deprecating a feature:
-
-```
-v0.4.5: Feature X deprecated
-  - Docs marked [DEPRECATED]
-  - Code shows warning: "Feature X will be removed in v0.5.0"
-  - Alternative documented
-
-v0.5.0: Feature X removed
-  - Release notes highlight breaking change
-  - Migration guide provided
-```
+Critical security fixes ship as PATCH releases as soon as an upstream fix is
+available. When no fixed version exists (as with the current ChromaDB CVE), the
+mitigation and reachability analysis are documented in `SECURITY.md` and
+`requirements-pinned.txt`, and the CVE-watch workflow flags the moment a patched
+release lands.
 
 ---
 
 ## Support Timeline
 
-| Version | Released | Type | Support Until | Status |
-|---------|----------|------|-------------|--------|
-| v0.4.x | 2026-04 | Current | 2026-10 | ✅ Active |
-| v0.3.x | 2025-10 | LTS | 2026-04 | ⚠️ Maintained |
-| v0.2.x | 2025-06 | Old | 2025-10 | ❌ EOL |
-| v0.1.x | 2025-01 | Beta | 2025-06 | ❌ EOL |
+The latest published release is the supported one. Because releases are frequent
+minor bumps and upgrades are non-breaking within the pre-1.0 line, there is no
+separate LTS branch to maintain. Users pin exact versions for reproducibility via
+`requirements-pinned.txt` and upgrade with `pip install -U neuralmind`.
 
----
-
-## Migration Guides
-
-When a breaking change occurs, create `docs/MIGRATIONS.md`:
-
-```markdown
-# Migration Guides
-
-## v0.4 → v0.5
-
-### Changed: neuralmind query output format
-
-**Before (v0.4):**
-```json
-{
-  "query": "...",
-  "results": [...]
-}
-```
-
-**After (v0.5):**
-```json
-{
-  "query": "...",
-  "results": [...]
-}
-```
-
-**Action Required:**
-Update parsing code to handle new schema. Backward compatibility flag available with `--legacy-output`.
-```
-
----
-
-## Changelog Format
-
-File: `CHANGELOG.md` (follows [Keep a Changelog](https://keepachangelog.com/))
-
-```markdown
-## [0.4.3] - 2026-04-22
-
-### Added
-- Query memory learning (experimental)
-- PostgreSQL pgvector backend support
-
-### Fixed
-- Issue #123: Auto-discovery task failure on Windows
-- Issue #124: Memory leak in large codebases
-
-### Changed
-- Updated graphify to v1.2.0
-
-### Deprecated
-- `neuralmind query --old-format` (use `--json` instead)
-
-### Security
-- Fixed CVE-2024-1234 in chromadb dependency
-```
-
----
-
-## Rollback Policy
-
-If a release has critical bugs:
-
-```bash
-# Example: v0.4.3 breaks core functionality
-# Immediately patch and release v0.4.4
-# Users can roll back: pip install neuralmind==0.4.2
-
-# If v0.5.0 has major issue:
-# - Yank v0.5.0 from PyPI
-# - Release v0.5.1 with fix
-# - Mark v0.5.0 as "do not use"
-```
-
----
-
-## Version Bump Decision Tree
-
-```
-Is it a bug fix?
-  ├─ Yes → PATCH (v0.4.2 → v0.4.3)
-  └─ No → Continue
-
-Does it add backward-compatible features?
-  ├─ Yes → MINOR (v0.4.x → v0.5.0)
-  └─ No → Continue
-
-Does it break existing code/APIs?
-  ├─ Yes → MAJOR (v0.x → v1.0)
-  └─ No → (shouldn't happen, re-check)
-```
-
----
-
-## Current Status
-
-- **Latest:** v0.4.2 (2026-04-20)
-- **Next:** v0.4.3 (scheduled 2026-05-15, includes security patches)
-- **Future:** v0.5.0 (planned 2026-07, includes MCP enhancements)
-- **Long-term:** v1.0.0 (2027 Q1, production-ready)
-
+A formal support window and stability guarantee are planned for the **v1.0**
+release; see [`ROADMAP.md`](../ROADMAP.md).

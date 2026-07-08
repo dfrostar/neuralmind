@@ -74,13 +74,19 @@ source venv/bin/activate  # Linux/macOS
 # 5. Install in editable mode with dev dependencies
 pip install -e ".[dev]"
 
-# 6. Verify setup
+# 6. Enable the pre-commit hook (mirrors the CI lint job)
+pre-commit install
+
+# 7. Verify setup
 pytest tests/ -v
 ```
 
-> Note: there's no `pre-commit` config in this repo — Lint runs in CI
-> via `black --check` + `ruff check`. To replicate locally before
-> pushing: `black neuralmind/ tests/ && ruff check neuralmind/ tests/`.
+> **Pre-commit hook.** `.pre-commit-config.yaml` runs `black` + `ruff` (the same
+> checks as the CI `lint` job) plus basic whitespace/YAML/TOML hygiene, so lint
+> problems are caught before you push. After `pre-commit install` it runs
+> automatically on `git commit`; run it across the whole tree any time with
+> `pre-commit run --all-files`. To replicate the lint checks manually:
+> `black neuralmind/ tests/ && ruff check neuralmind/ tests/`.
 
 ### Project Structure
 
