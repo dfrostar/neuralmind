@@ -8,6 +8,7 @@ Complete command-line interface documentation for NeuralMind.
 - [Global Options](#global-options)
 - [Commands](#commands)
   - [build](#build)
+  - [update](#update-v0420)
   - [query](#query)
   - [wakeup](#wakeup)
   - [search](#search)
@@ -131,9 +132,68 @@ neuralmind build /path/to/project --dry-run
 Backend precedence:
 1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
 2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`, `.php`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0; PHP in v0.37.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass. **Schema artifacts** (v0.40.0+) are indexed alongside code as `document` nodes: **OpenAPI/AsyncAPI specs** (`.yaml`/`.yml` with an `openapi`/`asyncapi`/`swagger` key) emit nodes per path+method, schema component, and channel; **SQL DDL** (`.sql`) emits one node per `CREATE` object; **Protocol Buffers** (`.proto`) emit nodes per `message`, `service`, `rpc`, and `enum`. Plain YAML config files are silently skipped.
-3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
+3. **Ownership — not `--force` — decides whether the graph is rewritten (v0.42.0+).** Every `build` refreshes a graph *we* wrote, so files added or deleted since the last build are picked up. A **graphify** graph is never touched. (`--force` controls only whether the *embedder* re-embeds unchanged nodes.) Before v0.42.0 a plain `build` skipped graph regeneration entirely whenever a graph already existed, silently re-embedding a stale map — see [`update`](#update-v0420) for the cheap path.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.
+
+---
+
+### update *(v0.42.0+)*
+
+Incrementally re-index **only the named files** into the existing graph. The fast
+path behind [`watch`](#watch-v040) and the [`init-hook`](#init-hook) post-commit hook:
+re-parses just those files, prunes embeddings for symbols that disappeared, and
+re-embeds only what actually changed. Editing one file costs roughly one file's
+parse + embed, not a whole-repo rebuild.
+
+```bash
+neuralmind update [paths...] [--project PATH] [--stdin] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `paths` | No | Files that changed. Paths that no longer exist are pruned from the graph. |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--project` | `.` | Project root |
+| `--stdin` | False | Read newline-delimited paths from stdin instead of arguments. Use this when piping filenames that may contain spaces. |
+| `--json`, `-j` | False | Emit the stats dict as JSON |
+
+#### Exit codes
+
+Exits **non-zero** when the incremental path doesn't apply, so a caller can fall
+back to a full `build`:
+
+- no graph yet (`run build first`)
+- the graph is **graphify**-owned (incremental applies to the built-in backend only)
+- tree-sitter isn't available
+
+#### Examples
+
+```bash
+# Re-index two files
+neuralmind update src/api.py src/models.py
+
+# Re-index everything the last commit touched, falling back to a full build
+git diff-tree --no-commit-id --name-only -r HEAD \
+  | neuralmind update --stdin || neuralmind build .
+
+# Machine-readable stats
+neuralmind update src/api.py --json
+# → {"success": true, "files_reparsed": 1, "embedded": 3, "skipped": 41, "pruned": 0}
+```
+
+#### Notes
+
+- A deleted path is detected by absence on disk — pass it like any other changed
+  file and its nodes are pruned from both the graph and the vector store.
+- Unchanged files keep their nodes, edges, and community ids byte-for-byte, so
+  the embedder's content hash skips them.
 
 ---
 
@@ -1366,7 +1426,9 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 
 ### init-hook
 
-Install (or update) a Git post-commit hook that rebuilds the neural index automatically after every commit. Safe and idempotent — re-running only updates the NeuralMind block without touching other hooks.
+Install (or update) a Git post-commit hook that keeps the neural index current
+after every commit. Safe and idempotent — re-running only updates the NeuralMind
+block without touching other hooks.
 
 ```bash
 neuralmind init-hook [project_path]
@@ -1377,6 +1439,22 @@ neuralmind init-hook [project_path]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
+
+#### What the hook does *(v0.42.0+)*
+
+It re-indexes **only the files the commit touched**, via
+[`neuralmind update`](#update-v0420), and falls back to a full `neuralmind build .`
+when the incremental path doesn't apply — root commits and merges (where
+`git diff-tree` reports no files), a graphify-owned graph, or a project with no
+index yet. Filenames are passed newline-delimited on stdin, so paths with spaces
+are handled correctly.
+
+> **Fixed in v0.42.0.** Earlier versions ran a bare `neuralmind build .`, which —
+> because `build` skipped graph regeneration whenever a graph already existed —
+> never actually refreshed the graph. The hook re-embedded a frozen map, so
+> symbols added after the first build were invisible to retrieval. If you
+> installed the hook before v0.42.0, re-run `neuralmind init-hook .` and then
+> `neuralmind build . --force` once to repair the index.
 
 #### Examples
 
@@ -1399,7 +1477,7 @@ no query runs. Periodic decay ticks age unused weights without manual
 intervention. Stops cleanly on Ctrl-C.
 
 ```bash
-neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] [--quiet] [--reindex]
+neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] [--quiet] [--no-reindex]
 ```
 
 #### Arguments
@@ -1415,12 +1493,23 @@ neuralmind watch [project_path] [--debounce SECONDS] [--decay-interval SECONDS] 
 | `--debounce` | `0.75` | Seconds to coalesce rapid edits into one co-activation batch |
 | `--decay-interval` | `600` | Seconds between decay ticks; `0` disables periodic decay |
 | `--quiet` | off | Suppress per-batch logging (still prints final summary on stop) |
-| `--reindex` | off | *(v0.18.0+)* Incrementally re-index edited files into the built-in graph as they change — re-parses just those files and re-embeds only their nodes (unchanged files are skipped). Built-in backend only; needs the retrieval stack in the watch process. |
+| `--no-reindex` | off | *(v0.42.0+)* **Don't** re-index edited files into the graph; only reinforce synapse weights. The graph goes stale as you edit — the pre-v0.42.0 default. |
+| `--reindex` | *(now the default)* | *(v0.18.0+)* Accepted as a no-op for back-compat. Incremental re-index is on by default as of v0.42.0. |
+
+**Incremental re-index is on by default (v0.42.0+).** Each debounced batch
+re-parses just the edited files into the built-in graph and re-embeds only their
+nodes; unchanged files are skipped. Through v0.41.0 this required `--reindex`, so
+the out-of-the-box watcher reinforced synapses against a graph that never moved —
+retrieval grew more confident about a map that no longer matched the code.
+
+Built-in backend only. When incremental re-index can't apply (graphify-owned
+graph, tree-sitter missing) the watcher prints a **one-time warning to stderr**
+and carries on reinforcing synapses; pass `--no-reindex` to silence it.
 
 #### Examples
 
 ```bash
-# Always-on learning for the current project
+# Always-on learning + live index for the current project
 neuralmind watch &
 
 # Background it and only log the final summary
@@ -1429,8 +1518,8 @@ neuralmind watch /path/to/repo --quiet &
 # Disable periodic decay (decay only runs from SessionStart hook)
 neuralmind watch . --decay-interval 0
 
-# Keep the index live as you edit (incremental re-index, v0.18.0+)
-neuralmind watch . --reindex
+# Synapse learning only; leave the graph frozen (pre-v0.42.0 behavior)
+neuralmind watch . --no-reindex
 ```
 
 #### Notes

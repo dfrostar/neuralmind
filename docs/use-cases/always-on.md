@@ -220,6 +220,14 @@ project. With `neuralmind watch` running 24/7:
 - **Every file save** while you're working (editor, git operations,
   formatters, generators) becomes a `file_activity` event that the
   graph view's canvas pulses on and the synapse layer reinforces.
+- **The code graph stays live** *(v0.42.0+)*. Each debounced batch
+  re-parses just the edited files and re-embeds only their nodes, so
+  the structure the agent queries matches the code on disk. Through
+  v0.41.0 this needed an explicit `--reindex`; the service templates
+  above didn't pass it, which meant a long-running watcher reinforced
+  synapse weights against a graph frozen at whatever the repo looked
+  like when you last ran `build`. Nothing to change — the templates
+  work as-is now. Pass `--no-reindex` if you want the old behavior.
 - **Every agent tool call** from any agent (Claude Code, Cursor,
   Cline, Continue, OpenClaw, Hermes-Agent, Agent Zero) that points at
   the same project reinforces the same synapse store.

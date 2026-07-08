@@ -35,7 +35,9 @@ raw tokens; that's in the benchmark table.
 
 
 
-> **🆕 New in v0.41.0** — **The feedback loop closes; the relevance signal goes on the wire.** Two features that make NeuralMind's half of a *modular* agent stack real. **(1) Reuse-vs-rewrite feedback:** a new **Edit/Write** PostToolUse hook (`edit-activity`) detects when freshly-written code reaches for symbols already defined elsewhere in the graph and feeds that **reuse** signal back into the synapse layer — so future retrieval surfaces the helpers and modules you've actually been *reusing*, not just what scores well semantically. This is the **implicit** counterpart to v0.38.0's explicit `neuralmind_feedback` tool: the agent doesn't have to say anything, NeuralMind learns from the edit it already made. Language-agnostic (normalizes graph labels like `login_endpoint()` to match bare tokens), a pure side effect that never forces a build, off-switch `NEURALMIND_REUSE_FEEDBACK=0`. **(2) Structured relevance sidecar:** retrieval can now attach a machine-readable `relevance` block — per file, per node, the vector **score**, learned **synapse boost**, **recall flag**, and **line spans** (built from the post-boost L3 hits, so it reflects the live synapse signals) — via `neuralmind_query(include_relevance=true)` or `neuralmind query --relevance`, so a downstream compressor can protect the **load-bearing spans** instead of shrinking them away. Versioned and stably-keyed, so it survives reordering — **order-independent by design**. Both are opt-in on the wire; default retrieval is unchanged. [Release notes](RELEASE_NOTES_v0.41.0.md)
+> **🆕 New in v0.42.0** — **The map stops going stale.** A correctness fix at the center of the product, plus the command it exposes. **(1) `neuralmind build` now refreshes the graph.** Through v0.41.0, `build` skipped graph regeneration whenever a graph already existed, so it re-embedded a **frozen map** — every file added since the first build was invisible to retrieval, and `--force` was the only way out. Ownership, not `--force`, now decides: a graph *we* generated is refreshed on every build; a **graphify** graph is still never touched. **(2) The git post-commit hook actually works.** `neuralmind init-hook` installed a bare `neuralmind build .`, which — given (1) — was a structural no-op for the entire life of the feature. It now re-indexes **only the files the commit touched** via the new `neuralmind update`, falling back to a full build on root commits, merges, and graphify-owned graphs. **(3) `neuralmind watch` re-indexes by default.** Incremental re-index was behind an opt-in `--reindex` flag, so the out-of-the-box watcher reinforced synapse weights against a graph that never moved — retrieval growing *more confident* about a map that no longer matched the code. It's on by default now; `--no-reindex` opts out, and a re-index that can't apply warns once on stderr instead of failing silently on every batch. **(4) New `neuralmind update [paths...]`** — the incremental fast path as a first-class command: re-parses just the named files, prunes embeddings for symbols that disappeared, exits non-zero when the incremental path doesn't apply so callers can fall back. **If you installed the git hook before v0.42.0, run `neuralmind build . --force` once to repair your index.** [Release notes](RELEASE_NOTES_v0.42.0.md)
+>
+> **v0.41.0** — **The feedback loop closes; the relevance signal goes on the wire.** Two features that make NeuralMind's half of a *modular* agent stack real. **(1) Reuse-vs-rewrite feedback:** a new **Edit/Write** PostToolUse hook (`edit-activity`) detects when freshly-written code reaches for symbols already defined elsewhere in the graph and feeds that **reuse** signal back into the synapse layer — so future retrieval surfaces the helpers and modules you've actually been *reusing*, not just what scores well semantically. This is the **implicit** counterpart to v0.38.0's explicit `neuralmind_feedback` tool: the agent doesn't have to say anything, NeuralMind learns from the edit it already made. Language-agnostic (normalizes graph labels like `login_endpoint()` to match bare tokens), a pure side effect that never forces a build, off-switch `NEURALMIND_REUSE_FEEDBACK=0`. **(2) Structured relevance sidecar:** retrieval can now attach a machine-readable `relevance` block — per file, per node, the vector **score**, learned **synapse boost**, **recall flag**, and **line spans** (built from the post-boost L3 hits, so it reflects the live synapse signals) — via `neuralmind_query(include_relevance=true)` or `neuralmind query --relevance`, so a downstream compressor can protect the **load-bearing spans** instead of shrinking them away. Versioned and stably-keyed, so it survives reordering — **order-independent by design**. Both are opt-in on the wire; default retrieval is unchanged. [Release notes](RELEASE_NOTES_v0.41.0.md)
 >
 > **v0.40.0** — **Schema artifact indexing: OpenAPI, SQL, and Protocol Buffers.** NeuralMind now indexes non-code schema artifacts alongside your source, closing the most-requested documentation gap. **(1) OpenAPI / AsyncAPI** (`.yaml`/`.yml` with an `openapi`/`asyncapi`/`swagger` key) — one node per path+method (`POST /payments/charge`), one per schema component (`schema:Payment`), one per AsyncAPI channel; plain YAML config files are silently skipped. **(2) SQL DDL** (`.sql`) — one node per `CREATE TABLE/VIEW/PROCEDURE/FUNCTION/TRIGGER/INDEX/TYPE`. **(3) Protocol Buffers** (`.proto`) — one node per `message`, `service`, `rpc`, and `enum`. All three use the same `document` node type as Markdown, so `neuralmind_query` and `neuralmind_search` surface them automatically — no new tools, no config change. Schema nodes participate in incremental rebuild and the synapse layer learns cross-artifact associations (e.g. `POST /payments/charge` co-activated with `process_payment()` strengthens automatically). Honest scope: `$ref` resolution, SQL `ALTER`/`SELECT`, and proto `import` edges are not modelled; GraphQL planned for v0.42.0. [Release notes](RELEASE_NOTES_v0.40.0.md)
 >
@@ -488,12 +490,20 @@ and [Release Notes v0.24.0](RELEASE_NOTES_v0.24.0.md).
 
 ### After making code changes
 
-The index does **not** auto-update unless a git post-commit hook was installed with `neuralmind init-hook .`. After significant code changes, rebuild manually:
+The index does **not** auto-update unless `neuralmind watch .` is running (it
+re-indexes as you edit, v0.42.0+) or a git post-commit hook was installed with
+`neuralmind init-hook .`. Otherwise, after significant code changes:
 
 ```bash
-neuralmind build .          # incremental — only re-embeds changed nodes
-neuralmind build . --force  # full rebuild — re-embeds everything
+neuralmind update src/api.py src/models.py  # fastest — re-parse just these files
+neuralmind build .                          # re-parse the repo; re-embed only changed nodes
+neuralmind build . --force                  # also re-embed unchanged nodes
 ```
+
+> **v0.42.0** — before this release, a plain `neuralmind build .` re-embedded the
+> **existing** graph without regenerating it, so files added since the first build
+> never entered the index. If you've been relying on `build` (or the git hook) to
+> pick up new files, run `neuralmind build . --force` once to repair.
 
 ---
 
@@ -602,7 +612,7 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 | The agent is confidently wrong about what my code does | Start session with `wakeup`; ask with `query` | Grounds the model in real structure instead of guessing |
 | I want to query my codebase from ChatGPT / Gemini | `neuralmind wakeup . \| pbcopy` | Model-agnostic output; paste into any chat |
 | Retrieval feels random across similar questions | `install-hooks` + `neuralmind watch .` | The synapse layer learns automatically from usage and adapts recall to your patterns |
-| Index feels out of date after a refactor | `neuralmind build .` (or `init-hook` once) | Incremental — only re-embeds changed nodes |
+| Index feels out of date after a refactor | `neuralmind update <changed files>` (or `neuralmind watch .` once) | Re-parses just those files; unchanged nodes are skipped by content hash |
 
 ### Goals — "What am I trying to solve for?"
 
@@ -616,7 +626,7 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 | **Work across Claude + GPT + Gemini** with one index | Build once, pipe output into any model | Same context quality, model-agnostic |
 | **Make retrieval adapt** to how your team queries | `install-hooks` + `neuralmind watch .` | The synapse layer learns continuously from usage; relevance improves on repeat patterns, no manual step |
 | **Measure savings** for a manager or stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios, dollar estimate |
-| **Auto-refresh** the index as code changes | `neuralmind init-hook .` (git post-commit) | Every commit rebuilds incrementally |
+| **Auto-refresh** the index as code changes | `neuralmind watch .`, or `neuralmind init-hook .` (git post-commit) | *(v0.42.0+)* The watcher re-indexes on save; the hook re-indexes just the files each commit touched |
 
 ### Still not sure?
 
@@ -1038,9 +1048,33 @@ neuralmind install-hooks --uninstall --global    # remove global hooks
 
 ---
 
+### `neuralmind update` *(v0.42.0+)*
+
+Incrementally re-index **only the named files**. Re-parses just those files into
+the existing graph, prunes embeddings for symbols that disappeared, and re-embeds
+only what changed. Exits non-zero when the incremental path doesn't apply (no
+graph yet, graphify-owned graph, tree-sitter missing) so callers can fall back.
+
+```bash
+neuralmind update [paths...] [--project PATH] [--stdin] [--json]
+```
+
+```bash
+neuralmind update src/api.py src/models.py
+
+# Re-index what the last commit touched; fall back to a full build
+git diff-tree --no-commit-id --name-only -r HEAD \
+  | neuralmind update --stdin || neuralmind build .
+```
+
+A path that no longer exists on disk is pruned from the graph and the vector
+store. `--stdin` takes newline-delimited paths, so filenames with spaces are safe.
+
+---
+
 ### `neuralmind init-hook`
 
-Install a Git `post-commit` hook that auto-rebuilds the index after every commit.
+Install a Git `post-commit` hook that keeps the index current after every commit.
 Safe and idempotent — coexists with other tools' hook contributions.
 
 ```bash
@@ -1051,6 +1085,15 @@ neuralmind init-hook [project_path]
 neuralmind init-hook .
 neuralmind init-hook /path/to/project
 ```
+
+*(v0.42.0+)* The hook re-indexes **only the files the commit touched** via
+`neuralmind update`, falling back to a full `neuralmind build .` on root commits,
+merges, and graphify-owned graphs.
+
+> **Repair step.** Before v0.42.0 the hook ran a bare `neuralmind build .`, which
+> never regenerated the graph — so it silently re-embedded a frozen map. If you
+> installed the hook on an earlier version, re-run `neuralmind init-hook .` and
+> then `neuralmind build . --force` once.
 
 ---
 
@@ -1890,7 +1933,7 @@ The knowledge graph (`graphify-out/graph.json`) is the source of truth — but a
 
 ### Does it auto-update when I change code?
 
-Only if you install the git post-commit hook with `neuralmind init-hook .`. Otherwise run `neuralmind build .` manually; it is incremental and only re-embeds changed nodes.
+Yes, two ways (both v0.42.0+). Run `neuralmind watch .` and the graph re-indexes as you save — on by default now, `--no-reindex` opts out. Or install the git post-commit hook with `neuralmind init-hook .`, which re-indexes just the files each commit touched. Otherwise run `neuralmind update <paths>` for the files you changed, or `neuralmind build .` to re-parse the repo (it re-embeds only the nodes that actually changed).
 
 ### What do I do if retrieval quality is poor on my repo?
 
@@ -1925,6 +1968,7 @@ Only if you install the git post-commit hook with `neuralmind init-hook .`. Othe
 | **[Future-Proofing Plan](docs/FUTURE-PROOFING-PLAN.md)** | 8-initiative engineering plan for sustainability and scale |
 | **[Brain-like Learning](docs/brain_like_learning.md)** | Design rationale for the learning system |
 | **[Use Cases](docs/use-cases/README.md)** | Step-by-step walkthroughs: Claude Code, cost optimization, any-LLM, offline/regulated, growing monorepo, multi-agent (new in v0.6.0) |
+| **[Release Notes v0.42.0](RELEASE_NOTES_v0.42.0.md)** | **The map stops going stale.** A correctness fix at the center of the product. **(1)** `neuralmind build` skipped graph regeneration whenever a graph already existed, so it re-embedded a **frozen map** — files added since the first build were invisible to retrieval. Ownership, not `--force`, now decides: a graph we generated is refreshed every build; a graphify graph is still never touched. **(2)** `neuralmind init-hook` installed a bare `neuralmind build .`, making the post-commit hook a structural no-op for its entire life; it now re-indexes just the files each commit touched, falling back to a full build on root commits, merges, and graphify graphs. **(3)** `neuralmind watch` re-indexes **by default** — incremental re-index was behind an opt-in `--reindex`, so the stock watcher reinforced synapses against a graph that never moved; `--no-reindex` opts out, and an inapplicable re-index warns once on stderr instead of failing silently every batch. **(4)** New **`neuralmind update [paths...]`** exposes the incremental fast path as a command. **Upgrading? Run `neuralmind build . --force` once to repair the index.** |
 | **[Release Notes v0.41.0](RELEASE_NOTES_v0.41.0.md)** | The feedback loop closes; the relevance signal goes on the wire — two features that make NeuralMind's half of a *modular* agent stack real. **(1) Reuse-vs-rewrite feedback:** a new `Edit`/`Write` PostToolUse hook (`edit-activity`) detects when freshly-written code reaches for symbols already defined elsewhere in the graph and feeds that **reuse** signal back into the synapse layer, so retrieval prefers what you actually reuse — the **implicit** complement to v0.38.0's explicit `neuralmind_feedback` tool. Language-agnostic (normalizes labels like `login_endpoint()`), a pure side effect that never forces a build, off-switch `NEURALMIND_REUSE_FEEDBACK=0`. **(2) Structured relevance sidecar:** retrieval can attach a machine-readable `relevance` block (per-file, per-node vector score / synapse boost / recall flag + line spans, built from the post-boost L3 hits) via `neuralmind_query(include_relevance=true)` or `neuralmind query --relevance`, so a downstream compressor can protect the **load-bearing spans** — versioned + stably-keyed, order-independent by design. Both opt-in on the wire; default retrieval unchanged |
 | **[Release Notes v0.39.0](RELEASE_NOTES_v0.39.0.md)** | Trust, transparency, and quality — six improvements: **(1)** `neuralmind build --dry-run` shows a concrete token-savings estimate before building (auto-detects 10+ languages; `--json` for CI). **(2)** `neuralmind watch` now detects deleted files immediately and applies targeted synapse decay via `NeuralMind.deactivate_files()`. **(3)** `neuralmind query --explain` shows a human-readable L0–L3 budget breakdown, communities loaded, top search hits, and synapses that fired. **(4)** `neuralmind review` seeds spreading activation from `git diff` changed files and surfaces co-break candidates — also available as the `neuralmind_review` MCP tool. **(5)** `neuralmind savings` reads the opt-in JSONL event log. **(6)** `neuralmind probe` now queries by rationale/docstring instead of symbol name — turning a near-tautology (~0.95 MRR) into a genuine NL→code measurement (~0.79 MRR with real blind spots) |
 | **[Release Notes v0.38.0](RELEASE_NOTES_v0.38.0.md)** | Hybrid search + explicit feedback + CI auto-index — **(1)** BM25 keyword index built alongside the vector store, merged via RRF at query time so "UserService" scores exact-name matches first (code-aware camelCase/snake_case tokenisation; `NEURALMIND_BM25=0` to disable; budget-neutral). **(2)** New `neuralmind_feedback` MCP tool: `signal="positive"` fires an immediate Hebbian reinforcement between the target node and `context_node_ids`; `signal="negative"` applies a targeted single-tick decay on all edges for the node (LTP-protected edges floored at 0.20, never fully removed). **(3)** `.github/workflows/neuralmind-autoindex.yml` — drop-in GitHub Action that re-indexes on push, caches `.neuralmind/`, and auto-commits the team memory snapshot; no secrets, 100% local |
