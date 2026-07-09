@@ -718,3 +718,93 @@ class TestBuiltinGraphRefresh:
         sys.stderr.flush()
 
         assert b"generated code graph" in buf.getvalue()
+
+
+class TestTransitionPathKeys:
+    """Transition keys are repo-relative POSIX, whatever the caller passed.
+
+    Regression: the watcher hands `activate_files` absolute native paths, and
+    they used to be recorded verbatim — but `neuralmind next src/api.py` passes
+    the user's relative input verbatim too, so live-learned transitions could
+    never match a query. Both sides now normalize to the convention
+    `mine-history` established (repo-relative POSIX), with a dual-read fallback
+    for stores recorded before normalization.
+    """
+
+    def _mind(self, tmp_path, monkeypatch):
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(tmp_path))
+        # Keep the test on the synapse layer: no index build, no embeddings.
+        monkeypatch.setattr(mind, "_ensure_built", lambda: None)
+        monkeypatch.setattr(mind.embedder, "get_file_nodes", lambda _p: [])
+        assert mind.synapses is not None
+        return mind
+
+    # -- the key normalizer -------------------------------------------------
+
+    def test_key_normalizes_backslashes(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        assert mind._transition_key(r"src\api.py") == "src/api.py"
+
+    def test_key_relativizes_absolute_paths_under_root(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        absolute = str(tmp_path / "src" / "api.py")  # native separators
+        assert mind._transition_key(absolute) == "src/api.py"
+
+    def test_key_rejects_paths_outside_the_project(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        outside = str(tmp_path.parent / "elsewhere" / "x.py")
+        assert mind._transition_key(outside) is None
+
+    def test_key_passes_node_ids_through(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        assert mind._transition_key("api_py__handler_fn") == "api_py__handler_fn"
+
+    def test_key_collapses_leading_dot_segment(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        assert mind._transition_key("./src/api.py") == "src/api.py"
+
+    # -- write side: the watcher's absolute paths ---------------------------
+
+    def test_watcher_absolute_input_is_stored_relative(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        mind.activate_files([str(tmp_path / "a.py"), str(tmp_path / "b.py")])
+
+        # Stored under the relative key...
+        assert dict(mind.synapses.next_likely("a.py"))
+        # ...and NOT under the raw absolute key the watcher passed.
+        assert mind.synapses.next_likely(str(tmp_path / "a.py")) == []
+
+    def test_paths_outside_root_are_dropped_from_the_sequence(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        outside = str(tmp_path.parent / "elsewhere.py")
+        mind.activate_files([str(tmp_path / "a.py"), outside])
+        # Only one in-project path survived -> no pair, nothing recorded.
+        assert mind.synapses.next_likely("a.py") == []
+
+    # -- query side: relative, backslash, legacy ----------------------------
+
+    def test_next_query_with_relative_path_finds_watcher_learning(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        mind.activate_files([str(tmp_path / "src" / "api.py"), str(tmp_path / "src" / "models.py")])
+        ranked = mind.next_likely("src/api.py")
+        assert ranked and ranked[0][0] == "src/models.py"
+
+    def test_next_query_normalizes_windows_backslash_input(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        mind.activate_files([str(tmp_path / "src" / "api.py"), str(tmp_path / "src" / "models.py")])
+        ranked = mind.next_likely(r"src\api.py")
+        assert ranked and ranked[0][0] == "src/models.py"
+
+    def test_next_dual_reads_legacy_absolute_keyed_stores(self, tmp_path, monkeypatch):
+        mind = self._mind(tmp_path, monkeypatch)
+        # Simulate a pre-v0.42.0 store: the old watcher recorded absolute
+        # native path strings verbatim.
+        mind.synapses.record_sequence(
+            [str(tmp_path.resolve() / "a.py"), str(tmp_path.resolve() / "b.py")]
+        )
+        ranked = mind.next_likely("a.py")
+        assert ranked, "legacy absolute-keyed transitions must remain reachable"
+        # Legacy successors are normalized on the way out.
+        assert ranked[0][0] == "b.py"

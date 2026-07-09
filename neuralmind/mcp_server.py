@@ -197,15 +197,16 @@ def tool_next_likely(project_path: str, from_node: str, top_k: int = 5) -> dict[
     directional transitions.
 
     Returns ``(to_node, probability)`` pairs normalized over all outgoing
-    transitions from ``from_node``. ``from_node`` is whatever string the
-    transition recorder used — file paths from the watcher, node ids
-    from direct calls. Empty when the node has no recorded transitions.
+    transitions from ``from_node``. File-path keys are normalized to the
+    repo-relative POSIX convention (v0.42.0+) — relative, absolute, and
+    backslash forms all resolve to the same rows, with a dual-read fallback
+    for stores recorded before normalization. Empty when the node has no
+    recorded transitions.
     """
     mind = get_mind(project_path, auto_build=False)
-    store = mind.synapses
-    if store is None:
+    if mind.synapses is None:
         return {"enabled": False, "from_node": from_node, "next": []}
-    ranked = store.next_likely(from_node, top_k=top_k)
+    ranked = mind.next_likely(from_node, top_k=top_k)
     return {
         "enabled": True,
         "from_node": from_node,

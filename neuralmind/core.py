@@ -318,6 +318,63 @@ class NeuralMind:
         except Exception:
             return 0
 
+    def _transition_key(self, path: str) -> str | None:
+        """Normalize a file path to its transition-table key: repo-relative POSIX.
+
+        The watcher hands ``activate_files`` absolute native paths
+        (``C:\\proj\\src\\api.py``), but users ask ``neuralmind next src/api.py``
+        — so both sides must agree on one key form, and ``mine-history``
+        already established repo-relative POSIX as the convention.
+
+        Absolute paths under the project root become relative; relative paths
+        get their separators normalized; a path outside the project returns
+        ``None`` (nothing in this store can ever match it). Strings without
+        separators — node ids like ``api_py__handler_fn`` — pass through
+        untouched.
+        """
+        raw = str(path).strip().replace("\\", "/")
+        if not raw:
+            return None
+        p = Path(raw)
+        if p.is_absolute():
+            try:
+                return p.resolve().relative_to(self.project_path.resolve()).as_posix()
+            except (ValueError, OSError):
+                return None
+        return p.as_posix()
+
+    def next_likely(
+        self, from_node: str, top_k: int = 5, namespaces: list[str] | None = None
+    ) -> list[tuple[str, float]]:
+        """Predict what typically follows ``from_node``, path-form-agnostic.
+
+        Normalizes the query key to the repo-relative POSIX convention, and
+        falls back to the pre-v0.42.0 key forms for stores populated before
+        normalization existed: the verbatim input, then the absolute native
+        path the old watcher used to record. Legacy absolute successors are
+        normalized on the way out so the display form is consistent.
+        """
+        store = self.synapses
+        if store is None:
+            return []
+        key = self._transition_key(from_node) or str(from_node)
+        candidates = [key]
+        if str(from_node) != key:
+            candidates.append(str(from_node))
+        # Legacy stores keyed transitions by the watcher's absolute native
+        # paths; reconstruct that form for a dual-read fallback.
+        legacy = str(self.project_path.resolve() / key)
+        if legacy not in candidates:
+            candidates.append(legacy)
+        for candidate in candidates:
+            try:
+                ranked = store.next_likely(candidate, top_k=top_k, namespaces=namespaces)
+            except Exception:
+                ranked = []
+            if ranked:
+                return [(self._transition_key(t) or t, prob) for t, prob in ranked]
+        return []
+
     def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
         """Resolve file paths to graph node ids and feed them as one batch.
 
@@ -332,6 +389,10 @@ class NeuralMind:
         - Directional file-level transitions (``A -> B``) for each
           consecutive pair in ``file_paths``, so callers can ask
           ``next_likely(file)`` for what typically follows. *(v0.11.0+)*
+          Keys are normalized to repo-relative POSIX form (v0.42.0+) so the
+          watcher's absolute paths, ``mine-history``'s git paths, and the
+          relative paths users type into ``neuralmind next`` all land on the
+          same rows.
         """
         if not file_paths:
             return 0
@@ -339,10 +400,12 @@ class NeuralMind:
 
         store = self.synapses
         if store is not None and len(file_paths) >= 2:
-            try:
-                store.record_sequence(file_paths, strength=strength)
-            except Exception:
-                pass
+            keys = [k for k in (self._transition_key(p) for p in file_paths) if k]
+            if len(keys) >= 2:
+                try:
+                    store.record_sequence(keys, strength=strength)
+                except Exception:
+                    pass
 
         node_ids: list[str] = []
         for path in file_paths:

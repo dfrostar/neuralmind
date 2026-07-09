@@ -213,17 +213,21 @@ class TestToolNextLikely:
     """Tests for tool_next_likely() — the v0.11.0 directional-transition handler."""
 
     def test_handler_returns_predicted_successors(self, temp_project):
-        """tool_next_likely surfaces probabilities from SynapseStore.next_likely."""
+        """tool_next_likely surfaces probabilities from NeuralMind.next_likely.
+
+        The handler routes through the mind-level method (v0.42.0+), which
+        owns path-key normalization and the legacy dual-read — the store is
+        no longer called directly, so that's the seam this test mocks.
+        """
         from neuralmind.mcp_server import tool_next_likely
 
         with patch("neuralmind.mcp_server.get_mind") as mock_get:
-            mock_store = MagicMock()
-            mock_store.next_likely.return_value = [
+            mock_mind = MagicMock()
+            mock_mind.synapses = MagicMock()  # enabled
+            mock_mind.next_likely.return_value = [
                 ("tests/test_auth.py", 0.6),
                 ("src/auth/middleware.py", 0.4),
             ]
-            mock_mind = MagicMock()
-            mock_mind.synapses = mock_store
             mock_get.return_value = mock_mind
 
             result = tool_next_likely(str(temp_project), "src/auth/handlers.py", top_k=2)
@@ -234,7 +238,7 @@ class TestToolNextLikely:
             {"to_node": "tests/test_auth.py", "probability": 0.6},
             {"to_node": "src/auth/middleware.py", "probability": 0.4},
         ]
-        mock_store.next_likely.assert_called_once_with("src/auth/handlers.py", top_k=2)
+        mock_mind.next_likely.assert_called_once_with("src/auth/handlers.py", top_k=2)
 
     def test_handler_disabled_when_synapses_off(self, temp_project):
         """tool_next_likely returns enabled:False when the store is disabled."""
@@ -254,10 +258,9 @@ class TestToolNextLikely:
         from neuralmind.mcp_server import tool_next_likely
 
         with patch("neuralmind.mcp_server.get_mind") as mock_get:
-            mock_store = MagicMock()
-            mock_store.next_likely.return_value = []
             mock_mind = MagicMock()
-            mock_mind.synapses = mock_store
+            mock_mind.synapses = MagicMock()  # enabled
+            mock_mind.next_likely.return_value = []
             mock_get.return_value = mock_mind
 
             result = tool_next_likely(str(temp_project), "unknown.py")
