@@ -9,6 +9,7 @@ Complete command-line interface documentation for NeuralMind.
 - [Commands](#commands)
   - [build](#build)
   - [update](#update-v0420)
+  - [mine-history](#mine-history-v0420)
   - [query](#query)
   - [wakeup](#wakeup)
   - [search](#search)
@@ -194,6 +195,88 @@ neuralmind update src/api.py --json
   file and its nodes are pruned from both the graph and the vector store.
 - Unchanged files keep their nodes, edges, and community ids byte-for-byte, so
   the embedder's content hash skips them.
+
+---
+
+### mine-history *(v0.42.0+)*
+
+Seed the synapse layer with co-change priors mined from git commit history.
+
+The associative memory learns which files go together from live editing, so on a
+fresh install it says little until roughly a week of usage has accrued. Every
+repository already contains that signal, though: files that changed together in a
+commit are the same co-activation a live edit produces, already recorded. This
+command reads it and warms the store, so recall is useful from the first query.
+
+```bash
+neuralmind mine-history [project_path] [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--max-commits` | `2000` | Most recent commits to scan |
+| `--max-files` | `50` | Skip commits touching more than this many indexed files — a large refactor is co-change noise, not signal |
+| `--dry-run` | False | Compute and report the edges without writing them |
+| `--json`, `-j` | False | Emit the stats dict as JSON |
+
+#### How the signal is scored
+
+- **File granularity.** Each changed path maps to its single file-level graph
+  node, so a `k`-file commit yields `k(k-1)/2` co-change pairs — not a clique over
+  every symbol of every file.
+- **Focused commits weigh more.** Per-commit pair weight scales as `1/(k-1)`; a
+  two-file commit is strong evidence, a sprawling one barely registers. Commits
+  above `--max-files` are skipped entirely.
+- **Durable pairs are protected.** A pair seen in ≥ 5 commits is written already
+  LTP-protected, so a real structural fact about the repo doesn't decay away
+  before real usage replaces it.
+
+#### The `history` namespace
+
+Mined edges land in a dedicated `history` namespace, merged into reads at
+`W_HISTORY` (0.35) — below personal usage (0.8) and imported team memory (0.5).
+It is a *prior*: it primes recall and is designed to be overtaken by what you
+actually do. It decays slowly (a co-change fact is long-lived), is idempotent to
+re-run (weights merge by MAX, never doubling), and is cleared independently:
+
+```bash
+neuralmind memory reset --namespace history    # forget the mined prior
+neuralmind mine-history .                       # re-mine from scratch
+```
+
+An empty `history` namespace contributes nothing, so nothing changes for a
+project that never runs this command.
+
+#### Examples
+
+```bash
+# Warm the store from the last 2000 commits
+neuralmind mine-history .
+
+# Preview what would be mined, without writing
+neuralmind mine-history . --dry-run
+# → Would mine 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) ...
+
+# Deep scan, tighter noise gate, JSON for a setup script
+neuralmind mine-history . --max-commits 8000 --max-files 30 --json
+```
+
+#### Notes
+
+- Merge commits are skipped (a merge's combined diff would fabricate a huge
+  spurious clique).
+- Paths from old commits that no longer map to an indexed file (deleted, renamed
+  away, never indexed) are silently dropped — a missing prior, never a wrong one.
+- Assumes the project root is the git repository root, like `neuralmind review`
+  and the `init-hook` post-commit hook.
 
 ---
 
