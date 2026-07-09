@@ -144,7 +144,7 @@ def test_larger_commits_contribute_less_per_pair():
 def test_repeated_cochange_accumulates_and_saturates_at_cap():
     commits = [["a", "b"]] * 10  # base=0.5 each -> 5.0, saturates
     rows, _ = history.cochange_edges(commits, IDX)
-    (a, b, weight, count) = rows[0]
+    a, b, weight, count = rows[0]
     assert weight == WEIGHT_CAP
     assert count == 10
 
