@@ -262,6 +262,14 @@ was never affected, and is still never touched.
 - `mine-history` adds a `history` namespace to the default merged read. An empty
   namespace contributes nothing, so this is inert until you mine — existing
   behavior is unchanged on any project that never runs the command.
+- **Transition keys are now repo-relative POSIX paths.** The watcher used to
+  record file transitions under absolute native paths, which `neuralmind next
+  src/api.py` could never match — live-learned "what comes next" was
+  effectively unqueryable by the path form users type. Writes now normalize
+  (`activate_files`), queries normalize plus **dual-read** the old absolute
+  form (`neuralmind next`, the `neuralmind_next_likely` MCP tool), so
+  pre-v0.42.0 stores keep working without migration; legacy successors are
+  normalized on the way out.
 
 ## Tests
 

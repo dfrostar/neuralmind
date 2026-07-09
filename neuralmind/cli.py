@@ -1187,11 +1187,12 @@ def cmd_next(args):
     """Show what typically follows a node (file path or node id) in the
     learned directional-transition graph."""
     mind = NeuralMind(args.project_path)
-    store = mind.synapses
     # Default: the merged namespace view (active branch + personal + shared);
     # --namespace pins the read to one namespace at raw weights (PRD 4).
+    # mind.next_likely normalizes the path key (relative/absolute/backslash all
+    # work) and dual-reads legacy absolute-keyed stores.
     namespaces = [args.namespace] if getattr(args, "namespace", None) else None
-    ranked = store.next_likely(args.from_node, top_k=args.n, namespaces=namespaces) if store else []
+    ranked = mind.next_likely(args.from_node, top_k=args.n, namespaces=namespaces)
     if args.json:
         print(
             json.dumps(
