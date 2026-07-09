@@ -30,8 +30,8 @@ Complete command-line interface documentation for NeuralMind.
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
-  - [savings](#savings-v0400)
-  - [review](#review-v0400)
+  - [savings](#savings-v0390)
+  - [review](#review-v0390)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -1130,7 +1130,7 @@ benchmark fixture showed the old reranker added 0.0 points to top-k hit
 rate while the synapse layer alone adds +11.6 points.
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
-[`neuralmind memory inspect`](#neuralmind-memory). For the full rationale
+[`neuralmind memory inspect`](#memory-v0240). For the full rationale
 and migration notes, see the
 [v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md).
 
