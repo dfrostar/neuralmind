@@ -1087,9 +1087,7 @@ class NeuralMind:
             return result
 
         result["edges_written"] = (
-            self.synapses.import_edges(rows, namespace=history.HISTORY_NAMESPACE)
-            if rows
-            else 0
+            self.synapses.import_edges(rows, namespace=history.HISTORY_NAMESPACE) if rows else 0
         )
         result["transitions_written"] = (
             self.synapses.import_transitions(trans_rows, namespace=history.HISTORY_NAMESPACE)
