@@ -20,23 +20,33 @@ from neuralmind.synapses import (
     merge_weight_for,
 )
 
-# NUL delimiter that prefixes each commit's hash line in our git-log format.
+# NUL delimiter that prefixes each commit's hash line in our git-log format;
+# unit separator splits hash / author / timestamp within it.
 NUL = "\x00"
+US = "\x1f"
 
 
-def _log(*commits: list[str]) -> list[str]:
-    """Build git-log output lines from (hash, *paths) commit tuples.
+def _log(*commits, authors=None, timestamps=None) -> list[str]:
+    """Build git-log output lines from per-commit path lists.
 
-    Each commit renders as a NUL-prefixed hash line, then one line per path,
-    then a blank line — exactly what `git log --name-only --pretty=format:%x00%H`
-    emits.
+    Each commit renders as a NUL-prefixed ``hash<US>author<US>timestamp`` line,
+    then one line per path, then a blank line — exactly what
+    ``git log --name-only --pretty=format:%x00%H%x1f%ae%x1f%at`` emits.
+    ``authors``/``timestamps`` default to one author, one second apart.
     """
     lines: list[str] = []
     for i, paths in enumerate(commits):
-        lines.append(f"{NUL}{'0' * 39}{i}")
+        author = authors[i] if authors else "dev@example.com"
+        ts = timestamps[i] if timestamps else 1_700_000_000 + i
+        lines.append(f"{NUL}{'0' * 39}{i}{US}{author}{US}{ts}")
         lines.extend(paths)
         lines.append("")
     return lines
+
+
+def _files(lines):
+    """Parse and project to path lists — most parser tests only care about files."""
+    return [c.files for c in history.parse_git_log(lines)]
 
 
 # --------------------------------------------------------------------------- #
@@ -67,23 +77,39 @@ def test_file_node_index_skips_files_with_no_file_node():
 
 def test_parse_splits_commits_on_nul_sentinel():
     lines = _log(["a.py", "b.py"], ["c.py"])
-    assert list(history.parse_git_log(lines)) == [["a.py", "b.py"], ["c.py"]]
+    assert _files(lines) == [["a.py", "b.py"], ["c.py"]]
+
+
+def test_parse_extracts_author_and_timestamp():
+    lines = _log(["a.py"], authors=["kim@co.io"], timestamps=[1_700_000_042])
+    (commit,) = list(history.parse_git_log(lines))
+    assert commit.author == "kim@co.io"
+    assert commit.timestamp == 1_700_000_042
+
+
+def test_parse_tolerates_bare_hash_format():
+    # The pre-transition format (%x00%H only) still parses; metadata is None.
+    lines = [f"{NUL}{'0' * 40}", "a.py", ""]
+    (commit,) = list(history.parse_git_log(lines))
+    assert commit.files == ["a.py"]
+    assert commit.author is None
+    assert commit.timestamp is None
 
 
 def test_parse_handles_empty_commit():
     lines = _log(["a.py"], [], ["b.py"])
-    assert list(history.parse_git_log(lines)) == [["a.py"], [], ["b.py"]]
+    assert _files(lines) == [["a.py"], [], ["b.py"]]
 
 
 def test_parse_tolerates_output_before_first_sentinel():
     # No crash if something precedes the first commit marker.
     lines = ["stray line", *_log(["a.py"])]
-    assert list(history.parse_git_log(lines)) == [["a.py"]]
+    assert _files(lines) == [["a.py"]]
 
 
 def test_parse_caps_pathological_commit_at_hard_limit():
     huge = [f"f{i}.py" for i in range(history._HARD_FILE_LIMIT + 100)]
-    (result,) = list(history.parse_git_log(_log(huge)))
+    (result,) = _files(_log(huge))
     assert len(result) == history._HARD_FILE_LIMIT
 
 
@@ -156,6 +182,67 @@ def test_single_indexable_file_yields_no_edge():
 def test_duplicate_paths_in_one_commit_are_deduped():
     rows, _ = history.cochange_edges([["a", "a", "b"]], IDX)
     assert len(rows) == 1
+
+
+# --------------------------------------------------------------------------- #
+# transition_rows — directional "what came next" mining
+# --------------------------------------------------------------------------- #
+
+
+def _commit(files, author="dev@example.com", ts=0):
+    return history.CommitRecord(list(files), author, ts)
+
+
+def test_transitions_follow_same_author_sessions_oldest_to_newest():
+    # git log order is newest-first: commit at ts=100 listed before ts=0.
+    commits = [_commit(["b"], ts=100), _commit(["a"], ts=0)]
+    rows, stats = history.transition_rows(commits, IDX)
+    assert rows == [("a", "b", 1.0, 1)]  # a (older) -> b (newer), full weight
+    assert stats["sessions_used"] == 1
+
+
+def test_transitions_skip_author_changes_and_long_gaps():
+    week = 7 * 24 * 3600
+    cases = [
+        [_commit(["b"], author="kim@co.io", ts=100), _commit(["a"], ts=0)],
+        [_commit(["b"], ts=week), _commit(["a"], ts=0)],
+        [_commit(["b"], author=None, ts=100), _commit(["a"], author=None, ts=0)],
+    ]
+    for commits in cases:
+        rows, stats = history.transition_rows(commits, IDX)
+        assert rows == []
+        assert stats["sessions_used"] == 0
+
+
+def test_transitions_skip_rebased_out_of_order_timestamps():
+    # Newer commit carries an OLDER author date (rebase artifact): negative
+    # gap must break the session, not fabricate a backwards sequence.
+    commits = [_commit(["b"], ts=0), _commit(["a"], ts=100)]
+    rows, _ = history.transition_rows(commits, IDX)
+    assert rows == []
+
+
+def test_transition_weight_spreads_across_broad_commits():
+    # 2 files -> 2 files: four transitions at 1/(2*2) each.
+    commits = [_commit(["c", "d"], ts=60), _commit(["a", "b"], ts=0)]
+    rows, _ = history.transition_rows(commits, IDX)
+    assert len(rows) == 4
+    assert all(abs(w - 0.25) < 1e-9 and n == 1 for _, _, w, n in rows)
+
+
+def test_transitions_drop_self_and_unindexed_paths():
+    commits = [_commit(["a", "ghost"], ts=60), _commit(["a", "b"], ts=0)]
+    rows, _ = history.transition_rows(commits, IDX)
+    # ghost filtered; a->a skipped; only b->a survives... direction check:
+    # older commit has [a, b], newer has [a]; transitions are older->newer.
+    assert rows == [("b", "a", 0.5, 1)]
+
+
+def test_transitions_respect_max_files_gate():
+    commits = [_commit(["e"], ts=60), _commit(["a", "b", "c", "d"], ts=0)]
+    rows, stats = history.transition_rows(commits, IDX, max_files=3)
+    assert rows == []
+    assert stats["sessions_used"] == 0
 
 
 # --------------------------------------------------------------------------- #
@@ -234,7 +321,9 @@ def test_run_git_log_round_trips_real_history(tmp_path):
     lines = history.run_git_log(tmp_path, max_commits=10)
     commits = list(history.parse_git_log(lines))
     assert len(commits) == 1
-    assert sorted(commits[0]) == ["a.py", "b.py"]
+    assert sorted(commits[0].files) == ["a.py", "b.py"]
+    assert commits[0].author == "t@t.co"
+    assert isinstance(commits[0].timestamp, int)
 
 
 def test_run_git_log_is_empty_outside_a_repo(tmp_path):

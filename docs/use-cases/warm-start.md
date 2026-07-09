@@ -24,9 +24,10 @@ neuralmind mine-history .     # warm the synapse layer from git history
 ```
 
 ```console
-Mined 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) into the 'history' namespace.
+Mined 1847 co-change edge(s) (206 durable) from 1983 of 2000 commit(s) into the 'history' namespace.
+  + 412 directional transition(s) from 388 same-author commit sequence(s) (feeds `neuralmind next`).
   Skipped 17 commit(s) touching more than 50 files (noise).
-  1847 edge(s) written.
+  1847 edge(s) + 412 transition(s) written.
   These now bias recall from the first query. Re-run any time; clear with `neuralmind memory reset --namespace history`.
 ```
 
@@ -34,7 +35,7 @@ Prefer to look before you leap:
 
 ```bash
 neuralmind mine-history . --dry-run
-# → Would mine 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) ...
+# → Would mine 1847 co-change edge(s) (206 durable) from 1983 of 2000 commit(s) ...
 ```
 
 ## What just happened, and why it's trustworthy
@@ -54,6 +55,26 @@ with noise. Three design choices keep the signal clean:
    written *already LTP-protected* — the decay layer's long-term-potentiation
    floor keeps a genuine structural fact from fading before you've generated the
    real usage that would replace it.
+
+## It learns direction, too
+
+Co-change says *these files go together*. Commit sequences say *this one comes
+next*. Two consecutive commits by the **same author within six hours** are one
+work session — after committing the API change, they went on to commit the
+migration — and mining records that as a directional transition, the same signal
+`neuralmind next` normally learns from watching you edit live. On a repo with
+zero usage history:
+
+```console
+$ neuralmind next . api.py
+After api.py:
+   69.2%  models.py
+   15.4%  utils.py
+   15.4%  views.py
+```
+
+Rebased or reordered history (a negative timestamp gap between commits) breaks
+the inferred session instead of fabricating a sequence.
 
 ## It's a prior, not an opinion
 
@@ -110,9 +131,10 @@ behaves exactly as before — an empty `history` namespace contributes nothing.
 - **Repo root = project root.** Like `neuralmind review` and the `init-hook`
   post-commit hook, mining assumes the project directory is the git repository
   root.
-- **Undirected only (for now).** v0.42.0 mines symmetric co-change. It does not
-  yet mine directional "file A, then file B across commits" transitions —
-  `neuralmind next` still learns those from live editing.
+- **Session inference is heuristic.** Directional transitions come from
+  consecutive same-author commits within a 6-hour window; rebased or reordered
+  history (a negative timestamp gap) breaks the inferred session rather than
+  fabricating a sequence, so heavily-rebased repos mine fewer transitions.
 
 ## Related
 

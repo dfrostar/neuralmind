@@ -844,6 +844,9 @@ class TestCLIMineHistory:
             "edges": 51,
             "ltp_edges": 7,
             "edges_written": 51,
+            "transitions": 12,
+            "sessions_used": 9,
+            "transitions_written": 12,
             "dry_run": False,
         }
         with patch.object(cli.NeuralMind, "mine_history", return_value=stats):
@@ -851,7 +854,8 @@ class TestCLIMineHistory:
         out = capsys.readouterr().out
         assert "Mined 51 co-change edge(s)" in out
         assert "7 durable" in out
-        assert "51 edge(s) written" in out
+        assert "12 directional transition(s) from 9 same-author" in out
+        assert "51 edge(s) + 12 transition(s) written" in out
 
     def test_dry_run_says_would_mine_and_writes_nothing(self, tmp_path, capsys):
         from neuralmind import cli

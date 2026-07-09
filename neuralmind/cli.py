@@ -1492,6 +1492,13 @@ def cmd_mine_history(args):
             f"of {stats['commits_scanned']} commit(s) "
             f"into the '{stats['namespace']}' namespace."
         )
+        transitions = stats.get("transitions", 0)
+        if transitions:
+            print(
+                f"  + {transitions} directional transition(s) from "
+                f"{stats.get('sessions_used', 0)} same-author commit sequence(s) "
+                "(feeds `neuralmind next`)."
+            )
         skipped = stats.get("commits_too_large", 0)
         if skipped:
             print(
@@ -1499,7 +1506,10 @@ def cmd_mine_history(args):
                 f"{getattr(args, 'max_files', None) or ''} files (noise)."
             )
         if not stats.get("dry_run"):
-            print(f"  {stats.get('edges_written', 0)} edge(s) written.")
+            print(
+                f"  {stats.get('edges_written', 0)} edge(s) + "
+                f"{stats.get('transitions_written', 0)} transition(s) written."
+            )
             print(
                 "  These now bias recall from the first query. Re-run any time; "
                 "clear with `neuralmind memory reset --namespace history`."

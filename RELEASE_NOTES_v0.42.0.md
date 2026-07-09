@@ -170,9 +170,10 @@ observations deep. `neuralmind mine-history` reads it and seeds the store:
 
 ```console
 $ neuralmind mine-history .
-Mined 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) into the 'history' namespace.
+Mined 1847 co-change edge(s) (206 durable) from 1983 of 2000 commit(s) into the 'history' namespace.
+  + 412 directional transition(s) from 388 same-author commit sequence(s) (feeds `neuralmind next`).
   Skipped 17 commit(s) touching more than 50 files (noise).
-  1847 edge(s) written.
+  1847 edge(s) + 412 transition(s) written.
   These now bias recall from the first query. Re-run any time; clear with `neuralmind memory reset --namespace history`.
 ```
 
@@ -192,6 +193,14 @@ before any live usage has accrued.
 - **Durable pairs are protected.** A pair that co-changed in ≥ 5 commits is
   written already LTP-protected, so a real structural fact about the repo doesn't
   decay away before you've generated usage to replace it.
+- **Direction comes from commit sequences.** Two consecutive commits by the same
+  author within six hours are one work session — after committing the API change,
+  they went on to commit the migration — and each such sequence records
+  directional transitions (older commit's files → newer commit's files, weight
+  `1/(|A|·|B|)`). That's the same signal `neuralmind next` learns from live
+  editing, so next-file prediction works from the first session too. Rebased
+  history (negative timestamp gaps) breaks the inferred session rather than
+  fabricating a sequence.
 
 **How loud it is:** edges land in a dedicated `history` namespace that reads at
 `W_HISTORY` (0.35) — below both your personal usage (0.8) and imported team
