@@ -86,6 +86,7 @@ SCHEMA_VERSION = 1
 DEFAULT_NAMESPACE = "personal"
 SHARED_NAMESPACE = "shared"
 EPHEMERAL_NAMESPACE = "ephemeral"
+HISTORY_NAMESPACE = "history"
 BRANCH_NAMESPACE_PREFIX = "branch:"
 
 # MERGED-READ WEIGHTING. When a read method gets ``namespaces=None`` it
@@ -103,14 +104,21 @@ BRANCH_NAMESPACE_PREFIX = "branch:"
 #   W_PERSONAL — useful long-term priors, slightly behind the branch.
 # - ``shared`` reads at W_SHARED — imported team baseline, never louder
 #   than your own memory.
+# - ``history`` reads at W_HISTORY — a co-change prior mined from git
+#   commit history (see history.py). The quietest signal: it exists to
+#   give the associative layer something useful on day one, before real
+#   usage has accumulated, and must never drown out what you actually did.
 #
 # On the default branch the active namespace *is* personal, so it reads
 # at W_BRANCH (1.0) and merged behavior is identical to the
-# pre-namespace store. Explicit ``namespaces=[...]`` reads skip these
-# multipliers entirely (raw weights), so inspect/export see exact values.
+# pre-namespace store. An empty ``history`` namespace (nothing mined)
+# contributes nothing, so this is inert until `neuralmind mine-history`
+# runs. Explicit ``namespaces=[...]`` reads skip these multipliers
+# entirely (raw weights), so inspect/export see exact values.
 W_BRANCH = 1.0
 W_PERSONAL = 0.8
 W_SHARED = 0.5
+W_HISTORY = 0.35
 
 # Per-namespace decay policy. Namespaces not named here (personal,
 # branch:*, and any custom name) decay at the default DECAY_RATE /
@@ -121,14 +129,20 @@ W_SHARED = 0.5
 # - ``ephemeral`` is session scratch: it decays fast, gets no LTP floor,
 #   and is cleared outright at session boundaries (SessionStart hook,
 #   daemon shutdown) via ``clear_namespace``.
+# - ``history`` is sticky like ``shared``: a mined co-change prior is a
+#   long-lived structural fact about the repo, not a fading recent signal,
+#   so it decays slowly. Pairs seen in >= LTP_THRESHOLD commits are minted
+#   already LTP-protected (see history.py), so they persist regardless.
 SHARED_DECAY_RATE = 0.005
 EPHEMERAL_DECAY_RATE = 0.25
+HISTORY_DECAY_RATE = 0.005
 SHARED_TRANSITION_DECAY_RATE = 0.0025
 EPHEMERAL_TRANSITION_DECAY_RATE = 0.25
 
 NAMESPACE_DECAY_RATES: dict[str, float] = {
     SHARED_NAMESPACE: SHARED_DECAY_RATE,
     EPHEMERAL_NAMESPACE: EPHEMERAL_DECAY_RATE,
+    HISTORY_NAMESPACE: HISTORY_DECAY_RATE,
 }
 NAMESPACE_TRANSITION_DECAY_RATES: dict[str, float] = {
     SHARED_NAMESPACE: SHARED_TRANSITION_DECAY_RATE,
@@ -232,6 +246,8 @@ def merge_weight_for(namespace: str, active_namespace: str) -> float:
         return W_BRANCH
     if namespace == SHARED_NAMESPACE:
         return W_SHARED
+    if namespace == HISTORY_NAMESPACE:
+        return W_HISTORY
     return W_PERSONAL
 
 
@@ -416,7 +432,9 @@ class SynapseStore:
         those namespaces at raw weight (multiplier 1.0).
         """
         if namespaces is None:
-            merged = dict.fromkeys((self.namespace, DEFAULT_NAMESPACE, SHARED_NAMESPACE))
+            merged = dict.fromkeys(
+                (self.namespace, DEFAULT_NAMESPACE, SHARED_NAMESPACE, HISTORY_NAMESPACE)
+            )
             return [(ns, merge_weight_for(ns, self.namespace)) for ns in merged]
         return [(ns, 1.0) for ns in dict.fromkeys(namespaces) if ns]
 

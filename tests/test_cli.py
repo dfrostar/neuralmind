@@ -818,6 +818,72 @@ class TestCLIUpdate:
         assert seen["paths"] == ["my module.py", "b.py"]
 
 
+class TestCLIMineHistory:
+    """`neuralmind mine-history` — the cold-start warm-up command."""
+
+    def _args(self, tmp_path, **over):
+        a = MagicMock()
+        a.project_path = str(tmp_path)
+        a.max_commits = None
+        a.max_files = None
+        a.dry_run = False
+        a.json = False
+        for k, v in over.items():
+            setattr(a, k, v)
+        return a
+
+    def test_reports_mined_edges(self, tmp_path, capsys):
+        from neuralmind import cli
+
+        stats = {
+            "success": True,
+            "namespace": "history",
+            "commits_scanned": 40,
+            "commits_used": 33,
+            "commits_too_large": 2,
+            "edges": 51,
+            "ltp_edges": 7,
+            "edges_written": 51,
+            "dry_run": False,
+        }
+        with patch.object(cli.NeuralMind, "mine_history", return_value=stats):
+            cli.cmd_mine_history(self._args(tmp_path))
+        out = capsys.readouterr().out
+        assert "Mined 51 co-change edge(s)" in out
+        assert "7 durable" in out
+        assert "51 edge(s) written" in out
+
+    def test_dry_run_says_would_mine_and_writes_nothing(self, tmp_path, capsys):
+        from neuralmind import cli
+
+        stats = {
+            "success": True,
+            "namespace": "history",
+            "commits_scanned": 10,
+            "commits_used": 10,
+            "commits_too_large": 0,
+            "edges": 12,
+            "ltp_edges": 0,
+            "edges_written": 0,
+            "dry_run": True,
+        }
+        with patch.object(cli.NeuralMind, "mine_history", return_value=stats):
+            cli.cmd_mine_history(self._args(tmp_path, dry_run=True))
+        out = capsys.readouterr().out
+        assert "Would mine 12" in out
+        assert "written" not in out
+
+    def test_exits_nonzero_when_not_a_repo(self, tmp_path, capsys):
+        from neuralmind import cli
+
+        stats = {"success": False, "error": "no commits found", "commits_scanned": 0}
+        with patch.object(cli.NeuralMind, "mine_history", return_value=stats):
+            with pytest.raises(SystemExit) as exc:
+                cli.cmd_mine_history(self._args(tmp_path))
+        assert exc.value.code == 1
+        assert "no commits found" in capsys.readouterr().err
+
+
 class TestCLIInitHook:
     """Tests for CLI init-hook command."""
 

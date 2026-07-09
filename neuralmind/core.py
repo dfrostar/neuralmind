@@ -956,6 +956,72 @@ class NeuralMind:
             "pruned": pruned,
         }
 
+    def mine_history(
+        self,
+        max_commits: int | None = None,
+        max_files: int | None = None,
+        dry_run: bool = False,
+    ) -> dict:
+        """Seed the synapse store with co-change priors from git history.
+
+        Files that changed together in a commit are the same co-activation
+        signal ``activate_files`` learns from live editing — but already
+        recorded, deep in the repo's history. Mining it gives the associative
+        layer something useful on the first query instead of after a week of
+        real usage. Edges land in the sticky, quiet ``history`` namespace so a
+        mined prior never outweighs what you actually did, and can be cleared
+        and re-mined independently (``neuralmind memory reset --namespace
+        history``).
+
+        Returns a stats dict. On ``dry_run`` the edges are computed and counted
+        but not written, so ``neuralmind mine-history --dry-run`` previews the
+        signal without touching memory. Idempotent: ``import_edges`` merges by
+        MAX, so re-running never inflates weights.
+        """
+        from . import history
+
+        if max_commits is None:
+            max_commits = history.DEFAULT_MAX_COMMITS
+        if max_files is None:
+            max_files = history.DEFAULT_MAX_FILES
+
+        if self.synapses is None:
+            return {"success": False, "error": "synapses are disabled for this instance"}
+
+        # Need the graph loaded to map commit paths -> file-level node ids.
+        self._ensure_built()
+        path_to_node = history.build_file_node_index(self.embedder.nodes)
+        if not path_to_node:
+            return {"success": False, "error": "no indexed files; run build first"}
+
+        lines = history.run_git_log(self.project_path, max_commits=max_commits)
+        commit_filesets = history.parse_git_log(lines)
+        rows, stats = history.cochange_edges(
+            commit_filesets, path_to_node, max_files=max_files
+        )
+
+        if stats["commits_scanned"] == 0:
+            return {
+                "success": False,
+                "error": "no commits found (not a git repository, or empty history)",
+                **stats,
+            }
+
+        result = {
+            "success": True,
+            "namespace": history.HISTORY_NAMESPACE,
+            "indexed_files": len(path_to_node),
+            "dry_run": dry_run,
+            **stats,
+        }
+        if dry_run or not rows:
+            result["edges_written"] = 0
+            return result
+
+        written = self.synapses.import_edges(rows, namespace=history.HISTORY_NAMESPACE)
+        result["edges_written"] = written
+        return result
+
     def _graph_stats_dirty(self) -> None:
         """Invalidate the selector's cached graph stats after an incremental
         update so L0/L1 reflect the new node/community counts."""
