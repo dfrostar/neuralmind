@@ -1456,6 +1456,59 @@ def cmd_update(args):
         sys.exit(1)
 
 
+def cmd_mine_history(args):
+    """Seed the synapse store with co-change priors from git history.
+
+    Solves the associative layer's cold start: instead of waiting a week for
+    live editing to teach it what files go together, mine that signal from the
+    commits that already recorded it. Writes to the sticky, quiet ``history``
+    namespace so a mined prior never outweighs real usage.
+    """
+    project_path = getattr(args, "project_path", ".")
+    path = Path(project_path).resolve()
+    if not path.is_dir():
+        print(f"mine-history failed: not a directory: {project_path}", file=sys.stderr)
+        sys.exit(1)
+
+    mind = NeuralMind(str(path))
+    try:
+        stats = mind.mine_history(
+            max_commits=getattr(args, "max_commits", None),
+            max_files=getattr(args, "max_files", None),
+            dry_run=getattr(args, "dry_run", False),
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        stats = {"success": False, "error": str(exc)}
+
+    if getattr(args, "json", False):
+        print(json.dumps(stats, indent=2))
+    elif not stats.get("success"):
+        print(f"mine-history failed: {stats.get('error')}", file=sys.stderr)
+    else:
+        verb = "Would mine" if stats.get("dry_run") else "Mined"
+        print(
+            f"{verb} {stats['edges']} co-change edge(s) "
+            f"({stats['ltp_edges']} durable) from {stats['commits_used']} "
+            f"of {stats['commits_scanned']} commit(s) "
+            f"into the '{stats['namespace']}' namespace."
+        )
+        skipped = stats.get("commits_too_large", 0)
+        if skipped:
+            print(
+                f"  Skipped {skipped} commit(s) touching more than "
+                f"{getattr(args, 'max_files', None) or ''} files (noise)."
+            )
+        if not stats.get("dry_run"):
+            print(f"  {stats.get('edges_written', 0)} edge(s) written.")
+            print(
+                "  These now bias recall from the first query. Re-run any time; "
+                "clear with `neuralmind memory reset --namespace history`."
+            )
+
+    if not stats.get("success"):
+        sys.exit(1)
+
+
 def cmd_watch(args):
     """Run the file watcher → synapse co-activation daemon in the foreground.
 
@@ -2062,6 +2115,36 @@ def main():
     )
     update_p.add_argument("--json", "-j", action="store_true")
     update_p.set_defaults(func=cmd_update)
+
+    mine_p = subparsers.add_parser(
+        "mine-history",
+        help="Seed the synapse layer with co-change priors from git history "
+        "(warm up the associative memory before real usage accrues)",
+    )
+    mine_p.add_argument("project_path", nargs="?", default=".")
+    mine_p.add_argument(
+        "--max-commits",
+        dest="max_commits",
+        type=int,
+        default=None,
+        help="Most recent commits to scan (default: 2000)",
+    )
+    mine_p.add_argument(
+        "--max-files",
+        dest="max_files",
+        type=int,
+        default=None,
+        help="Skip commits touching more than this many indexed files — a "
+        "big refactor is co-change noise (default: 50)",
+    )
+    mine_p.add_argument(
+        "--dry-run",
+        dest="dry_run",
+        action="store_true",
+        help="Compute and report the edges without writing them",
+    )
+    mine_p.add_argument("--json", "-j", action="store_true")
+    mine_p.set_defaults(func=cmd_mine_history)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
     query_p.add_argument("project_path")
