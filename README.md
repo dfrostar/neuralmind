@@ -1090,10 +1090,12 @@ neuralmind mine-history . --dry-run    # preview the edges without writing
 
 Files that changed together in a commit become a co-change edge; focused commits
 weigh more than sprawling refactors, and commits touching more than `--max-files`
-(default 50) files are skipped as noise. Edges land in a dedicated, quiet, sticky
-`history` namespace — a prior that primes recall but never outweighs your real
-usage. Idempotent to re-run; clear it with
-`neuralmind memory reset --namespace history`.
+(default 50) files are skipped as noise. Consecutive same-author commits within a
+six-hour session also mine **directional transitions** (older commit's files →
+newer commit's files), so `neuralmind next` predicts from the first session too.
+Everything lands in a dedicated, quiet, sticky `history` namespace — a prior that
+primes recall but never outweighs your real usage. Idempotent to re-run; clear it
+with `neuralmind memory reset --namespace history`.
 
 ---
 

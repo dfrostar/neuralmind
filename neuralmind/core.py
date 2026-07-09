@@ -995,9 +995,12 @@ class NeuralMind:
             return {"success": False, "error": "no indexed files; run build first"}
 
         lines = history.run_git_log(self.project_path, max_commits=max_commits)
-        commit_filesets = history.parse_git_log(lines)
-        rows, stats = history.cochange_edges(
-            commit_filesets, path_to_node, max_files=max_files
+        # Materialized once: both miners read the same pass over history
+        # (co-change needs each commit, transitions need consecutive pairs).
+        commits = list(history.parse_git_log(lines))
+        rows, stats = history.cochange_edges(commits, path_to_node, max_files=max_files)
+        trans_rows, trans_stats = history.transition_rows(
+            commits, path_to_node, max_files=max_files
         )
 
         if stats["commits_scanned"] == 0:
@@ -1013,13 +1016,23 @@ class NeuralMind:
             "indexed_files": len(path_to_node),
             "dry_run": dry_run,
             **stats,
+            **trans_stats,
         }
-        if dry_run or not rows:
+        if dry_run:
             result["edges_written"] = 0
+            result["transitions_written"] = 0
             return result
 
-        written = self.synapses.import_edges(rows, namespace=history.HISTORY_NAMESPACE)
-        result["edges_written"] = written
+        result["edges_written"] = (
+            self.synapses.import_edges(rows, namespace=history.HISTORY_NAMESPACE)
+            if rows
+            else 0
+        )
+        result["transitions_written"] = (
+            self.synapses.import_transitions(trans_rows, namespace=history.HISTORY_NAMESPACE)
+            if trans_rows
+            else 0
+        )
         return result
 
     def _graph_stats_dirty(self) -> None:

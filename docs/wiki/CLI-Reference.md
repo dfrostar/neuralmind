@@ -238,6 +238,12 @@ neuralmind mine-history [project_path] [OPTIONS]
 - **Durable pairs are protected.** A pair seen in ≥ 5 commits is written already
   LTP-protected, so a real structural fact about the repo doesn't decay away
   before real usage replaces it.
+- **Direction comes from commit sequences.** Two consecutive commits by the same
+  author within six hours are treated as one work session, and each file in the
+  older commit gains a transition toward each file in the newer one (weight
+  `1/(|A|·|B|)`, self-transitions skipped) — the signal `neuralmind next` reads.
+  A negative timestamp gap (rebased/reordered history) breaks the session rather
+  than fabricating a sequence.
 
 #### The `history` namespace
 
@@ -263,7 +269,7 @@ neuralmind mine-history .
 
 # Preview what would be mined, without writing
 neuralmind mine-history . --dry-run
-# → Would mine 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) ...
+# → Would mine 1847 co-change edge(s) (206 durable) from 1983 of 2000 commit(s) ...
 
 # Deep scan, tighter noise gate, JSON for a setup script
 neuralmind mine-history . --max-commits 8000 --max-files 30 --json
