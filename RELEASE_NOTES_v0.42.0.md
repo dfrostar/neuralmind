@@ -1,11 +1,13 @@
-# NeuralMind v0.42.0 — The map stops going stale
+# NeuralMind v0.42.0 — The map stops going stale, and starts warm
 
-**TL;DR:** `neuralmind build` was never regenerating the graph. It re-embedded a
-frozen map, so every file you added after the first build was invisible to
-retrieval. The git post-commit hook ran exactly that command, which made
-"auto-rebuild on commit" a structural no-op for the entire life of the feature.
-Both are fixed. `neuralmind watch` now re-indexes by default, and the incremental
-path is exposed as a new `neuralmind update` command.
+**TL;DR:** Two things. **(1)** `neuralmind build` was never regenerating the
+graph — it re-embedded a frozen map, so every file you added after the first
+build was invisible to retrieval, and the git post-commit hook ran exactly that
+command, making "auto-rebuild on commit" a structural no-op for the entire life
+of the feature. Both are fixed; `neuralmind watch` now re-indexes by default and
+the incremental path is exposed as a new `neuralmind update` command. **(2)** New
+`neuralmind mine-history` seeds the associative layer from git commit history, so
+the synapse memory is useful on the first query instead of after a week of usage.
 
 **If you installed the git hook on an earlier version, run
 `neuralmind build . --force` once to repair your index.**
@@ -151,6 +153,58 @@ rather than silently swallowing the same failure on every batch:
 
 ---
 
+## Warm start: `neuralmind mine-history`
+
+The staleness fixes above are about keeping the *graph* current. This is about
+the *synapse layer* — NeuralMind's actual differentiator, and the piece with the
+worst first-run story.
+
+On a fresh install the associative memory is empty. It learns which files go
+together from live editing, which means it says nothing useful until you've spent
+roughly a week feeding it. That's a brutal activation curve for the capability
+the product leads with.
+
+But the signal already exists. Files that changed together in a commit are the
+same co-activation a live edit produces — just already recorded, thousands of
+observations deep. `neuralmind mine-history` reads it and seeds the store:
+
+```console
+$ neuralmind mine-history .
+Mined 1,847 co-change edge(s) (206 durable) from 1,983 of 2,000 commit(s) into the 'history' namespace.
+  Skipped 17 commit(s) touching more than 50 files (noise).
+  1847 edge(s) written.
+  These now bias recall from the first query. Re-run any time; clear with `neuralmind memory reset --namespace history`.
+```
+
+After that, a query surfaces historically co-changed siblings immediately —
+before any live usage has accrued.
+
+**How it decides what's signal:**
+
+- **File granularity.** Each changed path maps to its single file-level graph
+  node, not every symbol in the file. A k-file commit becomes k(k-1)/2 pairs, not
+  a clique over every symbol of every file. (This is also why it doesn't route
+  through `activate_files`, which would explode a 5-file commit into thousands of
+  symbol-pairs.)
+- **Focused commits weigh more.** Per-commit pair weight scales as `1/(k-1)`, so
+  a two-file commit is strong evidence two files relate and a sprawling refactor
+  barely registers. Commits above `--max-files` (default 50) are skipped outright.
+- **Durable pairs are protected.** A pair that co-changed in ≥ 5 commits is
+  written already LTP-protected, so a real structural fact about the repo doesn't
+  decay away before you've generated usage to replace it.
+
+**How loud it is:** edges land in a dedicated `history` namespace that reads at
+`W_HISTORY` (0.35) — below both your personal usage (0.8) and imported team
+memory (0.5). It is a *prior*: it gives recall a running start and is designed to
+be overtaken by what you actually do. It decays slowly (a co-change fact is
+long-lived), is idempotent to re-run (`import_edges` merges by MAX), and is
+cleared independently with `neuralmind memory reset --namespace history`.
+
+Options: `--max-commits` (default 2000), `--max-files` (default 50), `--dry-run`
+to preview the edges without writing, `--json` for scripts.
+
+---
+
 ## What the agent actually sees post-install
 
 Nothing new on the wire — no new MCP tools, no new hooks, no schema change. What
@@ -196,10 +250,20 @@ was never affected, and is still never touched.
   expensive half is unchanged. Use `neuralmind update <paths>` for the cheap path.
 - Incremental re-index (`update`, `watch`) applies to the **built-in tree-sitter
   backend only**. A graphify-owned graph is left to graphify.
+- `mine-history` adds a `history` namespace to the default merged read. An empty
+  namespace contributes nothing, so this is inert until you mine — existing
+  behavior is unchanged on any project that never runs the command.
 
 ## Tests
 
-Ten new tests across `tests/test_core.py` and `tests/test_cli.py` pin the three
-invariants: a graph we own is refreshed on a plain `build`; a graphify-owned graph
-is never overwritten; and the post-commit hook attempts `update` before `build`.
-Eight of them fail against v0.41.0.
+The build/update work adds ten tests across `tests/test_core.py` and
+`tests/test_cli.py` pinning three invariants: a graph we own is refreshed on a
+plain `build`; a graphify-owned graph is never overwritten; and the post-commit
+hook attempts `update` before `build`. Eight fail against v0.41.0.
+
+`mine-history` adds `tests/test_history.py` — 21 stdlib-only tests: the git-log
+parser against hand-written fixtures, the weighting/gating/dedup logic against
+synthetic commit filesets, and the namespace wiring on a real `SynapseStore`
+(mined edges surface in a merged read yet stay isolated and independently
+clearable). Two exercise the real `git` subprocess when a binary is present and
+skip otherwise.

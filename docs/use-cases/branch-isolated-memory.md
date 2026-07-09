@@ -20,10 +20,16 @@ recall reads a transparent, weighted merge.
 ## How the merged view works (the part worth understanding)
 
 Reads default to **active namespace × 1.0 + personal × 0.8 + shared × 0.5**
-— three published constants (`W_BRANCH` / `W_PERSONAL` / `W_SHARED` in
+— published constants (`W_BRANCH` / `W_PERSONAL` / `W_SHARED` in
 `neuralmind/synapses.py`), summed per edge. On the default branch the active
 namespace *is* `personal`, so the merged view is identical to pre-namespace
 behavior — nothing about your current setup changes until you branch.
+
+*(v0.42.0+)* If you've run [`neuralmind mine-history`](warm-start.md), a fourth
+term joins the merge — **history × 0.35** (`W_HISTORY`), the quietest layer, a
+co-change prior mined from git that primes recall without ever outweighing real
+usage. It contributes nothing until you mine, so this note is inert on projects
+that don't.
 
 Don't take the weighting on faith — trace it:
 
