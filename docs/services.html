@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuralMind Services — Install, Team Memory, Benchmarks &amp; Compliance Help</title>
+    <meta name="description" content="Hands-on engagements from the NeuralMind maintainer: guided install and rollout audits, team-memory onboarding, benchmark-your-repo reports, and compliance review for regulated environments. Scoped individually — get in touch.">
+    <meta name="keywords" content="NeuralMind services, AI coding agent consulting, Claude Code cost optimization, MCP server setup, team memory onboarding, code retrieval benchmark, LLM token cost audit, air-gapped AI install, NIST AI RMF review, enterprise AI coding agents">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dfrostar.github.io/neuralmind/services.html">
+    <meta property="og:title" content="NeuralMind Services — hands-on help from the maintainer">
+    <meta property="og:description" content="Guided rollouts, team-memory onboarding, benchmark-your-repo engagements, and compliance review. Scoped individually — no rate card, just a concrete proposal.">
+    <meta property="og:image" content="https://dfrostar.github.io/neuralmind/assets/social-preview.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NeuralMind Services — hands-on help from the maintainer">
+    <meta name="twitter:description" content="Guided rollouts, team-memory onboarding, benchmark-your-repo engagements, and compliance review for teams running AI coding agents.">
+    <link rel="canonical" href="https://dfrostar.github.io/neuralmind/services.html">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      "@id": "https://dfrostar.github.io/neuralmind/services.html#services",
+      "serviceType": "AI coding agent infrastructure consulting",
+      "name": "NeuralMind Services",
+      "description": "Hands-on engagements around the open-source NeuralMind project: guided install and rollout audits, team-memory onboarding, benchmark-your-repo reports, and compliance review for regulated environments.",
+      "provider": { "@type": "Person", "name": "Darren Frost" },
+      "url": "https://dfrostar.github.io/neuralmind/services.html",
+      "areaServed": "Worldwide (remote)",
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Engagements",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Install & rollout audit" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Team-memory onboarding" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Benchmark your repo" } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Compliance review" } }
+        ]
+      }
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #070b09;
+            --ink-2: #0a100d;
+            --panel: #0d1410;
+            --panel-2: #101813;
+            --hairline: #1d2b23;
+            --hairline-bright: #2b4234;
+            --text: #c8d5cb;
+            --text-dim: #8fa396;
+            --text-faint: #5c6f63;
+            --head: #eef5ef;
+            --green: #3ee08f;
+            --green-dim: #2aa96c;
+            --green-ghost: rgba(62, 224, 143, 0.08);
+            --teal: #5eead4;
+            --amber: #ffb454;
+            --red: #f0876f;
+            --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+            --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', Menlo, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; scroll-padding-top: 90px; }
+
+        body {
+            font-family: var(--font-serif);
+            font-size: 17px;
+            line-height: 1.65;
+            background: var(--ink);
+            color: var(--text);
+            counter-reset: fig;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* film grain over everything — the instrument has texture */
+        body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0.055;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        ::selection { background: var(--green); color: var(--ink); }
+
+        a { color: var(--teal); text-decoration: none; }
+        a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.82em;
+            background: var(--green-ghost);
+            border: 1px solid var(--hairline);
+            border-radius: 4px;
+            padding: 0.08em 0.35em;
+            color: var(--teal);
+        }
+
+        .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+        /* ---------------- nav ---------------- */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(7, 11, 9, 0.82);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--hairline);
+        }
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 62px;
+        }
+        .nav-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.02em;
+            color: var(--head);
+        }
+        .nav-logo:hover { text-decoration: none; color: var(--green); }
+        .nav-logo svg { width: 26px; height: 26px; }
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 26px;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .nav-links a { color: var(--text-dim); }
+        .nav-links a:hover { color: var(--green); text-decoration: none; }
+        .nav-links a.active { color: var(--green); }
+        .nav-gh {
+            border: 1px solid var(--hairline-bright);
+            border-radius: 4px;
+            padding: 6px 12px;
+            color: var(--head) !important;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .nav-gh:hover {
+            border-color: var(--green);
+            box-shadow: 0 0 18px rgba(62, 224, 143, 0.25);
+        }
+        .nav-toggle {
+            display: none;
+            background: none;
+            border: 1px solid var(--hairline-bright);
+            border-radius: 4px;
+            color: var(--text);
+            font-size: 18px;
+            padding: 4px 10px;
+            cursor: pointer;
+        }
+
+        /* ---------------- hero ---------------- */
+        .hero {
+            position: relative;
+            overflow: hidden;
+            padding: 96px 0 72px;
+            border-bottom: 1px solid var(--hairline);
+            background:
+                radial-gradient(ellipse 700px 420px at 12% -8%, rgba(62, 224, 143, 0.09), transparent 60%),
+                radial-gradient(ellipse 600px 400px at 95% 30%, rgba(94, 234, 212, 0.06), transparent 65%),
+                var(--ink);
+        }
+        .hero > .container > * { animation: fadeUp 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+        .hero > .container > *:nth-child(1) { animation-delay: 0.05s; }
+        .hero > .container > *:nth-child(2) { animation-delay: 0.14s; }
+        .hero > .container > *:nth-child(3) { animation-delay: 0.23s; }
+        .hero > .container > *:nth-child(4) { animation-delay: 0.32s; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            border: 1px solid var(--hairline-bright);
+            border-radius: 999px;
+            padding: 6px 14px;
+            background: rgba(13, 20, 16, 0.6);
+        }
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: firePulse 2.2s ease-in-out infinite;
+        }
+        @keyframes firePulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.35); opacity: 0.65; }
+        }
+
+        h1 {
+            font-family: var(--font-serif);
+            font-weight: 500;
+            font-size: clamp(2.4rem, 5vw, 3.8rem);
+            line-height: 1.08;
+            letter-spacing: -0.015em;
+            color: var(--head);
+            margin: 22px 0 20px;
+            max-width: 22ch;
+        }
+        .grad {
+            font-style: italic;
+            font-weight: 400;
+            background: linear-gradient(100deg, var(--green) 10%, var(--teal) 90%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .hero-sub {
+            font-size: 1.18rem;
+            line-height: 1.6;
+            color: var(--text);
+            max-width: 62ch;
+            margin-bottom: 30px;
+        }
+        .hero-sub strong { color: var(--head); font-weight: 600; }
+
+        .cta-row { display: flex; flex-wrap: wrap; gap: 14px; }
+        .btn {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.09em;
+            padding: 13px 22px;
+            border-radius: 5px;
+            transition: transform 0.18s, box-shadow 0.18s, border-color 0.18s, background 0.18s;
+        }
+        .btn:hover { text-decoration: none; transform: translateY(-2px); }
+        .btn-primary {
+            background: var(--green);
+            color: #06110b;
+            box-shadow: 0 0 0 rgba(62, 224, 143, 0);
+        }
+        .btn-primary:hover { box-shadow: 0 6px 28px rgba(62, 224, 143, 0.35); background: #4bea9c; }
+        .btn-ghost {
+            border: 1px solid var(--hairline-bright);
+            color: var(--head);
+            background: rgba(13, 20, 16, 0.5);
+        }
+        .btn-ghost:hover { border-color: var(--green); box-shadow: 0 4px 22px rgba(62, 224, 143, 0.18); }
+
+        /* ---------------- sections ---------------- */
+        section { padding: 96px 0; border-bottom: 1px solid var(--hairline); counter-increment: fig; }
+        section:nth-of-type(even) { background: var(--ink-2); }
+
+        .eyebrow {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--green);
+            margin-bottom: 14px;
+        }
+        .eyebrow::before {
+            content: "fig. " counter(fig, decimal-leading-zero) "  /  ";
+            color: var(--text-faint);
+        }
+        h2 {
+            font-family: var(--font-serif);
+            font-weight: 500;
+            font-size: clamp(1.9rem, 3.4vw, 2.7rem);
+            line-height: 1.15;
+            letter-spacing: -0.01em;
+            color: var(--head);
+            margin-bottom: 16px;
+            max-width: 30ch;
+        }
+        .lede {
+            font-size: 1.12rem;
+            color: var(--text-dim);
+            max-width: 68ch;
+            margin-bottom: 40px;
+        }
+        .lede strong { color: var(--text); }
+
+        /* ---------------- cards ---------------- */
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 18px;
+            counter-reset: card;
+        }
+        .card {
+            position: relative;
+            counter-increment: card;
+            background: linear-gradient(180deg, var(--panel-2), var(--panel));
+            border: 1px solid var(--hairline);
+            border-radius: 8px;
+            padding: 26px 24px 22px;
+            transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+        }
+        .card::before {
+            content: counter(card, decimal-leading-zero);
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            color: var(--text-faint);
+        }
+        .card:hover {
+            transform: translateY(-3px);
+            border-color: var(--hairline-bright);
+            box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45), 0 0 30px rgba(62, 224, 143, 0.10);
+        }
+        .card:hover::before { color: var(--green); }
+        .card-icon { font-size: 22px; margin-bottom: 12px; filter: saturate(0.8); }
+        .card h3 {
+            font-family: var(--font-serif);
+            font-weight: 600;
+            font-size: 1.18rem;
+            color: var(--head);
+            margin-bottom: 10px;
+            line-height: 1.3;
+        }
+        .card p { font-size: 0.96rem; color: var(--text-dim); }
+        .card p + p { margin-top: 8px; }
+        .card p em { color: var(--text-faint); font-size: 0.88em; }
+        .card p strong, .card p b { color: var(--text); }
+
+        .bar-note {
+            font-size: 0.92rem;
+            color: var(--text-faint);
+            max-width: 78ch;
+            margin-top: 26px;
+            padding-left: 14px;
+            border-left: 2px solid var(--hairline-bright);
+        }
+
+        /* ---------------- process steps ---------------- */
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            counter-reset: step;
+        }
+        .step {
+            counter-increment: step;
+            border: 1px solid var(--hairline);
+            border-radius: 8px;
+            background: linear-gradient(180deg, var(--panel-2), var(--panel));
+            padding: 26px 24px 22px;
+        }
+        .step::before {
+            content: "0" counter(step);
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            color: var(--green);
+            margin-bottom: 12px;
+        }
+        .step h3 {
+            font-family: var(--font-serif);
+            font-weight: 600;
+            font-size: 1.12rem;
+            color: var(--head);
+            margin-bottom: 8px;
+        }
+        .step p { font-size: 0.95rem; color: var(--text-dim); }
+
+        .center-cta { margin-top: 40px; text-align: center; }
+
+        /* ---------------- footer ---------------- */
+        footer { padding: 54px 0 64px; background: var(--ink-2); }
+        .foot-inner { display: grid; gap: 22px; }
+        .foot-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 22px;
+            font-family: var(--font-mono);
+            font-size: 12.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+        .foot-links a { color: var(--text-dim); }
+        .foot-links a:hover { color: var(--green); text-decoration: none; }
+        .foot-meta { font-size: 0.85rem; color: var(--text-faint); }
+
+        /* ---------------- responsive ---------------- */
+        @media (max-width: 960px) {
+            .steps { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 860px) {
+            .nav-toggle { display: block; }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 62px;
+                left: 0;
+                right: 0;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0;
+                background: var(--ink-2);
+                border-bottom: 1px solid var(--hairline);
+                padding: 10px 24px 18px;
+            }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 11px 0; }
+        }
+        @media (max-width: 640px) {
+            body { font-size: 16px; }
+            section { padding: 64px 0; }
+            .hero { padding: 64px 0 52px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            html { scroll-behavior: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="container nav-inner">
+        <a class="nav-logo" href="https://dfrostar.github.io/neuralmind/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="2.4" fill="#5eead4"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#3ee08f"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#5eead4"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#2aa96c" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.getElementById('navlinks').classList.toggle('open')">☰</button>
+        <div class="nav-links" id="navlinks">
+            <a href="./#how-it-works">How it works</a>
+            <a href="./#proof">Proof</a>
+            <a href="./#quickstart">Quickstart</a>
+            <a class="active" href="services.html">Services</a>
+            <a href="wiki/Home">Docs</a>
+            <a href="about.html">About</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
+        </div>
+    </div>
+</nav>
+
+<header class="hero">
+    <div class="container">
+        <p class="badge"><span class="dot"></span> services — from the maintainer, scoped individually</p>
+        <h1>The software is free. <span class="grad">The rollout doesn't have to be solo.</span></h1>
+        <p class="hero-sub">NeuralMind is MIT-licensed and always will be. For teams that want it working across every engineer's agent — <strong>verified, benchmarked on their own repos, and defensible in an audit</strong> — the maintainer takes on a small number of hands-on engagements.</p>
+        <div class="cta-row">
+            <a class="btn btn-primary" href="https://www.linkedin.com/in/darren-frost-a9021">Get in touch on LinkedIn</a>
+            <a class="btn btn-ghost" href="./">Back to the project</a>
+        </div>
+    </div>
+</header>
+
+<section id="engagements">
+    <div class="container">
+        <p class="eyebrow">Engagements</p>
+        <h2>Five ways to bring in help</h2>
+        <p class="lede">Every engagement is built on the same open-source project and the same committed evals — <strong>nothing proprietary is held back.</strong> What you're buying is time, experience, and a verified result.</p>
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">🛠</div>
+                <h3>Install &amp; rollout audit</h3>
+                <p>Guided rollout across your team: install, index build, MCP registration for every agent in use (Claude Code, Cursor, Cline, Continue), hooks configured, and the whole setup verified with <code>neuralmind doctor</code> — or an audit of an existing install that isn't pulling its weight.</p>
+                <p><em>For teams adopting, or teams who installed it and aren't sure it's working.</em></p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧠</div>
+                <h3>Team-memory onboarding</h3>
+                <p>Set up committed team memory and the CI auto-index workflow so every teammate's agent inherits the learned synapse layer on their next session — namespace strategy, publish cadence, and a working session with the team on how the memory behaves.</p>
+                <p><em>The measured onboarding lift (+6.5 pts) is the point: a fresh clone starts with the team's earned intuition.</em></p>
+            </div>
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Benchmark your repo</h3>
+                <p>The public-benchmark methodology — objective gold-file recall, token cost vs. full-file paste, ripgrep, and vector-RAG baselines — run against <strong>your own repositories</strong>, with a written report of recall, reduction, and projected spend savings you can put in front of whoever owns the budget.</p>
+                <p><em>Same honest-scope framing as the public benchmark: where it wins, and where it doesn't.</em></p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔐</div>
+                <h3>Compliance review</h3>
+                <p>Air-gapped install support, SBOM and audit-trail walkthrough, and a mapping of NeuralMind's local-first posture onto your framework — NIST AI RMF, SOC 2, GDPR — working from the same <a href="COMPLIANCE-SUMMARY">compliance one-pager</a> your auditors will read.</p>
+                <p><em>For regulated environments where "your code never leaves the machine" has to be provable, not promised.</em></p>
+            </div>
+            <div class="card">
+                <div class="card-icon">✳️</div>
+                <h3>Something else</h3>
+                <p>Running an unusual stack, evaluating NeuralMind against an internal tool, or planning something none of the boxes above cover? Describe it — custom engagements are scoped the same way as everything else.</p>
+                <p><em>If it touches agent context, memory, or token spend, it's probably in scope.</em></p>
+            </div>
+        </div>
+        <p class="bar-note">No rate card on this page by design — engagements are scoped individually against your team size, repos, and constraints. You describe the situation; you get back a concrete written proposal with fixed scope and deliverables.</p>
+    </div>
+</section>
+
+<section id="how-engagements-work">
+    <div class="container">
+        <p class="eyebrow">Process</p>
+        <h2>How an engagement works</h2>
+        <div class="steps">
+            <div class="step">
+                <h3>Reach out</h3>
+                <p>A short message on LinkedIn: team size, repos and languages, which agents you run, and what outcome you're after. That's enough to start.</p>
+            </div>
+            <div class="step">
+                <h3>Scope</h3>
+                <p>A short call, then a written proposal — fixed scope, named deliverables, and exactly what "done" means. No open-ended retainers unless you ask for one.</p>
+            </div>
+            <div class="step">
+                <h3>Deliver &amp; verify</h3>
+                <p>Every deliverable is verified with the project's own tooling — <code>neuralmind doctor</code> for installs, the committed eval suite for benchmarks — so the result is checkable after the engagement ends.</p>
+            </div>
+        </div>
+        <p class="center-cta">
+            <a class="btn btn-primary" href="https://www.linkedin.com/in/darren-frost-a9021">Start the conversation</a>
+        </p>
+    </div>
+</section>
+
+<footer>
+    <div class="container foot-inner">
+        <a class="nav-logo" href="https://dfrostar.github.io/neuralmind/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+                <circle cx="6" cy="6" r="2.4" fill="#5eead4"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#3ee08f"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#5eead4"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#2aa96c" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <div class="foot-links">
+            <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            <a href="https://pypi.org/project/neuralmind/">PyPI</a>
+            <a href="wiki/Home">Docs</a>
+            <a href="benchmarks/">Benchmarks</a>
+            <a href="services.html">Services</a>
+            <a href="https://github.com/dfrostar/neuralmind/issues">Issues</a>
+            <a href="about.html">About</a>
+        </div>
+        <p class="foot-meta">MIT License. Open source, not affiliated with NeuralMind.ai. &nbsp;🔐 100% local · ⚡ 40–70× token reduction · ✅ NIST AI RMF · 🛠 Works with any MCP agent</p>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('#navlinks a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            document.getElementById('navlinks').classList.remove('open');
+        });
+    });
+</script>
+
+</body>
+</html>
