@@ -47,6 +47,7 @@ class TestNeuralMindInit:
         mind = NeuralMind(str(temp_project))
         assert isinstance(mind.embedder, EmbeddingBackend)
 
+
 class TestNeuralMindBuild:
     """Tests for NeuralMind build functionality."""
 
