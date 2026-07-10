@@ -13,28 +13,82 @@ nine-initiative durability arc beyond that (versioned IR, retrieval quality
 harness, daemon-first architecture, and more), see
 [`docs/plans/2026-06-10-future-proofing-prd-pack.md`](docs/plans/2026-06-10-future-proofing-prd-pack.md).
 
-## Next — v0.13 → v0.16 (the eval-first arc)
+## Now — v0.41.0 (shipped & published)
 
-The spine is *measure, then change, then measure again.* Full detail,
-epics, and acceptance criteria in
-[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md); tracked in
-issues [#171](https://github.com/dfrostar/neuralmind/issues/171)–[#175](https://github.com/dfrostar/neuralmind/issues/175).
+Latest release **v0.41.0** is live on
+[PyPI](https://pypi.org/project/neuralmind/) and GHCR. The
+v0.13 → v0.16 "eval-first" arc that used to sit here is **fully shipped**
+and the project has carried well past it — see
+[Shipped v0.13 → v0.41](#shipped-v013--v041) below. Full per-release
+detail lives in `RELEASE_NOTES_v*.md` at the repo root and in
+[`CHANGELOG.md`](CHANGELOG.md).
 
-| Release | Theme | What it does |
-|---|---|---|
-| **v0.13** | **Measure** | CI-gated faithfulness + retrieval-quality eval harness (100%-local offline judge; opt-in API judge). Polyglot TS/Go fixtures. The fitness function everything else depends on. |
-| **v0.14** | **Decouple** | A `GraphSource` adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness. Reduces the single-graph-backend dependency, widens language coverage. |
-| **v0.15** | **Endure** | Host-capabilities adapter + integration-contract tests pinning Claude Code hook / MCP behaviour, so upstream drift is a one-adapter swap. |
-| **v0.16** | **Anticipate** | Promote directional "what you edit next" recall to first-class; ship a portable cross-agent memory format. |
+**Remaining work for the current arc is execution, not engineering:**
 
-**Team/shared memory — approved in principle, gated on measurement.**
-An opt-in, git-committed team baseline (reviewed in PRs, no SaaS) overlaid
-by each developer's private personal layer. Its day-one onboarding lift is
-*measured* by the v0.13 harness before the design is locked — see
-[#175](https://github.com/dfrostar/neuralmind/issues/175). This is what
-un-gates an honest enterprise lane: the compliance surface (RBAC, audit
-of the shared layer) sequences *after* a real multi-writer surface exists,
-not in anticipation of one.
+- **Answerability proof.** The opt-in `--judge` harness shipped in
+  v0.34.0, but `bench/public/judge/` is still empty. Run
+  `neuralmind benchmark --public --judge` with `ANTHROPIC_API_KEY` set
+  and commit the transcripts, so the launch materials show a concrete
+  answerability table instead of "run it yourself." Pre-empts the
+  "recall ≠ answering" critique.
+- **Launch — disclosed-maker only.** Copy is ready in
+  [`docs/launch/`](docs/launch/) (Show HN, r/LocalLLaMA, awesome-mcp
+  PR). Standing rule: outreach is disclosed-maker only — no
+  unaffiliated-user posts, no personas.
+- **Two GitHub-UI edits** the maker does by hand: repo About / Topics
+  (comparison terms for search weighting) and the v0.37.0 Release body
+  (umbrella notes + honest comparison footer).
+
+## Next — forward candidates
+
+Post-launch engineering candidates that are *not* yet shipped:
+
+- **`neuralmind impact` blast-radius tool.** Reverse-edge traversal —
+  "what depends on this?" The forward graph is built at index time;
+  materialise the reverse index during `build` and expose it as an MCP
+  tool + CLI command. The one structural capability gap vs.
+  dependency-graph peers.
+- **Broader `install-mcp` targets.** Add Windsurf, Continue.dev, and
+  Zed — same MCP JSON config, only the destination path differs. Takes
+  supported agents from 4 → 7 with no logic changes.
+- **Cross-agent portable memory format.** Promote the directional
+  "what you edit next" recall into a portable memory format that
+  survives across agent runtimes.
+
+## Shipped v0.13 → v0.41
+
+The eval-first arc and everything after it. Full notes per release in
+`RELEASE_NOTES_v*.md`; highlights:
+
+- **Eval-first foundation (v0.13–v0.16).** CI-gated faithfulness +
+  retrieval-quality harness, `GraphSource` decoupling behind a
+  tree-sitter seam, host-capabilities resilience, and first-class
+  directional recall.
+- **Backend independence (v0.21–v0.29).** Owned MiniLM embedder and the
+  experimental TurboVec (TurboQuant) backend, culminating in a
+  **ChromaDB-free default install** (turbovec/ONNX) in v0.29.
+- **Durability PRDs (v0.23–v0.24).** Versioned IR, quality harness,
+  debug traces, a local daemon, and memory namespaces + git-branch
+  isolation for the synapse layer.
+- **One learning signal (v0.25–v0.26).** Retired the `learned_patterns`
+  reranker so the synapse layer is the single learning signal, then
+  added selector auto-tuning that learns from it.
+- **Ten languages (v0.27–v0.37).** Rust, Java, C/C++, C#, Ruby, and PHP
+  added behind the tree-sitter seam — ten languages total.
+- **Honest public benchmark (v0.31–v0.34).** `neuralmind benchmark
+  --public`, a live `codebase-memory-mcp` head-to-head, an opt-in
+  LLM-judged answerability arm, and the four-data-backed-benefits
+  positioning + disclosed-maker launch kit.
+- **Team memory (v0.30/v0.31).** Commit the learned synapse signal;
+  teammates' agents inherit it (`.neuralmind-team-memory.json`,
+  content-hash idempotent, fail-open).
+- **Agent-facing surface (v0.38–v0.41).** VS Code extension, hybrid
+  BM25 + dense search, explicit-feedback MCP tool, CI auto-index,
+  `neuralmind probe` (label-free retrieval self-test), the
+  trust/transparency six (`--dry-run`, `--explain`, `review`,
+  `savings`, rationale probe, instant deletion decay), schema-artifact
+  indexing (OpenAPI / SQL DDL / Protobuf), and the reuse-vs-rewrite
+  feedback loop + structured relevance sidecar.
 
 ## Shipped since v0.9.0
 
