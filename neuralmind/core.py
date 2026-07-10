@@ -167,12 +167,6 @@ class NeuralMind:
     # the synapse weight gently and let decay wash out false positives.
     REUSE_FEEDBACK_STRENGTH = 0.5
 
-    # Canonical IR artifacts (PRD 1). The IR is materialized from graph.json at
-    # build time and validated; the embedder still reads graph.json directly
-    # (legacy default), so the IR is a hidden, parity-checked internal contract.
-    IR_FILENAME = IR_FILENAME
-    IR_META_FILENAME = IR_META_FILENAME
-
     def __init__(
         self,
         project_path: str,
@@ -670,11 +664,11 @@ class NeuralMind:
     # ----------------------------------------------------------------- #
     @property
     def ir_path(self) -> Path:
-        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_FILENAME)
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", IR_FILENAME)
 
     @property
     def ir_meta_path(self) -> Path:
-        return ir_mod.project_artifact(self.project_path, ".neuralmind", self.IR_META_FILENAME)
+        return ir_mod.project_artifact(self.project_path, ".neuralmind", IR_META_FILENAME)
 
     def _materialize_ir(self) -> dict | None:
         """Adapt the loaded graph into the canonical IR, validate, and persist.
