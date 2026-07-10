@@ -171,7 +171,6 @@ class NeuralMind:
         self,
         project_path: str,
         db_path: str = None,
-        enable_reranking: bool = True,
         backend_type: str | None = None,
         hybrid_context: bool | None = None,
         enable_synapses: bool = True,
@@ -183,10 +182,6 @@ class NeuralMind:
         Args:
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
-            enable_reranking: Deprecated and ignored. The learned_patterns
-                reranker was removed; the synapse layer supersedes it. Kept in
-                the signature for backward compatibility (callers passing it
-                won't break), but it no longer has any effect.
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
             memory_namespace: Explicit synapse-memory namespace (PRD 4). When
@@ -195,10 +190,6 @@ class NeuralMind:
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
-        # Deprecated and ignored (see __init__ docstring): retained only so the
-        # attribute keeps existing for any code that reads it. The reranker it
-        # used to gate has been removed; the synapse layer supersedes it.
-        self.enable_reranking = enable_reranking
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type
         )
