@@ -1,0 +1,32 @@
+{
+  "$schema": "./community-benchmarks.schema.json",
+  "_comment": "Community-submitted NeuralMind benchmark results. Each entry is one project's real-world numbers, submitted via PR (not uploaded automatically — NeuralMind never sends data off your machine). CI validates entries against community-benchmarks.schema.json on every PR that touches this file.",
+  "entries": [
+    {
+      "project_name": "cmmc20",
+      "language": "JavaScript",
+      "nodes": 241,
+      "avg_wakeup_tokens": 341,
+      "avg_query_tokens": 739,
+      "avg_reduction_ratio": 65.6,
+      "model": "Claude 3.5 Sonnet",
+      "date_submitted": "2025-10-01",
+      "submitted_by": "dfrostar",
+      "verification_command": "neuralmind benchmark . --json",
+      "notes": "React/Node.js web app. Early reference benchmark; numbers quoted in README."
+    },
+    {
+      "project_name": "mempalace",
+      "language": "Python",
+      "nodes": 1626,
+      "avg_wakeup_tokens": 412,
+      "avg_query_tokens": 891,
+      "avg_reduction_ratio": 46.0,
+      "model": "Claude 3.5 Sonnet",
+      "date_submitted": "2025-10-01",
+      "submitted_by": "dfrostar",
+      "verification_command": "neuralmind benchmark . --json",
+      "notes": "Python backend; larger node count, modestly lower ratio — typical pattern on bigger repos."
+    }
+  ]
+}

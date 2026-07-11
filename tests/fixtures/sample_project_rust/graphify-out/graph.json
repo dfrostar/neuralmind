@@ -1,0 +1,1794 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "routes.rs",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L1",
+      "id": "src_api_routes_rs",
+      "community": 1,
+      "norm_label": "routes.rs"
+    },
+    {
+      "label": "Method",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L8",
+      "id": "src_api_routes_rs__method_cls",
+      "community": 1,
+      "norm_label": "method"
+    },
+    {
+      "label": "The HTTP methods the fixture router understands.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L8",
+      "id": "src_api_routes_rs__method_cls__rationale",
+      "community": 1,
+      "norm_label": "the http methods the fixture router understands."
+    },
+    {
+      "label": "Get",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L9",
+      "id": "src_api_routes_rs__method_cls__get_sym",
+      "community": 1,
+      "norm_label": "get"
+    },
+    {
+      "label": "Post",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L10",
+      "id": "src_api_routes_rs__method_cls__post_sym",
+      "community": 1,
+      "norm_label": "post"
+    },
+    {
+      "label": "Delete",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L11",
+      "id": "src_api_routes_rs__method_cls__delete_sym",
+      "community": 1,
+      "norm_label": "delete"
+    },
+    {
+      "label": "Route",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L15",
+      "id": "src_api_routes_rs__route_cls",
+      "community": 1,
+      "norm_label": "route"
+    },
+    {
+      "label": "A single registered route.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L15",
+      "id": "src_api_routes_rs__route_cls__rationale",
+      "community": 1,
+      "norm_label": "a single registered route."
+    },
+    {
+      "label": "path",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L17",
+      "id": "src_api_routes_rs__route_cls__path_sym",
+      "community": 1,
+      "norm_label": "path"
+    },
+    {
+      "label": "method",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L19",
+      "id": "src_api_routes_rs__route_cls__method_sym",
+      "community": 1,
+      "norm_label": "method"
+    },
+    {
+      "label": "login_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L23",
+      "id": "src_api_routes_rs__login_endpoint_fn",
+      "community": 1,
+      "norm_label": "login_endpoint()"
+    },
+    {
+      "label": "POST /api/auth/login \u2014 issue a token for valid credentials.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L23",
+      "id": "src_api_routes_rs__login_endpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "post /api/auth/login \u2014 issue a token for valid credentials."
+    },
+    {
+      "label": "get_me_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L28",
+      "id": "src_api_routes_rs__get_me_endpoint_fn",
+      "community": 1,
+      "norm_label": "get_me_endpoint()"
+    },
+    {
+      "label": "GET /api/users/me \u2014 requires a valid session token.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L28",
+      "id": "src_api_routes_rs__get_me_endpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "get /api/users/me \u2014 requires a valid session token."
+    },
+    {
+      "label": "charge_endpoint()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L33",
+      "id": "src_api_routes_rs__charge_endpoint_fn",
+      "community": 1,
+      "norm_label": "charge_endpoint()"
+    },
+    {
+      "label": "POST /api/billing/charge \u2014 charge the authenticated user.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L33",
+      "id": "src_api_routes_rs__charge_endpoint_fn__rationale",
+      "community": 1,
+      "norm_label": "post /api/billing/charge \u2014 charge the authenticated user."
+    },
+    {
+      "label": "build_routes()",
+      "file_type": "code",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L38",
+      "id": "src_api_routes_rs__build_routes_fn",
+      "community": 1,
+      "norm_label": "build_routes()"
+    },
+    {
+      "label": "Build the route table for the service.",
+      "file_type": "rationale",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L38",
+      "id": "src_api_routes_rs__build_routes_fn__rationale",
+      "community": 1,
+      "norm_label": "build the route table for the service."
+    },
+    {
+      "label": "handlers.rs",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L1",
+      "id": "src_auth_handlers_rs",
+      "community": 2,
+      "norm_label": "handlers.rs"
+    },
+    {
+      "label": "authenticate_user()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L8",
+      "id": "src_auth_handlers_rs__authenticate_user_fn",
+      "community": 2,
+      "norm_label": "authenticate_user()"
+    },
+    {
+      "label": "Validate credentials and issue an access token.",
+      "file_type": "rationale",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L8",
+      "id": "src_auth_handlers_rs__authenticate_user_fn__rationale",
+      "community": 2,
+      "norm_label": "validate credentials and issue an access token."
+    },
+    {
+      "label": "verify_session()",
+      "file_type": "code",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L14",
+      "id": "src_auth_handlers_rs__verify_session_fn",
+      "community": 2,
+      "norm_label": "verify_session()"
+    },
+    {
+      "label": "Return true if the access token is currently valid.",
+      "file_type": "rationale",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L14",
+      "id": "src_auth_handlers_rs__verify_session_fn__rationale",
+      "community": 2,
+      "norm_label": "return true if the access token is currently valid."
+    },
+    {
+      "label": "jwt_utils.rs",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L1",
+      "id": "src_auth_jwt_utils_rs",
+      "community": 3,
+      "norm_label": "jwt_utils.rs"
+    },
+    {
+      "label": "encode_token()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L4",
+      "id": "src_auth_jwt_utils_rs__encode_token_fn",
+      "community": 3,
+      "norm_label": "encode_token()"
+    },
+    {
+      "label": "! JWT signing and signature verification helpers. Produce a signed JWT string from a subject claim.",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L4",
+      "id": "src_auth_jwt_utils_rs__encode_token_fn__rationale",
+      "community": 3,
+      "norm_label": "! jwt signing and signature verification helpers. produce a signed jwt string from a subject claim."
+    },
+    {
+      "label": "decode_token()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L9",
+      "id": "src_auth_jwt_utils_rs__decode_token_fn",
+      "community": 3,
+      "norm_label": "decode_token()"
+    },
+    {
+      "label": "Verify a JWT signature and return the payload if valid.",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L9",
+      "id": "src_auth_jwt_utils_rs__decode_token_fn__rationale",
+      "community": 3,
+      "norm_label": "verify a jwt signature and return the payload if valid."
+    },
+    {
+      "label": "sign()",
+      "file_type": "code",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L18",
+      "id": "src_auth_jwt_utils_rs__sign_fn",
+      "community": 3,
+      "norm_label": "sign()"
+    },
+    {
+      "label": "Sign a raw payload (internal helper).",
+      "file_type": "rationale",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L18",
+      "id": "src_auth_jwt_utils_rs__sign_fn__rationale",
+      "community": 3,
+      "norm_label": "sign a raw payload (internal helper)."
+    },
+    {
+      "label": "invoices.rs",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L1",
+      "id": "src_billing_invoices_rs",
+      "community": 4,
+      "norm_label": "invoices.rs"
+    },
+    {
+      "label": "Invoice",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L7",
+      "id": "src_billing_invoices_rs__invoice_cls",
+      "community": 4,
+      "norm_label": "invoice"
+    },
+    {
+      "label": "A billing invoice for a user.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L7",
+      "id": "src_billing_invoices_rs__invoice_cls__rationale",
+      "community": 4,
+      "norm_label": "a billing invoice for a user."
+    },
+    {
+      "label": "user_id",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L9",
+      "id": "src_billing_invoices_rs__invoice_cls__user_id_sym",
+      "community": 4,
+      "norm_label": "user_id"
+    },
+    {
+      "label": "amount_cents",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L11",
+      "id": "src_billing_invoices_rs__invoice_cls__amount_cents_sym",
+      "community": 4,
+      "norm_label": "amount_cents"
+    },
+    {
+      "label": "charge_invoice()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L15",
+      "id": "src_billing_invoices_rs__charge_invoice_fn",
+      "community": 4,
+      "norm_label": "charge_invoice()"
+    },
+    {
+      "label": "Charge a user's invoice through Stripe and return the charge id.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L15",
+      "id": "src_billing_invoices_rs__charge_invoice_fn__rationale",
+      "community": 4,
+      "norm_label": "charge a user's invoice through stripe and return the charge id."
+    },
+    {
+      "label": "send_invoice_email()",
+      "file_type": "code",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L20",
+      "id": "src_billing_invoices_rs__send_invoice_email_fn",
+      "community": 4,
+      "norm_label": "send_invoice_email()"
+    },
+    {
+      "label": "Render an invoice and hand it to the email transport.",
+      "file_type": "rationale",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L20",
+      "id": "src_billing_invoices_rs__send_invoice_email_fn__rationale",
+      "community": 4,
+      "norm_label": "render an invoice and hand it to the email transport."
+    },
+    {
+      "label": "stripe_client.rs",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L1",
+      "id": "src_billing_stripe_client_rs",
+      "community": 5,
+      "norm_label": "stripe_client.rs"
+    },
+    {
+      "label": "StripeClient",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L4",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls",
+      "community": 5,
+      "norm_label": "stripeclient"
+    },
+    {
+      "label": "! Stripe API client \u2014 charges, refunds, and webhook verification. A thin client over the Stripe API.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L4",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__rationale",
+      "community": 5,
+      "norm_label": "! stripe api client \u2014 charges, refunds, and webhook verification. a thin client over the stripe api."
+    },
+    {
+      "label": "api_key",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L6",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__api_key_sym",
+      "community": 5,
+      "norm_label": "api_key"
+    },
+    {
+      "label": "new()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L11",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__new_fn",
+      "community": 5,
+      "norm_label": "new()"
+    },
+    {
+      "label": "Create a client with the given secret API key.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L11",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__new_fn__rationale",
+      "community": 5,
+      "norm_label": "create a client with the given secret api key."
+    },
+    {
+      "label": "charge_customer()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L18",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn",
+      "community": 5,
+      "norm_label": "charge_customer()"
+    },
+    {
+      "label": "Charge a customer a number of cents; returns the charge id.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L18",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn__rationale",
+      "community": 5,
+      "norm_label": "charge a customer a number of cents; returns the charge id."
+    },
+    {
+      "label": "refund_charge()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L23",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__refund_charge_fn",
+      "community": 5,
+      "norm_label": "refund_charge()"
+    },
+    {
+      "label": "Issue a full refund for a previous charge.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L23",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__refund_charge_fn__rationale",
+      "community": 5,
+      "norm_label": "issue a full refund for a previous charge."
+    },
+    {
+      "label": "verify_webhook()",
+      "file_type": "code",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L28",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__verify_webhook_fn",
+      "community": 5,
+      "norm_label": "verify_webhook()"
+    },
+    {
+      "label": "Validate a Stripe webhook signature and return the event kind.",
+      "file_type": "rationale",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L28",
+      "id": "src_billing_stripe_client_rs__stripeclient_cls__verify_webhook_fn__rationale",
+      "community": 5,
+      "norm_label": "validate a stripe webhook signature and return the event kind."
+    },
+    {
+      "label": "connection.rs",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L1",
+      "id": "src_db_connection_rs",
+      "community": 6,
+      "norm_label": "connection.rs"
+    },
+    {
+      "label": "DataStore",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L4",
+      "id": "src_db_connection_rs__datastore_cls",
+      "community": 6,
+      "norm_label": "datastore"
+    },
+    {
+      "label": "! Database connection pool for the fixture service. Behaviour every backing store must provide.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L4",
+      "id": "src_db_connection_rs__datastore_cls__rationale",
+      "community": 6,
+      "norm_label": "! database connection pool for the fixture service. behaviour every backing store must provide."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L6",
+      "id": "src_db_connection_rs__datastore_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "Run a statement and return the number of affected rows.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L6",
+      "id": "src_db_connection_rs__datastore_cls__execute_fn__rationale",
+      "community": 6,
+      "norm_label": "run a statement and return the number of affected rows."
+    },
+    {
+      "label": "Connection",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L10",
+      "id": "src_db_connection_rs__connection_cls",
+      "community": 6,
+      "norm_label": "connection"
+    },
+    {
+      "label": "A pooled connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L10",
+      "id": "src_db_connection_rs__connection_cls__rationale",
+      "community": 6,
+      "norm_label": "a pooled connection to the fixture database."
+    },
+    {
+      "label": "url",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L12",
+      "id": "src_db_connection_rs__connection_cls__url_sym",
+      "community": 6,
+      "norm_label": "url"
+    },
+    {
+      "label": "open",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L13",
+      "id": "src_db_connection_rs__connection_cls__open_sym",
+      "community": 6,
+      "norm_label": "open"
+    },
+    {
+      "label": "get_connection()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L18",
+      "id": "src_db_connection_rs__connection_cls__get_connection_fn",
+      "community": 6,
+      "norm_label": "get_connection()"
+    },
+    {
+      "label": "Return a process-wide connection to the fixture database.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L18",
+      "id": "src_db_connection_rs__connection_cls__get_connection_fn__rationale",
+      "community": 6,
+      "norm_label": "return a process-wide connection to the fixture database."
+    },
+    {
+      "label": "close()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L26",
+      "id": "src_db_connection_rs__connection_cls__close_fn",
+      "community": 6,
+      "norm_label": "close()"
+    },
+    {
+      "label": "Close the connection and release the pool slot.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L26",
+      "id": "src_db_connection_rs__connection_cls__close_fn__rationale",
+      "community": 6,
+      "norm_label": "close the connection and release the pool slot."
+    },
+    {
+      "label": "execute()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L32",
+      "id": "src_db_connection_rs__connection_cls__execute_fn",
+      "community": 6,
+      "norm_label": "execute()"
+    },
+    {
+      "label": "ensure_schema()",
+      "file_type": "code",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L38",
+      "id": "src_db_connection_rs__ensure_schema_fn",
+      "community": 6,
+      "norm_label": "ensure_schema()"
+    },
+    {
+      "label": "Create the fixture tables if they don't exist yet.",
+      "file_type": "rationale",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L38",
+      "id": "src_db_connection_rs__ensure_schema_fn__rationale",
+      "community": 6,
+      "norm_label": "create the fixture tables if they don't exist yet."
+    },
+    {
+      "label": "lib.rs",
+      "file_type": "code",
+      "source_file": "src/lib.rs",
+      "source_location": "L1",
+      "id": "src_lib_rs",
+      "community": 7,
+      "norm_label": "lib.rs"
+    },
+    {
+      "label": "crud.rs",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L1",
+      "id": "src_users_crud_rs",
+      "community": 8,
+      "norm_label": "crud.rs"
+    },
+    {
+      "label": "User",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L6",
+      "id": "src_users_crud_rs__user_cls",
+      "community": 8,
+      "norm_label": "user"
+    },
+    {
+      "label": "A persisted user record.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L6",
+      "id": "src_users_crud_rs__user_cls__rationale",
+      "community": 8,
+      "norm_label": "a persisted user record."
+    },
+    {
+      "label": "id",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L8",
+      "id": "src_users_crud_rs__user_cls__id_sym",
+      "community": 8,
+      "norm_label": "id"
+    },
+    {
+      "label": "email",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L10",
+      "id": "src_users_crud_rs__user_cls__email_sym",
+      "community": 8,
+      "norm_label": "email"
+    },
+    {
+      "label": "create_user()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L14",
+      "id": "src_users_crud_rs__create_user_fn",
+      "community": 8,
+      "norm_label": "create_user()"
+    },
+    {
+      "label": "Insert a new user and return the created record.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L14",
+      "id": "src_users_crud_rs__create_user_fn__rationale",
+      "community": 8,
+      "norm_label": "insert a new user and return the created record."
+    },
+    {
+      "label": "get_user_by_email()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L23",
+      "id": "src_users_crud_rs__get_user_by_email_fn",
+      "community": 8,
+      "norm_label": "get_user_by_email()"
+    },
+    {
+      "label": "Fetch a user by email \u2014 the authentication hot path.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L23",
+      "id": "src_users_crud_rs__get_user_by_email_fn__rationale",
+      "community": 8,
+      "norm_label": "fetch a user by email \u2014 the authentication hot path."
+    },
+    {
+      "label": "get_user()",
+      "file_type": "code",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L32",
+      "id": "src_users_crud_rs__get_user_fn",
+      "community": 8,
+      "norm_label": "get_user()"
+    },
+    {
+      "label": "Fetch a user by primary key.",
+      "file_type": "rationale",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L32",
+      "id": "src_users_crud_rs__get_user_fn__rationale",
+      "community": 8,
+      "norm_label": "fetch a user by primary key."
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 0,
+      "norm_label": "readme.md"
+    },
+    {
+      "label": "sample_project_rust",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "id": "readme_md__h1",
+      "community": 0,
+      "norm_label": "sample_project_rust"
+    },
+    {
+      "label": "Gold graph",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L19",
+      "id": "readme_md__h19",
+      "community": 0,
+      "norm_label": "gold graph"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__method_cls__rationale",
+      "target": "src_api_routes_rs__method_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__method_cls",
+      "target": "src_api_routes_rs__method_cls__get_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__method_cls",
+      "target": "src_api_routes_rs__method_cls__post_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__method_cls",
+      "target": "src_api_routes_rs__method_cls__delete_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__route_cls__rationale",
+      "target": "src_api_routes_rs__route_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__route_cls",
+      "target": "src_api_routes_rs__route_cls__path_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__route_cls",
+      "target": "src_api_routes_rs__route_cls__method_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__login_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__login_endpoint_fn__rationale",
+      "target": "src_api_routes_rs__login_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__get_me_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__get_me_endpoint_fn__rationale",
+      "target": "src_api_routes_rs__get_me_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__charge_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__charge_endpoint_fn__rationale",
+      "target": "src_api_routes_rs__charge_endpoint_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_api_routes_rs__build_routes_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__build_routes_fn__rationale",
+      "target": "src_api_routes_rs__build_routes_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs",
+      "target": "src_auth_handlers_rs__authenticate_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs__authenticate_user_fn__rationale",
+      "target": "src_auth_handlers_rs__authenticate_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs",
+      "target": "src_auth_handlers_rs__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs__verify_session_fn__rationale",
+      "target": "src_auth_handlers_rs__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs",
+      "target": "src_auth_jwt_utils_rs__encode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs__encode_token_fn__rationale",
+      "target": "src_auth_jwt_utils_rs__encode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs",
+      "target": "src_auth_jwt_utils_rs__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs__decode_token_fn__rationale",
+      "target": "src_auth_jwt_utils_rs__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs",
+      "target": "src_auth_jwt_utils_rs__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs__sign_fn__rationale",
+      "target": "src_auth_jwt_utils_rs__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs",
+      "target": "src_billing_invoices_rs__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L7",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__invoice_cls__rationale",
+      "target": "src_billing_invoices_rs__invoice_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__invoice_cls",
+      "target": "src_billing_invoices_rs__invoice_cls__user_id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__invoice_cls",
+      "target": "src_billing_invoices_rs__invoice_cls__amount_cents_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs",
+      "target": "src_billing_invoices_rs__charge_invoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__charge_invoice_fn__rationale",
+      "target": "src_billing_invoices_rs__charge_invoice_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs",
+      "target": "src_billing_invoices_rs__send_invoice_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__send_invoice_email_fn__rationale",
+      "target": "src_billing_invoices_rs__send_invoice_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls__rationale",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__api_key_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__new_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls__new_fn__rationale",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__new_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn__rationale",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__refund_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls__refund_charge_fn__rationale",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__refund_charge_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__verify_webhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/stripe_client.rs",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "src_billing_stripe_client_rs__stripeclient_cls__verify_webhook_fn__rationale",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__verify_webhook_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_db_connection_rs",
+      "target": "src_db_connection_rs__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__datastore_cls__rationale",
+      "target": "src_db_connection_rs__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__datastore_cls",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__datastore_cls__execute_fn__rationale",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_db_connection_rs",
+      "target": "src_db_connection_rs__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls__rationale",
+      "target": "src_db_connection_rs__connection_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__connection_cls__url_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__connection_cls__open_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__connection_cls__get_connection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls__get_connection_fn__rationale",
+      "target": "src_db_connection_rs__connection_cls__get_connection_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls__close_fn__rationale",
+      "target": "src_db_connection_rs__connection_cls__close_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__connection_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_db_connection_rs",
+      "target": "src_db_connection_rs__ensure_schema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__ensure_schema_fn__rationale",
+      "target": "src_db_connection_rs__ensure_schema_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_users_crud_rs",
+      "target": "src_users_crud_rs__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L6",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__user_cls__rationale",
+      "target": "src_users_crud_rs__user_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__user_cls",
+      "target": "src_users_crud_rs__user_cls__id_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__user_cls",
+      "target": "src_users_crud_rs__user_cls__email_sym",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_users_crud_rs",
+      "target": "src_users_crud_rs__create_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__create_user_fn__rationale",
+      "target": "src_users_crud_rs__create_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_users_crud_rs",
+      "target": "src_users_crud_rs__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__get_user_by_email_fn__rationale",
+      "target": "src_users_crud_rs__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "src_users_crud_rs",
+      "target": "src_users_crud_rs__get_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "context": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__get_user_fn__rationale",
+      "target": "src_users_crud_rs__get_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_auth_handlers_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_billing_stripe_client_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_api_routes_rs",
+      "target": "src_db_connection_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__login_endpoint_fn",
+      "target": "src_auth_handlers_rs__authenticate_user_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__get_me_endpoint_fn",
+      "target": "src_auth_handlers_rs__verify_session_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/api/routes.rs",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "src_api_routes_rs__charge_endpoint_fn",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs",
+      "target": "src_auth_jwt_utils_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs",
+      "target": "src_db_connection_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs",
+      "target": "src_users_crud_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs__authenticate_user_fn",
+      "target": "src_users_crud_rs__get_user_by_email_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L10",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs__authenticate_user_fn",
+      "target": "src_auth_jwt_utils_rs__encode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/handlers.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_auth_handlers_rs__verify_session_fn",
+      "target": "src_auth_jwt_utils_rs__decode_token_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/auth/jwt_utils.rs",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "src_auth_jwt_utils_rs__encode_token_fn",
+      "target": "src_auth_jwt_utils_rs__sign_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs",
+      "target": "src_billing_stripe_client_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L4",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs",
+      "target": "src_users_crud_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/billing/invoices.rs",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "src_billing_invoices_rs__charge_invoice_fn",
+      "target": "src_billing_stripe_client_rs__stripeclient_cls__charge_customer_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "inherits",
+      "context": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__connection_cls",
+      "target": "src_db_connection_rs__datastore_cls",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/db/connection.rs",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "src_db_connection_rs__ensure_schema_fn",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "context": "use",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "src_users_crud_rs",
+      "target": "src_db_connection_rs",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L15",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__create_user_fn",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L24",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__get_user_by_email_fn",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "calls",
+      "confidence": "EXTRACTED",
+      "source_file": "src/users/crud.rs",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "src_users_crud_rs__get_user_fn",
+      "target": "src_db_connection_rs__datastore_cls__execute_fn",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "context": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "readme_md__h19",
+      "confidence_score": 1.0
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "handauthored0000000000000000000000000000"
+}

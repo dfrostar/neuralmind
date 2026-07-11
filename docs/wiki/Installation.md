@@ -1,0 +1,448 @@
+# Installation Guide
+
+This guide covers all installation methods for NeuralMind, including system requirements, dependencies, and platform-specific instructions.
+
+NeuralMind is a local, offline Python package — no SaaS, no accounts, no outbound calls. Once installed, it works from the CLI, via its MCP server, and (for Claude Code) as a PostToolUse compression layer. See the [Setup Guide](Setup-Guide) for post-install configuration or [Use Cases](Use-Cases) to pick a workflow first.
+
+## Table of Contents
+
+- [Install — pick your path](#install--pick-your-path) *(new in v0.7.0)*
+- [System Requirements](#system-requirements)
+- [Quick Install](#quick-install)
+- [Installation Methods](#installation-methods)
+  - [From PyPI](#from-pypi)
+  - [pipx](#pipx)
+  - [uv](#uv)
+  - [Docker](#docker)
+  - [From Source](#from-source)
+  - [Development Installation](#development-installation)
+- [Dependencies](#dependencies)
+- [Platform-Specific Instructions](#platform-specific-instructions)
+- [Verification](#verification)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## Install — pick your path
+
+*New in [v0.7.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md).* NeuralMind installs five ways. All paths deliver the same package — the `neuralmind` CLI, the `neuralmind-mcp` server, and the Python module.
+
+| Method | Command | When to pick |
+|---|---|---|
+| **pip** | `pip install neuralmind` | Default. Drops it in your active env. |
+| **pipx** | `pipx install neuralmind` | Global CLI, no env pollution. |
+| **uv** | `uv pip install neuralmind` | Modern, fast Python tooling. |
+| **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest && docker run --rm -v "$PWD:/project:ro" ghcr.io/dfrostar/neuralmind:latest neuralmind --help` | Containerized — no Python on the host. Multi-platform (`linux/amd64` + `linux/arm64`); auto-published to GHCR on every release since v0.9.0. |
+| **From source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` | Hacking on NeuralMind itself. |
+
+**Verify any install:**
+
+```bash
+neuralmind --help     # works for every path
+
+# For pip / uv / source (a Python env where neuralmind is importable):
+python -c "import neuralmind; print(neuralmind.__version__)"
+```
+
+Full walkthrough with pros and cons of each path: [Install paths](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md).
+
+The sections below remain the deep reference — system requirements, dependency tables, platform-specific notes, and troubleshooting.
+
+---
+
+## System Requirements
+
+### Minimum Requirements
+
+| Component | Requirement |
+|-----------|-------------|
+| Python | 3.10 or higher |
+| Memory | 2GB RAM (4GB+ recommended for large codebases) |
+| Storage | 500MB for base install + space for embeddings |
+| OS | Linux, macOS, Windows 10+ |
+
+### Software Prerequisites
+
+1. **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/)
+2. **pip** (or [pipx](https://pipx.pypa.io/) / [uv](https://docs.astral.sh/uv/)): Usually included with Python
+3. **git** (optional): For source installation
+4. **graphify** (optional): since v0.15.0 NeuralMind generates the code graph itself with a built-in tree-sitter backend (Python, TypeScript, Go). Install [graphify](https://github.com/safishamsi/graphify) (`pip install graphifyy`) only if you want its richer graph — it takes priority automatically when present.
+
+---
+
+## Quick Install
+
+For most users, the quickest path:
+
+```bash
+# Install NeuralMind (includes the built-in tree-sitter graph backend)
+pip install neuralmind
+
+# Verify installation
+neuralmind --help
+```
+
+> **Prefer one of the other four install paths?** See the [install matrix](#install--pick-your-path) above.
+
+---
+
+## Installation Methods
+
+### From PyPI
+
+The default installation method.
+
+#### Default Installation
+
+```bash
+pip install neuralmind
+```
+
+This includes everything most users need: the CLI, the semantic
+indexing layer, and the MCP server (`neuralmind-mcp`) for Claude
+Desktop, Claude Code, Cursor, Cline, Continue, Hermes-Agent,
+OpenClaw, and any other MCP-compatible client.
+
+> **Note for users upgrading from v0.4.x or earlier:** the MCP
+> server used to be gated behind an `[mcp]` extra. From v0.5.0
+> onward it ships in the base package. Existing
+> `pip install "neuralmind[mcp]"` commands still work — the `mcp`
+> extra is preserved as an empty no-op for backwards compatibility.
+
+#### With Development Tools
+
+For contributors or those who want testing/linting tools:
+
+```bash
+pip install neuralmind[dev]
+```
+
+#### Full Installation
+
+All extras (equivalent to `[dev]` since v0.5.0):
+
+```bash
+pip install neuralmind[all]
+```
+
+### pipx
+
+[pipx](https://pipx.pypa.io/) installs each Python application in its own dedicated venv and exposes the entry points on your PATH globally. `neuralmind` and `neuralmind-mcp` are then available from any directory without activating anything.
+
+```bash
+pipx install neuralmind
+
+# Optional — only if you want the graphify backend:
+pipx inject neuralmind graphifyy
+```
+
+**Trade-off:** because pipx isolates the package, `import neuralmind` from your project's own Python won't work. If you also script against the Python API, use `pip` in a project venv instead.
+
+### uv
+
+[uv](https://docs.astral.sh/uv/) is Astral's Rust-based Python package manager — significantly faster installs, drop-in for pip, compatible venvs.
+
+```bash
+uv pip install neuralmind
+```
+
+For a `uv`-managed project:
+
+```bash
+uv add neuralmind
+```
+
+### Docker
+
+Pull from GHCR (auto-published since v0.9.0, multi-platform `linux/amd64` + `linux/arm64`):
+
+```bash
+docker pull ghcr.io/dfrostar/neuralmind:latest
+# or pin a specific version
+docker pull ghcr.io/dfrostar/neuralmind:v0.9.0
+
+# Run the MCP server. `neuralmind-mcp` ignores any CLI args; each MCP
+# tool call (neuralmind_wakeup, neuralmind_query, …) carries its own
+# `project_path` argument that the client passes in. The mount below
+# just exposes the project tree so those tool calls can find the path.
+docker run --rm -i \
+  -v "$PWD:/project:ro" \
+  ghcr.io/dfrostar/neuralmind:latest neuralmind-mcp
+
+# Run the graph view on http://localhost:8765
+docker run --rm -p 8765:8765 \
+  -v "$PWD:/project:ro" \
+  ghcr.io/dfrostar/neuralmind:latest \
+  neuralmind serve /project --host 0.0.0.0 --no-auth
+```
+
+> **Local build** — if you want to build the image yourself from the repo's `Dockerfile`:
+> `docker build -t neuralmind:dev .` then substitute `neuralmind:dev` for `ghcr.io/dfrostar/neuralmind:latest` in the commands above.
+
+To persist the index between runs, mount the project directory read-write so `.neuralmind/` and `graphify-out/` land on the host:
+
+```bash
+docker run --rm -v "$PWD:/project" ghcr.io/dfrostar/neuralmind:latest neuralmind build /project
+```
+
+### From Source
+
+For the latest development version or contributors:
+
+```bash
+# Clone the repository
+git clone https://github.com/dfrostar/neuralmind.git
+cd neuralmind
+
+# Install in editable mode
+pip install -e .
+
+# Or with dev tools
+pip install -e ".[dev]"
+```
+
+### Development Installation
+
+Recommended setup for contributors:
+
+```bash
+# Clone and enter directory
+git clone https://github.com/dfrostar/neuralmind.git
+cd neuralmind
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# or: venv\Scripts\activate  # Windows
+
+# Install with dev dependencies
+pip install -e ".[dev]"
+
+# Install pre-commit hooks (optional)
+pre-commit install
+```
+
+---
+
+## Dependencies
+
+### Core Dependencies (Automatically Installed)
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| chromadb | ≥0.4.0 | Vector database for embeddings |
+| pyyaml | ≥6.0 | Configuration file parsing |
+| toml | ≥0.10 | TOML configuration file support |
+| mcp | ≥1.23.0 | Model Context Protocol server (since v0.5.0) |
+
+### Optional Dependencies
+
+#### Dev Extra (`pip install neuralmind[dev]`)
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| pytest | ≥7.0 | Testing framework |
+| pytest-asyncio | ≥0.21.0 | Async test support |
+| black | ≥23.0 | Code formatting |
+| ruff | ≥0.1.0 | Fast linting |
+
+#### Legacy `[mcp]` extra
+
+`pip install "neuralmind[mcp]"` still resolves cleanly — the extra
+is preserved as an empty no-op so existing install commands in user
+docs, blog posts, and CI configs keep working. No reason to use it
+in new commands; `pip install neuralmind` already includes the MCP
+server.
+
+### External Tools
+
+| Tool | Installation | Purpose |
+|------|--------------|----------|
+| graphify *(optional)* | `pip install graphifyy` | Richer knowledge graph — auto-prioritized over the built-in tree-sitter backend when present |
+
+---
+
+## Platform-Specific Instructions
+
+### Linux (Ubuntu/Debian)
+
+```bash
+# Ensure Python 3.10+ is installed
+sudo apt update
+sudo apt install python3.10 python3.10-venv python3-pip
+
+# Create virtual environment (recommended)
+python3.10 -m venv neuralmind-env
+source neuralmind-env/bin/activate
+
+# Install NeuralMind
+pip install neuralmind
+```
+
+### macOS
+
+```bash
+# Using Homebrew
+brew install python@3.11
+
+# Create virtual environment
+python3.11 -m venv neuralmind-env
+source neuralmind-env/bin/activate
+
+# Install NeuralMind
+pip install neuralmind
+```
+
+### Windows
+
+```powershell
+# Ensure Python 3.10+ is installed from python.org
+# Open PowerShell as Administrator
+
+# Create virtual environment
+python -m venv neuralmind-env
+.\neuralmind-env\Scripts\Activate.ps1
+
+# Install NeuralMind
+pip install neuralmind
+```
+
+### Docker
+
+Use the repo's [`Dockerfile`](https://github.com/dfrostar/neuralmind/blob/main/Dockerfile) — multi-stage, non-root, transitive deps pre-wheeled in the builder stage so the runtime image doesn't need a C toolchain. See the [Docker section above](#docker) for the build and run commands, or the [install-paths walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md#4-docker--no-python-on-the-host) for persistence and security notes.
+
+If you want a minimal app-style Dockerfile for embedding NeuralMind inside another image:
+
+```dockerfile
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install NeuralMind (MCP server and tree-sitter graph backend are bundled)
+RUN pip install --no-cache-dir neuralmind
+
+# Your project files
+COPY . .
+
+CMD ["neuralmind-mcp"]
+```
+
+---
+
+## Verification
+
+### Check Installation
+
+```bash
+# Check CLI is available — works for every install path
+neuralmind --help
+
+# Check version — pip / uv / source paths only
+# (pipx isolates the package in its own venv; Docker runs in-container)
+python -c "import neuralmind; print(neuralmind.__version__)"
+```
+
+### Verify Dependencies
+
+```bash
+# Check ChromaDB
+python -c "import chromadb; print(f'ChromaDB version: {chromadb.__version__}')"
+
+# Check graphify (if installed)
+graphify --help
+```
+
+### Test with Sample Project
+
+```bash
+# Create a test directory
+mkdir test-neuralmind
+cd test-neuralmind
+
+# Create a simple Python file
+echo 'def hello(): return "world"' > hello.py
+
+# Build neural index (the code graph is generated automatically)
+neuralmind build .
+
+# Test query
+neuralmind wakeup .
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### "Command not found: neuralmind"
+
+**Cause**: Python scripts directory not in PATH.
+
+**Solution**:
+```bash
+# Linux/macOS
+export PATH="$HOME/.local/bin:$PATH"
+
+# Then retry
+neuralmind --help
+```
+
+#### "No module named 'chromadb'"
+
+**Cause**: Dependencies not installed properly.
+
+**Solution**:
+```bash
+pip install --upgrade neuralmind
+# or
+pip install chromadb>=0.4.0
+```
+
+#### "graph.json not found"
+
+**Cause**: The index was never built (since v0.15.0, `neuralmind build`
+generates the code graph itself via the built-in tree-sitter backend).
+
+**Solution**:
+```bash
+# Build the neural index — generates the code graph automatically
+neuralmind build /path/to/your/project
+
+# Still failing? The doctor pinpoints the missing piece:
+neuralmind doctor
+```
+
+#### Memory Error on Large Codebases
+
+**Cause**: Insufficient RAM for embedding generation.
+
+**Solution**:
+- Close other applications
+- Process in batches using `--force` flag to rebuild incrementally
+- Consider using a machine with more RAM
+
+#### SSL Certificate Errors
+
+**Cause**: Corporate proxy or certificate issues.
+
+**Solution**:
+```bash
+pip install --trusted-host pypi.org --trusted-host pypi.python.org neuralmind
+```
+
+### Getting Help
+
+- **GitHub Issues**: [Report bugs](https://github.com/dfrostar/neuralmind/issues)
+- **Discussions**: [Ask questions](https://github.com/dfrostar/neuralmind/discussions)
+
+---
+
+## Next Steps
+
+After installation:
+
+1. [Build the neural index](CLI-Reference.md#build) using `neuralmind build` (the code graph is generated automatically)
+2. [Query your codebase](CLI-Reference.md#query) with natural language
+3. Register the MCP server with your agents: `neuralmind install-mcp --all`
+4. [Set up MCP integration](Integration-Guide.md#mcp-integration) for Claude Desktop

@@ -1,0 +1,390 @@
+"""Pytest fixtures for NeuralMind tests."""
+
+import gc
+import json
+import os
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock
+
+import pytest
+
+
+@pytest.fixture
+def sample_graph() -> dict[str, Any]:
+    """Create a sample knowledge graph for testing."""
+    return {
+        "nodes": [
+            {
+                "id": "node_1",
+                "name": "authenticate_user",
+                "label": "authenticate_user",
+                "type": "function",
+                "file_type": "function",
+                "file_path": "auth/handlers.py",
+                "source_file": "auth/handlers.py",
+                "description": "Validates user credentials and returns auth token",
+                "community": 1,
+            },
+            {
+                "id": "node_2",
+                "name": "hash_password",
+                "label": "hash_password",
+                "type": "function",
+                "file_type": "function",
+                "file_path": "auth/crypto.py",
+                "source_file": "auth/crypto.py",
+                "description": "Securely hashes passwords using bcrypt",
+                "community": 1,
+            },
+            {
+                "id": "node_3",
+                "name": "User",
+                "label": "User",
+                "type": "class",
+                "file_type": "class",
+                "file_path": "models/user.py",
+                "source_file": "models/user.py",
+                "description": "User model with authentication fields",
+                "community": 1,
+            },
+            {
+                "id": "node_4",
+                "name": "create_task",
+                "label": "create_task",
+                "type": "function",
+                "file_type": "function",
+                "file_path": "tasks/handlers.py",
+                "source_file": "tasks/handlers.py",
+                "description": "Creates a new task in the database",
+                "community": 2,
+            },
+            {
+                "id": "node_5",
+                "name": "Task",
+                "label": "Task",
+                "type": "class",
+                "file_type": "class",
+                "file_path": "models/task.py",
+                "source_file": "models/task.py",
+                "description": "Task model with status and assignment",
+                "community": 2,
+            },
+            {
+                "id": "node_6",
+                "name": "api_router",
+                "label": "api_router",
+                "type": "function",
+                "file_type": "function",
+                "file_path": "api/routes.py",
+                "source_file": "api/routes.py",
+                "description": "Main API router with all endpoints",
+                "community": 3,
+            },
+        ],
+        "edges": [
+            {"source": "node_1", "target": "node_2", "type": "calls"},
+            {"source": "node_1", "target": "node_3", "type": "uses"},
+            {"source": "node_4", "target": "node_5", "type": "uses"},
+            {"source": "node_6", "target": "node_1", "type": "calls"},
+            {"source": "node_6", "target": "node_4", "type": "calls"},
+        ],
+        "communities": [
+            {
+                "id": 1,
+                "name": "Authentication",
+                "description": "User authentication and security",
+            },
+            {
+                "id": 2,
+                "name": "Task Management",
+                "description": "Task CRUD operations",
+            },
+            {
+                "id": 3,
+                "name": "API Layer",
+                "description": "REST API endpoints and routing",
+            },
+        ],
+    }
+
+
+@pytest.fixture
+def temp_project(sample_graph: dict[str, Any]) -> Generator[Path, None, None]:
+    """Create a temporary project directory with graph.json.
+
+    ``ignore_cleanup_errors``: chromadb-backed tests can leave file
+    handles open at teardown (released afterwards by
+    ``_release_chroma_file_handles``), and Windows refuses to delete
+    open files — without the flag every such test errors in teardown.
+    """
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        project_path = Path(tmpdir)
+
+        # Create graphify-out directory
+        graphify_out = project_path / "graphify-out"
+        graphify_out.mkdir(parents=True)
+
+        # Write graph.json
+        graph_path = graphify_out / "graph.json"
+        with open(graph_path, "w") as f:
+            json.dump(sample_graph, f, indent=2)
+
+        # Create README.md
+        readme_path = project_path / "README.md"
+        readme_path.write_text("# Test Project\n\nA test project for NeuralMind unit tests.\n")
+
+        yield project_path
+
+
+@pytest.fixture
+def temp_project_with_config(temp_project: Path) -> Path:
+    """Create a temporary project with mempalace.yaml configuration."""
+    config = {
+        "project": {
+            "name": "TestApp",
+            "description": "A test application for unit testing NeuralMind",
+            "wing": "test-app",
+        }
+    }
+
+    config_path = temp_project / "mempalace.yaml"
+    import yaml
+
+    with open(config_path, "w") as f:
+        yaml.dump(config, f)
+
+    return temp_project
+
+
+@pytest.fixture
+def temp_project_with_claude_md(temp_project: Path) -> Path:
+    """Create a temporary project with CLAUDE.md."""
+    claude_md = temp_project / "CLAUDE.md"
+    claude_md.write_text(
+        "# TestApp\n\n"
+        "This is a test application designed for AI coding assistants.\n\n"
+        "## Key Features\n\n"
+        "- User authentication\n"
+        "- Task management\n"
+        "- REST API\n"
+    )
+
+    return temp_project
+
+
+@pytest.fixture
+def empty_project() -> Generator[Path, None, None]:
+    """Create an empty temporary project directory."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+        yield Path(tmpdir)
+
+
+@pytest.fixture
+def mock_chromadb(mocker):
+    """Mock ChromaDB for tests that don't need real embeddings.
+
+    ChromaDB is an opt-in extra as of v0.29.0; this fixture patches
+    ``chromadb.PersistentClient``, so tests that depend on it skip cleanly on a
+    ChromaDB-free install and run in the ``[dev,chromadb]`` CI job.
+    """
+    pytest.importorskip("chromadb")
+    mock_client = mocker.MagicMock()
+    mock_collection = mocker.MagicMock()
+    mock_client.get_or_create_collection.return_value = mock_collection
+
+    # Mock query results
+    mock_collection.query.return_value = {
+        "ids": [["node_1", "node_2"]],
+        "distances": [[0.1, 0.2]],
+        "metadatas": [
+            [
+                {"name": "authenticate_user", "type": "function"},
+                {"name": "hash_password", "type": "function"},
+            ]
+        ],
+        "documents": [
+            [
+                "authenticate_user function Validates user credentials",
+                "hash_password function Securely hashes passwords",
+            ]
+        ],
+    }
+
+    # Mock count and get for get_stats()
+    mock_collection.count.return_value = 6
+    mock_collection.get.return_value = {
+        "ids": ["node_1", "node_2"],
+        "metadatas": [
+            {"community": 1, "label": "authenticate_user"},
+            {"community": 1, "label": "hash_password"},
+        ],
+    }
+
+    # Mock upsert (no-op)
+    mock_collection.upsert.return_value = None
+
+    mocker.patch("chromadb.PersistentClient", return_value=mock_client)
+
+    return mock_client, mock_collection
+
+
+@pytest.fixture
+def mock_embedder(temp_project, sample_graph):
+    """Create a mock embedder with all required attributes and methods."""
+    mock = MagicMock()
+    mock.project_path = temp_project
+    mock.graph_path = temp_project / "graphify-out" / "graph.json"
+    mock.nodes = sample_graph["nodes"]
+    mock.edges = sample_graph["edges"]
+    mock.graph = sample_graph
+
+    # Mock get_stats
+    mock.get_stats.return_value = {
+        "total_nodes": 6,
+        "communities": 3,
+        "community_distribution": {1: 3, 2: 2, 3: 1},
+        "db_path": str(temp_project / "graphify-out" / "neuralmind_db"),
+    }
+
+    # Mock search results
+    mock.search.return_value = [
+        {
+            "id": "node_1",
+            "document": "authenticate_user function",
+            "metadata": {
+                "label": "authenticate_user",
+                "file_type": "function",
+                "source_file": "auth/handlers.py",
+                "community": 1,
+            },
+            "distance": 0.1,
+            "score": 0.9,
+        },
+        {
+            "id": "node_2",
+            "document": "hash_password function",
+            "metadata": {
+                "label": "hash_password",
+                "file_type": "function",
+                "source_file": "auth/crypto.py",
+                "community": 1,
+            },
+            "distance": 0.2,
+            "score": 0.8,
+        },
+    ]
+
+    # Mock get_community_summary
+    def get_community_summary(community_id, max_nodes=20):
+        nodes_in_community = [
+            n for n in sample_graph["nodes"] if n.get("community") == community_id
+        ]
+        return {
+            "community": community_id,
+            "node_count": len(nodes_in_community),
+            "type_summary": "functions, classes",
+            "nodes": [
+                {
+                    "id": n["id"],
+                    "label": n.get("label", n.get("name", "unknown")),
+                    "file_type": n.get("file_type", "unknown"),
+                    "source_file": n.get("source_file", ""),
+                }
+                for n in nodes_in_community[:max_nodes]
+            ],
+        }
+
+    mock.get_community_summary.side_effect = get_community_summary
+
+    return mock
+
+
+@pytest.fixture
+def large_graph() -> dict[str, Any]:
+    """Create a larger graph for performance testing."""
+    nodes = []
+    edges = []
+    communities = []
+
+    # Create 100 nodes across 10 communities
+    for community_id in range(1, 11):
+        communities.append(
+            {
+                "id": community_id,
+                "name": f"Module_{community_id}",
+                "description": f"Module {community_id} description",
+            }
+        )
+
+        for i in range(10):
+            node_id = f"node_{community_id}_{i}"
+            nodes.append(
+                {
+                    "id": node_id,
+                    "name": f"function_{community_id}_{i}",
+                    "label": f"function_{community_id}_{i}",
+                    "type": "function",
+                    "file_type": "function",
+                    "file_path": f"module_{community_id}/file_{i}.py",
+                    "source_file": f"module_{community_id}/file_{i}.py",
+                    "description": f"Function {i} in module {community_id}",
+                    "community": community_id,
+                }
+            )
+
+            # Add some edges
+            if i > 0:
+                edges.append(
+                    {
+                        "source": f"node_{community_id}_{i-1}",
+                        "target": node_id,
+                        "type": "calls",
+                    }
+                )
+
+    return {
+        "nodes": nodes,
+        "edges": edges,
+        "communities": communities,
+    }
+
+
+@pytest.fixture(autouse=True)
+def isolate_tests(tmp_path, monkeypatch):
+    """Ensure tests don't affect each other."""
+    # Use temp directory for any file operations
+    monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def _release_chroma_file_handles():
+    """Stop chromadb's cached Systems after each test.
+
+    Chroma caches one System per storage path for the life of the
+    process, holding sqlite + HNSW file handles. Tests rarely close
+    their embedders, which is invisible on POSIX but fatal on Windows:
+    temp-dir teardown can't delete open files (WinError 32). Stopping
+    and evicting every cached System after each test releases the
+    handles regardless of whether the test cleaned up.
+    """
+    yield
+    try:
+        from chromadb.api.shared_system_client import SharedSystemClient
+    except Exception:
+        return
+    for system in list(SharedSystemClient._identifier_to_system.values()):
+        try:
+            system.stop()
+        except Exception:
+            pass
+    try:
+        SharedSystemClient._identifier_to_system.clear()
+    except Exception:
+        pass
+    if os.name == "nt":
+        # Segment objects may hold the last reference to an open index
+        # file; make their finalizers run before directory teardown.
+        gc.collect()

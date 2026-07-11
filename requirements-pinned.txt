@@ -1,0 +1,43 @@
+# NeuralMind - Pinned Production Dependencies
+# Generated: 2026-04-22
+# Used for: reproducible builds, CI/CD testing
+# Install with: pip install -r requirements-pinned.txt
+
+# Core dependencies
+# chromadb pinned at 1.5.8. CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c (CRITICAL,
+# pre-auth RCE) affects the ChromaDB *server* HTTP API with
+# trust_remote_code=true; NeuralMind uses the embedded PersistentClient only
+# (no server, no trust_remote_code), so the vulnerable path is unreachable.
+# Note: every published version is affected (introduced 1.0.0, last_affected
+# 1.5.9 — the current latest), so there is no fixed version to bump to yet;
+# bumping to 1.5.9 would NOT clear the alert. See SECURITY.md "Known Security
+# Considerations". Bump the moment a patched chromadb release ships.
+chromadb==1.5.8
+pyyaml==6.0.3
+toml==0.10.2
+
+# Optional: MCP Server
+# Bumped from 0.1.0 to 1.23.0 to resolve three GHSA alerts on the MCP SDK:
+#   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
+mcp==1.28.1
+
+# Optional: Development & Testing
+# pytest bumped from 7.4.3 to 9.0.3 to fix tmpdir handling vuln (CVE-2025-71176).
+# black bumped from 23.12.1 to 26.3.1 to fix ReDoS (CVE-2024-21503) and the
+# arbitrary-file-write cache vuln (GHSA-3936-cmfr-pm3m).
+pytest==9.1.1
+pytest-asyncio==1.4.0
+black==26.5.1
+ruff==0.15.18
+mypy==1.20.2
+
+# External tools (required separately)
+# graphify - install from: git clone https://github.com/safishamsi/graphify.git && cd graphify && pip install -e .
+
+# Documentation
+# sphinx==7.2.6
+# sphinx-rtd-theme==2.0.0
+
+# Benchmarking
+tiktoken==0.13.0
+matplotlib==3.10.9

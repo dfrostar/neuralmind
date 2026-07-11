@@ -1,0 +1,410 @@
+[
+  {
+    "query_id": "basic-auth",
+    "question": "how is HTTP basic authentication applied to an outgoing request",
+    "keywords": [
+      "how",
+      "is",
+      "http",
+      "basic",
+      "authentication",
+      "applied",
+      "to",
+      "an",
+      "outgoing",
+      "request"
+    ],
+    "gold_files": [
+      "auth.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "auth.py",
+      "adapters.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "case-insensitive-headers",
+    "question": "the case-insensitive dictionary used to store HTTP headers",
+    "keywords": [
+      "the",
+      "case",
+      "insensitive",
+      "dictionary",
+      "used",
+      "to",
+      "store",
+      "http",
+      "headers"
+    ],
+    "gold_files": [
+      "structures.py"
+    ],
+    "ranked_files": [
+      "__init__.py",
+      "auth.py",
+      "utils.py",
+      "help.py",
+      "sessions.py",
+      "models.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "session-persistence",
+    "question": "how does a Session persist cookies and parameters across requests",
+    "keywords": [
+      "how",
+      "does",
+      "session",
+      "persist",
+      "cookies",
+      "and",
+      "parameters",
+      "across",
+      "requests"
+    ],
+    "gold_files": [
+      "sessions.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "auth.py",
+      "cookies.py",
+      "adapters.py",
+      "exceptions.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "timeout-exception",
+    "question": "the exception raised when a request times out",
+    "keywords": [
+      "the",
+      "exception",
+      "raised",
+      "when",
+      "request",
+      "times",
+      "out"
+    ],
+    "gold_files": [
+      "exceptions.py"
+    ],
+    "ranked_files": [
+      "adapters.py",
+      "sessions.py",
+      "models.py",
+      "compat.py",
+      "utils.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "transport-adapter",
+    "question": "how are HTTP transport adapters mounted to send a request over a connection pool",
+    "keywords": [
+      "how",
+      "are",
+      "http",
+      "transport",
+      "adapters",
+      "mounted",
+      "to",
+      "send",
+      "request",
+      "over",
+      "connection",
+      "pool"
+    ],
+    "gold_files": [
+      "adapters.py"
+    ],
+    "ranked_files": [
+      "compat.py",
+      "utils.py",
+      "models.py",
+      "sessions.py",
+      "adapters.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "cookie-jar",
+    "question": "how are cookies stored in a jar and converted to and from a dict",
+    "keywords": [
+      "how",
+      "are",
+      "cookies",
+      "stored",
+      "in",
+      "jar",
+      "and",
+      "converted",
+      "to",
+      "and",
+      "from",
+      "dict"
+    ],
+    "gold_files": [
+      "cookies.py"
+    ],
+    "ranked_files": [
+      "sessions.py",
+      "adapters.py",
+      "models.py",
+      "cookies.py",
+      "utils.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "prepared-request",
+    "question": "how is a PreparedRequest body and headers built from a Request",
+    "keywords": [
+      "how",
+      "is",
+      "preparedrequest",
+      "body",
+      "and",
+      "headers",
+      "built",
+      "from",
+      "request"
+    ],
+    "gold_files": [
+      "models.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "auth.py",
+      "models.py",
+      "cookies.py",
+      "adapters.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "functional-api",
+    "question": "the top-level functional api for get post put and delete helpers",
+    "keywords": [
+      "the",
+      "top",
+      "level",
+      "functional",
+      "api",
+      "for",
+      "get",
+      "post",
+      "put",
+      "and",
+      "delete",
+      "helpers"
+    ],
+    "gold_files": [
+      "api.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "auth.py",
+      "sessions.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "status-codes",
+    "question": "the lookup table mapping HTTP status code names to numbers",
+    "keywords": [
+      "the",
+      "lookup",
+      "table",
+      "mapping",
+      "http",
+      "status",
+      "code",
+      "names",
+      "to",
+      "numbers"
+    ],
+    "gold_files": [
+      "status_codes.py"
+    ],
+    "ranked_files": [
+      "models.py",
+      "adapters.py",
+      "cookies.py",
+      "sessions.py",
+      "utils.py",
+      "auth.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "url-encoding-helpers",
+    "question": "helpers that guess the response encoding and handle url percent-encoding",
+    "keywords": [
+      "helpers",
+      "that",
+      "guess",
+      "the",
+      "response",
+      "encoding",
+      "and",
+      "handle",
+      "url",
+      "percent",
+      "encoding"
+    ],
+    "gold_files": [
+      "utils.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "sessions.py",
+      "models.py",
+      "adapters.py",
+      "cookies.py",
+      "auth.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "xfile-send-adapter",
+    "question": "how does Session.send select the right HTTPAdapter for a url and dispatch the request to it",
+    "keywords": [
+      "how",
+      "does",
+      "session",
+      "send",
+      "select",
+      "the",
+      "right",
+      "httpadapter",
+      "for",
+      "url",
+      "and",
+      "dispatch",
+      "the",
+      "request",
+      "to",
+      "it"
+    ],
+    "gold_files": [
+      "sessions.py",
+      "adapters.py"
+    ],
+    "ranked_files": [
+      "auth.py",
+      "utils.py",
+      "models.py",
+      "structures.py"
+    ],
+    "found": false,
+    "recall": 0.0
+  },
+  {
+    "query_id": "xfile-prepare-cookies",
+    "question": "how does PreparedRequest.prepare_cookies build the Cookie header from the RequestsCookieJar",
+    "keywords": [
+      "how",
+      "does",
+      "preparedrequest",
+      "prepare_cookies",
+      "build",
+      "the",
+      "cookie",
+      "header",
+      "from",
+      "the",
+      "requestscookiejar"
+    ],
+    "gold_files": [
+      "models.py",
+      "cookies.py"
+    ],
+    "ranked_files": [
+      "utils.py",
+      "status_codes.py",
+      "exceptions.py",
+      "models.py",
+      "structures.py",
+      "adapters.py"
+    ],
+    "found": false,
+    "recall": 0.5
+  },
+  {
+    "query_id": "xfile-redirect-auth",
+    "question": "how does Session.rebuild_auth reapply or strip HTTPBasicAuth credentials when following a redirect",
+    "keywords": [
+      "how",
+      "does",
+      "session",
+      "rebuild_auth",
+      "reapply",
+      "or",
+      "strip",
+      "httpbasicauth",
+      "credentials",
+      "when",
+      "following",
+      "redirect"
+    ],
+    "gold_files": [
+      "sessions.py",
+      "auth.py"
+    ],
+    "ranked_files": [
+      "models.py",
+      "adapters.py",
+      "sessions.py",
+      "auth.py",
+      "utils.py"
+    ],
+    "found": true,
+    "recall": 1.0
+  },
+  {
+    "query_id": "xfile-status-codes",
+    "question": "how does Response.raise_for_status use the status code lookup table to decide whether to raise",
+    "keywords": [
+      "how",
+      "does",
+      "response",
+      "raise_for_status",
+      "use",
+      "the",
+      "status",
+      "code",
+      "lookup",
+      "table",
+      "to",
+      "decide",
+      "whether",
+      "to",
+      "raise"
+    ],
+    "gold_files": [
+      "models.py",
+      "status_codes.py"
+    ],
+    "ranked_files": [
+      "adapters.py",
+      "sessions.py",
+      "models.py"
+    ],
+    "found": false,
+    "recall": 0.5
+  }
+]

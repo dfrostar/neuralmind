@@ -1,0 +1,88 @@
+{
+  "name": "neuralmind",
+  "displayName": "NeuralMind",
+  "description": "Semantic code intelligence — query your codebase in natural language, view your code graph, and orient AI agents on your project.",
+  "version": "0.1.0",
+  "publisher": "neuralmind",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dfrostar/neuralmind"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "AI"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "neuralmind.query",
+        "title": "NeuralMind: Query"
+      },
+      {
+        "command": "neuralmind.wakeup",
+        "title": "NeuralMind: Wakeup"
+      },
+      {
+        "command": "neuralmind.skeleton",
+        "title": "NeuralMind: Skeleton"
+      },
+      {
+        "command": "neuralmind.build",
+        "title": "NeuralMind: Build Index"
+      },
+      {
+        "command": "neuralmind.probe",
+        "title": "NeuralMind: Probe"
+      },
+      {
+        "command": "neuralmind.openGraph",
+        "title": "NeuralMind: Open Graph View"
+      },
+      {
+        "command": "neuralmind.setupCline",
+        "title": "NeuralMind: Setup Cline Integration"
+      },
+      {
+        "command": "neuralmind.setupVscode",
+        "title": "NeuralMind: Setup VS Code MCP Integration"
+      }
+    ],
+    "configuration": {
+      "title": "NeuralMind",
+      "properties": {
+        "neuralmind.pythonPath": {
+          "type": "string",
+          "default": "python",
+          "description": "Path to the Python executable used to run neuralmind commands."
+        },
+        "neuralmind.enableHover": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show NeuralMind skeleton hover cards on function/class symbols (opt-in; spawns a subprocess per file)."
+        },
+        "neuralmind.autoBuildThresholdHours": {
+          "type": "number",
+          "default": 24,
+          "description": "Hours after which the index is considered stale and triggers an auto-build prompt on workspace open."
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0"
+  }
+}

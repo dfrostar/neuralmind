@@ -1,0 +1,459 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neuralmind"
+version = "0.41.0"
+description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 40-70x cheaper code questions."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "dfrostar" }
+]
+maintainers = [
+    { name = "dfrostar" }
+]
+keywords = [
+    "ai",
+    "llm",
+    "llm-tools",
+    "rag",
+    "code-rag",
+    "code-understanding",
+    "code-search",
+    "codebase-indexing",
+    "codebase-search",
+    "repo-map",
+    "knowledge-graph",
+    "token-reduction",
+    "token-optimization",
+    "reduce-tokens",
+    "claude-token-cost",
+    "llm-cost-optimization",
+    "context-engineering",
+    "context-window",
+    "long-context",
+    "semantic-search",
+    "semantic-code-search",
+    "embeddings",
+    "vector-database",
+    "chromadb",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ai-coding-assistant",
+    "ai-coding-agent",
+    "ai-agent",
+    "agent-tools",
+    "claude",
+    "claude-code",
+    "claude-desktop",
+    "anthropic",
+    "cursor",
+    "cursor-alternative",
+    "cline",
+    "continue-dev",
+    "aider",
+    "copilot-alternative",
+    "sourcegraph-cody-alternative",
+    "openai",
+    "gpt-4",
+    "gemini",
+    "posttooluse-hook",
+    "skeleton-view",
+    "output-compression",
+    "developer-tools",
+    "developer-productivity",
+    "graph-view",
+    "code-graph",
+    "obsidian-style",
+    "synapse-layer",
+    "hebbian-learning",
+    "code-visualization",
+    "force-directed-graph",
+    "neuralmind-serve",
+    "tool-output-recovery",
+    "bash-output-cache",
+    "agent-ergonomics",
+    "directional-transitions",
+    "next-file-prediction",
+    "associative-memory",
+    "health-check",
+    "install-doctor",
+    "agent-onboarding",
+    "evaluation",
+    "faithfulness-eval",
+    "retrieval-quality",
+    "polyglot-fixtures",
+    "offline-eval",
+    "neuralmind-eval",
+    "answer-faithfulness",
+    "faithfulness-delta",
+    "onboarding-lift",
+    "learned-memory-eval",
+    "synapse-recall-eval",
+    "answerability-benchmark",
+    "llm-judged-eval",
+    "agent-answerability",
+    "tree-sitter",
+    "tree-sitter-graph-backend",
+    "built-in-code-graph",
+    "graphify-alternative",
+    "pluggable-graph-backend",
+    "backend-parity-gate",
+    "typescript-code-graph",
+    "go-code-graph",
+    "rust-code-graph",
+    "rust-code-intelligence",
+    "rust-tree-sitter",
+    "java-code-graph",
+    "java-code-intelligence",
+    "java-tree-sitter",
+    "c-code-intelligence",
+    "cpp-indexing",
+    "c-cpp-mcp",
+    "csharp-code-graph",
+    "csharp-code-intelligence",
+    "dotnet-code-search",
+    "ruby-code-graph",
+    "ruby-code-intelligence",
+    "ruby-tree-sitter",
+    "php-code-graph",
+    "php-code-intelligence",
+    "php-tree-sitter",
+    "multi-language-code-intelligence",
+    "polyglot-codebase-indexing",
+    "scip",
+    "scip-index",
+    "scip-precision",
+    "compiler-accurate-call-graph",
+    "precise-call-graph",
+    "incremental-indexing",
+    "incremental-code-graph",
+    "live-code-index",
+    "watch-mode-reindex",
+    "mcp-setup",
+    "install-mcp",
+    "claude-code-mcp",
+    "cursor-mcp",
+    "cline-mcp",
+    "mcp-auto-detection",
+    "turbovec",
+    "turboquant",
+    "chromadb-free",
+    "chromadb-free-by-default",
+    "chromadb-optional",
+    "lean-default-install",
+    "cve-tree-free-default",
+    "reduced-cve-surface",
+    "chromadb-alternative",
+    "onnx-embeddings",
+    "vector-quantization",
+    "compressed-vector-search",
+    "auto-backend-selection",
+    "default-backend",
+    "zero-dependency-import",
+    "versioned-index-contract",
+    "intermediate-representation",
+    "index-schema-validation",
+    "ir-migration",
+    "retrieval-quality-harness",
+    "precision-recall-mrr",
+    "answerability-eval",
+    "ranked-retrieval-metrics",
+    "local-daemon",
+    "warm-index-cache",
+    "daemon-first-architecture",
+    "retrieval-trace",
+    "explainable-retrieval",
+    "retrieval-debugging",
+    "memory-namespaces",
+    "branch-isolated-memory",
+    "team-memory",
+    "team-memory-bundle",
+    "committed-team-memory",
+    "shareable-agent-memory",
+    "inherited-agent-memory",
+    "agent-onboarding-memory",
+    "memory-export-import",
+    "context-compression",
+    "prompt-compression",
+    "tool-output-compression",
+    "fable-5",
+    "self-improvement-engine",
+    "selector-autotuning",
+    "adaptive-recall-depth",
+    "code-retrieval-benchmark",
+    "reproducible-benchmark",
+    "token-cost-benchmark",
+    "codebase-memory-mcp-benchmark",
+    "codebase-memory-mcp-alternative",
+    "code-memory-mcp",
+    "code-mcp-comparison",
+    "mcp-benchmark",
+    "headroom-alternative",
+    "neuralmind-vs-headroom",
+    "ponytail-alternative",
+    "context-engineering-stack",
+    "retrieval-transport-generation",
+    "complementary-context-tools",
+    "hybrid-search",
+    "bm25",
+    "bm25-keyword-search",
+    "keyword-vector-hybrid",
+    "reciprocal-rank-fusion",
+    "rrf-merge",
+    "exact-name-code-search",
+    "retrieval-feedback",
+    "explicit-feedback",
+    "positive-negative-feedback",
+    "feedback-loop",
+    "ci-auto-index",
+    "github-action-index",
+    "automated-indexing",
+    "team-memory-ci",
+    "retrieval-self-probe",
+    "label-free-retrieval-eval",
+    "recall-at-k",
+    "codebase-retrieval-test",
+    "needle-in-haystack",
+    "docstring-to-code-retrieval",
+    "natural-language-code-search-eval",
+    "unified-token-optimization",
+    "ponytail-headroom-integration",
+    "vscode-extension",
+    "vscode-plugin",
+    "editor-integration",
+    "native-editor-ux",
+    "dry-run-indexing",
+    "co-break-detection",
+    "token-savings-dashboard",
+    "openapi-indexing",
+    "sql-schema-indexing",
+    "protobuf-indexing",
+    "schema-artifact-search",
+    "api-spec-search",
+    "non-code-artifact-indexing",
+    "reuse-feedback",
+    "reuse-vs-rewrite",
+    "relevance-sidecar",
+    "agent-memory-feedback-loop",
+    "load-bearing-span-protection"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed"
+]
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+    "toml>=0.10",
+    "mcp>=1.27.2",
+    # Vector backend — platform-gated so a base `pip install neuralmind` always
+    # resolves to prebuilt wheels (no Rust/C++ toolchain needed):
+    #   * the ChromaDB-free TurboQuant/ONNX stack is the default WHERE turbovec
+    #     publishes wheels — Linux (manylinux_2_28 x86_64/aarch64), Apple Silicon
+    #     (macOS arm64), and Windows x86_64;
+    #   * on platforms turbovec has no wheel for (notably Intel macOS x86_64 and
+    #     Windows ARM), ChromaDB is installed instead as the fallback backend, so
+    #     the default install still works out of the box there.
+    # `auto` backend selection then prefers turbovec when present, else chroma.
+    # NOTE: env markers can't distinguish musl from glibc, so Alpine/musl (and
+    # pre-2.28 glibc) Linux still resolve to turbovec and need a toolchain or
+    # `pip install "neuralmind[chromadb]"`; use a glibc base image (python:slim)
+    # rather than python:alpine. See docs/prd/chromadb-free-by-default.md.
+    "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "numpy>=1.20",
+    # Fallback vector backend on platforms without a turbovec wheel (the De
+    # Morgan complement of the turbovec marker — PEP 508 has no unary `not`).
+    "chromadb>=0.4.0; platform_system != 'Linux' and (platform_system != 'Darwin' or platform_machine != 'arm64') and (platform_system != 'Windows' or platform_machine != 'AMD64')",
+    # Built-in graph backend: parse a project into a graphify-compatible
+    # graph.json with no external graphify install. See neuralmind/graphgen.py.
+    # Python + TypeScript + Go + Rust + Java + C + C++ + C# + Ruby + PHP grammars
+    # are bundled so multi-language indexing works out of the box; the
+    # SUPPORTED_SUFFIXES seam registers more.
+    "tree-sitter>=0.21.0",
+    "tree-sitter-python>=0.21.0",
+    "tree-sitter-typescript>=0.21.0",
+    "tree-sitter-go>=0.21.0",
+    "tree-sitter-rust>=0.21.0",
+    "tree-sitter-java>=0.21.0",
+    "tree-sitter-c>=0.21.0",
+    "tree-sitter-cpp>=0.21.0",
+    "tree-sitter-c-sharp>=0.21.0",
+    "tree-sitter-ruby>=0.21.0",
+    "tree-sitter-php>=0.22.0"
+]
+
+[project.optional-dependencies]
+# Kept as an empty extra so existing `pip install "neuralmind[mcp]"` commands
+# in user docs, blog posts, and CI configs keep resolving cleanly. The mcp
+# package is now a base dependency.
+mcp = []
+# Opt-in ChromaDB backend. As of v0.29.0 the ChromaDB-free turbovec/ONNX stack
+# is the default install; install this extra (and set `backend: graph` in
+# neuralmind-backend.yaml, or pass backend="graph") to use ChromaDB instead.
+chromadb = [
+    "chromadb>=0.4.0",
+]
+# Back-compat alias: the turbovec/ONNX stack is now a base dependency, so this
+# extra is empty. Existing `pip install "neuralmind[turbovec]"` commands keep
+# resolving (same pattern as the `mcp` extra).
+turbovec = []
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-mock>=3.15.1",
+    "black>=26.3.1",
+    "ruff>=0.1.0",
+    "mypy>=1.0",
+    "pre-commit>=4.6.0"
+]
+all = [
+    "neuralmind[mcp,chromadb,dev]"
+]
+
+[project.scripts]
+neuralmind = "neuralmind.cli:main"
+neuralmind-mcp = "neuralmind.mcp_server:main"
+neuralmind-daemon = "neuralmind.daemon:main"
+
+[project.urls]
+Homepage = "https://github.com/dfrostar/neuralmind"
+Documentation = "https://github.com/dfrostar/neuralmind/wiki"
+Repository = "https://github.com/dfrostar/neuralmind.git"
+Issues = "https://github.com/dfrostar/neuralmind/issues"
+Changelog = "https://github.com/dfrostar/neuralmind/releases"
+
+[tool.hatch.build.targets.wheel]
+# Bundle the demo fixture (small sample project + pre-built graph.json)
+# so `pip install neuralmind && neuralmind demo` works without a git
+# checkout or graphify install. Hatch already includes Python files
+# under the package, but JSON/Markdown need an explicit pattern.
+packages = ["neuralmind"]
+include = [
+    "neuralmind/demo_data/**",
+    "neuralmind/web/**",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "neuralmind/**/*.py",
+    "neuralmind/demo_data/**",
+    "neuralmind/web/**",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+]
+
+# PyPI Trusted Publishing Configuration
+# To enable trusted publishing on PyPI:
+# 1. Go to https://pypi.org/manage/project/neuralmind/settings/publishing/
+# 2. Add a new trusted publisher with:
+#    - Owner: dfrostar
+#    - Repository: neuralmind
+#    - Workflow: release.yml
+#    - Environment: pypi
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "T10", # flake8-debugger
+    "ISC", # flake8-implicit-str-concat
+    "PIE", # flake8-pie
+    "RET", # flake8-return
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # function call in argument defaults
+    "C901",   # too complex
+]
+
+[tool.ruff.lint.per-file-ignores]
+"neuralmind/__init__.py" = ["E402"]  # telemetry setup must run before imports
+"tests/**/*.py" = ["S101", "F841", "PT011", "PT012"]  # allow assert and test patterns
+
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = ["chromadb.*", "mcp.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+python_classes = ["Test*"]
+markers = [
+    "slow: marks tests as slow",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["neuralmind"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
