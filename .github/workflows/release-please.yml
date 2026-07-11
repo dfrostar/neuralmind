@@ -1,0 +1,63 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v5
+        id: release
+        with:
+          # Optional token override. GitHub deliberately suppresses
+          # workflow-from-workflow triggers when the actor is
+          # GITHUB_TOKEN (anti-infinite-loop guard), so tags created
+          # with the default token never fire release.yml's push:tags
+          # trigger. The dispatch step below works around that without
+          # any secret — workflow_dispatch is exempt from the guard —
+          # so RELEASE_PLEASE_TOKEN is no longer required for
+          # publishing. Setting it (a PAT or GitHub App token) is still
+          # useful for one thing the dispatch can't fix: CI runs on the
+          # release PR itself. Tracked in #98.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      # When a release PR merges, release-please creates the tag with
+      # GITHUB_TOKEN, which cannot fire release.yml's push:tags trigger
+      # (see comment above). workflow_dispatch IS exempt from that
+      # guard, so dispatch the publish explicitly against the new tag —
+      # the same recovery path release.yml already supports for manual
+      # runs (its `tag` input).
+      - name: Dispatch PyPI publish for the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml \
+            --repo "${{ github.repository }}" \
+            -f tag="${{ steps.release.outputs.tag_name }}"
+
+      # docker-publish.yml has the same push:tags blind spot as release.yml:
+      # release-please's GITHUB_TOKEN-created tag can't fire its push:tags
+      # trigger, so the GHCR image silently never built on a release (the
+      # tags drifted v0.22 → nothing until backfilled by hand). Dispatch it
+      # explicitly here, exactly like the PyPI publish above, so the
+      # multi-arch image lands on every release without a manual run.
+      - name: Dispatch GHCR image build for the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run docker-publish.yml \
+            --repo "${{ github.repository }}" \
+            -f tag="${{ steps.release.outputs.tag_name }}"

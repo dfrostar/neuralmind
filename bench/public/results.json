@@ -1,0 +1,2017 @@
+{
+  "tokenizer": "tiktoken o200k_base",
+  "oracle": "def-site",
+  "synapse_injection": "0",
+  "backends": [
+    "full-file",
+    "ripgrep",
+    "embedding-rag",
+    "neuralmind"
+  ],
+  "repos": [
+    {
+      "name": "requests",
+      "commit": "0e322af87745eff34caffe4df68456ebc20d9068",
+      "language": "python",
+      "n_queries": 14,
+      "retrieval_stack_available": true,
+      "seeds": 1,
+      "summary": {
+        "full-file": {
+          "n": 14,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 41729,
+          "median_tokens": 41729.0,
+          "mean_mrr": 1.0
+        },
+        "ripgrep": {
+          "n": 14,
+          "mean_recall": 0.7857,
+          "found_rate": 0.7143,
+          "mean_tokens": 26542.8,
+          "median_tokens": 25225.0,
+          "mean_mrr": 0.6036
+        },
+        "embedding-rag": {
+          "n": 14,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 606.8,
+          "median_tokens": 651.0,
+          "mean_mrr": 0.9643
+        },
+        "neuralmind": {
+          "n": 14,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 1094.6,
+          "median_tokens": 1067.5,
+          "mean_mrr": 0.9643
+        }
+      },
+      "queries": [
+        {
+          "query_id": "basic-auth",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "basic-auth",
+              "gold_files": [
+                "auth.py"
+              ],
+              "context_files": [
+                "auth.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "basic-auth",
+              "gold_files": [
+                "auth.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "adapters.py",
+                "api.py",
+                "models.py",
+                "auth.py"
+              ],
+              "tokens": 23529,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.2
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "basic-auth",
+              "gold_files": [
+                "auth.py"
+              ],
+              "context_files": [
+                "auth.py",
+                "sessions.py"
+              ],
+              "tokens": 438,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "basic-auth",
+              "gold_files": [
+                "auth.py"
+              ],
+              "context_files": [
+                "auth.py",
+                "sessions.py",
+                "api.py"
+              ],
+              "tokens": 1048,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "case-insensitive-headers",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "case-insensitive-headers",
+              "gold_files": [
+                "structures.py"
+              ],
+              "context_files": [
+                "structures.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "case-insensitive-headers",
+              "gold_files": [
+                "structures.py"
+              ],
+              "context_files": [
+                "models.py",
+                "sessions.py",
+                "adapters.py",
+                "cookies.py",
+                "utils.py"
+              ],
+              "tokens": 31446,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "case-insensitive-headers",
+              "gold_files": [
+                "structures.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "structures.py",
+                "models.py",
+                "cookies.py",
+                "adapters.py",
+                "status_codes.py"
+              ],
+              "tokens": 566,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "case-insensitive-headers",
+              "gold_files": [
+                "structures.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "structures.py",
+                "models.py",
+                "cookies.py",
+                "adapters.py",
+                "status_codes.py"
+              ],
+              "tokens": 1060,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "session-persistence",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "session-persistence",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "session-persistence",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "cookies.py",
+                "models.py",
+                "adapters.py",
+                "api.py"
+              ],
+              "tokens": 25225,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "session-persistence",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "cookies.py"
+              ],
+              "tokens": 716,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "session-persistence",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "cookies.py"
+              ],
+              "tokens": 1191,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "timeout-exception",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "timeout-exception",
+              "gold_files": [
+                "exceptions.py"
+              ],
+              "context_files": [
+                "exceptions.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "timeout-exception",
+              "gold_files": [
+                "exceptions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "adapters.py",
+                "api.py",
+                "models.py",
+                "cookies.py"
+              ],
+              "tokens": 25225,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "timeout-exception",
+              "gold_files": [
+                "exceptions.py"
+              ],
+              "context_files": [
+                "exceptions.py"
+              ],
+              "tokens": 373,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "timeout-exception",
+              "gold_files": [
+                "exceptions.py"
+              ],
+              "context_files": [
+                "exceptions.py"
+              ],
+              "tokens": 866,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "transport-adapter",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "transport-adapter",
+              "gold_files": [
+                "adapters.py"
+              ],
+              "context_files": [
+                "adapters.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "transport-adapter",
+              "gold_files": [
+                "adapters.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "adapters.py",
+                "api.py",
+                "models.py",
+                "cookies.py"
+              ],
+              "tokens": 25225,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "transport-adapter",
+              "gold_files": [
+                "adapters.py"
+              ],
+              "context_files": [
+                "adapters.py",
+                "sessions.py"
+              ],
+              "tokens": 761,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "transport-adapter",
+              "gold_files": [
+                "adapters.py"
+              ],
+              "context_files": [
+                "adapters.py",
+                "sessions.py",
+                "api.py"
+              ],
+              "tokens": 1120,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "cookie-jar",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "cookie-jar",
+              "gold_files": [
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "cookie-jar",
+              "gold_files": [
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "sessions.py",
+                "models.py",
+                "utils.py",
+                "structures.py"
+              ],
+              "tokens": 26400,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "cookie-jar",
+              "gold_files": [
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "utils.py"
+              ],
+              "tokens": 483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "cookie-jar",
+              "gold_files": [
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "utils.py"
+              ],
+              "tokens": 1036,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "prepared-request",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "prepared-request",
+              "gold_files": [
+                "models.py"
+              ],
+              "context_files": [
+                "models.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "prepared-request",
+              "gold_files": [
+                "models.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "models.py",
+                "adapters.py",
+                "api.py",
+                "cookies.py"
+              ],
+              "tokens": 25225,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "prepared-request",
+              "gold_files": [
+                "models.py"
+              ],
+              "context_files": [
+                "models.py",
+                "sessions.py",
+                "adapters.py",
+                "hooks.py"
+              ],
+              "tokens": 660,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "prepared-request",
+              "gold_files": [
+                "models.py"
+              ],
+              "context_files": [
+                "models.py",
+                "sessions.py",
+                "adapters.py",
+                "hooks.py",
+                "api.py"
+              ],
+              "tokens": 1196,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "functional-api",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "functional-api",
+              "gold_files": [
+                "api.py"
+              ],
+              "context_files": [
+                "api.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "functional-api",
+              "gold_files": [
+                "api.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "api.py",
+                "cookies.py",
+                "models.py",
+                "__init__.py"
+              ],
+              "tokens": 20768,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "functional-api",
+              "gold_files": [
+                "api.py"
+              ],
+              "context_files": [
+                "api.py",
+                "sessions.py",
+                "_internal_utils.py",
+                "hooks.py"
+              ],
+              "tokens": 829,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "functional-api",
+              "gold_files": [
+                "api.py"
+              ],
+              "context_files": [
+                "api.py",
+                "sessions.py",
+                "_internal_utils.py",
+                "hooks.py",
+                "utils.py"
+              ],
+              "tokens": 1189,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "status-codes",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "status-codes",
+              "gold_files": [
+                "status_codes.py"
+              ],
+              "context_files": [
+                "status_codes.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "status-codes",
+              "gold_files": [
+                "status_codes.py"
+              ],
+              "context_files": [
+                "models.py",
+                "status_codes.py",
+                "cookies.py",
+                "sessions.py",
+                "adapters.py"
+              ],
+              "tokens": 24810,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "status-codes",
+              "gold_files": [
+                "status_codes.py"
+              ],
+              "context_files": [
+                "status_codes.py",
+                "models.py",
+                "cookies.py",
+                "utils.py"
+              ],
+              "tokens": 708,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "status-codes",
+              "gold_files": [
+                "status_codes.py"
+              ],
+              "context_files": [
+                "status_codes.py",
+                "models.py",
+                "cookies.py",
+                "utils.py"
+              ],
+              "tokens": 1213,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "url-encoding-helpers",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "url-encoding-helpers",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "url-encoding-helpers",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "models.py",
+                "sessions.py",
+                "adapters.py",
+                "utils.py",
+                "api.py"
+              ],
+              "tokens": 29025,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.25
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "url-encoding-helpers",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "models.py"
+              ],
+              "tokens": 594,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "url-encoding-helpers",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "models.py",
+                "sessions.py"
+              ],
+              "tokens": 997,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "xfile-send-adapter",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-send-adapter",
+              "gold_files": [
+                "sessions.py",
+                "adapters.py"
+              ],
+              "context_files": [
+                "adapters.py",
+                "sessions.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-send-adapter",
+              "gold_files": [
+                "sessions.py",
+                "adapters.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "adapters.py",
+                "api.py",
+                "models.py",
+                "utils.py"
+              ],
+              "tokens": 29025,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-send-adapter",
+              "gold_files": [
+                "sessions.py",
+                "adapters.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "cookies.py",
+                "adapters.py"
+              ],
+              "tokens": 684,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-send-adapter",
+              "gold_files": [
+                "sessions.py",
+                "adapters.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "cookies.py",
+                "adapters.py"
+              ],
+              "tokens": 1314,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "xfile-prepare-cookies",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-prepare-cookies",
+              "gold_files": [
+                "models.py",
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "models.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "packages.py",
+                "sessions.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-prepare-cookies",
+              "gold_files": [
+                "models.py",
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "models.py",
+                "utils.py",
+                "adapters.py",
+                "sessions.py"
+              ],
+              "tokens": 31446,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-prepare-cookies",
+              "gold_files": [
+                "models.py",
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "models.py"
+              ],
+              "tokens": 705,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-prepare-cookies",
+              "gold_files": [
+                "models.py",
+                "cookies.py"
+              ],
+              "context_files": [
+                "cookies.py",
+                "models.py"
+              ],
+              "tokens": 1075,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "xfile-redirect-auth",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-redirect-auth",
+              "gold_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "context_files": [
+                "auth.py",
+                "sessions.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "models.py",
+                "packages.py",
+                "status_codes.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-redirect-auth",
+              "gold_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "utils.py",
+                "models.py",
+                "adapters.py",
+                "api.py"
+              ],
+              "tokens": 29025,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-redirect-auth",
+              "gold_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "tokens": 336,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-redirect-auth",
+              "gold_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "auth.py"
+              ],
+              "tokens": 1020,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "xfile-status-codes",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-status-codes",
+              "gold_files": [
+                "models.py",
+                "status_codes.py"
+              ],
+              "context_files": [
+                "models.py",
+                "status_codes.py",
+                "__init__.py",
+                "__version__.py",
+                "_internal_utils.py",
+                "adapters.py",
+                "api.py",
+                "auth.py",
+                "certs.py",
+                "compat.py",
+                "cookies.py",
+                "exceptions.py",
+                "help.py",
+                "hooks.py",
+                "packages.py",
+                "sessions.py",
+                "structures.py",
+                "utils.py"
+              ],
+              "tokens": 41729,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-status-codes",
+              "gold_files": [
+                "models.py",
+                "status_codes.py"
+              ],
+              "context_files": [
+                "models.py",
+                "adapters.py",
+                "sessions.py",
+                "api.py",
+                "cookies.py"
+              ],
+              "tokens": 25225,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-status-codes",
+              "gold_files": [
+                "models.py",
+                "status_codes.py"
+              ],
+              "context_files": [
+                "models.py",
+                "status_codes.py",
+                "sessions.py"
+              ],
+              "tokens": 642,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-status-codes",
+              "gold_files": [
+                "models.py",
+                "status_codes.py"
+              ],
+              "context_files": [
+                "models.py",
+                "status_codes.py",
+                "sessions.py",
+                "hooks.py"
+              ],
+              "tokens": 999,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        }
+      ],
+      "losses": []
+    },
+    {
+      "name": "click",
+      "commit": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
+      "language": "python",
+      "n_queries": 7,
+      "retrieval_stack_available": true,
+      "seeds": 1,
+      "summary": {
+        "full-file": {
+          "n": 7,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 78514,
+          "median_tokens": 78514,
+          "mean_mrr": 1.0
+        },
+        "ripgrep": {
+          "n": 7,
+          "mean_recall": 0.7857,
+          "found_rate": 0.7143,
+          "mean_tokens": 45059.1,
+          "median_tokens": 44971,
+          "mean_mrr": 0.6
+        },
+        "embedding-rag": {
+          "n": 7,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 648.6,
+          "median_tokens": 653,
+          "mean_mrr": 0.5952
+        },
+        "neuralmind": {
+          "n": 7,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 924.1,
+          "median_tokens": 914,
+          "mean_mrr": 0.5952
+        }
+      },
+      "queries": [
+        {
+          "query_id": "command-core",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "command-core",
+              "gold_files": [
+                "core.py"
+              ],
+              "context_files": [
+                "core.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "decorators.py",
+                "exceptions.py",
+                "formatting.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "types.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "command-core",
+              "gold_files": [
+                "core.py"
+              ],
+              "context_files": [
+                "core.py",
+                "decorators.py",
+                "shell_completion.py",
+                "types.py",
+                "testing.py"
+              ],
+              "tokens": 44840,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "command-core",
+              "gold_files": [
+                "core.py"
+              ],
+              "context_files": [
+                "shell_completion.py",
+                "core.py",
+                "testing.py"
+              ],
+              "tokens": 721,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "command-core",
+              "gold_files": [
+                "core.py"
+              ],
+              "context_files": [
+                "shell_completion.py",
+                "core.py",
+                "testing.py"
+              ],
+              "tokens": 993,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "choice-type",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "choice-type",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "types.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "core.py",
+                "decorators.py",
+                "exceptions.py",
+                "formatting.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "choice-type",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "core.py",
+                "types.py",
+                "shell_completion.py",
+                "termui.py",
+                "decorators.py"
+              ],
+              "tokens": 48018,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "choice-type",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "types.py",
+                "shell_completion.py",
+                "core.py",
+                "exceptions.py"
+              ],
+              "tokens": 805,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "choice-type",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "types.py",
+                "shell_completion.py",
+                "core.py",
+                "exceptions.py",
+                "formatting.py"
+              ],
+              "tokens": 1046,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "help-formatter",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "help-formatter",
+              "gold_files": [
+                "formatting.py"
+              ],
+              "context_files": [
+                "formatting.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "core.py",
+                "decorators.py",
+                "exceptions.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "types.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "help-formatter",
+              "gold_files": [
+                "formatting.py"
+              ],
+              "context_files": [
+                "core.py",
+                "decorators.py",
+                "termui.py",
+                "shell_completion.py",
+                "_termui_impl.py"
+              ],
+              "tokens": 45302,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "help-formatter",
+              "gold_files": [
+                "formatting.py"
+              ],
+              "context_files": [
+                "decorators.py",
+                "core.py",
+                "formatting.py",
+                "_textwrap.py"
+              ],
+              "tokens": 532,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "help-formatter",
+              "gold_files": [
+                "formatting.py"
+              ],
+              "context_files": [
+                "decorators.py",
+                "core.py",
+                "formatting.py",
+                "_textwrap.py"
+              ],
+              "tokens": 914,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            }
+          }
+        },
+        {
+          "query_id": "echo-util",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "echo-util",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "utils.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "core.py",
+                "decorators.py",
+                "exceptions.py",
+                "formatting.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "types.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "echo-util",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "core.py",
+                "exceptions.py",
+                "_termui_impl.py",
+                "utils.py"
+              ],
+              "tokens": 43522,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.2
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "echo-util",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "_termui_impl.py",
+                "utils.py",
+                "globals.py",
+                "_compat.py",
+                "decorators.py"
+              ],
+              "tokens": 653,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "echo-util",
+              "gold_files": [
+                "utils.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "_termui_impl.py",
+                "utils.py",
+                "globals.py",
+                "_compat.py",
+                "decorators.py",
+                "exceptions.py"
+              ],
+              "tokens": 869,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            }
+          }
+        },
+        {
+          "query_id": "ansi-style",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "ansi-style",
+              "gold_files": [
+                "termui.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "core.py",
+                "decorators.py",
+                "exceptions.py",
+                "formatting.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "testing.py",
+                "types.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "ansi-style",
+              "gold_files": [
+                "termui.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "core.py",
+                "_termui_impl.py",
+                "testing.py",
+                "utils.py"
+              ],
+              "tokens": 44971,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "ansi-style",
+              "gold_files": [
+                "termui.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "_termui_impl.py",
+                "globals.py"
+              ],
+              "tokens": 550,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "ansi-style",
+              "gold_files": [
+                "termui.py"
+              ],
+              "context_files": [
+                "termui.py",
+                "_termui_impl.py",
+                "globals.py",
+                "_compat.py",
+                "formatting.py"
+              ],
+              "tokens": 734,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "paramtype-base",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "paramtype-base",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "types.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "core.py",
+                "decorators.py",
+                "exceptions.py",
+                "formatting.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "paramtype-base",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "core.py",
+                "types.py",
+                "termui.py",
+                "decorators.py",
+                "testing.py"
+              ],
+              "tokens": 47338,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "paramtype-base",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "core.py",
+                "types.py",
+                "formatting.py",
+                "utils.py",
+                "parser.py"
+              ],
+              "tokens": 692,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "paramtype-base",
+              "gold_files": [
+                "types.py"
+              ],
+              "context_files": [
+                "core.py",
+                "types.py",
+                "formatting.py",
+                "utils.py",
+                "parser.py"
+              ],
+              "tokens": 999,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "xfile-command-help",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-command-help",
+              "gold_files": [
+                "core.py",
+                "formatting.py"
+              ],
+              "context_files": [
+                "core.py",
+                "formatting.py",
+                "__init__.py",
+                "_compat.py",
+                "_termui_impl.py",
+                "_textwrap.py",
+                "_winconsole.py",
+                "decorators.py",
+                "exceptions.py",
+                "globals.py",
+                "parser.py",
+                "shell_completion.py",
+                "termui.py",
+                "testing.py",
+                "types.py",
+                "utils.py"
+              ],
+              "tokens": 78514,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-command-help",
+              "gold_files": [
+                "core.py",
+                "formatting.py"
+              ],
+              "context_files": [
+                "core.py",
+                "decorators.py",
+                "shell_completion.py",
+                "testing.py",
+                "utils.py"
+              ],
+              "tokens": 41423,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-command-help",
+              "gold_files": [
+                "core.py",
+                "formatting.py"
+              ],
+              "context_files": [
+                "decorators.py",
+                "core.py",
+                "formatting.py"
+              ],
+              "tokens": 587,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-command-help",
+              "gold_files": [
+                "core.py",
+                "formatting.py"
+              ],
+              "context_files": [
+                "decorators.py",
+                "core.py",
+                "formatting.py"
+              ],
+              "tokens": 914,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        }
+      ],
+      "losses": []
+    }
+  ]
+}

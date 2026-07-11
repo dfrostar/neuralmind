@@ -1,0 +1,770 @@
+# NeuralMind Usage Guide
+
+> Complete guide to features, use cases, and scheduling routines for NeuralMind
+
+## Table of Contents
+
+- [What is NeuralMind?](#what-is-neuralmind)
+- [Key Features](#key-features)
+- [The 4-Layer Architecture](#the-4-layer-architecture)
+- [Quick Start](#quick-start)
+- [Use Cases](#use-cases)
+- [CLI Command Reference](#cli-command-reference)
+- [Scheduling Routines](#scheduling-routines)
+- [ROI Calculator](#roi-calculator)
+- [MCP Server Integration](#mcp-server-integration)
+- [Troubleshooting](#troubleshooting)
+
+---
+
+## What is NeuralMind?
+
+**NeuralMind is a two-phase token optimizer for AI coding agents.**
+
+- **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
+- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
+
+Combined effect: **5–10× total reduction** vs baseline agent usage. 100% local, offline, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
+
+### The Core Problem
+
+```
+You: "How does authentication work in my codebase?"
+
+❌ Traditional approach: Load entire codebase → 50,000 tokens → $0.15-$3.75/query
+✅ NeuralMind approach:  Smart context         → ~800 tokens   → $0.002-$0.06/query
+```
+
+### The Solution
+
+NeuralMind turns a code repository into a queryable knowledge graph + vector index, and exposes it via CLI, MCP server, and (for Claude Code) PostToolUse compression hooks. When you ask a question, only the context relevant to *that question* is surfaced.
+
+---
+
+## Key Features
+
+| Feature | Description | Benefit |
+|---------|-------------|--------|
+| **4-Layer Context** | Progressive disclosure architecture | Only loads what's relevant |
+| **Semantic Search** | Vector embeddings for meaning-based lookup | Finds related code by concept |
+| **Query-Aware** | Different queries get different context | Maximizes relevance |
+| **CLI Tool** | Simple command-line interface | Easy integration |
+| **MCP Server** | Direct IDE integration | Works with Claude Desktop/Cursor |
+| **Auto-Updates** | Scheduled maintenance | Always current knowledge |
+
+---
+
+## The 4-Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Layer 0: Project Identity (~100 tokens) - ALWAYS LOADED     │
+│ • Project name, type, tech stack                            │
+│ • Entry points, main patterns                               │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 1: Architecture Summary (~300 tokens) - ALWAYS LOADED │
+│ • Module overview, key components                           │
+│ • Dependencies, data flow                                   │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 2: Relevant Modules (~300 tokens) - QUERY-SPECIFIC    │
+│ • Code clusters related to your question                    │
+│ • Community detection based on code relationships           │
+├─────────────────────────────────────────────────────────────┤
+│ Layer 3: Semantic Search (~300 tokens) - QUERY-SPECIFIC     │
+│ • Direct keyword and concept matches                        │
+│ • Vector similarity search results                          │
+└─────────────────────────────────────────────────────────────┘
+
+Total: ~800-1,100 tokens vs 50,000+ for full codebase
+```
+
+### How It Works
+
+1. **The built-in tree-sitter backend** (or graphify, if installed) analyzes your codebase and creates a knowledge graph
+2. **NeuralMind** creates vector embeddings of all code entities
+3. **When you query**, it selects only relevant context using semantic similarity
+4. **You get** focused, accurate context that fits in any LLM's context window
+
+---
+
+## Quick Start
+
+### Step 1: Install
+
+```bash
+pip install neuralmind
+```
+
+### Step 2: Build Neural Index
+
+```bash
+cd your-project
+neuralmind build .   # the code graph is generated automatically (v0.15.0+)
+```
+
+### Step 3: Query Your Codebase
+
+```bash
+# Get project overview
+neuralmind wakeup .
+
+# Ask specific questions
+neuralmind query . "How does authentication work?"
+neuralmind query . "What are the main components?"
+neuralmind query . "How is data validated?"
+```
+
+### Step 4: Use with AI
+
+```bash
+# Copy output to clipboard (macOS)
+neuralmind query . "How does X work?" | pbcopy
+
+# Copy output to clipboard (Linux)
+neuralmind query . "How does X work?" | xclip -selection clipboard
+
+# Copy output to clipboard (Windows PowerShell)
+neuralmind query . "How does X work?" | Set-Clipboard
+
+# Then paste into Claude/ChatGPT/Cursor
+```
+
+---
+
+## Use Cases
+
+### Use Case 1: Daily Development Questions
+
+**When**: You need to ask AI about your codebase multiple times per day
+
+**How**:
+```bash
+# Get context for your question
+neuralmind query . "How does the payment processing work?"
+
+# Copy output → Paste into Claude/ChatGPT → Get accurate answer
+```
+
+**Benefit**: 100 queries/day goes from $450/month → $7/month with Claude 3.5 Sonnet
+
+---
+
+### Use Case 2: New Developer Onboarding
+
+**When**: New team member needs to understand the codebase
+
+**How**:
+```bash
+# Generate project overview
+neuralmind wakeup . > project_overview.md
+
+# Answer common onboarding questions
+neuralmind query . "What are the main API endpoints?" > docs/api_overview.md
+neuralmind query . "How is the database structured?" > docs/database.md
+neuralmind query . "What authentication method is used?" > docs/auth.md
+neuralmind query . "How do I set up my local development environment?" > docs/setup.md
+```
+
+**Benefit**: New devs get accurate answers without constantly asking senior devs
+
+---
+
+### Use Case 3: Code Review Context
+
+**When**: Reviewing a PR and need to understand related code
+
+**How**:
+```bash
+# Understand the feature being changed
+neuralmind query . "How does the user registration flow work?"
+
+# Find related code that might be affected
+neuralmind search . "validation middleware"
+
+# Understand the test coverage
+neuralmind query . "What tests exist for user registration?"
+```
+
+**Benefit**: Better code reviews with full context awareness
+
+---
+
+### Use Case 4: Documentation Generation
+
+**When**: Creating or updating documentation
+
+**How**:
+```bash
+# Export structured understanding
+neuralmind wakeup . > docs/ARCHITECTURE.md
+
+# Generate API documentation
+neuralmind query . "List all API endpoints with their purposes" >> docs/API.md
+
+# Generate component documentation
+neuralmind query . "Describe each React component and its purpose" >> docs/COMPONENTS.md
+```
+
+**Benefit**: AI-assisted documentation that's accurate to actual code
+
+---
+
+### Use Case 5: Team Memory via CI Auto-Index *(v0.38.0+)*
+
+**When**: You want every developer on a team to have an up-to-date NeuralMind
+index without running `neuralmind build` manually.
+
+**How**: Drop the bundled GitHub Action into your repo — it runs on every push
+to `main`, rebuilds the index incrementally (source-hash cache skips unchanged
+files), exports the synapse memory as `.neuralmind-team-memory.json`, and
+commits it back so the next developer's `git pull` picks it up:
+
+```yaml
+# .github/workflows/neuralmind-autoindex.yml
+name: NeuralMind Auto-Index
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Force full re-embed
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  autoindex:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: .neuralmind/
+          key: neuralmind-${{ hashFiles('**/*.py','**/*.ts','**/*.go','**/*.rs') }}
+      - run: pip install "neuralmind>=0.38.0"
+      - run: neuralmind build .
+      - run: neuralmind memory export
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update team memory [skip ci]"
+          file_pattern: ".neuralmind-team-memory.json"
+```
+
+**Benefit**: The synapse layer's learned associations are shared across the
+whole team — no one starts cold. Agent sessions inherit the team's collective
+knowledge of which files go together.
+
+---
+
+### Use Case 6: CI/CD Integration
+
+**When**: Automated context generation in pipelines
+
+**How**:
+```yaml
+# .github/workflows/update-context.yml
+name: Update AI Context
+on:
+  push:
+    branches: [main]
+
+jobs:
+  update-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install NeuralMind
+        run: pip install neuralmind
+      
+      - name: Build neural index
+        run: neuralmind build .
+      
+      - name: Generate AI context file
+        run: neuralmind wakeup . > AI_CONTEXT.md
+      
+      - name: Commit updated context
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add AI_CONTEXT.md
+          git diff --staged --quiet || git commit -m "docs: update AI context"
+          git push
+```
+
+**Benefit**: Always up-to-date context file in your repo
+
+---
+
+### Use Case 7: Watch the brain learn (v0.6.0+)
+
+**When**: You want a "second screen" for your AI coding session — a
+live view of which parts of your codebase the agent is using, in
+real time, as it works.
+
+**How**:
+
+```bash
+# Terminal A — your normal Claude Code (or Cursor, OpenClaw, etc.) session
+claude-code   # work as usual
+
+# Terminal B — the live graph view
+neuralmind serve .
+
+# Terminal C — always-on synapse learning from file edits
+neuralmind watch . --quiet &
+```
+
+Open the URL `neuralmind serve` prints in your browser. The graph
+view is now alive:
+
+- **Every time your agent calls `neuralmind_query`** (or any other
+  NeuralMind MCP tool), the affected nodes pulse on the canvas with
+  short animated radial rings.
+- **Every time you save a file in your editor**, the corresponding
+  node pulses (because the `watch` daemon coalesces edits into
+  co-activation events).
+- **The sidebar log** shows the most recent ~80 events with
+  timestamps. Click an entry to focus the corresponding node.
+
+**The three-terminal walkthrough:**
+
+1. Open Claude Code (terminal A) and ask "how does authentication
+   work in this codebase?"
+2. Switch to terminal B's browser tab — the auth-cluster nodes are
+   pulsing as the agent calls `neuralmind_query`.
+3. In your editor, open `src/auth/handlers.py`, add a comment, save.
+4. Switch back to the browser — the corresponding node pulses
+   within ~1s.
+5. The synapse store has now reinforced the edges between auth
+   handlers and whatever else the agent looked at. Next session,
+   asking about auth will surface this file faster.
+
+**Benefit**: trust-gap closure. "Is the agent looking at the right
+code?" becomes a 2-second visual answer. When retrieval feels
+wrong, the **Replay last query** action in the detail panel
+re-highlights the L3 hits the agent actually received — usually the
+diagnosis is obvious from the pulse pattern.
+
+**Multi-agent unlock**: the v0.6.0 cross-process JSONL bridge
+(`<project>/.neuralmind/events.jsonl`) means *every* agent talking
+to the same project (Claude Code, Cursor, OpenClaw, Hermes-Agent)
+feeds the same canvas. See
+[multi-agent use-case page](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/multi-agent.md).
+
+**Opt out**: set `NEURALMIND_EVENT_LOG=0` to disable the JSONL
+writer (you still get the in-process feed for the agent running
+`serve` itself).
+
+---
+
+### Use Case 8: IDE Integration (MCP Server)
+
+**When**: Direct AI integration in Claude Desktop or Cursor
+
+**How**:
+```json
+// ~/.config/claude/claude_desktop_config.json (macOS/Linux)
+// %APPDATA%\Claude\claude_desktop_config.json (Windows)
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": ["/path/to/your/project"]
+    }
+  }
+}
+```
+
+**Benefit**: Claude Desktop automatically gets relevant context for every question
+
+---
+
+## CLI Command Reference
+
+| Command | Purpose | Example |
+|---------|---------|--------|
+| `neuralmind build .` | Build/rebuild neural index | First-time setup, after major changes |
+| `neuralmind query . "..."` | Query with natural language | Daily usage |
+| `neuralmind wakeup .` | Get project overview | Start new AI conversations |
+| `neuralmind search . "..."` | Direct semantic search | Find specific code entities |
+| `neuralmind learn .` | *(deprecated, v0.25.0)* No-op — learning is now automatic via the synapse layer | Not needed; kept as an exit-0 no-op for old scripts |
+| `neuralmind benchmark .` | Measure token reduction | Verify cost savings |
+| `neuralmind stats .` | Show index statistics | Check index health |
+
+### Detailed Command Usage
+
+#### `neuralmind build`
+
+Builds or rebuilds the neural index from your knowledge graph.
+
+```bash
+# Build index for current directory
+neuralmind build .
+
+# Build index for specific project
+neuralmind build /path/to/project
+
+# Rebuild after code changes
+neuralmind build .
+```
+
+**When to use**: After initial setup, after significant code changes, weekly maintenance.
+
+#### `neuralmind query`
+
+Asks a natural language question and returns relevant context.
+
+```bash
+# Basic query
+neuralmind query . "How does authentication work?"
+
+# Query and save to file
+neuralmind query . "What are all the API endpoints?" > api_context.md
+
+# Query and copy to clipboard (macOS)
+neuralmind query . "How is data validated?" | pbcopy
+```
+
+**When to use**: Every time you want to ask AI about your code.
+
+#### `neuralmind wakeup`
+
+Returns the project overview (L0 + L1 layers) for starting new conversations.
+
+```bash
+# Get wakeup context
+neuralmind wakeup .
+
+# Save as project overview
+neuralmind wakeup . > PROJECT_OVERVIEW.md
+```
+
+**When to use**: Starting a new Claude/ChatGPT conversation about your project.
+
+#### `neuralmind search`
+
+Direct semantic search without the full context layers.
+
+```bash
+# Search for related code
+neuralmind search . "payment processing"
+neuralmind search . "error handling middleware"
+neuralmind search . "database models"
+```
+
+**When to use**: When you want to find specific code entities quickly.
+
+#### `neuralmind learn` *(deprecated, v0.25.0)*
+
+**Deprecated and a no-op since v0.25.0.** The `learned_patterns`
+cooccurrence reranker this command populated was removed; the command now
+prints a deprecation notice and **exits 0**, so old scripts and CI keep
+working unchanged.
+
+```bash
+neuralmind learn .   # prints a deprecation notice, exits 0
+```
+
+Learning is now handled entirely by the **synapse layer**, which learns
+continuously and automatically from queries, edits, and tool calls — no
+manual step, and edges decay instead of going stale. The reranker was
+removed after a 2×2 A/B on the benchmark fixture showed it added 0.0
+points to top-k hit rate while the synapse layer alone adds +11.6 points.
+
+**What to do instead**: install the lifecycle hooks
+(`neuralmind install-hooks .`) and optionally run `neuralmind watch .` so
+the synapse layer learns from your usage. Inspect what's been learned with
+`neuralmind stats .` or `neuralmind memory inspect .`. See the
+[Learning Guide](Learning-Guide) for details.
+- Better relevance = smaller context needed = more token savings
+
+**Privacy**: 100% local analysis. No data sent anywhere. Patterns file is just JSON in your project.
+
+#### `neuralmind benchmark`
+
+Measures token reduction for sample queries.
+
+```bash
+# Run benchmark
+neuralmind benchmark .
+
+# Example output:
+# Query: "How does authentication work?" - 739 tokens (67.7x reduction)
+# Query: "What are the API endpoints?" - 748 tokens (66.8x reduction)
+# Average: 766 tokens (65.3x reduction)
+```
+
+**When to use**: Verifying your cost savings, demonstrating value to team.
+
+#### `neuralmind stats`
+
+Shows index statistics.
+
+```bash
+# View stats
+neuralmind stats .
+
+# Example output:
+# Nodes: 241
+# Edges: 203
+# Communities: 93
+# Index size: 12.4 MB
+```
+
+**When to use**: Checking index health, monitoring project growth.
+
+---
+
+## Scheduling Routines
+
+### When to Update Your Index
+
+| Scenario | Recommended Action | Frequency |
+|----------|-------------------|----------|
+| Active development | Git hook on commit | Every commit |
+| Team project | Automated CI/CD | On merge to main |
+| Stable codebase | Scheduled maintenance | Weekly |
+| Before code review | Manual update | As needed |
+| After major refactor | Full rebuild | Immediately |
+
+### Git Hook Setup (Recommended for Active Development)
+
+Automatically update the index after every commit:
+
+```bash
+# Create post-commit hook
+cat > .git/hooks/post-commit << 'EOF'
+#!/bin/bash
+echo "🧠 Updating NeuralMind index..."
+neuralmind build . 2>/dev/null
+echo "✓ NeuralMind index updated"
+EOF
+
+# Make it executable
+chmod +x .git/hooks/post-commit
+```
+
+### Cron Job Setup (Recommended for Servers)
+
+```bash
+# Edit crontab
+crontab -e
+
+# Daily update at 6 AM
+0 6 * * * cd /path/to/project && neuralmind build . >> /var/log/neuralmind.log 2>&1
+
+# Weekly update on Monday at 3 AM
+0 3 * * 1 cd /path/to/project && neuralmind build . >> /var/log/neuralmind.log 2>&1
+```
+
+### CI/CD Integration (Recommended for Teams)
+
+```yaml
+# .github/workflows/neuralmind-update.yml
+name: Update NeuralMind Index
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install neuralmind
+      - run: neuralmind build .
+      - run: neuralmind stats .
+```
+
+### Maintenance Checklist
+
+Weekly maintenance routine:
+
+```bash
+#!/bin/bash
+# weekly_maintenance.sh
+
+echo "🔧 NeuralMind Weekly Maintenance"
+echo "================================"
+
+# Rebuild neural index (the code graph is regenerated automatically)
+echo "1. Rebuilding neural index..."
+neuralmind build .
+
+# Show stats
+echo "2. Current statistics:"
+neuralmind stats .
+
+# Run benchmark
+echo "3. Benchmark results:"
+neuralmind benchmark .
+
+echo ""
+echo "✅ Maintenance complete!"
+```
+
+---
+
+## ROI Calculator
+
+### Cost Comparison by Model
+
+| Model | Input Price | Without NeuralMind | With NeuralMind | Per-Query Savings |
+|-------|-------------|-------------------|-----------------|------------------|
+| Claude 3.5 Sonnet | $3/1M tokens | $0.15/query | $0.0023/query | $0.1477 (98.5%) |
+| GPT-4o | $5/1M tokens | $0.25/query | $0.0038/query | $0.2462 (98.5%) |
+| GPT-4.5 | $75/1M tokens | $3.75/query | $0.0574/query | $3.6926 (98.5%) |
+| Claude Opus | $15/1M tokens | $0.75/query | $0.0115/query | $0.7385 (98.5%) |
+| Gemini 2.5 Pro | $2.50/1M tokens | $0.125/query | $0.0019/query | $0.1231 (98.5%) |
+
+### Monthly Savings Calculator
+
+| Daily Queries | Claude 3.5 Sonnet | GPT-4o | GPT-4.5 | Claude Opus |
+|---------------|-------------------|--------|---------|-------------|
+| 10 queries/day | $44/month | $74/month | $1,107/month | $221/month |
+| 50 queries/day | $221/month | $369/month | $5,539/month | $1,108/month |
+| 100 queries/day | **$443/month** | **$738/month** | **$11,078/month** | **$2,216/month** |
+| 500 queries/day | $2,216/month | $3,693/month | $55,389/month | $11,078/month |
+
+### Annual Savings
+
+| Usage Level | Annual Savings (Claude 3.5) | Annual Savings (GPT-4.5) |
+|-------------|----------------------------|-------------------------|
+| Light (10/day) | $531 | $13,284 |
+| Medium (50/day) | $2,658 | $66,468 |
+| Heavy (100/day) | **$5,316** | **$132,936** |
+| Enterprise (500/day) | $26,580 | $664,668 |
+
+---
+
+## MCP Server Integration
+
+### What is MCP?
+
+Model Context Protocol (MCP) allows AI assistants to directly query external tools. NeuralMind's MCP server lets Claude Desktop and Cursor automatically get relevant code context.
+
+### Setup for Claude Desktop
+
+1. Install NeuralMind (the MCP server is included by default since v0.5.0):
+```bash
+pip install neuralmind
+```
+
+2. Add to Claude Desktop config:
+
+**macOS/Linux**: `~/.config/claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "neuralmind": {
+      "command": "neuralmind-mcp",
+      "args": ["/path/to/your/project"]
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop
+
+### Available MCP Tools
+
+| Tool | Since | Description |
+|------|-------|-------------|
+| `neuralmind_wakeup` | v0.1 | Get project overview (~600 tokens) |
+| `neuralmind_query` | v0.1 | Query with natural language (all 4 layers) |
+| `neuralmind_search` | v0.1 | Direct semantic search |
+| `neuralmind_build` | v0.1 | Rebuild index |
+| `neuralmind_stats` | v0.1 | Show index statistics |
+| `neuralmind_benchmark` | v0.1 | Run token benchmark |
+| `neuralmind_skeleton` | v0.3 | File skeleton view for structure-only context |
+| `neuralmind_synaptic_neighbors` | v0.4 | Strongest synapse neighbors of a node |
+| `neuralmind_synapse_stats` | v0.4 | Synapse graph statistics |
+| `neuralmind_synapse_decay` | v0.4 | Trigger manual synapse decay |
+| `neuralmind_export_synapse_memory` | v0.4 | Export learned associations to markdown |
+| `neuralmind_next_likely` | v0.11 | Predict next file/node from directional transitions |
+| `neuralmind_feedback` | v0.38 | Send positive/negative retrieval feedback to the synapse layer |
+
+### Usage in Claude Desktop
+
+Once configured, Claude will automatically have access to your codebase context. Just ask questions like:
+
+- "How does authentication work in this project?"
+- "What are all the API endpoints?"
+- "Explain the database schema"
+
+Claude will use NeuralMind to get relevant context before answering.
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### "No graph.json found"
+
+```bash
+# Solution: Run graphify first
+neuralmind build .
+```
+
+#### "Index out of date"
+
+```bash
+# Solution: Rebuild the index
+neuralmind build .
+```
+
+#### "ChromaDB error"
+
+```bash
+# Solution: Clear and rebuild
+rm -rf graphify-out/neuralmind_db
+neuralmind build .
+```
+
+#### "Module not found"
+
+```bash
+# Solution: Reinstall
+pip uninstall neuralmind
+pip install neuralmind
+```
+
+### Getting Help
+
+- **GitHub Issues**: https://github.com/dfrostar/neuralmind/issues
+- **Wiki**: https://github.com/dfrostar/neuralmind/wiki
+- **Discussions**: https://github.com/dfrostar/neuralmind/discussions
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see [LICENSE](https://github.com/dfrostar/neuralmind/blob/main/LICENSE) for details.

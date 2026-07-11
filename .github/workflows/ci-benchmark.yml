@@ -1,0 +1,262 @@
+name: Self-benchmark
+
+# Runs the hermetic self-benchmark on every PR and every push to main.
+# Produces a PR comment with reduction + synapse uplift, and fails the
+# build if the aggregate reduction drops below the conservative floor.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package + benchmark deps
+        # graphifyy is pinned: 0.9.6+ writes source_file paths relative to the
+        # invocation CWD instead of the project root, which breaks the quality
+        # eval's node→module mapping (python suite scores 0.000 across the
+        # board). Unpin once upstream restores project-relative paths.
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]" tiktoken matplotlib "graphifyy==0.9.5"
+
+      - name: Pre-fetch tiktoken vocab
+        # tiktoken lazily downloads vocab files from Azure Blob Storage on
+        # first use. Doing it here makes any network failure fail loudly
+        # and early instead of mid-benchmark with a confusing traceback.
+        # The benchmark code also has a graceful fallback, so this step
+        # is "nice to have" — the benchmark still runs (with a char-based
+        # approximation) if the download fails.
+        continue-on-error: true
+        run: |
+          python -c "
+          import tiktoken
+          for name in ('o200k_base', 'cl100k_base'):
+              try:
+                  enc = tiktoken.get_encoding(name)
+                  enc.encode('probe')
+                  print(f'[tiktoken] {name} OK')
+              except Exception as e:
+                  print(f'[tiktoken] {name} FAILED: {type(e).__name__}: {e}')
+          "
+
+      - name: Build fixture knowledge graph
+        run: |
+          graphify update tests/fixtures/sample_project
+          neuralmind build tests/fixtures/sample_project --force
+
+      - name: Faithfulness + onboarding eval gates (built-in backend)
+        # Gate the SHIPPED default backend (built-in tree-sitter), not the legacy
+        # graphify graph. Build a graphify-free copy of the fixture so
+        # `neuralmind build` auto-generates the built-in graph, then gate both
+        # the faithfulness A/B and the onboarding-lift A/B against it. The
+        # built-in backend is robust here; the separate parity job holds it
+        # within tolerance of graphify. graphify's own faithfulness on this tiny
+        # fixture is a near-zero, HNSW-jittery signal, so it is no longer gated
+        # standalone (the parity gate covers cross-backend parity).
+        run: |
+          rm -rf /tmp/nm_builtin
+          cp -r tests/fixtures/sample_project /tmp/nm_builtin
+          rm -rf /tmp/nm_builtin/graphify-out /tmp/nm_builtin/.neuralmind
+          python - <<'PY'
+          from evals.faithfulness import harness as fh
+          from evals.onboarding import harness as oh
+
+          PROJ = "/tmp/nm_builtin"
+
+          # Faithfulness gate on the built-in backend.
+          fr = fh.run_and_report(PROJ).to_dict()
+          print(
+              f"[faithfulness] built-in recall {fr['nm_mean_recall']:.3f} vs "
+              f"naive {fr['naive_mean_recall']:.3f} -> delta {fr['faithfulness_delta']:+.3f} "
+              f"(grounding {fr['nm_mean_grounding']:.3f})"
+          )
+          assert fr["faithfulness_delta"] >= 0.0, (
+              f"faithfulness regression on the built-in backend "
+              f"(delta {fr['faithfulness_delta']:+.3f})"
+          )
+
+          # Onboarding-lift gate on the built-in backend. The headline +
+          # gated metric is the top-k module hit-rate lift — the slice
+          # associative recall actually re-ranks — which is where the synapse
+          # layer earns its keep (the same signal as the self-benchmark's
+          # Phase-3 A/B). Full-context grounding saturates on this fixture and
+          # raw fact-recall is budget-traded, so both are printed as honest
+          # secondaries but not gated. Averaged to absorb any ChromaDB HNSW
+          # query-time jitter.
+          lifts = []
+          last = None
+          for _ in range(3):
+              last = oh.run_and_report(PROJ).to_dict()
+              lifts.append(last["onboarding_lift"])
+          mean_lift = sum(lifts) / len(lifts)
+          runs = ", ".join(f"{x:+.3f}" for x in lifts)
+          print(
+              f"[onboarding] top-k hit-rate lift runs=[{runs}] mean={mean_lift:+.3f} "
+              f"(onboarded {last['onboarded_mean_hit_rate']:.3f} vs cold "
+              f"{last['cold_mean_hit_rate']:.3f}, {last['seed_sessions']} team sessions); "
+              f"secondaries: fact-recall {last['recall_lift']:+.3f}, "
+              f"grounding {last['grounding_lift']:+.3f}"
+          )
+          assert mean_lift >= 0.0, (
+              f"onboarding regression: top-k hit-rate lift {mean_lift:+.3f} < 0"
+          )
+          PY
+
+      - name: Run benchmark (Phase 1 + Phase 2)
+        id: bench
+        run: |
+          python -m tests.benchmark.run
+          python -m tests.benchmark.multi_model
+
+      - name: Run memory-persistence + regression tests
+        run: python -m pytest tests/test_benchmark_regression.py tests/test_memory_persistence.py -v
+
+      - name: Retrieval-quality eval + gate (PRD 2)
+        # Real retrieval over the golden suites (Python/TS/Go). Gates the build
+        # on the absolute quality floors (precision@k / recall@k / MRR /
+        # answerability) and reports deltas vs the committed baseline. Runs
+        # here, not in the unit-test job, because it needs real embeddings (the
+        # MiniLM model download the firewalled test job blocks).
+        env:
+          NEURALMIND_QUALITY_EVAL: "1"
+        run: |
+          set -eo pipefail
+          # Module form (not the `neuralmind` console script): the golden suites
+          # live in the top-level evals/ package, importable from the repo root
+          # but not from the installed wheel's sys.path.
+          python -m evals.quality.runner --run --baseline evals/quality/baseline.json \
+            | tee tests/benchmark/quality.md
+
+      - name: Retrieval e2e tests (quality + traces, real embeddings)
+        # The env-gated end-to-end tests (real retrieval over a built fixture)
+        # only run where embeddings are available — here, not the firewalled
+        # unit-test job. Covers the quality harness + PRD 3 trace population.
+        env:
+          NEURALMIND_QUALITY_EVAL: "1"
+        run: python -m pytest tests/test_quality_harness.py tests/test_trace.py -v
+
+      - name: Generate chart
+        run: python scripts/generate_chart.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: |
+            tests/benchmark/results.json
+            tests/benchmark/report.md
+            tests/benchmark/multi_model.json
+            tests/benchmark/multi_model.md
+            tests/benchmark/quality.md
+            docs/images/benchmark_chart.png
+          if-no-files-found: error
+
+      - name: Build PR comment body
+        if: github.event_name == 'pull_request'
+        id: comment
+        run: |
+          # Two-step pattern: generate the body in a file, then hand it to
+          # the comment action via GITHUB_OUTPUT. Actions inputs don't
+          # process $(...) shell substitutions, so we must materialize
+          # the body here.
+          {
+            echo 'body<<EOF'
+            cat tests/benchmark/report.md
+            echo ''
+            cat tests/benchmark/multi_model.md
+            echo ''
+            cat tests/benchmark/quality.md
+            echo ''
+            echo '---'
+            echo '_Automated by `.github/workflows/ci-benchmark.yml` — regenerate locally with `python -m tests.benchmark.run` and `neuralmind benchmark --quality`._'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: neuralmind-self-benchmark
+          message: ${{ steps.comment.outputs.body }}
+
+  parity:
+    # Backend parity gate: build the reference fixture with BOTH graph
+    # producers (graphify and the built-in tree-sitter backend), run the
+    # faithfulness eval + derive the self-benchmark reduction on each, and
+    # fail if the built-in backend drifts outside tolerance of graphify.
+    # This is the safety net every backend change must clear (the built-in
+    # backend today, TS/Go extractors and an LSP/SCIP pass next).
+    name: Backend parity gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install package + both backends
+        # graphifyy provides the `graphify` CLI (the reference backend);
+        # tree-sitter ships as a core dep so the built-in backend is already
+        # installed with the package itself. Pinned to 0.9.5 — see the
+        # benchmark job's install step for why.
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]" tiktoken "graphifyy==0.9.5"
+
+      - name: Pre-fetch tiktoken vocab
+        continue-on-error: true
+        run: |
+          python -c "
+          import tiktoken
+          for name in ('o200k_base', 'cl100k_base'):
+              try:
+                  enc = tiktoken.get_encoding(name)
+                  enc.encode('probe')
+                  print(f'[tiktoken] {name} OK')
+              except Exception as e:
+                  print(f'[tiktoken] {name} FAILED: {type(e).__name__}: {e}')
+          "
+
+      - name: Run backend parity gate
+        run: python -m evals.parity.run
+
+      - name: Upload parity report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: parity-report
+          path: |
+            evals/parity/parity_report.md
+            evals/parity/parity_report.json
+          if-no-files-found: warn
+
+      - name: Post PR comment
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: neuralmind-parity-gate
+          path: evals/parity/parity_report.md

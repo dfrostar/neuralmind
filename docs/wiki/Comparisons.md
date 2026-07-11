@@ -1,0 +1,56 @@
+# Comparisons
+
+Honest side-by-side comparisons between NeuralMind and the tools developers most often evaluate alongside it. Each linked page follows the same structure: what the alternative is → how NeuralMind differs → when to pick which → feature matrix.
+
+Full source of these pages lives at [docs/comparisons/](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/README.md). The wiki version below is a convenience mirror with anchor links.
+
+## When to read each page
+
+| Compared against | Best when you are asking |
+|---|---|
+| [Cursor `@codebase`](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cursor-codebase.md) | "I use Cursor — do I still need this?" |
+| [Aider repo-map](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-aider-repomap.md) | "Aider already builds a repo-map, isn't this the same?" |
+| [Sourcegraph Cody](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-cody.md) | "How is this different from Cody's code context?" |
+| [Continue / Cline](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-continue-cline.md) | "I already have an MCP-capable IDE agent" |
+| [GitHub Copilot](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-github-copilot.md) | "I pay for Copilot — does this overlap?" |
+| [Windsurf / Codeium](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-windsurf-codeium.md) | "How does this compare to the Windsurf IDE?" |
+| [Claude Projects](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-claude-projects.md) | "Can't I just attach files to a Claude Project?" |
+| [Prompt caching](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-prompt-caching.md) | "Doesn't prompt caching solve the cost problem?" |
+| [LangChain / LlamaIndex for code](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-langchain-llamaindex.md) | "Can I just wire up RAG myself?" |
+| [Long context windows](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
+| [Generic RAG over a codebase](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
+| [Tree-sitter / ctags / grep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
+| [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
+| [The Context Engineering Stack (NeuralMind + Ponytail + Headroom)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md) | "How do NeuralMind, Ponytail, and Headroom work together as a unified token optimization stack?" |
+
+## One-line verdicts
+
+| Compared against | Short verdict |
+|---|---|
+| Cursor `@codebase` | Works *only* in Cursor; NeuralMind works in any agent and adds tool-output compression |
+| Aider repo-map | Aider is syntactic only; NeuralMind adds semantic retrieval and compression |
+| Sourcegraph Cody | Cody is server-hosted and org-wide; NeuralMind is local and per-project |
+| Continue / Cline | Those are agent runtimes; NeuralMind is the context/compression layer underneath |
+| GitHub Copilot | Copilot is hosted completions; NeuralMind is local context for any agent |
+| Windsurf / Codeium | Vertically integrated IDE; NeuralMind is editor- and model-agnostic |
+| Claude Projects | Projects reload all files every turn; NeuralMind retrieves only what the query needs |
+| Prompt caching | Caching amortizes a big prompt; NeuralMind makes the prompt small — combine both |
+| LangChain / LlamaIndex | Frameworks you assemble; NeuralMind is the assembled default for code agents |
+| Long context (1M/2M) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
+| Generic RAG | Text chunking loses structure; NeuralMind keeps the call graph |
+| Tree-sitter / ctags / grep | Deterministic but syntactic; use alongside NeuralMind, not instead of |
+| Headroom | Use both — Headroom compresses what flows to the model; NeuralMind stops most of it from flowing in the first place |
+| Context Engineering Stack (NeuralMind + Ponytail + Headroom) | These compose: NeuralMind (retrieval) + Headroom (transport) + Ponytail (generation) address token waste at every pipeline stage |
+
+## TL;DR
+
+Most alternatives cover **retrieval** (Cursor `@codebase`, Aider, LangChain) or **indexing** (Copilot, Cody) or **hosting** (Claude Projects, Windsurf) — not the **two-phase** story. NeuralMind optimizes both:
+
+1. What context the agent *retrieves* (progressive disclosure, ~800 tokens/query)
+2. What the agent *consumes* from its own tool calls (PostToolUse compression on Read/Bash/Grep)
+
+The savings compound.
+
+---
+
+See the [full comparison index](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/README.md) for the structured decision-guidance table.

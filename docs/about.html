@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, progressive context disclosure for 40–70× token savings, and a 100% local ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, Hebbian learning, synapse layer, semantic code search, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
+    <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
+    <link rel="canonical" href="https://dfrostar.github.io/neuralmind/about.html">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://dfrostar.github.io/neuralmind/about.html">
+    <meta property="og:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 40–70× token savings, 100% local.">
+    <meta property="og:image" content="https://dfrostar.github.io/neuralmind/assets/social-preview.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
+    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 40–70× token savings, 100% local.">
+    <meta name="twitter:image" content="https://dfrostar.github.io/neuralmind/assets/social-preview.png">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "TechArticle",
+      "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
+      "dateModified": "2026-07-06",
+      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 40–70× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
+      "author": { "@type": "Person", "name": "Darren Frost" },
+      "publisher": { "@type": "Person", "name": "Darren Frost" },
+      "about": "AI coding agents, semantic code intelligence, token optimization, multi-language code indexing",
+      "keywords": "AI coding agent memory, code intelligence, token reduction, Hebbian synapses, MCP server, tree-sitter code graph, ten-language code indexing",
+      "url": "https://dfrostar.github.io/neuralmind/about.html",
+      "mainEntityOfPage": "https://dfrostar.github.io/neuralmind/about.html",
+      "isPartOf": {
+        "@type": "SoftwareApplication",
+        "@id": "https://dfrostar.github.io/neuralmind/#software",
+        "name": "NeuralMind",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Linux, macOS, Windows",
+        "softwareVersion": "0.41.0",
+        "downloadUrl": "https://pypi.org/project/neuralmind/",
+        "license": "https://opensource.org/licenses/MIT",
+        "isAccessibleForFree": true,
+        "sameAs": [
+          "https://github.com/dfrostar/neuralmind",
+          "https://pypi.org/project/neuralmind/"
+        ]
+      }
+    }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; background: #fff; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; }
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 2rem; }
+        section { padding: 3rem 2rem; border-bottom: 1px solid #eee; }
+        h2 { font-size: 1.8rem; color: #667eea; margin-bottom: 1.5rem; }
+        h3 { font-size: 1.3rem; color: #333; margin: 2rem 0 1rem 0; }
+        ul { margin-left: 2rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.5rem; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        nav { background: #333; padding: 1rem 2rem; }
+        nav a { color: white; margin-right: 2rem; }
+        footer { background: #333; color: white; padding: 2rem; text-align: center; }
+        .quote { font-size: 1.1rem; font-style: italic; color: #666; margin: 2rem 0; padding: 1rem 2rem; border-left: 4px solid #667eea; }
+        @media (max-width: 768px) {
+            header h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="container" style="max-width: 100%; padding: 1rem 2rem;">
+        <div style="max-width: 900px; margin: 0 auto;">
+            <a href="./">🧠 NeuralMind</a>
+            <a href="wiki/Home">Docs</a>
+            <a href="about.html">About</a>
+        </div>
+    </nav>
+
+    <header>
+        <div class="container">
+            <h1>About NeuralMind</h1>
+            <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
+        </div>
+    </header>
+
+    <section>
+        <div class="container" id="four-benefits">
+            <h2>More than token reduction — four data-backed benefits</h2>
+            <p>NeuralMind is not just "fewer tokens." Every claim below ships with a committed eval. The first two run on <strong>real, pinned OSS repos</strong> (<code>requests</code>, <code>click</code>) and are fully reproducible — <code>python -m evals.public.run</code>. The last two are measured A/Bs on the bundled <strong>reference fixture</strong>, so they're real but smaller-scope.</p>
+            <ul>
+                <li><strong>💸 Cheaper context.</strong> <strong>100% gold-file recall at 38–85× fewer tokens</strong> than pasting files — and beats <code>ripgrep</code> on <em>both</em> recall and cost. <em>(Public benchmark, real OSS repos.)</em></li>
+                <li><strong>🎯 Finds the <em>right</em> code, not just less of it.</strong> <strong>100% gold-file recall, MRR 0.96</strong> — ranks the correct file at the top; beats the incumbent <code>codebase-memory-mcp</code> on retrieval ranking (0.96 vs 0.23). <em>(Same public benchmark, real repos.)</em></li>
+                <li><strong>🧠 Learns how you work.</strong> A Hebbian <em>synapse</em> layer that learns co-edited files lifts top-k retrieval hit-rate <strong>+11.7 points (71.7%→83.3%), budget-neutral</strong> (no extra tokens). <em>(Synapse A/B eval — reference fixture, smaller scope.)</em></li>
+                <li><strong>🔬 Better-grounded answers.</strong> At a <em>matched</em> token budget, its context carries more of the gold facts than naive truncation: <strong>faithfulness +0.143, grounding 1.00</strong>. <em>(Faithfulness/parity gate — reference fixture, smaller scope.)</em></li>
+            </ul>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>Honest scope: the cost and accuracy rows run on real, pinned OSS repos (fully reproducible — see the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">methodology</a>); the learning and grounding rows are committed A/Bs on the bundled reference fixture, so they're real but smaller-scope. We report where NeuralMind doesn't win too — a well-tuned vector RAG ties it on pure findability and is cheaper on raw tokens; that's in the benchmark table. The competitor comparison is pure retrieval ranking, not their LLM-agent loop.</em></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="by-the-numbers">
+            <h2>By the numbers — measured, not claimed</h2>
+            <p>Every figure below is produced by code in the repo and <strong>gated in CI</strong>, so it can't silently regress. Where a number is a real-repo extrapolation or an estimate, it says so. Reproduce them all with <code>python -m tests.benchmark.run</code> and the <code>evals/</code> harnesses — details on the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Benchmarks.md">Benchmarks page</a>.</p>
+            <ul>
+                <li><strong>40–70× fewer tokens</strong> on code questions on real repositories — the agent gets the few entities that matter, not whole files. The CI self-benchmark measures a deliberately conservative <strong>6.2×</strong> on a tiny 500-line fixture (floor: 4×), because there's little to prune at that size; the mechanism scales with repo size.</li>
+                <li><strong>Better answers, not just shorter.</strong> At a <em>matched</em> token budget, NeuralMind's selected context carries more of the facts a correct answer needs than naive truncation: expected-fact recall <strong>0.717 vs 0.574 (+0.143)</strong>.</li>
+                <li><strong>A memory layer that measurably improves with use.</strong> The learned synapse layer lifts top-k retrieval hit-rate <strong>72% → 83% (+12 points)</strong>; inheriting a committed team memory gives a <strong>+6.5-point</strong> day-one onboarding lift — both budget-neutral.</li>
+                <li><strong>100% local.</strong> Your code never leaves your machine; no telemetry by default.</li>
+                <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
+                <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
+            </ul>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; 40–70× is a range, not a fixed guarantee. Point it at your own repo to see your ratio.</em></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="who-its-for">
+            <h2>Who it's for — and who it isn't</h2>
+            <p><strong>Reach for NeuralMind if</strong> you drive an AI coding agent (Claude Code, Cursor, Cline, Continue, or your own MCP/OpenRouter stack) over a non-trivial codebase, you want one shared memory across those agents, you're watching LLM spend on repo-level questions, or you work in a regulated/air-gapped setting that rules out SaaS code search.</p>
+            <p><strong>You probably don't need it if</strong> your repo is under ~5K tokens (just paste it in), you don't use an agent, or you only want inline completions (use Copilot/Cursor directly).</p>
+            <p><strong>Set expectations honestly:</strong> the 40–70× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-next">
+            <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
+            <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
+            <h3>The arc (v0.13 → v0.16)</h3>
+            <ul>
+                <li><strong>v0.13 → v0.14 — Measure <em>(shipped)</em>.</strong> A CI-gated, 100%-local evaluation harness that answers the question we'd been honest about not measuring: does the memory make answers <em>better</em>, not just shorter? <code>neuralmind eval</code> now reports a faithfulness delta (expected-fact recall vs a matched-budget naive baseline), grounding, and contradiction checks over the gold dataset + polyglot TypeScript + Go fixtures. The onboarding-lift eval is the remaining increment; the LLM-as-judge stays strictly opt-in.</li>
+                <li><strong>v0.14 — Decouple.</strong> A graph-source adapter so tree-sitter / LSP / SCIP can feed the pipeline, proven at parity by the v0.13 harness — reducing the single dependency on one graph backend and widening language coverage.</li>
+                <li><strong>v0.15 — Endure.</strong> A host-capabilities adapter plus integration-contract tests that pin NeuralMind against the behaviour it relies on (Claude Code hooks, the MCP spec), so an upstream change is a one-adapter swap, not a rewrite.</li>
+                <li><strong>v0.16 — Anticipate.</strong> Promote directional "what you edit next" recall to a first-class agent surface, and ship a portable memory format so one learned map serves Claude Code, Cursor, Cline, and Continue.</li>
+            </ul>
+            <h3>A decision we've made for the team story</h3>
+            <p>Committable, opt-in <strong>team/shared memory</strong> is approved in principle: a reviewed team baseline that travels in your git repo (no SaaS, no exfiltration), overlaid by each developer's private personal layer. Its day-one onboarding lift will be <em>measured</em> by the v0.13 harness before the design is locked — we sign off on data, not assertion.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">Read the full next-release plan &amp; feature map →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="context-engineering-stack">
+            <h2>The Context Engineering Stack: NeuralMind, Ponytail, and Headroom</h2>
+            <p>NeuralMind is one piece of a broader context engineering ecosystem. Three tools address token waste at different points in the LLM pipeline — and they compose without conflict:</p>
+            <ul>
+                <li><strong>NeuralMind (Retrieval Stage):</strong> Persistent semantic memory. The agent receives only the few entities that matter (~800 tokens) rather than whole files, and the Hebbian synapse layer learns which files go together from actual usage — carrying that knowledge across sessions.</li>
+                <li><strong><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a> (Generation Stage):</strong> Behavioral prompt steering. Enforces a "lazy senior developer" persona — a sequential optimization ladder (YAGNI → stdlib → native → existing → one-line → minimum code) that blocks custom abstractions until simpler alternatives are exhausted. Any deliberate shortcut is annotated <code>ponytail:</code> and harvested into a technical debt ledger via <code>/ponytail-debt</code>.</li>
+                <li><strong><a href="https://github.com/chopratejas/headroom">Headroom</a> (Transport Stage):</strong> Lossless transport-layer compression. Intercepts traffic between client and LLM, applying a three-stage engine (CacheAligner for KV prefix stability, ContentRouter for JSON/HTML/diff payloads, IntelligentContext for relevance scoring) with 60–95% payload reduction and a reversible CCR loop backed by local SQLite storage.</li>
+            </ul>
+            <h3>Where each tool intervenes</h3>
+            <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+                <thead>
+                    <tr style="border-bottom:2px solid #667eea;">
+                        <th style="text-align:left;padding:0.5rem 1rem;">Tool</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Locus</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Primary Mechanism</th>
+                        <th style="text-align:left;padding:0.5rem 1rem;">Verified Savings</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:0.5rem 1rem;"><strong>NeuralMind</strong></td>
+                        <td style="padding:0.5rem 1rem;">Retrieval</td>
+                        <td style="padding:0.5rem 1rem;">Hebbian synapse networks</td>
+                        <td style="padding:0.5rem 1rem;">40–70× fewer query tokens</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a></td>
+                        <td style="padding:0.5rem 1rem;">Generation</td>
+                        <td style="padding:0.5rem 1rem;">Sequential decision ladder</td>
+                        <td style="padding:0.5rem 1rem;">80–94% output token savings</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:0.5rem 1rem;"><a href="https://github.com/chopratejas/headroom">Headroom</a></td>
+                        <td style="padding:0.5rem 1rem;">Transport</td>
+                        <td style="padding:0.5rem 1rem;">Reversible CCR loops</td>
+                        <td style="padding:0.5rem 1rem;">60–95% payload reduction</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0410">
+            <h2>What's New in v0.41.0 — the feedback loop closes, and the relevance signal goes on the wire</h2>
+            <p><strong>Two features that make NeuralMind's half of a <em>modular</em> agent stack real: the retrieval layer now learns from what the agent did, and emits the relevance signal it already computes as structured data a downstream tool can consume.</strong> The standard critique of a modular split is that the layers can't see each other — a compressor downstream shrinks spans without knowing why they were retrieved, and nothing feeds what the agent reused vs. rewrote back into memory. v0.41.0 closes NeuralMind's half of both seams. Both are opt-in / off-by-default on the wire, so nothing about default retrieval changes.</p>
+            <h3>Reuse-vs-rewrite feedback loop</h3>
+            <p>A new <code>Edit</code>/<code>Write</code> PostToolUse hook (<code>edit-activity</code>) fires on every edit: it resolves the edited file to its graph nodes, then scans the new code for identifiers that name a symbol <strong>defined elsewhere in the graph</strong>. Those references are a <strong>reuse</strong> signal — the edited file and the reused definitions fired together in one thought — so their synapse edges are reinforced, and the existing L2/L3 synapse boost surfaces the reused nodes more readily on future queries. It's the <strong>implicit</strong> complement to v0.38.0's explicit <code>neuralmind_feedback</code> MCP tool: the agent doesn't have to say anything; NeuralMind observes what it reused from the edit it already made and learns from that. <strong>Language-agnostic</strong> by construction (it operates on graph nodes and identifier tokens, never on source syntax), a pure side effect that never triggers a build and fails open, and surfaces <strong>possible duplication</strong> (not yet penalized) when new code redefines a name that already exists. Off-switch: <code>NEURALMIND_REUSE_FEEDBACK=0</code>.</p>
+            <h3>Structured relevance sidecar</h3>
+            <p>Every retrieved node already carries three relevance signals — a vector similarity <strong>score</strong>, a learned <strong>synapse boost</strong>, and a <strong>recall flag</strong>. The ranked context string renders these as prose, which is fine for the model but opaque to a tool. v0.41.0 exposes them as a structured, parseable <code>relevance</code> block keyed by source file — per-file <code>max_score</code> plus per-node <code>score</code> / <code>synapse_boost</code> / <code>recalled</code> / line spans — built from the <strong>post-boost L3 hits</strong>, so it reports the same signals the visible context used. Request it with <code>neuralmind_query(include_relevance=true)</code> (MCP) or <code>neuralmind query --relevance</code> (CLI). A downstream compression proxy can read this and <strong>protect the load-bearing spans</strong> instead of compressing them away. Because the signal travels alongside the payload as <strong>versioned, stably-keyed</strong> metadata, a tool running after NeuralMind can re-associate it regardless of pipeline order — the sidecar is order-independent by design.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.41.0.md">Full v0.41.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0400">
+            <h2>What's New in v0.40.0 — Schema artifact indexing: OpenAPI, SQL, and Protocol Buffers</h2>
+            <p><strong>NeuralMind now indexes non-code schema artifacts alongside your source, closing the most-requested documentation gap from the v0.38 audit.</strong> Three new extractors join the document layer: OpenAPI/AsyncAPI YAML specs, SQL DDL files, and Protocol Buffer definitions. All three reuse the existing <code>document</code> node type — no new MCP tools, no config changes, no new retrieval concepts. The synapse layer learns cross-artifact associations automatically, so <code>POST /payments/charge</code> co-activated with <code>process_payment()</code> strengthens the synapse edge without any manual wiring.</p>
+            <h3>OpenAPI / AsyncAPI (<code>.yaml</code>, <code>.yml</code>)</h3>
+            <p>Parses files that carry an <code>openapi</code>, <code>asyncapi</code>, or <code>swagger</code> key using PyYAML (falls back to JSON). Emits one file-level node labelled by <code>info.title</code>, one node per path+method labelled by <code>summary</code> or <code>operationId</code> (e.g. <code>Charge a card</code>), one node per schema component (e.g. <code>schema:Payment</code>), and one node per AsyncAPI channel. Plain YAML config files (no API key) are silently skipped — NeuralMind never indexes infrastructure config as API documentation. Honest scope: <code>$ref</code> resolution and inline response body schemas are not modelled.</p>
+            <h3>SQL DDL (<code>.sql</code>)</h3>
+            <p>Regex-matches <code>CREATE TABLE</code>, <code>CREATE VIEW</code>, <code>CREATE PROCEDURE</code>, <code>CREATE FUNCTION</code>, <code>CREATE TRIGGER</code>, <code>CREATE INDEX</code>, and <code>CREATE TYPE</code> statements (case-insensitive; handles <code>OR REPLACE</code> and <code>IF NOT EXISTS</code> variants). Emits one node per database object (e.g. <code>TABLE:accounts</code>, <code>VIEW:active_users</code>). <code>ALTER TABLE</code>, <code>INSERT</code>, and <code>SELECT</code> are not indexed — only DDL <code>CREATE</code> is the object layer agents actually query.</p>
+            <h3>Protocol Buffers (<code>.proto</code>)</h3>
+            <p>Regex-extracts <code>message</code>, <code>service</code>, <code>rpc</code>, and <code>enum</code> block headers (proto2 + proto3). Emits one node per definition (e.g. <code>service:UserService</code>, <code>rpc:GetUser</code>, <code>message:GetUserRequest</code>, <code>enum:Status</code>). Proto <code>import</code> edges (cross-file message references) are not modelled as graph edges; GraphQL support is planned for v0.42.0.</p>
+            <h3>Incremental rebuild and synapse integration</h3>
+            <p>Schema files participate in <code>neuralmind watch --reindex</code>. A changed <code>.yaml</code>, <code>.sql</code>, or <code>.proto</code> re-extracts only that file's nodes on the next incremental build pass — same as <code>.py</code>/<code>.ts</code> files. The synapse layer applies the same Hebbian co-activation to schema nodes: if an agent retrieves <code>schema:Payment</code> and then <code>process_payment()</code>, that association strengthens automatically over queries.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.40.0.md">Full v0.40.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0390">
+            <h2>What's New in v0.39.0 — Trust, transparency, and quality gaps closed</h2>
+            <p><strong>Five developer-experience improvements shipped together: dry-run indexing, instant synapse decay on file deletion, retrieval explainability, diff-aware co-break detection, and a cumulative token savings dashboard.</strong> None change the retrieval path — progressive disclosure, Hebbian synapses, and team memory are unchanged. Each improvement closes a specific gap in how transparent and trustworthy NeuralMind is to work with daily.</p>
+            <h3><code>neuralmind build --dry-run</code></h3>
+            <p>Scans the project, counts files and lines by language, and prints an estimated token savings table — without touching the vector store or synapses. Safe to run in CI as a pre-build gate. Pass <code>--json</code> for machine-readable output. Typical output: <code>Estimated savings: 6.2× (89,400 tokens → 14,400 tokens) across 247 files</code>.</p>
+            <h3>Faster synapse decay on file deletion</h3>
+            <p>The file watcher (<code>neuralmind watch</code>) now detects when source files are removed and immediately calls <code>decay_node()</code> on every graph node belonging to that file — using the watchdog <code>on_deleted</code> event (event-driven) or set-difference detection in the poll loop. Deletion callbacks fire without the normal debounce delay, so deleted-code associations are pruned in real time rather than gradually fading over many sessions. Existing watch callers without a <code>deletion_callback</code> are unaffected (the parameter is optional, defaults to <code>None</code>).</p>
+            <h3><code>neuralmind query --explain</code></h3>
+            <p>Appends a structured trace to query output showing exactly how the context budget was allocated: which layers (L0/L1/L2/L3) fired and how many tokens each consumed, which community clusters loaded, the top search hits with their scores, and which synapse associations influenced recall. This is the primary tool for debugging a retrieval that felt wrong — the trace makes the L0–L3 progressive-disclosure decision auditable.</p>
+            <h3><code>neuralmind review</code> — diff-aware co-break detection</h3>
+            <p>Reads <code>git diff --name-only &lt;base&gt;</code>, maps each changed file to its graph nodes, runs spreading activation (depth 2, top-<em>k</em> configurable) from those seed nodes, and surfaces the most likely co-break candidates — the nodes most strongly associated with the changed code but not themselves in the diff. Prints a ranked table of candidates with their edge weights. Also available as the <code>neuralmind_review</code> MCP tool, so agents can call it automatically before a commit or push. Handles cold (unbuilt) graphs gracefully.</p>
+            <h3><code>neuralmind savings</code> — cumulative token savings dashboard</h3>
+            <p>Reads the JSONL event log (<code>NEURALMIND_MEMORY=1</code>), groups events by session, and prints a dashboard: total sessions tracked, total tokens saved, average reduction ratio, and a table of the most recent queries with their individual ratios. Run it after a week of use to get a concrete, cumulative number for the token cost you've avoided.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md">Full v0.39.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.html">Claude Code walkthrough &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0380-vscode">
+            <h2>What's New in v0.38.0 — VS Code native extension</h2>
+            <p><strong>VS Code users now get first-class NeuralMind integration without Cline or a hand-wired <code>tasks.json</code>.</strong> The extension (<code>editors/vscode/</code>) is a thin TypeScript shell over the existing Python CLI and HTTP server — no new retrieval logic, no new Python dependencies.</p>
+            <h3>Status bar</h3>
+            <p>A persistent status bar item shows index state at a glance: <code>✓ NeuralMind · 2.1k nodes</code> (green, fresh), <code>⚠ NeuralMind · 2.1k nodes</code> (yellow, stale), or <code>⊘ NeuralMind</code> (red, not built). Staleness is measured against <code>graphify-out/graph.json</code> mtime vs. the <code>neuralmind.autoBuildThresholdHours</code> setting. Clicking opens the graph panel.</p>
+            <h3>Command palette</h3>
+            <p><code>Ctrl+Shift+P → NeuralMind</code> exposes eight commands: Query (retrieved context to the Output panel), Wakeup, Skeleton (structural outline of the active file), Build Index (with a progress notification), Probe Retrieval (answerability / MRR / recall@k), Open Graph View, Setup Cline MCP, and Setup VS Code MCP.</p>
+            <h3>Graph panel</h3>
+            <p>The <code>neuralmind serve</code> UI is embedded in a VS Code WebView via <code>&lt;iframe&gt;</code> — all existing frontend JS and CSS reused untouched. The panel retains its graph layout when hidden (<code>retainContextWhenHidden: true</code>).</p>
+            <h3>Hover cards (opt-in)</h3>
+            <p>Set <code>"neuralmind.enableHover": true</code> in VS Code settings to get structural skeleton cards on symbol hover, LRU-cached (50 entries, 60 s TTL).</p>
+            <h3>MCP registration</h3>
+            <p><code>neuralmind install-mcp --client vscode</code> writes the server entry to <code>Code/User/settings.json</code> under <code>"mcp.servers"</code> (VS Code 1.99+ native MCP format). If <code>settings.json</code> is JSONC, the command prints the entry to paste manually rather than clobbering the file.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/vs-code-native-intelligence.md">VS Code extension walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md">Full v0.38.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0380">
+            <h2>What's New in v0.38.0 — hybrid search, explicit feedback, and CI auto-index</h2>
+            <p><strong>Three retrieval-quality improvements that directly address the gaps between NeuralMind and LlamaIndex/mem0 on code-specific retrieval.</strong> None touch the existing token-reduction machinery — progressive disclosure, Hebbian synapses, and team memory are unchanged.</p>
+            <h3>BM25 hybrid search</h3>
+            <p>A code-aware BM25 keyword index is built alongside the vector store and merged via <strong>Reciprocal Rank Fusion</strong> at query time. The tokeniser splits camelCase (<code>UserService</code> &rarr; <code>["user", "service"]</code>), snake_case (<code>get_auth_token</code> &rarr; <code>["get", "auth", "token"]</code>), dots, and hyphens so identifier fragments score exact-name matches instead of relying entirely on semantic similarity. Queries like <code>"UserService authentication"</code> now rank the exact <code>UserService</code> node first, not just semantically similar nodes. The merge is budget-neutral — same result count as pure vector search, just reordered. Disable with <code>NEURALMIND_BM25=0</code>. The BM25 index is persisted at <code>&lt;project&gt;/.neuralmind/bm25_index.json</code> and rebuilt on every <code>neuralmind build</code>.</p>
+            <h3>neuralmind_feedback MCP tool</h3>
+            <p>The new <code>neuralmind_feedback</code> MCP tool exposes explicit positive/negative signal on a retrieved node — closing the feedback loop gap that mem0 delivers. <strong>Positive signal</strong> (<code>signal="positive"</code> with <code>context_node_ids</code>) fires an immediate Hebbian reinforcement between the target node and the other nodes from the same retrieval round, identical to what happens during natural co-editing but instant rather than end-of-session. <strong>Negative signal</strong> (<code>signal="negative"</code>) applies a targeted single-tick decay to all synapse edges for that node — LTP-protected edges (activation_count &ge; 5, weight &ge; 0.20) are never fully removed by a single negative signal, so a mis-click can't erase long-established associations.</p>
+            <h3>CI auto-index GitHub Action</h3>
+            <p>A drop-in GitHub Action (<code>.github/workflows/neuralmind-autoindex.yml</code>) auto-builds the index on every push to <code>main</code>/<code>master</code>, caches <code>.neuralmind/</code> under a source-hash key (so only real source changes trigger a re-embed), and auto-commits the updated <code>.neuralmind-team-memory.json</code> team memory snapshot. No secrets needed — NeuralMind is 100% local. Copy it into any repo to get automated indexing and fresh team memory on every push.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md">Full v0.38.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0370">
+            <h2>What's New in v0.37.0 — multi-language: PHP</h2>
+            <p><strong>The bundled tree-sitter backend now indexes PHP out of the box, taking it to ten languages — Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP — with no external tooling, completing the C#/Ruby/PHP breadth tier.</strong> PHP (<code>.php</code>) is registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, emitting the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. <code>neuralmind build .</code> now just works on a PHP project, no graphify. The <code>tree-sitter-php</code> grammar is bundled as a runtime dep.</p>
+            <h3>How the PHP extractor maps onto the model</h3>
+            <ul>
+                <li><strong>Types &amp; members.</strong> <code>class</code>/<code>interface</code>/<code>trait</code>/<code>enum</code> declarations become type nodes (nested types recurse, contained by the outer type); <code>method</code> declarations and top-level <code>function</code> definitions become function nodes; <code>property</code> declarations (the leading <code>$</code> is stripped from the label), class <code>const</code> declarations, and <code>enum</code> cases become symbol nodes.</li>
+                <li><strong>Edges.</strong> <code>use</code> namespace imports resolve to <code>imports_from</code> file&rarr;file edges (the imported <code>Acme\Db\Connection</code> matches the file that declares it &mdash; resolved by class name, <strong>exactly like Java imports</strong> &mdash; emitted only to existing file ids, so dangling-free by construction); <code>extends</code>/<code>implements</code> produce <code>inherits</code> edges (external bases synthesized so the edge never dangles, mirroring Java/TS); calls (<code>Class::method</code>, <code>$obj-&gt;method</code>, bare) are matched by method name, best-effort (the opt-in SCIP precision pass remains the path to compiler-accurate edges).</li>
+                <li><strong>Rationale.</strong> <code>/** */</code> PHPDoc block comments attach to the symbol they document, feeding the <code>rationale</code> layer (markers stripped) exactly like Javadoc and Rust <code>///</code>.</li>
+            </ul>
+            <h3>Why PHP rides a proven shape</h3>
+            <p>PHP maps almost 1:1 onto the existing <strong>Java</strong> extractor plus a namespace layer &mdash; class/interface/trait/enum &rarr; type nodes; <code>extends</code>/<code>implements</code> &rarr; <code>inherits</code>; <code>use</code> &rarr; <code>imports_from</code> (resolved by class name, like Java imports) &mdash; so it rides a proven shape at the smallest risk, one language per PR, each clearing the parity gate in isolation. This release <strong>completes the C#/Ruby/PHP breadth tier</strong>. Honestly out of scope: compiler-accurate call resolution (no <code>$obj-&gt;method</code> receiver-type resolution; SCIP remains the exact path), <code>require</code>/<code>include</code> path imports (<code>use</code> is the edge source), and trait-<code>use</code>-inside-a-class-body as inheritance (only <code>extends</code>/<code>implements</code> emit <code>inherits</code>).</p>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse PHP standalone, so the gold is a <strong>hand-authored expected symbol set</strong> &mdash; what a correct parser should recover, enumerated from the fixture independently of our implementation. PHP passes the same gate as Rust/Java/C/C++/C#/Ruby &mdash; <strong>54/54 symbols (100% structural coverage), zero dangling edges</strong> &mdash; on a dedicated <code>sample_project_php</code> fixture.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.37.0.md">Full v0.37.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0360">
+            <h2>What's New in v0.36.0 — multi-language: Ruby</h2>
+            <p><strong>The bundled tree-sitter backend now indexes Ruby out of the box, taking it to nine languages — Python, TypeScript, Go, Rust, Java, C, C++, C#, and Ruby — with no external tooling.</strong> Ruby (<code>.rb</code>) is registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, emitting the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. <code>neuralmind build .</code> now just works on a Ruby project, no graphify. The <code>tree-sitter-ruby</code> grammar is bundled as a runtime dep.</p>
+            <h3>How the Ruby extractor maps onto the model</h3>
+            <ul>
+                <li><strong>Types &amp; methods.</strong> <code>class</code> and <code>module</code> declarations become type nodes (<code>Acme::Foo</code> scope-resolution &rarr; simple name; nested types recurse, contained by the outer type); <code>def foo</code> and <code>def self.foo</code> become function nodes.</li>
+                <li><strong>Constants are the symbol layer.</strong> An <code>assignment</code> whose left side is a constant (<code>ATTEMPTS = 3</code>, module constant groups like <code>GET = "GET"</code>) becomes a symbol node &mdash; Ruby has no static field declarations, so <code>attr_accessor</code> accessors and instance variables aren't emitted as fields.</li>
+                <li><strong>Edges.</strong> <code>require_relative</code> resolves to <code>imports_from</code> file&rarr;file edges (the string arg resolved against the requiring file's directory, emitted only to existing file ids, so dangling-free by construction; a <code>require</code> of a gem/stdlib is external and skipped); <code>class Foo &lt; Bar</code> produces an <code>inherits</code> edge (external bases synthesized so the edge never dangles, mirroring Java/TS); calls are bare-name best-effort (the opt-in SCIP precision pass remains the path to compiler-accurate edges).</li>
+                <li><strong>Rationale.</strong> <code>#</code> doc comments feed the <code>rationale</code> layer (the leading <code>#</code> marker is stripped so it doesn't leak into rationale text), exactly like Javadoc and Rust <code>///</code>.</li>
+            </ul>
+            <h3>Honestly out of scope</h3>
+            <p>Ruby is <strong>dynamic</strong> (no static receiver types), so compiler-accurate call resolution isn't done &mdash; <code>calls</code> stays bare-name best-effort and dynamic dispatch / metaprogramming (<code>define_method</code>, <code>method_missing</code>) isn't resolved (SCIP remains the exact path). <strong>Mixins aren't modelled as inheritance</strong> &mdash; <code>include</code>/<code>extend</code>/<code>prepend</code> are not emitted as <code>inherits</code> edges (only <code>class Foo &lt; Bar</code> is). The structural layer &mdash; class/module/method structure &mdash; is clean and recovers well, which is what the parity gate proves.</p>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse Ruby standalone, so the gold is a <strong>hand-authored expected symbol set</strong> &mdash; what a correct parser should recover, enumerated from the fixture independently of our implementation. Ruby passes the same gate as Rust/Java/C/C++/C# &mdash; <strong>46/46 symbols (100% structural coverage), zero dangling edges</strong> &mdash; on a dedicated <code>sample_project_ruby</code> fixture.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.36.0.md">Full v0.36.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0350">
+            <h2>What's New in v0.35.0 — multi-language: C#</h2>
+            <p><strong>The bundled tree-sitter backend now indexes C# out of the box, taking it to eight languages — Python, TypeScript, Go, Rust, Java, C, C++, and C# — with no external tooling.</strong> C# (<code>.cs</code>) is registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, emitting the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. <code>neuralmind build .</code> now just works on a C# project, no graphify. The <code>tree-sitter-c-sharp</code> grammar is bundled as a runtime dep.</p>
+            <h3>How the C# extractor maps onto the model</h3>
+            <ul>
+                <li><strong>Types &amp; members.</strong> <code>class</code>/<code>interface</code>/<code>struct</code>/<code>record</code>/<code>enum</code> declarations become type nodes (nested types recurse, contained by the outer type); methods and constructors become function nodes; fields, properties, enum members, and a positional <code>record</code>'s parameters become symbol nodes.</li>
+                <li><strong>Edges.</strong> <code>using</code> directives resolve to <code>imports_from</code> file&rarr;file edges (emitted only to existing file ids, so dangling-free by construction); <code>base_list</code> entries produce <code>inherits</code> edges (external bases synthesized so the edge never dangles, mirroring Java/TS); calls are bare-name best-effort (the opt-in SCIP precision pass remains the path to compiler-accurate edges).</li>
+                <li><strong>Rationale.</strong> <code>///</code> XML doc comments attach to the symbol they document, feeding the <code>rationale</code> layer exactly like Javadoc and Rust <code>///</code>.</li>
+            </ul>
+            <h3>Why C# rides a proven shape</h3>
+            <p>C# maps almost 1:1 onto the existing <strong>Java</strong> extractor &mdash; namespaces &asymp; packages; class/interface/struct/record/enum &rarr; type nodes; <code>base_list</code> &rarr; <code>inherits</code>; <code>using</code> &rarr; <code>imports_from</code> &mdash; so it rides a proven shape at the smallest risk, one language per PR, each clearing the parity gate in isolation. Honestly out of scope: compiler-accurate call/inherit resolution (SCIP remains the exact path), generics/partial-class merging and <code>using</code> aliases, and top-level-statement implicit <code>Main</code>.</p>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse C# standalone, so the gold is a <strong>hand-authored expected symbol set</strong> &mdash; what a correct parser should recover, enumerated from the fixture independently of our implementation. C# passes the same gate as Rust/Java/C/C++ &mdash; <strong>52/52 symbols (100% structural coverage), zero dangling edges</strong> &mdash; on a dedicated <code>sample_project_csharp</code> fixture.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.35.0.md">Full v0.35.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0340">
+            <h2>What's New in v0.34.0 — answerability, not just findability</h2>
+            <p><strong>Gold-file recall measures whether the <em>right file</em> lands in the window — locating, not answering.</strong> The new opt-in <strong>answerability arm</strong> (<code>python -m evals.public.run --judge</code>) closes that gap honestly, without ever displacing the deterministic recall headline.</p>
+            <h3>How it works</h3>
+            <p>For each query it takes <strong>the real context each backend would put in the window</strong> — whole files for <code>full-file</code>/<code>ripgrep</code>, retrieved chunks for <code>embedding-rag</code>, the compact L0–L3 assembly for <code>neuralmind</code> — and asks a pinned model (<code>claude-opus-4-8</code>) to answer <strong>using only that context</strong> (it must say "insufficient context" when the window can't support an answer). A separate judge call grades each answer against the <strong>same def-site gold anchor</strong> (the query's <code>oracle_symbol</code>) on a 0–2 scale, plus a <code>grounded</code> flag.</p>
+            <h3>Hard to dismiss</h3>
+            <ul>
+                <li><strong>Same prompts, same pinned model, every backend.</strong> Each is judged on its own real window, so a low-recall window scores low instead of being papered over from the model's prior knowledge.</li>
+                <li><strong>Published provenance.</strong> The answerer prompt, the judge rubric, the pinned model id, and <strong>every raw transcript</strong> (question, context tokens, answer, verdict, rationale) are committed under <code>bench/public/judge/</code>. Re-score it, or swap the model, yourself.</li>
+                <li><strong>Off the deterministic path.</strong> It needs <code>ANTHROPIC_API_KEY</code>, never runs in CI, and the recall table is <strong>byte-identical</strong> with or without <code>--judge</code>.</li>
+                <li><strong>Honest about what it is.</strong> LLM-judged (not deterministic like recall); a single judge model is one viewpoint, disclosed, with transcripts so anyone can re-score; it stays a <em>secondary</em> signal.</li>
+            </ul>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.34.0.md">Full v0.34.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0330">
+            <h2>What's New in v0.33.0 — the competitor head-to-head, run for real</h2>
+            <p><strong>The public benchmark's competitor row is no longer a scaffold — it's a live, reproducible head-to-head vs. <code>codebase-memory-mcp</code> 0.8.1</strong> (the obvious incumbent: DeusData, single-binary, on-device embeddings, no LLM API key). It runs on the <strong>same</strong> pinned repos, same questions, same objective def-site gold, scored by the same <code>quality.py</code> as every other backend, at retrieval depth matched to <code>embedding-rag</code> (top-8).</p>
+            <h3>The result — on reproducible retrieval ranking</h3>
+            <p>At matched retrieval depth, <strong>NeuralMind finds the objectively-correct file every time and ranks it far higher</strong>: <strong>100% gold-file recall</strong> with MRR <strong>0.96</strong> on <code>requests</code> and <strong>0.60</strong> on <code>click</code>, against the competitor's <strong>0.50</strong> recall / <strong>0.23</strong> MRR (requests) and <strong>0.64</strong> recall / <strong>0.50</strong> MRR (click) — i.e. it surfaces the gold file in its top-8 only ~half the time, and the files it does surface cost an order of magnitude more tokens to read (25K–38K vs ~1K). The win is <strong>on reproducible retrieval ranking</strong>, not a claim about end-to-end agent behavior.</p>
+            <h3>Fair by construction (and honest about what it is)</h3>
+            <ul>
+                <li><strong>Most-favorable competitor config.</strong> Its semantic interface takes a keyword array, not free text; we tested three reproducible mappings and used the one <strong>best for the competitor</strong> (all question words), so it can't be dismissed as crippling it.</li>
+                <li><strong>Pure retrieval on both sides — no LLM agent loop.</strong> This measures retrieval ranking given a question, exactly how we test NeuralMind's own <code>search</code>. The competitor's <em>published</em> numbers (~90% of an "Explorer" agent across 31 scored languages; C at <strong>0.58</strong>) come from an <strong>LLM-driven</strong> loop that isn't reproducible without paying for an LLM — we cite those as-is and do <strong>not</strong> claim to reproduce them. Its "158 languages" is vendored grammars, not all benchmarked.</li>
+                <li><strong>Cost is a labeled proxy</strong> (tokens of the whole files the competitor surfaces at depth 8, since it returns paths the agent then reads — analogous to <code>ripgrep</code>).</li>
+                <li><strong>Runs headless, no API key</strong> — on-device embeddings make the whole comparison deterministic and free to re-run.</li>
+            </ul>
+            <h3>Reproduce it</h3>
+            <p>The competitor adapter is <strong>off the default run</strong> (it needs an external binary download). From a clone: <code>pip install codebase-memory-mcp==0.8.1</code> (pins 0.8.1) and <code>python -m evals.public.competitor</code>. Raw per-query traces, <code>results.json</code>, and pinned <code>REPRODUCE.md</code> are committed under <code>bench/public/competitor/</code>; full caveats live in the "Competitor head-to-head" section of <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">docs/benchmarks/public.md</a>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.33.0.md">Full v0.33.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0320">
+            <h2>What's New in v0.32.0 — multi-language: C and C++</h2>
+            <p><strong>The bundled tree-sitter backend now indexes C and C++ out of the box, taking it to seven languages — Python, TypeScript, Go, Rust, Java, C, and C++ — with no external tooling.</strong> C (<code>.c</code>/<code>.h</code>) and C++ (<code>.cpp</code>/<code>.cc</code>/<code>.cxx</code> + <code>.hpp</code>/<code>.hh</code>/<code>.hxx</code>) are registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, emitting the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. <code>neuralmind build .</code> now just works on a C/C++ project, no graphify.</p>
+            <h3>How the C/C++ extractors map onto the model</h3>
+            <ul>
+                <li><strong>Functions &amp; types.</strong> Free functions, <code>static</code> helpers, and C++ member functions/methods (including out-of-line <code>Foo::bar</code> definitions) become function nodes; C <code>struct</code>/<code>union</code>/<code>enum</code> (+ fields and enum constants), typedefs, and C++ <code>class</code>/<code>struct</code> with member fields become type/symbol nodes. <strong>Namespace-qualified ids</strong> keep <code>app::auth::JwtCodec</code> distinct from a global of the same name.</li>
+                <li><strong>Edges.</strong> <code>#include "local.h"</code> (quoted local includes) resolve to <code>imports_from</code> file&rarr;file edges &mdash; the C/C++ analogue of module imports; <code>&lt;system&gt;</code> headers are treated as external (no dangling edge). C++ base classes produce <code>inherits</code> edges; calls are bare-name best-effort (the opt-in SCIP precision pass remains the path to compiler-accurate edges).</li>
+                <li><strong>Header/impl pairing.</strong> <code>foo.h</code> and <code>foo.c</code>/<code>foo.cpp</code> resolve to a shared module key, so a declaration and its definition land in the same neighborhood &mdash; the one C/C++-specific wrinkle Python/Java don't have.</li>
+            </ul>
+            <h3>Honestly out of scope (disclosed, not hidden)</h3>
+            <p>C/C++ is where naive multi-language indexers fall over: a widely-cited competitor advertises 158 languages yet scored <strong>0.58 on C</strong> because preprocessor density wrecks a shallow parse. NeuralMind takes the opposite tack &mdash; index the parseable code at <strong>full parity</strong> and be honest about what's out. So: <strong>preprocessor macros are not indexed as symbols</strong> (<code>#define</code>s, including function-like macros, are skipped), <strong>templates are not specialized</strong> (a <code>template&lt;...&gt;</code> is emitted as one symbol), and <strong>#ifdef is not evaluated</strong> (conditionally-compiled code is indexed as visible). These are deliberate MVP boundaries, tracked as follow-ups.</p>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse these standalone, so the parity gate proves parity <strong>structurally</strong>: both C and C++ pass the same gate as Rust/Java &mdash; <strong>100% symbol coverage, zero dangling edges</strong> &mdash; on dedicated fixtures, with hand-listed expected symbols/edges in <code>tests/test_graphgen.py</code> as the independent oracle.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.32.0.md">Full v0.32.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0310">
+            <h2>What's New in v0.31.0 — the honest public benchmark</h2>
+            <p><strong>NeuralMind's headline has always been "40–70× fewer tokens on code questions." v0.31 backs it with evidence built to survive hostile expert scrutiny.</strong> <code>neuralmind benchmark --public</code> runs a reproducible, no-cherry-picking comparison on <strong>real, pinned OSS repos</strong> (<code>requests</code> @<code>0e322af877</code>, <code>click</code> @<code>874ca2bc1c</code>), against strong baselines (full-file paste, ripgrep, a same-encoder vector RAG), reporting <strong>cost and correctness together</strong> &mdash; and it ships the forkable runner plus raw data so anyone reproduces it without trusting us. Run it from a <strong>source checkout</strong> (the <code>evals/public</code> harness ships in the repo, not the pip wheel).</p>
+            <h3>The result (reproduce it yourself)</h3>
+            <p>Gold-file recall &mdash; an objective <strong>def-site</strong> oracle, no LLM judge &mdash; vs. context tokens (tiktoken <code>o200k_base</code>, deterministic):</p>
+            <ul>
+                <li><strong><code>requests</code>:</strong> NeuralMind reaches <strong>1.00 recall at 1,095 tokens/query</strong> &mdash; <strong>38×</strong> fewer than pasting files (41,729). ripgrep manages only 0.79 recall at 26,543 tokens.</li>
+                <li><strong><code>click</code>:</strong> NeuralMind reaches <strong>1.00 recall at 924 tokens/query</strong> &mdash; <strong>85×</strong> fewer than pasting files (78,514). ripgrep again lands 0.79 recall at 45,059 tokens.</li>
+            </ul>
+            <p><strong>Honest headline:</strong> against what agents actually do today &mdash; paste files or grep &mdash; NeuralMind hits <strong>100% gold-file recall at 38–85× fewer tokens</strong>, and beats ripgrep on <em>both</em> recall and cost. We also show, without hiding it, that a well-tuned vector RAG is excellent at <em>findability</em> too (and cheaper on raw tokens) &mdash; credibility comes from reporting the losses, not just the wins.</p>
+            <h3>Why it's hard to dismiss</h3>
+            <ul>
+                <li><strong>Real pinned repos</strong>, not our fixtures &mdash; <code>git checkout &lt;sha&gt;</code> and audit.</li>
+                <li><strong>Objective gold, no LLM judge</strong> &mdash; each gold file is a symbol's definition site, verifiable with one <code>rg</code>; scoring reuses the same <code>neuralmind/quality.py</code> the CI gate runs.</li>
+                <li><strong>Cost + correctness jointly</strong>, never a lone reduction ratio; pre-registered queries, every one reported including losses.</li>
+                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its <strong>+11.7pt</strong> lift is measured separately by the synapse A/B eval). Re-running matches to the token.</li>
+                <li><strong>Forkable</strong> &mdash; <code>.github/workflows/bench-public.yml</code> regenerates the table on demand; raw per-query data at <code>bench/public/results.json</code>.</li>
+            </ul>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">Full methodology, caveats, and where NeuralMind loses →</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.31.0.md">v0.31.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0300">
+            <h2>What's New in v0.30.0 — team memory: agents inherit each other's intuition</h2>
+            <p><strong>NeuralMind's synapse layer learns what code goes with what from how you work. v0.30 makes that learned signal a team artifact.</strong> A team commits one file and every teammate's agent inherits the team's learned associations automatically &mdash; a fresh <code>git clone</code> starts with the team's earned intuition instead of relearning it from scratch. This is the differentiator a static code-index can't copy: there's no learned signal to share.</p>
+            <h3>How it works</h3>
+            <ul>
+                <li><strong><code>neuralmind memory publish</code></strong> exports your <code>personal</code> + <code>shared</code> learned memory to a committed file at the repo root, <code>.neuralmind-team-memory.json</code> (beside <code>.gitignore</code>, not inside the per-machine <code>.neuralmind/</code> dir, so it travels with <code>git clone</code>).</li>
+                <li><strong>Auto-inherit, once.</strong> On a teammate's next <code>SessionStart</code> (Claude Code) or <code>neuralmind build</code> (Cursor/Cline/generic MCP), the bundle is imported once into the <code>shared</code> namespace, gated by its content hash so it never re-imports.</li>
+                <li><strong>Transparent in recall.</strong> The <code>shared</code> namespace already blends into retrieval at 0.5&times; via merged-read weighting &mdash; inherited associations surface co-edited modules a cold textual search ranks lower, with no new tool call.</li>
+            </ul>
+            <h3>Safe by construction</h3>
+            <p>Off-switch <code>NEURALMIND_TEAM_MEMORY=0</code>; writes the <code>shared</code> namespace only (never a teammate's <code>personal</code>/branch memory); MAX-merge + decay mean a stale bundle can't permanently distort recall (<code>neuralmind memory reset --namespace shared</code> clears it); fail-open on a missing/corrupt bundle; and the bundle is association <em>pairs</em> + weights &mdash; <strong>no source code, no prose</strong> &mdash; traveling via git, 100% local. Measure the day-one lift with <code>neuralmind eval --onboarding</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.30.0.md">Full v0.30.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0290">
+            <h2>What's New in v0.29.0 — ChromaDB-free by default</h2>
+            <p><strong>On mainstream platforms, <code>pip install neuralmind</code> no longer pulls ChromaDB.</strong> The default install uses the ChromaDB-free <strong>turbovec/ONNX</strong> backend (vectors byte-identical to ChromaDB's), removing ChromaDB's large transitive dependency tree &mdash; and the recurring ChromaDB CVE surface &mdash; from the default. The vector backend is <strong>platform-gated by wheel availability</strong>, so the install never breaks: on platforms turbovec has no wheel for (Intel macOS, Windows ARM) ChromaDB is auto-installed as a transparent fallback. ChromaDB is also a one-line opt-in anywhere: <code>pip install "neuralmind[chromadb]"</code> (then <code>backend: graph</code>).</p>
+            <h3>The honest trade-off</h3>
+            <p>"ChromaDB-free" is <strong>not</strong> a claim of "smaller install": the turbovec path pulls <code>onnxruntime</code>, a heavy native wheel. The precise win is removing ChromaDB's sprawl (FastAPI / grpcio / OpenTelemetry / kubernetes client / …) <strong>and its CVE surface</strong> from the default, in exchange for one focused native dependency.</p>
+            <h3>Unchanged, and safe to upgrade</h3>
+            <ul>
+                <li><strong>Retrieval is unchanged</strong> &mdash; turbovec vectors are at/above ChromaDB parity on the gold set.</li>
+                <li><strong>Upgrading a chroma-indexed repo</strong> triggers a one-time auto-reindex from <code>graph.json</code> into turbovec; the old ChromaDB index is kept as a selectable fallback (nothing deleted).</li>
+                <li><strong>Selecting chroma without the extra</strong> raises an actionable error pointing at <code>pip install "neuralmind[chromadb]"</code>.</li>
+            </ul>
+            <p>This was low-risk because the migration was staged across v0.21 (the turbovec/ONNX backend) and v0.22 (ChromaDB-free <code>import neuralmind</code> + auto-preferring turbovec); v0.29.0 simply flips which dependency set is installed by default.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.29.0.md">Full v0.29.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0280">
+            <h2>What's New in v0.28.0 — multi-language: Java</h2>
+            <p><strong>The bundled tree-sitter backend now indexes Java out of the box, taking it to five languages — Python, TypeScript, Go, Rust, and Java — indexed in one pass.</strong> Java (<code>.java</code>) is registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, emitting the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. <code>neuralmind build .</code> now just works on a Maven/Gradle/plain Java project, no graphify.</p>
+            <h3>How the Java extractor maps onto the model</h3>
+            <ul>
+                <li><strong>Types &amp; members.</strong> <code>class</code>, <code>interface</code>, <code>enum</code>, and <code>record</code> declarations become <code>code</code> type nodes; methods and constructors become function nodes contained by their type; fields and enum constants become symbol nodes. Nested types are contained by their outer type.</li>
+                <li><strong>Edges.</strong> <code>extends</code>/<code>implements</code> become <code>inherits</code> edges (external bases like <code>Runnable</code> synthesized so the edge never dangles); <code>import</code> statements resolve by fully-qualified name into <code>imports_from</code> edges; method invocations become best-effort <code>calls</code> edges.</li>
+                <li><strong>Rationale.</strong> Javadoc (<code>/** … */</code>) becomes the <code>rationale</code> layer the selector surfaces in L0&ndash;L2. Node provenance is anchored on the identifier's line, so <code>@Override</code> and modifiers never misplace a symbol.</li>
+            </ul>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse Java, so the parity gate proves parity <strong>structurally</strong>: the built-in backend must recover ≥90% of the gold graph's symbols with a valid, dangling-free graph. On the reference fixture it recovers <strong>100%</strong> (54/54 symbols, zero dangling edges). The independent correctness oracle is a hand-listed set of expected symbols/edges/rationale in <code>tests/test_graphgen.py</code>. Next per the PRD: C/C++ and Ruby.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.28.0.md">Full v0.28.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0270">
+            <h2>What's New in v0.27.0 — multi-language: Rust</h2>
+            <p><strong>The bundled tree-sitter backend now indexes Rust out of the box, taking it to four languages — Python, TypeScript, Go, and Rust — indexed in one pass.</strong> Rust (<code>.rs</code>) is registered behind the same <code>_SUFFIX_LANG</code> &rarr; <code>_EXTRACTORS</code> seam every other language uses, so it emits the same graphify-compatible <code>graph.json</code> the whole retrieval stack already consumes. Nothing downstream of <code>graph.json</code> changed — only the set of languages the <em>producer</em> understands. <code>pip install neuralmind &amp;&amp; neuralmind build .</code> now just works on a Rust crate, no graphify.</p>
+            <h3>How the Rust extractor maps onto the model</h3>
+            <ul>
+                <li><strong>Types &amp; functions.</strong> <code>struct</code>, <code>enum</code>, <code>union</code>, <code>trait</code>, and <code>type</code> items become <code>code</code> type nodes; free functions, <code>impl</code> methods, and trait signatures become function nodes. <code>impl</code> methods are <code>contained</code> by their type, so <code>Connection::get_connection</code> hangs off <code>Connection</code>.</li>
+                <li><strong>Edges.</strong> <code>impl Trait for Type</code> becomes an <code>inherits</code> edge (<code>Type &rarr; Trait</code>); <code>use</code> paths resolve against a module-key table into <code>imports_from</code> edges; <code>call_expression</code>s become best-effort <code>calls</code> edges by name; struct fields and enum variants become symbol nodes.</li>
+                <li><strong>Rationale.</strong> Rust doc comments (<code>///</code>, <code>//!</code>, <code>/** */</code>) — which are distinct node types from ordinary comments — become the <code>rationale</code> layer the selector surfaces in L0&ndash;L2.</li>
+                <li><strong>Ignores.</strong> Rust's <code>target/</code> build directory is skipped automatically, like <code>node_modules</code> / <code>dist</code> / <code>build</code>.</li>
+            </ul>
+            <h3>Proven at parity, not asserted</h3>
+            <p>graphify can't parse Rust, so the parity gate proves parity <strong>structurally</strong>: the built-in backend must recover ≥90% of the symbols in the committed gold graph with a valid, dangling-free graph. On the reference fixture it recovers <strong>100%</strong> (49/49 symbols, zero dangling edges). The independent correctness oracle is a hand-listed set of expected symbols, edges, and rationale in <code>tests/test_graphgen.py</code>; the parity gate then guards against regressions. This release executes Phase 1 of the language-extractor expansion PRD — Java, C/C++, and Ruby follow the same gated recipe, one language per PR.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.27.0.md">Full v0.27.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0260">
+            <h2>What's New in v0.26.0 — the selector starts tuning itself</h2>
+            <p><strong>NeuralMind's progressive-disclosure selector can now adjust its own L2 recall depth from how an agent actually uses it.</strong> This is phases 1&ndash;2 of the self-improvement engine (issue #156): a logging substrate that records query and wakeup events with a <code>session_id</code>, and an opt-in tuner that reads that signal back to widen or narrow how many community summaries L2 surfaces per query. The whole thing is <strong>off by default</strong> behind <code>NEURALMIND_SELECTOR_AUTOTUNE=1</code>, and with the flag unset behavior is byte-identical to v0.25 — zero extra I/O on the hot path.</p>
+            <h3>How it tunes</h3>
+            <p>The signal is the <strong>re-query rate</strong>: when an agent issues two consecutive same-session queries whose recalled communities heavily overlap, the first query under-disclosed and the agent had to come back. Persistent overlap means L2 is too narrow, so the tuner raises the recall depth one step (up to 6); a consistently low overlap means it can narrow (down to 2). The tuned value is persisted in the synapse store's <code>meta</code> table, so it carries across sessions per project. A <strong>transition-margin dampener</strong> (v0.11+) suppresses an otherwise-warranted raise when the agent's directional-transition graph already predicts the next hop decisively (top-1 probability ≥ 0.70) — if the agent already knows where it's going, widening L2 wouldn't reduce the re-query, it would just spend tokens.</p>
+            <h3>What the agent actually sees</h3>
+            <ul>
+                <li><strong>With the flag off (the default): nothing changes.</strong> The selector keeps its hard-coded L2 recall depth, the hot query path does no extra meta reads, and recall is exactly what it was in v0.25.</li>
+                <li><strong>With the flag on: the recall depth adapts.</strong> Under Claude Code the <code>SessionStart</code> hook runs the tuner once per session (after the decay tick); under Cursor, Cline, and generic MCP clients the tuned value is threaded into the selector at build time, so ordinary queries get the adapted depth with no new tool to call.</li>
+                <li><strong>New read-only CLI.</strong> <code>neuralmind self-improve status .</code> (with <code>--json</code>) reports the current recall depth, when it was last tuned, event counts, warm-up state, the windowed re-query rate, and whether autotune is enabled. It never writes.</li>
+            </ul>
+            <h3>Conservative by design</h3>
+            <p>The tuner only moves the cheapest, most reversible knob — the L2 community budget — and every guard keeps it from acting on thin or self-referential data: a 50-event warm-up gate, a hysteretic dead band so it doesn't oscillate, single-step moves clamped to <code>[2, 6]</code> (enforced both before persisting and on read), a window keyed to <em>since the last tune</em> so it doesn't chase a distribution it just perturbed, the transition-margin dampener, and fail-open everywhere — the tuner never raises and the <code>SessionStart</code> hook always returns 0. Phase 3 (eval-driven closed-loop tuning) is future work, surveyed in <code>evals/self_improvement/PLAN.md</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.26.0.md">Full v0.26.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0250">
+            <h2>What's New in v0.25.0 — one learning system: the synapse layer</h2>
+            <p><strong>NeuralMind now has a single learning signal.</strong> The old <code>learned_patterns</code> cooccurrence reranker is removed, and <code>neuralmind learn</code> becomes an exit-0 deprecation no-op. The Hebbian <strong>synapse layer</strong> — which already learns continuously from your queries, edits, and tool calls, and lets unused edges decay — is now the only thing that adapts retrieval to how you actually use the codebase. One system instead of two means automatic learning instead of a manual step, and decay instead of staleness. This is a removal, not a regression: warm-path recall is synapse-driven exactly as it was in v0.24.</p>
+            <h3>The A/B evidence</h3>
+            <p>A 2&times;2 on the benchmark fixture measured top-k hit rate with the reranker on vs. off, crossed with synapses on vs. off. The reranker moved the number by <strong>0.0 points</strong> in both rows (71.7% &rarr; 71.7% cold, 83.3% &rarr; 83.3% warm), while the synapse layer alone moved it by <strong>+11.6 points</strong>. The reranker was also runtime-inert on the warm path — the synapse boost re-sort discarded its ordering anyway — required the manual <code>neuralmind learn</code> step to populate, and went stale between runs. The learning that matters is the synapse layer's, and that is the signal NeuralMind keeps.</p>
+            <h3>What the agent actually sees</h3>
+            <ul>
+                <li><strong>No warm-path behavior change.</strong> Recall is synapse-driven exactly as before, through both the CLI and MCP. Claude Code, Cursor, Cline, and generic MCP clients all see the same results.</li>
+                <li><strong>The L3 search output no longer prints <code>(+X.XX boost)</code> labels</strong> from the reranker. Synapse-recall labels are unchanged and still appear.</li>
+                <li><strong><code>.neuralmind/learned_patterns.json</code> is no longer read or written.</strong> An existing one is simply ignored and can be deleted.</li>
+                <li><strong><code>neuralmind learn</code> prints a deprecation notice and exits 0,</strong> so any script or CI step that calls it keeps working. <code>NeuralMind(enable_reranking=...)</code> is accepted and ignored for backward compatibility.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Two learning mechanisms that nominally do the same job is two places for behavior to drift, two things to document, and two things to keep honest. The A/B settled which one earns its keep. Automatic beats manual: the reranker only improved with a <code>neuralmind learn</code> step you had to remember to run, while the synapse layer learns as you work. And decay beats staleness: the reranker's JSON captured a snapshot that aged between runs, whereas the synapse layer continuously reinforces what's used and decays what isn't, so recall tracks current usage instead of a stale batch. To see what's been learned, use <code>neuralmind stats</code> or <code>neuralmind memory inspect</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md">Full v0.25.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0240">
+            <h2>What's New in v0.24.0 — memory namespaces &amp; branch isolation</h2>
+            <p><strong>The learned synapse layer is now namespace-aware (PRD 4).</strong> Branch experiments, your personal long-term memory, an imported team baseline, and throwaway session scratch live in separate namespaces inside the same store — <code>branch:&lt;name&gt;</code>, <code>personal</code>, <code>shared</code>, <code>ephemeral</code> — so a weekend spike on a feature branch can't pollute what the agent learned about <code>main</code>. Reads stay smart by default: a transparent merged view prioritizes recent branch-local context while retaining long-term priors, with the weighting published as three constants. Existing learned memory migrates <strong>in place, losslessly</strong> — everything you've taught NeuralMind becomes the <code>personal</code> namespace, and on the default branch behavior is byte-identical to v0.23.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Namespaced memory writes.</strong> Every synapse, transition, and node activation records a namespace. The active namespace resolves automatically: <code>NEURALMIND_NAMESPACE</code> env var → <code>memory_namespace:</code> pinned in <code>neuralmind-backend.yaml</code> → <code>branch:&lt;name&gt;</code> on a non-default git branch (best-effort stdlib <code>git rev-parse</code>, 3s timeout) → <code>personal</code>. Detached HEAD, missing git, or a non-repo all degrade safely — a weird git state never fails a memory write.</li>
+                <li><strong>Lossless in-place schema migration (v0 → v1).</strong> <code>namespace</code> joins the primary keys of all three tables, so the store rebuilds each table inside a <strong>single IMMEDIATE transaction</strong> that rolls back wholesale on any failure. A mandatory stdlib-only test opens a real pre-namespace database and proves every edge, transition, and activation survives with identical weights under <code>personal</code>.</li>
+                <li><strong>Transparent merged reads.</strong> Recall, <code>neighbors</code>, <code>next_likely</code>, <code>edges</code>, and <code>transitions</code> merge the <strong>active namespace at 1.0×</strong> (<code>W_BRANCH</code>), <strong>personal at 0.8×</strong> (<code>W_PERSONAL</code>), and <strong>shared at 0.5×</strong> (<code>W_SHARED</code>) — explicit module-level constants with the formula documented beside them. Explicit <code>namespaces=[...]</code> (or <code>--namespace</code>) reads one namespace at raw weights.</li>
+                <li><strong><code>neuralmind memory {inspect,reset,export,import}</code>.</strong> Inspect contribution by namespace (also folded into <code>stats</code>); clear <em>one</em> namespace without touching the index or any other namespace; export a namespace as a portable, versioned JSON bundle reusing the IR's <code>IRSynapse</code> shape; import validates format + version and merges <strong>idempotently</strong> (weights merge by MAX). This is the PRD 8 team-memory on-ramp.</li>
+                <li><strong>Per-namespace decay / TTL.</strong> <code>shared</code> is sticky (a team baseline shouldn't evaporate because one developer changed focus); <code>personal</code> / <code>branch:*</code> keep the existing rates with long-term potentiation intact; <code>ephemeral</code> fades fast with no LTP floor and is cleared outright at session boundaries (SessionStart hook, daemon shutdown).</li>
+                <li><strong>Namespace-attributed traces (PRD 3 × PRD 4).</strong> Synapse-boost trace events gain a <code>namespace_contribution</code> map showing how much boost energy arrived through each namespace's edges — computed only on traced queries, so the untraced hot path pays nothing.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>A learned usage memory is only trustworthy if the wrong lessons can be contained and removed. Namespaces give branch experiments a place to live and die, give a team a clean channel to ship baseline knowledge to a new teammate (<code>shared</code> at 0.5× — informative, never louder than your own experience), and give throwaway exploration a memory that forgets itself. And because the migration is the riskiest part of touching a memory store, it's a single transaction with rollback-on-error and a no-data-loss test — the pattern future schema bumps follow.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.24.0.md">Full v0.24.0 release notes →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/branch-isolated-memory.md">Branch-isolated memory walkthrough →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0230">
+            <h2>What's New in v0.23.0 — versioned IR, quality harness, debug traces, and a local daemon</h2>
+            <p><strong>Four future-proofing foundations land together.</strong> <strong>PRD 1:</strong> NeuralMind now builds a canonical, versioned intermediate representation (IR) of your code graph and validates it on every build — a new <code>neuralmind validate</code> command checks that contract and reports schema problems, decoupling retrieval/memory/UI/MCP from any one graph producer's field names. It's a <strong>Phase-1, hidden-adapter</strong> rollout: the embedder still reads <code>graph.json</code> exactly as before, so nothing about retrieval changes. <strong>PRD 2:</strong> a new <code>neuralmind benchmark --quality</code> mode proves retrieval finds the <em>right</em> code — precision@k / recall@k / MRR / answerability over golden suites — and fails CI on a regression. <strong>PRD 3:</strong> <code>neuralmind query --trace</code> shows <em>why</em> a result came back — per-layer candidates, cluster scoring with vector-vs-synapse attribution, synapse boosts, and final hits. <strong>PRD 5:</strong> an experimental <code>neuralmind daemon</code> holds project state warm so repeat queries skip cold backend init, with the CLI auto-preferring it and falling back to direct mode.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>A canonical, versioned IR (<code>neuralmind/ir.py</code>).</strong> Every build adapts the loaded <code>graph.json</code> into an <code>IndexIR</code> — canonical <code>IRNode</code> / <code>IREdge</code> / <code>IRCluster</code> / <code>IRSynapse</code> entities stamped with an <code>ir_version</code>, the source backend, the producer's schema version, language inference, and a per-build <strong>coverage</strong> signal (<code>coarse</code> for tree-sitter/graphify; a future SCIP/LSP backend reports <code>precise</code>). Written to <code>.neuralmind/index_ir.json</code>.</li>
+                <li><strong><code>neuralmind validate [path] [--write] [--json]</code>.</strong> Validates the IR with <strong>no vector backend</strong> (no ChromaDB/turbovec needed). It reports errors (dangling/missing edge endpoints, duplicate ids, unsupported IR version) and warnings (orphaned nodes, unknown node kinds, unknown edge relations). <code>--write</code> (re)materializes the IR — the <strong>in-place migration</strong> path for a project that predates it, no rebuild required; <code>--json</code> emits a machine-readable summary for CI.</li>
+                <li><strong>A round-trip-faithful graphify⇄IR adapter.</strong> <code>from_graph_json</code> / <code>to_graph_json</code> round-trip any <code>graph.json</code> back to a dict equal on every field the stack consumes; non-standard producer fields are preserved verbatim so upgrades don't silently drop information.</li>
+                <li><strong>IR metadata in <code>build</code> and <code>stats</code>.</strong> <code>build</code> prints an <code>IR: v1 (valid)</code> line; <code>stats</code> (and <code>build_stats</code>) carry an <code>ir</code> block with the contract version, counts, coverage, and last validation result. Public API: <code>from neuralmind import IndexIR, from_graph_json, validate_ir, validate_project</code>.</li>
+                <li><strong>Retrieval-quality metrics (<code>neuralmind/quality.py</code>) — PRD 2.</strong> Pure, stdlib-only <strong>precision@k / recall@k / MRR / answerability</strong>, with a regression-threshold gate and baseline-delta comparison.</li>
+                <li><strong><code>neuralmind benchmark --quality</code>.</strong> Scores those metrics over <strong>golden query suites</strong> spanning three repos (Python / TypeScript / Go — 30 labelled queries), reports per-suite MRR / answerability / recall@k / precision@k, and <strong>exits non-zero on a regression</strong>. <code>--suite</code> scopes to one language; <code>--baseline</code> reports deltas vs a saved run; <code>--json</code> for dashboards. A contributor/CI self-test like <code>neuralmind eval</code>.</li>
+                <li><strong>Retrieval traces (<code>neuralmind query --trace</code>) — PRD 3.</strong> A per-layer trace of the retrieval path: vector candidate pool, cluster scoring with <strong>vector-vs-synapse attribution</strong>, individual synapse boosts, final ranked hits (flagging synapse-recalled ones), and the token budget. Pure/stdlib <code>neuralmind/trace.py</code>; bounded so it can ride along in a CLI/MCP payload, and <code>redact</code>-able to basenames for bug reports. Zero-overhead off by default; the daemon's <code>/query</code> honors it too.</li>
+                <li><strong>Local daemon (<code>neuralmind daemon</code>) — PRD 5, experimental.</strong> A per-user localhost service with a <strong>project registry</strong> (each project's index initialized once, reused warm), <strong>per-project locks</strong> + background build jobs (no index/synapse corruption), and a transport-agnostic <code>dispatch()</code> API the CLI client speaks. <code>neuralmind query</code>/<code>stats</code> auto-prefer it and fall back to direct mode (<code>NEURALMIND_NO_DAEMON=1</code> to force direct); a stale discovery file is cleaned up so a crashed daemon never wedges the CLI.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Retrieval no longer has to assume one producer's exact JSON shape — the IR is the single contract, and the graphify/tree-sitter reader is just the first adapter behind it. <code>validate</code> turns "why is retrieval weird?" debugging into a one-line schema check, surfacing dangling edges and orphaned nodes before they cost a query. And the quality harness closes the loop the token-reduction benchmark left open: it proves the context NeuralMind selects is <em>relevant</em>, not just cheap, so a ranking or synapse-recall change that quietly drops the right files fails CI instead of shipping. The embedder still consumes <code>graph.json</code> today; future phases dual-write, then make the IR the read path.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.23.0.md">Full v0.23.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0220">
+            <h2>What's New in v0.22.0 — ChromaDB-free by default (when available)</h2>
+            <p><strong><code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code>.</strong> v0.21.0 made a complete ChromaDB-free retrieval path (the <code>turbovec</code> backend). v0.22.0 starts switching everyone onto it — safely: the package imports without ChromaDB, and <code>auto</code> prefers turbovec when its deps are installed, else falls back to chroma. Nothing breaks for a plain install, and the old ChromaDB index is never deleted.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>import neuralmind</code> is ChromaDB-free.</strong> <code>GraphEmbedder</code> is now exposed lazily via PEP 562 module-level <code>__getattr__</code> (so <code>from neuralmind import GraphEmbedder</code> still works), and the chromadb telemetry patch moved next to the only <code>import chromadb</code> — so <code>import neuralmind</code> succeeds with ChromaDB entirely absent.</li>
+                <li><strong>The default backend is now <code>auto</code>.</strong> An unset config (or <code>backend: auto</code>) resolves to <strong>turbovec when its stack (<code>turbovec</code> + <code>onnxruntime</code> + <code>tokenizers</code>) is importable, else chroma</strong>. An explicit <code>backend:</code> in <code>neuralmind-backend.yaml</code> always wins, so pinning chroma (<code>backend: graph</code>) is a one-liner.</li>
+                <li><strong>One-time auto-reindex, with a notice.</strong> When <code>auto</code> lands on turbovec for a project that still has a legacy ChromaDB index and no turbovec index yet, the build path reindexes from <code>graph.json</code> and prints a one-line notice. The old ChromaDB index is left untouched as a fallback — nothing is deleted.</li>
+                <li><strong><code>neuralmind doctor</code> shows the resolved backend.</strong> A new <strong>Backend</strong> check reports the configured value, what it resolves to, and whether the turbovec stack is installed.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>A plain <code>pip install neuralmind</code> (no <code>[turbovec]</code> extra) resolves <code>auto</code> → chroma, so existing installs and CI are unchanged; users who added the extra get the ChromaDB-free path by default, letting it bake before v0.23 makes it universal. The flip is deliberately <em>soft</em> — <code>turbovec</code> is still an optional extra and <code>chromadb</code> is still a core dependency. This release removes only the import-time requirement and makes turbovec the preferred default; folding the turbovec deps into core and dropping <code>chromadb</code> are the staged next steps (v0.23).</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0210">
+            <h2>What's New in v0.21.0 — ChromaDB-free retrieval</h2>
+            <p><strong>NeuralMind can now embed <em>and</em> search with zero ChromaDB.</strong> v0.20.0 moved vector search to <a href="https://github.com/RyanCodrai/turbovec">TurboVec</a> (Google Research's <strong>TurboQuant</strong> compressed index); v0.21.0 moves the last ChromaDB-only job — embedding — into a bundled module, so the opt-in <code>turbovec</code> backend is fully self-contained.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>OnnxMiniLMEmbedder</code>.</strong> A ChromaDB-free <code>all-MiniLM-L6-v2</code> embedder on just <code>onnxruntime</code> + <code>tokenizers</code> + <code>numpy</code>, producing vectors <strong>byte-identical</strong> to ChromaDB's <code>DefaultEmbeddingFunction</code> (verified: cosine 1.0, max diff 0.0).</li>
+                <li><strong>The <code>turbovec</code> backend is ChromaDB-free end to end.</strong> Vectors → TurboVec <code>IdMapIndex</code> (8–16× smaller); text + metadata → local SQLite; embeddings → the bundled embedder. Enable with <code>backend: turbovec</code> in <code>neuralmind-backend.yaml</code>.</li>
+                <li><strong>At/above retrieval parity</strong> on the faithfulness gold set (fact-recall 0.744 → 0.800; top-k hit unchanged), and a lazy backend factory so choosing <code>turbovec</code> never constructs the Chroma stack.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>ChromaDB drags in a large dependency tree and the recurring <strong>CVE-2026-45829</strong> advisory surface. This release is the foundation for retiring it entirely — making the package import ChromaDB-free, flipping the default to <code>turbovec</code> with a migration, and dropping the dependency are the staged next steps (v0.22–v0.23).</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0200">
+            <h2>What's New in v0.20.0 — measure the onboarding lift</h2>
+            <p><strong>The static code graph is commoditizing; the learned synapse layer is the moat.</strong> v0.20.0 turns that moat into a number: <code>neuralmind eval --onboarding</code> measures whether an agent that inherits a committed team memory retrieves better on its first queries than a cold agent with none.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind eval --onboarding</code>.</strong> A cold-vs-onboarded A/B over the gold queries, sharing one built index and differing only in synapse recall (off vs on over a committed team baseline). Scored by the same offline judge as the faithfulness eval; the headline is the <strong>top-k module hit-rate lift</strong> — the slice associative recall re-ranks within — with fact-recall and grounding reported as honest secondaries (at a fixed budget fact-recall is budget-traded and full-context grounding saturates).</li>
+                <li><strong>Committed, transparent baseline.</strong> <code>evals/onboarding/seed_history.json</code> is a regenerable record of co-edit sessions replayed through the real reinforcement path — no binary <code>synapses.db</code> committed.</li>
+                <li><strong>CI-gated.</strong> The benchmark job averages a few runs (to absorb ChromaDB HNSW jitter) and fails if inheriting committed memory ever lowers the top-k module hit-rate (lift ≥ 0; a deterministic +6.5 points on the reference fixture). 13 stdlib tests.</li>
+            </ul>
+            <h3>Why this matters — the moat</h3>
+            <p>AST-derived code graphs are table stakes now. NeuralMind's durable edge is usage memory — the synapse layer that learns what your team edits together. This release makes that edge measurable and regression-gated, formalising the self-benchmark's Phase-3 synapse A/B into a committed-baseline eval.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.20.0.md">Full v0.20.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0190">
+            <h2>What's New in v0.19.0 — one-command MCP setup</h2>
+            <p><strong>Distribution is half the moat.</strong> The static code graph is commoditizing; what NeuralMind has that a static graph can't copy is usage memory (the learned synapse layer) plus being the memory an agent actually reaches for. v0.19.0 makes the latter frictionless: one command registers NeuralMind's MCP server with every agent you have installed.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind install-mcp</code>.</strong> Auto-detects installed MCP clients — Claude Code, Cursor, Cline, Claude Desktop — and merges a NeuralMind entry into each client's config. <code>--all</code> does every detected client; <code>--client</code> targets one; <code>--print</code> emits the snippet to paste by hand.</li>
+                <li><strong>Non-destructive + idempotent.</strong> Every client reads the same <code>{"mcpServers": {…}}</code> shape (just in different files); the command preserves your other servers, re-running is a no-op, and a changed entry is updated in place. Pure standard library (<code>neuralmind/mcp_install.py</code>), 11 tests.</li>
+                <li><strong>Zero machine-specific config.</strong> The launch spec is just <code>{"command": "neuralmind-mcp"}</code> — the MCP tools take a <code>project_path</code> per call, so there's nothing to bake in.</li>
+            </ul>
+            <h3>Why this matters — the moat</h3>
+            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate 71.7% → 83.3%, +11.7 points with recall on, at a neutral token budget). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md">Full v0.19.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0180">
+            <h2>What's New in v0.18.0 — incremental per-file graph updates</h2>
+            <p><strong>Stay fresh without rebuilding.</strong> Picking up a code change used to mean re-running <code>neuralmind build</code> — a whole-repo re-parse. v0.18.0 re-parses just the file you edited and re-embeds only its nodes, leaving everything else byte-for-byte untouched.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>graphgen.update_files()</code>.</strong> Splices a re-parse of the changed files back into an existing <code>graph.json</code>. Unchanged files keep their nodes, edges, <em>and community numbers</em> byte-for-byte — the latter is the trick, since renumbering communities would change every node's content hash and force a full re-embed. The edited file's outgoing edges are re-resolved; edges into a removed/renamed symbol are pruned (no dangling edges).</li>
+                <li><strong><code>NeuralMind.update_files(paths)</code>.</strong> Writes the graph, deletes embeddings for removed symbols, and re-embeds — which, thanks to content hashing, only touches the edited file's nodes. On the reference fixture, editing one file re-embeds 2 nodes and skips 135.</li>
+                <li><strong><code>neuralmind watch --reindex</code>.</strong> Wires it to the watcher: every debounced batch of edits is re-indexed automatically, so a query right after a save already reflects the new code. Opt-in, since re-embedding needs the retrieval stack in the watch process.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The built-in backend was already file-by-file and the embedder already content-hashed; v0.18.0 closes the loop so the <em>parse</em> is incremental too and it happens automatically as you work. The graph contract is unchanged — retrieval, synapses, the graph view, and MCP tools just see a fresher graph.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.18.0.md">Full v0.18.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0170">
+            <h2>What's New in v0.17.0 — optional SCIP precision pass</h2>
+            <p><strong>Compiler-accurate edges, where you have them.</strong> The built-in backend resolves <code>calls</code>/<code>inherits</code> edges heuristically — by name — which is wrong when two classes both define, say, <code>handle()</code>. If your repo has been indexed by a SCIP tool (<code>scip-python</code>, <code>scip-typescript</code>, <code>scip-go</code>), v0.17.0 can fold that compiler-accurate resolution in.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Optional SCIP precision pass (<code>neuralmind/precision.py</code>).</strong> With <code>NEURALMIND_PRECISION=1</code> and a <code>*.scip</code> index present, <code>neuralmind build</code> replaces the heuristic <code>calls</code>/<code>inherits</code> edges for the files the index covers with SCIP-resolved ones. Off by default — a no-op otherwise.</li>
+                <li><strong>Dependency-free + class-aware.</strong> SCIP is decoded with a tiny stdlib protobuf reader (no protobuf runtime, no version-mismatch risk), and symbols are mapped to graph nodes using their enclosing type — so same-named methods don't collide, which is exactly the case the heuristic gets wrong.</li>
+                <li><strong>Scoped &amp; safe.</strong> Only covered files are touched; an unmapped symbol is skipped (no dangling edges); everything else — nodes, <code>contains</code>, <code>imports_from</code>, rationale, communities — is untouched, behind the same <code>graph.json</code> seam.</li>
+                <li><strong>Proven by the gate.</strong> The parity gate gained a precision section: on a dedicated fixture it asserts the heuristic links <code>run() → B.handle</code> (wrong), SCIP links <code>run() → A.handle</code> (right) and drops the wrong edge, and the pass is a strict no-op when disabled.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Tree-sitter gives breadth (66+ languages, no build); SCIP/LSP give compiler-grade precision per language. v0.17.0 is the proven hybrid: tree-sitter by default, exact edges where a SCIP index exists — both behind the same seam, so the retrieval stack is untouched. No runtime change unless you opt in.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md">Full v0.17.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0160">
+            <h2>What's New in v0.16.0 — multi-language (TypeScript + Go)</h2>
+            <p><strong>The built-in backend is no longer Python-only.</strong> v0.16.0 takes the bundled tree-sitter backend multi-language: <code>neuralmind build .</code> now indexes <strong>Python, TypeScript, and Go</strong> out of the box, with no graphify install — and a mixed-language repo is indexed in one pass.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>A per-language seam.</strong> <code>neuralmind/graphgen.py</code> dispatches each file by suffix (<code>_SUFFIX_LANG</code> → <code>_EXTRACTORS</code>) to a language extractor. TypeScript (<code>.ts</code>/<code>.tsx</code>) and Go (<code>.go</code>) join Python, each mapping its grammar's node types onto the <em>same</em> <code>code</code>/<code>rationale</code>/<code>document</code> nodes and <code>contains</code>/<code>imports_from</code>/<code>inherits</code>/<code>calls</code> edges.</li>
+                <li><strong>Language-aware rationale.</strong> Python docstrings, TypeScript <code>/** … */</code> JSDoc, and Go <code>// …</code> doc comments all become the same rationale layer; struct fields and module constants become queryable code symbols.</li>
+                <li><strong>Proven at parity, per language.</strong> The parity gate runs the full faithfulness A/B for Python (where a gold-fact set exists) and a structural symbol-coverage check for TS/Go: the built-in backend must recover ≥ 90% of graphify's symbols with a dangling-free graph. On the reference fixtures it recovers <strong>100%</strong> for both TypeScript (54/54) and Go (45/45).</li>
+                <li><strong>Bundled grammars.</strong> <code>tree-sitter-typescript</code> and <code>tree-sitter-go</code> are now core dependencies, so the languages work with no extra install; a missing optional grammar is skipped per-file rather than failing the build.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The seam — not the parser — is the durable asset. Adding a language is now registering a pair of functions, with the parity gate guaranteeing each new grammar holds up before it ships. The retrieval stack downstream of <code>graph.json</code> is untouched; it simply sees more of the world. No runtime change for existing Python or graphify installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.16.0.md">Full v0.16.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0150">
+            <h2>What's New in v0.15.0 — no graphify needed</h2>
+            <p><strong>The biggest barrier to trying NeuralMind on your own repo is gone.</strong> Until now you had to install a second, external tool (<code>graphify</code>) and run it before <code>neuralmind build</code> would do anything. v0.15.0 ships a <strong>built-in tree-sitter graph backend</strong>, so <code>pip install neuralmind &amp;&amp; neuralmind build .</code> just works.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Built-in tree-sitter backend (<code>neuralmind/graphgen.py</code>).</strong> A pure-Python parser that produces a graphify-compatible <code>graph.json</code> — symbol-level <code>code</code> nodes (incl. module constants &amp; class fields), <code>contains</code>/<code>imports_from</code>/<code>inherits</code>/<code>calls</code> edges, a full-body <code>rationale</code> layer, <code>document</code> nodes from markdown, and balanced per-file communities. <code>tree-sitter</code> + <code>tree-sitter-python</code> are now bundled core deps.</li>
+                <li><strong>graphify still takes priority.</strong> The built-in backend only generates a graph when no graphify output exists; <code>--force</code> never clobbers a real graphify build, and an empty/non-code project still gets the honest "no graph" guidance instead of a silent 0-node "success."</li>
+                <li><strong>Proven at parity, not asserted.</strong> A new CI gate (<code>evals/parity/run.py</code>) builds the reference fixture with <em>both</em> backends, runs the faithfulness eval and derives the self-benchmark reduction on each, and fails the build if the built-in backend drifts outside tolerance of graphify (within 25% reduction, within 10 points faithfulness). An early cut <em>failed</em> this gate — it retrieved worse than naive truncation — and the backend was improved until it cleared the bar on the merits. On the reference fixture the built-in now <em>beats</em> graphify on fact recall (0.717 vs 0.555), grounding (1.000 vs 0.917), and token reduction (6.66× vs 6.08×). It's the safety net every future backend change must clear.</li>
+                <li><strong>A pluggable seam.</strong> Everything downstream of <code>graph.json</code> — embedder, context selector, communities, synapses, graph view, MCP tools — is unchanged. Only the graph <em>producer</em> changed, behind a <code>generated_by</code> / <code>schema_version</code> stamp. That's what lets multi-language extractors and an optional LSP/SCIP precision pass slot in next.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Removing the external-tool dependency cuts the #1 onboarding drop-off and a single-maintainer bus-factor risk, and unblocks a cleaner fresh-install on more platforms. The static code graph is commoditizing across the industry; making the producer pluggable — and gating every swap on measured retrieval quality — is how NeuralMind keeps the part that's actually unique (the learned synapse layer) honest. No runtime change for existing graphify-based installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.15.0.md">Full v0.15.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0140">
+            <h2>What's New in v0.14.0 — measure faithfulness</h2>
+            <p><strong>The measurement foundation became a command.</strong> <code>neuralmind eval</code> turns <em>"does NeuralMind's memory make an agent's answers better, not just shorter?"</em> into a reproducible number — and, like everything here, the default judge is 100% local.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind eval</code>.</strong> Runs a with-NeuralMind vs naive A/B on the reference fixture and reports a <strong>faithfulness delta</strong>, grounding rate, contradiction rate, and a per-query breakdown. <code>--json</code> for machines; <code>--selfcheck</code> validates the gold set + offline scorer with no heavy deps. A contributor/CI quality gate — run it from a <strong>source checkout</strong> (the <code>evals/</code> gold set isn't bundled in the pip wheel).</li>
+                <li><strong>The honest metric.</strong> Faithfulness = expected-fact recall of the answer, compared <em>at a matched token budget</em>: NeuralMind's selected context vs naive truncation of the repo to the same size. A positive delta means smart selection beats dumb truncation <em>at equal cost</em> — not the dishonest "small context vs the whole repo" comparison.</li>
+                <li><strong>Three offline judge dimensions.</strong> Expected-fact recall (the gate), grounding (are the right modules cited?), and contradiction (does the answer assert a choice that conflicts with the code, e.g. PostgreSQL when the fixture is SQLite?). The opt-in LLM-as-judge sits behind <code>NEURALMIND_EVAL_LLM_JUDGE</code> and is never the default or the gate.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>NeuralMind has always led with a token-reduction number. v0.14.0 adds the harder, more honest one: <em>quality</em>. It's a self-test against the bundled reference fixture today (like <code>neuralmind benchmark</code>), and the fitness function the rest of the roadmap — graph-backend decoupling, team memory — is validated against. No runtime change to your install.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.14.0.md">Full v0.14.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0130">
+            <h2>What's New in v0.13.0 — measurement foundation</h2>
+            <p><strong>A foundation release: the scaffolding to <em>prove</em> the memory helps, not just claim it.</strong> v0.13.0 doesn't change what your install does at runtime — it builds the machinery to measure whether NeuralMind makes an agent's answers <em>better</em> (faithfulness), and to measure retrieval quality beyond Python. Plus a documentation process so the docs stop drifting.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Faithfulness eval (offline, 100% local).</strong> A versioned query + gold-fact dataset (18 queries / 52 expected facts derived from the bundled sample project) and a pure-stdlib <em>expected-fact-recall</em> scorer — the zero-network signal future CI gates run on. This ships the dataset + scorer skeleton; A/B answer generation and the report pipeline are the next increments. The opt-in <code>NEURALMIND_EVAL_LLM_JUDGE</code> mode is clearly labelled as leaving the machine and is never the default or the gate.</li>
+                <li><strong>Polyglot retrieval fixtures (TypeScript + Go).</strong> Self-contained sample projects mirroring the Python fixture domain-for-domain, with per-language gold-module query sets — so retrieval hit-rate can be measured per language instead of Python-only.</li>
+                <li><strong>A standard documentation process.</strong> A written <code>DOCUMENTATION-PROCESS.md</code>, a PR-template checklist, and a CONTRIBUTING link, so every user-facing change ships its docs in the same PR and the landing-page version stops going stale.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>NeuralMind's headline claims — cheaper, and the memory makes answers better — deserve to be <em>measured, not asserted</em>. v0.13.0 is the first brick: an honest, offline, reproducible way to score answer faithfulness, and fixtures that extend quality coverage past Python. Nothing here is a runtime feature; all of it is the fitness function the rest of the eval-first roadmap builds on. No migration, no new dependencies, no behavior change for existing installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md">Full v0.13.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0120">
+            <h2>What's New in v0.12.0 — install doctor</h2>
+            <p><strong>One command tells you exactly what's wired up and what isn't.</strong> NeuralMind has accumulated moving parts — a code graph, a semantic index, a synapse memory db, Claude Code hooks, an MCP server, a query-memory consent flag. When one isn't in place, the old symptom was a stack trace or a silent no-op. v0.12.0 makes the setup legible.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong><code>neuralmind doctor</code>.</strong> Inspects the install and reports each piece with a status (<code>ok</code> / <code>warn</code> / <code>fail</code>) and the exact command to fix it. Read-only — it never builds or mutates state. Exits non-zero when a check <em>fails</em> (graph/index missing) so you can gate a CI step or an agent's provisioning on it.</li>
+                <li><strong><code>--json</code> output.</strong> A stable, machine-readable snapshot of every check, for scripting and agent consumption. An agent provisioning its own environment can run <code>neuralmind doctor --json</code> as a pre-flight check before issuing queries.</li>
+                <li><strong>Friendlier "graph not built" error.</strong> Querying a project before its code graph exists used to raise an opaque <code>AttributeError</code>. It now raises a clear, actionable message naming the two commands to run (<code>graphify update</code>, then <code>neuralmind build</code>) and points you at <code>neuralmind doctor</code>.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>Most NeuralMind support friction is setup friction: a piece isn't installed, and the failure doesn't say which one. <code>doctor</code> turns "it doesn't work" into a checklist with fixes — for the human dropped into a fresh clone, and for the agent that has to verify its own environment before relying on the tool. No new dependencies, no behavior change for working installs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md">Full v0.12.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0110">
+            <h2>What's New in v0.11.0 — directional synapses</h2>
+            <p><strong>The brain-like layer now learns <em>what comes next</em>, not just <em>what goes together</em>.</strong> The Hebbian co-activation signal that's powered NeuralMind since v0.4.0 has always been symmetric: nodes that fire together wire together, no ordering. v0.11.0 adds a parallel directional signal — after touching file A, you typically touch file B with probability p.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Directional transitions.</strong> A new <code>synapse_transitions(from_node, to_node, weight, count)</code> table tracks ordered observations. Same Hebbian + decay machinery as the undirected synapses, but with directionality preserved. The file watcher records transitions automatically every time it flushes a batch — sorted by edit timestamp so re-touched files appear at their latest position, not their first.</li>
+                <li><strong><code>next_likely(node)</code> API.</strong> Returns the probability distribution over what typically follows a given file or node. Probabilities normalize to 1.0 across all outgoing transitions. Callable from Python (<code>mind.synapses.next_likely(path)</code>), the CLI (<code>neuralmind next . path/to/file.py</code>), or via the new <code>neuralmind_next_likely</code> MCP tool from Cursor / Cline / Continue / any MCP client.</li>
+                <li><strong>Decay knobs tuned for sequential signal.</strong> Transitions decay slower (<code>TRANSITION_DECAY_RATE = 0.01</code> vs <code>DECAY_RATE = 0.02</code> for the undirected edges) because sequential signals are rarer per session — you might edit ten files together but only get nine ordered pairs between them, so they need to accumulate for longer before being trusted.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The existing undirected synapse graph answers <em>association</em>: "given this file, what other files belong to the same thought?" Directional transitions split that signal into <em>before</em> (prefetch this file's skeleton when the implementation file is loaded) and <em>after</em> (remind the agent to update this when the implementation changes). Same source data — every <code>activate_files</code> call writes to both the undirected and directional tables — two views.</p>
+            <p>No migration. The new table is created on first connection. Existing co-activation edges in <code>synapses.db</code> are untouched. Disable by ignoring the new API — the watcher still records transitions in the background, but if nothing reads them, they just sit there decaying like any other edge.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md">Full v0.11.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0100">
+            <h2>What's New in v0.10.0 — agent ergonomics</h2>
+            <p><strong>Three friction-removing changes to the PostToolUse Bash compressor</strong> — the surface AI coding agents see on every shell call. Built from real session feedback where the previous footer forced a second query round-trip just to recover dropped middle content.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Content-aware compression footer.</strong> Replaces the old <code>[Full output: 4298 bytes...]</code> message with a categorized breakdown: <code>dropped 23 lines (12 info, 8 debug, 3 other); repeated: 5× 'Gamma API error 503'</code>. Agents can judge whether the dropped middle was log noise or a buried error <em>without re-running the command</em>.</li>
+                <li><strong><code>neuralmind last</code></strong> — new CLI that prints the raw pre-compression output. The PostToolUse hook stashes every Bash result to <code>&lt;project&gt;/.neuralmind/last_output.json</code> (single-slot, 2 MB cap, atomic temp-file + rename writes). Turns <code>NEURALMIND_BYPASS=1</code> from a re-run-from-scratch escape hatch into a free lookup — meaningful on <code>npm test</code> (~28s) and non-deterministic network calls.</li>
+                <li><strong>Small-failure passthrough.</strong> A failing 50-byte command no longer gets buried under a 200-byte compression marker. Outputs under <code>NEURALMIND_BASH_SMALL</code> (default 500 chars) pass through verbatim with just exit-code framing, even on non-zero exit.</li>
+            </ul>
+            <h3>Why this matters</h3>
+            <p>The PostToolUse compressor is the <em>most-visible</em> surface NeuralMind exposes — the agent sees it on every Bash call. v0.10.0 converts the common "I need to see the dropped middle" friction from a re-run loop into a single cache lookup, and turns the footer text itself into actionable messaging: concrete benefit visible, concrete affordance, clear escape hatch.</p>
+            <p>No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. The new cache file is additive; disable via <code>NEURALMIND_OUTPUT_CACHE=0</code>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md">Full v0.10.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v090">
+            <h2>What's New in v0.9.0 — enterprise-ready</h2>
+            <p><strong>Phase 3 of the release arc.</strong> Turn the v0.6.0 → v0.7.0 → v0.8.0 foundation into something a CTO, security team, or regulated-industry operator can actually adopt.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>GHCR auto-build.</strong> Every tagged release publishes <code>ghcr.io/dfrostar/neuralmind:vX.Y.Z</code> and <code>:latest</code>, multi-platform (<code>linux/amd64</code> + <code>linux/arm64</code>), non-root runtime, transitive deps pre-wheeled. <code>:latest</code> only moves for stable tags — pre-release tags like <code>v1.0.0-rc1</code> are excluded from the floating tag.</li>
+                <li><strong>SBOM</strong> (CycloneDX JSON) attached to every release as <code>neuralmind-vX.Y.Z.sbom.json</code> — ingestible by Grype, Trivy, Dependency-Track, and most enterprise SCA scanners.</li>
+                <li><strong>Air-gapped install walkthrough</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md">docs/use-cases/air-gapped.md</a>) — bundle-and-sneakernet for environments with no outbound network at install time.</li>
+                <li><strong>Compliance one-pager</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md">docs/COMPLIANCE-SUMMARY.md</a>) — NIST AI RMF + SOC 2 + GDPR claims consolidated for procurement review, with a "how to verify yourself" command for every claim.</li>
+            </ul>
+            <p>No production code changes — pure CI + docs. No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md">Full v0.9.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v080">
+            <h2>What's New in v0.8.0 — always-on</h2>
+            <p><strong><code>neuralmind watch</code> and <code>neuralmind serve</code> are first-class production processes now.</strong> The synapse store accumulates 24/7 whether you're at the keyboard or not, and the graph view is always listening on <code>127.0.0.1:8765</code>.</p>
+            <h3>What ships</h3>
+            <ul>
+                <li><strong>Service templates.</strong> <code>scripts/systemd/neuralmind-{watch,serve}.service</code> (user-scope units, hardened), <code>scripts/launchd/com.neuralmind.{watch,serve}.plist</code> (macOS user agents with <code>RunAtLoad</code> + <code>KeepAlive</code>), Windows Task Scheduler section in the Scheduling Guide.</li>
+                <li><strong><code>/healthz</code> endpoint</strong> on <code>neuralmind serve</code> — unauthenticated, returns <code>{"status":"ok","version":"..."}</code>. Designed for Docker <code>HEALTHCHECK</code> and systemd <code>ExecStartPost</code> probes so a fresh container can be checked without threading a session token.</li>
+                <li><strong>Cross-platform always-on walkthrough</strong> at <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md">docs/use-cases/always-on.md</a> covering Linux (systemd), macOS (launchd), Windows (Task Scheduler), and Docker (<code>HEALTHCHECK</code>) with install + verify + uninstall + troubleshooting.</li>
+            </ul>
+            <p>The canvas still requires the per-session auth token by default; pass <code>--no-auth</code> in the templates or read the tokenized URL from the service logs.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md">Full v0.8.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v070">
+            <h2>What's New in v0.7.0 — install anywhere</h2>
+            <p><strong>Distribution release, not a features release.</strong> The brain is the same brain. What changed is how many ways you can install it.</p>
+            <h3>Five install paths</h3>
+            <ul>
+                <li><strong><code>pip install neuralmind graphifyy</code></strong> — the default. Works in any venv.</li>
+                <li><strong><code>pipx install neuralmind</code></strong> — global CLI, isolated env. <code>neuralmind</code> on PATH everywhere without activation.</li>
+                <li><strong><code>uv pip install neuralmind graphifyy</code></strong> — ~10× faster than pip, same wheel.</li>
+                <li><strong><code>docker build -t neuralmind:dev .</code></strong> — multi-stage Dockerfile in the repo root, non-root runtime, transitive deps pre-wheeled in the builder. GHCR auto-publish lands in a later release; build locally for now.</li>
+                <li><strong>From source</strong> — for contributors.</li>
+            </ul>
+            <p>All five paths deliver the same package: the <code>neuralmind</code> CLI, the <code>neuralmind-mcp</code> server (for Claude Code, Cursor, Cline, Continue, and any MCP client), and the live graph view from v0.6.0. Smoke test is identical: <code>neuralmind --help</code> works everywhere; <code>python -c "import neuralmind"</code> works for pip / uv / source paths.</p>
+            <h3>Also in v0.7.0</h3>
+            <ul>
+                <li><strong>PyPI keywords refresh</strong> — eight additions matching v0.6.0 product copy (<code>graph-view</code>, <code>hebbian-learning</code>, <code>force-directed-graph</code>, …) so PyPI search ranking finally matches what we ship.</li>
+                <li><strong>JSONL bridge rotation fix (#115)</strong> — P2 correctness bug from Codex review. The event-log tailer now reopens rotated files from offset 0, preserving the recovery state across failed open attempts. Silent event loss under <code>logrotate</code>/<code>copytruncate</code> is fixed.</li>
+                <li><strong><code>/api/queries</code> test coverage (#116)</strong> — the replay-last-query route is now in the automated regression suite.</li>
+            </ul>
+            <p>No migration. Same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. Upgrade is whatever your install path's <code>--upgrade</code> equivalent is.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md">Full v0.7.0 release notes →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md">Install paths walkthrough →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v060">
+            <h2>What's New in v0.6.0 — see the brain learning, live</h2>
+            <p><strong>The pitch flipped.</strong> v0.5.4 made the brain inspectable. v0.6.0 makes it <em>legible</em>. <code>neuralmind serve</code> now streams a live activity feed: synapse + file events pulse across the canvas in real time as the agent and the codebase interact. The graph stops being a static map and becomes a window into the hippocampus learning your codebase.</p>
+            <div class="quote">
+                "You can sit there, in real time, and watch the hippocampus learn your codebase. That's the moment when 'code RAG' turns into 'associative memory for your codebase.'"
+            </div>
+            <h3>Headline changes</h3>
+            <ul>
+                <li><strong>Live activity feed</strong> — <code>/api/events</code> SSE stream subscribed to the in-process event bus. Affected nodes pulse on the canvas; sidebar log shows the most recent ~80 events.</li>
+                <li><strong>Cross-process activity bridge</strong> — a separate <code>neuralmind watch</code> daemon, or a hook-driven Claude Code session in another process, feeds the same live feed via <code>&lt;project&gt;/.neuralmind/events.jsonl</code>. The in-process bus stays the primary path; the JSONL is a deliberately boring side channel. Opt out with <code>NEURALMIND_EVENT_LOG=0</code>.</li>
+                <li><strong>Pin UX</strong> — visible pin glyph on every pinned node, Pin/Unpin toggle in the detail panel, Unpin-all sidebar button.</li>
+                <li><strong>Quick-switch shortcuts</strong> — <code>Cmd/Ctrl-K</code> and <code>/</code> jump-to-search from anywhere; <code>Esc</code> clears and blurs.</li>
+                <li><strong>Local-graph depth slider</strong> — 1–3 hops via BFS from the focused node; defaults to 1 so existing behavior is unchanged.</li>
+                <li><strong>Replay-last-query overlay</strong> — re-highlight the L3 hits the agent most recently received. Closes the trust gap on retrieval in a 2-second visual.</li>
+                <li><strong>Edge tooltips + min-weight synapse slider</strong> — hover an edge to see relationship and weight; filter low-weight synapses.</li>
+                <li><strong>Docs refresh</strong> — ROADMAP, README hero, landing page, about page, and wiki all reframed around the graph view as a second pillar alongside the 40–70× reduction.</li>
+            </ul>
+            <h3>The shared-brain unlock</h3>
+            <p>The cross-process JSONL bridge means that if you run Claude Code, Cursor, OpenClaw, and Hermes-Agent against the same project — they reinforce the same synapse store, and the v0.6.0 graph view shows the <em>union</em> of their activity. Pre-v0.6.0, the synapse store was shared but the experience wasn't — three tools talking to a black box. Now the brain is visibly one brain. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/multi-agent.md">multi-agent walkthrough</a>.</p>
+            <p>No migration: same <code>graph.json</code>, same <code>synapses.db</code>, same hooks. Upgrade is <code>pip install --upgrade neuralmind</code>. Then <code>neuralmind serve</code> and save a file — that's the demo and the verification in one motion.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.0.md">Full v0.6.0 release notes →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Mission</h2>
+            <p>NeuralMind exists to solve a fundamental problem: AI agents waste tokens loading raw source code when they only need small, semantic context.</p>
+            <div class="quote">
+                "Why load 50,000 tokens of raw source to answer 'How does authentication work?' when you could use 800 tokens of smart, indexed context?"
+            </div>
+            <p>Our mission is to make semantic code intelligence accessible, affordable, and trustworthy—without data exfiltration, vendor lock-in, or compliance headaches.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>The Problem We Solve</h2>
+            <h3>For Individual Developers</h3>
+            <ul>
+                <li><strong>High token costs</strong> — Claude, ChatGPT, and Gemini bills climb fast when agents read entire files</li>
+                <li><strong>Context limits</strong> — Large codebases hit context window ceilings mid-task</li>
+                <li><strong>Slow iteration</strong> — Every query loads files from scratch</li>
+                <li><strong>Privacy concerns</strong> — Code is uploaded to external APIs</li>
+            </ul>
+
+            <h3>For Teams & Enterprises</h3>
+            <ul>
+                <li><strong>Compliance</strong> — No NIST AI RMF audit trail, no SOC 2 compliance, no proof of code safety</li>
+                <li><strong>Cost at scale</strong> — Millions of tokens per month for monorepos</li>
+                <li><strong>Vendor dependency</strong> — Locked into Cursor, Copilot, or proprietary tools</li>
+                <li><strong>Reproducibility</strong> — No way to audit which code was retrieved or why</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>How We Solve It</h2>
+            <h3>Four-Phase Architecture</h3>
+            <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
+            <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
+            <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
+            <p><strong>Phase 4 — Graph View <em>(v0.5.4, made live in v0.6.0)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. <strong>v0.6.0 adds a live activity feed</strong> — synapse and file events pulse on the canvas in real time, with a cross-process JSONL bridge that lets Claude Code, Cursor, OpenClaw, and Hermes-Agent all feed the same canvas. The brain stops being a black box — you can finally watch what it's learning, live.</p>
+            <p><strong>Result:</strong> 40–70× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 40–70% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
+
+            <h3>Enterprise Ready</h3>
+            <ul>
+                <li>✅ <strong>100% local & offline</strong> — No cloud, no telemetry, zero data exfiltration</li>
+                <li>✅ <strong>NIST AI RMF audit trail</strong> — Full query provenance, compliance reporting</li>
+                <li>✅ <strong>Open source & MIT licensed</strong> — No vendor lock-in, full transparency</li>
+                <li>✅ <strong>Works everywhere</strong> — Claude Code, Cursor, ChatGPT, Gemini, local LLMs</li>
+                <li>✅ <strong>Pluggable backends</strong> — ChromaDB, PostgreSQL, LanceDB</li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Technical Innovation</h2>
+            <h3>4-Layer Progressive Disclosure</h3>
+            <p>NeuralMind doesn't load code randomly. It uses a 4-layer index that progressively surfaces context:</p>
+            <ul>
+                <li><strong>Layer 0:</strong> Project overview (functions, classes, architecture)</li>
+                <li><strong>Layer 1:</strong> Community detection (related modules & clusters)</li>
+                <li><strong>Layer 2:</strong> Semantic search results (matching code)</li>
+                <li><strong>Layer 3:</strong> Query-specific code (imports, dependencies)</li>
+            </ul>
+            <p>The agent gets exactly what it needs, in order, without bloat.</p>
+
+            <h3>Learnable Patterns</h3>
+            <p>NeuralMind learns from how you actually use the codebase. Over time, the brain-like synapse layer (described below) improves retrieval quality based on which code you query, edit, and run tools over together — automatically and continuously, with no external training and no manual step.</p>
+
+            <h3>Brain-like Synapse Layer <em>(v0.4.0)</em></h3>
+            <p>The newest layer is an associative memory inspired by how brains actually learn. NeuralMind tracks weighted "synapses" between code nodes, and applies three classic neuroscience principles:</p>
+            <ul>
+                <li><strong>Hebbian learning</strong> — nodes that fire together wire together. Every query, tool call, and file edit reinforces the edges between co-active nodes.</li>
+                <li><strong>Synaptic decay and pruning</strong> — unused weights age out automatically. Long-term potentiation protects frequently-used connections from being forgotten.</li>
+                <li><strong>Spreading activation</strong> — when a new question arrives, NeuralMind "lights up" the relevant nodes and lets the activation propagate through the learned graph, surfacing related code that pure vector search would miss.</li>
+            </ul>
+            <p>The synapse store is local SQLite, project-scoped, and inspectable. It exports a markdown summary that Claude Code's auto-memory system loads natively, so the learned associations show up in every session — no MCP tool call required.</p>
+
+            <h3>Graph View — <code>neuralmind serve</code> <em>(v0.5.4, made live in v0.6.0)</em></h3>
+            <p>The agent-facing brain is now also a human-facing tool. A stdlib HTTP server renders a force-directed graph of the entire codebase in the browser — structural edges (calls and imports) drawn together with the learned synapse overlay, where edge thickness encodes weight. Each node has Obsidian-style backlinks and outgoing-links panels, a "synaptic neighbours" list with weights and activation counts, and a one-click "open in editor" button (smart support for VS Code, Cursor, vim, sublime, JetBrains). A semantic quick-switcher lets you type a phrase and jump straight to the matching node. Zero CDN dependencies; per-session access token bound to 127.0.0.1.</p>
+            <p><strong>v0.6.0 adds a live activity feed.</strong> The server now exposes a long-lived <code>/api/events</code> SSE stream subscribed to an in-process event bus. Every <code>SynapseStore.reinforce()</code> call and every coalesced file-edit batch publishes an event; affected nodes pulse on the canvas with short animated radial rings, and a sidebar log shows the most recent ~80 events. A cross-process JSONL bridge (<code>&lt;project&gt;/.neuralmind/events.jsonl</code>) lets a separate <code>neuralmind watch</code> daemon, a Claude Code session, an OpenClaw call, or any other process feed the same canvas. One canvas, every agent. Opt out with <code>NEURALMIND_EVENT_LOG=0</code>.</p>
+            <p>Why it matters: pre-v0.6.0 the graph view was inspectable but static — you had to refresh to see new state. With the live feed, you can sit there in real time and watch the hippocampus learn your codebase. "The agent has a learning memory" stops being a claim and becomes a visual.</p>
+
+            <h3>Compliance-First Design</h3>
+            <p>Every query is logged with full provenance: which code was retrieved, why, which embeddings were used, code state (git commit). Export for NIST AI RMF, SOC 2, GDPR, HIPAA.</p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Open Source & Community</h2>
+            <p>NeuralMind is MIT licensed and fully open source. No hidden business model, no vendor lock-in, no surprise rate limits.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind">View on GitHub →</a></p>
+
+            <h3>Get Involved</h3>
+            <ul>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues">Report bugs or request features</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/discussions">Join discussions</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/blob/main/CONTRIBUTING.md">Contribute code</a></li>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">Share your results</a></li>
+            </ul>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Status & Roadmap</h2>
+            <h3>Current Release: v0.19.0 — One-command MCP setup</h3>
+            <p>The latest release leans into the distribution moat: <code>neuralmind install-mcp --all</code> auto-detects your installed agents (Claude Code, Cursor, Cline, Claude Desktop) and registers NeuralMind's MCP server with each — a non-destructive, idempotent merge. The learned synapse layer's uplift is already measured by the self-benchmark's Phase-3 A/B (top-k hit rate 71.7% → 83.3% with recall on). See the <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.19.0.md">v0.19.0 release notes</a> or the <a href="#whats-new-v0190">summary above</a>.</p>
+
+            <h3>Future Releases</h3>
+            <ul>
+                <li><strong>Next — E1.5 onboarding-lift eval</strong> — formalise the cold-agent-plus-committed-team-baseline vs cold-agent-alone measurement (the self-benchmark's synapse A/B is the foundation) as the headline differentiator.</li>
+                <li><strong>Toward v1.0</strong> — the moat (MCP distribution + a measured learned-synapse onboarding-lift), then a stable API guarantee and LTS. See the <a href="#whats-next">eval-first roadmap above</a>.</li>
+                <li><strong>v1.0.0 (Target Q1 2027)</strong> — Stable API guarantee, 2-year LTS support, commercial support options.</li>
+            </ul>
+
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/NEXT-RELEASE-PLAN.md">See the next-release plan →</a> · <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">Roadmap →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Why NeuralMind?</h2>
+            <h3>Not Affiliated with NeuralMind.ai</h3>
+            <p>This is an independent, open-source project. No relationship to NeuralMind.ai (a different company). We chose the name because it reflects our philosophy: a "neural" index that learns your codebase.</p>
+
+            <h3>Compared to Alternatives</h3>
+            <ul>
+                <li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>
+                <li><strong>vs Claude Projects:</strong> Selects only relevant context instead of loading all files</li>
+                <li><strong>vs Long Context:</strong> 40–70× cheaper per code question than paying for 100K token windows</li>
+                <li><strong>vs Prompt Caching:</strong> Makes prompts small instead of caching big ones</li>
+            </ul>
+
+            <p><a href="wiki/Comparisons">See detailed comparisons →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Core Values</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin: 2rem 0;">
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Privacy First</strong>
+                    <p>Your code stays local. Zero cloud calls, zero telemetry, zero data exfiltration.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Transparency</strong>
+                    <p>Open source, MIT licensed. Every decision is auditable, every result is explainable.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Compliance Ready</strong>
+                    <p>Built for regulated industries. NIST AI RMF, SOC 2, GDPR, HIPAA friendly.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Interoperable</strong>
+                    <p>Works with your tools. Claude Code, Cursor, ChatGPT, local LLMs—not locked in.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Efficient</strong>
+                    <p>Smart context reduces per-query tokens 40–70×. Lower costs, better answers.</p>
+                </div>
+                <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
+                    <strong>Community Driven</strong>
+                    <p>Built in public. Issues, discussions, and contributions welcome.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Getting Started</h2>
+            <p>Ready to reduce your per-query token costs by 40–70×?</p>
+            <ul>
+                <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup</li>
+                <li><a href="wiki/Home">Full Documentation</a> — Learn all features</li>
+                <li><a href="https://github.com/dfrostar/neuralmind">GitHub Repository</a> — View source code</li>
+                <li><a href="https://github.com/dfrostar/neuralmind/issues">Report Issues</a> — Help improve NeuralMind</li>
+            </ul>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p style="margin-bottom: 1rem;">
+                <a href="./">Home</a> •
+                <a href="wiki/Home">Docs</a> •
+                <a href="about.html">About</a> •
+                <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            </p>
+            <p style="color: #999;">© 2026 NeuralMind Contributors. MIT License. Not affiliated with NeuralMind.ai.</p>
+        </div>
+    </footer>
+</body>
+</html>

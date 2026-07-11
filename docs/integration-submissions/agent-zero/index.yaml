@@ -1,0 +1,31 @@
+# Draft submission for https://github.com/agent0ai/a0-plugins
+#
+# When ready to submit, copy this file (without the comment header) to
+# the a0-plugins fork at:
+#     plugins/neuralmind/index.yaml
+#
+# Submission rules (verified 2026-05-16):
+#   - title       required, max 50 chars
+#   - description required, max 500 chars
+#   - github      required
+#   - tags        optional, max 5, prefer entries from a0-plugins/TAGS.md
+#   - screenshots optional, max 5, each URL must be reachable, each file ≤2 MB
+#   - total index.yaml size: max 2000 chars
+#   - one plugin per PR
+#   - folder name (`plugins/neuralmind/`) must match `name` in our
+#     repo-root plugin.yaml (currently `neuralmind`)
+#   - optional thumbnail.png/jpg/webp: square, ≤20 KB, placed alongside this
+#     index.yaml inside the PR
+
+title: NeuralMind
+description: >-
+  Semantic code intelligence for AI agents — 40-70× per-query token
+  reduction. Local synapse layer that learns code associations from
+  co-activation. MCP server with live Obsidian-style graph view.
+github: https://github.com/dfrostar/neuralmind
+tags:
+  - mcp
+  - code
+  - context
+  - local-first
+  - rag
