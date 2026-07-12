@@ -437,3 +437,13 @@ def test_resolve_server_token_regenerates_on_corrupt_file(tmp_path):
     assert json.loads(token_file.read_text())["token"] == token
     if os.name == "posix":
         assert (token_file.stat().st_mode & 0o777) == 0o600
+
+
+def test_resolve_server_token_rejects_non_string_token(tmp_path):
+    """A token file whose "token" is not a non-empty string is treated as
+    invalid and regenerated, so _Handler.auth_token is always a real str."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text(json.dumps({"token": 12345}))  # wrong type
+    token = _resolve_server_token(True, token_file)
+    assert isinstance(token, str) and token
+    assert json.loads(token_file.read_text())["token"] == token
