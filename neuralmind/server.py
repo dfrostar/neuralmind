@@ -589,10 +589,10 @@ def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
     if token_file.exists():
         try:
             existing = json.loads(token_file.read_text()).get("token")
-            if existing:
+            if isinstance(existing, str) and existing:
                 return existing
         except Exception:
-            pass  # corrupt/unreadable — fall through and mint a fresh one
+            pass  # corrupt/unreadable/wrong-shape — fall through and mint fresh
     token = secrets.token_urlsafe(16)
     token_file.parent.mkdir(parents=True, exist_ok=True)
     # O_CREAT's mode argument only applies when the file is newly created; an
