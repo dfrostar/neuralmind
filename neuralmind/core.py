@@ -36,6 +36,7 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
+from .structural import StructuralIndex
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -43,6 +44,22 @@ DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
 # Canonical IR artifacts (PRD 1), under <project>/.neuralmind/.
 IR_FILENAME = "index_ir.json"
 IR_META_FILENAME = "ir_meta.json"
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read an int from the environment, falling back on unset/malformed."""
+    try:
+        return int(os.environ[name])
+    except (KeyError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read a float from the environment, falling back on unset/malformed."""
+    try:
+        return float(os.environ[name])
+    except (KeyError, ValueError):
+        return default
 
 
 def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
@@ -171,6 +188,11 @@ class NeuralMind:
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
         self._head_fingerprint: str | None = None
+
+        # Structural edge index (calls/inherits/imports from graph.json). Built
+        # from the loaded graph at build() time; None until then or when the
+        # NEURALMIND_STRUCTURAL kill switch is set.
+        self._structural_index: StructuralIndex | None = None
 
     @property
     def backend_name(self) -> str:
@@ -403,6 +425,23 @@ class NeuralMind:
         # Traced queries use the detailed variant so the PRD 3 trace can show
         # which memory namespace drove each boost (PRD 4).
         self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
+
+        # Structural recall — precise, day-one code wiring (calls/inherits/
+        # imports) from graph.json. Built here from the edges the embedder
+        # already loaded, then injected so L3 can pull a query hit's callers/
+        # callees/base classes into context (budget-neutral). Kill switch:
+        # NEURALMIND_STRUCTURAL=0 skips the index and leaves recall unchanged.
+        if os.environ.get("NEURALMIND_STRUCTURAL") != "0":
+            self._structural_index = StructuralIndex(
+                hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50)
+            )
+            self._structural_index.build_from_edges(
+                getattr(self.embedder, "edges", None) or [],
+                min_confidence=_env_float("NEURALMIND_STRUCTURAL_MIN_CONFIDENCE", 0.0),
+            )
+            self.selector.structural_recall = self._structural_for_selection
+        else:
+            self._structural_index = None
 
         # Get final stats
         final_stats = self.embedder.get_stats()
@@ -1004,6 +1043,117 @@ class NeuralMind:
         if not seeds:
             return []
         return store.spread(seeds, depth=depth, top_k=top_k)
+
+    # ----------------------------------------------------------------- #
+    # Structural graph (calls / inherits / imports — precise, day-one)
+    # ----------------------------------------------------------------- #
+
+    def _ensure_structural_index(self) -> StructuralIndex | None:
+        """Return the structural index, building it on demand if needed.
+
+        ``build()`` wires it, but a caller may reach a structural method on a
+        freshly loaded graph (e.g. the daemon serving one query). Rebuild from
+        the embedder's loaded edges when absent, honoring the kill switch.
+        """
+        if os.environ.get("NEURALMIND_STRUCTURAL") == "0":
+            return None
+        if self._structural_index is None:
+            edges = getattr(self.embedder, "edges", None)
+            if not edges:
+                # Graph may not be loaded yet on a lazy path.
+                try:
+                    self.embedder.load_graph()
+                    edges = getattr(self.embedder, "edges", None)
+                except Exception:
+                    edges = None
+            index = StructuralIndex(hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50))
+            index.build_from_edges(
+                edges or [],
+                min_confidence=_env_float("NEURALMIND_STRUCTURAL_MIN_CONFIDENCE", 0.0),
+            )
+            self._structural_index = index
+        return self._structural_index
+
+    def _structural_for_selection(self, seed_ids: list[str]) -> list[tuple[str, float]]:
+        """Structural neighbors of already-fetched hits, for L3 expansion.
+
+        Same contract as :meth:`_recall_for_selection` but sourced from the
+        static structural graph (callers/callees/base classes) rather than the
+        learned synapse graph. Empty when the index is cold or disabled.
+        """
+        index = self._structural_index
+        if index is None or not seed_ids:
+            return []
+        try:
+            return index.recall(seed_ids)
+        except Exception:
+            return []
+
+    def _resolve_node_id(self, query_or_id: str, resolve: bool) -> str | None:
+        """Turn a symbol name / NL query into a graph node id.
+
+        With ``resolve=False`` the input is treated as a literal node id. With
+        ``resolve=True`` (default for the CLI/MCP ergonomic path) the closest
+        semantic hit is used, preferring an actual code node over a rationale/
+        documentation node — structural questions are about code, and a
+        rationale node carries no calls/inherits edges. Falls back to the raw
+        top hit when only non-code nodes match.
+        """
+        if not resolve:
+            return query_or_id
+        try:
+            hits = self.embedder.search(query_or_id, n=5)
+        except Exception:
+            return None
+        if not hits:
+            return None
+        for hit in hits:
+            file_type = (hit.get("metadata") or {}).get("file_type", "")
+            node_id = hit.get("id", "")
+            if file_type == "code" and node_id and not str(node_id).endswith("__rationale"):
+                return str(node_id)
+        return str(hits[0]["id"]) if hits[0].get("id") else None
+
+    def structural_neighbors(
+        self,
+        query_or_id: str,
+        relations: list[str] | None = None,
+        resolve: bool = True,
+    ) -> dict:
+        """Return the typed structural neighborhood of a symbol.
+
+        Answers "what calls / inherits / imports this?" from the static code
+        graph. ``relations=None`` returns the default views (callers, callees,
+        bases, subclasses, importers); pass raw relation names (``"calls"``,
+        ``"inherits"``, ``"imports"``, or ``"all"``) to widen. Returns
+        ``{"node_id": ..., "neighbors": {view: [ids]}}``; ``neighbors`` is
+        empty for a leaf/unknown node or a disabled index.
+        """
+        self._ensure_built()
+        index = self._ensure_structural_index()
+        node_id = self._resolve_node_id(query_or_id, resolve)
+        if index is None or node_id is None:
+            return {"node_id": node_id, "neighbors": {}}
+        return {"node_id": node_id, "neighbors": index.neighbors(node_id, relations)}
+
+    def blast_radius(self, query_or_id: str, depth: int = 2, resolve: bool = True) -> dict:
+        """Return the transitive reverse-dependency set of a symbol.
+
+        Everything that (transitively) calls, imports, subclasses, or
+        implements the symbol — the code a change to it could break. Depth
+        bounds the number of hops. Returns ``{"node_id": ..., "depth": ...,
+        "blast_radius": [ids]}``.
+        """
+        self._ensure_built()
+        index = self._ensure_structural_index()
+        node_id = self._resolve_node_id(query_or_id, resolve)
+        if index is None or node_id is None:
+            return {"node_id": node_id, "depth": depth, "blast_radius": []}
+        return {
+            "node_id": node_id,
+            "depth": depth,
+            "blast_radius": index.blast_radius(node_id, depth=depth),
+        }
 
     def benchmark(self, sample_queries: list[str] = None) -> dict:
         """
