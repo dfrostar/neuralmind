@@ -3,14 +3,15 @@
 
 import sys
 from pathlib import Path
+
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.comments import Comment
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 
 sys.path.insert(0, str(Path("/home/dtfrost/neuralmind/docs/market-research")))
-from intel import MARKET, FINANCIAL, PRICING, SEGMENTS, COMPETITORS
+from intel import FINANCIAL, MARKET
 
 BLUE = Font(color="0000FF")
 BLACK = Font(color="000000")
@@ -32,8 +33,10 @@ def style_header(cell, text, cols=1):
     cell.fill = HEADER_FILL
     if cols > 1:
         ws.merge_cells(
-            start_row=cell.row, start_column=cell.column,
-            end_row=cell.row, end_column=cell.column + cols - 1,
+            start_row=cell.row,
+            start_column=cell.column,
+            end_row=cell.row,
+            end_column=cell.column + cols - 1,
         )
     for c in range(cell.column, cell.column + cols):
         ws.cell(row=cell.row, column=c).fill = HEADER_FILL
@@ -100,9 +103,17 @@ for i in range(1, 6):
     yr = f"year_{i}"
     inp.cell(row=row, column=1).value = f"Year {i}"
     inp.cell(row=row, column=1).font = BLACK
-    set_input(inp.cell(row=row, column=2), FINANCIAL[yr]["revenue"], f"intel.py: FINANCIAL['{yr}']['revenue']")
-    set_input(inp.cell(row=row, column=3), FINANCIAL[yr]["cost"], f"intel.py: FINANCIAL['{yr}']['cost']")
-    set_input(inp.cell(row=row, column=4), FINANCIAL[yr]["users"], f"intel.py: FINANCIAL['{yr}']['users']")
+    set_input(
+        inp.cell(row=row, column=2),
+        FINANCIAL[yr]["revenue"],
+        f"intel.py: FINANCIAL['{yr}']['revenue']",
+    )
+    set_input(
+        inp.cell(row=row, column=3), FINANCIAL[yr]["cost"], f"intel.py: FINANCIAL['{yr}']['cost']"
+    )
+    set_input(
+        inp.cell(row=row, column=4), FINANCIAL[yr]["users"], f"intel.py: FINANCIAL['{yr}']['users']"
+    )
 
 style_header(inp["A25"], "PRICING ASSUMPTIONS", 4)
 set_input(inp["B27"], 0, "Free open source")
@@ -269,7 +280,10 @@ proj["A15"] = "Total Revenue"
 proj["A15"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=15, column=col), f"=SUM({get_column_letter(col)}12:{get_column_letter(col)}14)")
+    set_formula(
+        proj.cell(row=15, column=col),
+        f"=SUM({get_column_letter(col)}12:{get_column_letter(col)}14)",
+    )
 
 proj["A17"] = "Cost of Revenue"
 proj["A17"].font = BOLD_BLACK
@@ -281,13 +295,18 @@ proj["A18"] = "Gross Profit"
 proj["A18"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=18, column=col), f"={get_column_letter(col)}15-{get_column_letter(col)}17")
+    set_formula(
+        proj.cell(row=18, column=col), f"={get_column_letter(col)}15-{get_column_letter(col)}17"
+    )
 
 proj["A19"] = "Gross Margin %"
 proj["A19"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=19, column=col), f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}18/{get_column_letter(col)}15)")
+    set_formula(
+        proj.cell(row=19, column=col),
+        f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}18/{get_column_letter(col)}15)",
+    )
     proj.cell(row=19, column=col).number_format = "0.0%"
 
 proj["A21"] = "OPERATING EXPENSES"
@@ -312,18 +331,26 @@ proj["A26"] = "Total OpEx"
 proj["A26"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=26, column=col), f"=SUM({get_column_letter(col)}23:{get_column_letter(col)}25)")
+    set_formula(
+        proj.cell(row=26, column=col),
+        f"=SUM({get_column_letter(col)}23:{get_column_letter(col)}25)",
+    )
 
 proj["A28"] = "EBITDA"
 proj["A28"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=28, column=col), f"={get_column_letter(col)}18-{get_column_letter(col)}26")
+    set_formula(
+        proj.cell(row=28, column=col), f"={get_column_letter(col)}18-{get_column_letter(col)}26"
+    )
 proj["A29"] = "EBITDA Margin %"
 proj["A29"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=29, column=col), f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}28/{get_column_letter(col)}15)")
+    set_formula(
+        proj.cell(row=29, column=col),
+        f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}28/{get_column_letter(col)}15)",
+    )
     proj.cell(row=29, column=col).number_format = "0.0%"
 
 proj["A31"] = "Depreciation & Amortization"
@@ -334,7 +361,9 @@ proj["A32"] = "EBIT"
 proj["A32"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=32, column=col), f"={get_column_letter(col)}28-{get_column_letter(col)}31")
+    set_formula(
+        proj.cell(row=32, column=col), f"={get_column_letter(col)}28-{get_column_letter(col)}31"
+    )
 proj["A33"] = "Interest Expense"
 for j in range(1, 6):
     col = j + 1
@@ -346,7 +375,9 @@ proj["A34"] = "EBT"
 proj["A34"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=34, column=col), f"={get_column_letter(col)}32-{get_column_letter(col)}33")
+    set_formula(
+        proj.cell(row=34, column=col), f"={get_column_letter(col)}32-{get_column_letter(col)}33"
+    )
 proj["A35"] = "Tax"
 for j in range(1, 6):
     col = j + 1
@@ -355,12 +386,17 @@ proj["A36"] = "Net Income"
 proj["A36"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=36, column=col), f"={get_column_letter(col)}34-{get_column_letter(col)}35")
+    set_formula(
+        proj.cell(row=36, column=col), f"={get_column_letter(col)}34-{get_column_letter(col)}35"
+    )
 proj["A37"] = "Net Margin %"
 proj["A37"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(proj.cell(row=37, column=col), f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}36/{get_column_letter(col)}15)")
+    set_formula(
+        proj.cell(row=37, column=col),
+        f"=IF({get_column_letter(col)}15=0,0,{get_column_letter(col)}36/{get_column_letter(col)}15)",
+    )
     proj.cell(row=37, column=col).number_format = "0.0%"
 
 
@@ -404,7 +440,9 @@ pricing_data = [
 
 for i, (label, oss_val, team_val, ent_val) in enumerate(pricing_data, start=4):
     pricing.cell(row=i, column=1).value = label
-    pricing.cell(row=i, column=1).font = BOLD_BLACK if label in ("Price", "Annual Contract Value") else BLACK
+    pricing.cell(row=i, column=1).font = (
+        BOLD_BLACK if label in ("Price", "Annual Contract Value") else BLACK
+    )
 
     # OSS column (B) - treat as text, blue if numeric
     pricing.cell(row=i, column=2).value = oss_val
@@ -442,27 +480,43 @@ for j in range(1, 6):
 pricing["A23"] = "Team ARR"
 for j in range(1, 6):
     col = j + 1
-    set_formula(pricing.cell(row=23, column=col), f"='5-Year Projection'!{get_column_letter(col)}12", green=True)
+    set_formula(
+        pricing.cell(row=23, column=col),
+        f"='5-Year Projection'!{get_column_letter(col)}12",
+        green=True,
+    )
 pricing["A24"] = "Enterprise ARR"
 for j in range(1, 6):
     col = j + 1
-    set_formula(pricing.cell(row=24, column=col), f"='5-Year Projection'!{get_column_letter(col)}13", green=True)
+    set_formula(
+        pricing.cell(row=24, column=col),
+        f"='5-Year Projection'!{get_column_letter(col)}13",
+        green=True,
+    )
 pricing["A25"] = "Total ARR"
 pricing["A25"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(pricing.cell(row=25, column=col), f"={get_column_letter(col)}23+{get_column_letter(col)}24")
+    set_formula(
+        pricing.cell(row=25, column=col), f"={get_column_letter(col)}23+{get_column_letter(col)}24"
+    )
 pricing["A27"] = "Team % of Revenue"
 pricing["A27"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(pricing.cell(row=27, column=col), f"=IF({get_column_letter(col)}25=0,0,{get_column_letter(col)}23/{get_column_letter(col)}25)")
+    set_formula(
+        pricing.cell(row=27, column=col),
+        f"=IF({get_column_letter(col)}25=0,0,{get_column_letter(col)}23/{get_column_letter(col)}25)",
+    )
     pricing.cell(row=27, column=col).number_format = "0.0%"
 pricing["A28"] = "Enterprise % of Revenue"
 pricing["A28"].font = BOLD_BLACK
 for j in range(1, 6):
     col = j + 1
-    set_formula(pricing.cell(row=28, column=col), f"=IF({get_column_letter(col)}25=0,0,{get_column_letter(col)}24/{get_column_letter(col)}25)")
+    set_formula(
+        pricing.cell(row=28, column=col),
+        f"=IF({get_column_letter(col)}25=0,0,{get_column_letter(col)}24/{get_column_letter(col)}25)",
+    )
     pricing.cell(row=28, column=col).number_format = "0.0%"
 
 
@@ -741,7 +795,9 @@ for j in range(1, 6):
         set_formula(chk.cell(row=15, column=col), f"='5-Year Projection'!{col_letter}36")
     else:
         prev_col = get_column_letter(col - 1)
-        set_formula(chk.cell(row=15, column=col), f"={prev_col}15+'5-Year Projection'!{col_letter}36")
+        set_formula(
+            chk.cell(row=15, column=col), f"={prev_col}15+'5-Year Projection'!{col_letter}36"
+        )
 
 chk["A16"] = "Total Equity"
 chk["A16"].font = BOLD_BLACK
@@ -813,7 +869,9 @@ for j in range(1, 6):
         set_formula(chk.cell(row=33, column=col), f"=ABS({col_letter}31-({col_letter}7-100000))<1")
     else:
         prev_col = get_column_letter(col - 1)
-        set_formula(chk.cell(row=33, column=col), f"=ABS({col_letter}31-({col_letter}7-{prev_col}7))<1")
+        set_formula(
+            chk.cell(row=33, column=col), f"=ABS({col_letter}31-({col_letter}7-{prev_col}7))<1"
+        )
 
 # ── Revenue Cross-Check ──
 style_header(chk["A36"], "REVENUE CROSS-CHECK: P&L vs PRICING MODEL", 5)
@@ -856,7 +914,9 @@ chk["A48"] = "All P&L cells are formulas?"
 chk["A48"].font = BOLD_BLACK
 chk["B48"] = "Manual review required"
 chk["B48"].font = BLUE
-chk["B48"].comment = Comment("Verify no hardcoded numbers exist in rows 12-37 of '5-Year Projection'", "model")
+chk["B48"].comment = Comment(
+    "Verify no hardcoded numbers exist in rows 12-37 of '5-Year Projection'", "model"
+)
 
 chk["A49"] = "Named ranges defined?"
 chk["A49"].font = BOLD_BLACK
