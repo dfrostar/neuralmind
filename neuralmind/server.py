@@ -580,9 +580,9 @@ def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
     ``auth=False`` always yields ``None`` (no token is read or written), so
     callers can disable auth even when a token file from a previous
     auth-enabled run exists. ``auth=True`` reuses the persisted token when it
-    is present and valid, otherwise it mints a fresh token and persists it.
-    The file is created with ``0o600`` from the start (via ``os.open``) so the
-    token is never briefly world-readable between write and chmod.
+    is present and valid, otherwise it mints a fresh token and persists it at
+    mode ``0o600`` before the token bytes are written, so the secret is never
+    readable at a looser mode.
     """
     if not auth:
         return None
@@ -595,8 +595,14 @@ def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
             pass  # corrupt/unreadable — fall through and mint a fresh one
     token = secrets.token_urlsafe(16)
     token_file.parent.mkdir(parents=True, exist_ok=True)
+    # O_CREAT's mode argument only applies when the file is newly created; an
+    # existing (e.g. corrupt) token file keeps its old, possibly world-readable
+    # perms through O_TRUNC. fchmod the fd to 0o600 *before* writing the token
+    # so the secret is never present on disk at a looser mode.
     fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as fh:
+        if hasattr(os, "fchmod"):  # POSIX only; perms are a no-op on Windows
+            os.fchmod(fd, 0o600)
         fh.write(json.dumps({"token": token}))
     return token
 
