@@ -1404,6 +1404,99 @@ def cmd_skeleton(args):
         print(skeleton)
 
 
+def _structural_label(mind, node_ids):
+    """Map node ids → 'label — source_file:Lnn' strings for display.
+
+    Best-effort: falls back to the raw node id when the embedder can't
+    resolve metadata (e.g. an id present in the graph but not embedded).
+    """
+    labels: dict[str, str] = {}
+    get_nodes_by_ids = getattr(mind.embedder, "get_nodes_by_ids", None)
+    if callable(get_nodes_by_ids):
+        try:
+            for node in get_nodes_by_ids(list(node_ids)):
+                meta = node.get("metadata", {})
+                label = meta.get("label", node.get("id"))
+                src = meta.get("source_file", "")
+                if src:
+                    src = src.replace("\\", "/").split("/")[-1]
+                labels[node.get("id")] = f"{label} — {src}" if src else str(label)
+        except Exception:
+            pass
+    return {nid: labels.get(nid, nid) for nid in node_ids}
+
+
+def cmd_structural(args):
+    """Show how a symbol is wired into the codebase from the static code graph.
+
+    Answers "what calls / inherits / imports this?" — the precise structural
+    relationships graphify extracts, distinct from the learned synapse graph.
+    """
+    from .core import create_mind
+
+    mind = create_mind(args.project_path, auto_build=True)
+
+    if getattr(args, "blast_radius", False):
+        result = mind.blast_radius(args.symbol, depth=args.depth)
+        ids = result.get("blast_radius", [])
+        if args.json:
+            print(json.dumps(result, indent=2))
+            return
+        node_id = result.get("node_id")
+        if not node_id:
+            print(f"No graph node matched '{args.symbol}'. Try `neuralmind build .` first.")
+            sys.exit(1)
+        print(f"## Blast radius of {node_id} (depth {args.depth}) — {len(ids)} symbols\n")
+        if not ids:
+            print("Nothing depends on this symbol in the static graph.")
+            return
+        for text in _structural_label(mind, ids).values():
+            print(f"- {text}")
+        return
+
+    relations = None
+    if getattr(args, "relation", None) and args.relation != "all":
+        relations = [args.relation]
+    elif getattr(args, "relation", None) == "all":
+        relations = ["all"]
+
+    result = mind.structural_neighbors(args.symbol, relations=relations)
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+
+    node_id = result.get("node_id")
+    neighbors = result.get("neighbors", {})
+    if not node_id:
+        print(f"No graph node matched '{args.symbol}'. Try `neuralmind build .` first.")
+        sys.exit(1)
+    print(f"## Structural neighbors of {node_id}\n")
+    if not neighbors:
+        print("No structural edges for this symbol (leaf node, or thin extractor).")
+        return
+    all_ids = [nid for ids in neighbors.values() for nid in ids]
+    labels = _structural_label(mind, all_ids)
+    view_titles = {
+        "callers": "Callers",
+        "callees": "Callees",
+        "bases": "Base classes",
+        "subclasses": "Subclasses",
+        "importers": "Importers",
+        "imports": "Imports",
+        "members": "Members",
+        "container": "Container",
+        "implementers": "Implementers",
+        "interfaces": "Interfaces",
+        "uses": "Uses",
+        "used_by": "Used by",
+    }
+    for view, ids in neighbors.items():
+        print(f"### {view_titles.get(view, view.title())} ({len(ids)})")
+        for nid in ids:
+            print(f"- {labels.get(nid, nid)}")
+        print()
+
+
 def cmd_watch(args):
     """Run the file watcher → synapse co-activation daemon in the foreground.
 
@@ -2314,6 +2407,35 @@ def main():
     )
     skel_p.add_argument("--json", "-j", action="store_true")
     skel_p.set_defaults(func=cmd_skeleton)
+
+    # Structural command — typed structural neighbors (calls/inherits/imports)
+    struct_p = subparsers.add_parser(
+        "structural",
+        help="Show how a symbol is wired: callers, callees, base/sub classes, importers",
+    )
+    struct_p.add_argument("symbol", help="Symbol name or NL description; resolved to a graph node")
+    struct_p.add_argument(
+        "--relation",
+        choices=["calls", "inherits", "imports", "contains", "all"],
+        default=None,
+        help="Limit to one relation (default: callers/callees/bases/subclasses/importers)",
+    )
+    struct_p.add_argument(
+        "--blast-radius",
+        dest="blast_radius",
+        action="store_true",
+        help="Show the transitive reverse-dependency set (what a change would affect)",
+    )
+    struct_p.add_argument(
+        "--depth", type=int, default=2, help="Blast-radius hop depth (default: 2)"
+    )
+    struct_p.add_argument(
+        "--project-path",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    struct_p.add_argument("--json", "-j", action="store_true")
+    struct_p.set_defaults(func=cmd_structural)
 
     # watch command — run the file activity → synapse co-activation daemon
     watch_p = subparsers.add_parser(

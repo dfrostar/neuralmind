@@ -101,6 +101,16 @@ class ContextSelector:
     SYNAPSE_PULL_IN_MAX = 2
     SYNAPSE_PULL_IN_MIN_ENERGY = 0.15
 
+    # Structural recall (see _apply_structural_expansion): the static code
+    # graph's callers/callees/base classes for the top hits. Boost weight is
+    # >= the synapse weight because structural edges are precise (compiler- or
+    # AST-derived), not learned. Same budget-neutral displacement discipline:
+    # a pulled-in structural neighbor replaces the weakest vector hit, never
+    # adds to the count.
+    STRUCTURAL_SEED_K = 3
+    STRUCTURAL_BOOST_WEIGHT = 0.35
+    STRUCTURAL_PULL_IN_MAX = 2
+
     # L2 recall depth — how many community summaries L2 surfaces per query
     # (the budget cap on get_l2_context). Historically a hard-coded 3; the
     # self-improvement engine's selector auto-tuner (neuralmind/self_improve.py)
@@ -160,6 +170,13 @@ class ContextSelector:
         # attribute each boost to the memory namespace that drove it. Only
         # consulted when a trace is active.
         self.synapse_recall_detailed = None
+
+        # Optional structural recall, injected by NeuralMind.build().
+        # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, weight]].
+        # Returns the static code graph's callers/callees/base classes of the
+        # seeds. Left None so a selector built without a structural index (or on
+        # a graph with no structural edges) behaves exactly as before.
+        self.structural_recall = None
 
         # Cache for layer content
         self._l0_cache: str | None = None
@@ -489,6 +506,10 @@ class ContextSelector:
         """True when synapse recall isn't wired or the kill switch is set."""
         return not self.synapse_recall or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0"
 
+    def _structural_disabled(self) -> bool:
+        """True when structural recall isn't wired or the kill switch is set."""
+        return not self.structural_recall or os.environ.get("NEURALMIND_STRUCTURAL") == "0"
+
     def _recall_energy(self, seeds: list[str]) -> dict[str, float]:
         """Spread from ``seeds`` and return {node_id: activation}, or {}."""
         if not seeds:
@@ -632,6 +653,86 @@ class ContextSelector:
             node["_synapse_recalled"] = True
         return kept + fetched
 
+    def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
+        """Fold the static code graph's wiring into L3 hits.
+
+        Budget-neutral, and a structural analogue of :meth:`_apply_synapse_boost`.
+        Seeds from the top hits, asks the structural index for their
+        callers/callees/base classes, then (a) boosts and reorders results the
+        graph already surfaced and (b) swaps the weakest vector hits for
+        strongly-wired neighbors vector search missed — so an edit query that
+        lands on a function also pulls in its callers, without spending extra
+        tokens.
+
+        No-op (returns ``results`` unchanged) when recall isn't wired, the kill
+        switch is set, or the graph has no structural edges — so behavior is
+        byte-identical to a build without structural edges. Runs *before* the
+        synapse boost: structure is precise and claims a displacement slot
+        first, then learned co-activation re-ranks what remains.
+        """
+        if self._structural_disabled():
+            return results
+
+        seeds = [r["id"] for r in results[: self.STRUCTURAL_SEED_K] if r.get("id")]
+        if not seeds:
+            return results
+        try:
+            recalled = dict(self.structural_recall(seeds))
+        except Exception:
+            return results
+        if not recalled:
+            return results
+
+        # Shallow copies: _fetch_search caches and reuses these dicts, so
+        # mutating score in place would corrupt the cached vector scores.
+        results = [dict(r) for r in results]
+        seed_set = set(seeds)
+        present = {r.get("id") for r in results}
+
+        # (a) Boost results already present that the structural graph wires to
+        #     a seed, then reorder. Token-neutral (same nodes).
+        boosted = False
+        for r in results:
+            nid = r.get("id")
+            if nid in seed_set or nid not in recalled:
+                continue
+            boost = self.STRUCTURAL_BOOST_WEIGHT * recalled[nid]
+            r["score"] = r.get("score", 0.0) + boost
+            r["_structural_boost"] = boost
+            boosted = True
+        if boosted:
+            results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
+
+        # (b) Swap the weakest vector hits for the strongest absent structural
+        #     neighbors. Displacement keeps the count fixed → token-neutral.
+        get_nodes_by_ids = getattr(self.embedder, "get_nodes_by_ids", None)
+        if not callable(get_nodes_by_ids):
+            return results
+
+        candidates = sorted(
+            ((nid, w) for nid, w in recalled.items() if nid not in present),
+            key=lambda x: x[1],
+            reverse=True,
+        )[: self.STRUCTURAL_PULL_IN_MAX]
+        if not candidates:
+            return results
+
+        num_swap = min(len(candidates), max(0, len(results) - 1))
+        if num_swap <= 0:
+            return results
+        weight_by_id = dict(candidates[:num_swap])
+        fetched = get_nodes_by_ids(list(weight_by_id))
+        if not fetched:
+            return results
+
+        kept = results[: len(results) - len(fetched)]
+        for node in fetched:
+            boost = self.STRUCTURAL_BOOST_WEIGHT * weight_by_id.get(node.get("id"), 0.0)
+            node["score"] = boost
+            node["_structural_boost"] = boost
+            node["_structural_recalled"] = True
+        return kept + fetched
+
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
@@ -644,6 +745,12 @@ class ContextSelector:
 
         if not results:
             return "", 0
+
+        # Fold in the static structural graph first: pull a query hit's
+        # callers/callees/base classes into contention (precise, day-one
+        # wiring). Runs before the synapse boost so structure claims a
+        # displacement slot, then learned association re-ranks what remains.
+        results = self._apply_structural_expansion(results)
 
         # Fold in the live synapse graph: results the agent has historically
         # co-activated with this query's top hits get a relevance nudge, so
@@ -665,14 +772,21 @@ class ContextSelector:
             meta = result.get("metadata", {})
             score = result.get("score", 0)
             synapse = result.get("_synapse_boost", 0.0)
+            structural = result.get("_structural_boost", 0.0)
 
-            # Show synapse boost in label if applied
+            # Show synapse / structural boosts in the label when applied.
             synapse_label = f" (+{synapse:.2f} synapse)" if synapse > 0 else ""
-            recalled_label = " [recalled]" if result.get("_synapse_recalled") else ""
+            structural_label = f" (+{structural:.2f} structural)" if structural > 0 else ""
+            if result.get("_structural_recalled"):
+                recalled_label = " [wired]"
+            elif result.get("_synapse_recalled"):
+                recalled_label = " [recalled]"
+            else:
+                recalled_label = ""
 
             parts.append(
                 f"{i}. **{meta.get('label', 'unknown')}**{recalled_label} "
-                f"(score: {score:.2f}{synapse_label})"
+                f"(score: {score:.2f}{structural_label}{synapse_label})"
             )
             parts.append(f"   Type: {meta.get('file_type', 'unknown')}")
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
