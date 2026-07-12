@@ -574,6 +574,33 @@ def _start_activity_watcher(mind: NeuralMind):
         return None
 
 
+def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
+    """Resolve the server bearer token, honoring ``auth`` and persistence.
+
+    ``auth=False`` always yields ``None`` (no token is read or written), so
+    callers can disable auth even when a token file from a previous
+    auth-enabled run exists. ``auth=True`` reuses the persisted token when it
+    is present and valid, otherwise it mints a fresh token and persists it.
+    The file is created with ``0o600`` from the start (via ``os.open``) so the
+    token is never briefly world-readable between write and chmod.
+    """
+    if not auth:
+        return None
+    if token_file.exists():
+        try:
+            existing = json.loads(token_file.read_text()).get("token")
+            if existing:
+                return existing
+        except Exception:
+            pass  # corrupt/unreadable — fall through and mint a fresh one
+    token = secrets.token_urlsafe(16)
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(json.dumps({"token": token}))
+    return token
+
+
 def serve(
     project_path: str,
     host: str = "127.0.0.1",
@@ -592,17 +619,7 @@ def serve(
         raise RuntimeError(build.get("error", "build failed"))
 
     token_file = Path.home() / ".neuralmind" / "server-token.json"
-    if token_file.exists():
-        try:
-            token = json.loads(token_file.read_text())["token"]
-        except Exception:
-            token = secrets.token_urlsafe(16) if auth else None
-    else:
-        token = secrets.token_urlsafe(16) if auth else None
-        if auth:
-            token_file.parent.mkdir(parents=True, exist_ok=True)
-            token_file.write_text(json.dumps({"token": token}))
-            token_file.chmod(0o600)
+    token = _resolve_server_token(auth, token_file)
 
     _Handler.mind = mind
     _Handler.auth_token = token
