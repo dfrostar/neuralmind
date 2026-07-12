@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -416,7 +417,9 @@ def test_resolve_server_token_persists_and_reuses(tmp_path):
     first = _resolve_server_token(True, token_file)
     assert first
     assert token_file.exists()
-    assert (token_file.stat().st_mode & 0o777) == 0o600
+    if os.name == "posix":
+        # Windows does not honor Unix permission bits; skip the mode check there.
+        assert (token_file.stat().st_mode & 0o777) == 0o600
     # A second call reuses the persisted token rather than regenerating.
     assert _resolve_server_token(True, token_file) == first
 
