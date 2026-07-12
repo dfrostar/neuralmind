@@ -141,7 +141,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 
 - **Security disclosures:** see [`SECURITY.md`](../SECURITY.md)
 - **Compliance questions for your specific environment:** open a [GitHub Discussion](https://github.com/dfrostar/neuralmind/discussions) tagged "compliance"
-- **Procurement / commercial questions:** standard issue tracker; NeuralMind is MIT and there is no commercial entity behind it — your support contract is with whoever you choose to engage for deployment
+- **Procurement / commercial questions:** email [hello@neuralmind.uk](mailto:hello@neuralmind.uk). The software itself is MIT-licensed and free; commercial support for deployment, integration, and evaluation is available. Evaluating teams can request a **free AI-spend assessment** — we benchmark NeuralMind against one of your repos and report your actual token-reduction ratio.
 
 ---
 

@@ -40,7 +40,7 @@ For a 50-engineer team paying $30/engineer/month for AI coding tools, that's $18
 
 This isn't a benchmark claim — it runs in CI on every commit. Every release is pinned to real OSS repos. Full methodology: github.com/dfrostar/neuralmind
 
-Open source on PyPI. Enterprise tier coming Q3.
+Open source on PyPI. Free AI-spend assessment for evaluating teams: hello@neuralmind.uk
 
 ━
 #AI #CFO #CodeIntelligence #Engineering #DeveloperTools #OpenSource
@@ -87,7 +87,7 @@ NeuralMind makes all three visible:
 2. Token efficiency gains (before/after, concrete numbers)
 3. Full audit trail (what was searched, what was used, what was returned)
 
-If you're a CFO who approved AI tool spend and wants to know the actual ROI — let's talk.
+If you're a CFO who approved AI tool spend and wants to know the actual ROI — we'll run a free assessment on one of your repos and show you your numbers: hello@neuralmind.uk
 
 ━
 #CFO #Engineering #AI #ROI #CodeIntelligence #Leadership
@@ -135,7 +135,7 @@ We help engineering teams:
 
 Result: 40-70x token reduction, a defensible AI bill, and the audit trail your SOC 2 review needs.
 
-If you're rolling out AI coding tools at scale — or trying to justify the spend you already have — we should talk.
+If you're rolling out AI coding tools at scale — or trying to justify the spend you already have — start with a free AI-spend assessment: hello@neuralmind.uk
 
 Open source: github.com/dfrostar/neuralmind
 
