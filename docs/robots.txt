@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dfrostar.github.io/neuralmind/sitemap.xml
+Sitemap: https://neuralmind.uk/sitemap.xml
