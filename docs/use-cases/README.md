@@ -15,5 +15,6 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | **[Slim & sovereign: ChromaDB-free local stack](./chromadb-free-local.md)** | **Security-sensitive teams, tiny-footprint installs (v0.21.0+)** | **Embed + search with zero ChromaDB — smaller deps, smaller index, fewer advisories** |
 | **[Branch-isolated memory & team baselines](./branch-isolated-memory.md)** | **Heavy branchers, teams onboarding new devs (v0.24.0+)** | **Keep feature-branch learning out of `main`'s memory; ship a `shared` baseline as a versioned bundle** |
 | **[Unified context engineering stack (NeuralMind + Ponytail + Headroom)](./unified-stack.md)** | **Teams who've hit the ceiling on single-tool optimization** | **Eliminate token waste at retrieval, transport, and generation simultaneously** |
+| **[Blast radius before a rename](./blast-radius-before-a-rename.md)** | **Anyone (or any agent) about to rename, re-sign, or delete a symbol (v0.42.0+)** | **See every caller / importer / subclass a change would touch, before you edit — from the static code graph** |
 
 Not sure which applies? Start with the [symptom / goal table in the main README](../../README.md#-when-do-i-reach-for-neuralmind).
