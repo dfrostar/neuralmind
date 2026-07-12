@@ -425,9 +425,15 @@ def test_resolve_server_token_persists_and_reuses(tmp_path):
 
 
 def test_resolve_server_token_regenerates_on_corrupt_file(tmp_path):
-    """A corrupt token file is replaced with a fresh, persisted token."""
+    """A corrupt token file is replaced with a fresh, persisted token, and its
+    permissions are tightened to 0o600 even if the pre-existing file was loose
+    (O_CREAT's mode does not apply when O_TRUNC reuses an existing inode)."""
     token_file = tmp_path / "server-token.json"
     token_file.write_text("not-valid-json{")
+    if os.name == "posix":
+        os.chmod(token_file, 0o644)  # pre-existing world-readable file
     token = _resolve_server_token(True, token_file)
     assert token
     assert json.loads(token_file.read_text())["token"] == token
+    if os.name == "posix":
+        assert (token_file.stat().st_mode & 0o777) == 0o600
