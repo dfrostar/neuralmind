@@ -212,6 +212,29 @@ are symbol-level, not community-level; forcing them through the
 require synthesizing pseudo-nodes we don't want. Symbol-level L3 expansion
 is where the value is.
 
+### 6.1 Shipping decision — L3 expansion is opt-in (default off)
+
+The L3 expansion is wired but **not injected by default**. `build()` sets
+`selector.structural_recall` only when `NEURALMIND_STRUCTURAL_RECALL=1`; the
+index and the query tools (§5, §7, §8) are always on.
+
+Rationale, found during implementation: the structural signal is *strong*.
+On the reference `onboarding` eval, turning L3 expansion on lifted the
+**cold** (no team memory) top-k hit-rate from 0.759 → 0.843 — so high it
+saturated the metric and left the learned synapse layer no headroom, driving
+the gated `onboarding_lift` **negative** (−0.074). This is the classic
+dual-reranker interaction the project deliberately avoided (PILOT-BRD:
+"dual reranker confusion → single synapse layer"). Faithfulness was
+unaffected (+0.19); the regression is specifically synapse-vs-structural
+competition for top-k slots.
+
+Keeping the expansion opt-in preserves byte-identical default retrieval (so
+the onboarding gate stays green at +0.009) while still shipping the
+high-value, zero-risk query surface. Making it default-on is deferred to a
+follow-up that resolves the composition (e.g. structural only fills slots
+the synapse boost declined, or a unified single-pass scorer) — tracked in
+§15.
+
 ## 7. Component 4 — MCP tool (`mcp_server.py`)
 
 Clone `tool_synaptic_neighbors` (`:176-194`):
@@ -265,7 +288,8 @@ still applies to drop `community_*` synapse endpoints). No new endpoint.
 
 | Env var | Default | Effect |
 | --- | --- | --- |
-| `NEURALMIND_STRUCTURAL` | `1` (on) | `0` → index never built, `structural_recall` stays None, recall byte-identical to v0.41.0. Kill switch. |
+| `NEURALMIND_STRUCTURAL` | `1` (on) | Master switch for the index + query tools. `0` → index never built, retrieval byte-identical to v0.41.0. |
+| `NEURALMIND_STRUCTURAL_RECALL` | `0` (**off**) | `1` → inject `structural_recall` so L3 folds in structural neighbors. **Shipped off** — see §6.1. |
 | `NEURALMIND_STRUCTURAL_MIN_CONFIDENCE` | `0.0` | Drop edges below this `confidence_score`. Raise toward `1.0` to trust only SCIP-precise edges when `NEURALMIND_PRECISION` is on. |
 | `NEURALMIND_STRUCTURAL_HUB_DEGREE` | `50` | Per-relation degree cap for recall/blast-radius. |
 
