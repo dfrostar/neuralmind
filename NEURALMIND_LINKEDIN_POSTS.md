@@ -2,6 +2,30 @@
 
 ---
 
+## LIVE — Company Page, pinned post (CFO / ROI)
+
+*Published on the NeuralMind company page. Kept here so the repo mirrors what's live. Claims verified against `neuralmind/audit.py` (local audit trail), `neuralmind/embedder.py` (local ChromaDB embeddings — no embedding API), the CI self-benchmark (6.1× fixture / 40–70× real repos), and `docs/COMPLIANCE-SUMMARY.md` (NeuralMind is not itself SOC 2 certified — the audit trail is evidence for the operator's review).*
+
+CFOs are asking: "What's our AI coding bill? What's the ROI?"
+
+Most can't answer, because context waste is invisible.
+
+Your engineers ask Copilot or Cursor ~20 questions a day. Each answer pulls far more context than it needs. NeuralMind serves only the relevant ~2% to every query — 40–70× fewer context tokens on real repos (6.1× on our public benchmark fixture, reproducible in CI). Multiply that by your team size and query volume, and the context line on your AI bill drops by the same factor.
+
+Key facts:
+→ NeuralMind makes zero external calls of its own — embeddings live on your machine, so only the minimal relevant slice ever reaches your AI tool's model.
+→ Self-learning: a persistent synapse graph that gets sharper with every query.
+→ Built-in local audit trail — every query logged with provenance, ready as evidence for your SOC 2 review.
+→ Open source on PyPI. Real benchmarks, no hype.
+
+If you're a CFO or VP Engineering trying to understand your AI coding economics — let's talk.
+
+Open source: https://lnkd.in/gbxMUdHF
+
+#AI #CodeIntelligence #CFO #Engineering #DeveloperTools #LLM #OpenSource
+
+---
+
 ## Post #1 (MON) — CFO Thought Leadership
 
 *Benchmarks are yours now. Here's what they mean for the CFO.*
