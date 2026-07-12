@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -20,6 +21,7 @@ from neuralmind.server import (
     _ensure_graph_or_explain,
     _Handler,
     _resolve_open_target,
+    _resolve_server_token,
 )
 
 
@@ -358,9 +360,7 @@ def test_auth_enabled_flows():
         assert "queries" in data
 
         # (2b) Valid token via Cookie header → 200
-        conn.request(
-            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=secret-token"}
-        )
+        conn.request("GET", "/api/queries?n=5", headers={"Cookie": "nm_token=secret-token"})
         resp = conn.getresponse()
         assert resp.status == 200
 
@@ -370,9 +370,7 @@ def test_auth_enabled_flows():
         assert resp.status == 401
 
         # (3b) Invalid token via Cookie header → 401
-        conn.request(
-            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=wrong-token"}
-        )
+        conn.request("GET", "/api/queries?n=5", headers={"Cookie": "nm_token=wrong-token"})
         resp = conn.getresponse()
         assert resp.status == 401
 
@@ -404,3 +402,48 @@ def test_allowed_open_paths_only_includes_in_project_files(tmp_path):
         assert allowed == {str(keep.resolve())}
     finally:
         outside.unlink()
+
+
+def test_resolve_server_token_honors_auth_false(tmp_path):
+    """auth=False yields no token even when a persisted token file exists."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text(json.dumps({"token": "preexisting-token"}))
+    assert _resolve_server_token(False, token_file) is None
+
+
+def test_resolve_server_token_persists_and_reuses(tmp_path):
+    """auth=True mints, persists (0o600), then reuses the same token."""
+    token_file = tmp_path / "sub" / "server-token.json"
+    first = _resolve_server_token(True, token_file)
+    assert first
+    assert token_file.exists()
+    if os.name == "posix":
+        # Windows does not honor Unix permission bits; skip the mode check there.
+        assert (token_file.stat().st_mode & 0o777) == 0o600
+    # A second call reuses the persisted token rather than regenerating.
+    assert _resolve_server_token(True, token_file) == first
+
+
+def test_resolve_server_token_regenerates_on_corrupt_file(tmp_path):
+    """A corrupt token file is replaced with a fresh, persisted token, and its
+    permissions are tightened to 0o600 even if the pre-existing file was loose
+    (O_CREAT's mode does not apply when O_TRUNC reuses an existing inode)."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text("not-valid-json{")
+    if os.name == "posix":
+        os.chmod(token_file, 0o644)  # pre-existing world-readable file
+    token = _resolve_server_token(True, token_file)
+    assert token
+    assert json.loads(token_file.read_text())["token"] == token
+    if os.name == "posix":
+        assert (token_file.stat().st_mode & 0o777) == 0o600
+
+
+def test_resolve_server_token_rejects_non_string_token(tmp_path):
+    """A token file whose "token" is not a non-empty string is treated as
+    invalid and regenerated, so _Handler.auth_token is always a real str."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text(json.dumps({"token": 12345}))  # wrong type
+    token = _resolve_server_token(True, token_file)
+    assert isinstance(token, str) and token
+    assert json.loads(token_file.read_text())["token"] == token

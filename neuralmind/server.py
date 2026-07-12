@@ -574,6 +574,39 @@ def _start_activity_watcher(mind: NeuralMind):
         return None
 
 
+def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
+    """Resolve the server bearer token, honoring ``auth`` and persistence.
+
+    ``auth=False`` always yields ``None`` (no token is read or written), so
+    callers can disable auth even when a token file from a previous
+    auth-enabled run exists. ``auth=True`` reuses the persisted token when it
+    is present and valid, otherwise it mints a fresh token and persists it at
+    mode ``0o600`` before the token bytes are written, so the secret is never
+    readable at a looser mode.
+    """
+    if not auth:
+        return None
+    if token_file.exists():
+        try:
+            existing = json.loads(token_file.read_text()).get("token")
+            if isinstance(existing, str) and existing:
+                return existing
+        except Exception:
+            pass  # corrupt/unreadable/wrong-shape — fall through and mint fresh
+    token = secrets.token_urlsafe(16)
+    token_file.parent.mkdir(parents=True, exist_ok=True)
+    # O_CREAT's mode argument only applies when the file is newly created; an
+    # existing (e.g. corrupt) token file keeps its old, possibly world-readable
+    # perms through O_TRUNC. fchmod the fd to 0o600 *before* writing the token
+    # so the secret is never present on disk at a looser mode.
+    fd = os.open(token_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as fh:
+        if hasattr(os, "fchmod"):  # POSIX only; perms are a no-op on Windows
+            os.fchmod(fd, 0o600)
+        fh.write(json.dumps({"token": token}))
+    return token
+
+
 def serve(
     project_path: str,
     host: str = "127.0.0.1",
@@ -592,17 +625,7 @@ def serve(
         raise RuntimeError(build.get("error", "build failed"))
 
     token_file = Path.home() / ".neuralmind" / "server-token.json"
-    if token_file.exists():
-        try:
-            token = json.loads(token_file.read_text())["token"]
-        except Exception:
-            token = secrets.token_urlsafe(16) if auth else None
-    else:
-        token = secrets.token_urlsafe(16) if auth else None
-        if auth:
-            token_file.parent.mkdir(parents=True, exist_ok=True)
-            token_file.write_text(json.dumps({"token": token}))
-            token_file.chmod(0o600)
+    token = _resolve_server_token(auth, token_file)
 
     _Handler.mind = mind
     _Handler.auth_token = token

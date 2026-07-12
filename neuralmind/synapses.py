@@ -241,7 +241,10 @@ def _chunks(items: list, size: int) -> Iterable[list]:
         yield items[i : i + size]
 
 
-DECAY_NAMESPACE_CHUNK = 1000
+# Namespaces per chunked decay statement. Kept under 997 so that, with the
+# handful of extra bound params in each UPDATE/DELETE, the statement stays
+# below SQLite's legacy 999 bound-variable limit (SQLITE_MAX_VARIABLE_NUMBER).
+DECAY_NAMESPACE_CHUNK = 900
 
 
 class SynapseStore:
@@ -263,8 +266,6 @@ class SynapseStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_schema()
 
-    BATCH_SIZE = 500
-
     @contextmanager
     def _connect(self):
         conn = sqlite3.connect(self.db_path, timeout=5.0, isolation_level=None)
@@ -274,27 +275,6 @@ class SynapseStore:
             yield conn
         finally:
             conn.close()
-
-    def _batch_execute(self, sql: str, rows: list[tuple]) -> None:
-        """Execute a parameterized statement in batched transactions.
-
-        Rows are split into chunks of ``BATCH_SIZE``; each chunk runs its own
-        BEGIN/COMMIT.  This keeps individual transactions small (better WAL
-        behavior, bounded lock hold) while still giving atomic per-chunk
-        writes via executemany.
-        """
-        if not rows:
-            return
-        with self._connect() as conn:
-            for i in range(0, len(rows), self.BATCH_SIZE):
-                chunk = rows[i : i + self.BATCH_SIZE]
-                conn.execute("BEGIN")
-                try:
-                    conn.executemany(sql, chunk)
-                    conn.execute("COMMIT")
-                except Exception:
-                    conn.execute("ROLLBACK")
-                    raise
 
     # ----------------------------------------------------------------- #
     # Schema + migration (PRD 4)
@@ -487,35 +467,47 @@ class SynapseStore:
 
         node_rows = [(n, ns, ts) for n in ids]
         pair_rows = [
-            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta)
-            for a, b in pairs
+            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta) for a, b in pairs
         ]
 
-        self._batch_execute(
-            """
-            INSERT INTO node_activations(
-                node_id, namespace, activation_count, last_activated
-            )
-            VALUES (?, ?, 1, ?)
-            ON CONFLICT(node_id, namespace) DO UPDATE SET
-                activation_count = activation_count + 1,
-                last_activated = excluded.last_activated
-            """,
-            node_rows,
-        )
-        self._batch_execute(
-            """
-            INSERT INTO synapses(
-                node_a, node_b, namespace, weight, activation_count,
-                last_activated, created_at
-            ) VALUES (?, ?, ?, ?, 1, ?, ?)
-            ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
-                weight = MIN(?, synapses.weight + ?),
-                activation_count = synapses.activation_count + 1,
-                last_activated = excluded.last_activated
-            """,
-            pair_rows,
-        )
+        # Activation bumps and synapse upserts must land together or not at
+        # all: a partial commit would leave activation counters ahead of the
+        # edges they belong to, which permanently skews LTP gating. Both run
+        # in ONE transaction, batched with executemany so there is no
+        # per-row Python round-trip (the real cost the batching fix targeted).
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO node_activations(
+                        node_id, namespace, activation_count, last_activated
+                    )
+                    VALUES (?, ?, 1, ?)
+                    ON CONFLICT(node_id, namespace) DO UPDATE SET
+                        activation_count = activation_count + 1,
+                        last_activated = excluded.last_activated
+                    """,
+                    node_rows,
+                )
+                if pair_rows:
+                    conn.executemany(
+                        """
+                        INSERT INTO synapses(
+                            node_a, node_b, namespace, weight, activation_count,
+                            last_activated, created_at
+                        ) VALUES (?, ?, ?, ?, 1, ?, ?)
+                        ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                            weight = MIN(?, synapses.weight + ?),
+                            activation_count = synapses.activation_count + 1,
+                            last_activated = excluded.last_activated
+                        """,
+                        pair_rows,
+                    )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
         if pairs:
             # Best-effort: never let the graph-view stream break a real write.
@@ -636,18 +628,25 @@ class SynapseStore:
         the TRANSITION_* counterparts. Returns counts of decayed and pruned
         for both signals.
 
-        Default-namespace decay is chunked (``DECAY_NAMESPACE_CHUNK``
-        namespaces per transaction) so large synapse stores never hold a
-        full-table lock for the duration of the entire decay tick.
+        Decay multiplies weights, so it is *not* idempotent: running it
+        twice decays twice. The whole tick therefore commits in ONE
+        transaction — a partial commit followed by a retry (after a crash)
+        would double-decay the already-committed namespaces. Default
+        namespaces are still processed in bounded ``IN (...)`` chunks
+        (``DECAY_NAMESPACE_CHUNK`` per statement) to keep any single
+        statement under SQLite's bound-variable limit, but every statement
+        lands inside the same BEGIN/COMMIT.
         """
         ts = now if now is not None else time.time()
         pruned: int = 0
         pruned_transitions: int = 0
+        # Snapshot the namespaces to decay before opening the write txn.
+        default_nss = self._default_namespaces()
 
-        # --- ephemeral namespace: fast decay, no LTP ---------------------
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
+                # ephemeral: fast decay, no LTP floor, prune regardless of count.
                 conn.execute(
                     "UPDATE synapses SET weight = weight * (1.0 - ?) WHERE namespace = ?",
                     (EPHEMERAL_DECAY_RATE, EPHEMERAL_NAMESPACE),
@@ -657,15 +656,8 @@ class SynapseStore:
                     (EPHEMERAL_NAMESPACE, PRUNE_THRESHOLD),
                 )
                 pruned += cur.rowcount
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
 
-        # --- shared namespace: sticky decay, LTP floor -------------------
-        with self._connect() as conn:
-            conn.execute("BEGIN")
-            try:
+                # shared: sticky decay; LTP floor still honored.
                 conn.execute(
                     """
                     UPDATE synapses
@@ -688,18 +680,10 @@ class SynapseStore:
                     (SHARED_NAMESPACE, PRUNE_THRESHOLD, LTP_THRESHOLD),
                 )
                 pruned += cur.rowcount
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
 
-        # --- default namespaces (personal, branch:*, custom): chunked ----
-        default_nss = self._default_namespaces()
-        for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
-            ph = ", ".join("?" for _ in chunk)
-            with self._connect() as conn:
-                conn.execute("BEGIN")
-                try:
+                # default policy: personal, branch:*, and any custom namespace.
+                for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
+                    ph = ", ".join("?" for _ in chunk)
                     conn.execute(
                         f"""
                         UPDATE synapses
@@ -725,15 +709,8 @@ class SynapseStore:
                         (*chunk, PRUNE_THRESHOLD, LTP_THRESHOLD),
                     )
                     pruned += cur.rowcount
-                    conn.execute("COMMIT")
-                except Exception:
-                    conn.execute("ROLLBACK")
-                    raise
 
-        # --- transitions: ephemeral + shared (single ns each) -----------
-        with self._connect() as conn:
-            conn.execute("BEGIN")
-            try:
+                # transitions: ephemeral + shared (single ns each).
                 conn.execute(
                     "UPDATE synapse_transitions SET weight = weight * (1.0 - ?) "
                     "WHERE namespace = ?",
@@ -744,17 +721,9 @@ class SynapseStore:
                     "WHERE namespace = ?",
                     (SHARED_TRANSITION_DECAY_RATE, SHARED_NAMESPACE),
                 )
-                conn.execute("COMMIT")
-            except Exception:
-                conn.execute("ROLLBACK")
-                raise
-
-        # --- transitions: default namespaces, chunked updates -------------
-        for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
-            ph = ", ".join("?" for _ in chunk)
-            with self._connect() as conn:
-                conn.execute("BEGIN")
-                try:
+                # transitions: default namespaces, chunked updates.
+                for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
+                    ph = ", ".join("?" for _ in chunk)
                     conn.execute(
                         f"""
                         UPDATE synapse_transitions
@@ -763,27 +732,22 @@ class SynapseStore:
                         """,
                         (TRANSITION_DECAY_RATE, *chunk),
                     )
-                    conn.execute("COMMIT")
-                except Exception:
-                    conn.execute("ROLLBACK")
-                    raise
+                # prune ALL dead transitions (no LTP-gated transitions).
+                cur = conn.execute(
+                    "DELETE FROM synapse_transitions WHERE weight < ?",
+                    (TRANSITION_PRUNE_THRESHOLD,),
+                )
+                pruned_transitions += cur.rowcount
 
-        # --- prune ALL dead transitions (no LTP-gated transitions) --------
-        with self._connect() as conn:
-            cur = conn.execute(
-                "DELETE FROM synapse_transitions WHERE weight < ?",
-                (TRANSITION_PRUNE_THRESHOLD,),
-            )
-            pruned_transitions += cur.rowcount
+                conn.execute(
+                    "INSERT OR REPLACE INTO meta(key, value) VALUES ('last_decay', ?)",
+                    (str(ts),),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
 
-        # --- meta timestamp ----------------------------------------------
-        with self._connect() as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO meta(key, value) VALUES ('last_decay', ?)",
-                (str(ts),),
-            )
-
-        with self._connect() as conn:
             cur = conn.execute("SELECT COUNT(*) FROM synapses")
             remaining = cur.fetchone()[0]
             cur = conn.execute("SELECT COUNT(*) FROM synapse_transitions")
