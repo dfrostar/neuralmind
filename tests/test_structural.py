@@ -127,16 +127,30 @@ def test_recall_excludes_seeds():
 
 
 def test_hub_downweights_runaway_degree():
-    # A hub with 10 callers (> cap 2) has each caller's recall weight normalized
-    # down, so one over-connected utility can't dominate recall.
+    # 5 callers (> cap 2, but < the default top_k so none are truncated) →
+    # each caller's recall weight is hub-normalized down, so one over-connected
+    # utility can't dominate recall.
     capped = StructuralIndex(hub_degree=2)
-    capped.build_from_edges([_edge(f"c{i}", "hub", "calls") for i in range(10)])
-    w_hub = dict(capped.recall(["hub"]))["c0"]
+    capped.build_from_edges([_edge(f"c{i}", "hub", "calls") for i in range(5)])
+    capped_weights = dict(capped.recall(["hub"]))
+    assert len(capped_weights) == 5  # all callers returned (no truncation)
+    w_hub = capped_weights["c0"]
     # A node with a single caller isn't capped (full weight).
     single = StructuralIndex(hub_degree=2)
     single.build_from_edges([_edge("only", "leaf", "calls")])
     w_single = dict(single.recall(["leaf"]))["only"]
     assert w_hub < w_single
+
+
+def test_recall_tie_break_is_deterministic():
+    # Many equal-weight neighbors truncated to top_k must be stable across runs:
+    # sorted by id, so the lowest ids survive deterministically.
+    idx = StructuralIndex()
+    idx.build_from_edges([_edge(f"c{i:02d}", "target", "calls") for i in range(20)])
+    first = [nid for nid, _ in idx.recall(["target"], top_k=8)]
+    second = [nid for nid, _ in idx.recall(["target"], top_k=8)]
+    assert first == second
+    assert first == [f"c{i:02d}" for i in range(8)]  # lowest ids kept
 
 
 def test_blast_radius_transitive_reverse_deps():
