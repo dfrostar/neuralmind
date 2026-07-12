@@ -15,7 +15,6 @@ DEFAULT_CONFIG = {
     },
     "api": {
         "provider": "openrouter",
-        "api_key": os.environ.get("OPENROUTER_API_KEY"),
     },
 }
 

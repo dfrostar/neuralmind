@@ -591,7 +591,19 @@ def serve(
     if not build.get("success"):
         raise RuntimeError(build.get("error", "build failed"))
 
-    token = secrets.token_urlsafe(16) if auth else None
+    token_file = Path.home() / ".neuralmind" / "server-token.json"
+    if token_file.exists():
+        try:
+            token = json.loads(token_file.read_text())["token"]
+        except Exception:
+            token = secrets.token_urlsafe(16) if auth else None
+    else:
+        token = secrets.token_urlsafe(16) if auth else None
+        if auth:
+            token_file.parent.mkdir(parents=True, exist_ok=True)
+            token_file.write_text(json.dumps({"token": token}))
+            token_file.chmod(0o600)
+
     _Handler.mind = mind
     _Handler.auth_token = token
     _Handler.editor = editor or os.environ.get("EDITOR") or os.environ.get("VISUAL")
