@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+
 # Skip ONNX tests when the model isn't on disk (no download in CI).
 def _onnx_model_available() -> bool:
     """True if all-MiniLM-L6-v2 ONNX files are found locally."""
@@ -17,8 +18,7 @@ def _onnx_model_available() -> bool:
         Path.home() / ".cache" / "chroma" / "onnx_models" / "all-MiniLM-L6-v2" / "onnx",
     ]
     return any(
-        c and (c / "model.onnx").exists() and (c / "tokenizer.json").exists()
-        for c in candidates
+        c and (c / "model.onnx").exists() and (c / "tokenizer.json").exists() for c in candidates
     )
 
 
@@ -28,6 +28,7 @@ _onnx_model_ready = _onnx_model_available()
 # it; cleanly skip them on a ChromaDB-free install.
 try:
     import chromadb  # noqa: F401
+
     _HAS_CHROMADB = True
 except ImportError:
     _HAS_CHROMADB = False
@@ -540,6 +541,7 @@ class TestContentHashDirect:
 try:
     import onnxruntime  # noqa: F401
     import tokenizers  # noqa: F401
+
     _HAS_ONNX_DEPS = True
 except ImportError:
     _HAS_ONNX_DEPS = False
@@ -560,7 +562,7 @@ def test_onnx_embedding_e2e():
     - __call__ returns nested Python lists of floats
     - batching works correctly for > _BATCH texts
     """
-    from neuralmind.onnx_embedder import OnnxMiniLMEmbedder, _BATCH
+    from neuralmind.onnx_embedder import _BATCH, OnnxMiniLMEmbedder
 
     texts = [
         "The quick brown fox jumps over the lazy dog.",
@@ -595,6 +597,3 @@ def test_onnx_embedding_e2e():
     big_batch = [f"sample text {i}" for i in range(_BATCH + 3)]
     big_out = embedder.embed(big_batch)
     assert big_out.shape == (len(big_batch), embedder.dim)
-
-
-
