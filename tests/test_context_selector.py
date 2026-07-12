@@ -1005,3 +1005,143 @@ class TestSynapseCommunityBoost:
         _, communities = selector.get_l2_context("query")
 
         assert isinstance(communities, list)
+
+
+class TestStructuralExpansion:
+    """L3 retrieval folds in the static structural graph (callers/callees/bases).
+
+    Mirrors TestSynapseBoost: structural recall pulls a query hit's precise
+    code-graph neighbors into contention, budget-neutrally (displacement, not
+    addition), and no-ops when unwired or disabled.
+    """
+
+    @staticmethod
+    def _four_hit_embedder(mock_embedder):
+        """search() returns four ordered, distinct hits (top 3 are seeds)."""
+        mock_embedder.search.return_value = [
+            {
+                "id": "node_top",
+                "document": "top hit",
+                "metadata": {"label": "top", "file_type": "function", "community": 1},
+                "distance": 0.10,
+                "score": 0.90,
+            },
+            {
+                "id": "node_mid",
+                "document": "middle hit",
+                "metadata": {"label": "mid", "file_type": "function", "community": 1},
+                "distance": 0.40,
+                "score": 0.60,
+            },
+            {
+                "id": "node_seed3",
+                "document": "third seed hit",
+                "metadata": {"label": "seed3", "file_type": "function", "community": 1},
+                "distance": 0.45,
+                "score": 0.55,
+            },
+            {
+                "id": "node_low",
+                "document": "low hit",
+                "metadata": {"label": "low", "file_type": "function", "community": 2},
+                "distance": 0.50,
+                "score": 0.50,
+            },
+        ]
+        return mock_embedder
+
+    def test_present_neighbor_is_boosted_and_labeled(self, mock_embedder, temp_project):
+        """A structurally-wired lower hit is boosted above higher ones."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        # node_low (0.50) is a caller/callee of a seed → 0.35*1.0 boost → 0.85,
+        # above node_mid (0.60) and node_seed3 (0.55).
+        selector.structural_recall = lambda seeds: [("node_low", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4  # budget-neutral: same count
+        assert text.index("**low**") < text.index("**mid**")
+        assert "structural" in text
+
+    def test_absent_neighbor_displaces_weakest(self, mock_embedder, temp_project):
+        """A wired neighbor vector search missed replaces the weakest hit."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        mock_embedder.get_nodes_by_ids.return_value = [
+            {
+                "id": "node_caller",
+                "document": "a caller vector search missed",
+                "metadata": {"label": "caller", "file_type": "function"},
+            }
+        ]
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        selector.structural_recall = lambda seeds: [("node_caller", 1.0)]
+
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4  # count unchanged (displacement, not addition)
+        assert "caller" in text
+        assert "[wired]" in text
+
+    def test_seeds_from_top_hits(self, mock_embedder, temp_project):
+        """Structural recall is seeded from the top STRUCTURAL_SEED_K hits."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        captured = {}
+
+        def recall(seeds):
+            captured["seeds"] = list(seeds)
+            return []
+
+        selector.structural_recall = recall
+        selector.get_l3_search("query", n=4)
+
+        assert captured["seeds"] == ["node_top", "node_mid", "node_seed3"]
+
+    def test_no_recall_is_noop(self, mock_embedder, temp_project):
+        """Without structural recall, ordering and labels are unchanged."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+
+        text, _ = selector.get_l3_search("query", n=4)
+
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+        assert "structural" not in text
+
+    def test_kill_switch_disables_expansion(self, mock_embedder, temp_project, monkeypatch):
+        """NEURALMIND_STRUCTURAL=0 turns expansion off even when wired."""
+        from neuralmind.context_selector import ContextSelector
+
+        monkeypatch.setenv("NEURALMIND_STRUCTURAL", "0")
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        selector.structural_recall = lambda seeds: [("node_low", 1.0)]
+
+        text, _ = selector.get_l3_search("query", n=4)
+
+        assert text.index("**top**") < text.index("**mid**") < text.index("**low**")
+        assert "structural" not in text
+
+    def test_recall_exception_is_swallowed(self, mock_embedder, temp_project):
+        """A throwing structural_recall degrades to the vector ordering."""
+        from neuralmind.context_selector import ContextSelector
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+
+        def boom(seeds):
+            raise RuntimeError("structural index unavailable")
+
+        selector.structural_recall = boom
+        text, hits = selector.get_l3_search("query", n=4)
+
+        assert hits == 4
+        assert text.index("**top**") < text.index("**mid**")

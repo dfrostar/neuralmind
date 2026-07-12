@@ -194,6 +194,29 @@ def tool_synaptic_neighbors(
     }
 
 
+def tool_structural_neighbors(
+    project_path: str,
+    query: str,
+    relations: list[str] | None = None,
+    blast_radius: bool = False,
+    depth: int = 2,
+) -> dict[str, Any]:
+    """How a symbol is wired into the codebase, from the static code graph.
+
+    Returns the symbol's callers, callees, base/sub classes, and importers —
+    the precise structural relationships graphify extracts, distinct from the
+    learned synapse graph. Use before editing a function's signature (to find
+    every caller) or a class (to find overrides/subclasses). Pass
+    ``blast_radius=true`` for the transitive set of code a change would affect.
+    ``query`` may be a symbol name or a natural-language description; it is
+    resolved to the closest graph node.
+    """
+    mind = get_mind(project_path)
+    if blast_radius:
+        return mind.blast_radius(query, depth=depth)
+    return mind.structural_neighbors(query, relations=relations)
+
+
 def tool_synapse_stats(project_path: str) -> dict[str, Any]:
     """Inspect the synapse graph: edge count, LTP edges, top hubs."""
     mind = get_mind(project_path, auto_build=False)
@@ -514,6 +537,42 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_structural_neighbors",
+        "description": (
+            "How a symbol is wired into the codebase, from the static code graph: "
+            "its callers, callees, base/sub classes, and importers. Use before "
+            "editing a function's signature (find all callers) or a class (find "
+            "overrides), or pass blast_radius=true for the transitive set of code a "
+            "change would affect. Precise and available day-one — complements the "
+            "learned synapse graph."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string"},
+                "query": {
+                    "type": "string",
+                    "description": "Symbol name or NL description; resolved to a graph node.",
+                },
+                "relations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Optional filter: calls, inherits, imports, contains, or all. "
+                        "Default surfaces callers/callees/bases/subclasses/importers."
+                    ),
+                },
+                "blast_radius": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "Return the transitive reverse-dependency set instead.",
+                },
+                "depth": {"type": "integer", "default": 2},
+            },
+            "required": ["project_path", "query"],
+        },
+    },
+    {
         "name": "neuralmind_synapse_stats",
         "description": "Stats on the learned synapse graph: edges, LTP edges, top hubs.",
         "inputSchema": {
@@ -656,6 +715,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["query"],
             args.get("depth", 2),
             args.get("top_k", 10),
+        ),
+        "neuralmind_structural_neighbors": lambda args: tool_structural_neighbors(
+            args["project_path"],
+            args["query"],
+            args.get("relations"),
+            args.get("blast_radius", False),
+            args.get("depth", 2),
         ),
         "neuralmind_synapse_stats": lambda args: tool_synapse_stats(args["project_path"]),
         "neuralmind_synapse_decay": lambda args: tool_synapse_decay(args["project_path"]),
