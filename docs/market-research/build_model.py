@@ -10,8 +10,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.workbook.defined_name import DefinedName
 
-sys.path.insert(0, str(Path("/home/dtfrost/neuralmind/docs/market-research")))
-from intel import FINANCIAL, MARKET
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))
+from intel import FINANCIAL, MARKET  # noqa: E402
 
 BLUE = Font(color="0000FF")
 BLACK = Font(color="000000")
@@ -22,7 +23,7 @@ HEADER_FONT = Font(color="FFFFFF", bold=True)
 LIGHT_BLUE_FILL = PatternFill("solid", fgColor="BDD7EE")
 
 wb = Workbook()
-OUTPUT = Path("/home/dtfrost/neuralmind/docs/market-research/financial-model.xlsx")
+OUTPUT = _HERE / "financial-model.xlsx"
 OUTPUT.parent.mkdir(parents=True, exist_ok=True)
 
 

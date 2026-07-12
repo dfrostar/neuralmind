@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate NeuralMind corporate pitch deck PPTX."""
 
+import os
 import sys
 
-sys.path.insert(0, "/home/dtfrost/neuralmind/docs/market-research")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pathlib import Path
 
@@ -1095,7 +1096,7 @@ def build_deck():
     add_slide_number(slide, 10, total_slides)
 
     # ── Save ──────────────────────────────────────────────────────────────
-    output_path = Path("/home/dtfrost/neuralmind/docs/market-research/pitch-deck.pptx")
+    output_path = Path(__file__).resolve().parent / "pitch-deck.pptx"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(str(output_path))
     return output_path

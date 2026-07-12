@@ -1,8 +1,9 @@
 """
 Build competitor deep-dive DOCX using intel.py data module.
-Output: /home/dtfrost/neuralmind/docs/market-research/competitor-deep-dive.docx
+Output: competitor-deep-dive.docx (written alongside this script).
 """
 
+import os
 import sys
 
 from docx import Document
@@ -12,8 +13,9 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Pt, RGBColor
 
-# Ensure the data module is importable
-sys.path.insert(0, "/home/dtfrost/neuralmind/docs/market-research")
+# Ensure the data module (intel.py, alongside this script) is importable.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
 from intel import COMPETITORS, MARKET  # noqa: E402
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -820,7 +822,7 @@ set_run_style(run, size=10)
 # SAVE & VERIFY
 # ──────────────────────────────────────────────────────────────────────────────
 
-OUTPUT_PATH = "/home/dtfrost/neuralmind/docs/market-research/competitor-deep-dive.docx"
+OUTPUT_PATH = os.path.join(_HERE, "competitor-deep-dive.docx")
 doc.save(OUTPUT_PATH)
 
 # Verification

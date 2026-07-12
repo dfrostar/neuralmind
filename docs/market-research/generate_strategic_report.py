@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate NeuralMind Strategic Report DOCX."""
 
+import os
 import sys
 
-sys.path.insert(0, "/home/dtfrost/neuralmind/docs/market-research")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from datetime import datetime
 
@@ -26,7 +27,7 @@ from intel import (
     VALUE_PROP_ENGINEERING,
 )
 
-OUTPUT = "/home/dtfrost/neuralmind/docs/market-research/strategic-report.docx"
+OUTPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "strategic-report.docx")
 
 # ── helpers ──────────────────────────────────────────────────────────────
 
