@@ -333,6 +333,52 @@ def test_sse_endpoint_streams_published_events():
         httpd.server_close()
 
 
+def test_auth_enabled_flows():
+    """Auth-enabled protected endpoints: anonymous → 401, valid token → 200,
+    invalid token → 401. Covers both query-param and cookie token carriers."""
+    fake_mind = SimpleNamespace(recent_queries=lambda n=20: [])
+
+    with _running_server(fake_mind, auth_token="secret-token") as base:
+        # base = "http://127.0.0.1:PORT"
+        host_port = base.replace("http://", "")
+        host, port_str = host_port.split(":")
+        port = int(port_str)
+        conn = http.client.HTTPConnection(host, port, timeout=5)
+
+        # (1) Request with no token → 401
+        conn.request("GET", "/api/queries?n=5")
+        resp = conn.getresponse()
+        assert resp.status == 401
+
+        # (2) Valid token via query param → 200 with JSON body
+        conn.request("GET", "/api/queries?n=5&token=secret-token")
+        resp = conn.getresponse()
+        assert resp.status == 200
+        data = json.loads(resp.read())
+        assert "queries" in data
+
+        # (2b) Valid token via Cookie header → 200
+        conn.request(
+            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=secret-token"}
+        )
+        resp = conn.getresponse()
+        assert resp.status == 200
+
+        # (3) Invalid token via query param → 401
+        conn.request("GET", "/api/queries?n=5&token=wrong-token")
+        resp = conn.getresponse()
+        assert resp.status == 401
+
+        # (3b) Invalid token via Cookie header → 401
+        conn.request(
+            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=wrong-token"}
+        )
+        resp = conn.getresponse()
+        assert resp.status == 401
+
+        conn.close()
+
+
 def test_allowed_open_paths_only_includes_in_project_files(tmp_path):
     # In-project file -> allowed; missing/outside files -> excluded.
     keep = tmp_path / "auth" / "handlers.py"

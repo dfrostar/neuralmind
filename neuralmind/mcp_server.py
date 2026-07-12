@@ -48,6 +48,17 @@ _mind_cache: dict[str, NeuralMind] = {}
 _security_cache: dict[str, MCPSecurityManager] = {}
 
 
+def clear_all_caches() -> None:
+    """Clear all global caches. Used for testing and graceful shutdown."""
+    _mind_cache.clear()
+    _security_cache.clear()
+
+
+def get_cache_stats() -> dict[str, int]:
+    """Return current cache sizes for observability."""
+    return {"minds": len(_mind_cache), "security": len(_security_cache)}
+
+
 def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
     """Get or create a cached NeuralMind instance for a project."""
     abs_path = str(Path(project_path).resolve())
@@ -677,12 +688,12 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     actor = str(arguments.get("actor", "anonymous"))
     role = str(arguments.get("role", "builder"))
 
+    if not project_path:
+        return json.dumps({"error": "project_path is required", "code": "invalid_request"})
+
     try:
-        if project_path is not None:
-            security = get_security_manager(project_path)
-            result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
-        else:
-            result = handlers[name](arguments)
+        security = get_security_manager(project_path)
+        result = security.secure_call(actor, role, name, lambda: handlers[name](arguments))
         return json.dumps(result, indent=2, default=str)
     except (PermissionError, RuntimeError) as e:
         return json.dumps({"error": str(e), "code": "security_denied"})

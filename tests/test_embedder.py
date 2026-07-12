@@ -1,15 +1,39 @@
 """Tests for NeuralMind embedder functionality."""
 
 import json
+import os
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-# The GraphEmbedder is the ChromaDB backend, an opt-in extra as of v0.29.0.
-# Skip cleanly on a ChromaDB-free install; runs in the `[dev,chromadb]` CI job.
-pytest.importorskip("chromadb")
+# Skip ONNX tests when the model isn't on disk (no download in CI).
+def _onnx_model_available() -> bool:
+    """True if all-MiniLM-L6-v2 ONNX files are found locally."""
+    env_dir = os.environ.get("NEURALMIND_ONNX_MODEL_DIR")
+    candidates = [
+        Path(env_dir) if env_dir else None,
+        Path.home() / ".cache" / "neuralmind" / "onnx_models" / "all-MiniLM-L6-v2" / "onnx",
+        Path.home() / ".cache" / "chroma" / "onnx_models" / "all-MiniLM-L6-v2" / "onnx",
+    ]
+    return any(
+        c and (c / "model.onnx").exists() and (c / "tokenizer.json").exists()
+        for c in candidates
+    )
 
 
+_onnx_model_ready = _onnx_model_available()
+
+# ChromaDB is an opt-in extra as of v0.29.0. These classes depend on
+# it; cleanly skip them on a ChromaDB-free install.
+try:
+    import chromadb  # noqa: F401
+    _HAS_CHROMADB = True
+except ImportError:
+    _HAS_CHROMADB = False
+
+
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestGraphEmbedder:
     """Tests for GraphEmbedder class."""
 
@@ -220,6 +244,7 @@ class TestContentHashing:
         assert hash1 != hash2
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestChromaDBIntegration:
     """Tests for ChromaDB integration."""
 
@@ -261,6 +286,7 @@ class TestChromaDBIntegration:
         assert stats["total_nodes"] == 6
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestCommunitySummary:
     """Tests for community summary functionality."""
 
@@ -305,6 +331,7 @@ class TestCommunitySummary:
         assert summary["nodes"] == []
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestGetFileNodes:
     """Tests for GraphEmbedder.get_file_nodes path matching."""
 
@@ -341,6 +368,7 @@ class TestGetFileNodes:
         assert embedder.get_file_nodes("src/does_not_exist.py") == []
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestGetFileEdges:
     """Tests for GraphEmbedder.get_file_edges edge filtering."""
 
@@ -391,6 +419,7 @@ class TestGetFileEdges:
         assert isinstance(edges, list)
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestNodeToText:
     """Tests for GraphEmbedder._node_to_text() directly."""
 
@@ -438,6 +467,7 @@ class TestNodeToText:
         assert "Normalized" not in text
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestNodeMetadata:
     """Tests for GraphEmbedder._node_metadata() directly."""
 
@@ -468,6 +498,7 @@ class TestNodeMetadata:
         assert meta["community"] == -1
 
 
+@pytest.mark.skipif(not _HAS_CHROMADB, reason="chromadb not installed")
 class TestContentHashDirect:
     """Tests for GraphEmbedder._content_hash() directly."""
 
@@ -496,3 +527,74 @@ class TestContentHashDirect:
         embedder = GraphEmbedder(str(temp_project))
         h = embedder._content_hash("test")
         assert len(h) == 16
+
+
+# ---------------------------------------------------------------------------
+# OnnxMiniLMEmbedder end-to-end test
+# ---------------------------------------------------------------------------
+# Skipped if the ONNX model files aren't found on disk. Uses @pytest.mark.skipif
+# (not importorskip) so the model-data check is a pure boolean lookup — no
+# download attempt ever happens from this test.
+
+# Sentinel check for onnxruntime/tokenizers
+try:
+    import onnxruntime  # noqa: F401
+    import tokenizers  # noqa: F401
+    _HAS_ONNX_DEPS = True
+except ImportError:
+    _HAS_ONNX_DEPS = False
+
+
+@pytest.mark.skipif(
+    not _HAS_ONNX_DEPS or not _onnx_model_ready,
+    reason="ONNX model/deps not available",
+)
+def test_onnx_embedding_e2e():
+    """End-to-end test for the ONNX MiniLM embedder (ChromaDB-free path).
+
+    Verifies the ONNX path produces embeddings with expected (n, dim) shape.
+    Embeds four sample texts through the real ONNX model and asserts:
+    - shape is (n, 384)
+    - dtype is float32
+    - vectors are L2 unit-normalized
+    - __call__ returns nested Python lists of floats
+    - batching works correctly for > _BATCH texts
+    """
+    from neuralmind.onnx_embedder import OnnxMiniLMEmbedder, _BATCH
+
+    texts = [
+        "The quick brown fox jumps over the lazy dog.",
+        "def authenticate(user, password): return user.verify(password)",
+        "SELECT id, email, created_at FROM users WHERE active = 1;",
+        "",
+    ]
+
+    embedder = OnnxMiniLMEmbedder()
+    out = embedder.embed(texts)
+
+    # Shape (n, dim) == (4, 384)
+    assert out.shape == (len(texts), embedder.dim)
+
+    # dtype is float32
+    assert out.dtype == np.float32
+
+    # Each vector is unit-normalized (L2 ≈ 1). The empty string gets
+    # zero-filled before L2 normalization; the guard replaces 0 with
+    # 1e-12 → norm ≈ 1 after division
+    norms = np.linalg.norm(out, axis=1)
+    np.testing.assert_allclose(norms, 1.0, atol=1e-4)
+
+    # Embedding callable returns nested lists of floats
+    call_out = embedder(texts)
+    assert len(call_out) == len(texts)
+    assert isinstance(call_out, list)
+    assert all(isinstance(v, list) for v in call_out)
+    assert all(isinstance(x, float) for v in call_out for x in v)
+
+    # Batch boundary: exercise >_BATCH texts to cover the inner loop
+    big_batch = [f"sample text {i}" for i in range(_BATCH + 3)]
+    big_out = embedder.embed(big_batch)
+    assert big_out.shape == (len(big_batch), embedder.dim)
+
+
+
