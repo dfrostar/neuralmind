@@ -467,8 +467,7 @@ class SynapseStore:
 
         node_rows = [(n, ns, ts) for n in ids]
         pair_rows = [
-            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta)
-            for a, b in pairs
+            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta) for a, b in pairs
         ]
 
         # Activation bumps and synapse upserts must land together or not at

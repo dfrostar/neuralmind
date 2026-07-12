@@ -359,9 +359,7 @@ def test_auth_enabled_flows():
         assert "queries" in data
 
         # (2b) Valid token via Cookie header → 200
-        conn.request(
-            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=secret-token"}
-        )
+        conn.request("GET", "/api/queries?n=5", headers={"Cookie": "nm_token=secret-token"})
         resp = conn.getresponse()
         assert resp.status == 200
 
@@ -371,9 +369,7 @@ def test_auth_enabled_flows():
         assert resp.status == 401
 
         # (3b) Invalid token via Cookie header → 401
-        conn.request(
-            "GET", "/api/queries?n=5", headers={"Cookie": "nm_token=wrong-token"}
-        )
+        conn.request("GET", "/api/queries?n=5", headers={"Cookie": "nm_token=wrong-token"})
         resp = conn.getresponse()
         assert resp.status == 401
 
