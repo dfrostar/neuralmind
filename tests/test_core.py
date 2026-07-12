@@ -1,7 +1,7 @@
 """Tests for NeuralMind core functionality."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 class TestNeuralMindInit:
@@ -251,17 +251,37 @@ class TestNeuralMindQuery:
         assert mind._built is True
         assert result.context is not None
 
-    def test_query_logs_memory_event(self, temp_project, mock_chromadb):
-        """Test that query attempts to log a memory event."""
-        from neuralmind import NeuralMind
+    def test_query_logs_memory_event(self, temp_project, tmp_path, monkeypatch):
+        """Test that query actually invokes log_query_event and writes a JSONL event.
+
+        Uses real log_query_event (no mock.patch) so the test verifies the
+        integration: query() → log_query_event() → JSONL on disk.
+        """
+        import json
+
+        from neuralmind import NeuralMind, memory
+
+        # Enable memory logging via consent sentinel in a temp HOME
+        monkeypatch.setenv("HOME", str(tmp_path))
+        monkeypatch.setenv("USERPROFILE", str(tmp_path))
+        memory.write_consent_sentinel(True)
 
         mind = NeuralMind(str(temp_project))
         mind.build()
 
-        with patch("neuralmind.core.log_query_event") as mock_log:
-            result = mind.query("test memory log")
+        result = mind.query("test memory log")
 
-        mock_log.assert_called_once_with(mind.project_path, "test memory log", result)
+        # The real log_query_event should have been called by query()
+        project_events = memory.project_query_events_file(mind.project_path)
+        assert project_events.exists(), "Project query events file was not created by query()"
+
+        lines = project_events.read_text(encoding="utf-8").strip().splitlines()
+        assert len(lines) >= 1, "No query events were logged"
+
+        payload = json.loads(lines[0])
+        assert payload["event_type"] == "query"
+        assert payload["query"] == "test memory log"
+        assert "retrieval_summary" in payload
 
 
 class TestNeuralMindSearch:

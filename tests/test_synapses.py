@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+
 from neuralmind.synapses import (
     DECAY_RATE,
     LEARNING_RATE,
@@ -378,3 +380,46 @@ def test_decay_returns_transition_counts(tmp_path):
     assert pruned_transitions >= 1
     remaining = s.decay()["remaining_transitions"]
     assert remaining >= 1  # strong pair survives
+
+
+def test_concurrent_reinforce(tmp_path):
+    """Two threads calling reinforce() on overlapping node IDs must produce
+    the expected final weight (LEARNING_RATE summed per call, clamped to
+    WEIGHT_CAP)."""
+    s = _store(tmp_path)
+    # Each run shares node "a" so that the edge (a, b) and (a, c) get
+    # reinforced concurrently by both threads.
+    set1 = ["a", "b", "c"]
+    set2 = ["a", "b", "new_d"]
+
+    errors: list[Exception] = []
+
+    def reinforce_set(node_set):
+        try:
+            for _ in range(5):
+                s.reinforce(node_set)
+        except Exception as e:
+            errors.append(e)
+
+    t1 = threading.Thread(target=reinforce_set, args=(set1,))
+    t2 = threading.Thread(target=reinforce_set, args=(set2,))
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    assert not errors, f"Concurrent reinforce raised: {errors}"
+
+    # (a, b) is reinforced by both threads 5 times each => 10 LEARNING_RATE.
+    a_neighbors = dict(s.neighbors("a"))
+    expected_a_b = min(WEIGHT_CAP, 10 * LEARNING_RATE)
+    assert abs(a_neighbors["b"] - expected_a_b) < 1e-9, (
+        f"expected (a,b) weight {expected_a_b}, got {a_neighbors['b']}"
+    )
+
+    # (a, c) is only in set1, reinforced 5 times.
+    expected_a_c = min(WEIGHT_CAP, 5 * LEARNING_RATE)
+    assert abs(a_neighbors["c"] - expected_a_c) < 1e-9
+
+    # (a, new_d) is only in set2, reinforced 5 times.
+    assert abs(a_neighbors.get("new_d", 0.0) - expected_a_c) < 1e-9

@@ -1022,3 +1022,7 @@ If you wish to set tracking information for this branch you can do so with:
 
     git branch --set-upstream-to=origin/<branch> main
 
+usage: neuralmind [-h]
+                  {build,query,wakeup,benchmark,search,stats,learn,init-hook,skeleton,watch,install-hooks,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
