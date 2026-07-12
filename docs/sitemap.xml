@@ -1,307 +1,307 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/</loc>
-    <lastmod>2026-07-06</lastmod>
+    <loc>https://neuralmind.uk/</loc>
+    <lastmod>2026-07-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/about.html</loc>
-    <lastmod>2026-07-06</lastmod>
+    <loc>https://neuralmind.uk/about.html</loc>
+    <lastmod>2026-07-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/benchmarks/</loc>
+    <loc>https://neuralmind.uk/benchmarks/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/benchmarks/public.md</loc>
+    <loc>https://neuralmind.uk/benchmarks/public.md</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/</loc>
+    <loc>https://neuralmind.uk/comparisons/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/</loc>
+    <loc>https://neuralmind.uk/use-cases/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-aider-repomap.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-aider-repomap.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-claude-projects.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-claude-projects.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-cody.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-cody.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-continue-cline.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-continue-cline.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-cursor-codebase.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-cursor-codebase.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-github-copilot.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-github-copilot.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-headroom.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-headroom.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/context-engineering-stack.html</loc>
+    <loc>https://neuralmind.uk/comparisons/context-engineering-stack.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-langchain-llamaindex.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-langchain-llamaindex.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-long-context.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-long-context.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-prompt-caching.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-prompt-caching.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-rag.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-rag.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-treesitter-ctags.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-treesitter-ctags.html</loc>
     <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/comparisons/vs-windsurf-codeium.html</loc>
+    <loc>https://neuralmind.uk/comparisons/vs-windsurf-codeium.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/air-gapped.html</loc>
+    <loc>https://neuralmind.uk/use-cases/air-gapped.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/always-on.html</loc>
+    <loc>https://neuralmind.uk/use-cases/always-on.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/any-llm.html</loc>
+    <loc>https://neuralmind.uk/use-cases/any-llm.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/benchmark-your-repo.html</loc>
+    <loc>https://neuralmind.uk/use-cases/benchmark-your-repo.html</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/branch-isolated-memory.html</loc>
+    <loc>https://neuralmind.uk/use-cases/branch-isolated-memory.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/unified-stack.html</loc>
+    <loc>https://neuralmind.uk/use-cases/unified-stack.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/chromadb-free-local.html</loc>
+    <loc>https://neuralmind.uk/use-cases/chromadb-free-local.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/claude-code.html</loc>
+    <loc>https://neuralmind.uk/use-cases/claude-code.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/review-before-push.html</loc>
+    <loc>https://neuralmind.uk/use-cases/review-before-push.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/cost-optimization.html</loc>
+    <loc>https://neuralmind.uk/use-cases/cost-optimization.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/growing-monorepo.html</loc>
+    <loc>https://neuralmind.uk/use-cases/growing-monorepo.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/install-paths.html</loc>
+    <loc>https://neuralmind.uk/use-cases/install-paths.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/multi-agent.html</loc>
+    <loc>https://neuralmind.uk/use-cases/multi-agent.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/offline-regulated.html</loc>
+    <loc>https://neuralmind.uk/use-cases/offline-regulated.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/use-cases/zero-install-indexing.html</loc>
+    <loc>https://neuralmind.uk/use-cases/zero-install-indexing.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/API-Reference.html</loc>
+    <loc>https://neuralmind.uk/wiki/API-Reference.html</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Architecture.html</loc>
+    <loc>https://neuralmind.uk/wiki/Architecture.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Benchmarks.html</loc>
+    <loc>https://neuralmind.uk/wiki/Benchmarks.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/CLI-Reference.html</loc>
+    <loc>https://neuralmind.uk/wiki/CLI-Reference.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Comparisons.html</loc>
+    <loc>https://neuralmind.uk/wiki/Comparisons.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/FAQ.html</loc>
+    <loc>https://neuralmind.uk/wiki/FAQ.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Home.html</loc>
+    <loc>https://neuralmind.uk/wiki/Home.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Installation.html</loc>
+    <loc>https://neuralmind.uk/wiki/Installation.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Integration-Guide.html</loc>
+    <loc>https://neuralmind.uk/wiki/Integration-Guide.html</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Learning-Guide.html</loc>
+    <loc>https://neuralmind.uk/wiki/Learning-Guide.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Limits-and-Failure-Modes.html</loc>
+    <loc>https://neuralmind.uk/wiki/Limits-and-Failure-Modes.html</loc>
     <lastmod>2026-06-30</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Scheduling-Guide.html</loc>
+    <loc>https://neuralmind.uk/wiki/Scheduling-Guide.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Setup-Guide.html</loc>
+    <loc>https://neuralmind.uk/wiki/Setup-Guide.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Troubleshooting.html</loc>
+    <loc>https://neuralmind.uk/wiki/Troubleshooting.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Usage-Guide.html</loc>
+    <loc>https://neuralmind.uk/wiki/Usage-Guide.html</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://dfrostar.github.io/neuralmind/wiki/Use-Cases.html</loc>
+    <loc>https://neuralmind.uk/wiki/Use-Cases.html</loc>
     <lastmod>2026-06-26</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
