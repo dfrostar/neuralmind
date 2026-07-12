@@ -226,7 +226,11 @@ class StructuralIndex:
                     if other in seed_set:
                         continue
                     scores[other] = max(scores[other], weight)
-        ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
+        # Sort by weight desc, then node id asc as a stable tie-break — members
+        # come from sets (non-deterministic iteration order), so without the
+        # secondary key the top_k cut would drop different tied neighbors from
+        # run to run.
+        ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
         return ranked[:top_k]
 
     def blast_radius(self, node_id: str, depth: int = 2) -> list[str]:
