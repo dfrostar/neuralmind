@@ -23,27 +23,25 @@ Open source on PyPI. Enterprise tier coming Q3.
 
 ---
 
-## Post #2 (TUE) — Zero Egress / Security
+## Post #2 (TUE) — Minimal Egress / Security
 
-*The best AI code intelligence is the one that never sends your code anywhere.*
+*Most AI coding tools upload your whole codebase to answer one question. NeuralMind sends 40–70× less.*
 
-Here's what happens with most AI coding tools:
+Here's what happens with most tools:
 
 1. You ask a question
-2. Your 50K-line codebase gets uploaded to a third-party API
+2. Your 50K-line codebase gets shipped to a third-party API
 3. The API returns an answer
 4. You never know what they kept
 
-NeuralMind runs fully air-gapped. Zero code egress. Every query hits your local graph first — pulling only the 2% that's actually relevant.
+NeuralMind flips step 2. Every query hits your local graph first and surfaces only the ~2% that's relevant — so only that minimal slice ever reaches your agent's model, not the whole repo. NeuralMind itself makes zero external calls; embeddings are generated and stored on your machine.
 
-No external API calls. No code in transit. No training data concerns.
+For CISOs and compliance leads: a local audit trail is built in — every query logged with provenance, mapped to NIST AI RMF controls, ready as evidence for your SOC 2 review.
 
-For CISOs and compliance leads: the audit trail is built-in. Every query is logged locally, NIST AI RMF aligned, SOC2-ready.
-
-This is why regulated environments (defense, healthcare, finance) are deploying NeuralMind.
+That's why teams in defense, healthcare, and finance are evaluating it.
 
 ━
-#SOC2 #Compliance #AI #CISO #DeveloperTools #ZeroEgress
+#Compliance #AI #CISO #DeveloperTools #CodeIntelligence
 
 ---
 
@@ -107,11 +105,11 @@ CFO asks: "Are we actually more productive, or just spending more?"
 NeuralMind was built to answer that question.
 
 We help engineering teams:
-→ Deploy local-first code intelligence (zero code leaves your machine)
+→ Deploy local-first code intelligence (minimize what leaves your machine per query)
 → Benchmark actual token efficiency (before/after, per repo, per engineer)
 → Build the audit trail CFOs need for SOC2 and board reporting
 
-Result: 40-70x token reduction, a defensible AI bill, and zero compliance risk.
+Result: 40-70x token reduction, a defensible AI bill, and the audit trail your SOC 2 review needs.
 
 If you're rolling out AI coding tools at scale — or trying to justify the spend you already have — we should talk.
 
