@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.42.0](https://github.com/dfrostar/neuralmind/compare/v0.41.0...v0.42.0) (2026-07-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* NeuralMind.__init__ no longer accepts the enable_reranking keyword and instances no longer expose an enable_reranking attribute. The parameter had been deprecated and ignored since v0.25.0; the synapse layer supersedes the reranker it once gated.
+
+### Features
+
+* structural code-graph edge layer (calls/inherits/imports) ([#320](https://github.com/dfrostar/neuralmind/issues/320)) ([e3d33a2](https://github.com/dfrostar/neuralmind/commit/e3d33a2c57dbc3b60ebd2c3d171e9fb099897a07))
+
+
+### Bug Fixes
+
+* adopt pr-fix-board branch (all audits applied) ([dab5a00](https://github.com/dfrostar/neuralmind/commit/dab5a00daaca5c186372090ce7a3bb958c390d1f))
+* batch reinforce, concurrency test, auth-enabled server tests ([2eec7a8](https://github.com/dfrostar/neuralmind/commit/2eec7a8633bfb21090aef1a9825529b68ce593f3))
+* MCP auth bypass, token persistence, cache cleanup, env var lazy load ([a0dd1f5](https://github.com/dfrostar/neuralmind/commit/a0dd1f568d891878beabfaea30a5262859140ac2))
+* restore transaction atomicity in synapse reinforce/decay + honor auth=False ([#319](https://github.com/dfrostar/neuralmind/issues/319)) ([6457cf7](https://github.com/dfrostar/neuralmind/commit/6457cf71eda9092bae63c7c097c7da8d78aaa6d6))
+
+
+### Documentation
+
+* bump GraphQL roadmap target v0.41.0 → v0.42.0 ([#301](https://github.com/dfrostar/neuralmind/issues/301)) ([d641459](https://github.com/dfrostar/neuralmind/commit/d641459a63780e70ecadb2617d5cf824e1d01437))
+* close the recurring critique — limits page, runnable benchmarks/, SWE-bench retrieval harness, security refresh + coverage scorecard ([#303](https://github.com/dfrostar/neuralmind/issues/303)) ([c5f9b4f](https://github.com/dfrostar/neuralmind/commit/c5f9b4faf7a53f14294365b0764fdcdde0ee00fc))
+* commercial license + consulting agreement + cfo pitch deck ([94bce64](https://github.com/dfrostar/neuralmind/commit/94bce647d000da5c02c35f7f55aa2101745b4713))
+* refresh benchmark chart [skip ci] ([d1b62c0](https://github.com/dfrostar/neuralmind/commit/d1b62c0e13aa6515559c22bbdc4b838d63713603))
+* SEO refresh — right-size meta tags, fix sitemap, add llms.txt ([#310](https://github.com/dfrostar/neuralmind/issues/310)) ([c2ebbde](https://github.com/dfrostar/neuralmind/commit/c2ebbde180448238611882b7953d5a78a1e3730b))
+* update future-proofing planning artifacts ([#313](https://github.com/dfrostar/neuralmind/issues/313)) ([4cc98a8](https://github.com/dfrostar/neuralmind/commit/4cc98a863fd99f859efb5d017956ca3a0ab92e6b))
+
+
+### Code Refactoring
+
+* split core.py, remove deprecated enable_reranking, fix IR aliasing ([#318](https://github.com/dfrostar/neuralmind/issues/318)) ([82dd633](https://github.com/dfrostar/neuralmind/commit/82dd633f29761fcf50978656e5d43d88a133b56c))
+
 ## [0.41.0](https://github.com/dfrostar/neuralmind/compare/v0.40.0...v0.41.0) (2026-06-29)
 
 
