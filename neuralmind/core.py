@@ -426,11 +426,19 @@ class NeuralMind:
         # which memory namespace drove each boost (PRD 4).
         self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
 
-        # Structural recall — precise, day-one code wiring (calls/inherits/
-        # imports) from graph.json. Built here from the edges the embedder
-        # already loaded, then injected so L3 can pull a query hit's callers/
-        # callees/base classes into context (budget-neutral). Kill switch:
-        # NEURALMIND_STRUCTURAL=0 skips the index and leaves recall unchanged.
+        # Structural edge index — precise, day-one code wiring (calls/inherits/
+        # imports) from graph.json, built from the edges the embedder already
+        # loaded. It powers the always-on structural query surface
+        # (structural_neighbors / blast_radius / the CLI + MCP tools). Kill
+        # switch: NEURALMIND_STRUCTURAL=0 skips it entirely.
+        #
+        # Folding structural neighbors into L3 retrieval is a *separate*,
+        # opt-in switch (NEURALMIND_STRUCTURAL_RECALL=1). It interacts with the
+        # tuned synapse reranker — on some graphs the structural signal is
+        # strong enough to saturate top-k recall and crowd out the learned
+        # signal — so default retrieval stays byte-identical and the synapse
+        # layer's measured lift is preserved. The query tools carry the
+        # headline value with zero retrieval risk.
         if os.environ.get("NEURALMIND_STRUCTURAL") != "0":
             self._structural_index = StructuralIndex(
                 hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50)
@@ -439,7 +447,8 @@ class NeuralMind:
                 getattr(self.embedder, "edges", None) or [],
                 min_confidence=_env_float("NEURALMIND_STRUCTURAL_MIN_CONFIDENCE", 0.0),
             )
-            self.selector.structural_recall = self._structural_for_selection
+            if os.environ.get("NEURALMIND_STRUCTURAL_RECALL") == "1":
+                self.selector.structural_recall = self._structural_for_selection
         else:
             self._structural_index = None
 
