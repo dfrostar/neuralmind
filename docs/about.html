@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, progressive context disclosure for 40–70× token savings, and a 100% local ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, Hebbian learning, synapse layer, semantic code search, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), progressive context disclosure for 40–70× token savings, and a 100% local ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -21,7 +21,7 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-07-06",
+      "dateModified": "2026-07-12",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 40–70× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -35,7 +35,7 @@
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "0.41.0",
+        "softwareVersion": "0.42.0",
         "downloadUrl": "https://pypi.org/project/neuralmind/",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
@@ -107,7 +107,7 @@
                 <li><strong>40–70× fewer tokens</strong> on code questions on real repositories — the agent gets the few entities that matter, not whole files. The CI self-benchmark measures a deliberately conservative <strong>6.2×</strong> on a tiny 500-line fixture (floor: 4×), because there's little to prune at that size; the mechanism scales with repo size.</li>
                 <li><strong>Better answers, not just shorter.</strong> At a <em>matched</em> token budget, NeuralMind's selected context carries more of the facts a correct answer needs than naive truncation: expected-fact recall <strong>0.717 vs 0.574 (+0.143)</strong>.</li>
                 <li><strong>A memory layer that measurably improves with use.</strong> The learned synapse layer lifts top-k retrieval hit-rate <strong>72% → 83% (+12 points)</strong>; inheriting a committed team memory gives a <strong>+6.5-point</strong> day-one onboarding lift — both budget-neutral.</li>
-                <li><strong>100% local.</strong> Your code never leaves your machine; no telemetry by default.</li>
+                <li><strong>100% local engine.</strong> NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool; no telemetry by default.</li>
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>
@@ -182,6 +182,21 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v0420">
+            <h2>What's New in v0.42.0 — the code graph learns to answer "what does this touch?"</h2>
+            <p><strong>NeuralMind's recall has always run on two <em>soft</em> signals — semantic similarity and the learned synapse graph. v0.42.0 adds the <em>hard</em> one the graph carried all along: how the code is actually wired.</strong> <code>graphify</code> already extracts typed structural edges — <code>calls</code>, <code>inherits</code>, <code>imports_from</code>, <code>contains</code> — into every <code>graph.json</code>, and the embedder already loads them. Until now they were dead weight, used only by the graph-view UI. This release turns them into a first-class, queryable capability an agent can call. No new extraction, no schema bump, and default retrieval stays byte-identical to v0.41.0.</p>
+            <h3>Structural neighbors — <code>neuralmind structural &lt;symbol&gt;</code></h3>
+            <p>Ask how any symbol is wired and get its callers, callees, base classes, subclasses, and importers straight from the static graph. The <code>neuralmind_structural_neighbors</code> MCP tool returns the same, shaped for agent consumption; the <code>query</code> may be a symbol name or a natural-language description, resolved to the closest <strong>code</strong> node (rationale/doc nodes are skipped, since they carry no structural edges). This is the precise, day-one answer to "what calls <code>foo</code>?" — the kind of correctness question an editing agent gets wrong when it changes a function but misses two callers.</p>
+            <h3>Blast radius — <code>neuralmind structural &lt;symbol&gt; --blast-radius</code></h3>
+            <p>Pass <code>--blast-radius</code> (CLI) or <code>blast_radius=true</code> (MCP) to get the transitive reverse-dependency set — everything that (transitively) calls, imports, subclasses, or implements the symbol. It's depth-bounded, cycle-safe, and hub-capped so one over-connected utility can't explode the result. Run it before a rename or a risky change and edit with every affected caller, importer, and subclass in view instead of discovering them from a red CI run.</p>
+            <h3>Structural recall in retrieval (opt-in)</h3>
+            <p>With <code>NEURALMIND_STRUCTURAL_RECALL=1</code>, a query that lands on a called function also pulls its callers/callees into L3 context — <strong>budget-neutral</strong>: a pulled-in neighbor displaces the weakest vector hit rather than adding to the count, and recalled nodes are tagged <code>[wired]</code> in the rendered context. This is <strong>opt-in, not default</strong>: on graphs where the call/inherit signal is strong it can saturate top-k recall and crowd out the tuned synapse signal, so default retrieval is left byte-identical and the always-on structural <strong>tools</strong> carry the headline value with zero effect on the retrieval stack. The whole layer is killable with <code>NEURALMIND_STRUCTURAL=0</code>.</p>
+            <div class="quote">Structural edges are <em>innate</em> wiring — compiler/AST-derived, precise, known before you've run a single query. Synapses are <em>learned</em> potentiation — earned from how you work. Structure says what <em>can</em> be related; synapses say what <em>actually</em> gets used together. A static index can copy the structure; it cannot copy the fusion.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md">Full v0.42.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/blast-radius-before-a-rename.md">Blast-radius-before-a-rename walkthrough &rarr;</a></p>
         </div>
     </section>
 

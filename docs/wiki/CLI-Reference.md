@@ -22,6 +22,7 @@ Complete command-line interface documentation for NeuralMind.
   - [next](#next-v0110)
   - [memory](#memory-v0240)
   - [skeleton](#skeleton)
+  - [structural](#structural-v0420)
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
@@ -1206,6 +1207,71 @@ neuralmind skeleton src/auth/handlers.py --json
 
 ---
 
+### structural *(v0.42.0+)*
+
+Show how a symbol is wired into the codebase from the **static code graph** —
+its callers, callees, base/sub classes, and importers. These are the precise
+structural edges (`calls`, `inherits`, `imports_from`) that `graphify`
+extracts, distinct from the learned synapse graph. Use it before editing a
+function's signature (find every caller) or a class (find overrides), or pass
+`--blast-radius` for the transitive set of code a change would affect.
+
+```bash
+neuralmind structural <symbol> [--relation calls|inherits|imports|contains|all] \
+                               [--blast-radius] [--depth N] [--project-path .] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `symbol` | Yes | Symbol name or natural-language description; resolved to the closest code node |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--relation` | *(all default views)* | Limit to one relation: `calls`, `inherits`, `imports`, `contains`, or `all` |
+| `--blast-radius` | False | Show the transitive reverse-dependency set (what a change would affect) |
+| `--depth` | `2` | Blast-radius hop depth |
+| `--project-path` | `.` | Project root directory |
+| `--json`, `-j` | False | Output as JSON |
+
+#### Examples
+
+```bash
+# Who calls / what does this call / what does it inherit?
+neuralmind structural "create user"
+
+# Just the callers, via the calls relation
+neuralmind structural authenticate_user --relation calls
+
+# Blast radius before a risky refactor
+neuralmind structural "charge customer" --blast-radius --depth 2
+
+# Machine-readable output for scripting
+neuralmind structural UserService --json
+```
+
+Example output:
+
+```
+## Structural neighbors of users_crud_create_user
+
+### Callers (1)
+- create_user_endpoint() — routes.py
+
+### Callees (2)
+- get_connection() — connection.py
+- User — crud.py
+```
+
+The equivalent MCP tool is `neuralmind_structural_neighbors` (with a
+`blast_radius` boolean). Both return real graph node ids, so they compose
+with `neuralmind_synaptic_neighbors`.
+
+---
+
 ### last *(v0.10.0+)*
 
 Print the most recent Bash output the PostToolUse hook cached, so an
@@ -1731,6 +1797,10 @@ Requires the synapse graph to have accumulated edges. Cold graphs (first few ses
 | `NEURALMIND_DAEMON_HOME` | unset | *(v0.23.0+)* Override the directory holding the daemon discovery file (`daemon.json`). Defaults to `~/.neuralmind`. Mainly for tests / running an isolated daemon. |
 | `NEURALMIND_BM25` | `1` | *(v0.38.0+)* Set to `0` to disable the BM25 keyword index and fall back to pure vector search. When enabled (default), the BM25 index built by `neuralmind build` is merged with vector results via Reciprocal Rank Fusion at query time, improving exact-name retrieval for code queries like `"UserService"` or `"get_auth_token"`. The index is stored in `<project>/.neuralmind/bm25_index.json` and rebuilt automatically on every `neuralmind build`. |
 | `NEURALMIND_SELECTOR_AUTOTUNE` | `0` | *(v0.26.0+)* Set to `1` to enable the self-improvement engine's selector auto-tuner: the `SessionStart` hook adjusts the L2 recall depth from the re-query rate (once per session), and `build()` threads the persisted value into the selector. Opt-in (`== "1"`, not the `!= "0"` pattern) because it is net behavior change. With it unset the hot path does **zero** extra I/O and the selector keeps its hard-coded default. Inspect state with `neuralmind self-improve status`. |
+| `NEURALMIND_STRUCTURAL` | `1` | *(v0.42.0+)* Master switch for the structural code-graph layer (`calls`/`inherits`/`imports_from` edges from `graph.json`). Powers the `neuralmind structural` command, the `neuralmind_structural_neighbors` MCP tool, and blast-radius. Set to `0` to skip building the index entirely, leaving retrieval byte-identical to v0.41.0. |
+| `NEURALMIND_STRUCTURAL_RECALL` | `0` | *(v0.42.0+)* Opt-in (`== "1"`). Fold a query hit's structural neighbors (callers/callees/base classes) into L3 retrieval, budget-neutrally (displacement, not addition). **Off by default** because the structural signal can saturate top-k recall and crowd out the learned synapse reranker on some graphs; the always-on structural **query tools** carry the value with zero effect on the tuned retrieval stack. |
+| `NEURALMIND_STRUCTURAL_MIN_CONFIDENCE` | `0.0` | *(v0.42.0+)* Drop structural edges whose `confidence_score` is below this value when building the index. Raise toward `1.0` to trust only compiler-accurate edges (pair with `NEURALMIND_PRECISION`). |
+| `NEURALMIND_STRUCTURAL_HUB_DEGREE` | `50` | *(v0.42.0+)* Per-relation degree cap for structural recall and blast-radius. Above the cap, an over-connected utility's neighbors are down-weighted (recall) or truncated (blast-radius) so one hub can't dominate. |
 
 ---
 

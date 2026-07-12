@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuralMind — Persistent Memory for AI Coding Agents | 40–70× Token Reduction</title>
-    <meta name="description" content="Persistent, 100% local memory for AI coding agents — NeuralMind learns your codebase like a senior engineer and cuts token costs 40–70×. Works with Claude Code, Cursor, Cline, and any MCP agent.">
-    <meta name="keywords" content="AI coding agent memory, persistent agent memory, semantic code search, code intelligence, token reduction, context compression, MCP server, Claude Code memory, Cursor, Cline, tree-sitter code graph, Hebbian learning, synapse layer, local-first, hybrid search, BM25, code retrieval benchmark, team memory, progressive context disclosure, tool output compression">
+    <meta name="description" content="Persistent, 100% local memory for AI coding agents — NeuralMind learns your codebase like a senior engineer and cuts token costs 40–70×. Ask the code graph what calls a symbol and what a change touches (blast radius). Works with Claude Code, Cursor, Cline, and any MCP agent.">
+    <meta name="keywords" content="AI coding agent memory, persistent agent memory, semantic code search, structural code search, call graph, blast radius, code intelligence, token reduction, context compression, MCP server, Claude Code memory, Cursor, Cline, tree-sitter code graph, Hebbian learning, synapse layer, local-first, hybrid search, BM25, code retrieval benchmark, team memory, progressive context disclosure, tool output compression">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://neuralmind.uk/">
     <meta property="og:title" content="NeuralMind — Persistent Memory for AI Coding Agents">
@@ -31,9 +31,9 @@
           "url": "https://neuralmind.uk/",
           "downloadUrl": "https://pypi.org/project/neuralmind/",
           "installUrl": "https://pypi.org/project/neuralmind/",
-          "softwareVersion": "0.41.0",
+          "softwareVersion": "0.42.0",
           "datePublished": "2025-05-01",
-          "dateModified": "2026-07-06",
+          "dateModified": "2026-07-12",
           "license": "https://opensource.org/licenses/MIT",
           "isAccessibleForFree": true,
           "programmingLanguage": "Python",
@@ -390,7 +390,7 @@
     </div>
     <div class="container hero-grid">
         <div>
-            <p class="badge"><span class="dot"></span> v0.41.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.41.0.md">release notes</a></p>
+            <p class="badge"><span class="dot"></span> v0.42.0 — latest release&nbsp;·&nbsp;<a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md">release notes</a></p>
             <h1>Persistent memory for <span class="grad">AI coding agents</span></h1>
             <p class="hero-sub">Your agent learns your codebase the way a senior engineer would — <strong>what files go together, what you usually edit next, what patterns matter</strong>. The memory persists across sessions and surfaces automatically.</p>
             <p class="hero-local"><strong>100% local engine.</strong> NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. Side effect: <strong>40–70× cheaper code questions</strong>, measured in CI on every commit.</p>
@@ -654,7 +654,11 @@ bash scripts/demo.sh">Copy</button>
         <p class="lede">Shipped in small, verifiable increments — every release gated by the CI benchmark.</p>
         <div class="timeline">
             <div class="tl-item dev">
-                <div class="tl-head"><b>v0.41.0</b><span class="pill pill-latest">Latest release</span></div>
+                <div class="tl-head"><b>v0.42.0</b><span class="pill pill-latest">Latest release</span></div>
+                <p><b>The code graph learns to answer "what does this touch?"</b> <code>graphify</code> already extracts typed structural edges — <code>calls</code>, <code>inherits</code>, <code>imports_from</code>, <code>contains</code> — into every <code>graph.json</code>; the embedder loaded them but nothing queried them. v0.42.0 surfaces them as a <b>first-class, agent-visible capability</b>. <b>(1) Structural neighbors</b> — <code>neuralmind structural &lt;symbol&gt;</code> (CLI) and the <code>neuralmind_structural_neighbors</code> MCP tool return a symbol's callers, callees, base/sub classes, and importers straight from the static graph — precise and available day-one. <b>(2) Blast radius</b> — <code>--blast-radius</code> / <code>blast_radius=true</code> gives the transitive set of code a change would affect (everything that calls, imports, or subclasses the symbol) — depth-bounded, cycle-safe, hub-capped. <b>(3) Structural recall in retrieval</b> <em>(opt-in)</em> — with <code>NEURALMIND_STRUCTURAL_RECALL=1</code> a query hit's callers/callees fold into L3 context, budget-neutral (displacement, not addition). The query surface is on by default; folding into retrieval is opt-in because it interacts with the tuned synapse reranker, so <b>default retrieval stays byte-identical to v0.41.0</b>. Structure says what <em>can</em> be related; synapses say what <em>actually</em> gets used together — a static index can copy the structure, not the fusion. No new extraction, no schema bump; killable with <code>NEURALMIND_STRUCTURAL=0</code>. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md">Release notes &rarr;</a></p>
+            </div>
+            <div class="tl-item">
+                <div class="tl-head"><b>v0.41.0</b></div>
                 <p><b>Reuse-vs-rewrite feedback loop and a structured relevance sidecar.</b> Two features that make NeuralMind's half of a <em>modular</em> agent stack real — the retrieval layer now learns from what the agent did, and emits the relevance signal it already computes. <b>(1) Reuse-vs-rewrite feedback</b> — a new <code>Edit</code>/<code>Write</code> PostToolUse hook (<code>edit-activity</code>) detects when new code reaches for existing graph symbols (reuse) and feeds that back into the synapse layer, so future retrieval prefers what was actually reused; the <b>implicit</b> complement to v0.38.0's explicit <code>neuralmind_feedback</code> MCP tool. Language-agnostic, never forces a build, fails open; off-switch <code>NEURALMIND_REUSE_FEEDBACK=0</code>. <b>(2) Structured relevance sidecar</b> — retrieval can attach a machine-readable <code>relevance</code> block (per-file, per-node vector score / synapse boost / recall flag + line spans, built from post-boost L3 hits) via <code>neuralmind_query(include_relevance=true)</code> (MCP) or <code>neuralmind query --relevance</code> (CLI), so a downstream compressor can protect the load-bearing spans; versioned and stably-keyed, so it's order-independent. Both opt-in; default retrieval is unchanged. <a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.41.0.md">Release notes &rarr;</a></p>
             </div>
             <div class="tl-item">
