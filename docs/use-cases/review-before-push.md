@@ -69,8 +69,11 @@ The agent can call this automatically after editing a file, get the co-break can
 - The synapse layer needs editing history to have meaningful weights. On a freshly built index with no `watch` sessions, spreading activation will return empty or low-confidence results.
 - Call-graph edges (from the structural graph) complement synapse weights but don't replace a type-checker or test suite. Use this as a pre-push hint, not a guarantee.
 
+> **Want the static side of this?** `neuralmind review` ranks co-break candidates by *learned association* (what you edit together). For the *structural* answer — the exact callers, importers, and subclasses a change would touch, straight from the code graph and available with no editing history — run [`neuralmind structural <symbol> --blast-radius`](blast-radius-before-a-rename.md) (v0.42.0+). Structure says what *can* break; synapses say what *usually* co-changes. Use both before a risky refactor.
+
 ## See also
 
+- [Blast radius before a rename](blast-radius-before-a-rename.md) — the static-graph complement: every caller/importer/subclass a change would touch (v0.42.0+)
 - [`neuralmind query --explain`](claude-code.md#understand-why-a-retrieval-answered-the-way-it-did-v0400) — understand why a specific retrieval answered the way it did
 - [`neuralmind savings`](claude-code.md#track-cumulative-savings-v0400-requires-neuralmind_memory1) — track cumulative token savings across sessions
 - [Full v0.39.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md)
