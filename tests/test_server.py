@@ -20,6 +20,7 @@ from neuralmind.server import (
     _ensure_graph_or_explain,
     _Handler,
     _resolve_open_target,
+    _resolve_server_token,
 )
 
 
@@ -404,3 +405,30 @@ def test_allowed_open_paths_only_includes_in_project_files(tmp_path):
         assert allowed == {str(keep.resolve())}
     finally:
         outside.unlink()
+
+
+def test_resolve_server_token_honors_auth_false(tmp_path):
+    """auth=False yields no token even when a persisted token file exists."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text(json.dumps({"token": "preexisting-token"}))
+    assert _resolve_server_token(False, token_file) is None
+
+
+def test_resolve_server_token_persists_and_reuses(tmp_path):
+    """auth=True mints, persists (0o600), then reuses the same token."""
+    token_file = tmp_path / "sub" / "server-token.json"
+    first = _resolve_server_token(True, token_file)
+    assert first
+    assert token_file.exists()
+    assert (token_file.stat().st_mode & 0o777) == 0o600
+    # A second call reuses the persisted token rather than regenerating.
+    assert _resolve_server_token(True, token_file) == first
+
+
+def test_resolve_server_token_regenerates_on_corrupt_file(tmp_path):
+    """A corrupt token file is replaced with a fresh, persisted token."""
+    token_file = tmp_path / "server-token.json"
+    token_file.write_text("not-valid-json{")
+    token = _resolve_server_token(True, token_file)
+    assert token
+    assert json.loads(token_file.read_text())["token"] == token
