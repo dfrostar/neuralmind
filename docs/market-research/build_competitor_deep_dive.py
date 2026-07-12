@@ -1,23 +1,27 @@
 """
 Build competitor deep-dive DOCX using intel.py data module.
-Output: /home/dtfrost/neuralmind/docs/market-research/competitor-deep-dive.docx
+Output: competitor-deep-dive.docx (written alongside this script).
 """
 
+import os
 import sys
-from docx import Document
-from docx.shared import Pt, Inches, Cm, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
-from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
 
-# Ensure the data module is importable
-sys.path.insert(0, "/home/dtfrost/neuralmind/docs/market-research")
+from docx import Document
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_BREAK
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Inches, Pt, RGBColor
+
+# Ensure the data module (intel.py, alongside this script) is importable.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _HERE)
 from intel import COMPETITORS, MARKET  # noqa: E402
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def set_cell_shading(cell, color_hex):
     tc_pr = cell._tc.get_or_add_tcPr()
@@ -97,18 +101,18 @@ def add_table(doc, headers, rows, col_widths=None):
 def add_toc_field(paragraph):
     """Inject a dynamic TOC field that updates in Word."""
     run = paragraph.add_run()
-    fldChar = OxmlElement("w:fldChar")
-    fldChar.set(qn("w:fldCharType"), "begin")
-    run._element.append(fldChar)
+    fld_char = OxmlElement("w:fldChar")
+    fld_char.set(qn("w:fldCharType"), "begin")
+    run._element.append(fld_char)
 
-    instrText = OxmlElement("w:instrText")
-    instrText.set(qn("xml:space"), "preserve")
-    instrText.text = ' TOC \\o "1-3" \\h \\z \\u '
-    run._element.append(instrText)
+    instr_text = OxmlElement("w:instrText")
+    instr_text.set(qn("xml:space"), "preserve")
+    instr_text.text = ' TOC \\o "1-3" \\h \\z \\u '
+    run._element.append(instr_text)
 
-    fldChar2 = OxmlElement("w:fldChar")
-    fldChar2.set(qn("w:fldCharType"), "separate")
-    run._element.append(fldChar2)
+    fld_char2 = OxmlElement("w:fldChar")
+    fld_char2.set(qn("w:fldCharType"), "separate")
+    run._element.append(fld_char2)
 
     run2 = paragraph.add_run(
         "Right-click here and select 'Update Field' to populate automatically."
@@ -116,9 +120,9 @@ def add_toc_field(paragraph):
     run2.italic = True
     set_run_style(run2, size=10)
 
-    fldChar3 = OxmlElement("w:fldChar")
-    fldChar3.set(qn("w:fldCharType"), "end")
-    run._element.append(fldChar3)
+    fld_char3 = OxmlElement("w:fldChar")
+    fld_char3.set(qn("w:fldCharType"), "end")
+    run._element.append(fld_char3)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -169,9 +173,7 @@ run.font.color.rgb = RGBColor(0x1A, 0x3C, 0x6E)
 doc.add_paragraph()
 tagline = doc.add_paragraph()
 tagline.alignment = WD_ALIGN_PARAGRAPH.CENTER
-run = tagline.add_run(
-    "Strategic Analysis of the AI Code Intelligence Landscape"
-)
+run = tagline.add_run("Strategic Analysis of the AI Code Intelligence Landscape")
 run.font.size = Pt(14)
 run.italic = True
 run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
@@ -303,7 +305,9 @@ set_run_style(run, size=11)
 add_bullet(doc, "Non-existent API calls (hallucinated function signatures from training data)")
 add_bullet(doc, "Subtle logic bugs in plausible-looking code that passes surface review")
 add_bullet(doc, "Security vulnerabilities (OWASP Top 10 patterns reproduced from public code)")
-add_bullet(doc, "Degraded performance on less-represented languages (Rust, Kotlin, Go vs. Python/JS)")
+add_bullet(
+    doc, "Degraded performance on less-represented languages (Rust, Kotlin, Go vs. Python/JS)"
+)
 
 add_heading(doc, "2.4 Vendor Lock-In Assessment", level=2)
 p = doc.add_paragraph()
@@ -374,7 +378,9 @@ set_run_style(run, size=11)
 add_heading(doc, "3.4 Limitations", level=2)
 add_bullet(doc, "High cost creates adoption friction for teams under 50 engineers")
 add_bullet(doc, "Requires Sourcegraph platform deployment (significant infrastructure)")
-add_bullet(doc, "Cloud-first architecture creates data sovereignty concerns for regulated industries")
+add_bullet(
+    doc, "Cloud-first architecture creates data sovereignty concerns for regulated industries"
+)
 add_bullet(doc, "Vendor manages code indexing — customer doesn't own the graph")
 
 add_page_break(doc)
@@ -536,7 +542,9 @@ add_heading(doc, "6.4 Limitations", level=2)
 add_bullet(doc, "Self-managed model infrastructure requires DevOps resources")
 add_bullet(doc, "No semantic graph — context selection is heuristic, not structural")
 add_bullet(doc, "OSS dependencies create support burden for enterprise deployments")
-add_bullet(doc, "No air-pack package or SOC2 compliance documentation (without enterprise contract)")
+add_bullet(
+    doc, "No air-pack package or SOC2 compliance documentation (without enterprise contract)"
+)
 add_bullet(doc, "Centralized config in enterprise tier introduces competing data aggregation")
 
 add_page_break(doc)
@@ -569,8 +577,12 @@ run = p.add_run(
 set_run_style(run, size=11)
 
 add_bullet(doc, "Strength: Massive community, mature graph extraction, multi-language support")
-add_bullet(doc, "Weakness: No inference layer — outputs graphs but doesn't query them intelligently")
-add_bullet(doc, "Risk to NeuralMind: Medium — if a fork adds semantic querying, competition intensifies")
+add_bullet(
+    doc, "Weakness: No inference layer — outputs graphs but doesn't query them intelligently"
+)
+add_bullet(
+    doc, "Risk to NeuralMind: Medium — if a fork adds semantic querying, competition intensifies"
+)
 add_bullet(doc, "NeuralMind differentiation: Integrated synapse learning + graph + inference layer")
 
 add_heading(doc, "7.2 GitNexus — Multi-Repo Code Search (42K Stars)", level=2)
@@ -604,7 +616,10 @@ set_run_style(run, size=11)
 add_bullet(doc, "Strength: Novel context engine, strong VC backing, real-time graph analysis")
 add_bullet(doc, "Weakness: Cloud-only deployment, no on-premise option, no air-gap")
 add_bullet(doc, "Risk to NeuralMind: High — same architecture, superior cloud positioning")
-add_bullet(doc, "NeuralMind differentiation: Local-first deployment, data sovereignty, no vendor dependency")
+add_bullet(
+    doc,
+    "NeuralMind differentiation: Local-first deployment, data sovereignty, no vendor dependency",
+)
 
 add_page_break(doc)
 
@@ -767,10 +782,15 @@ add_bullet(
 )
 
 add_heading(doc, "9.4 Go-to-Market Recommendations", level=2)
-add_bullet(doc, "Lead with the $75K+ Cody gap: teams wanting multi-repo intelligence without the enterprise tax")
+add_bullet(
+    doc,
+    "Lead with the $75K+ Cody gap: teams wanting multi-repo intelligence without the enterprise tax",
+)
 add_bullet(doc, "Offer air-gap deployment as a Tabnine/AirgapAI competitive alternative")
 add_bullet(doc, "Build OSS community around CodeGraph/GitNexus-compatible formats")
-add_bullet(doc, "Publish accuracy benchmarks that contextualize (and pressure) AirgapAI's 78x claim")
+add_bullet(
+    doc, "Publish accuracy benchmarks that contextualize (and pressure) AirgapAI's 78x claim"
+)
 
 add_page_break(doc)
 
@@ -802,7 +822,7 @@ set_run_style(run, size=10)
 # SAVE & VERIFY
 # ──────────────────────────────────────────────────────────────────────────────
 
-OUTPUT_PATH = "/home/dtfrost/neuralmind/docs/market-research/competitor-deep-dive.docx"
+OUTPUT_PATH = os.path.join(_HERE, "competitor-deep-dive.docx")
 doc.save(OUTPUT_PATH)
 
 # Verification

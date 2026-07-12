@@ -413,9 +413,9 @@ def test_concurrent_reinforce(tmp_path):
     # (a, b) is reinforced by both threads 5 times each => 10 LEARNING_RATE.
     a_neighbors = dict(s.neighbors("a"))
     expected_a_b = min(WEIGHT_CAP, 10 * LEARNING_RATE)
-    assert abs(a_neighbors["b"] - expected_a_b) < 1e-9, (
-        f"expected (a,b) weight {expected_a_b}, got {a_neighbors['b']}"
-    )
+    assert (
+        abs(a_neighbors["b"] - expected_a_b) < 1e-9
+    ), f"expected (a,b) weight {expected_a_b}, got {a_neighbors['b']}"
 
     # (a, c) is only in set1, reinforced 5 times.
     expected_a_c = min(WEIGHT_CAP, 5 * LEARNING_RATE)
@@ -423,3 +423,94 @@ def test_concurrent_reinforce(tmp_path):
 
     # (a, new_d) is only in set2, reinforced 5 times.
     assert abs(a_neighbors.get("new_d", 0.0) - expected_a_c) < 1e-9
+
+
+def _count_connect_calls(store, fn):
+    """Run ``fn()`` while counting how many times ``store._connect`` is
+    entered. Returns (result, connect_count)."""
+    import contextlib
+
+    real_connect = store._connect
+    count = {"n": 0}
+
+    @contextlib.contextmanager
+    def counting_connect():
+        count["n"] += 1
+        with real_connect() as conn:
+            yield conn
+
+    store._connect = counting_connect  # type: ignore[method-assign]
+    try:
+        result = fn()
+    finally:
+        store._connect = real_connect  # type: ignore[method-assign]
+    return result, count["n"]
+
+
+def test_reinforce_writes_in_single_transaction(tmp_path):
+    """Regression: activation bumps and synapse upserts must share ONE
+    transaction so a partial failure can't leave counters ahead of edges."""
+    s = _store(tmp_path)
+    _, connects = _count_connect_calls(s, lambda: s.reinforce(["a", "b", "c"]))
+    assert (
+        connects == 1
+    ), f"reinforce should open exactly one connection/transaction, opened {connects}"
+
+
+def test_reinforce_rolls_back_activations_on_synapse_failure(tmp_path):
+    """If the synapse write fails, the activation-count bump must roll back
+    too — reinforce() is all-or-nothing."""
+    import contextlib
+    import sqlite3
+
+    s = _store(tmp_path)
+    real_connect = s._connect
+
+    class _FailingConn:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def executemany(self, sql, rows):
+            if "INTO synapses(" in sql:
+                raise sqlite3.OperationalError("induced synapse-write failure")
+            return self._conn.executemany(sql, rows)
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+    @contextlib.contextmanager
+    def failing_connect():
+        with real_connect() as conn:
+            yield _FailingConn(conn)
+
+    s._connect = failing_connect  # type: ignore[method-assign]
+    try:
+        raised = False
+        try:
+            s.reinforce(["a", "b", "c"])
+        except sqlite3.OperationalError:
+            raised = True
+        assert raised, "reinforce should propagate the synapse-write failure"
+    finally:
+        s._connect = real_connect  # type: ignore[method-assign]
+
+    # The activation bump for "a" must have rolled back with the synapses.
+    with s._connect() as conn:
+        cur = conn.execute("SELECT COUNT(*) FROM node_activations WHERE node_id = ?", ("a",))
+        assert cur.fetchone()[0] == 0
+    assert s.neighbors("a") == []
+
+
+def test_decay_commits_in_single_transaction(tmp_path):
+    """Regression: decay is not idempotent, so the whole tick must commit in
+    ONE transaction — a partial commit + retry would double-decay."""
+    s = _store(tmp_path)
+    s.reinforce(["a", "b", "c"])  # personal namespace
+    s.reinforce(["x", "y"], namespace="shared")
+
+    # Pre-compute namespaces so the read scan isn't counted as a write txn.
+    ns = s._default_namespaces()
+    s._default_namespaces = lambda: ns  # type: ignore[method-assign]
+
+    _, connects = _count_connect_calls(s, lambda: s.decay())
+    assert connects == 1, f"decay should commit in exactly one transaction, opened {connects}"
