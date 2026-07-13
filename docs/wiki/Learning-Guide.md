@@ -184,6 +184,16 @@ Each `SessionStart` re-exports the synapse memory as markdown to:
 ✅ **User Control** — One-time consent, can disable anytime
 ✅ **Persistent** — Memory stays in your `.neuralmind/` directory
 
+### Write policy — who may write what
+
+**Agents learn in their own store; the human and team layers change only through an explicit, git-committed bundle — never the agent writing them directly.** Concretely:
+
+- **Human-curated files** (`CLAUDE.md`, docs, config) are *read-only* to the learning layer — no hook, watcher, or MCP tool ever writes them. The exported `SYNAPSE_MEMORY.md` / Claude auto-memory files are separate, clearly-labeled render targets, not edits to your files.
+- **Agent-learned memory** lives in `.neuralmind/synapses.db` under the `personal` or `branch:<name>` namespace. It is free to be noisy because it is weighted and *decays* — stale associations fade instead of compounding.
+- **Team-shared memory** (`.neuralmind-team-memory.json`) only changes via an explicit publish to a git-committed bundle — reviewable like any other diff. Imports are MAX-merged (a bundle can only raise weights it asserts, never rewrite or lower others) and never touch your `personal` namespace.
+
+This means an association the agent learned can never silently become team-trusted knowledge — promotion requires an explicit, reviewable commit. See the repo-root positioning note [`TRINODE.md`](https://github.com/dfrostar/neuralmind/blob/main/TRINODE.md) for the full trust-boundary rationale.
+
 ### File Locations
 
 ```
