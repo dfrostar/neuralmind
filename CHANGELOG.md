@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.42.1](https://github.com/dfrostar/neuralmind/compare/v0.42.0...v0.42.1) (2026-07-13)
+
+
+### Documentation
+
+* add "US-based" signal to docs-site footers ([#335](https://github.com/dfrostar/neuralmind/issues/335)) ([83acb6f](https://github.com/dfrostar/neuralmind/commit/83acb6fa999e649a963af7448cf4dc56c0a27390))
+* add contact channel and free AI-spend assessment offer ([#324](https://github.com/dfrostar/neuralmind/issues/324)) ([1475c45](https://github.com/dfrostar/neuralmind/commit/1475c45ab082058588e97d33f44efced86a78d13))
+* add TRINODE.md positioning note + state the memory write policy ([#311](https://github.com/dfrostar/neuralmind/issues/311)) ([89d8b39](https://github.com/dfrostar/neuralmind/commit/89d8b39dc8dcbd515e37b0e70eb56c303dbb01b1))
+* correct marketing claims and point SEO at neuralmind.uk ([#321](https://github.com/dfrostar/neuralmind/issues/321)) ([1fe0cc6](https://github.com/dfrostar/neuralmind/commit/1fe0cc6c491d37d85e9920f1750c13fca618181d))
+* fix audit-log path drift (docs described a file that doesn't exist) ([#332](https://github.com/dfrostar/neuralmind/issues/332)) ([0d6efd5](https://github.com/dfrostar/neuralmind/commit/0d6efd5f1b22911b7aaa43c9d8211319a337defb))
+* move docs site to docs.neuralmind.uk subdomain ([#331](https://github.com/dfrostar/neuralmind/issues/331)) ([af5c26d](https://github.com/dfrostar/neuralmind/commit/af5c26d60e2239f3bbff1da7d3e1170c1e3fdde5))
+* purge forbidden absolute privacy claims (+CI guard) & document git-worktree workflow ([#316](https://github.com/dfrostar/neuralmind/issues/316)) ([#333](https://github.com/dfrostar/neuralmind/issues/333)) ([cae4a3c](https://github.com/dfrostar/neuralmind/commit/cae4a3c889c3ad80eadc87807458532a8319e7f9))
+* redesign benchmarks dashboard and wiki pages to match site design system ([#327](https://github.com/dfrostar/neuralmind/issues/327)) ([801f34c](https://github.com/dfrostar/neuralmind/commit/801f34c5f56d9e1b7fb6b6abe3fc2dca68c61e79))
+* refresh benchmark chart [skip ci] ([c421d10](https://github.com/dfrostar/neuralmind/commit/c421d10eca81b0c1f3b776ab5497e8237c92f6a3))
+
 ## [0.42.0](https://github.com/dfrostar/neuralmind/compare/v0.41.0...v0.42.0) (2026-07-12)
 
 
