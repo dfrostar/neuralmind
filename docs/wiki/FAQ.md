@@ -162,6 +162,33 @@ neuralmind build . --optimize
 
 ---
 
+### "Should I run NeuralMind on one codebase, a monorepo, or across several repos?"
+
+**One codebase is the unit — and where NeuralMind is strongest.** Everything
+is anchored to a single project root: the index in `graphify-out/`, and the
+embeddings plus the learned synapse memory in `.neuralmind/`. One root = one
+index + one namespaced memory.
+
+- **A monorepo counts as one codebase** and is fully supported. Retrieval is
+  community/cluster-aware, and builds are incremental — `neuralmind build .`
+  re-embeds only changed nodes, so build time scales with churn, not repo
+  size. (See the Growing Monorepo use case.)
+- **Several *separate* repos → run one NeuralMind per repo.** There's no
+  cross-repo "workspace" store today; each repo is its own independent brain
+  with its own `.neuralmind/`. Nothing stops you running it on ten repos —
+  they're just ten separate stores, not one unified one.
+- **The memory compounds per codebase.** The synapse layer learns
+  associations from how you actually work *in that repo*, so sustained use on
+  one codebase sharpens recall over time. Splitting attention across many
+  repos means each accumulates less learning signal.
+
+Within a single codebase it's still flexible: memory namespaces isolate
+`branch:<name>` / `personal` / `shared`, multiple agents (Claude Code,
+Cursor, Cline) share the one store, and even multiple git worktrees can share
+it with per-branch isolation.
+
+---
+
 ## Features & Capabilities
 
 ### "Does NeuralMind support my language?"
@@ -215,7 +242,7 @@ exclude_patterns = [
 # 2. Local node_modules / site-packages (yes)
 # 3. External PyPI/npm packages (no, stays private)
 
-# Nothing leaves your machine
+# NeuralMind indexes only local code and makes no calls of its own
 ```
 
 ---

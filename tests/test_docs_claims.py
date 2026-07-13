@@ -69,6 +69,11 @@ FORBIDDEN = [
         "Absolute claim — reword to NeuralMind's own local processing.",
     ),
     (
+        re.compile(r"\bnothing\s+leaves?\s+your\b", re.IGNORECASE),
+        "Absolute privacy claim about the whole workflow — inaccurate. "
+        "Scope the claim to NeuralMind's own behavior.",
+    ),
+    (
         re.compile(r"\b(zero|no)\s+(data\s+)?exfiltration\b", re.IGNORECASE),
         "Absolute exfiltration claim. Use 'no telemetry / no calls home'.",
     ),
