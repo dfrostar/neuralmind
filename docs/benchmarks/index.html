@@ -3,122 +3,278 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Community-submitted NeuralMind benchmarks — real-world token reduction numbers from real codebases. Reproducible, auditable, no synthetic claims. Each entry runs `neuralmind benchmark . --json` on a real repo and submits the numbers via PR.">
-    <meta name="keywords" content="neuralmind, benchmark, token reduction, claude code, mcp, llm cost optimization, real-world numbers, community benchmarks">
-    <title>Community Benchmarks · NeuralMind</title>
-    <meta property="og:title" content="NeuralMind Community Benchmarks — real numbers from real codebases">
-    <meta property="og:description" content="Reproducible token-reduction measurements submitted by NeuralMind users on their actual repositories.">
+    <title>Benchmarks — CI-verified &amp; community-submitted · NeuralMind</title>
+    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (100% gold-file recall at 38–85× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
+    <meta name="keywords" content="neuralmind, benchmark, token reduction, gold-file recall, claude code, mcp, llm cost optimization, real-world numbers, community benchmarks, code retrieval benchmark">
+    <link rel="canonical" href="https://neuralmind.uk/benchmarks/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://neuralmind.uk/benchmarks/">
+    <meta property="og:title" content="NeuralMind Benchmarks — real numbers from real codebases">
+    <meta property="og:description" content="100% gold-file recall at 38–85× fewer tokens on pinned real OSS repos, re-run in CI on every commit — plus community-submitted measurements you can reproduce with one command.">
+    <meta property="og:image" content="https://neuralmind.uk/assets/social-preview.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NeuralMind Benchmarks — real numbers from real codebases">
+    <meta name="twitter:description" content="Deterministic public benchmark on pinned OSS repos + community-submitted numbers, all reproducible from a fresh clone.">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Dataset",
+      "name": "NeuralMind community benchmarks",
+      "description": "Community-submitted, schema-validated token-reduction measurements produced by running `neuralmind benchmark . --json` on real repositories and contributed via pull request.",
+      "url": "https://neuralmind.uk/benchmarks/",
+      "isAccessibleForFree": true,
+      "license": "https://opensource.org/licenses/MIT",
+      "creator": { "@type": "Person", "name": "Darren Frost" },
+      "distribution": [{
+        "@type": "DataDownload",
+        "encodingFormat": "application/json",
+        "contentUrl": "https://neuralmind.uk/community-benchmarks.json"
+      }]
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="dashboard.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Chart.js 4.4.1, vendored — the dashboard makes zero third-party requests -->
+    <script src="chart.umd.min.js"></script>
 </head>
 <body>
-    <nav>
-        <div class="nav-inner">
-            <a href="../" class="nav-brand">🧠 NeuralMind</a>
-            <a href="../">Home</a>
-            <a href="../about.html">About</a>
-            <a href="./" class="active">Benchmarks</a>
-            <a href="https://github.com/dfrostar/neuralmind" class="nav-right">GitHub</a>
-        </div>
-    </nav>
 
-    <header>
-        <div class="container">
-            <h1>📊 Community Benchmarks</h1>
-            <p class="lede">Real numbers from real codebases. Every entry was produced by running <code class="hero-code">neuralmind benchmark . --json</code> on the submitter's own repository and PR'd into this dataset. CI validates every submission against a schema. NeuralMind never uploads anything automatically — these are deliberate, auditable contributions.</p>
+<nav>
+    <div class="container nav-inner">
+        <a class="nav-logo" href="https://neuralmind.uk/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.getElementById('navlinks').classList.toggle('open')">☰</button>
+        <div class="nav-links" id="navlinks">
+            <a href="#public">Public benchmark</a>
+            <a href="#community">Community numbers</a>
+            <a href="#contribute">Contribute</a>
+            <a href="/wiki/Home">Docs</a>
+            <a href="/about.html">About</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
         </div>
-    </header>
+    </div>
+</nav>
 
-    <section class="hero-stats">
-        <div class="container">
-            <div class="stats-grid" id="hero-stats">
-                <!-- Filled by dashboard.js -->
-                <div class="stat-card placeholder">
-                    <div class="stat-number">—</div>
-                    <div class="stat-label">Loading…</div>
+<header class="hero">
+    <div class="hero-glow"></div>
+    <div class="container">
+        <p class="badge"><span class="dot"></span> Deterministic — re-run in CI on every commit</p>
+        <h1>Benchmarks you can <span class="grad">re-run yourself</span></h1>
+        <p class="hero-sub">Every number on this page comes from one of two sources: a <strong>deterministic public benchmark on pinned, real OSS repos</strong> that CI re-runs on every commit, and <strong>community submissions</strong> PR'd into a schema-validated dataset. No synthetic demos, no cherry-picking — every row ships with the exact command that reproduces it.</p>
+        <div class="cta-row">
+            <a class="btn btn-primary" href="#contribute">Benchmark your own repo</a>
+            <a class="btn btn-ghost" href="public.md">Read the methodology</a>
+        </div>
+    </div>
+</header>
+
+<div class="stats-band">
+    <div class="container band-grid">
+        <div class="band-stat"><b>100%</b><span>gold-file recall on pinned real OSS repos</span></div>
+        <div class="band-stat"><b>38–85×</b><span>fewer tokens than pasting whole files</span></div>
+        <div class="band-stat"><b>21</b><span>pre-registered queries — every one reported</span></div>
+        <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos</span></div>
+    </div>
+</div>
+
+<section id="public">
+    <div class="container">
+        <p class="eyebrow">The public benchmark</p>
+        <h2>Cost and correctness, reported together</h2>
+        <p class="lede">A token-reduction number with no correctness number attached is meaningless. The public benchmark scores both at once: does the <strong>objectively-correct file</strong> land in the context window, and how many tokens did it cost to put it there? Built to be hard to dismiss:</p>
+        <div class="cards">
+            <div class="card">
+                <h3>Real, pinned repos</h3>
+                <p>Household-name OSS — <code>requests</code>, <code>click</code> — pinned to exact commit SHAs. Anyone can <code>git checkout</code> and audit; no vendor fixture.</p>
+            </div>
+            <div class="card">
+                <h3>Objective gold, no LLM judge</h3>
+                <p>Each query's gold file is the <em>definition site</em> of a named symbol, verifiable with one <code>rg</code> command. Deterministic — nothing to rig.</p>
+            </div>
+            <div class="card">
+                <h3>Strong baselines, disclosed</h3>
+                <p>Not just naive file dumps: keyword search (<code>ripgrep</code>) and a vector RAG using the <em>same encoder</em> NeuralMind uses. Losses shown, not hidden.</p>
+            </div>
+            <div class="card">
+                <h3>Pre-registered queries</h3>
+                <p>Queries are committed in <code>evals/public/manifest.json</code> before tuning. Every one is reported; re-running yields identical numbers.</p>
+            </div>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-block">
+                <h3><code>requests</code> @ <code>0e322af877</code></h3>
+                <p class="result-meta">14 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Backend</th><th class="num">Gold-file recall</th><th class="num">Mean tokens/query</th><th class="num">vs full-file</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>full-file</td><td class="num">1.00</td><td class="num">41,729</td><td class="num">1×</td></tr>
+                            <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">26,543</td><td class="num">1.6×</td></tr>
+                            <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">607</td><td class="num">69×</td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">1,095</td><td class="num"><span class="win">38×</span></td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            <p class="sample-note" id="sample-note">
-                <!-- Filled by dashboard.js — explicit honesty about sample size -->
-            </p>
-        </div>
-    </section>
-
-    <section>
-        <div class="container">
-            <h2>How reduction scales with codebase size</h2>
-            <p>Each dot is one submission. X-axis is the graph node count (proxy for codebase size); Y-axis is the average reduction ratio vs loading the whole repo. The pattern to watch for: does the ratio hold up as repos get bigger?</p>
-            <div class="chart-wrap">
-                <canvas id="scatter"></canvas>
-            </div>
-            <p class="chart-note">Hover any dot for project name, language, and exact numbers.</p>
-        </div>
-    </section>
-
-    <section class="bg-tint">
-        <div class="container">
-            <h2>By language</h2>
-            <p>Reduction ratios per language. Bars show the average across submissions; the count overlay is how many entries back each number — so you can tell apart "this is solid" from "n=1, take with salt".</p>
-            <div class="chart-wrap">
-                <canvas id="by-language"></canvas>
+            <div class="result-block">
+                <h3><code>click</code> @ <code>874ca2bc1c</code></h3>
+                <p class="result-meta">7 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Backend</th><th class="num">Gold-file recall</th><th class="num">Mean tokens/query</th><th class="num">vs full-file</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>full-file</td><td class="num">1.00</td><td class="num">78,514</td><td class="num">1×</td></tr>
+                            <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">45,059</td><td class="num">1.7×</td></tr>
+                            <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">649</td><td class="num">121×</td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">924</td><td class="num"><span class="win">85×</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-    </section>
+        <p class="note"><b>Read the losses too:</b> <code>embedding-rag</code> is NeuralMind's own vector-retrieval core in isolation, and it's cheaper on raw tokens — the gap is what the progressive-disclosure assembly layer (project map + symbols + call edges) adds on top of raw top-k chunks. Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>.</p>
 
-    <section>
-        <div class="container">
-            <h2>All submissions</h2>
-            <p>Sortable. The <code>verification_command</code> column is the exact CLI invocation the submitter ran — copy it, run it on your own repo, and the numbers should reproduce. That's what makes this table auditable rather than promotional.</p>
-            <div class="table-wrap">
-                <table id="submissions-table">
-                    <thead>
-                        <tr>
-                            <th>Project</th>
-                            <th>Language</th>
-                            <th class="num">Nodes</th>
-                            <th class="num">Reduction</th>
-                            <th class="num">Wakeup tok</th>
-                            <th class="num">Query tok</th>
-                            <th>Model</th>
-                            <th>Submitted by</th>
-                            <th>Date</th>
-                            <th>Notes</th>
-                        </tr>
-                    </thead>
-                    <tbody id="submissions-body">
-                        <tr><td colspan="10" class="placeholder">Loading submissions…</td></tr>
-                    </tbody>
-                </table>
+        <div class="codeblock">
+            <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind
+pip install -e . tiktoken
+python -m evals.public.run">Copy</button>
+            <pre><span class="cmt"># Reproduce it yourself — no trust required. Deterministic:</span>
+<span class="cmt"># your numbers match the tables above to the token.</span>
+<span class="kw">git clone</span> https://github.com/dfrostar/neuralmind <span class="kw">&amp;&amp; cd</span> neuralmind
+<span class="kw">pip install</span> -e . tiktoken
+<span class="kw">python</span> -m evals.public.run</pre>
+        </div>
+    </div>
+</section>
+
+<section id="community">
+    <div class="container">
+        <p class="eyebrow">Community numbers</p>
+        <h2>Real repos, submitted via pull request</h2>
+        <p class="lede">Each entry below was produced by running <code>neuralmind benchmark . --json</code> on the submitter's <strong>own repository</strong> and PR'd into the dataset. CI validates every submission against a schema. NeuralMind never uploads anything automatically — these are deliberate, auditable contributions.</p>
+
+        <div class="stats-grid" id="hero-stats">
+            <div class="stat-card placeholder">
+                <div class="stat-number">—</div>
+                <div class="stat-label">Loading…</div>
             </div>
         </div>
-    </section>
+        <p class="sample-note" id="sample-note"></p>
 
-    <section class="bg-tint">
-        <div class="container cta">
-            <h2>Add your numbers</h2>
-            <p>The dataset gets stronger the more repos it covers — especially across different languages and sizes. To contribute:</p>
-            <pre><code>cd /path/to/your-repo
+        <div class="chart-card">
+            <h3>Does the ratio hold as repos get bigger?</h3>
+            <p>Each point is one submission — graph node count (a proxy for codebase size) against the average reduction ratio vs loading the whole repo. Hover any point for the project, language, and exact numbers.</p>
+            <div class="chart-wrap"><canvas id="scatter" role="img" aria-label="Scatter chart of reduction ratio by codebase size; the same data is in the submissions table below"></canvas></div>
+        </div>
+
+        <div class="chart-card">
+            <h3>Reduction by language</h3>
+            <p>Average reduction ratio per language, with the submission count under each bar — so you can tell "this is solid" apart from "n=1, take with salt".</p>
+            <div class="chart-wrap"><canvas id="by-language" role="img" aria-label="Bar chart of average reduction ratio per language; the same data is in the submissions table below"></canvas></div>
+        </div>
+
+        <h3 style="margin: 2.2rem 0 0.4rem;">All submissions</h3>
+        <p style="font-size: 0.88rem; color: var(--text-dim); margin-bottom: 1.2rem; max-width: 52rem;">The dataset behind both charts. The verification command for every row is <code>neuralmind benchmark . --json</code> — run it on your own repo and the numbers should reproduce in the same range.</p>
+        <div class="table-wrap">
+            <table id="submissions-table">
+                <thead>
+                    <tr>
+                        <th data-key="project_name">Project</th>
+                        <th data-key="language">Language</th>
+                        <th class="num" data-key="nodes" data-type="num">Nodes</th>
+                        <th class="num" data-key="avg_reduction_ratio" data-type="num">Reduction</th>
+                        <th class="num" data-key="avg_wakeup_tokens" data-type="num">Wakeup tok</th>
+                        <th class="num" data-key="avg_query_tokens" data-type="num">Query tok</th>
+                        <th data-key="model">Model</th>
+                        <th data-key="submitted_by">Submitted by</th>
+                        <th data-key="date_submitted">Date</th>
+                        <th data-key="notes">Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="submissions-body">
+                    <tr><td colspan="10" class="placeholder">Loading submissions…</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="table-hint">Click a column header to sort. Data loads from <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>community-benchmarks.json</code></a> at page load — no server, no tracking.</p>
+    </div>
+</section>
+
+<section id="contribute">
+    <div class="container">
+        <p class="eyebrow">Contribute</p>
+        <h2>Add your repo's numbers</h2>
+        <p class="lede">The dataset gets stronger with every repo it covers — especially across different languages and sizes. Five minutes, two commands, one PR:</p>
+        <div class="codeblock">
+            <button class="copy-btn" data-copy="pip install neuralmind
+cd /path/to/your-repo
 neuralmind build .
-neuralmind benchmark . --json &gt; my-bench.json</code></pre>
-            <p>Then open a PR adding one entry to <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>docs/community-benchmarks.json</code></a> (schema enforced; see <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.schema.json"><code>community-benchmarks.schema.json</code></a> for required fields). CI will validate the entry on submission; this dashboard updates automatically once merged.</p>
-            <p><a class="btn" href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md">5-minute walkthrough →</a></p>
+neuralmind benchmark . --contribute">Copy</button>
+            <pre><span class="kw">pip install</span> neuralmind
+<span class="kw">cd</span> /path/to/your-repo
+<span class="kw">neuralmind build</span> .
+<span class="cmt"># prints your numbers + a ready-to-share JSON blob</span>
+<span class="kw">neuralmind benchmark</span> . --contribute</pre>
         </div>
-    </section>
+        <p class="note">Then open a PR adding the blob as one entry in <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>docs/community-benchmarks.json</code></a> (fields enforced by <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.schema.json"><code>community-benchmarks.schema.json</code></a>), or file it via the <a href="https://github.com/dfrostar/neuralmind/issues/new?template=community-benchmark.yml">benchmark submission issue template</a>. CI validates the entry; this dashboard updates automatically once it merges.</p>
+        <p class="center-cta"><a class="btn btn-primary" href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md">5-minute walkthrough →</a></p>
+    </div>
+</section>
 
-    <footer>
-        <div class="container">
-            <p>
-                <a href="../">NeuralMind</a> ·
-                <a href="https://github.com/dfrostar/neuralmind">GitHub</a> ·
-                <a href="https://pypi.org/project/neuralmind/">PyPI</a> ·
-                <a href="https://github.com/dfrostar/neuralmind/blob/main/LICENSE">MIT licensed</a>
-            </p>
-            <p class="footer-note">
-                Dashboard reads <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>community-benchmarks.json</code></a> at page load — no server, no tracking, no data sent anywhere. View source: <a href="https://github.com/dfrostar/neuralmind/tree/main/docs/benchmarks">docs/benchmarks/</a>.
-            </p>
+<footer>
+    <div class="container foot-inner">
+        <a class="nav-logo" href="https://neuralmind.uk/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <div class="foot-links">
+            <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            <a href="https://pypi.org/project/neuralmind/">PyPI</a>
+            <a href="/wiki/Home">Docs</a>
+            <a href="/benchmarks/">Benchmarks</a>
+            <a href="https://github.com/dfrostar/neuralmind/issues">Issues</a>
+            <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a>
+            <a href="/about.html">About</a>
         </div>
-    </footer>
+        <p class="foot-meta">MIT License. Dashboard reads <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json"><code>community-benchmarks.json</code></a> at page load — no server, no tracking, no data sent anywhere. View source: <a href="https://github.com/dfrostar/neuralmind/tree/main/docs/benchmarks">docs/benchmarks/</a>.</p>
+    </div>
+</footer>
 
-    <script src="dashboard.js"></script>
+<script>
+    document.querySelectorAll('.copy-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            navigator.clipboard.writeText(btn.getAttribute('data-copy')).then(function () {
+                var prev = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(function () { btn.textContent = prev; }, 1600);
+            });
+        });
+    });
+    document.querySelectorAll('#navlinks a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            document.getElementById('navlinks').classList.remove('open');
+        });
+    });
+</script>
+<script src="dashboard.js"></script>
 </body>
 </html>
