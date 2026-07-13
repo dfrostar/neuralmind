@@ -265,7 +265,7 @@ neuralmind-mcp . --rbac-enabled \
 - ✅ 100% local processing
 - ✅ No cloud APIs
 - ✅ No telemetry
-- ✅ Zero data exfiltration
+- ✅ No network calls of its own
 
 ---
 
@@ -293,7 +293,7 @@ neuralmind search . "password"  # Should return no results
 - ✅ NIST AI RMF audit trail
 - ✅ SOC 2 compliance mapping
 - ✅ GDPR-compliant (local processing)
-- ✅ HIPAA-friendly (no data exfiltration)
+- ✅ HIPAA-friendly (local processing, no calls home)
 
 ---
 

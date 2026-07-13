@@ -82,7 +82,7 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 - The same 4-layer progressive disclosure
 - The same skeleton views (`neuralmind skeleton <file>`)
 - The same semantic search (`neuralmind search . "term"`)
-- Fully local, no data leaves your machine
+- Fully local — NeuralMind makes no network calls of its own
 - Works with any model — OpenAI, Google, Anthropic, Ollama, vLLM, anything
 
 ## Graph view works with any LLM (v0.6.0+)

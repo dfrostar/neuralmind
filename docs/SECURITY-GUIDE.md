@@ -20,7 +20,7 @@
 
 ### Core Principles
 
-1. **Zero Data Exfiltration** — Your code never leaves your infrastructure
+1. **No Calls Home** — NeuralMind makes no external network calls; it adds nothing to what your agent sends its model
 2. **Local-First Processing** — All embeddings computed locally
 3. **Explainability** — Every decision is auditable
 4. **Least Privilege** — Users get minimum permissions needed
