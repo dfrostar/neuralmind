@@ -1,0 +1,36 @@
+# GitHub Pages (Jekyll) config for neuralmind.uk.
+#
+# Purpose: give every rendered markdown page (docs/wiki/*, docs/*.md,
+# docs/use-cases/*, benchmarks/public.md, …) the site's dark chrome via
+# _layouts/default.html, so /wiki/Home matches index.html instead of the
+# stock Primer theme. HTML files without front matter (index.html,
+# about.html, benchmarks/index.html) are static files — Jekyll copies
+# them through untouched.
+#
+# The wiki .md files themselves stay front-matter-free on purpose: the
+# sync-wiki workflow mirrors them into the GitHub Wiki, where a front
+# matter block would render as literal text. GitHub Pages' always-on
+# jekyll-optional-front-matter plugin turns them into pages anyway, and
+# the defaults block below assigns the layout.
+
+title: NeuralMind
+url: "https://neuralmind.uk"
+description: >-
+  Persistent, 100% local memory for AI coding agents — 40–70× cheaper
+  code questions, a synapse layer that learns your codebase, and a
+  bundled ten-language code graph.
+
+# These are enabled by default on GitHub Pages; declared explicitly so a
+# local `jekyll build` behaves the same as the Pages build.
+plugins:
+  - jekyll-optional-front-matter
+  - jekyll-relative-links
+  - jekyll-titles-from-headings
+  - jekyll-default-layout
+  - jekyll-readme-index
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

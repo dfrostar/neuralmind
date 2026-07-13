@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page.title %}{{ page.title | escape }} · NeuralMind{% else %}NeuralMind Docs{% endif %}</title>
+    <meta name="description" content="{{ page.description | default: site.description | strip_newlines | escape }}">
+    <link rel="canonical" href="{{ page.url | replace: '.html', '' | absolute_url }}">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="{% if page.title %}{{ page.title | escape }} · NeuralMind{% else %}NeuralMind Docs{% endif %}">
+    <meta property="og:description" content="{{ page.description | default: site.description | strip_newlines | escape }}">
+    <meta property="og:image" content="https://neuralmind.uk/assets/social-preview.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Design tokens shared with index.html — keep in sync. */
+        :root {
+            --bg: #070b15;
+            --bg-raised: #0c1322;
+            --bg-card: #0e1626;
+            --border: #1b2740;
+            --border-strong: #28395c;
+            --text: #e7ecf5;
+            --text-body: #b9c4d9;
+            --text-dim: #97a3ba;
+            --text-faint: #67748f;
+            --accent: #8b7cf8;
+            --accent-bright: #a99cff;
+            --accent-deep: #6d5ae6;
+            --green: #4ade80;
+            --red: #f87171;
+            --amber: #fbbf24;
+            --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; scroll-padding-top: 5.5rem; }
+        body {
+            font-family: var(--sans);
+            background: var(--bg);
+            color: var(--text-body);
+            line-height: 1.7;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+        a { color: var(--accent-bright); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .container { max-width: 1120px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* ── Nav ── */
+        nav.site-nav {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(7, 11, 21, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 4rem; }
+        .nav-logo { display: flex; align-items: center; gap: 0.55rem; font-weight: 700; font-size: 1.05rem; color: var(--text); }
+        .nav-logo:hover { text-decoration: none; }
+        .nav-logo svg { width: 22px; height: 22px; }
+        .nav-links { display: flex; align-items: center; gap: 1.75rem; }
+        .nav-links a { color: var(--text-dim); font-size: 0.9rem; font-weight: 500; }
+        .nav-links a:hover { color: var(--text); text-decoration: none; }
+        .nav-links a.active { color: var(--text); }
+        .nav-gh {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            border: 1px solid var(--border-strong); border-radius: 8px;
+            padding: 0.4rem 0.9rem; color: var(--text) !important; font-size: 0.875rem;
+        }
+        .nav-gh:hover { border-color: var(--accent); background: rgba(139, 124, 248, 0.08); }
+        .nav-toggle { display: none; background: none; border: 1px solid var(--border-strong); border-radius: 8px; color: var(--text); padding: 0.35rem 0.6rem; font-size: 1.1rem; cursor: pointer; }
+
+        /* ── Docs subnav (wiki pages) ── */
+        .docs-subnav { border-bottom: 1px solid var(--border); background: var(--bg-raised); }
+        .docs-subnav .container { display: flex; gap: 1.4rem; overflow-x: auto; padding-top: 0.55rem; padding-bottom: 0.55rem; scrollbar-width: none; }
+        .docs-subnav .container::-webkit-scrollbar { display: none; }
+        .docs-subnav a { color: var(--text-faint); font-size: 0.82rem; font-weight: 500; white-space: nowrap; }
+        .docs-subnav a:hover { color: var(--text); text-decoration: none; }
+        .docs-subnav a.active { color: var(--accent-bright); }
+
+        /* ── Breadcrumb / page chrome ── */
+        .page { max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem 4.5rem; }
+        .crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.82rem; color: var(--text-faint); margin-bottom: 2rem; }
+        .crumbs a { color: var(--text-faint); }
+        .crumbs a:hover { color: var(--text-dim); }
+        .crumbs .edit { margin-left: auto; }
+
+        /* ── Markdown body ── */
+        .md-body h1, .md-body h2, .md-body h3, .md-body h4, .md-body h5, .md-body h6 {
+            color: var(--text); font-weight: 700; letter-spacing: -0.015em; line-height: 1.25;
+            margin: 2.2rem 0 0.9rem;
+        }
+        .md-body h1 { font-size: 2.15rem; font-weight: 800; margin-top: 0; }
+        .md-body h2 { font-size: 1.5rem; padding-bottom: 0.45rem; border-bottom: 1px solid var(--border); }
+        .md-body h3 { font-size: 1.18rem; }
+        .md-body h4 { font-size: 1rem; }
+        .md-body p { margin-bottom: 1.05rem; }
+        .md-body strong, .md-body b { color: var(--text); }
+        .md-body ul, .md-body ol { margin: 0 0 1.05rem; padding-left: 1.5rem; }
+        .md-body li { margin-bottom: 0.35rem; }
+        .md-body li > ul, .md-body li > ol { margin-top: 0.35rem; margin-bottom: 0; }
+        .md-body hr { border: none; border-top: 1px solid var(--border); margin: 2.2rem 0; }
+        .md-body img { max-width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+        .md-body blockquote {
+            border-left: 3px solid var(--accent); background: var(--bg-card);
+            border-radius: 0 10px 10px 0; padding: 0.85rem 1.2rem; margin: 0 0 1.05rem;
+            color: var(--text-dim);
+        }
+        .md-body blockquote p:last-child { margin-bottom: 0; }
+
+        /* inline code */
+        .md-body code {
+            font-family: var(--mono); font-size: 0.85em;
+            background: rgba(139, 124, 248, 0.1); border: 1px solid rgba(139, 124, 248, 0.18);
+            padding: 0.1em 0.35em; border-radius: 4px; color: var(--accent-bright);
+        }
+
+        /* code blocks (kramdown + rouge) */
+        .md-body pre {
+            background: #0a101d; border: 1px solid var(--border-strong); border-radius: 12px;
+            padding: 1.1rem 1.3rem; overflow-x: auto; margin: 0 0 1.05rem;
+            font-family: var(--mono); font-size: 0.83rem; line-height: 1.7; color: #c4cfe4;
+        }
+        .md-body pre code { background: transparent; border: none; padding: 0; color: inherit; font-size: inherit; }
+        .md-body .highlighter-rouge .highlight { background: transparent; }
+
+        /* rouge tokens — muted dark set matching the accent palette */
+        .md-body .highlight .c, .md-body .highlight .c1, .md-body .highlight .cm,
+        .md-body .highlight .cp, .md-body .highlight .cs { color: var(--text-faint); font-style: italic; }
+        .md-body .highlight .k, .md-body .highlight .kd, .md-body .highlight .kn,
+        .md-body .highlight .kp, .md-body .highlight .kr, .md-body .highlight .kt,
+        .md-body .highlight .kc, .md-body .highlight .kv { color: var(--accent-bright); }
+        .md-body .highlight .s, .md-body .highlight .s1, .md-body .highlight .s2,
+        .md-body .highlight .sb, .md-body .highlight .sh, .md-body .highlight .sx,
+        .md-body .highlight .sr, .md-body .highlight .ss, .md-body .highlight .se,
+        .md-body .highlight .sa, .md-body .highlight .dl { color: #5eead4; }
+        .md-body .highlight .m, .md-body .highlight .mi, .md-body .highlight .mf,
+        .md-body .highlight .mh, .md-body .highlight .mo, .md-body .highlight .il { color: var(--amber); }
+        .md-body .highlight .nf, .md-body .highlight .fm, .md-body .highlight .nc,
+        .md-body .highlight .nn, .md-body .highlight .nt { color: #93c5fd; }
+        .md-body .highlight .nb, .md-body .highlight .bp, .md-body .highlight .nd,
+        .md-body .highlight .ne, .md-body .highlight .no, .md-body .highlight .nv { color: #c4cfe4; }
+        .md-body .highlight .o, .md-body .highlight .ow, .md-body .highlight .p,
+        .md-body .highlight .pi { color: var(--text-dim); }
+        .md-body .highlight .gp { color: var(--green); }
+        .md-body .highlight .err { color: inherit; background: transparent; }
+
+        /* tables — scroll inside their own box on overflow */
+        .md-body table {
+            display: block; overflow-x: auto; max-width: 100%;
+            border-collapse: collapse; margin: 0 0 1.4rem;
+            font-size: 0.88rem; border: 1px solid var(--border); border-radius: 12px;
+        }
+        .md-body th, .md-body td { padding: 0.7rem 1rem; text-align: left; vertical-align: top; }
+        .md-body thead th {
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.07em;
+            color: var(--text-faint); background: var(--bg-raised);
+            border-bottom: 1px solid var(--border-strong); font-weight: 600; white-space: nowrap;
+        }
+        .md-body tbody tr + tr td { border-top: 1px solid var(--border); }
+        .md-body tbody tr:hover td { background: rgba(139, 124, 248, 0.04); }
+        .md-body td:first-child { color: var(--text); }
+
+        .md-body details { margin-bottom: 1.05rem; }
+        .md-body summary { cursor: pointer; color: var(--text); font-weight: 600; }
+
+        /* ── Footer ── */
+        footer { border-top: 1px solid var(--border); background: var(--bg-raised); padding: 3rem 0; }
+        .foot-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1.5rem; }
+        .foot-links { display: flex; flex-wrap: wrap; gap: 1.4rem; font-size: 0.875rem; }
+        .foot-links a { color: var(--text-dim); }
+        .foot-links a:hover { color: var(--text); }
+        .foot-meta { width: 100%; margin-top: 1.2rem; font-size: 0.8rem; color: var(--text-faint); }
+
+        @media (max-width: 720px) {
+            .nav-links {
+                display: none; position: absolute; top: 4rem; left: 0; right: 0;
+                flex-direction: column; align-items: flex-start; gap: 0;
+                background: var(--bg-raised); border-bottom: 1px solid var(--border); padding: 0.5rem 1.5rem 1rem;
+            }
+            .nav-links.open { display: flex; }
+            .nav-links a { padding: 0.6rem 0; width: 100%; }
+            .nav-toggle { display: block; }
+            .md-body h1 { font-size: 1.7rem; }
+            .md-body h2 { font-size: 1.3rem; }
+            .page { padding-top: 1.8rem; }
+            .crumbs .edit { margin-left: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="site-nav">
+    <div class="container nav-inner">
+        <a class="nav-logo" href="https://neuralmind.uk/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" onclick="document.getElementById('navlinks').classList.toggle('open')">☰</button>
+        <div class="nav-links" id="navlinks">
+            <a href="/#how-it-works">How it works</a>
+            <a href="/benchmarks/">Benchmarks</a>
+            <a href="/wiki/Home" {% if page.url contains '/wiki/' %}class="active"{% endif %}>Docs</a>
+            <a href="/about.html">About</a>
+            <a class="nav-gh" href="https://github.com/dfrostar/neuralmind">GitHub ↗</a>
+        </div>
+    </div>
+</nav>
+
+{% if page.url contains '/wiki/' %}
+<div class="docs-subnav">
+    <div class="container">
+        <a href="/wiki/Home" {% if page.url == '/wiki/Home.html' %}class="active"{% endif %}>Overview</a>
+        <a href="/wiki/Setup-Guide" {% if page.url == '/wiki/Setup-Guide.html' %}class="active"{% endif %}>Setup Guide</a>
+        <a href="/wiki/Installation" {% if page.url == '/wiki/Installation.html' %}class="active"{% endif %}>Installation</a>
+        <a href="/wiki/Usage-Guide" {% if page.url == '/wiki/Usage-Guide.html' %}class="active"{% endif %}>Usage</a>
+        <a href="/wiki/CLI-Reference" {% if page.url == '/wiki/CLI-Reference.html' %}class="active"{% endif %}>CLI Reference</a>
+        <a href="/wiki/API-Reference" {% if page.url == '/wiki/API-Reference.html' %}class="active"{% endif %}>API</a>
+        <a href="/wiki/Architecture" {% if page.url == '/wiki/Architecture.html' %}class="active"{% endif %}>Architecture</a>
+        <a href="/wiki/Use-Cases" {% if page.url == '/wiki/Use-Cases.html' %}class="active"{% endif %}>Use Cases</a>
+        <a href="/wiki/Comparisons" {% if page.url == '/wiki/Comparisons.html' %}class="active"{% endif %}>Comparisons</a>
+        <a href="/wiki/Benchmarks" {% if page.url == '/wiki/Benchmarks.html' %}class="active"{% endif %}>Benchmarks</a>
+        <a href="/wiki/Troubleshooting" {% if page.url == '/wiki/Troubleshooting.html' %}class="active"{% endif %}>Troubleshooting</a>
+        <a href="/wiki/FAQ" {% if page.url == '/wiki/FAQ.html' %}class="active"{% endif %}>FAQ</a>
+    </div>
+</div>
+{% endif %}
+
+<div class="page">
+    <div class="crumbs">
+        {% if page.url contains '/wiki/' %}
+            <a href="/">neuralmind.uk</a> <span>/</span> <a href="/wiki/Home">Docs</a>
+            {% if page.title and page.url != '/wiki/Home.html' %}<span>/</span> <span>{{ page.title | escape }}</span>{% endif %}
+        {% else %}
+            <a href="/">neuralmind.uk</a>
+            {% if page.title %}<span>/</span> <span>{{ page.title | escape }}</span>{% endif %}
+        {% endif %}
+        <a class="edit" href="https://github.com/dfrostar/neuralmind/edit/main/docs/{{ page.path }}">Edit this page on GitHub ↗</a>
+    </div>
+    <article class="md-body">
+{{ content }}
+    </article>
+</div>
+
+<footer>
+    <div class="container foot-inner">
+        <a class="nav-logo" href="https://neuralmind.uk/">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="20" height="20">
+                <circle cx="6" cy="6" r="2.4" fill="#a99cff"/><circle cx="18" cy="5" r="1.9" fill="#5eead4"/>
+                <circle cx="12" cy="13" r="2.8" fill="#8b7cf8"/><circle cx="5" cy="18" r="1.9" fill="#5eead4"/>
+                <circle cx="19" cy="17" r="2.2" fill="#a99cff"/>
+                <path d="M7.8 7.4 10.6 11M16.5 6.2 13.7 11M7 16.8l3-2.4M14.4 14.6l3 1.6" stroke="#6d5ae6" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            NeuralMind
+        </a>
+        <div class="foot-links">
+            <a href="https://github.com/dfrostar/neuralmind">GitHub</a>
+            <a href="https://pypi.org/project/neuralmind/">PyPI</a>
+            <a href="/wiki/Home">Docs</a>
+            <a href="/benchmarks/">Benchmarks</a>
+            <a href="https://github.com/dfrostar/neuralmind/issues">Issues</a>
+            <a href="https://github.com/dfrostar/neuralmind/discussions">Discussions</a>
+            <a href="/about.html">About</a>
+        </div>
+        <p class="foot-meta">MIT License. Open source, not affiliated with NeuralMind.ai. &nbsp;🔐 100% local · ⚡ 40–70× token reduction · ✅ NIST AI RMF · 🛠 Works with any MCP agent</p>
+    </div>
+</footer>
+
+<script>
+    document.querySelectorAll('#navlinks a').forEach(function (a) {
+        a.addEventListener('click', function () {
+            document.getElementById('navlinks').classList.remove('open');
+        });
+    });
+</script>
+</body>
+</html>
