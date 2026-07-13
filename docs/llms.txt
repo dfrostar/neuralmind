@@ -13,37 +13,37 @@ Key facts, each backed by a runnable eval (raw traces committed):
 
 ## Docs
 
-- [Homepage](https://neuralmind.uk/): overview, benefits, what's new
-- [About / how it works](https://neuralmind.uk/about.html): architecture, synapse layer, release history
-- [Installation](https://neuralmind.uk/wiki/Installation.html): pip install, one-command MCP setup for Claude Code, Cursor, Cline, Claude Desktop
-- [CLI reference](https://neuralmind.uk/wiki/CLI-Reference.html): every command and environment variable
-- [Architecture](https://neuralmind.uk/wiki/Architecture.html): progressive L0–L3 context disclosure, graph + vector + BM25 hybrid retrieval
-- [FAQ](https://neuralmind.uk/wiki/FAQ.html)
-- [Limits and failure modes](https://neuralmind.uk/wiki/Limits-and-Failure-Modes.html): honest scope — where NeuralMind does not win
+- [Homepage](https://docs.neuralmind.uk/): overview, benefits, what's new
+- [About / how it works](https://docs.neuralmind.uk/about.html): architecture, synapse layer, release history
+- [Installation](https://docs.neuralmind.uk/wiki/Installation.html): pip install, one-command MCP setup for Claude Code, Cursor, Cline, Claude Desktop
+- [CLI reference](https://docs.neuralmind.uk/wiki/CLI-Reference.html): every command and environment variable
+- [Architecture](https://docs.neuralmind.uk/wiki/Architecture.html): progressive L0–L3 context disclosure, graph + vector + BM25 hybrid retrieval
+- [FAQ](https://docs.neuralmind.uk/wiki/FAQ.html)
+- [Limits and failure modes](https://docs.neuralmind.uk/wiki/Limits-and-Failure-Modes.html): honest scope — where NeuralMind does not win
 
 ## Benchmarks
 
-- [Public benchmark methodology and results](https://neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
-- [Live benchmark dashboard](https://neuralmind.uk/benchmarks/): charts, per-query traces
+- [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
+- [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
 
 ## Comparisons
 
-- [vs long-context models](https://neuralmind.uk/comparisons/vs-long-context.html)
-- [vs prompt caching](https://neuralmind.uk/comparisons/vs-prompt-caching.html)
-- [vs vanilla RAG](https://neuralmind.uk/comparisons/vs-rag.html)
-- [vs Cursor codebase indexing](https://neuralmind.uk/comparisons/vs-cursor-codebase.html)
-- [vs GitHub Copilot](https://neuralmind.uk/comparisons/vs-github-copilot.html)
-- [vs Aider repo-map](https://neuralmind.uk/comparisons/vs-aider-repomap.html)
-- [Context-engineering stack guide](https://neuralmind.uk/comparisons/context-engineering-stack.html): where NeuralMind sits next to Ponytail and Headroom
+- [vs long-context models](https://docs.neuralmind.uk/comparisons/vs-long-context.html)
+- [vs prompt caching](https://docs.neuralmind.uk/comparisons/vs-prompt-caching.html)
+- [vs vanilla RAG](https://docs.neuralmind.uk/comparisons/vs-rag.html)
+- [vs Cursor codebase indexing](https://docs.neuralmind.uk/comparisons/vs-cursor-codebase.html)
+- [vs GitHub Copilot](https://docs.neuralmind.uk/comparisons/vs-github-copilot.html)
+- [vs Aider repo-map](https://docs.neuralmind.uk/comparisons/vs-aider-repomap.html)
+- [Context-engineering stack guide](https://docs.neuralmind.uk/comparisons/context-engineering-stack.html): where NeuralMind sits next to Ponytail and Headroom
 
 ## Use cases
 
-- [Claude Code daily driver](https://neuralmind.uk/use-cases/claude-code.html): hooks, tool-output compression, synapse memory on session start
-- [Cost optimization](https://neuralmind.uk/use-cases/cost-optimization.html)
-- [Growing monorepo](https://neuralmind.uk/use-cases/growing-monorepo.html)
-- [Offline / regulated environments](https://neuralmind.uk/use-cases/offline-regulated.html)
-- [Team memory across a squad of agents](https://neuralmind.uk/use-cases/multi-agent.html)
-- [Benchmark your own repo](https://neuralmind.uk/use-cases/benchmark-your-repo.html)
+- [Claude Code daily driver](https://docs.neuralmind.uk/use-cases/claude-code.html): hooks, tool-output compression, synapse memory on session start
+- [Cost optimization](https://docs.neuralmind.uk/use-cases/cost-optimization.html)
+- [Growing monorepo](https://docs.neuralmind.uk/use-cases/growing-monorepo.html)
+- [Offline / regulated environments](https://docs.neuralmind.uk/use-cases/offline-regulated.html)
+- [Team memory across a squad of agents](https://docs.neuralmind.uk/use-cases/multi-agent.html)
+- [Benchmark your own repo](https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html)
 
 ## Get it
 
