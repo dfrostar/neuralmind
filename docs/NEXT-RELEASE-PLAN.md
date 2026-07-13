@@ -238,7 +238,7 @@ portable-format design (§4, v0.16) and the enterprise sequencing (§5).
   they're per-user. That's a durable niche.
 - **It stays local-first.** A git-committed, human-reviewable `SYNAPSE_MEMORY.md` /
   synapse export means the team's learned map of the codebase travels in the repo,
-  reviewed in PRs — **no SaaS, no server, no exfiltration.** Consistent with the
+  reviewed in PRs — **no SaaS, no server, no calls home.** Consistent with the
   headline promise.
 - **It compounds onboarding value.** "New hire's agent boots with the team's
   accumulated map of what-goes-with-what" is a concrete, searchable workflow and a

@@ -5,7 +5,7 @@
 NeuralMind is designed with **enterprise security as a first-class concern**:
 
 - **No external API calls** – all processing happens locally on your machines
-- **No data exfiltration** – your code never leaves your development environment
+- **No calls home** – NeuralMind makes no external network calls and sends no telemetry; it adds nothing to what your agent transmits
 - **Fully auditable** – open-source code, MIT license, complete transparency
 - **Zero telemetry** – no usage tracking, no analytics, no hidden data collection
 - **Compliance-ready** – works with GDPR, HIPAA, and other regulatory frameworks
@@ -18,7 +18,7 @@ NeuralMind is designed with **enterprise security as a first-class concern**:
 Security fixes target the latest released minor version. Older 0.x
 minors are unsupported once a newer minor ships — the practical
 guidance is "stay on latest." Because NeuralMind is local-first with
-no exfiltration surface, the patch urgency for older versions is
+no network surface of its own, the patch urgency for older versions is
 typically low.
 
 | Version  | Status              | Notes                                        |
@@ -261,9 +261,9 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
 
 ### ✅ SOC 2 Type II
-- **Security**: Local processing, no exfiltration, encrypted at rest (your choice)
+- **Security**: Local processing, no network calls of its own, encrypted at rest (your choice)
 - **Availability**: No dependencies on external services for core functionality
-- **Confidentiality**: No data leaves your organization
+- **Confidentiality**: NeuralMind stores and processes locally and makes no external calls of its own
 - **Integrity**: Deterministic, reproducible indexing from your source code
 - **Privacy**: No collection, no analytics, no tracking
 

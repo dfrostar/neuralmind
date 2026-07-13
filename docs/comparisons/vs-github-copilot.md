@@ -15,7 +15,7 @@ GitHub Copilot is Microsoft/GitHub's AI pair programmer: inline completions in y
 | Model choice | GitHub-provided models | Model-agnostic (Claude, GPT, Gemini, local) |
 | Tool-output compression | No | Yes (PostToolUse hooks) |
 | License | Proprietary, per-seat | MIT, free |
-| Data flow | Code snippets sent to GitHub/OpenAI | Nothing leaves your machine |
+| Data flow | Code snippets sent to GitHub/OpenAI | NeuralMind makes no calls of its own; you pick the agent's model (incl. local) |
 | Cost scaling | Flat subscription | Flat local cost; API costs drop 40–70× |
 | Install methods | Editor extension + GitHub sign-in required | `pip` / `pipx` / `uv` / Docker / source — no sign-in, no account |
 

@@ -4,14 +4,14 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
-[![Local-First](https://img.shields.io/badge/Local--First-No%20Exfiltration-brightgreen.svg)](#-security--compliance)
+[![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
 [![Offline](https://img.shields.io/badge/Offline-100%25-blue.svg)](#-security--compliance)
 
 **Persistent memory and context compression for AI coding agents.**
 
 > Your AI coding agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and NeuralMind **compresses tool output before the model reads it**, so the agent spends tokens only on what matters. The memory persists across sessions and surfaces automatically. No MCP tool call required: NeuralMind writes a `SYNAPSE_MEMORY.md` file that Claude Code loads on every session start, so the agent boots with what it's learned about your code already in context.
 
-> Works with Claude Code (including Claude Fable 5), Cursor, Cline, Continue, and any MCP-compatible agent. 100% local — your code never leaves your machine. The more capable the model, the more every saved token is worth, so context compression and persistent memory pay off more on a frontier model like Fable 5. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
+> Works with Claude Code (including Claude Fable 5), Cursor, Cline, Continue, and any MCP-compatible agent. NeuralMind itself runs 100% locally — zero network calls of its own, no telemetry. The more capable the model, the more every saved token is worth, so context compression and persistent memory pay off more on a frontier model like Fable 5. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
 
 ## Why NeuralMind — four benefits, each backed by an eval you can run
 
@@ -194,8 +194,8 @@ The headline you can stand on: **retrieval reduction is measured in CI on every 
 
 **For enterprises and regulated industries:**
 
-- **100% Local Processing** – Your code never leaves your machine. All embeddings are generated and stored locally (the default turbovec/ONNX backend; ChromaDB optional).
-- **No External APIs** – NeuralMind runs completely offline. No cloud services, no telemetry, no data exfiltration.
+- **100% Local Processing** – NeuralMind makes zero network calls of its own and sends no telemetry; all embeddings are generated and stored locally (the default turbovec/ONNX backend; ChromaDB optional).
+- **No External APIs** – NeuralMind runs completely offline: no cloud services, no telemetry, no calls home. (It's a local context layer that feeds your agent — your agent still sends its chosen slice to its model, so NeuralMind minimizes egress, it doesn't eliminate it.)
 - **Explainable AI** – Every context decision is auditable. Know exactly which code was retrieved (Extracted) vs. inferred by the model.
 - **Open-Source & MIT Licensed** – Full transparency. No hidden clauses, no vendor lock-in. Audit the code yourself.
 - **GDPR/HIPAA-Friendly** – Process sensitive code without compliance concerns. All data stays under your control.
@@ -1811,7 +1811,7 @@ NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/f
 
 ### Community benchmarks
 
-Real-world numbers submitted by users. Your code never leaves your machine — you submit a PR (or an issue, which a maintainer converts to a PR) with only the numbers. CI validates every entry against the schema and re-renders this table automatically.
+Real-world numbers submitted by users. You submit only the numbers, not your code — a PR (or an issue a maintainer converts to a PR) carrying just the metrics. CI validates every entry against the schema and re-renders this table automatically.
 
 <!-- COMMUNITY-BENCHMARKS:START -->
 | Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
