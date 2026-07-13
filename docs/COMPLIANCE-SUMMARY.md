@@ -13,7 +13,7 @@
 | Data leaves your machine | **Never** — fully local, no telemetry, no remote logging, no update checks |
 | Code uploaded to a cloud provider | **No** — all embeddings generated and stored locally via ChromaDB |
 | Outbound network at runtime | **None** — install-time only; see [air-gapped walkthrough](use-cases/air-gapped.md) |
-| Audit trail | **Built-in** — `.neuralmind/audit/` access log + query provenance |
+| Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
 | License | **MIT** — full source review, no vendor lock-in |
 | Source available | **Yes** — entire codebase on GitHub, every claim verifiable |
@@ -27,7 +27,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 ### GOVERN — oversight, accountability, policies
 
 - **Role-based access control (RBAC)** with documented user/permission model — see `SECURITY-GUIDE.md` §Access Control
-- **Access audit trail** at `.neuralmind/audit/access.log` — every read, query, and export logged with timestamp + actor + result
+- **Access audit trail** at `.neuralmind/audit_events.jsonl` — every query, search, build, and MCP call logged with timestamp, action, status, and details (the RBAC actor is captured at the MCP boundary)
 - **Query provenance** — every retrieval result is traceable to the specific code nodes that produced it (no black-box "trust us")
 - **Auto-generated NIST AI RMF report:** `neuralmind audit-report . --compliance nist-ai-rmf --output report.md`
 
@@ -57,7 +57,7 @@ The five Trust Service Criteria categories and where NeuralMind provides evidenc
 
 | SOC 2 Criterion | NeuralMind evidence |
 |---|---|
-| **CC6.1 Access Control** | RBAC implementation, `.neuralmind/audit/access.log` |
+| **CC6.1 Access Control** | RBAC implementation, `.neuralmind/audit_events.jsonl` |
 | **CC7.1 Monitoring** | Query logging, performance metrics, live activity feed |
 | **CC7.2 System Monitoring** | `/healthz` endpoint (v0.8+), error tracking, structured logging |
 | **A1.1 Processing Integrity** | Index validation on every build, audit trail of state changes |
@@ -78,7 +78,7 @@ NeuralMind processes code. Code can contain comments referencing names, emails, 
 - **Storage limitation** — the synapse store decays unused edges automatically (configurable via `NEURALMIND_SYNAPSE_DECAY_HALF_LIFE`)
 - **Right to erasure** — synapse store and audit log are local files; `rm -rf .neuralmind/` is a complete erasure path
 - **Data residency** — entirely under operator control; no cross-border transfers initiated by NeuralMind
-- **Pseudonymisation** — audit log actor field is operator-provided; can be a hashed token rather than a username
+- **Pseudonymisation** — audit log actor field is system-level on local queries and operator-supplied at the MCP boundary; can be a hashed token rather than a username
 - **Breach notification** — local files, no external surface area, no third-party processor
 
 NeuralMind does **not** act as a data processor in the GDPR sense — there is no external entity to which data is transferred. The operator is the sole controller.
@@ -129,7 +129,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 | Claim | How to verify yourself |
 |---|---|
 | "No outbound network at runtime" | `ss -tnp \| grep python` while running `neuralmind query` — no connections |
-| "Audit trail captures every query" | `cat .neuralmind/audit/access.log` after a session |
+| "Audit trail captures every query" | `cat .neuralmind/audit_events.jsonl` after a session |
 | "SBOM covers the full dep tree" | Run `syft .` on a local install, diff against the released SBOM |
 | "100% local processing" | Pull internet, `neuralmind build && neuralmind query .` still works |
 | "MIT licensed, full source" | `https://github.com/dfrostar/neuralmind` — every file readable |
