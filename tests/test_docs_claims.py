@@ -57,7 +57,10 @@ FORBIDDEN = [
         "Say what NeuralMind itself does: 'makes no network calls of its own'.",
     ),
     (
-        re.compile(r"\bnever\s+leaves?\s+(your|the)\s+(machine|infrastructure|environment|network|organi[sz]ation)\b", re.IGNORECASE),
+        re.compile(
+            r"\bnever\s+leaves?\s+(your|the)\s+(machine|infrastructure|environment|network|organi[sz]ation)\b",
+            re.IGNORECASE,
+        ),
         "Absolute privacy claim about the whole workflow — inaccurate. "
         "Scope the claim to NeuralMind's own behavior.",
     ),
@@ -113,13 +116,10 @@ def test_published_surfaces_have_no_forbidden_absolute_claims() -> None:
                 m = pattern.search(line)
                 if m:
                     rel = path.relative_to(REPO_ROOT)
-                    violations.append(
-                        f"{rel}:{lineno}: forbidden claim {m.group(0)!r} — {reason}"
-                    )
+                    violations.append(f"{rel}:{lineno}: forbidden claim {m.group(0)!r} — {reason}")
     assert not violations, (
         "Forbidden absolute claim(s) found on published surfaces "
-        "(NeuralMind minimizes egress, it does not eliminate it):\n  "
-        + "\n  ".join(violations)
+        "(NeuralMind minimizes egress, it does not eliminate it):\n  " + "\n  ".join(violations)
     )
 
 
