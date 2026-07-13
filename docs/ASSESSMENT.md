@@ -8,6 +8,27 @@ built from your numbers — whether or not you deploy anything.
 
 ---
 
+## Fastest path: run it yourself in 5 minutes
+
+You don't need to wait for a call. The assessment's core measurement
+is a command you can run right now, on your own hardware, with
+nothing leaving your machine:
+
+```bash
+pip install neuralmind
+neuralmind build .          # index your repo locally
+neuralmind benchmark .      # → your measured reduction ratio + cost estimate
+```
+
+Email the benchmark output to
+[hello@neuralmind.uk](mailto:hello@neuralmind.uk?subject=Self-serve%20assessment%20results)
+along with three numbers — engineer count, monthly API spend, and
+GPU fleet if you run one — and we'll send back the full three-line
+spend model in your numbers. You share only the report; your code
+stays where it is.
+
+---
+
 ## What you get
 
 1. **A measured reduction ratio on your code.** We run
