@@ -1,11 +1,39 @@
-# Session handoff — launch readiness
+# Session handoff — future-proofing review + launch readiness
 
-**Last updated:** 2026-06-29 · **State:** v0.30→v0.40 shipped & merged to `main`
+**Last updated:** 2026-07-08 · **State:** v0.41.0 shipped; future-proofing review open as draft **PR #314** (CI green) on `claude/repo-future-proof-review-7kfb0s`
 **Copy-paste this whole file into the next session's first message to resume with full context.**
 
 ---
 
+## ▶ Next prompt (paste this to resume)
+
+> Resume the NeuralMind future-proofing work. Draft **PR #314**
+> (`claude/repo-future-proof-review-7kfb0s`) is green — it reconciled the stale
+> plan/reference docs with the shipped v0.41 reality, made the mypy CI job
+> actually gate (it was a `continue-on-error` no-op), added `py.typed` +
+> `.pre-commit-config.yaml`, and landed
+> `docs/plans/2026-07-future-proofing-review.md`. **First:** confirm #314 is
+> still green and merge it (it's a draft). **Then** pick up that review's
+> forward plan, in priority order: (1) de-risk the external S3 ONNX-model
+> download SPOF in `neuralmind/onnx_embedder.py` — the highest-leverage item,
+> since it undercuts the "100% local" promise on first run; (2) the mypy
+> strictness ratchet — drain the grandfather list in `pyproject.toml [tool.mypy]`
+> one module at a time and remove the baseline relaxations; (3) route the ~64
+> silent `except Exception → pass` swallows through a `NEURALMIND_DEBUG`-gated
+> logger; (4) dependency ceilings (tree-sitter grammars, `toml`→`tomllib`).
+> Follow the CLAUDE.md release cadence (fresh branch per feature, docs+SEO in the
+> same PR, never hand-bump the version) and hold for an explicit merge okay.
+
 ## ▶ Do this first (next session, in order)
+
+0. **Merge future-proofing PR #314.** It is a **draft**, CI is **green** (the
+   mypy `type-check` job now gates and passes; self-benchmark, parity, and
+   retrieval-quality all PASS). Docs + light config only — no product-source
+   change, so no release-please bump. Mark ready and merge, then start the
+   forward plan in `docs/plans/2026-07-future-proofing-review.md` (§"Forward
+   plan"). This is the immediate continuation of *this* session.
+
+### Launch track (standing — unchanged from the v0.40 handoff below)
 
 0. **Confirm the v0.40.0 publish went green.** The schema-artifact feature (#296)
    and the release PR #297 (`chore(main): release 0.40.0`) are both **merged** to
@@ -77,7 +105,9 @@ every time — keep declining it; the benchmark credibility is the whole asset.
 | v0.37.0 | **PHP extractor** — tenth language (`.php`), 54/54 symbols (100%), 0 dangling; **benchmark corpus → 4 repos / 40 queries** (`flask` + `rich`); **schema.org JSON-LD** on docs pages | `RELEASE_NOTES_v0.37.0.md` (umbrella) |
 | v0.38.0 | **Hybrid search + explicit feedback + CI auto-index** — BM25 keyword index merged via RRF; `neuralmind_feedback` MCP tool (instant ±signal); `neuralmind-autoindex.yml` GitHub Action; **VS Code native extension** (`editors/vscode/`) | `RELEASE_NOTES_v0.38.0.md`, `tests/test_mcp_server.py` |
 | v0.39.0 | **Trust/transparency — six** — `build --dry-run`, instant synapse decay on file deletion, `query --explain`, `neuralmind review` (+ `neuralmind_review` MCP tool) diff-aware co-break, `neuralmind savings` dashboard, `probe` queries by rationale | `RELEASE_NOTES_v0.39.0.md` |
-| v0.40.0 *(merged; tag/publish in flight)* | **Schema-artifact indexing** — OpenAPI/AsyncAPI (`.yaml`), SQL DDL (`.sql`), Protobuf (`.proto`) → `document` nodes; closes the non-code-artifact gap from the v0.38 audit; no new MCP tools | `RELEASE_NOTES_v0.40.0.md`, `tests/test_graphgen.py::SchemaArtifactTests` (#296; release #297) |
+| v0.40.0 | **Schema-artifact indexing** — OpenAPI/AsyncAPI (`.yaml`), SQL DDL (`.sql`), Protobuf (`.proto`) → `document` nodes; closes the non-code-artifact gap from the v0.38 audit; no new MCP tools | `RELEASE_NOTES_v0.40.0.md`, `tests/test_graphgen.py::SchemaArtifactTests` (#296; release #297) |
+| v0.41.0 | **Reuse-vs-rewrite feedback loop + structured relevance sidecar** — implicit `edit-activity` PostToolUse hook feeds reuse signal into synapses; `include_relevance` on query attaches per-node score/boost/recall/spans | `RELEASE_NOTES_v0.41.0.md` |
+| (review) *(PR #314, draft, green)* | **Future-proofing review** — plan-vs-shipped reconciliation; stale reference docs corrected to v0.41; mypy CI job made blocking; `py.typed` + pre-commit added | `docs/plans/2026-07-future-proofing-review.md` |
 | (seo) | **Complementary-app comparison keywords** propagated to PyPI metadata (Headroom / Ponytail / codebase-memory-mcp / graphify), matching the docs `<meta>` cluster | `pyproject.toml` keywords (PR #274) |
 | (docs) | **Four-benefit positioning** + **launch kit** | README "Why NeuralMind", `docs/launch/` |
 
