@@ -4,12 +4,12 @@
 
 NeuralMind is designed with **enterprise security as a first-class concern**:
 
-- **No external API calls** – all processing happens locally on your machines
-- **No calls home** – NeuralMind makes no external network calls and sends no telemetry; it adds nothing to what your agent transmits
-- **Fully auditable** – open-source code, MIT license, complete transparency
-- **Zero telemetry** – no usage tracking, no analytics, no hidden data collection
-- **Compliance-ready** – works with GDPR, HIPAA, and other regulatory frameworks
-- **Supply-chain safe** – minimal dependencies, all vendorable, no cloud lock-in
+- **All processing happens locally** – all embeddings are generated and stored locally via a bundled ONNX model. There are **no cloud embedding API calls**.
+- **No telemetry** – no usage tracking, no analytics, no hidden data collection, no update checks.
+- **One network event, pinned** – the only outbound network activity is a **one-time, SHA256-pinned** download of the ONNX model archive during install (pre-stage it via `NEURALMIND_ONNX_MODEL_DIR` to eliminate even that).
+- **Fully auditable** – open-source code, MIT license, complete transparency. Every claim below is verifiable.
+- **Architecture supports major compliance frameworks** (GDPR, SOC 2, HIPAA, ISO 27001, PCI DSS, FedRAMP) — **certification of your deployment is yours to obtain.** See the [Compliance Summary](docs/COMPLIANCE-SUMMARY.md) for the honest distinction between "the architecture supports this" and "NeuralMind is certified."
+- **Supply-chain discipline** – minimal runtime dependencies, CycloneDX SBOM attached to every release, no cloud lock-in.
 
 ---
 
@@ -63,18 +63,27 @@ Please include the following information:
 
 ### Response Timeline
 
-- **Initial Response**: Within 48 hours
-- **Confirmation**: Within 1 week
-- **Fix Timeline**: Depends on severity (see below)
+| Stage | Target | Why |
+|-------|--------|-----|
+| **Receipt confirmed** | ≤ 2 business days | You hear back from a human, not a bot. |
+| **Initial triage** | ≤ 5 business days | We reproduce and assign a severity. |
+| **Fix timeline** | See severity table below | Depends on complexity + severity. |
+| **Public disclosure** | Coordinated with reporter | We credit you (unless you prefer anonymity). |
+
+If we miss a target, a follow-up email is fair — solo operator, not an SLA-backed
+ticketing system. These are **commitments**, not contractual warranties.
 
 ### Severity Levels
 
-| Severity | Description | Target Fix Time |
-|----------|-------------|----------------|
-| Critical | Remote code execution, data breach | 24-48 hours |
-| High | Significant security impact | 1 week |
-| Medium | Limited security impact | 2-4 weeks |
-| Low | Minimal security impact | Next release |
+| Severity | Description | Target Fix |
+|----------|-------------|------------|
+| Critical | Remote code execution, data breach, authentication bypass | 24–72 hours |
+| High | Significant security impact (unauthorized data access) | 1 week |
+| Medium | Limited security impact (denial of service, info leak) | 2–4 weeks |
+| Low | Minimal security impact (defense-in-depth hardening) | Next release |
+
+For critical vulnerabilities affecting actively-used deployments, a private
+pre-disclosure patch offer is available on request before the public fix lands.
 
 ## Security Considerations
 
@@ -284,6 +293,24 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **On-Premise**: No cloud dependencies
 - **Classified Environments**: Suitable for SCIF and other compartmented processing
 - **Supply Chain Security**: Minimal dependencies, vendorable, no external calls
+
+## Support Commitment
+
+For the open-source project (MIT, free):
+
+- **Security reports**: see [Reporting a Vulnerability](#reporting-a-vulnerability) above — that's the SLA that matters for OSS.
+- **General questions**: [GitHub Discussions](https://github.com/dfrostar/neuralmind/discussions).
+- **Bug reports**: GitHub Issues.
+- **No guaranteed response time** on general issues — this is a solo-maintainer OSS project. We respond as capacity allows.
+- **No status page** for the OSS tool (it's a local CLI with no server to down, and `localhost`-only `serve` doesn't merit one).
+
+For paying customers (assessments, pilots, future paid tiers):
+
+- **SLA defined in your contract.** Default offer: business-hours response (UK-business-hours, GMT/BST) with severity-tiered targets that mirror the vulnerability table above.
+- **Email**: `hello@neuralmind.uk` (monitored for commercial enquiries and customer issues).
+- Planned: a status page for any future hosted/managed offering (not applicable today).
+
+---
 
 ## Disclosure Policy
 
