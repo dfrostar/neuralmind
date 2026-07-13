@@ -1,8 +1,6 @@
 """Tests for neuralmind.cli audit subcommands."""
 
 import json
-import tempfile
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -43,7 +41,7 @@ def test_cmd_audit_export_jsonl(audit_trail, tmp_path):
     with patch("sys.stdout.write") as mock_write:
         cmd_audit_export(args)
     written = "".join(call.args[0] for call in mock_write.call_args_list)
-    lines = [l for l in written.strip().split("\n") if l.strip()]
+    lines = [ln for ln in written.strip().split("\n") if ln.strip()]
     assert len(lines) == 3
     parsed = json.loads(lines[0])
     assert parsed["action"] == "mcp_call_denied"
@@ -54,7 +52,7 @@ def test_cmd_audit_export_cef(audit_trail, tmp_path):
     with patch("sys.stdout.write") as mock_write:
         cmd_audit_export(args)
     written = "".join(call.args[0] for call in mock_write.call_args_list)
-    lines = [l for l in written.strip().split("\n") if l.strip()]
+    lines = [ln for ln in written.strip().split("\n") if ln.strip()]
     assert len(lines) == 3
     assert lines[0].startswith("CEF:0|NeuralMind|audit_trail|")
     assert "suser=eve" in lines[0]
@@ -107,7 +105,7 @@ def test_cmd_audit_export_filter_actor(audit_trail, tmp_path):
     with patch("sys.stdout.write") as mock_write:
         cmd_audit_export(args)
     written = "".join(call.args[0] for call in mock_write.call_args_list)
-    lines = [l for l in written.strip().split("\n") if l.strip()]
+    lines = [ln for ln in written.strip().split("\n") if ln.strip()]
     assert len(lines) == 1
     parsed = json.loads(lines[0])
     assert parsed["actor"] == "alice"

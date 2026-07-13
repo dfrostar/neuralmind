@@ -12,8 +12,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import memory
-from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.audit import AuditTrail
+from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 
 
 def _force_utf8_io() -> None:
@@ -1213,13 +1213,23 @@ def cmd_next(args):
         print(f"  {prob * 100:5.1f}%  {to_node}")
 
 
-def _emit_local_audit(mind: NeuralMind, category: str, action: str = "cmd", *, actor: str | None = None, status: str = "success", target: str) -> None:
+def _emit_local_audit(
+    mind: NeuralMind,
+    category: str,
+    action: str = "cmd",
+    *,
+    actor: str | None = None,
+    status: str = "success",
+    target: str,
+) -> None:
     """Emit an audit event with per-user actor resolution."""
-    mind._emit_audit(category, action, status=status, target=target or mind.project_path.name, actor=actor)
+    mind._emit_audit(
+        category, action, status=status, target=target or mind.project_path.name, actor=actor
+    )
+
 
 def cmd_audit_export(args):
     """Export audit events in JSONL or CEF for SIEM (B-Audit card)."""
-    from neuralmind.core import GraphNotBuiltError, NeuralMind
     trail = AuditTrail(args.project_path)
 
     if args.output:
@@ -1244,6 +1254,7 @@ def cmd_audit_export(args):
             until=args.until,
         ):
             sys.stdout.write(line + "\n")
+
 
 def cmd_audit_verify(args):
     """Verify audit log integrity — walk the hash chain."""
@@ -2391,7 +2402,8 @@ def main():
     audit_export.add_argument("--since", help="ISO-8601 lower bound on timestamp")
     audit_export.add_argument("--until", help="ISO-8601 upper bound on timestamp")
     audit_export.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Write to a file instead of stdout",
     )
     audit_export.set_defaults(func=cmd_audit_export)

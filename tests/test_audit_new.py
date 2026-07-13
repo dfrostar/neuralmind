@@ -49,8 +49,24 @@ def test_audit_verify_accepts_legacy_unchained_file(tmp_path):
     trail = AuditTrail(tmp_path)
     events_file = tmp_path / ".neuralmind" / "audit_events.jsonl"
     events_file.parent.mkdir(parents=True)
-    legacy1 = {"category": "audit", "action": "query", "actor": "legacy", "status": "success", "target": "", "details": {}, "timestamp": "2020-01-01T00:00:00+00:00"}
-    legacy2 = {"category": "audit", "action": "search", "actor": "legacy", "status": "success", "target": "", "details": {}, "timestamp": "2020-01-01T00:01:00+00:00"}
+    legacy1 = {
+        "category": "audit",
+        "action": "query",
+        "actor": "legacy",
+        "status": "success",
+        "target": "",
+        "details": {},
+        "timestamp": "2020-01-01T00:00:00+00:00",
+    }
+    legacy2 = {
+        "category": "audit",
+        "action": "search",
+        "actor": "legacy",
+        "status": "success",
+        "target": "",
+        "details": {},
+        "timestamp": "2020-01-01T00:01:00+00:00",
+    }
     events_file.write_text(json.dumps(legacy1) + "\n" + json.dumps(legacy2) + "\n")
 
     result = trail.verify()
@@ -60,6 +76,7 @@ def test_audit_verify_accepts_legacy_unchained_file(tmp_path):
 def test_resolve_actor_priority():
     """Resolution order: explicit > env > OS > 'system'."""
     import os
+
     os.environ.pop("NEURALMIND_ACTOR", None)
     os.environ.pop("LOGNAME", None)
     os.environ.pop("USER", None)
@@ -128,8 +145,7 @@ def test_audit_actor_role_and_ip_address(temp_project):
     """actor_role and ip_address passthrough."""
     trail = AuditTrail(temp_project)
     ev = trail.append_event(
-        "security", "mcp_call",
-        actor="alice", actor_role="admin", ip_address="10.0.0.1"
+        "security", "mcp_call", actor="alice", actor_role="admin", ip_address="10.0.0.1"
     )
     assert ev["actor_role"] == "admin"
     assert ev["ip_address"] == "10.0.0.1"

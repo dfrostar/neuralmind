@@ -5,13 +5,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import dataclass, field, asdict
+from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 AUDIT_FILE_NAME = "audit_events.jsonl"
 _AUDIT_CACHE: dict[str, AuditTrail] = {}
+
 
 # Actor resolution order: explicit > env var > OS user > "system"
 def _resolve_actor(explicit: str | None = None) -> str:
@@ -50,7 +52,7 @@ class AuditEvent:
     prev_sha256: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        d = {
+        return {
             "timestamp": self.timestamp,
             "category": self.category,
             "action": self.action,
@@ -63,7 +65,6 @@ class AuditEvent:
             "sha256": self.sha256,
             "prev_sha256": self.prev_sha256,
         }
-        return d
 
     def to_hashable_str(self) -> str:
         """Stable string for hashing — excludes sha256/prev_sha256 themselves."""
@@ -228,6 +229,7 @@ class AuditTrail:
             return result
 
         from datetime import datetime as _dt
+
         ts = _dt.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         archive_name = f"audit_events.{ts}.jsonl"
         archive_path = self.events_file.parent / archive_name
@@ -240,14 +242,13 @@ class AuditTrail:
         # Clean old archives
         import re
         from datetime import timedelta as _td
+
         cutoff = _dt.now(timezone.utc) - _td(days=keep_days)
         for f in self.events_file.parent.glob("audit_events.*.jsonl"):
             m = re.match(r"audit_events\.(\d{8}_\d{6})\.jsonl", f.name)
             if m:
                 try:
-                    file_ts = _dt.strptime(m.group(1), "%Y%m%d_%H%M%S").replace(
-                        tzinfo=timezone.utc
-                    )
+                    file_ts = _dt.strptime(m.group(1), "%Y%m%d_%H%M%S").replace(tzinfo=timezone.utc)
                     if file_ts < cutoff:
                         f.unlink()
                         result["deleted_archives"].append(str(f))
