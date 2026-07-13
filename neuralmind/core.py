@@ -315,15 +315,20 @@ class NeuralMind:
         status: str = "success",
         target: str = "",
         details: dict | None = None,
+        actor: str | None = None,
+        actor_role: str = "",
+        ip_address: str = "",
     ) -> None:
         try:
             self.audit.append_event(
                 category=category,
                 action=action,
-                actor="neuralmind",
+                actor=actor,
                 status=status,
                 target=target,
                 details=details or {},
+                actor_role=actor_role,
+                ip_address=ip_address,
             )
         except Exception:
             # Audit logging must never block primary query/build/search flows.
