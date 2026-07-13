@@ -204,6 +204,60 @@ actual workload to pin this down.
 
 ---
 
+## Your full AI spend: the three budget lines
+
+The calculation above prices everything at API per-token rates. A
+real AI budget usually has three lines, and NeuralMind affects each
+differently. Model them separately — a CFO will.
+
+### Line 1 — Per-seat subscriptions (Copilot, Cursor, etc.)
+
+`seats × price/seat/month`. **A flat-rate seat does not get cheaper
+because queries use fewer tokens** — don't claim it does. Where this
+line moves: usage-tiered plans (overage charges shrink with token
+use), and right-sizing decisions ("do we need the $60 tier or the
+$20 tier?") once you can see per-engineer token consumption in the
+audit log.
+
+### Line 2 — Usage-based API spend (direct APIs, OpenRouter, Bedrock, Vertex)
+
+This is where the math above applies directly. Pull the last three
+months of invoices, take the **input-token** line (code questions
+are input-heavy: large context in, short answer out), estimate the
+share of that traffic that is code-question/agent retrieval, and
+apply the end-to-end formula. For OpenRouter use your blended
+$/MTok from their dashboard — routing across models doesn't change
+the structure, only the price per token.
+
+### Line 3 — Self-hosted inference (H100s or other GPUs at a hyperscaler or on-prem)
+
+There is no per-token invoice here, so the saving shows up as
+**freed capacity**, not a smaller bill — it only becomes dollars if
+you shrink the fleet, defer a capacity purchase, or serve more load
+on the same GPUs. The high-level structure:
+
+```
+fraction_of_gpu_compute_freed ≈ prefill_share × retrieval_share × (1 − 1/R)
+```
+
+where `prefill_share` is how much of your GPU compute goes to
+prompt processing vs. token generation (profile it; input-heavy
+code workloads often run 50–70%), `retrieval_share` is the ~0.4
+conversation-mix factor from above, and `R` is the measured
+reduction ratio. Example with deliberately conservative values —
+prefill 60%, retrieval mix 0.4, R = 40× — frees roughly **23% of
+fleet compute** on the code-question workload. Price that at your
+contracted $/GPU-hour and utilization, not at a number from a blog
+post.
+
+**Honesty notes:** prefill batches efficiently, so freed prefill
+doesn't always convert 1:1 into servable load; and if your GPUs are
+under-utilized anyway, freeing capacity is worth $0 until demand
+catches up. The assessment measures `R` on your repo; you supply
+`prefill_share` and utilization from your own monitoring.
+
+---
+
 ## Three scenarios where the case is strongest
 
 ### Scenario A — Mid-size team hitting context limits weekly
