@@ -100,6 +100,67 @@ lands in `personal` with identical weights and counts. The single-namespace
 behavior you had *is* the `personal` namespace — that's the compatibility
 contract, and a dedicated no-data-loss test enforces it.
 
+## Git worktrees — share the memory, rebuild the index
+
+`git worktree` gives you several working directories off one repo, each on
+its own branch. NeuralMind's state splits into two kinds that want opposite
+treatment:
+
+| State | Path | Derived from | Worktree strategy |
+|---|---|---|---|
+| **The index** | `graphify-out/` + `.neuralmind/` embeddings | your source | **rebuild per worktree** — cheap, disposable |
+| **The learned memory** | `.neuralmind/synapses.db` | how you work | **share one store** — that's the moat |
+
+Both live under the working directory you point NeuralMind at, and both are
+gitignored (`graphify-out/`, `.neuralmind/synapses.db`). So copying them
+into a new worktree is exactly the trap [#316](https://github.com/dfrostar/neuralmind/issues/316)
+hit: you fork the memory, each copy learns in isolation, and
+`git worktree remove` deletes it. **Don't copy** — do this instead:
+
+**Rebuild the index in each worktree (always).** It's derived from source
+and fast:
+
+```bash
+cd ../my-feature-worktree
+neuralmind build .
+```
+
+**For the memory, pick one:**
+
+*Simplest — centralize on your primary checkout.* Run NeuralMind's hooks /
+daemon / `serve` from your main working tree. Short-lived worktrees get a
+fresh local index; long-term associations keep accruing in the one place
+that isn't going away.
+
+*Shared — symlink the store, let branch namespaces isolate.* Point every
+worktree's synapse store at your main checkout's:
+
+```bash
+cd ../my-feature-worktree
+mkdir -p .neuralmind
+ln -sf /path/to/main-checkout/.neuralmind/synapses.db .neuralmind/synapses.db
+```
+
+This is safe: the store is SQLite in WAL mode, so concurrent worktrees read
+and write it without stepping on each other. And because memory is keyed by
+**namespace** — each worktree is on its own branch, so it writes to
+`branch:<name>` — the shared store keeps every branch's associations
+separate while still blending your `personal` long-term layer underneath
+(the same merged view described above). When you `git worktree remove`, the
+symlink dies; the real store in your main checkout is untouched.
+
+> **Why a symlink and not a path setting?** The store location is fixed at
+> `<project>/.neuralmind/synapses.db` (there's no relocation env var today),
+> and NeuralMind resolves artifact paths by string only — it doesn't follow
+> symlinks when confirming they stay inside the project — so a symlinked
+> `.neuralmind/synapses.db` is the supported way to redirect the store while
+> keeping the path inside the tree.
+
+*Seeded but independent — export/import.* To have a worktree (or a fresh dev
+container) *start* from what your main checkout knows and then learn on its
+own, export a baseline and import it under `shared` — see **Walkthrough 2**
+above. Nothing shared live, nothing to clean up.
+
 ## Related
 
 - [Release Notes v0.24.0](../../RELEASE_NOTES_v0.24.0.md) — full PRD 4 details
