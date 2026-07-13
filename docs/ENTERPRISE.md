@@ -13,7 +13,7 @@ for internal conversations; the actual numbers come from running
 
 **What NeuralMind offers:**
 - Every recommendation is traceable to extracted code (auditable, not guessed at).
-- Runs 100% on-premise — no cloud, no data transfer, zero exfiltration risk.
+- Runs 100% on-premise — no cloud, no telemetry, no network calls of its own.
 - Compatible with GDPR, HIPAA, SOC 2, and ISO 27001 deployment patterns. (NeuralMind itself isn't certified; the architecture supports certification of the deployment.)
 - Explainability by design — you can see which code fed each decision.
 

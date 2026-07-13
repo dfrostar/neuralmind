@@ -19,7 +19,8 @@ I built a local semantic-memory layer for coding agents — and an honest benchm
 I'm the author of NeuralMind, an open-source local memory layer for AI coding
 agents (Claude Code, Cursor, Cline, any MCP client). Posting it here because it's
 exactly the kind of thing this sub cares about: it runs 100% on-device, the index
-needs no API key, and your code never leaves the machine. The more capable your
+needs no API key, and NeuralMind itself makes zero network calls — no telemetry, no
+calls home. (Pair it with a local model and nothing leaves your box.) The more capable your
 local model, the more each saved token is worth — context compression pays off
 more, not less, as models get better.
 
