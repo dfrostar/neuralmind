@@ -1,319 +1,319 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://neuralmind.uk/</loc>
-    <lastmod>2026-07-12</lastmod>
+    <loc>https://docs.neuralmind.uk/wiki/Home</loc>
+    <lastmod>2026-07-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/about.html</loc>
+    <loc>https://docs.neuralmind.uk/about.html</loc>
     <lastmod>2026-07-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/benchmarks/</loc>
+    <loc>https://docs.neuralmind.uk/benchmarks/</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/benchmarks/public.md</loc>
+    <loc>https://docs.neuralmind.uk/benchmarks/public.md</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-aider-repomap.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-aider-repomap.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-claude-projects.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-claude-projects.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-cody.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-cody.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-continue-cline.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-continue-cline.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-cursor-codebase.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-cursor-codebase.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-github-copilot.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-github-copilot.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-headroom.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-headroom.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/context-engineering-stack.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/context-engineering-stack.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.75</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-langchain-llamaindex.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-langchain-llamaindex.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-long-context.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-long-context.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-prompt-caching.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-prompt-caching.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-rag.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-rag.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-treesitter-ctags.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-treesitter-ctags.html</loc>
     <lastmod>2026-06-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/comparisons/vs-windsurf-codeium.html</loc>
+    <loc>https://docs.neuralmind.uk/comparisons/vs-windsurf-codeium.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/air-gapped.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/air-gapped.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/always-on.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/always-on.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/any-llm.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/any-llm.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/benchmark-your-repo.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html</loc>
     <lastmod>2026-06-28</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/blast-radius-before-a-rename.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/blast-radius-before-a-rename.html</loc>
     <lastmod>2026-07-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/branch-isolated-memory.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/branch-isolated-memory.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/unified-stack.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/unified-stack.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/chromadb-free-local.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/chromadb-free-local.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/claude-code.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/claude-code.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/review-before-push.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/review-before-push.html</loc>
     <lastmod>2026-06-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/cost-optimization.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/cost-optimization.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/growing-monorepo.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/growing-monorepo.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/install-paths.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/install-paths.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/multi-agent.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/multi-agent.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/offline-regulated.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/offline-regulated.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/use-cases/zero-install-indexing.html</loc>
+    <loc>https://docs.neuralmind.uk/use-cases/zero-install-indexing.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/API-Reference.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/API-Reference.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Architecture.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Architecture.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Benchmarks.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Benchmarks.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/CLI-Reference.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/CLI-Reference.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Comparisons.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Comparisons.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/FAQ.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/FAQ.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Home.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Home.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Installation.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Installation.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Integration-Guide.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Integration-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Learning-Guide.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Learning-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Limits-and-Failure-Modes.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Limits-and-Failure-Modes.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Scheduling-Guide.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Scheduling-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Setup-Guide.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Setup-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Troubleshooting.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Troubleshooting.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Usage-Guide.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Usage-Guide.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/wiki/Use-Cases.html</loc>
+    <loc>https://docs.neuralmind.uk/wiki/Use-Cases.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://neuralmind.uk/ASSESSMENT</loc>
+    <loc>https://docs.neuralmind.uk/ASSESSMENT</loc>
     <lastmod>2026-07-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
