@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://neuralmind.uk/sitemap.xml
+Sitemap: https://docs.neuralmind.uk/sitemap.xml
