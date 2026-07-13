@@ -489,7 +489,7 @@ mkdir -p "$BACKUP_DIR"
 pg_dump -U neuralmind neuralmind > "$BACKUP_DIR/index.sql.gz"
 
 # Backup audit logs
-cp -r .neuralmind/audit "$BACKUP_DIR/audit"
+cp .neuralmind/audit_events.jsonl "$BACKUP_DIR/"
 
 # Backup code graph
 cp graphify-out/graph.json "$BACKUP_DIR/"

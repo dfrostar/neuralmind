@@ -94,7 +94,7 @@ class AuthenticatedMCPServer:
         self.security = MCPSecurityMiddleware(
             project_path=project_path,
             enforce_rbac=True,
-            audit_log_path=".neuralmind/audit/access.log"
+            audit_log_path=".neuralmind/audit_events.jsonl"
         )
     
     async def query(self, question: str, user: User) -> str:
