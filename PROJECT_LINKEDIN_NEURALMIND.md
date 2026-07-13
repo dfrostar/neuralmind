@@ -54,7 +54,7 @@ Establish NeuralMind's commercial presence and CFO consulting motion — from Li
 | Day | Post # | Angle | Hook |
 |-----|--------|-------|------|
 | MON | 1 | CFO Thought Leadership | Benchmarks are in — here's what they mean |
-| TUE | 2 | Zero Egress / Security | Your code never leaves your machine |
+| TUE | 2 | Minimal Egress / Security | NeuralMind makes zero network calls of its own — local audit trail as SOC 2 evidence |
 | WED | 3 | Consulting Pattern | "We approved $200K for AI — is it making us faster?" |
 | THU | 4 | Building in Public | Obsessed with context quality over quantity |
 | FRI | 5 | Soft CTA + Value | 40-70x reduction + defensible AI bill |
@@ -66,7 +66,7 @@ Establish NeuralMind's commercial presence and CFO consulting motion — from Li
 | Step | What | Priority | ETA |
 |------|------|----------|-----|
 | **1** | Generate logo via Gemini (prompt ready) | **High** | Today |
-| **2** | Post #2 (zero egress / security) | **High** | Tomorrow |
+| **2** | Post #2 (minimal egress / security) | **High** | Tomorrow |
 | **3** | Register `neuralmind.dev` domain + wire to GitHub Pages | **Medium** | This week |
 | **4** | Replace GitHub Pages "NeuralMind" text with logo | **Medium** | After logo gen |
 | **5** | Cold outreach to 10 VP Eng at mid-market startups | **Medium** | This week |
