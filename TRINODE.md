@@ -48,7 +48,7 @@ into the human-trusted layer as a reviewable diff.
 | **What it is** | A governance convention (layout + write policy) | A memory engine (graph, learning, compression) |
 | **Domain** | General knowledge/notes memory | Your codebase |
 | **Memory model** | Markdown files in three git repos | Code graph + Hebbian synapse layer with decay and spreading activation |
-| **Trust boundary** | Human vault read-only to agent — stated as policy in a bootstrap file | Hooks never write human-curated files; agent learning is confined to the synapse store; the shared layer only changes via a provenance-stamped, MAX-merged, PR-reviewed bundle (`team_memory.py`) |
+| **Trust boundary** | Human vault read-only to agent — stated as policy in a bootstrap file | Hooks never write human-curated files; agent learning is confined to the synapse store; the shared layer only changes via a provenance-stamped, MAX-merged, git-committed bundle published explicitly (`team_memory.py`) |
 | **Enforcement** | Honor system (the agent is told the rule) | Mechanical (the write paths don't exist) |
 | **Retrieval** | Agent greps/reads raw markdown | Progressive disclosure L0–L3 + associative recall |
 | **Learning signal** | Only what the agent writes down | Co-activation (Hebbian), edge decay, directional "what you edit next" |
@@ -73,10 +73,10 @@ into the human-trusted layer as a reviewable diff.
    request — nothing stops a confused or prompt-injected agent from doing it
    anyway. NeuralMind's equivalent boundary is structural: agent learning
    lands in the synapse store (`personal` / `branch:*` namespaces), decays
-   when stale, and can only reach the team-trusted layer through a committed
-   bundle that a human merges in review, where MAX-merge means a bundle can
-   only *raise* weights it asserts and never touches the developer's
-   personal layer. Separation-with-provenance is also the defensible answer
+   when stale, and can only reach the team-trusted layer through a separate,
+   git-committed bundle that must be published explicitly — reviewable like
+   any diff — where MAX-merge means a bundle can only *raise* weights it
+   asserts and never touches the developer's personal layer. Separation-with-provenance is also the defensible answer
    to memory poisoning: a single agent-writable store that the agent also
    trusts on read is a prompt-injection persistence mechanism.
 
@@ -92,7 +92,8 @@ into the human-trusted layer as a reviewable diff.
 
 - **The one-sentence write policy.** *"Agent reads your vault. Agent writes
   to its journal. Never the other way."* NeuralMind's equivalent — **"agents
-  learn in their own store; the human layer only changes through review"** —
+  learn in their own store; the human and team layers change only through an
+  explicit, git-committed bundle — never the agent writing them directly"** —
   belongs in the README and docs at exactly that bluntness, not implied
   across `team_memory.py` and `synapse_memory.py` docstrings.
 - **A named home for ephemera.** The Inference Layer gives scratch output
@@ -116,8 +117,9 @@ version of something no memory project ships as a first-class workflow:
 NeuralMind is unusually close to this. The pieces exist: synapse weights
 with an LTP threshold (confidence), `publish_team_memory` (export),
 provenance stamping, MAX-merge semantics (a proposal can only add, never
-silently rewrite), and a committed bundle that already flows through PR
-review. What's missing is the *proposing* — a `neuralmind propose` (or
+silently rewrite), and a git-committed bundle that already lives in version
+control as a reviewable diff. What's missing is the *proposing* — a
+`neuralmind propose` (or
 PreCompact/session-end hook) that notices associations crossing the
 threshold and opens the bundle diff for human ratification, rather than
 waiting for someone to run publish by hand. Per the roadmap's own
@@ -131,8 +133,8 @@ portable cross-agent memory format and the team-memory arc
 1. **Positioning hygiene (shipped alongside this note):** state the write
    policy in one sentence in `README.md` and the wiki, and name the three
    layers we already have — human-curated (read-only to agents),
-   agent-learned (decaying synapse store), team-ratified (PR-reviewed
-   bundle). We independently built the stronger version of Tri-Node's
+   agent-learned (decaying synapse store), team-shared (explicit,
+   git-committed bundle). We independently built the stronger version of Tri-Node's
    headline; say so plainly, and credit the convergence where it's visible.
    Done in the same PR as this note: README "Who writes what — the memory
    trust boundary" section + Security & Compliance bullet, and the wiki
