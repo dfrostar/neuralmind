@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import { useState } from 'react';
 
+// Root-relative so the menu works from every page, not just the homepage.
+// A bare "#benchmarks" does nothing on /security, /privacy, /terms — those
+// sections only exist on "/". "/#benchmarks" navigates home, then scrolls.
 const navLinks = [
-    { href: '#how-it-works', label: 'How it works' },
-    { href: '#benchmarks', label: 'Benchmarks' },
-    { href: '#features', label: 'Features' },
-    { href: '#assessment', label: 'Assessment' },
-    { href: '#faq', label: 'FAQ' },
+    { href: '/#how-it-works', label: 'How it works' },
+    { href: '/#benchmarks', label: 'Benchmarks' },
+    { href: '/#features', label: 'Features' },
+    { href: '/#assessment', label: 'Assessment' },
+    { href: '/#faq', label: 'FAQ' },
 ];
 
 export default function Navbar() {
