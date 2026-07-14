@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bg: #070b15;
+    --bg-raised: #0c1322;
+    --bg-card: #0e1626;
+    --border: #1b2740;
+}
+
+* {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+    scroll-behavior: smooth;
+    background: var(--bg);
+    color: #e2e8f0;
+}
+
+body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 40%, #f472b6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.glow-card {
+    background: linear-gradient(135deg, rgba(14, 22, 38, 0.9) 0%, rgba(12, 19, 34, 0.9) 100%);
+    border: 1px solid rgba(27, 39, 64, 0.6);
+    backdrop-filter: blur(12px);
+    transition: all 0.3s ease;
+}
+
+.glow-card:hover {
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 0 40px rgba(96, 165, 250, 0.08);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 30px rgba(59, 130, 246, 0.5);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.04);
+    color: #e2e8f0;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+    border-color: rgba(96, 165, 250, 0.4);
+    color: #ffffff;
+}
+
+.section-reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.6s ease;
+}
+
+.section-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tag-rotate {
+    animation: tagRoll 0.5s ease-out;
+    display: inline-block;
+}
+
+@keyframes tagRoll {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(96, 165, 250, 0.4);
+}

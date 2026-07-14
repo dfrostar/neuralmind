@@ -1,0 +1,9 @@
+# Cloudflare Pages redirects.
+# The docs site moved to docs.neuralmind.uk; keep old apex docs paths alive
+# so existing inbound links and search-engine results don't 404.
+/wiki/*             https://docs.neuralmind.uk/wiki/:splat            301
+/benchmarks/*       https://docs.neuralmind.uk/benchmarks/:splat      301
+/comparisons/*      https://docs.neuralmind.uk/comparisons/:splat     301
+/use-cases/*        https://docs.neuralmind.uk/use-cases/:splat       301
+/about.html         https://docs.neuralmind.uk/about.html            301
+/COMPLIANCE-SUMMARY https://docs.neuralmind.uk/COMPLIANCE-SUMMARY    301

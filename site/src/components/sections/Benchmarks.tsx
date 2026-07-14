@@ -1,0 +1,66 @@
+'use client';
+
+const dataPoints = [
+    { metric: 'Retrieval token ratio', value: '40–70×', detail: 'vs naive file paste baseline' },
+    { metric: 'Synapse hit-rate gain', value: '+11.7 pts', detail: 'budget-neutral, CI-verified' },
+    { metric: 'Languages indexed', value: '10', detail: 'Python, TS, Go, Rust, Java, and more' },
+    { metric: 'Gold-file recall @ L3', value: '100%', detail: 'on pinned real OSS repos' },
+    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command' },
+    { metric: 'Ongoing overhead', value: '~0', detail: 'post-commit hook auto-rebuilds' },
+];
+
+export default function Benchmarks() {
+    return (
+        <section id="benchmarks" className="relative py-16 md:py-32 px-4 md:px-6">
+            <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-proton/3 rounded-full blur-[200px] -z-10" />
+
+            <div className="max-w-5xl mx-auto">
+                <div className="text-center mb-12 md:mb-16">
+                    <span className="text-proton text-sm font-semibold tracking-wider uppercase mb-3 block">
+                        Measured, not marketed
+                    </span>
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+                        Benchmarks
+                    </h2>
+                    <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-xl mx-auto">
+                        Every number is produced by CI on every commit. Run <code className="text-electric font-mono text-sm">neuralmind benchmark .</code> to verify.
+                    </p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {dataPoints.map((dp) => (
+                        <div
+                            key={dp.metric}
+                            className="glow-card rounded-2xl p-6"
+                        >
+                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+                                {dp.metric}
+                            </p>
+                            <p className="font-display text-3xl font-bold text-white mb-1">{dp.value}</p>
+                            <p className="text-slate-400 text-sm">{dp.detail}</p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Demo callout */}
+                <div className="mt-12 p-6 rounded-2xl border border-carbon-border bg-carbon-raised/50 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 className="font-display text-xl font-bold text-white mb-1">See it in 30 seconds</h3>
+                        <p className="text-slate-400 text-sm">
+                            Clone the repo, run the demo, get numbers on YOUR codebase. Then email the
+                            output to hello@neuralmind.uk with your team size for a free full spend model.
+                        </p>
+                    </div>
+                    <a
+                        href="https://github.com/dfrostar/neuralmind#-30-second-proof--see-the-memory-work"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-primary text-sm whitespace-nowrap"
+                    >
+                        Run the demo
+                    </a>
+                </div>
+            </div>
+        </section>
+    );
+}
