@@ -62,11 +62,30 @@ tests/fixtures/sample_project_go/.neuralmind/
 tests/benchmark/quality.md
 /graphify-out/
 
-# Per-project synapse layer artifacts (generated, not source)
-.neuralmind/synapses.db
-.neuralmind/synapses.db-shm
-.neuralmind/synapses.db-wal
-.neuralmind/SYNAPSE_MEMORY.md
+# Per-project state (generated, not source). CLAUDE.md: "Generated state
+# lives in <project>/.neuralmind/ — never committed." Four files
+# (index_ir.json, ir_meta.json, audit_events.jsonl, update.log) had been
+# force-added and shipped on public main; untracked as of this commit.
+.neuralmind/
+
+# Internal commercial + go-to-market material. This repo is PUBLIC.
+# These were live on main and are business-confidential: the financial
+# model carries 5-year revenue/cost projections, blended ARPU and an
+# annual price escalator — i.e. a customer could read our margins before
+# negotiating, and LICENSE-COMMERCIAL.md §6 itself declares "Licensor's
+# pricing and product roadmap are Licensor's confidential information."
+# Keep these local; do not commit.
+#
+# NOTE: LICENSE-COMMERCIAL.md (terms + price list) is deliberately NOT
+# ignored — published terms are an asset for an open-core project. It is
+# the reasoning *behind* the prices that stays private.
+/CFO_ADVISORY_DECK.pptx
+/LICENSE-COMMERCIAL.docx
+/PROJECT_LINKEDIN_NEURALMIND.md
+/NEURALMIND_LINKEDIN_POSTS.md
+/contracts/
+/docs/market-research/
+/docs/LINKEDIN-POST-DRAFT.md
 
 # GitHub Actions runner log fragments occasionally land at the repo root
 # matching job names (Build Package/, Lint/, Test (Python 3.x)/, Type Check/)
