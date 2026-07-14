@@ -33,6 +33,28 @@ and the file activity watcher.
 - `neuralmind/mcp_server.py` — MCP tools for any agent
 - `neuralmind/cli.py` — `neuralmind {build,query,watch,serve,install-hooks,…}`
 - `editors/vscode/` — VS Code extension: status bar, command palette, graph panel, hover provider
+- `site/` — public marketing site (neuralmind.uk), Next.js static export
+
+## Marketing site — single repo, single source of truth
+
+The public marketing site (`neuralmind.uk` /
+`neuralmind-marketing.pages.dev`) is operated **from this repo only**, under
+`site/`. It is a Next.js 14 static export (`output: 'export'` → `site/out`)
+deployed to the Cloudflare Pages project `neuralmind-marketing` by
+`.github/workflows/deploy-site.yml` (on push to `main` touching `site/**`, on
+every published release, or manual dispatch). Because deploy is a wrangler
+direct-upload to that project, the live URL is unchanged no matter which repo
+builds it.
+
+- **Do not** create, revive, or push site changes to a separate marketing
+  repo. The former `dfrostar/neuralmind-marketing` repo is retired for site
+  purposes; it retains only private business material (consulting decks,
+  internal reports) that must **never** be copied into this public repo.
+- **Never hardcode the version** on the `/security` page (or anywhere
+  user-facing). It reads the latest release from the GitHub API at build
+  time so it can't drift out of sync with the actual release — the exact bug
+  that a hardcoded `v0.42.0` caused. Same rule for SBOM/tarball/release
+  links: derive them from the release tag, don't pin a literal version.
 
 ## Local conventions
 

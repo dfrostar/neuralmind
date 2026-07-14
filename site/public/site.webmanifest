@@ -1,0 +1,17 @@
+{
+  "name": "NeuralMind",
+  "short_name": "NeuralMind",
+  "description": "Persistent memory for AI coding agents. 100% local. 40–70× token reduction.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0c",
+  "theme_color": "#0c0c0c",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

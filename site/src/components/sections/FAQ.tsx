@@ -1,0 +1,80 @@
+'use client';
+
+import { useState } from 'react';
+
+const faqs = [
+    {
+        q: 'How is this different from RAG?',
+        a: 'RAG stores chunks and retrieves by similarity. NeuralMind learns HOW you use code — which functions you look at together, which modules correlate, which tools you run after reading what. That co-activation signal is what makes the synapse layer outperform plain RAG on real agent workloads.',
+    },
+    {
+        q: 'Does it work with my agent?',
+        a: 'Yes. NeuralMind exposes an MCP server, and we support Claude Code (hooks), Cursor, Cline, Continue, and any MCP-compatible agent. We also have an HTTP API and a CLI.',
+    },
+    {
+        q: 'Does any code leave my machine?',
+        a: 'NeuralMind itself makes no external calls — the graph, embeddings, and synapse store are all local, with zero telemetry. The only thing that leaves is the minimal context slice your AI agent (Claude Code, Cursor, etc.) sends to its own model on each query — which is exactly what NeuralMind shrinks 40–70× versus pasting whole files.',
+    },
+    {
+        q: 'What languages does it support?',
+        a: 'Ten out-of-the-box: Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP. tree-sitter handles parsing.',
+    },
+    {
+        q: 'Why not just use Cursor / Windsurf / Aider memory?',
+        a: 'They vendor-lock memory to their agent. NeuralMind is agent-agnostic. Memory persists across agent migrations, is inspectable, and belongs to you.',
+    },
+    {
+        q: 'Explain "40–70× token reduction" more concretely',
+        a: 'When your agent asks "How does auth work?", a naive approach pastes every file (~5K–30K tokens). NeuralMind retrieves L0 (symbol/structure) + L1 (docstrings/comment) + L2 (method body, selective) + L3 (only if hit-rate requires). Result: exact context needed, typically 500–800 tokens, measured in CI on every commit.',
+    },
+];
+
+export default function FAQ() {
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+    return (
+        <section id="faq" className="relative py-16 md:py-32 px-4 md:px-6">
+            <div className="max-w-3xl mx-auto">
+                <div className="text-center mb-12 md:mb-16">
+                    <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">
+                        FAQ
+                    </span>
+                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+                        Common questions
+                    </h2>
+                </div>
+
+                <div className="space-y-3">
+                    {faqs.map((faq, i) => (
+                        <div
+                            key={i}
+                            className="glow-card rounded-xl overflow-hidden"
+                        >
+                            <button
+                                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                                className="w-full px-6 py-5 flex items-center justify-between text-left"
+                            >
+                                <span className="font-semibold text-white pr-4">{faq.q}</span>
+                                <svg
+                                    className={`w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200 ${
+                                        openIndex === i ? 'rotate-180' : ''
+                                    }`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            {openIndex === i && (
+                                <div className="px-6 pb-5 pt-0">
+                                    <p className="text-slate-400 leading-relaxed text-sm">{faq.a}</p>
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
