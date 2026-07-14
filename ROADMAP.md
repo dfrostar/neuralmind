@@ -55,6 +55,117 @@ Post-launch engineering candidates that are *not* yet shipped:
   "what you edit next" recall into a portable memory format that
   survives across agent runtimes.
 
+---
+
+## Commercial / Open-Core Lane
+
+MIT-licensed open-core with commercial modules. The free tier stays
+free — no feature caps, no artificial limits. Commercial features are
+the ones enterprises actually pay for: governance, compliance, and
+deployment at scale.
+
+### Licensing Structure
+
+**Dual-license model** (MIT + Commercial):
+
+- **MIT License (free):** Individuals, non-commercial, <5 users. Full
+  OSS core — no feature caps, no artificial limits.
+- **Commercial License (paid):** Organizations >5 users. Unlocks
+  enterprise modules via license key (offline JWT verification —
+  air-gap compatible, no phoning home).
+
+Private repository: `dfrostar/neuralmind-enterprise` (SSO, admin,
+compliance export, air-gap packaging, audit-shipping, priority support).
+
+### Open-core (MIT — free forever)
+
+| Feature | Status |
+|---------|--------|
+| Core semantic index + synapse layer | ✅ shipped |
+| MCP server for any agent | ✅ shipped |
+| All 10 supported languages | ✅ shipped |
+| Team memory (git-committed, per-project) | ✅ shipped |
+| Air-gapped install walkthrough | ✅ documented, validation pending |
+| Graph view + live activity feed | ✅ shipped |
+| `neuralmind impact` blast-radius | 🔜 next |
+| Cross-agent portable memory | 🔜 next |
+| CI auto-index | ✅ shipped |
+
+### Commercial modules (paid license required)
+
+| Module | What it does | Why enterprises pay |
+|--------|-------------|---------------------|
+| **SSO/SAML/OAuth** | Centralized auth via IdP (Okta, Azure AD, JumpCloud) | Required for enterprise procurement |
+| **Admin Console** | Org-wide dashboard: seat management, audit-log viewer | Security teams need visibility |
+| **Compliance Export** | SOC 2 / ISO 27001 / GDPR report generation, DPA templates | Procurement checkbox |
+| **Air-Gap Packaging** | Pre-built signed offline bundle, checksummed, with support SLA | Deployment convenience at scale |
+| **Audit-Log Rotation + Shipping** | Centralized log aggregation (not just local JSONL) | SOC 2 audit requirement |
+| **Priority Support** | SLA-backed response times, named support contact | Someone to call |
+
+### Competitive Pricing (market-validated)
+
+**Per-seat billing:**
+
+| Tier | Price | Minimum | Annual Equivalent |
+|------|-------|---------|-------------------|
+| **Community (MIT)** | $0 | — | $0 |
+| **Pro** (individual) | $25/mo or $250/yr | — | $250 |
+| **Team** | $45/user/mo | 10 seats | $5,400/yr min |
+| **Enterprise VPC** | $55/user/mo | 50 seats | $33,000/yr min |
+| **Enterprise Air-Gapped** | $85/user/mo | 50 seats | $51,000/yr min |
+| **Site License** | $180,000/yr | 200-499 seats | $180,000 flat |
+| **Site License (Large)** | $300,000/yr | 500+ seats | $300,000 flat |
+
+**Consulting engagements:**
+
+| Tier | Price | Duration | Includes |
+|------|-------|----------|----------|
+| **Assessment** (optional) | $25,000 one-time | 1-2 weeks | TCO audit + deployment recommendation |
+| **Pilot** | $75,000 one-time | 6-8 weeks | Assessment + deploy + SSO/admin + benchmark + executive readout |
+
+### Competitive Positioning
+
+| Tool | Price | Air-Gap | NeuralMind Advantage |
+|------|-------|---------|---------------------|
+| **GitHub Copilot Enterprise** | $39/mo | ❌ | Air-gap, no Microsoft dependency |
+| **Sourcegraph Cody** | $59/mo | ❌ | Air-gap, per-project privacy |
+| **Tabnine Enterprise** | ~$80-100/mo (est.) | ✅ (custom) | Price, per-project vs. org-wide |
+| **Augment Code** | $60-200/mo | ❌ | Air-gap, price |
+| **NeuralMind Enterprise** | $75/mo | ✅ (standard) | Unique air-gap + zero exfiltration at this price |
+
+### CFO Pitch (100 engineers)
+
+> "Your engineers ask AI agents ~20 questions/day. Each question reads
+> 10-50 files it doesn't need. At current API rates, that's
+> $800-1,200/engineer/month in wasted context tokens. NeuralMind cuts
+> that 40-70x — to $12-30/month for the memory layer itself."
+>
+> **At 100 engineers:** Current waste: $800K-1.2M/year. NeuralMind cost:
+> $90K/year (Enterprise at $75/mo). Net savings: $710K-1.1M/year.
+
+### Validation gates (before shipping commercial modules)
+
+- [ ] Air-gap claimed as zero-exfiltration — verify with `tcpdump` on
+      genuinely air-gapped hardware or `unshare -n` sandbox
+- [ ] Static analysis for outbound network calls (`requests`, `urllib`,
+      `httpx`, `aiohttp`, `websocket` in source + transitive deps)
+- [ ] SOC 2 Type I audit path scoped (consulting entity first, not OSS tool)
+- [ ] Beta enterprise customer validating the SSO/admin console build
+- [ ] Licensor entity set up (Cheval-Volant LLC DBA "NeuralMind" vs new corp)
+- [ ] License key verification system built (offline JWT, air-gap compatible)
+
+### License Key Delivery (Manual-First)
+
+For first 10-50 customers, no license server needed:
+
+1. Customer signs Commercial License / Consulting Agreement
+2. Invoice issued (50% upfront, 50% on completion)
+3. Payment clears
+4. License key delivered (signed JWT in PDF + `~/.neuralmind/license.key`)
+5. Customer runs: `neuralmind license activate <key>`
+6. Key verifies locally (signed with NeuralMind private key, expires annually)
+7. No network call required — air-gap compatible
+
 ## Shipped v0.13 → v0.41
 
 The eval-first arc and everything after it. Full notes per release in
