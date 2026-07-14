@@ -1,0 +1,67 @@
+name: Deploy site to Cloudflare Pages
+
+# The public marketing site (neuralmind.uk / neuralmind-marketing.pages.dev)
+# is operated from THIS repo, under site/. It is a Next.js static export
+# (output: 'export' -> site/out) uploaded to the existing Cloudflare Pages
+# project "neuralmind-marketing" via wrangler direct-upload, so the live URL
+# is unchanged regardless of which repo builds it.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   - token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#
+# Triggers:
+#   - push to main touching site/**   -> ship site content changes
+#   - a published release             -> rebuild so /security shows the new
+#                                        version (it reads the latest release
+#                                        at build time, never a hardcoded one)
+#   - manual dispatch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-site.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Don't let two site deploys overlap; a newer run cancels the older.
+concurrency:
+  group: site-pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: site
+          # Production deploy to the existing project; the live URL is preserved.
+          command: pages deploy out --project-name=neuralmind-marketing --branch=main
