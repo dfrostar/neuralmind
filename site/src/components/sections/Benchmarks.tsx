@@ -52,7 +52,9 @@ export default function Benchmarks() {
                         </p>
                     </div>
                     <a
-                        href="https://github.com/dfrostar/neuralmind"
+                        href="https://github.com/dfrostar/neuralmind#-30-second-proof--see-the-memory-work"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="btn-primary text-sm whitespace-nowrap"
                     >
                         Run the demo
