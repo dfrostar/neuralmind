@@ -1,7 +1,8 @@
 # Plan — Code → Behavior: the next-evolution roadmap
 
 **Created:** 2026-07-15
-**Status:** Design / decision-pending (positioning fork must be resolved before Phase 2)
+**Status:** Design / positioning **DECIDED** (2026-07-15) — memory-anchored;
+v-next contents ready to build. See "Open decisions" for what's settled.
 **Relates to:** PR #339 (cohesion-outlier prototype, already shipped on
 `claude/neuralmind-evaluation-mth2d3`) — this doc is the roadmap that prototype
 anchors.
@@ -58,6 +59,13 @@ a roadmap commitment.
 analyzer techniques *only* where they make retrieval more complete (data-flow
 as a smarter graph traversal), and treat true correctness-checking (#2) as an
 opt-in adjacent product, spike-proven before it earns headline space.
+
+> **DECISION (2026-07-15):** Accepted. NeuralMind stays **memory-anchored**.
+> Analyzer techniques are admitted only where they improve *retrieval
+> completeness* (data-flow = smarter traversal of the graph we already hold).
+> Schema-aware correctness-checking (#2) is an **opt-in adjacent product**,
+> gated on a measured spike, and is **never** folded into the memory core.
+> This resolves the fork; Phase 2 may proceed under these constraints.
 
 ---
 
@@ -248,12 +256,18 @@ as a feature yet.** Build a narrow proof:
 
 ## Open decisions for the owner
 
-1. **Positioning:** confirm memory-lane-as-anchor, analyzer-as-opt-in-adjacent?
-   This gates whether #2 ever leaves the spike.
+1. ~~**Positioning:** memory-lane-as-anchor, analyzer-as-opt-in-adjacent?~~
+   **SETTLED 2026-07-15 — memory-anchored** (see the decision box above). #2
+   stays spike-gated and, if built, ships as an opt-in adjacent product.
 2. **v-next contents:** confirm the three-feature "Surface what you can't see"
-   release (cohesion promote + `gaps` + provenance)?
+   release (cohesion promote + `gaps` + provenance)? *(recommended; ready to
+   build — `neuralmind gaps` first)*
 3. **Data-flow backend:** approve spiking LSP-backed traversal *before* any
-   custom AST work?
+   custom AST work? *(v-after; gated on decision 2)*
 
-Once (1) and (2) are settled, `neuralmind gaps` is the first build — highest
-ROI, and it closes the exact hole that started this whole thread.
+With (1) settled, `neuralmind gaps` is the first build — highest ROI, and it
+closes the exact hole that started this whole thread. Coordination note: the
+external data-flow spec (CatClaw, local checkout `/home/dtfrost/neuralmind`,
+unpushed as of 2026-07-15) must be pushed to the remote before its detail is
+reconciled into this doc — until then, this is the single authoritative,
+pushed plan.
