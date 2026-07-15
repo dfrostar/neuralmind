@@ -138,6 +138,12 @@ call edges + the embedder's node set.
 
 ### C. Decision provenance — indexed rationale
 
+*Status: **prototype built** — `neuralmind/provenance.py` + `tests/test_provenance.py`
+(9 passing, stdlib-only). Parser, subject extraction, and recall are complete
+and demonstrated against this repo's own log; wiring the record into the synapse
+graph as a node kind and harvesting on the `post-commit` hook is the promotion
+step.*
+
 **Problem it solves:** the "why is `resolveOrgId` per-handler?" question whose
 answer lived in a human's head, not in any artifact NeuralMind indexes.
 
