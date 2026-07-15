@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.43.0](https://github.com/dfrostar/neuralmind/compare/v0.42.1...v0.43.0) (2026-07-15)
+
+
+### Features
+
+* decision provenance — recall why code is the way it is ([#340](https://github.com/dfrostar/neuralmind/issues/340)) ([9961562](https://github.com/dfrostar/neuralmind/commit/9961562b0e351e56e98753d051b83a73999e4ccc))
+
 ## [0.42.1](https://github.com/dfrostar/neuralmind/compare/v0.42.0...v0.42.1) (2026-07-13)
 
 
