@@ -444,7 +444,39 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
     lines = ["## NeuralMind associative recall", ""]
     for node_id, energy in ranked:
         lines.append(f"- {node_id} (activation {energy:.2f})")
+
+    # Flag the cluster member that skips a pattern its peers share — the
+    # "handler #11" outlier a flat recall list can't distinguish. Opt-in.
+    if os.environ.get("NEURALMIND_SYNAPSE_OUTLIERS") == "1":
+        cohesion = _cohesion_block(mind, [nid for nid, _ in ranked])
+        if cohesion:
+            lines.append("")
+            lines.append(cohesion)
+
     return "\n".join(lines)
+
+
+def _cohesion_block(mind, cluster: list[str]) -> str:
+    """Run outlier detection over a surfaced cluster; fail open to ''.
+
+    Reads neighbors straight from the synapse store, so it costs a few
+    SQLite lookups and no embedder work. Any failure yields '' — the
+    cohesion check must never break the recall injection it augments.
+    """
+    import contextlib
+    import io
+
+    store = getattr(mind, "synapses", None)
+    if store is None:
+        return ""
+    try:
+        from .cohesion import find_outliers, format_outliers
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            findings = find_outliers(cluster, store.neighbors)
+        return format_outliers(findings)
+    except Exception:
+        return ""
 
 
 def _decisions_for_prompt(project_path: str, prompt: str) -> str:
