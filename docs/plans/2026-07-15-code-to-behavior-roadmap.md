@@ -147,11 +147,14 @@ call edges + the embedder's node set.
 
 ### C. Decision provenance — indexed rationale
 
-*Status: **prototype built** — `neuralmind/provenance.py` + `tests/test_provenance.py`
-(9 passing, stdlib-only). Parser, subject extraction, and recall are complete
-and demonstrated against this repo's own log; wiring the record into the synapse
-graph as a node kind and harvesting on the `post-commit` hook is the promotion
-step.*
+*Status: **wired end-to-end** — `neuralmind/provenance.py` + `tests/test_provenance.py`
+(12 passing). Beyond the parser/recall prototype, this now harvests `Decision:`
+trailers straight from git history (the trailer **is** the store — no separate
+DB to drift), injects matching decisions on the `UserPromptSubmit` hook behind
+`NEURALMIND_PROVENANCE_INJECT` (default on, fails open), and exposes a
+`neuralmind why <query>` CLI command. Demonstrated end-to-end against a real
+commit. Remaining to cut a release: `feat:` + the five-surface docs/SEO checklist
+(new command + new env var).*
 
 **Problem it solves:** the "why is `resolveOrgId` per-handler?" question whose
 answer lived in a human's head, not in any artifact NeuralMind indexes.
