@@ -110,6 +110,15 @@ docs + SEO checklist per `CLAUDE.md`.
 
 ### B. `neuralmind gaps` — test/endpoint coverage cross-reference
 
+*Status: **prototype built** — `neuralmind/gaps.py` + `tests/test_gaps.py`
+(10 passing) against a self-contained Express/Jest fixture
+(`tests/fixtures/express_gaps/`). The pure core (path normalization,
+classification) is framework-agnostic; the Express/Jest extractors are the
+Phase-1 heuristics. Demonstrated output flags `POST /api/sessions` as 3-tests /
+all-SKIP_PG / mock-only — the exact P2003 shape — and separates untested from
+live-covered. Promotion: back the extractors with the tree-sitter index (or an
+LSP) instead of regex, and wire a `neuralmind gaps` CLI subcommand.*
+
 **Problem it solves:** an endpoint can pass tests that only run in mock mode
 (`MemorySessionStore` accepts any string; Postgres FK rejects non-UUIDs), so
 "green" hides a live-only failure. This is the class of the `P2003` incident.
