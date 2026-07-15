@@ -16,5 +16,6 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | **[Branch-isolated memory & team baselines](./branch-isolated-memory.md)** | **Heavy branchers, teams onboarding new devs (v0.24.0+)** | **Keep feature-branch learning out of `main`'s memory; ship a `shared` baseline as a versioned bundle** |
 | **[Unified context engineering stack (NeuralMind + Ponytail + Headroom)](./unified-stack.md)** | **Teams who've hit the ceiling on single-tool optimization** | **Eliminate token waste at retrieval, transport, and generation simultaneously** |
 | **[Blast radius before a rename](./blast-radius-before-a-rename.md)** | **Anyone (or any agent) about to rename, re-sign, or delete a symbol (v0.42.0+)** | **See every caller / importer / subclass a change would touch, before you edit — from the static code graph** |
+| **[Decision provenance: answer "why is it like this?"](./decision-provenance.md)** | **Anyone inheriting code whose rationale lives in someone's head (v0.43.0+)** | **Capture a decision in a `Decision:` git trailer; recall it with `neuralmind why` — the *why* stored where it can't drift** |
 
 Not sure which applies? Start with the [symptom / goal table in the main README](../../README.md#-when-do-i-reach-for-neuralmind).
