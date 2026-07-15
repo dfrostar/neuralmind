@@ -367,11 +367,21 @@ def run_hook(action: str) -> int:
         # the synapse graph.
         cwd = payload.get("cwd") or os.getcwd()
         prompt = (payload.get("prompt") or "").strip()
-        if not prompt or os.environ.get("NEURALMIND_SYNAPSE_INJECT") == "0":
+        if not prompt:
             return 0
-        injected = _spread_for_prompt(cwd, prompt)
-        if injected:
-            _emit_for_event("UserPromptSubmit", injected)
+        blocks: list[str] = []
+        if os.environ.get("NEURALMIND_SYNAPSE_INJECT") != "0":
+            spread = _spread_for_prompt(cwd, prompt)
+            if spread:
+                blocks.append(spread)
+        # Decision provenance: surface the recorded *why* when its symbols
+        # light up in the prompt. Git history is the store; fails open.
+        if os.environ.get("NEURALMIND_PROVENANCE_INJECT") != "0":
+            decisions = _decisions_for_prompt(cwd, prompt)
+            if decisions:
+                blocks.append(decisions)
+        if blocks:
+            _emit_for_event("UserPromptSubmit", "\n\n".join(blocks))
         return 0
 
     if action == "pre-compact":
@@ -435,6 +445,21 @@ def _spread_for_prompt(project_path: str, prompt: str, top_k: int = 8) -> str:
     for node_id, energy in ranked:
         lines.append(f"- {node_id} (activation {energy:.2f})")
     return "\n".join(lines)
+
+
+def _decisions_for_prompt(project_path: str, prompt: str) -> str:
+    """Surface recorded decisions whose subjects the prompt mentions.
+
+    Harvests ``Decision:`` trailers from git history and recalls the ones the
+    prompt is about. Fails open to '' so a provenance miss never disrupts the
+    prompt-submit hook.
+    """
+    try:
+        from .provenance import format_decisions, harvest, recall
+
+        return format_decisions(recall(harvest(project_path), prompt))
+    except Exception:
+        return ""
 
 
 def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> None:
