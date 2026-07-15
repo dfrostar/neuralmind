@@ -67,6 +67,8 @@ _IGNORED_DIRS = {
 
 # Input prices in $/MTok (million tokens).  Keys are lowercase slugs the user
 # can pass to --model; "sonnet" is the default (matches the benchmark default).
+# Prices as of July 2026 — verify current rates at each provider's pricing page
+# before using --cost output for financial decisions.
 _MODEL_PRICES: dict[str, float] = {
     "sonnet": 3.00,   # Claude 3.5 Sonnet
     "opus": 15.00,    # Claude Opus 3
