@@ -2013,6 +2013,29 @@ def cmd_hook(args):
     sys.exit(run_hook(args.action))
 
 
+def cmd_why(args):
+    """Answer "why is <X> the way it is?" from recorded decision provenance.
+
+    Harvests ``Decision:`` trailers from git history and surfaces the ones
+    whose subjects the query mentions — the rationale that would otherwise
+    live only in a human's head.
+    """
+    from .provenance import format_decisions, harvest, recall
+
+    project_path = getattr(args, "project_path", ".")
+    records = harvest(project_path)
+    hits = recall(records, args.query)
+    if not hits:
+        if not records:
+            print("No decisions recorded yet.")
+            print("Capture one by adding a 'Decision:' trailer to a commit message, e.g.:")
+            print("  Decision: resolveOrgId is per-handler — avoids Prisma on /health.")
+        else:
+            print(f"No recorded decisions match {args.query!r}.")
+        return
+    print(format_decisions(hits))
+
+
 def cmd_init_hook(args):
     """Initialize Git post-commit hook for automatic updates.
 
@@ -2502,6 +2525,19 @@ def main():
     )
     skel_p.add_argument("--json", "-j", action="store_true")
     skel_p.set_defaults(func=cmd_skeleton)
+
+    # Why command — recall decision provenance for a symbol / question
+    why_p = subparsers.add_parser(
+        "why",
+        help="Recall the recorded rationale (Decision: trailers) behind code",
+    )
+    why_p.add_argument("query", help="Symbol or question, e.g. 'why is resolveOrgId per-handler'")
+    why_p.add_argument(
+        "--project-path",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    why_p.set_defaults(func=cmd_why)
 
     # Structural command — typed structural neighbors (calls/inherits/imports)
     struct_p = subparsers.add_parser(

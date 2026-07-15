@@ -185,3 +185,54 @@ def format_decisions(records: list[DecisionRecord]) -> str:
         ref = f" (see commit {rec.short_sha})" if rec.short_sha else ""
         lines.append(f"- {subj}: {rec.rationale}{ref}")
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# Harvest — git history IS the store; the trailer is the persistence.
+# --------------------------------------------------------------------------- #
+
+# ASCII unit/record separators keep multi-line commit bodies unambiguous.
+_GIT_FORMAT = "%H%x1f%B%x1e"
+
+
+def read_git_log(project_path: str = ".", limit: int = 300) -> list[tuple[str, str]]:
+    """Return ``[(sha, message), ...]`` for the last ``limit`` commits.
+
+    Reads real git history via a subprocess — the only impure function in this
+    module, kept separate so :func:`harvest` can be tested with a fake reader.
+    Returns an empty list on any failure (not a git repo, git missing), so the
+    whole feature fails open.
+    """
+    import subprocess
+
+    try:
+        out = subprocess.check_output(
+            ["git", "-C", project_path, "log", f"-{int(limit)}", f"--format={_GIT_FORMAT}"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        return []
+    entries: list[tuple[str, str]] = []
+    for chunk in out.split("\x1e"):
+        if "\x1f" in chunk:
+            sha, message = chunk.split("\x1f", 1)
+            entries.append((sha.strip(), message))
+    return entries
+
+
+def harvest(
+    project_path: str = ".",
+    limit: int = 300,
+    log_reader=read_git_log,
+) -> list[DecisionRecord]:
+    """Harvest decision records from a project's recent git history.
+
+    ``log_reader`` is injectable purely for testing; production passes the
+    default git-backed reader. Fails open to an empty list.
+    """
+    try:
+        entries = log_reader(project_path, limit)
+    except Exception:
+        return []
+    return parse_log(entries)

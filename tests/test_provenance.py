@@ -81,6 +81,34 @@ def test_format_names_subjects_rationale_and_commit():
     assert "decision provenance" in text.lower()
 
 
+def test_harvest_parses_decisions_via_injected_reader():
+    from neuralmind.provenance import harvest
+
+    fake_log = [("aaa", "chore: x"), ("bbb", RESOLVE_MSG)]
+    records = harvest(project_path=".", log_reader=lambda p, n: fake_log)
+    assert len(records) == 1
+    assert records[0].subjects[0] == "resolveOrgId"
+
+
+def test_harvest_fails_open_when_reader_raises():
+    from neuralmind.provenance import harvest
+
+    def boom(_p, _n):
+        raise RuntimeError("no git here")
+
+    assert harvest(project_path=".", log_reader=boom) == []
+
+
+def test_read_git_log_returns_list_on_real_repo():
+    # Integration: runs against this checkout; must not raise and must return
+    # (sha, message) tuples. Decision count may be zero — that's fine.
+    from neuralmind.provenance import harvest, read_git_log
+
+    entries = read_git_log(".", limit=10)
+    assert isinstance(entries, list)
+    assert isinstance(harvest("."), list)  # fails open even if 0 decisions
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
