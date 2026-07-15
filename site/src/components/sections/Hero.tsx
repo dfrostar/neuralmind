@@ -44,9 +44,10 @@ export default function Hero() {
 
                 {/* Subhead */}
                 <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                    Persistent neural memory for AI agents. Local-first synapse layer that cuts token costs{' '}
-                    <span className="text-white font-semibold">40–70×</span>.
-                    Built-in install doctor, Obsidian-style graph view, and honest benchmarks — measured, not marketed.
+                    Persistent neural memory for AI agents. A local-first synapse layer that cuts token costs{' '}
+                    <span className="text-white font-semibold">40–70×</span>{' '}
+                    <span className="text-white font-semibold">and surfaces the cross-cutting call sites grep misses</span> —
+                    so the outlier gets caught before production, not after. Measured, not marketed.
                 </p>
 
                 {/* CTA buttons */}

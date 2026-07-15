@@ -8,6 +8,12 @@ const featureList = [
         badge: 'Budget-neutral',
     },
     {
+        icon: '🔦',
+        title: 'Cross-Cutting Discovery',
+        desc: 'Grep finds the string; the graph finds the pattern. Surfaces every call site that shares a concern — and flags the outlier that skips it — so the case you\'d have missed gets caught before production, not after.',
+        badge: 'Completeness',
+    },
+    {
         icon: '🔄',
         title: 'Progressive L0–L3 Disclosure',
         desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 40–70× compression measured in CI.',
