@@ -268,10 +268,15 @@ class SynapseStore:
 
     @contextmanager
     def _connect(self):
-        conn = sqlite3.connect(self.db_path, timeout=5.0, isolation_level=None)
+        # timeout=30 lets concurrent neuralmind-mcp processes queue behind a
+        # writer rather than failing immediately under lock contention.
+        conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
+            # Belt-and-suspenders: SQLite-level busy wait matches the
+            # Python-driver timeout so both layers agree on the ceiling.
+            conn.execute("PRAGMA busy_timeout=30000")
             yield conn
         finally:
             conn.close()
