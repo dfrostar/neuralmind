@@ -254,6 +254,52 @@ as a feature yet.** Build a narrow proof:
 
 ---
 
+## Reconciliation with the data-flow spec (`feat/audit-hardening` @ `16e7511`)
+
+CatClaw's `docs/plans/2026-07-15-data-flow-query-spec.md` is now pushed. It is
+the **detailed feature design** for data-flow; this doc stays the **portfolio /
+strategy** layer. They are complementary — but the spec predates the positioning
+decision and needs three amendments before it is consistent with this plan.
+The spec lives on a separate branch; these are notes for its owner (CatClaw), not
+edits made here.
+
+**Conflict 1 — the spec folds the analyzer lane into the core feature.**
+Spec §3 (`neuralmind audit --type type-risks`, string→FK / P2003 detection) is
+*correctness-checking*, which the positioning decision routes to an **opt-in
+adjacent product, spike-gated, never folded into the memory core**. The spec
+presents it as "Phase 2" of one continuous feature — exactly the quiet-merge
+path the decision forbids. **Amendment:** split §3 out; it is the spike, not a
+phase of `flow`. `neuralmind flow` (retrieval completeness) ships in-lane;
+`neuralmind audit` (correctness) does not proceed past a measured spike, and if
+it ships, ships as the adjacent product.
+
+**Conflict 2 — `neuralmind gaps` is specified in both docs.** Spec §4 makes it
+"Phase 4" of the data-flow feature; this plan makes it a standalone **v-next**
+feature (A/B/C above). `gaps` needs no flow graph — it is a route×test×skip-marker
+join. **Amendment:** de-dupe. `gaps` ships first, on its own, per v-next; it is
+not gated behind Phases 1–3 of `flow`. The spec's §4.3 detail (route-path
+normalization, real-DB-check heuristics) is good — fold it into the `gaps`
+build, not into the flow phasing.
+
+**Dropped review item 1 — LSP-first was reversed.** DeepSeek (HIGH) said
+*evaluate LSP before* building a custom AST walker; the spec §7 **defers** LSP
+and builds on existing tree-sitter infra first. That is a defensible reuse
+choice, but it is the opposite of the review's recommendation and of this plan's
+"spike LSP-backed traversal first." **Open decision (see below):** custom-AST-first
+(spec) vs LSP-first (review + this plan). Pick one on purpose.
+
+**Dropped review item 2 — no justification vs. incumbents.** DeepSeek (HIGH) and
+the positioning fork both require the spec to answer *"why not CodeQL / Semgrep /
+WALA?"* — most sharply for §3, which is precisely where those tools compete. The
+spec has no such section (§9 is UX rationale). **Amendment:** add it; it is the
+gate for whether the schema-aware spike is worth starting at all.
+
+**Resolved / consistent (credit where due):** TS-only Phase 1, async/await
+first-class, polymorphic dispatch flagged as "unknown sink", a real
+false-positive target (<20% vs. an N=25 hand-labeled benchmark), and route-path
+normalization are all present and correct. The "≥11 paths" target is no longer
+free-floating — it is now tied to that labeled benchmark. Good.
+
 ## Open decisions for the owner
 
 1. ~~**Positioning:** memory-lane-as-anchor, analyzer-as-opt-in-adjacent?~~
@@ -262,12 +308,18 @@ as a feature yet.** Build a narrow proof:
 2. **v-next contents:** confirm the three-feature "Surface what you can't see"
    release (cohesion promote + `gaps` + provenance)? *(recommended; ready to
    build — `neuralmind gaps` first)*
-3. **Data-flow backend:** approve spiking LSP-backed traversal *before* any
-   custom AST work? *(v-after; gated on decision 2)*
+3. **Data-flow backend (needs a call):** the spec builds a custom tree-sitter
+   AST walker first and defers LSP; this plan + the DeepSeek review recommend
+   spiking **LSP-backed traversal first**. Pick one deliberately — it is the
+   single biggest implementation-cost lever for `flow`.
+4. **Spec amendments:** accept the three reconciliation amendments above (split
+   §3 schema-aware into the spike; de-dupe `gaps` into v-next; add the
+   justify-vs-incumbents section)? These are for the spec's owner to apply on
+   `feat/audit-hardening`.
 
 With (1) settled, `neuralmind gaps` is the first build — highest ROI, and it
 closes the exact hole that started this whole thread. Coordination note: the
-external data-flow spec (CatClaw, local checkout `/home/dtfrost/neuralmind`,
-unpushed as of 2026-07-15) must be pushed to the remote before its detail is
-reconciled into this doc — until then, this is the single authoritative,
-pushed plan.
+external data-flow spec is now pushed (`feat/audit-hardening` @ `16e7511`) and
+reconciled above. This doc remains the portfolio/strategy layer; the spec is the
+detailed `flow` design. Neither has merged to `main` yet, so cross-links resolve
+only once both land.
