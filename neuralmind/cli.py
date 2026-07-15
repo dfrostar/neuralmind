@@ -65,6 +65,31 @@ _IGNORED_DIRS = {
     ".pytest_cache",
 }
 
+# Input prices in $/MTok (million tokens).  Keys are lowercase slugs the user
+# can pass to --model; "sonnet" is the default (matches the benchmark default).
+_MODEL_PRICES: dict[str, float] = {
+    "sonnet": 3.00,   # Claude 3.5 Sonnet
+    "opus": 15.00,    # Claude Opus 3
+    "haiku": 0.25,    # Claude Haiku 3
+    "gpt-4o": 5.00,   # GPT-4o
+    "gpt-4o-mini": 0.15,
+}
+
+
+def _rate_for_model(model_slug: str | None, explicit_rate: float | None) -> tuple[float, str]:
+    """Return (rate_per_mtok, display_label) for the given model / explicit rate.
+
+    *explicit_rate* wins if provided and numeric; otherwise the slug is looked up
+    in ``_MODEL_PRICES``, falling back to "sonnet" when unrecognised.
+    """
+    if explicit_rate is not None and isinstance(explicit_rate, (int, float)):
+        label = f"custom {float(explicit_rate):.2f} $/MTok"
+        return float(explicit_rate), label
+    slug = (model_slug or "sonnet").lower() if isinstance(model_slug, str) else "sonnet"
+    rate = _MODEL_PRICES.get(slug, _MODEL_PRICES["sonnet"])
+    label = f"{slug} {rate:.2f} $/MTok"
+    return rate, label
+
 
 def _dry_run_scan(project_path: str) -> dict:
     """Scan a project and estimate NeuralMind token savings without building."""
@@ -266,9 +291,15 @@ def cmd_query(args):
     trace_verbose = getattr(args, "trace_verbose", False) is True
     relevance = getattr(args, "relevance", False) is True
     explain = getattr(args, "explain", False) is True
+    show_cost = getattr(args, "cost", False) is True
     # --explain needs trace data to show synapse firings; enable it implicitly
     if explain and not trace:
         trace = True
+
+    cost_rate, cost_label = _rate_for_model(
+        getattr(args, "model", None),
+        getattr(args, "rate", None),
+    )
 
     # --relevance (sidecar from ContextResult.top_search_hits) and --explain
     # (full per-layer breakdown) both need the full result object, which the
@@ -284,27 +315,37 @@ def cmd_query(args):
                 trace_verbose=trace_verbose,
             )
             if not out.get("error"):
+                tokens_used = out.get("tokens") or 0
+                ratio = out.get("reduction_ratio") or 1.0
+                tokens_saved = int(tokens_used * (ratio - 1))
+                cost_used = tokens_used / 1_000_000 * cost_rate
+                cost_saved = tokens_saved / 1_000_000 * cost_rate
                 if args.json:
-                    print(
-                        json.dumps(
-                            {
-                                "query": args.question,
-                                "tokens": out.get("tokens"),
-                                "reduction_ratio": out.get("reduction_ratio"),
-                                "layers": out.get("layers"),
-                                "context": out.get("context", ""),
-                                "trace": out.get("trace"),
-                                "via": "daemon",
-                            },
-                            indent=2,
-                        )
-                    )
+                    output = {
+                        "query": args.question,
+                        "tokens": tokens_used,
+                        "reduction_ratio": ratio,
+                        "layers": out.get("layers"),
+                        "context": out.get("context", ""),
+                        "trace": out.get("trace"),
+                        "via": "daemon",
+                    }
+                    if show_cost:
+                        output["cost_used_usd"] = round(cost_used, 6)
+                        output["cost_saved_usd"] = round(cost_saved, 6)
+                        output["rate_per_mtok"] = cost_rate
+                    print(json.dumps(output, indent=2))
                 else:
                     print(f"Query: {args.question}  (via daemon)")
-                    print(f"Tokens: {out.get('tokens')} ({out.get('reduction_ratio')}x reduction)")
+                    print(f"Tokens: {tokens_used} ({ratio}x reduction)")
                     print("=" * 60)
                     print(out.get("context", ""))
                     print("=" * 60)
+                    if show_cost:
+                        print(
+                            f"Cost:  ${cost_used:.4f} used  |  ${cost_saved:.4f} saved"
+                            f"  ({cost_label})"
+                        )
                     if trace:
                         _print_trace(out.get("trace"))
                 return
@@ -313,15 +354,24 @@ def cmd_query(args):
 
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
+    tokens_used = result.budget.total
+    ratio = result.reduction_ratio
+    tokens_saved = int(tokens_used * (ratio - 1))
+    cost_used = tokens_used / 1_000_000 * cost_rate
+    cost_saved = tokens_saved / 1_000_000 * cost_rate
     if args.json:
         output = {
             "query": args.question,
-            "tokens": result.budget.total,
-            "reduction_ratio": round(result.reduction_ratio, 1),
+            "tokens": tokens_used,
+            "reduction_ratio": round(ratio, 1),
             "layers": result.layers_used,
             "context": result.context,
             "trace": result.trace,
         }
+        if show_cost:
+            output["cost_used_usd"] = round(cost_used, 6)
+            output["cost_saved_usd"] = round(cost_saved, 6)
+            output["rate_per_mtok"] = cost_rate
         if relevance:
             from .relevance import build_relevance_sidecar
 
@@ -333,10 +383,16 @@ def cmd_query(args):
         print("=" * 60)
         print(result.context)
         print("=" * 60)
+        if show_cost:
+            print(
+                f"Cost:  ${cost_used:.4f} used  |  ${cost_saved:.4f} saved"
+                f"  ({cost_label})"
+            )
         if explain:
             _print_explain(result)
         elif trace:
             _print_trace(result.trace)
+
 
 
 def _maybe_prompt_for_memory_opt_in():
@@ -476,6 +532,150 @@ def cmd_savings(args):
             ts = q["ts"][:10] if q["ts"] else ""
             label = q["query"][:55] + "…" if len(q["query"]) > 55 else q["query"]
             print(f"    {ts}  [{q['tokens']:>5} tok / {ratio_str:>5}]  {label}")
+
+
+def cmd_batch_estimate(args):
+    """Aggregate per-query token costs from the local event log and project
+    to a monthly dollar estimate.
+
+    Pure arithmetic over existing JSONL data — no new I/O, no API calls.
+    Uses the same event log that ``neuralmind savings`` reads.
+    """
+    project_path = Path(getattr(args, "project_path", ".")).resolve()
+
+    proj_file = memory.project_query_events_file(project_path)
+    global_file = memory.global_query_events_file()
+
+    use_global = getattr(args, "global_", False)
+    events_file = global_file if use_global else proj_file
+
+    if not events_file.exists():
+        if args.json:
+            print(json.dumps({"error": "no event log found", "path": str(events_file)}))
+        else:
+            print(f"No event log found at {events_file}")
+            print("Enable memory logging (answer yes when prompted) and run some queries first.")
+        return
+
+    cost_rate, cost_label = _rate_for_model(
+        getattr(args, "model", None),
+        getattr(args, "rate", None),
+    )
+    qpd = getattr(args, "queries_per_day", None)
+
+    queries = []
+    try:
+        with events_file.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                # Skip wakeup events — they aren't discrete queries
+                if rec.get("event_type") == "wakeup":
+                    continue
+                rs = rec.get("retrieval_summary", {})
+                tokens = rs.get("tokens", 0) or 0
+                ratio = rs.get("reduction_ratio", 0.0) or 0.0
+                queries.append(
+                    {
+                        "query": rec.get("query", ""),
+                        "tokens": tokens,
+                        "ratio": ratio,
+                        "ts": rec.get("timestamp", ""),
+                        "cost_used": tokens / 1_000_000 * cost_rate,
+                        "cost_saved": max(0, tokens * (ratio - 1)) / 1_000_000 * cost_rate,
+                        "tokens_saved": max(0, int(tokens * (ratio - 1))),
+                    }
+                )
+    except OSError as exc:
+        print(f"Could not read {events_file}: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    n = len(queries)
+    if n == 0:
+        if args.json:
+            print(json.dumps({"queries": 0, "total_cost_used_usd": 0.0}))
+        else:
+            print("No query events logged yet. Run some queries to start tracking costs.")
+        return
+
+    total_tokens_used = sum(q["tokens"] for q in queries)
+    total_tokens_saved = sum(q["tokens_saved"] for q in queries)
+    total_cost_used = sum(q["cost_used"] for q in queries)
+    total_cost_saved = sum(q["cost_saved"] for q in queries)
+    avg_tokens = total_tokens_used / n
+    avg_cost_used = total_cost_used / n
+    avg_cost_saved = total_cost_saved / n
+
+    projection: dict = {}
+    if qpd:
+        monthly_used = avg_cost_used * qpd * 30
+        monthly_without = (avg_cost_used + avg_cost_saved) * qpd * 30
+        monthly_savings = monthly_without - monthly_used
+        projection = {
+            "queries_per_day": qpd,
+            "projected_monthly_cost_with_nm_usd": round(monthly_used, 4),
+            "projected_monthly_cost_without_nm_usd": round(monthly_without, 4),
+            "projected_monthly_savings_usd": round(monthly_savings, 4),
+        }
+
+    if args.json:
+        out: dict = {
+            "scope": "global" if use_global else project_path.name,
+            "model": (getattr(args, "model", None) or "sonnet").lower(),
+            "rate_per_mtok": cost_rate,
+            "total_queries": n,
+            "total_tokens_used": total_tokens_used,
+            "total_tokens_saved": total_tokens_saved,
+            "total_cost_used_usd": round(total_cost_used, 6),
+            "total_cost_saved_usd": round(total_cost_saved, 6),
+            "avg_tokens_per_query": round(avg_tokens, 1),
+            "avg_cost_per_query_usd": round(avg_cost_used, 6),
+        }
+        if projection:
+            out["projection"] = projection
+        print(json.dumps(out, indent=2))
+        return
+
+    scope = "global" if use_global else project_path.name
+    print(f"NeuralMind batch cost estimate — {scope}")
+    print(f"Model: {cost_label}")
+    print()
+    print(f"  Queries logged     : {n:>6,}")
+    print(f"  Avg tokens/query   : {avg_tokens:>8,.0f}")
+    print(f"  Avg cost/query     :  ${avg_cost_used:.4f}")
+    print()
+    print(f"  Cumulative ({n:,} queries)")
+    print(
+        f"    Tokens used      : {total_tokens_used:>10,}"
+        f"     Cost: ${total_cost_used:,.4f}"
+    )
+    print(
+        f"    Tokens saved     : {total_tokens_saved:>10,}"
+        f"     Cost: ${total_cost_saved:,.4f}"
+    )
+    if projection:
+        print()
+        print(f"  Monthly projection ({qpd} queries/day × 30 days)")
+        print(f"    With NeuralMind  :  ${projection['projected_monthly_cost_with_nm_usd']:,.4f}/mo")
+        print(f"    Without          :  ${projection['projected_monthly_cost_without_nm_usd']:,.4f}/mo")
+        print(f"    Savings          :  ${projection['projected_monthly_savings_usd']:,.4f}/mo")
+    if queries:
+        print()
+        print("  Per-query breakdown (most recent 5):")
+        for q in queries[-5:]:
+            ratio_str = f"{q['ratio']:.1f}x" if q["ratio"] else "?"
+            ts = q["ts"][:10] if q["ts"] else ""
+            label = q["query"][:45] + "…" if len(q["query"]) > 45 else q["query"]
+            print(
+                f"    {ts}  [{q['tokens']:>5} tok / {ratio_str:>5}]"
+                f"  \"{label}\""
+                f"  →  ${q['cost_used']:.4f} / saved ${q['cost_saved']:.4f}"
+            )
 
 
 def cmd_review(args):
@@ -2214,6 +2414,27 @@ def main():
         "token savings, layers used, communities loaded, top search hits, "
         "and which synapses fired.",
     )
+    query_p.add_argument(
+        "--cost",
+        action="store_true",
+        help="After the query, print a cost receipt: tokens used/saved converted "
+        "to dollars at the chosen model's input price. Uses --model/--rate for the "
+        "price; --json adds cost_used_usd/cost_saved_usd/rate_per_mtok to the output.",
+    )
+    query_p.add_argument(
+        "--model",
+        default="sonnet",
+        metavar="MODEL",
+        help="Model slug for --cost pricing (sonnet, opus, haiku, gpt-4o, "
+        "gpt-4o-mini). Default: sonnet (3.00 $/MTok). Ignored without --cost.",
+    )
+    query_p.add_argument(
+        "--rate",
+        type=float,
+        default=None,
+        metavar="RATE",
+        help="Explicit input price in $/MTok, overrides --model. Ignored without --cost.",
+    )
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
@@ -2235,6 +2456,44 @@ def main():
     )
     savings_p.add_argument("--json", "-j", action="store_true")
     savings_p.set_defaults(func=cmd_savings)
+
+    batch_p = subparsers.add_parser(
+        "batch-estimate",
+        help="Aggregate per-query token costs from the local event log and project "
+        "to a monthly dollar estimate — pure math on existing data, no API calls.",
+    )
+    batch_p.add_argument("project_path", nargs="?", default=".")
+    batch_p.add_argument(
+        "--global",
+        dest="global_",
+        action="store_true",
+        help="Aggregate across ALL projects (reads the global event log).",
+    )
+    batch_p.add_argument(
+        "--model",
+        default="sonnet",
+        metavar="MODEL",
+        help="Model slug for pricing (sonnet, opus, haiku, gpt-4o, gpt-4o-mini). "
+        "Default: sonnet (3.00 $/MTok).",
+    )
+    batch_p.add_argument(
+        "--rate",
+        type=float,
+        default=None,
+        metavar="RATE",
+        help="Explicit input price in $/MTok, overrides --model.",
+    )
+    batch_p.add_argument(
+        "--queries-per-day",
+        "--qpd",
+        type=int,
+        default=None,
+        dest="queries_per_day",
+        metavar="N",
+        help="When provided, add a monthly cost projection at N queries/day × 30 days.",
+    )
+    batch_p.add_argument("--json", "-j", action="store_true")
+    batch_p.set_defaults(func=cmd_batch_estimate)
 
     review_p = subparsers.add_parser(
         "review",

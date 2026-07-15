@@ -162,6 +162,9 @@ neuralmind query <project_path> "<question>" [OPTIONS]
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 | `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
+| `--cost` | False | *(v0.44.0+)* After the query, print a cost receipt: tokens used/saved converted to dollars at the chosen model's input price. With `--json`, adds `cost_used_usd`, `cost_saved_usd`, and `rate_per_mtok` to the output. |
+| `--model` | `sonnet` | *(v0.44.0+)* Model slug for `--cost` pricing: `sonnet` (3.00 $/MTok), `opus` (15.00), `haiku` (0.25), `gpt-4o` (5.00), `gpt-4o-mini` (0.15). Ignored without `--cost`. |
+| `--rate` | None | *(v0.44.0+)* Explicit input price in $/MTok, overrides `--model`. Ignored without `--cost`. |
 
 #### Output
 
@@ -249,6 +252,30 @@ neuralmind query /path/to/project "auth flow" --explain
 # →   Top search hits (L3, 4 nodes):
 # →     0.912  authenticate  (auth/handlers.py)
 # →     0.887  JWTMiddleware  (auth/middleware.py)
+
+# Cost receipt — how much did that query cost? (v0.44.0+)
+neuralmind query /path/to/project "auth flow" --cost
+# → Query: auth flow
+# → Tokens: 1187 (38.2x reduction)
+# → ============================================================
+# → [context omitted for brevity]
+# → ============================================================
+# → Cost:  $0.0036 used  |  $0.1308 saved  (sonnet 3.00 $/MTok)
+
+# Same with a different model price
+neuralmind query /path/to/project "auth flow" --cost --model haiku
+neuralmind query /path/to/project "auth flow" --cost --rate 5.00
+
+# Cost in JSON output
+neuralmind query /path/to/project "auth flow" --cost --json
+# → {
+# →   "tokens": 1187,
+# →   "reduction_ratio": 38.2,
+# →   "cost_used_usd": 0.003561,
+# →   "cost_saved_usd": 0.130797,
+# →   "rate_per_mtok": 3.0,
+# →   ...
+# → }
 ```
 
 #### Sample Output
@@ -1693,6 +1720,87 @@ neuralmind savings . --json
 ```
 
 Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
+
+---
+
+### batch-estimate *(v0.44.0+)*
+
+Aggregate per-query token costs from the local event log and project to a monthly dollar estimate. Pure arithmetic over the same data `neuralmind savings` reads — no API calls, no network requests.
+
+```bash
+neuralmind batch-estimate [project_path] [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--global` | False | Aggregate across ALL projects (reads the global event log at `~/.neuralmind/memory/`) |
+| `--model` | `sonnet` | Model slug for pricing: `sonnet` (3.00 $/MTok), `opus` (15.00), `haiku` (0.25), `gpt-4o` (5.00), `gpt-4o-mini` (0.15) |
+| `--rate` | None | Explicit input price in $/MTok — overrides `--model` |
+| `--queries-per-day`, `--qpd` | None | When provided, adds a monthly cost projection at N queries/day × 30 days |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Cost summary for the current project (Sonnet pricing)
+neuralmind batch-estimate .
+# → NeuralMind batch cost estimate — my-project
+# → Model: sonnet 3.00 $/MTok
+# →
+# →   Queries logged     :     47
+# →   Avg tokens/query   :  1,240
+# →   Avg cost/query     :  $0.0037
+# →
+# →   Cumulative (47 queries)
+# →     Tokens used      :     58,280     Cost: $0.1748
+# →     Tokens saved     :  2,332,000     Cost: $6.9960
+# →
+# →   Per-query breakdown (most recent 5):
+# →     2026-07-14  [ 1187 tok / 38.2x]  "what does auth() do?"  →  $0.0036 / saved $0.1308
+
+# Monthly projection at 100 queries/day
+neuralmind batch-estimate . --qpd 100
+# → [...]
+# →   Monthly projection (100 queries/day × 30 days)
+# →     With NeuralMind  :  $11.1000/mo
+# →     Without          :  $221.1000/mo
+# →     Savings          :  $210.0000/mo
+
+# Different model price
+neuralmind batch-estimate . --model haiku
+neuralmind batch-estimate . --rate 5.00
+
+# JSON for scripting or dashboards
+neuralmind batch-estimate . --json
+neuralmind batch-estimate . --qpd 100 --json
+```
+
+#### JSON output shape
+
+```json
+{
+  "scope": "my-project",
+  "model": "sonnet",
+  "rate_per_mtok": 3.0,
+  "total_queries": 47,
+  "total_tokens_used": 58280,
+  "total_tokens_saved": 2332000,
+  "total_cost_used_usd": 0.174840,
+  "total_cost_saved_usd": 6.996000,
+  "avg_tokens_per_query": 1240.0,
+  "avg_cost_per_query_usd": 0.003720,
+  "projection": {
+    "queries_per_day": 100,
+    "projected_monthly_cost_with_nm_usd": 11.16,
+    "projected_monthly_cost_without_nm_usd": 222.96,
+    "projected_monthly_savings_usd": 211.80
+  }
+}
+```
+
+The `projection` key is present only when `--queries-per-day` / `--qpd` is given.
 
 ---
 

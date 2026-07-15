@@ -248,7 +248,10 @@ keywords = [
     "reuse-vs-rewrite",
     "relevance-sidecar",
     "agent-memory-feedback-loop",
-    "load-bearing-span-protection"
+    "load-bearing-span-protection",
+    "token-cost-estimate",
+    "llm-cost-audit",
+    "batch-token-pricing"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

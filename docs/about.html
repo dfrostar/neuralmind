@@ -186,6 +186,18 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0440">
+            <h2>What's New in v0.44.0 — Token receipts and batch cost estimates</h2>
+            <p><strong>Two lightweight features that convert NeuralMind's existing token-savings data into dollar figures — pure arithmetic over logs you already have, no new I/O, no API calls.</strong></p>
+            <h3>Per-query cost receipt — <code>neuralmind query --cost</code></h3>
+            <p>Add <code>--cost</code> to any <code>neuralmind query</code> invocation and get a dollar-denominated receipt alongside the token count: <em>Cost: $0.0036 used | $0.1308 saved (sonnet 3.00 $/MTok)</em>. The math is straightforward: <code>cost_used = tokens_used / 1e6 × rate</code> and <code>cost_saved = tokens_used × (ratio − 1) / 1e6 × rate</code>, where the ratio comes from the query result itself. Pick the model with <code>--model haiku/opus/gpt-4o</code> or override with an explicit <code>--rate</code> in $/MTok. With <code>--json</code>, three extra keys appear: <code>cost_used_usd</code>, <code>cost_saved_usd</code>, and <code>rate_per_mtok</code>. The five built-in slugs — <code>sonnet</code> (3.00), <code>opus</code> (15.00), <code>haiku</code> (0.25), <code>gpt-4o</code> (5.00), <code>gpt-4o-mini</code> (0.15) — cover the most-used frontier models; anything else takes a <code>--rate</code>.</p>
+            <h3>Batch cost estimates — <code>neuralmind batch-estimate</code></h3>
+            <p>New subcommand that reads the same JSONL event log as <code>neuralmind savings</code> and converts token counts to dollar figures across your query history. Without <code>--qpd</code> you get a cumulative table (total tokens used/saved, their dollar equivalents, per-query average, and a breakdown of the most recent 5 queries). With <code>--queries-per-day N</code> (or <code>--qpd N</code>) a monthly projection section is added: <em>With NeuralMind: $11/mo · Without: $221/mo · Savings: $210/mo</em>. All the same <code>--model</code> / <code>--rate</code> flags apply; <code>--json</code> emits a structured object with a <code>projection</code> key present only when <code>--qpd</code> is given.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.44.0.md">Full v0.44.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0430">
             <h2>What's New in v0.43.0 — Surface what you can't see</h2>
             <p><strong>Three features, one thesis: the graph surfacing the thing a <em>flat list</em> hides — the reason why, the odd one out, and the coverage that lies.</strong></p>
