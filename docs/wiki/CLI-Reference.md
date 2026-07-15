@@ -1739,6 +1739,38 @@ Subjects: `resolveOrgId`, `authMiddleware`
 
 At prompt time the same decisions are injected automatically on `UserPromptSubmit` when their subjects appear in the agent's prompt (toggle with `NEURALMIND_PROVENANCE_INJECT`).
 
+### gaps *(v0.43.0+)*
+
+Find endpoints tested only in mock mode — the coverage that reads as "green" but never exercises the live database.
+
+Scans a project's JS/TS source for Express route registrations and its test files for the routes they exercise, then classifies each endpoint. An endpoint that passes only under a mocked store (accepts any string where Postgres would reject a non-UUID foreign key) is the shape that ships a `P2003` to a live smoke test.
+
+```bash
+neuralmind gaps [project_path]
+```
+
+Phase 1 heuristics cover **Express + Jest** (JS/TS). Route paths are normalized across `:id` / `{id}` / `${...}` / `*` styles so a registration and a test reference match; a test "hits the real DB" when its file imports a real-DB fixture (e.g. `@/db`, `testDb`) and the case isn't skip-guarded (`SKIP_PG`, `.skip`).
+
+#### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `project_path` | Project root to scan (default: current directory) |
+
+#### Sample Output
+
+```
+## neuralmind gaps — live-Postgres coverage
+
+Routes tested in-memory only (no live-DB coverage):
+  POST /api/sessions            — 3 tests — all SKIP_PG  ❌
+  GET  /.well-known/jwks.json   — 1 test — all SKIP_PG   ❌
+Endpoints with no tests:
+  POST /api/auth/jwk/rotate     ⚠️
+Live-covered:
+  GET  /health                  ✅
+```
+
 ### review *(v0.39.0+)*
 
 Warn about likely co-breakage before a commit or when reviewing a diff.
@@ -1819,6 +1851,7 @@ Requires the synapse graph to have accumulated edges. Cold graphs (first few ses
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
+| `NEURALMIND_SYNAPSE_OUTLIERS` | unset | *(v0.43.0+)* Set to `1` to add the cohesion outlier check to the `UserPromptSubmit` injection. When enabled, it finds an associate most of a surfaced co-activation cluster links to and flags the members that skip it — the "handler #11" that breaks the cluster's shared pattern (`validateSession` skips `resolveOrgId` while its 10 peers use it). Off by default; reads neighbors from the synapse store (no embedder work); fails open. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
