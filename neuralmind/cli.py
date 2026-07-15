@@ -72,7 +72,7 @@ _MODEL_PRICES: dict[str, float] = {
     "opus": 15.00,    # Claude Opus 3
     "haiku": 0.25,    # Claude Haiku 3
     "gpt-4o": 5.00,   # GPT-4o
-    "gpt-4o-mini": 0.15,
+    "gpt-4o-mini": 0.15,  # GPT-4o mini
 }
 
 
@@ -89,6 +89,16 @@ def _rate_for_model(model_slug: str | None, explicit_rate: float | None) -> tupl
     rate = _MODEL_PRICES.get(slug, _MODEL_PRICES["sonnet"])
     label = f"{slug} {rate:.2f} $/MTok"
     return rate, label
+
+
+def _tokens_saved(tokens_used: int, reduction_ratio: float) -> int:
+    """Tokens avoided vs. the un-compressed baseline for a single query."""
+    return max(0, int(tokens_used * (reduction_ratio - 1)))
+
+
+def _cost_receipt_line(cost_used: float, cost_saved: float, cost_label: str) -> str:
+    """Single-line cost receipt suitable for text output."""
+    return f"Cost:  ${cost_used:.4f} used  |  ${cost_saved:.4f} saved  ({cost_label})"
 
 
 def _dry_run_scan(project_path: str) -> dict:
@@ -317,9 +327,9 @@ def cmd_query(args):
             if not out.get("error"):
                 tokens_used = out.get("tokens") or 0
                 ratio = out.get("reduction_ratio") or 1.0
-                tokens_saved = int(tokens_used * (ratio - 1))
+                tsaved = _tokens_saved(tokens_used, ratio)
                 cost_used = tokens_used / 1_000_000 * cost_rate
-                cost_saved = tokens_saved / 1_000_000 * cost_rate
+                cost_saved = tsaved / 1_000_000 * cost_rate
                 if args.json:
                     output = {
                         "query": args.question,
@@ -342,10 +352,7 @@ def cmd_query(args):
                     print(out.get("context", ""))
                     print("=" * 60)
                     if show_cost:
-                        print(
-                            f"Cost:  ${cost_used:.4f} used  |  ${cost_saved:.4f} saved"
-                            f"  ({cost_label})"
-                        )
+                        print(_cost_receipt_line(cost_used, cost_saved, cost_label))
                     if trace:
                         _print_trace(out.get("trace"))
                 return
@@ -356,9 +363,9 @@ def cmd_query(args):
     result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
     tokens_used = result.budget.total
     ratio = result.reduction_ratio
-    tokens_saved = int(tokens_used * (ratio - 1))
+    tsaved = _tokens_saved(tokens_used, ratio)
     cost_used = tokens_used / 1_000_000 * cost_rate
-    cost_saved = tokens_saved / 1_000_000 * cost_rate
+    cost_saved = tsaved / 1_000_000 * cost_rate
     if args.json:
         output = {
             "query": args.question,
@@ -384,10 +391,7 @@ def cmd_query(args):
         print(result.context)
         print("=" * 60)
         if show_cost:
-            print(
-                f"Cost:  ${cost_used:.4f} used  |  ${cost_saved:.4f} saved"
-                f"  ({cost_label})"
-            )
+            print(_cost_receipt_line(cost_used, cost_saved, cost_label))
         if explain:
             _print_explain(result)
         elif trace:
@@ -587,8 +591,8 @@ def cmd_batch_estimate(args):
                         "ratio": ratio,
                         "ts": rec.get("timestamp", ""),
                         "cost_used": tokens / 1_000_000 * cost_rate,
-                        "cost_saved": max(0, tokens * (ratio - 1)) / 1_000_000 * cost_rate,
-                        "tokens_saved": max(0, int(tokens * (ratio - 1))),
+                        "cost_saved": _tokens_saved(tokens, ratio) / 1_000_000 * cost_rate,
+                        "tokens_saved": _tokens_saved(tokens, ratio),
                     }
                 )
     except OSError as exc:
