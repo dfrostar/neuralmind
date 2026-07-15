@@ -1,86 +1,123 @@
-# NeuralMind v0.43.0 — the codebase remembers *why*, not just *what*
+# NeuralMind v0.43.0 — Surface what you can't see
 
-NeuralMind has always indexed what a codebase **is** — its nodes, edges, and
-learned associations. It never indexed **why** it is that way. So every time an
-agent asked "why is `resolveOrgId` per-handler instead of middleware?", the
-answer — "avoids Prisma on `/health`, `/metrics`, `/token`; keeps tests simple" —
-lived in a human's head or a scrolled-past chat, never in any artifact the graph
-could recall. The next agent re-derives it, re-asks, or worse, silently undoes
-the decision.
-
-v0.43.0 makes rationale a first-class, recallable memory.
+Three features, one thesis: the graph surfacing the thing a *flat list* hides.
+NeuralMind has always been able to tell you what's related to a query. This
+release adds three things it couldn't say before — **the odd one out**, **the
+coverage that lies**, and **the reason why** — each the kind of gap that ships a
+bug or wastes an afternoon precisely because nothing made it visible.
 
 ## What's in this release
 
-| Change | What | Surface |
-|--------|------|---------|
-| **Decision provenance** | rationale captured from a `Decision:` git trailer becomes a subject-keyed memory | `neuralmind why <query>` |
-| **Prompt-time recall** *(default on)* | matching decisions injected on `UserPromptSubmit` alongside synapse recall | `NEURALMIND_PROVENANCE_INJECT` |
-| **Zero new storage** | git history *is* the store — the trailer is the persistence, nothing to build or drift | — |
+| Feature | Surfaces the… | Surface |
+|---------|---------------|---------|
+| **Decision provenance** | *reason why* — rationale a human authored, recalled from a `Decision:` git trailer | `neuralmind why` · `NEURALMIND_PROVENANCE_INJECT` |
+| **Cohesion outlier detection** | *odd one out* — the cluster member that skips a pattern its peers share | `NEURALMIND_SYNAPSE_OUTLIERS` (prompt injection) |
+| **`neuralmind gaps`** | *coverage that lies* — endpoints "green" only in mock mode, never live-DB | `neuralmind gaps` |
 
-## Why this release matters
+All three are additive and off-by-default where they touch the hot path; default
+retrieval stays byte-identical.
 
-Every other NeuralMind memory is *derived* — embeddings from code, synapse
-weights from co-activation. Provenance is the one memory only a human can author,
-and it was the one thing the graph couldn't hold. Capturing it at the cheapest
-possible point — a trailer on the commit that makes the change — means the *why*
-travels with the *what*, forever, in the one artifact that never gets lost: git
-history itself. No database, no schema, nothing to keep in sync. Adopt the
-trailer today and it works retroactively on every commit you've already made.
+---
 
-## How it works
+## 1. Decision provenance — recall *why* code is the way it is
 
-Add a `Decision:` trailer to a commit message. Optionally list the symbols it
-concerns (backticked symbols in the rationale are picked up automatically):
+NeuralMind indexes what a codebase **is**; it never indexed **why**. So "why is
+`resolveOrgId` per-handler instead of middleware?" had an answer — "avoids Prisma
+on `/health`, `/metrics`, `/token`; keeps tests simple" — that lived in a human's
+head, never in any artifact the graph could recall.
+
+Add a `Decision:` trailer to the commit that makes the change (backticked symbols
+become subjects; an explicit `Subjects:` line is honored too):
 
 ```
-cli: resolve org id per handler
-
 Decision: resolveOrgId is per-handler, not middleware — avoids Prisma on
           /health, /metrics, /token; keeps tests simple.
 Subjects: `resolveOrgId`, `authMiddleware`
 ```
 
-Then ask, from the terminal or through your agent:
+Then recall it:
 
 ```
 $ neuralmind why "why is resolveOrgId per-handler?"
 
 ## NeuralMind decision provenance
-
-- `resolveOrgId`, `authMiddleware`: resolveOrgId is per-handler, not middleware —
-  avoids Prisma on /health, /metrics, /token; keeps tests simple. (see commit ba25fed)
+- `resolveOrgId`, `authMiddleware`: resolveOrgId is per-handler … (see commit ba25fed)
 ```
 
-Recall is subject-keyed: a decision surfaces only when its symbols appear in the
-query (or, at prompt time, in the agent's prompt), so it stays quiet until it's
-relevant.
+**Git history is the store** — the trailer is the persistence, so there's no
+database to build or drift, and it works retroactively on commits already in
+history. At prompt time, matching decisions inject on `UserPromptSubmit` alongside
+synapse recall (`NEURALMIND_PROVENANCE_INJECT`, default on, fails open).
+
+## 2. Cohesion outlier detection — flag the *odd one out*
+
+Spreading-activation recall returns a flat ranked list: it tells you what
+co-activates, not which member *breaks* the cluster's shared pattern. When ten
+handlers route `orgId` through `resolveOrgId` and one passes a bare string, the
+odd one out is exactly the line that ships a bug — and it looks like every other
+cluster member to a flat list.
+
+With `NEURALMIND_SYNAPSE_OUTLIERS=1`, the `UserPromptSubmit` injection adds a
+cohesion check: it finds an associate most of a surfaced cluster links to, then
+flags the members that skip it.
+
+```
+## NeuralMind cohesion check
+- `validateSession` skips `resolveOrgId` — 10 of its 10 cluster-peers (100%) use it.
+  Likely the odd one out; verify before trusting it.
+```
+
+Opt-in, fails open, and reads neighbors straight from the synapse store (a few
+SQLite lookups, no embedder work).
+
+## 3. `neuralmind gaps` — the *coverage that lies*
+
+An endpoint can pass its whole suite in **mock mode** — an in-memory store that
+accepts any string where Postgres would reject a non-UUID foreign key — and read
+as "green" right up until it hits a live database and throws. That's the P2003
+shape: three passing tests, all `SKIP_PG`-guarded, zero live coverage.
+
+`neuralmind gaps` scans a project's routes and tests and classifies each endpoint:
+
+```
+$ neuralmind gaps
+
+Routes tested in-memory only (no live-DB coverage):
+  POST /api/sessions            — 3 tests — all SKIP_PG  ❌
+  GET  /.well-known/jwks.json   — 1 test — all SKIP_PG   ❌
+Endpoints with no tests:
+  POST /api/auth/jwk/rotate     ⚠️
+Live-covered:
+  GET  /health                  ✅
+```
+
+Phase 1 is Express + Jest (JS/TS): route paths are normalized across
+`:id` / `{id}` / `${...}` / `*` styles, and a test "hits the real DB" when it
+imports a real-DB fixture and isn't skip-guarded.
 
 ## What the agent actually sees post-install
 
 | Agent | What changes | How to use it |
 |-------|--------------|---------------|
-| **Claude Code** | On `UserPromptSubmit`, when a prompt mentions a symbol with a recorded decision, the rationale is injected as context (alongside synapse recall) | Just ask about the symbol; the *why* arrives with it — no tool call |
-| **Cursor / Cline** | Same injection via the shared hook runtime | Same — provider-agnostic |
-| **Generic MCP / CLI** | `neuralmind why <query>` returns the recorded rationale with its commit SHA | Call it directly, or wire it into a pre-edit check |
-| **Any human** | `neuralmind why "<question>"` answers from git history | Onboard to a decision without asking whoever made it |
+| **Claude Code** | `neuralmind why` and `neuralmind gaps` are callable; with the hook installed, decisions inject on prompts (and outliers with `NEURALMIND_SYNAPSE_OUTLIERS=1`) | Ask "why is X like this?"; run `gaps` before trusting a green suite |
+| **Cursor / Cline** | Same via the shared hook + CLI | Provider-agnostic |
+| **Generic MCP / CLI** | `neuralmind why <query>`, `neuralmind gaps [path]` | Call directly or wire into a pre-commit / pre-edit check |
 
 ## Configuration
 
 | Env var | Default | Effect |
 |---------|---------|--------|
-| `NEURALMIND_PROVENANCE_INJECT` | `1` (on) | `0` → skip decision injection in the `UserPromptSubmit` hook. Fails open regardless; a provenance miss never disrupts the prompt. |
+| `NEURALMIND_PROVENANCE_INJECT` | `1` (on) | `0` → skip decision injection in the `UserPromptSubmit` hook. Fails open. |
+| `NEURALMIND_SYNAPSE_OUTLIERS` | unset | `1` → add the cohesion outlier check to the injection. Off by default; fails open. |
 
 ## Honest scope
 
-- Provenance is **only as good as the trailers you write** — this captures
-  rationale, it does not infer it. No trailer, no memory.
-- Recall matching is lexical over subjects (explicit `Subjects:` + backticked
-  symbols in the rationale), not semantic. Name the symbols you mean.
-- Harvest reads recent git history (default last 300 commits); very old
-  decisions beyond that window aren't surfaced.
-- Git history is the store, so a decision is as durable — and as rewritable — as
-  the commit that carries it.
+- **Provenance** captures rationale, it doesn't infer it — no trailer, no memory;
+  matching is lexical over subjects.
+- **Cohesion** needs a warm synapse graph; it's silent on a cold or internally
+  consistent cluster (by design).
+- **`gaps`** Phase 1 is Express/Jest heuristics (regex over JS/TS), not a full
+  parser; it does not cover other frameworks yet.
 
 ## Upgrade
 
@@ -88,6 +125,6 @@ relevant.
 pip install --upgrade neuralmind
 ```
 
-Nothing to rebuild. Start adding `Decision:` trailers; `neuralmind why` reads
-them from history immediately. Injection is on by default and fails open — set
-`NEURALMIND_PROVENANCE_INJECT=0` to opt out.
+Nothing to rebuild. `neuralmind why` and `neuralmind gaps` work immediately;
+start adding `Decision:` trailers and set `NEURALMIND_SYNAPSE_OUTLIERS=1` if you
+want the cohesion check.

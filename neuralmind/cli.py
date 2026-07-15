@@ -2013,6 +2013,48 @@ def cmd_hook(args):
     sys.exit(run_hook(args.action))
 
 
+def cmd_gaps(args):
+    """Find endpoints tested only in mock mode — the coverage that lies.
+
+    Scans a project's JS/TS source for Express route registrations and its
+    test files for the routes they exercise, then classifies each endpoint
+    as live-covered / mock-only / untested. Phase 1 heuristics (Express +
+    Jest); an endpoint "green" only under a mocked store is the P2003 shape.
+    """
+    import os
+
+    from .gaps import classify, extract_routes, extract_test_refs, format_gaps
+
+    project_path = getattr(args, "project_path", ".")
+    routes: list = []
+    refs: list = []
+    skip_dirs = {"node_modules", ".git", "dist", "build", ".next", "coverage"}
+    for root, dirs, files in os.walk(project_path):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        for fname in files:
+            if not fname.endswith((".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs")):
+                continue
+            path = os.path.join(root, fname)
+            try:
+                with open(path, encoding="utf-8", errors="ignore") as fh:
+                    src = fh.read()
+            except Exception:
+                continue
+            is_test = ".test." in fname or ".spec." in fname or "__tests__" in root
+            if is_test:
+                refs.extend(extract_test_refs(src))
+            else:
+                routes.extend(extract_routes(src))
+
+    if not routes:
+        print(
+            "No Express route registrations found (Phase 1 covers JS/TS app.get/router.post styles)."
+        )
+        return
+    gaps = classify(routes, refs)
+    print(format_gaps(gaps))
+
+
 def cmd_why(args):
     """Answer "why is <X> the way it is?" from recorded decision provenance.
 
@@ -2538,6 +2580,19 @@ def main():
         help="Project root (default: current directory)",
     )
     why_p.set_defaults(func=cmd_why)
+
+    # Gaps command — endpoints tested only in mock mode (no live-DB coverage)
+    gaps_p = subparsers.add_parser(
+        "gaps",
+        help="Find endpoints tested only in mock mode (live-DB coverage gaps)",
+    )
+    gaps_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root to scan (default: current directory)",
+    )
+    gaps_p.set_defaults(func=cmd_gaps)
 
     # Structural command — typed structural neighbors (calls/inherits/imports)
     struct_p = subparsers.add_parser(
