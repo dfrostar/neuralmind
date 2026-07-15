@@ -1696,6 +1696,49 @@ Memory logging must be enabled (answer yes when first prompted, or set `NEURALMI
 
 ---
 
+### why *(v0.43.0+)*
+
+Recall the recorded rationale behind code — the decision provenance a human authored, not something inferred.
+
+Harvests `Decision:` git trailers from history and surfaces the ones whose subjects the query mentions. The trailer **is** the store: no database, nothing to build, and it works retroactively on commits already in history.
+
+```bash
+neuralmind why "<symbol or question>" [--project-path PATH]
+```
+
+Capture a decision by adding a trailer to a commit message (backticked symbols in the rationale become subjects automatically; an explicit `Subjects:` line is also honored):
+
+```
+cli: resolve org id per handler
+
+Decision: resolveOrgId is per-handler, not middleware — avoids Prisma on
+          /health, /metrics, /token; keeps tests simple.
+Subjects: `resolveOrgId`, `authMiddleware`
+```
+
+#### Arguments
+
+| Argument | Description |
+|----------|-------------|
+| `query` | A symbol or natural-language question, e.g. `"why is resolveOrgId per-handler"` |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--project-path` | `.` | Project root to read git history from |
+
+#### Sample Output
+
+```
+## NeuralMind decision provenance
+
+- `resolveOrgId`, `authMiddleware`: resolveOrgId is per-handler, not middleware —
+  avoids Prisma on /health, /metrics, /token; keeps tests simple. (see commit ba25fed)
+```
+
+At prompt time the same decisions are injected automatically on `UserPromptSubmit` when their subjects appear in the agent's prompt (toggle with `NEURALMIND_PROVENANCE_INJECT`).
+
 ### review *(v0.39.0+)*
 
 Warn about likely co-breakage before a commit or when reviewing a diff.
@@ -1775,6 +1818,7 @@ Requires the synapse graph to have accumulated edges. Cold graphs (first few ses
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
+| `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
 | `NEURALMIND_SYNAPSE_EXPORT` | `1` | *(v0.4.0+)* Set to `0` to disable session-start synapse memory export |
 | `NEURALMIND_REUSE_FEEDBACK` | `1` | *(v0.41.0+)* Set to `0` to disable the `Edit`/`Write` reuse-vs-rewrite feedback hook. When enabled (default), new code that references a symbol already defined elsewhere in the graph reinforces the synapse edge between the edited file and the reused definition, so retrieval learns what you actually reuse. The **implicit** complement to the explicit `neuralmind_feedback` MCP tool. Language-agnostic, never forces a build, fail-open. |
 | `NEURALMIND_TEAM_MEMORY` | `1` | *(v0.30.0+)* Set to `0` to disable auto-inheriting a committed `.neuralmind-team-memory.json` team bundle. When enabled (default), a teammate's `SessionStart`/`build` imports the bundle **once** into the `shared` namespace (content-hash-gated, `shared`-only, fail-open). Publish your own with `neuralmind memory publish`. |
