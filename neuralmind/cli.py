@@ -440,22 +440,38 @@ def cmd_savings(args):
     total_saved = total_full_cost - total_tokens_used
     avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
 
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "project": project_path.name,
-                    "log": str(events_file),
-                    "total_queries": len(queries),
-                    "total_wakeups": len(wakeups),
-                    "total_tokens_used": total_tokens_used,
-                    "est_total_full_cost": total_full_cost,
-                    "total_tokens_saved": total_saved,
-                    "avg_reduction_ratio": round(avg_ratio, 1),
-                },
-                indent=2,
-            )
+    dollar_info = None
+    if getattr(args, "cost", False):
+        # --queries-per-day is a *query* volume assumption; scale it by the
+        # per-query average, not the per-event one, so a log with wakeups
+        # mixed in doesn't dilute the projection (wakeups log ~0 tokens
+        # saved, so counting them in the average understates $/day).
+        query_tokens_used = sum(e["tokens"] for e in queries)
+        query_tokens_baseline = len(queries) * est_full
+        dollar_info = memory.estimate_dollar_savings(
+            tokens_used=total_tokens_used,
+            tokens_baseline=total_full_cost,
+            events=total_events,
+            model=getattr(args, "model", None) or memory.DEFAULT_PRICING_MODEL,
+            queries_per_day=getattr(args, "queries_per_day", 100),
+            query_tokens_saved=query_tokens_baseline - query_tokens_used,
+            query_count=len(queries),
         )
+
+    if args.json:
+        out = {
+            "project": project_path.name,
+            "log": str(events_file),
+            "total_queries": len(queries),
+            "total_wakeups": len(wakeups),
+            "total_tokens_used": total_tokens_used,
+            "est_total_full_cost": total_full_cost,
+            "total_tokens_saved": total_saved,
+            "avg_reduction_ratio": round(avg_ratio, 1),
+        }
+        if dollar_info:
+            out["dollar_savings"] = dollar_info
+        print(json.dumps(out, indent=2))
         return
 
     scope = "global" if use_global else project_path.name
@@ -468,6 +484,20 @@ def cmd_savings(args):
     print(f"  Tokens actually used : {total_tokens_used:>10,}")
     print(f"  Est. cost without NM : {total_full_cost:>10,}  (at {est_full:,} tokens/query)")
     print(f"  Tokens saved         : {total_saved:>10,}")
+    if dollar_info:
+        print()
+        print(
+            f"  Dollar savings — {dollar_info['model']} "
+            f"@ ${dollar_info['price_per_mtok']}/MTok input"
+        )
+        print(f"    Cost without NM : ${dollar_info['baseline_cost_total']:>10,.2f}")
+        print(f"    Cost with NM    : ${dollar_info['actual_cost_total']:>10,.2f}")
+        print(f"    Saved           : ${dollar_info['saved_total']:>10,.2f}")
+        print(
+            f"    Projected       : ${dollar_info['daily_saved']:,.2f}/day · "
+            f"${dollar_info['monthly_saved']:,.2f}/month  "
+            f"(at {dollar_info['queries_per_day']} queries/day)"
+        )
     if queries:
         print()
         print("  Most recent queries:")
@@ -2234,6 +2264,24 @@ def main():
         help="Show savings across ALL projects (reads the global event log).",
     )
     savings_p.add_argument("--json", "-j", action="store_true")
+    savings_p.add_argument(
+        "--cost",
+        action="store_true",
+        help="Also show estimated dollar savings, priced on input tokens "
+        f"(default model: {memory.DEFAULT_PRICING_MODEL}).",
+    )
+    savings_p.add_argument(
+        "--model",
+        choices=sorted(memory.MODEL_PRICING_PER_MTOK),
+        default=None,
+        help="Pricing model for --cost.",
+    )
+    savings_p.add_argument(
+        "--queries-per-day",
+        type=int,
+        default=100,
+        help="Assumed queries per day for the --cost monthly projection (default: 100).",
+    )
     savings_p.set_defaults(func=cmd_savings)
 
     review_p = subparsers.add_parser(
