@@ -62,11 +62,11 @@ tests/fixtures/sample_project_go/.neuralmind/
 tests/benchmark/quality.md
 /graphify-out/
 
-# Per-project synapse layer artifacts (generated, not source)
-.neuralmind/synapses.db
-.neuralmind/synapses.db-shm
-.neuralmind/synapses.db-wal
-.neuralmind/SYNAPSE_MEMORY.md
+# Per-project generated state (index IR, synapses, audit log, update log) —
+# never committed, per CLAUDE.md. Unanchored so it also covers fixture and
+# nested checkouts. The shareable team-memory bundle lives at the repo root
+# as .neuralmind-team-memory.json and is unaffected.
+.neuralmind/
 
 # GitHub Actions runner log fragments occasionally land at the repo root
 # matching job names (Build Package/, Lint/, Test (Python 3.x)/, Type Check/)
