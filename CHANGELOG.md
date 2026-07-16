@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.45.0](https://github.com/dfrostar/neuralmind/compare/v0.44.0...v0.45.0) (2026-07-16)
+
+
+### Features
+
+* dollar-cost reporting for `neuralmind savings` (--cost) ([#353](https://github.com/dfrostar/neuralmind/issues/353)) ([5eb60f6](https://github.com/dfrostar/neuralmind/commit/5eb60f67a8523e85843c07fcf42ad2781adfd345))
+
 ## [0.44.0](https://github.com/dfrostar/neuralmind/compare/v0.43.0...v0.44.0) (2026-07-16)
 
 
