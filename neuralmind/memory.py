@@ -357,3 +357,80 @@ def wakeup_only_rate(events: list[dict[str, Any]]) -> float:
         return 0.0
     wakeup_only = sum(1 for s in eligible if s["query"] == 0)
     return wakeup_only / len(eligible)
+
+
+# ---------------------------------------------------------------------------
+# Dollar-savings estimation (consumed by `neuralmind savings --cost`)
+# ---------------------------------------------------------------------------
+# USD per million *input* tokens. NeuralMind is a retrieval layer: it decides
+# which context tokens get shipped to the LLM, so its savings are input-token
+# savings — output pricing never enters the math. Prices as of 2026-07;
+# refresh when providers reprice.
+MODEL_PRICING_PER_MTOK: dict[str, float] = {
+    # Anthropic
+    "claude-fable-5": 10.00,
+    "claude-opus-4-8": 5.00,
+    "claude-sonnet-5": 3.00,
+    "claude-sonnet-4-6": 3.00,
+    "claude-haiku-4-5": 1.00,
+    # OpenAI
+    "gpt-5.1": 1.25,
+    "gpt-5-mini": 0.25,
+    # Google
+    "gemini-2.5-pro": 1.25,
+    "gemini-2.5-flash": 0.30,
+}
+
+DEFAULT_PRICING_MODEL = "claude-opus-4-8"
+
+
+def estimate_dollar_savings(
+    tokens_used: int,
+    tokens_baseline: int,
+    events: int,
+    *,
+    model: str = DEFAULT_PRICING_MODEL,
+    queries_per_day: int = 100,
+    days: int = 30,
+) -> dict[str, Any]:
+    """Convert total token savings into dollar figures.
+
+    ``tokens_used`` and ``tokens_baseline`` are totals across all logged
+    events — the total costs come straight from them, with no further
+    scaling. ``events`` only feeds the per-event averages behind the
+    daily/monthly projection: average tokens per event × ``queries_per_day``
+    is the projected daily volume.
+
+    Args:
+        tokens_used: total tokens consumed across all logged events.
+        tokens_baseline: estimated total tokens without NeuralMind.
+        events: number of events the totals were summed over.
+        model: key into MODEL_PRICING_PER_MTOK (unknown keys fall back to
+            DEFAULT_PRICING_MODEL's price).
+        queries_per_day: assumed daily query volume for the projection.
+        days: projection window length for the monthly figure.
+    """
+    price = MODEL_PRICING_PER_MTOK.get(model, MODEL_PRICING_PER_MTOK[DEFAULT_PRICING_MODEL])
+
+    baseline_cost_total = tokens_baseline / 1_000_000 * price
+    actual_cost_total = tokens_used / 1_000_000 * price
+    saved_total = baseline_cost_total - actual_cost_total
+
+    if events > 0:
+        avg_saved_per_event = (tokens_baseline - tokens_used) / events
+        daily_saved = avg_saved_per_event / 1_000_000 * price * queries_per_day
+    else:
+        daily_saved = 0.0
+    monthly_saved = daily_saved * days
+
+    return {
+        "model": model,
+        "price_per_mtok": price,
+        "baseline_cost_total": round(baseline_cost_total, 4),
+        "actual_cost_total": round(actual_cost_total, 4),
+        "saved_total": round(saved_total, 4),
+        "daily_saved": round(daily_saved, 2),
+        "monthly_saved": round(monthly_saved, 2),
+        "queries_per_day": queries_per_day,
+        "days": days,
+    }

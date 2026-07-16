@@ -1672,6 +1672,9 @@ neuralmind savings [project_path] [OPTIONS]
 |--------|---------|-------------|
 | `--global` | False | Show savings across ALL projects (reads the global event log at `~/.neuralmind/memory/`) |
 | `--json`, `-j` | False | Emit structured JSON output |
+| `--cost` | False | *(v0.45.0+)* Also show estimated **dollar** savings, priced on input tokens ($/MTok) |
+| `--model` | `claude-opus-4-8` | *(v0.45.0+)* Pricing model for `--cost` — choices come from the built-in input-price table (Claude / GPT / Gemini) |
+| `--queries-per-day` | 100 | *(v0.45.0+)* Assumed daily query volume behind the `--cost` daily/monthly projection |
 
 #### Examples
 
@@ -1690,7 +1693,26 @@ neuralmind savings --global
 
 # JSON for dashboards or scripting
 neuralmind savings . --json
+
+# Dollar savings at claude-opus-4-8 input pricing (v0.45.0+)
+neuralmind savings . --cost
+# →   Dollar savings — claude-opus-4-8 @ $5.0/MTok input
+# →     Cost without NM : $     11.75
+# →     Cost with NM    : $      0.42
+# →     Saved           : $     11.33
+# →     Projected       : $24.12/day · $723.47/month  (at 100 queries/day)
+
+# Price against a different model and daily volume
+neuralmind savings --global --cost --model gemini-2.5-pro --queries-per-day 250
+
+# JSON gains a "dollar_savings" block when --cost is set
+neuralmind savings . --cost --json
 ```
+
+The dollar figures are estimates anchored to the same 50,000-tokens-per-query
+baseline as the token report, priced on **input** tokens only — retrieval
+decides which input tokens ship, so output pricing never enters the math.
+Prices are a 2026-07 snapshot (`MODEL_PRICING_PER_MTOK` in `neuralmind/memory.py`).
 
 Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
 
