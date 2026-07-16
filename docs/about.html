@@ -186,6 +186,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0450">
+            <h2>What's New in v0.45.0 — The token receipt gets a price tag</h2>
+            <p><strong><code>neuralmind savings</code> has always verified the 40-70x token claim against your own logged usage. v0.45.0 converts that receipt into the number stakeholders actually ask for: dollars.</strong> Run <code>neuralmind savings --cost</code> and the report gains a dollar-savings block — cost without NeuralMind, cost with it, the amount saved, and a daily/monthly projection — computed from the same opt-in event log the token report already reads.</p>
+            <h3>Input-token pricing, because that's what retrieval saves</h3>
+            <p>NeuralMind is a retrieval layer: it decides which <em>context</em> tokens get shipped to the LLM. Its savings are input-token savings, so the built-in price table (<code>--model</code>) carries <strong>input</strong> $/MTok only — Claude Fable 5, Opus 4.8, Sonnet 5, Haiku 4.5, GPT-5.1/mini, Gemini 2.5 Pro/Flash, snapshot 2026-07. Output pricing never enters the math.</p>
+            <h3>Deliberately boring math</h3>
+            <p>The totals come straight from the token totals — <code>(baseline − used) / 1M × price</code>, no re-scaling, no compounding — anchored to the same 50,000-tokens-per-query reference baseline the token report has always disclosed. The projection scales the observed <em>average savings per logged event</em> by an assumption you control (<code>--queries-per-day</code>, default 100), and prints that assumption next to the number.</p>
+            <h3>Machine-readable, importable</h3>
+            <p><code>--json</code> adds a <code>dollar_savings</code> block for dashboards and CI; the same <code>estimate_dollar_savings()</code> function is importable from <code>neuralmind.memory</code>, so a report pipeline can price any token totals without shelling out.</p>
+            <div class="quote">An estimate anchored to a disclosed baseline, not an invoice reconciliation — the dollar figure inherits exactly the assumptions the token figure already made, and shows them.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.45.0.md">Full v0.45.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cost-optimization.md">Cost-optimization walkthrough &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0440">
             <h2>What's New in v0.44.0 — the odd one out, and the coverage that lies</h2>
             <p><strong>v0.43.0 gave the graph the <em>reason why</em>. v0.44.0 finishes the "Surface what you can't see" theme with the other two things a <em>flat list</em> can't tell you: which member is <em>wrong</em>, and which test <em>lies</em>.</strong></p>

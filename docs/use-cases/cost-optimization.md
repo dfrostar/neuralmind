@@ -56,6 +56,27 @@ Combined retrieval + consumption is typically **5–10× total reduction** vs ba
 
 ## Step 5 — Report to stakeholders
 
+**v0.45.0+: let NeuralMind write the dollar figures for you.** The manual
+`tokens × price` arithmetic below is now built in — `neuralmind savings --cost`
+reads your opt-in event log and prices the measured savings on **input** tokens:
+
+```bash
+neuralmind savings . --cost --model claude-opus-4-8 --queries-per-day 100
+# →   Dollar savings — claude-opus-4-8 @ $5.0/MTok input
+# →     Cost without NM : $    829.25
+# →     Cost with NM    : $      3.47
+# →     Saved           : $    825.78
+# →     Projected       : $24.90/day · $746.86/month  (at 100 queries/day)
+```
+
+`--model` picks from a built-in input-price table (Claude / GPT / Gemini,
+snapshot 2026-07), `--queries-per-day` sets the projection assumption, and
+`--cost --json` emits a `dollar_savings` block you can paste into a dashboard
+or the template below. These are measured-usage estimates (anchored to the
+50k-tokens/query baseline the token report already discloses), not an invoice
+reconciliation — for the stakeholder one-pager that's exactly the framing you
+want, with every assumption printed next to its number.
+
 A one-page summary template:
 
 > **NeuralMind rollout — token cost impact**

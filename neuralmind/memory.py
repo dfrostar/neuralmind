@@ -357,3 +357,100 @@ def wakeup_only_rate(events: list[dict[str, Any]]) -> float:
         return 0.0
     wakeup_only = sum(1 for s in eligible if s["query"] == 0)
     return wakeup_only / len(eligible)
+
+
+# ---------------------------------------------------------------------------
+# Dollar-savings estimation (consumed by `neuralmind savings --cost`)
+# ---------------------------------------------------------------------------
+# USD per million *input* tokens. NeuralMind is a retrieval layer: it decides
+# which context tokens get shipped to the LLM, so its savings are input-token
+# savings — output pricing never enters the math. Prices as of 2026-07;
+# refresh when providers reprice.
+MODEL_PRICING_PER_MTOK: dict[str, float] = {
+    # Anthropic
+    "claude-fable-5": 10.00,
+    "claude-opus-4-8": 5.00,
+    "claude-sonnet-5": 3.00,
+    "claude-sonnet-4-6": 3.00,
+    "claude-haiku-4-5": 1.00,
+    # OpenAI
+    "gpt-5.1": 1.25,
+    "gpt-5-mini": 0.25,
+    # Google
+    "gemini-2.5-pro": 1.25,
+    "gemini-2.5-flash": 0.30,
+}
+
+DEFAULT_PRICING_MODEL = "claude-opus-4-8"
+
+
+def estimate_dollar_savings(
+    tokens_used: int,
+    tokens_baseline: int,
+    events: int,
+    *,
+    model: str = DEFAULT_PRICING_MODEL,
+    queries_per_day: int = 100,
+    days: int = 30,
+    query_tokens_saved: int | None = None,
+    query_count: int | None = None,
+) -> dict[str, Any]:
+    """Convert total token savings into dollar figures.
+
+    ``tokens_used`` and ``tokens_baseline`` are totals across all logged
+    events (queries and wakeups alike) — the total costs come straight from
+    them, with no further scaling.
+
+    The daily/monthly projection is scaled by ``queries_per_day``, which is a
+    *query* volume assumption, so it must be multiplied by a *per-query*
+    average — not a per-event one. Pass ``query_tokens_saved`` (tokens saved
+    across query events only) and ``query_count`` (how many of those there
+    were) to get that; a caller whose log mixes in wakeup events would
+    otherwise dilute the average and understate the projection relative to
+    what ``queries_per_day`` claims to represent. When omitted, both fall
+    back to ``tokens_baseline - tokens_used`` and ``events`` — i.e. the
+    original per-event behavior, for callers with query-only logs (or that
+    don't have the split handy).
+
+    Args:
+        tokens_used: total tokens consumed across all logged events.
+        tokens_baseline: estimated total tokens without NeuralMind.
+        events: number of events the totals were summed over.
+        model: key into MODEL_PRICING_PER_MTOK (unknown keys fall back to
+            DEFAULT_PRICING_MODEL's price; the returned ``model`` reflects
+            whichever price was actually used, not the unrecognized input).
+        queries_per_day: assumed daily query volume for the projection.
+        days: projection window length for the monthly figure.
+        query_tokens_saved: tokens saved across query events only, for the
+            projection basis. Defaults to ``tokens_baseline - tokens_used``.
+        query_count: number of query events, for the projection basis.
+            Defaults to ``events``.
+    """
+    resolved_model = model if model in MODEL_PRICING_PER_MTOK else DEFAULT_PRICING_MODEL
+    price = MODEL_PRICING_PER_MTOK[resolved_model]
+
+    baseline_cost_total = tokens_baseline / 1_000_000 * price
+    actual_cost_total = tokens_used / 1_000_000 * price
+    saved_total = baseline_cost_total - actual_cost_total
+
+    proj_saved = tokens_baseline - tokens_used if query_tokens_saved is None else query_tokens_saved
+    proj_count = events if query_count is None else query_count
+
+    if proj_count > 0:
+        avg_saved_per_query = proj_saved / proj_count
+        daily_saved = avg_saved_per_query / 1_000_000 * price * queries_per_day
+    else:
+        daily_saved = 0.0
+    monthly_saved = daily_saved * days
+
+    return {
+        "model": resolved_model,
+        "price_per_mtok": price,
+        "baseline_cost_total": round(baseline_cost_total, 4),
+        "actual_cost_total": round(actual_cost_total, 4),
+        "saved_total": round(saved_total, 4),
+        "daily_saved": round(daily_saved, 2),
+        "monthly_saved": round(monthly_saved, 2),
+        "queries_per_day": queries_per_day,
+        "days": days,
+    }
