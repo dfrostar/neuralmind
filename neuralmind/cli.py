@@ -457,6 +457,19 @@ def cmd_savings(args):
             query_tokens_saved=query_tokens_baseline - query_tokens_used,
             query_count=len(queries),
         )
+        # Make the estimate basis machine-readable (kept in the CLI so memory's
+        # public API stays untouched): only the with-NM cost is measured from
+        # logged tokens; without-NM — and therefore saved/projected — is
+        # estimated from the fixed per-query baseline.
+        dollar_info = {
+            **dollar_info,
+            "baseline_tokens_per_query": est_full,
+            "estimated": True,
+            "basis": (
+                "with-NM cost is measured from logged tokens; without-NM (and "
+                "saved/projected) is estimated from the fixed per-query baseline"
+            ),
+        }
 
     if args.json:
         out = {
@@ -490,14 +503,15 @@ def cmd_savings(args):
             f"  Dollar savings — {dollar_info['model']} "
             f"@ ${dollar_info['price_per_mtok']}/MTok input"
         )
-        print(f"    Cost without NM : ${dollar_info['baseline_cost_total']:>10,.2f}")
-        print(f"    Cost with NM    : ${dollar_info['actual_cost_total']:>10,.2f}")
-        print(f"    Saved           : ${dollar_info['saved_total']:>10,.2f}")
+        print(f"    Cost without NM (est): ${dollar_info['baseline_cost_total']:>10,.2f}")
+        print(f"    Cost with NM         : ${dollar_info['actual_cost_total']:>10,.2f}")
+        print(f"    Saved (est)          : ${dollar_info['saved_total']:>10,.2f}")
         print(
-            f"    Projected       : ${dollar_info['daily_saved']:,.2f}/day · "
+            f"    Projected (est)      : ${dollar_info['daily_saved']:,.2f}/day · "
             f"${dollar_info['monthly_saved']:,.2f}/month  "
             f"(at {dollar_info['queries_per_day']} queries/day)"
         )
+        print(f"    (without-NM estimated from {est_full:,} tok/query baseline)")
     if queries:
         print()
         print("  Most recent queries:")
