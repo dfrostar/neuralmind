@@ -12,6 +12,10 @@ sequenced feature map of the next arc, see
 nine-initiative durability arc beyond that (versioned IR, retrieval quality
 harness, daemon-first architecture, and more), see
 [`docs/plans/2026-06-10-future-proofing-prd-pack.md`](docs/plans/2026-06-10-future-proofing-prd-pack.md).
+For the enterprise competition + monetization plan (supersedes the
+enterprise lane in `NEXT-RELEASE-PLAN.md` §5 now that team memory has
+shipped), see
+[`docs/plans/2026-07-15-enterprise-competition-plan.md`](docs/plans/2026-07-15-enterprise-competition-plan.md).
 
 ## Now — v0.41.0 (shipped & published)
 
