@@ -70,3 +70,5 @@ Three things to do first so the pitch survives scrutiny:
 3. **Pilot with one team for two weeks** before a wider rollout. Multi-language monorepos, generated code, and unusual project structures can drop retrieval quality below the headline numbers.
 
 For deployment-architecture details (where artifacts live, how to refresh indexes in CI, what happens during a graphify upgrade), see [DEPLOYMENT-GUIDE.md](DEPLOYMENT-GUIDE.md).
+
+If the pilot needs commercial backing — a fixed-fee structured evaluation, priority support with committed response times, or an auditor-ready compliance pack — see [OFFERINGS.md](OFFERINGS.md).

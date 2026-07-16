@@ -88,6 +88,7 @@ assumptions and mark every estimated input as estimated.
 
 ---
 
-*The software is MIT-licensed and free. Commercial support for
-deployment, integration, and evaluation is available — ask on the
-call.*
+*The software is MIT-licensed and free. If the assessment numbers
+justify going further, the paid engagements — fixed-fee pilot,
+support & assurance subscription — are described in
+[OFFERINGS.md](OFFERINGS.md).*

@@ -129,11 +129,28 @@ Candidate contents (build in demand order, not speculatively):
 This is what `LICENSE-COMMERCIAL.md` should attach to. Today it attaches to
 nothing (§3).
 
-### Rung 4 — Trademark (parallel, cheap, durable)
+### Rung 4 — Name & IP protection (parallel, ~£220 total, durable)
 
-Register the **NeuralMind** mark. MIT gives away the code; it does not give
-away the name. A fork can't ship as "NeuralMind" — the one IP lever that
-survives a permissive core, and the cheapest item in this plan.
+MIT gives away the code; it does not give away the name. The UK-costed
+DIY path (no lawyers):
+
+- **Copyright: already owned, £0.** Copyright is automatic under the Berne
+  Convention — the public GitHub history (timestamped, hash-chained commits
+  since 2024) plus PyPI release dates is strong authorship evidence. Fix the
+  `LICENSE` notice to name the actual author instead of "NeuralMind
+  Contributors", and sign commits/tags going forward. Defer US Copyright
+  Office registration ($65) until there's an actual US infringement to act
+  on — it can be filed then.
+- **Trademark: UK IPO filing, £170** for one class, DIY online. **Run a
+  free clearance search first** (IPO + EUIPO + USPTO databases) — at least
+  one adjacent company uses a confusingly similar name (neuralmind.ai,
+  Brazilian AI firm), and a contested software class is better discovered
+  for £0 than after brand investment. Use ™ (no registration needed) until
+  the mark grants; unregistered "passing off" protection accrues from
+  trading use meanwhile. Defer US ($350/class) and EU (€850) filings until
+  revenue in those markets justifies them.
+- A fork can't ship as "NeuralMind" — the one IP lever that survives a
+  permissive core, and the cheapest item in this plan.
 
 ---
 
@@ -179,9 +196,16 @@ the recommendation is open-core on the merits, not on constraint.
 - [ ] Confirm open-core direction (§2 rungs 1–3) — yes/no/shape
 - [ ] Confirm MIT core is permanent (worth stating publicly once decided —
       it's a selling point against BSL-rug-pull anxiety)
-- [ ] Legal entity + governing law for the commercial paper (UK entity ≠
-      Delaware Inc. currently in the doc)
-- [ ] Trademark registration go/no-go
+- [ ] Legal entity: **recommended path is a UK private limited company**
+      (Companies House online, £50, ~24h; ~£34/yr thereafter) — not the
+      "NeuralMind, Inc." Delaware placeholder, which would add a registered
+      agent, franchise tax, and US filings for no benefit absent US VC
+      plans. Governing law for the commercial paper becomes England &
+      Wales; the Delaware/AAA arbitration clauses go. A company (vs. sole
+      trader) matters because the commercial license carries indemnity and
+      liability clauses that should sit on an entity, not a person.
+- [ ] Name clearance search (£0, DIY) → then UK trademark filing (£170) —
+      see §2 rung 4
 - [ ] Pricing recalibration (§4)
 
 ---
@@ -210,12 +234,18 @@ the third line, not the headline.
 
 ### Now (no product code)
 1. Maintainer runs the §3 decision gate.
-2. Rewrite `LICENSE-COMMERCIAL.md` to match the decision: real entity,
-   offline license validation, repriced tiers, scope = the private
-   enterprise package + assurance services (not features this repo ships).
-3. Publish a support & assurance offering page (docs site) built from the
-   existing SLA + SBOM + compliance docs. First sellable SKU.
-4. Trademark filing.
+2. Company formation (£50, Companies House) + name clearance search (£0)
+   + UK trademark filing (£170) — the whole legal substrate is ~£220.
+3. Rewrite `LICENSE-COMMERCIAL.md` to match the decision: real entity,
+   England & Wales law, offline license validation, repriced tiers, scope =
+   the private enterprise package + assurance services (not features this
+   repo ships).
+4. Publish the offerings page (`docs/OFFERINGS.md`) built from the existing
+   SLA + SBOM + compliance docs, linked from the free-assessment funnel.
+   First sellable SKUs.
+5. Fix the `LICENSE` copyright notice (automatic copyright attaches to the
+   author, not a fictional contributor collective) and enable signed
+   commits/tags.
 
 ### Next (CI/docs work)
 5. Network-isolation CI job proving zero-egress behaviorally (W1).
