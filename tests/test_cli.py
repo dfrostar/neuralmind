@@ -1042,6 +1042,41 @@ class TestCLISavings:
         assert ds["daily_saved"] == 24.75  # 49,500 tok/event * 100/day * $5/MTok
         assert ds["monthly_saved"] == 742.5
 
+    def test_savings_cost_surfaces_estimate_basis(self, tmp_path, capsys):
+        """--cost --json marks the dollar figures as estimated and shows the basis."""
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "event_type": "query",
+            "timestamp": "2026-01-01T00:00:00+00:00",
+            "project_path": str(tmp_path),
+            "session_id": "s1",
+            "query": "test",
+            "retrieval_summary": {"tokens": 500, "reduction_ratio": 100.0},
+        }
+        log_file.write_text(_json.dumps(event) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = True
+        args.cost = True
+        args.model = "claude-opus-4-8"
+        args.queries_per_day = 100
+
+        cmd_savings(args)
+        ds = json.loads(capsys.readouterr().out)["dollar_savings"]
+        # the measured cost is still present, now flagged as an estimate basis
+        assert ds["actual_cost_total"] == 0.0025  # measured: 500 tok * $5/MTok
+        assert ds["estimated"] is True
+        assert ds["baseline_tokens_per_query"] == 50_000
+        assert "basis" in ds and "estimated" in ds["basis"]
+
     def test_savings_cost_text_output(self, tmp_path, capsys):
         """savings --cost adds a dollar-savings block to the text report."""
         import json as _json
