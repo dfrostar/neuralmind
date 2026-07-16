@@ -1671,7 +1671,9 @@ neuralmind savings [project_path] [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--global` | False | Show savings across ALL projects (reads the global event log at `~/.neuralmind/memory/`) |
-| `--json`, `-j` | False | Emit structured JSON output |
+| `--dollars` | False | Also price the measured token savings in USD. Uses the model's **input** rate (NeuralMind trims input context), from a rate card current as of the date shown in the output. Every dollar figure derives from the logged token counts — no per-query numbers are invented. |
+| `--model` | `claude-3-5-sonnet` | Model to price against with `--dollars` (e.g. `gpt-4o`, `gpt-4o-mini`, `gemini-1.5-pro`, `claude-3-opus`). |
+| `--json`, `-j` | False | Emit structured JSON output (adds a `dollars` object when `--dollars` is set) |
 
 #### Examples
 
@@ -1685,11 +1687,18 @@ neuralmind savings .
 # →   Est. cost without NM : 2,350,000
 # →   Tokens saved         : 2,266,860
 
+# Put a dollar figure on it (CFO-ready), priced against a chosen model
+neuralmind savings . --dollars --model gpt-4o
+#     Priced with gpt-4o input rate ($2.50/1M, as of 2026-07-15):
+#       Cost without NM    : $        5.88
+#       Cost with NM       : $        0.21
+#       Dollars saved      : $        5.67
+
 # Global savings across all projects
 neuralmind savings --global
 
-# JSON for dashboards or scripting
-neuralmind savings . --json
+# JSON for dashboards or scripting (includes a "dollars" block with --dollars)
+neuralmind savings . --dollars --json
 ```
 
 Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).

@@ -440,22 +440,38 @@ def cmd_savings(args):
     total_saved = total_full_cost - total_tokens_used
     avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
 
+    # Optional dollar costing. NeuralMind trims the input context, so the
+    # measured token counts are priced at the model's INPUT rate — no per-event
+    # fields are invented; every figure derives from the tokens above.
+    dollars = None
+    if getattr(args, "dollars", False):
+        from . import rate_card
+
+        model = getattr(args, "model", None) or rate_card.DEFAULT_MODEL
+        rate = rate_card.resolve(model)
+        dollars = {
+            "model": rate.model_id,
+            "rates_as_of": rate_card.RATES_AS_OF,
+            "input_rate_per_million": rate.input_per_million,
+            "cost_without_neuralmind": round(rate_card.input_cost(total_full_cost, model), 2),
+            "cost_with_neuralmind": round(rate_card.input_cost(total_tokens_used, model), 2),
+            "dollars_saved": round(rate_card.input_cost(total_saved, model), 2),
+        }
+
     if args.json:
-        print(
-            json.dumps(
-                {
-                    "project": project_path.name,
-                    "log": str(events_file),
-                    "total_queries": len(queries),
-                    "total_wakeups": len(wakeups),
-                    "total_tokens_used": total_tokens_used,
-                    "est_total_full_cost": total_full_cost,
-                    "total_tokens_saved": total_saved,
-                    "avg_reduction_ratio": round(avg_ratio, 1),
-                },
-                indent=2,
-            )
-        )
+        payload = {
+            "project": project_path.name,
+            "log": str(events_file),
+            "total_queries": len(queries),
+            "total_wakeups": len(wakeups),
+            "total_tokens_used": total_tokens_used,
+            "est_total_full_cost": total_full_cost,
+            "total_tokens_saved": total_saved,
+            "avg_reduction_ratio": round(avg_ratio, 1),
+        }
+        if dollars is not None:
+            payload["dollars"] = dollars
+        print(json.dumps(payload, indent=2))
         return
 
     scope = "global" if use_global else project_path.name
@@ -468,6 +484,15 @@ def cmd_savings(args):
     print(f"  Tokens actually used : {total_tokens_used:>10,}")
     print(f"  Est. cost without NM : {total_full_cost:>10,}  (at {est_full:,} tokens/query)")
     print(f"  Tokens saved         : {total_saved:>10,}")
+    if dollars is not None:
+        print()
+        print(
+            f"  Priced with {dollars['model']} input rate "
+            f"(${dollars['input_rate_per_million']:.2f}/1M, as of {dollars['rates_as_of']}):"
+        )
+        print(f"    Cost without NM    : ${dollars['cost_without_neuralmind']:>12,.2f}")
+        print(f"    Cost with NM       : ${dollars['cost_with_neuralmind']:>12,.2f}")
+        print(f"    Dollars saved      : ${dollars['dollars_saved']:>12,.2f}")
     if queries:
         print()
         print("  Most recent queries:")
@@ -2232,6 +2257,17 @@ def main():
         dest="global_",
         action="store_true",
         help="Show savings across ALL projects (reads the global event log).",
+    )
+    savings_p.add_argument(
+        "--dollars",
+        action="store_true",
+        help="Also price the measured token savings in USD (input-rate; see --model).",
+    )
+    savings_p.add_argument(
+        "--model",
+        default=None,
+        help="Model to price against when using --dollars "
+        "(e.g. gpt-4o, gemini-1.5-pro; default claude-3-5-sonnet).",
     )
     savings_p.add_argument("--json", "-j", action="store_true")
     savings_p.set_defaults(func=cmd_savings)
