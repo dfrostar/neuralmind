@@ -196,6 +196,11 @@ entries. **Do not edit `CHANGELOG.md`** — release-please owns it.
 
 ## 5. Enterprise lane (staged, behind the fork)
 
+> **Superseded (2026-07-15):** team memory shipped in v0.30/v0.31, so this
+> lane is live. The current enterprise competition + monetization plan is
+> [`plans/2026-07-15-enterprise-competition-plan.md`](plans/2026-07-15-enterprise-competition-plan.md).
+> The section below is retained as the original sequencing rationale.
+
 **Update (§6 resolved → shared memory is a YES):** the multi-user surface is now
 on the roadmap, so the enterprise lane is **un-gated** — but it still *sequences
 after* shared memory lands, not before. Build governance for the surface once the
