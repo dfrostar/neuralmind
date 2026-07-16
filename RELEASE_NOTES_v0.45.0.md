@@ -28,7 +28,12 @@ NeuralMind token savings — global
     Projected       : $24.90/day · $746.86/month  (at 100 queries/day)
 ```
 
-That output is real — it's this repo's own event log at the time of release.
+The totals above are real, from this repo's own event log at the time of
+release. The **`Projected`** line is illustrative: this repo's log mixes
+queries and wakeups, and the projection basis was corrected during review
+(scaled by the per-*query* average, not diluted by wakeup events — see
+"Provenance" below) after this example was captured, so the exact `$/day`
+figure a fresh run prints will differ slightly from the one shown.
 
 ## New flags on `neuralmind savings`
 
@@ -65,9 +70,26 @@ With `--json`, the report gains a `dollar_savings` block:
   reference the token report has always used, so the dollar figure inherits
   exactly the assumptions the token figure already disclosed.
 - **Projections are labeled assumptions.** `daily_saved` scales the observed
-  *average savings per logged event* by `--queries-per-day`; `monthly_saved`
-  is 30 of those days. Change the assumption, the projection changes — that's
-  the point.
+  *average savings per query* — query events only, not wakeups — by
+  `--queries-per-day`; `monthly_saved` is 30 of those days. Change the
+  assumption, the projection changes — that's the point.
+
+## Provenance & the corrected math
+
+Re-derived from an uncommitted prototype recovered from an Agent Zero
+container backup. The prototype had two bugs, both caught before merge and
+pinned by regression tests:
+
+1. Totals were re-multiplied by the event count (`tokens / 1M × price ×
+   events` on already-summed totals), inflating every figure ~N-fold.
+2. The daily projection treated *total* tokens as *per-query* tokens.
+
+Review caught a third, more subtle one before merge: the projection's
+per-event average included **wakeup** events (which log ~0 tokens saved)
+alongside queries, so a log with both understated `$/day` relative to what
+`--queries-per-day` — a *query* volume assumption — actually claims to
+represent. Fixed by scaling from the per-query average specifically; also
+pinned by a regression test.
 
 ## Pricing table
 

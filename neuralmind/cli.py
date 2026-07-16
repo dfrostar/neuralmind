@@ -442,12 +442,20 @@ def cmd_savings(args):
 
     dollar_info = None
     if getattr(args, "cost", False):
+        # --queries-per-day is a *query* volume assumption; scale it by the
+        # per-query average, not the per-event one, so a log with wakeups
+        # mixed in doesn't dilute the projection (wakeups log ~0 tokens
+        # saved, so counting them in the average understates $/day).
+        query_tokens_used = sum(e["tokens"] for e in queries)
+        query_tokens_baseline = len(queries) * est_full
         dollar_info = memory.estimate_dollar_savings(
             tokens_used=total_tokens_used,
             tokens_baseline=total_full_cost,
             events=total_events,
             model=getattr(args, "model", None) or memory.DEFAULT_PRICING_MODEL,
             queries_per_day=getattr(args, "queries_per_day", 100),
+            query_tokens_saved=query_tokens_baseline - query_tokens_used,
+            query_count=len(queries),
         )
 
     if args.json:

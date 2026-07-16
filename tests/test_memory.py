@@ -337,7 +337,12 @@ class TestDollarSavings:
         assert result["saved_total"] == 0.0
 
     def test_unknown_model_falls_back_to_default_pricing(self):
-        """An unrecognized model key uses the default model's price."""
+        """An unrecognized model key uses the default model's price.
+
+        The returned ``model`` must reflect the price actually used, not the
+        unrecognized input — otherwise a caller sees a model/price pair that
+        was never real (the model claims one thing, price_per_mtok another).
+        """
         from neuralmind import memory
 
         default_price = memory.MODEL_PRICING_PER_MTOK[memory.DEFAULT_PRICING_MODEL]
@@ -346,6 +351,51 @@ class TestDollarSavings:
         )
         assert result["price_per_mtok"] == default_price
         assert result["baseline_cost_total"] == default_price
+        assert result["model"] == memory.DEFAULT_PRICING_MODEL
+
+    def test_projection_uses_query_only_average_not_diluted_by_wakeups(self):
+        """--queries-per-day scales the per-QUERY average, not per-event.
+
+        Regression guard for a real bug two independent reviewers caught on
+        PR #353: mixing wakeup events (near-zero tokens saved) into the
+        per-event average understates the projection relative to what
+        ``queries_per_day`` claims to represent. 1 query saving 45,000 tokens
+        + 4 wakeup events saving ~0 must project the same as 1 query alone —
+        not 1/5th of it.
+        """
+        from neuralmind import memory
+
+        result = memory.estimate_dollar_savings(
+            tokens_used=105_000,  # 1 query (5,000 used) + 4 wakeups (25,000 used)
+            tokens_baseline=150_000,  # 5 events * 30,000 baseline
+            events=5,
+            model="claude-opus-4-8",  # $5/MTok
+            queries_per_day=100,
+            query_tokens_saved=25_000,  # the query alone: 30,000 - 5,000
+            query_count=1,
+        )
+        # avg_saved_per_query = 25,000 (not diluted by the 4 wakeups) ->
+        # 25,000 * 100 / 1_000_000 * $5 = $12.50/day
+        assert result["daily_saved"] == 12.5
+        assert result["monthly_saved"] == 375.0
+
+    def test_projection_falls_back_to_per_event_when_query_split_omitted(self):
+        """Without query_tokens_saved/query_count, behavior is unchanged.
+
+        Callers with query-only logs (or that don't have the split handy)
+        keep the original per-event math — this must not regress them.
+        """
+        from neuralmind import memory
+
+        result = memory.estimate_dollar_savings(
+            tokens_used=100_000,
+            tokens_baseline=1_000_000,
+            events=20,
+            model="claude-opus-4-8",
+            queries_per_day=100,
+        )
+        assert result["daily_saved"] == 22.5
+        assert result["monthly_saved"] == 675.0
 
     def test_model_selects_price(self):
         """Each pricing-table model prices with its own input rate."""
