@@ -38,6 +38,23 @@ Now you know: renaming `charge_customer` (or changing its signature) touches `ch
 
 The walk is **depth-bounded** (`--depth N`, default 2), **cycle-safe**, and **hub-capped** (`NEURALMIND_STRUCTURAL_HUB_DEGREE`, default 50) so one over-connected utility can't explode the result into the whole repo.
 
+**v0.47.0+:** `neuralmind impact "charge customer"` is a friendlier-named
+shortcut for the same query — no flag to remember, and each dependent's row
+shows its hop and relation (`calls`/`inherits`/`imports_from`/`implements`)
+instead of a bare id:
+
+```bash
+neuralmind impact "charge customer" --depth 2
+# → Impact of billing_stripe_client_charge_customer (semantic match) — depth 2:
+# →   h1  calls          charge_endpoint() — routes.py
+# →
+# → 1 dependent(s).
+```
+
+Same underlying index, same traversal — `structural --blast-radius` isn't
+going anywhere, `impact` is just the name an agent is more likely to reach
+for.
+
 ## Just the immediate wiring
 
 Drop `--blast-radius` to see a symbol's direct neighbors instead of the transitive set — callers, callees, base/sub classes, importers:
@@ -66,6 +83,11 @@ neuralmind_structural_neighbors(query="charge customer", blast_radius=true)
 ```
 
 The agent can call this before it edits a symbol, get the affected set back as structured data, and pull every caller into context before writing the change — instead of editing the definition and leaving the callers stale. Same parameters as the CLI: `query`, `relations`, `blast_radius`, `depth`. The returned node ids compose with `neuralmind_synaptic_neighbors`, so an agent can ask both "what *can* be related" (structure) and "what *actually* gets used together" (synapses) in the same loop.
+
+**v0.47.0+:** `neuralmind_impact(project_path, symbol, depth)` is the same
+query under a name that reads directly as intent — an agent scanning tool
+names for "what breaks if I change this" is more likely to find `impact`
+than a boolean flag on `structural_neighbors`.
 
 ## Optionally fold structural neighbors into retrieval
 

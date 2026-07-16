@@ -251,7 +251,10 @@ keywords = [
     "load-bearing-span-protection",
     "dollar-savings",
     "llm-cost-tracking",
-    "token-cost-calculator"
+    "token-cost-calculator",
+    "impact-analysis",
+    "reverse-dependency-lookup",
+    "gitnexus-alternative"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

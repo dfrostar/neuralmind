@@ -36,7 +36,7 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
-from .structural import StructuralIndex
+from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapses import SynapseStore, default_db_path
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
@@ -1167,6 +1167,54 @@ class NeuralMind:
             "node_id": node_id,
             "depth": depth,
             "blast_radius": index.blast_radius(node_id, depth=depth),
+        }
+
+    def impact(self, symbol: str, depth: int = 1) -> dict:
+        """Reverse-dependency ("blast radius") lookup, agent-friendly framing.
+
+        A friendlier-named, richer-output entry point over the same
+        structural index :meth:`blast_radius` uses — each dependent row
+        carries which hop and which relation (``calls``/``inherits``/
+        ``imports_from``/``implements``) connects it, not just its id.
+        ``symbol`` may be an exact node id or a natural-language description;
+        ``resolution`` in the response reports which happened (``"exact"``,
+        ``"semantic"``, or ``"none"``).
+        """
+        self._ensure_built()
+        index = self._ensure_structural_index()
+
+        resolution = "none"
+        node_id: str | None = None
+        try:
+            if self.embedder.get_nodes_by_ids([symbol]):
+                node_id, resolution = symbol, "exact"
+        except Exception:
+            pass
+        if node_id is None:
+            resolved = self._resolve_node_id(symbol, resolve=True)
+            if resolved is not None:
+                node_id, resolution = resolved, "semantic"
+
+        relations = sorted(set(BLAST_VIEW_RELATION.values()))
+        if index is None or node_id is None:
+            return {
+                "symbol": symbol,
+                "depth": depth,
+                "relations": relations,
+                "resolution": "none",
+                "resolved_node": node_id,
+                "dependents": [],
+                "count": 0,
+            }
+        dependents = index.blast_radius_detail(node_id, depth=depth)
+        return {
+            "symbol": symbol,
+            "depth": depth,
+            "relations": relations,
+            "resolution": resolution,
+            "resolved_node": node_id,
+            "dependents": dependents,
+            "count": len(dependents),
         }
 
     def benchmark(self, sample_queries: list[str] = None) -> dict:

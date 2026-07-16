@@ -706,6 +706,8 @@ pip install neuralmind
 | `neuralmind_export_synapse_memory` | v0.4 | Export learned associations to markdown |
 | `neuralmind_next_likely` | v0.11 | Predict next file/node from directional transitions |
 | `neuralmind_feedback` | v0.38 | Send positive/negative retrieval feedback to the synapse layer |
+| `neuralmind_structural_neighbors` | v0.42 | Callers/callees/base classes/importers from the static code graph; `blast_radius=true` for transitive reverse dependents |
+| `neuralmind_impact` | v0.47 | Friendlier-named, richer-output blast-radius lookup — same index as `neuralmind_structural_neighbors(blast_radius=true)`, but each dependent carries its hop and relation |
 
 ### Usage in Claude Desktop
 

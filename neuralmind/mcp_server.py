@@ -217,6 +217,20 @@ def tool_structural_neighbors(
     return mind.structural_neighbors(query, relations=relations)
 
 
+def tool_impact(project_path: str, symbol: str, depth: int = 1) -> dict[str, Any]:
+    """What depends on ``symbol`` — reverse-dependency ("blast radius") lookup.
+
+    Friendlier-named, richer-output sibling of
+    ``neuralmind_structural_neighbors(blast_radius=true)``: each dependent
+    carries which hop and which relation (calls/inherits/imports_from/
+    implements) connects it, not just its id. Use before renaming, re-
+    signing, or deleting a symbol to see everything a change would touch.
+    ``symbol`` may be an exact node id or a natural-language description.
+    """
+    mind = get_mind(project_path)
+    return mind.impact(symbol, depth=depth)
+
+
 def tool_synapse_stats(project_path: str) -> dict[str, Any]:
     """Inspect the synapse graph: edge count, LTP edges, top hubs."""
     mind = get_mind(project_path, auto_build=False)
@@ -573,6 +587,33 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_impact",
+        "description": (
+            "What depends on a symbol — reverse-dependency (blast-radius) lookup. "
+            "Friendlier-named, richer-output sibling of "
+            "neuralmind_structural_neighbors(blast_radius=true): each dependent "
+            "carries which hop and which relation (calls/inherits/imports_from/"
+            "implements) connects it, not just its id. Use before renaming, "
+            "re-signing, or deleting a symbol to see everything a change would touch."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string"},
+                "symbol": {
+                    "type": "string",
+                    "description": "Symbol name, NL description, or exact node id.",
+                },
+                "depth": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "How many hops of transitive dependents to include.",
+                },
+            },
+            "required": ["project_path", "symbol"],
+        },
+    },
+    {
         "name": "neuralmind_synapse_stats",
         "description": "Stats on the learned synapse graph: edges, LTP edges, top hubs.",
         "inputSchema": {
@@ -722,6 +763,9 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args.get("relations"),
             args.get("blast_radius", False),
             args.get("depth", 2),
+        ),
+        "neuralmind_impact": lambda args: tool_impact(
+            args["project_path"], args["symbol"], args.get("depth", 1)
         ),
         "neuralmind_synapse_stats": lambda args: tool_synapse_stats(args["project_path"]),
         "neuralmind_synapse_decay": lambda args: tool_synapse_decay(args["project_path"]),

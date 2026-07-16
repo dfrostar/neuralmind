@@ -518,6 +518,91 @@ class TestNeuralMindExportContext:
         assert "Layers:" in content
 
 
+class TestNeuralMindImpact:
+    """Tests for NeuralMind.impact() — reverse-dependency (blast-radius) lookup.
+
+    Uses the shared ``sample_graph`` fixture: node_1=authenticate_user
+    --calls--> node_2=hash_password, node_1 --uses--> node_3=User,
+    node_4=create_task --uses--> node_5=Task, node_6=api_router --calls-->
+    node_1 and node_4.
+    """
+
+    def _mind_with_sample_graph(self, temp_project, sample_graph):
+        from neuralmind import NeuralMind
+
+        mind = NeuralMind(str(temp_project))
+        mind.embedder.nodes = sample_graph["nodes"]
+        mind.embedder.edges = sample_graph["edges"]
+        mind.embedder.graph = sample_graph
+        mind._built = True
+        return mind
+
+    def test_exact_match_resolves_without_search(self, temp_project, sample_graph):
+        """A literal node id resolves via get_nodes_by_ids, not semantic search."""
+        mind = self._mind_with_sample_graph(temp_project, sample_graph)
+        mind.embedder.get_nodes_by_ids = lambda ids: (
+            [{"id": "node_2"}] if ids == ["node_2"] else []
+        )
+        mind.embedder.search = MagicMock(side_effect=AssertionError("should not search"))
+
+        result = mind.impact("node_2", depth=1)
+
+        assert result["resolution"] == "exact"
+        assert result["resolved_node"] == "node_2"
+        assert {d["id"] for d in result["dependents"]} == {"node_1"}
+        assert result["dependents"][0]["relation"] == "calls"
+        assert result["dependents"][0]["hop"] == 1
+        assert result["count"] == 1
+
+    def test_semantic_fallback_when_not_an_exact_id(self, temp_project, sample_graph):
+        """A non-literal query falls back to semantic resolution."""
+        mind = self._mind_with_sample_graph(temp_project, sample_graph)
+        mind.embedder.get_nodes_by_ids = lambda ids: []
+        mind.embedder.search = MagicMock(
+            return_value=[{"id": "node_2", "metadata": {"file_type": "code"}}]
+        )
+
+        result = mind.impact("hash the password", depth=1)
+
+        assert result["resolution"] == "semantic"
+        assert result["resolved_node"] == "node_2"
+        assert {d["id"] for d in result["dependents"]} == {"node_1"}
+
+    def test_transitive_dependents_carry_hop_and_depends_on(self, temp_project, sample_graph):
+        """node_6 --calls--> node_1 --calls--> node_2: node_6 is a 2-hop dependent."""
+        mind = self._mind_with_sample_graph(temp_project, sample_graph)
+        mind.embedder.get_nodes_by_ids = lambda ids: [{"id": "node_2"}]
+
+        result = mind.impact("node_2", depth=2)
+
+        by_id = {d["id"]: d for d in result["dependents"]}
+        assert by_id["node_1"]["hop"] == 1
+        assert by_id["node_6"]["hop"] == 2
+        assert by_id["node_6"]["depends_on"] == "node_1"
+
+    def test_uses_relation_excluded_from_dependents(self, temp_project, sample_graph):
+        """node_1 --uses--> node_3 (User): "uses" isn't a blast-radius relation."""
+        mind = self._mind_with_sample_graph(temp_project, sample_graph)
+        mind.embedder.get_nodes_by_ids = lambda ids: [{"id": "node_3"}]
+
+        result = mind.impact("node_3", depth=2)
+
+        assert result["dependents"] == []
+        assert result["count"] == 0
+
+    def test_no_match_returns_none_resolution(self, temp_project, sample_graph):
+        """Nothing matches: resolution is "none" and dependents stay empty."""
+        mind = self._mind_with_sample_graph(temp_project, sample_graph)
+        mind.embedder.get_nodes_by_ids = lambda ids: []
+        mind.embedder.search = MagicMock(return_value=[])
+
+        result = mind.impact("totally unrelated query", depth=1)
+
+        assert result["resolution"] == "none"
+        assert result["resolved_node"] is None
+        assert result["dependents"] == []
+
+
 class TestCreateMind:
     """Tests for create_mind() factory function."""
 
