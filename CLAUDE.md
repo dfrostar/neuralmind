@@ -46,15 +46,33 @@ every published release, or manual dispatch). Because deploy is a wrangler
 direct-upload to that project, the live URL is unchanged no matter which repo
 builds it.
 
-- **Do not** create, revive, or push site changes to a separate marketing
-  repo. The former `dfrostar/neuralmind-marketing` repo is retired for site
-  purposes; it retains only private business material (consulting decks,
-  internal reports) that must **never** be copied into this public repo.
 - **Never hardcode the version** on the `/security` page (or anywhere
   user-facing). It reads the latest release from the GitHub API at build
   time so it can't drift out of sync with the actual release — the exact bug
   that a hardcoded `v0.42.0` caused. Same rule for SBOM/tarball/release
   links: derive them from the release tag, don't pin a literal version.
+
+## Internal docs — routed to the marketing repo
+
+Internal documentation (BRDs, TRDs, competitive analysis, release notes
+archive) lives in **`dfrostar/neuralmind-marketing`**, NOT in this repo.
+This repo (`dfrostar/neuralmind`) is pure code + public-facing docs.
+
+When a new document is authored, file it in the right repo:
+
+| If it is… | Put it in… |
+|-----------|------------|
+| BRD / TRD / strategy doc | `dfrostar/neuralmind-marketing/internal/plans/` |
+| Competitive analysis / market research | `dfrostar/neuralmind-marketing/internal/` |
+| Release notes | `dfrostar/neuralmind-marketing/docs/RELEASE_NOTES_v*.md` |
+| CLI reference / wiki | `dfrostar/neuralmind/docs/wiki/` (here) |
+| Use-case walkthrough | `dfrostar/neuralmind/docs/use-cases/` (here) |
+| Marketing site page | `dfrostar/neuralmind/site/` (here) or `…-marketing/src/app/` |
+| Consulting deck / private material | `dfrostar/neuralmind-marketing/consulting/` |
+
+**Do NOT** move private business material (`consulting/`, `internal/`) into
+this public repo. Both repos deploy to `neuralmind.uk`; only this one
+(`neuralmind`) publishes to PyPI and GHCR.
 
 ## Local conventions
 
