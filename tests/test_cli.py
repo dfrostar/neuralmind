@@ -1076,6 +1076,67 @@ class TestCLISavings:
         assert "/month" in out
         assert "claude-opus-4-8" in out
 
+    def test_savings_cost_projection_not_diluted_by_wakeups(self, tmp_path, capsys):
+        """A log mixing queries and wakeups projects off the query average only.
+
+        Regression guard (PR #353 review): a wakeup event logs ~0 tokens
+        saved, so if the projection's per-event average includes wakeups
+        alongside queries, --queries-per-day (a *query* volume assumption)
+        understates the true daily figure. One query saving 45,000 tokens
+        plus four wakeup events (near-zero savings each) must project the
+        same $/day as that one query alone would.
+        """
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        lines = [
+            _json.dumps(
+                {
+                    "event_type": "query",
+                    "timestamp": "2025-01-01T00:00:00+00:00",
+                    "project_path": str(tmp_path),
+                    "session_id": "s1",
+                    "query": "test",
+                    "retrieval_summary": {"tokens": 5_000, "reduction_ratio": 6.0},
+                }
+            )
+        ]
+        for _ in range(4):
+            lines.append(
+                _json.dumps(
+                    {
+                        "event_type": "wakeup",
+                        "timestamp": "2025-01-01T00:00:00+00:00",
+                        "project_path": str(tmp_path),
+                        "session_id": "s1",
+                        "retrieval_summary": {"tokens": 49_900, "reduction_ratio": 1.0},
+                    }
+                )
+            )
+        log_file.write_text("\n".join(lines) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = True
+        args.cost = True
+        args.model = "claude-opus-4-8"  # $5/MTok
+        args.queries_per_day = 100
+
+        cmd_savings(args)
+
+        data = json.loads(capsys.readouterr().out)
+        ds = data["dollar_savings"]
+        # Query alone: 50,000 baseline - 5,000 used = 45,000 saved ->
+        # 45,000 * 100 / 1_000_000 * $5 = $22.50/day. If wakeups diluted the
+        # average (dividing by 5 events instead of 1 query), this would come
+        # out far lower.
+        assert ds["daily_saved"] == 22.5
+
 
 class TestCLIReview:
     """Tests for neuralmind review (Gap 4: diff-aware co-break warnings)."""
