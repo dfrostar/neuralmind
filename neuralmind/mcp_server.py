@@ -784,7 +784,9 @@ async def run_mcp_server():
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict):
-        result = handle_tool_call(name, arguments)
+        import asyncio
+
+        result = await asyncio.to_thread(handle_tool_call, name, arguments)
         return [TextContent(type="text", text=result)]
 
     async with stdio_server() as (read_stream, write_stream):
