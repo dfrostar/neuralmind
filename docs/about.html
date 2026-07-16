@@ -186,10 +186,21 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0440">
+            <h2>What's New in v0.44.0 — the odd one out, and the coverage that lies</h2>
+            <p><strong>v0.43.0 gave the graph the <em>reason why</em>. v0.44.0 finishes the "Surface what you can't see" theme with the other two things a <em>flat list</em> can't tell you: which member is <em>wrong</em>, and which test <em>lies</em>.</strong></p>
+            <h3>Cohesion outlier detection — the <em>odd one out</em></h3>
+            <p>Spreading-activation recall returns a flat ranked list: it tells you what co-activates, not which member <em>breaks</em> the cluster's shared pattern. When ten handlers route <code>orgId</code> through <code>resolveOrgId</code> and one passes a bare string, that odd one out is exactly the line that ships a bug — and it looks like every other cluster member to a flat list. With <code>NEURALMIND_SYNAPSE_OUTLIERS=1</code>, the prompt-time injection adds a cohesion check that finds an associate most of a surfaced cluster links to, then flags the members that skip it (<em>"<code>validateSession</code> skips <code>resolveOrgId</code> — 10 of its 10 cluster-peers use it"</em>). Opt-in, fails open, reads neighbors straight from the synapse store.</p>
+            <h3>Test-coverage gaps — the <em>coverage that lies</em></h3>
+            <p>An endpoint can pass its whole suite in <strong>mock mode</strong> — an in-memory store that accepts any string where Postgres would reject a non-UUID foreign key — and read as "green" right up until it hits a live database and throws. <code>neuralmind gaps</code> scans a project's routes and tests and classifies each endpoint as <strong>live-covered / mock-only / untested</strong>, so the route that's green only under a mocked store (the P2003 shape) stops hiding. Phase 1 covers Express + Jest, normalizing route paths across <code>:id</code> / <code>{id}</code> / <code>${...}</code> / <code>*</code> styles.</p>
+            <div class="quote">Retrieval that returns a flat list is answering "what's related?" v0.43.0 + v0.44.0 answer the questions a flat list can't: <em>why</em> the code is the way it is, which member is <em>wrong</em>, and which test <em>lies</em>.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.44.0.md">Full v0.44.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/find-untested-endpoints.md">Find-untested-endpoints walkthrough &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0430">
-            <h2>What's New in v0.43.0 — Surface what you can't see</h2>
-            <p><strong>Three features, one thesis: the graph surfacing the thing a <em>flat list</em> hides — the reason why, the odd one out, and the coverage that lies.</strong></p>
-            <h3>Decision provenance — the <em>reason why</em></h3>
+            <h2>What's New in v0.43.0 — the codebase remembers <em>why</em>, not just <em>what</em></h2>
             <p><strong>Every other NeuralMind memory is <em>derived</em> — embeddings from code, synapse weights from co-activation. v0.43.0 adds the one memory only a human can author and the graph couldn't hold: decision rationale.</strong> When an agent asked "why is <code>resolveOrgId</code> per-handler instead of middleware?", the answer lived in someone's head, never in any artifact the graph could recall. This release captures it at the cheapest possible point — a trailer on the commit that makes the change — and makes it a first-class, recallable memory.</p>
             <h3>Capture — a <code>Decision:</code> git trailer</h3>
             <p>Add a <code>Decision:</code> trailer to a commit message (<code>Decision: resolveOrgId is per-handler — avoids Prisma on /health, keeps tests simple.</code>). Backticked symbols in the rationale become its subjects automatically; an explicit <code>Subjects:</code> line is also honored. That's the entire capture cost — one line, on the commit you were already making.</p>
@@ -198,11 +209,6 @@
             <h3>Zero new storage — git history <em>is</em> the store</h3>
             <p>There is no decisions database. The commit trailer is the persistence, so nothing can drift out of sync, and provenance works retroactively on every commit already in your history the moment you adopt the trailer.</p>
             <div class="quote">Embeddings capture what the code <em>is</em>. Synapses capture how you <em>use</em> it. Provenance captures why it's <em>that way</em> — the one signal a machine can't derive, now held in the one place that never gets lost: the commit itself.</div>
-            <h3>Cohesion outlier detection — the <em>odd one out</em></h3>
-            <p>Spreading-activation recall returns a flat ranked list: it tells you what co-activates, not which member <em>breaks</em> the cluster's shared pattern. When ten handlers route <code>orgId</code> through <code>resolveOrgId</code> and one passes a bare string, that odd one out is exactly the line that ships a bug — and it looks like every other cluster member to a flat list. With <code>NEURALMIND_SYNAPSE_OUTLIERS=1</code>, the prompt-time injection adds a cohesion check that finds an associate most of a surfaced cluster links to, then flags the members that skip it (<em>"<code>validateSession</code> skips <code>resolveOrgId</code> — 10 of its 10 cluster-peers use it"</em>). Opt-in, fails open, reads neighbors straight from the synapse store.</p>
-            <h3>Test-coverage gaps — the <em>coverage that lies</em></h3>
-            <p>An endpoint can pass its whole suite in <strong>mock mode</strong> — an in-memory store that accepts any string where Postgres would reject a non-UUID foreign key — and read as "green" right up until it hits a live database and throws. <code>neuralmind gaps</code> scans a project's routes and tests and classifies each endpoint as <strong>live-covered / mock-only / untested</strong>, so the route that's green only under a mocked store (the P2003 shape) stops hiding. Phase 1 covers Express + Jest, normalizing route paths across <code>:id</code> / <code>{id}</code> / <code>${...}</code> / <code>*</code> styles.</p>
-            <div class="quote">Retrieval that returns a flat list is answering "what's related?" These three answer the questions a flat list can't: which member is <em>wrong</em>, which test <em>lies</em>, and <em>why</em> the code is the way it is.</div>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.43.0.md">Full v0.43.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/decision-provenance.md">Decision-provenance walkthrough &rarr;</a></p>
         </div>
     </section>
