@@ -7,7 +7,7 @@ Walkthroughs for the most common "what do I actually do?" questions, organized b
 | **[Index any repo with just `pip` (no graphify)](./zero-install-indexing.md)** | **First-timers, CI, locked-down machines** | **Nothing → queryable index in one install + one build** |
 | **[Does it work on your code? (5-minute benchmark)](./benchmark-your-repo.md)** | **Evaluating whether to install at all** | **Measured before/after on YOUR codebase** |
 | [Claude Code user](./claude-code.md) | You use Claude Code daily and want full two-phase optimization | Cheapest + smartest agent sessions |
-| [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings |
+| [Cost optimization](./cost-optimization.md) | Teams or solos watching LLM spend climb | Measure, reduce, and report savings — `neuralmind savings --cost` prices them in dollars (v0.45.0+) |
 | [Any LLM (ChatGPT / Gemini / local)](./any-llm.md) | You use non-MCP chats or a model-agnostic workflow | Get NeuralMind context into any chat window |
 | [Offline / regulated work](./offline-regulated.md) | Regulated industries, air-gapped machines | 100% local retrieval with zero telemetry |
 | [Growing monorepo](./growing-monorepo.md) | Codebase where old context goes stale fast | Keep the index fresh with minimal effort |

@@ -900,6 +900,7 @@ class TestCLISavings:
         args.project_path = str(tmp_path)
         args.global_ = False
         args.json = False
+        args.cost = False
 
         cmd_savings(args)
 
@@ -954,6 +955,7 @@ class TestCLISavings:
         args.project_path = str(tmp_path)
         args.global_ = False
         args.json = False
+        args.cost = False
 
         cmd_savings(args)
 
@@ -985,6 +987,7 @@ class TestCLISavings:
         args.project_path = str(tmp_path)
         args.global_ = False
         args.json = True
+        args.cost = False
 
         cmd_savings(args)
 
@@ -992,6 +995,86 @@ class TestCLISavings:
         data = json.loads(captured.out)
         assert data["total_queries"] == 1
         assert data["total_tokens_saved"] > 0
+        assert "dollar_savings" not in data
+
+    def test_savings_cost_json_math(self, tmp_path, capsys):
+        """savings --cost --json reports dollar figures from the plain totals.
+
+        One event with 500 tokens used against the 50,000-token baseline at
+        claude-opus-4-8 input pricing ($5/MTok): the totals must come straight
+        from the token totals (no re-scaling by event count), and the
+        projection from the per-event average times queries/day.
+        """
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "event_type": "query",
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "project_path": str(tmp_path),
+            "session_id": "s1",
+            "query": "test",
+            "retrieval_summary": {"tokens": 500, "reduction_ratio": 100.0},
+        }
+        log_file.write_text(_json.dumps(event) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = True
+        args.cost = True
+        args.model = "claude-opus-4-8"
+        args.queries_per_day = 100
+
+        cmd_savings(args)
+
+        data = json.loads(capsys.readouterr().out)
+        ds = data["dollar_savings"]
+        assert ds["model"] == "claude-opus-4-8"
+        assert ds["price_per_mtok"] == 5.00
+        assert ds["baseline_cost_total"] == 0.25  # 50,000 tok * $5/MTok
+        assert ds["actual_cost_total"] == 0.0025  # 500 tok * $5/MTok
+        assert ds["saved_total"] == 0.2475
+        assert ds["daily_saved"] == 24.75  # 49,500 tok/event * 100/day * $5/MTok
+        assert ds["monthly_saved"] == 742.5
+
+    def test_savings_cost_text_output(self, tmp_path, capsys):
+        """savings --cost adds a dollar-savings block to the text report."""
+        import json as _json
+
+        from neuralmind import memory
+        from neuralmind.cli import cmd_savings
+
+        log_file = memory.project_query_events_file(tmp_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        event = {
+            "event_type": "query",
+            "timestamp": "2025-01-01T00:00:00+00:00",
+            "project_path": str(tmp_path),
+            "session_id": "s1",
+            "query": "test",
+            "retrieval_summary": {"tokens": 500, "reduction_ratio": 100.0},
+        }
+        log_file.write_text(_json.dumps(event) + "\n")
+
+        args = MagicMock()
+        args.project_path = str(tmp_path)
+        args.global_ = False
+        args.json = False
+        args.cost = True
+        args.model = None  # falls back to the default pricing model
+        args.queries_per_day = 100
+
+        cmd_savings(args)
+
+        out = capsys.readouterr().out
+        assert "Dollar savings" in out
+        assert "/month" in out
+        assert "claude-opus-4-8" in out
 
 
 class TestCLIReview:
