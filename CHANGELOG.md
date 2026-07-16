@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.44.0](https://github.com/dfrostar/neuralmind/compare/v0.43.0...v0.44.0) (2026-07-16)
+
+
+### Features
+
+* complete the v0.43.0 trio — cohesion outlier detection + neuralmind gaps ([#343](https://github.com/dfrostar/neuralmind/issues/343)) ([c0cfa24](https://github.com/dfrostar/neuralmind/commit/c0cfa24f226470a125c0b832f99a2eb7c8457c33))
+
+
+### Documentation
+
+* correct version attribution — v0.43.0 provenance-only, cohesion + gaps are v0.44.0 ([#352](https://github.com/dfrostar/neuralmind/issues/352)) ([5160c3b](https://github.com/dfrostar/neuralmind/commit/5160c3ba7e937d7f1be93e837ad154773f1853c7))
+* enterprise competition + monetization plan (open-core licensing brief) ([#349](https://github.com/dfrostar/neuralmind/issues/349)) ([844afb7](https://github.com/dfrostar/neuralmind/commit/844afb71a1ed21090a55cc280186d3f05975ba0e))
+
 ## [0.43.0](https://github.com/dfrostar/neuralmind/compare/v0.42.1...v0.43.0) (2026-07-15)
 
 
