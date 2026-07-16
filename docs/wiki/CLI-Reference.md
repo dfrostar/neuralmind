@@ -189,6 +189,15 @@ sharing in bug reports). Tracing is off by default and zero-overhead. The
 daemon's `/query` honors `trace` too, so daemon and direct mode return the same
 attribution.
 
+**Over MCP** *(v0.46.0+)*: `neuralmind_query(project_path, question,
+trace=true, trace_verbose=false)` attaches the same trace object as a `trace`
+key on the tool response — PRD 3 Phase 2 (MCP trace metadata). Both params
+default `false`; existing callers see no change. L3 hit-level synapse boosts
+now carry the same seed/energy attribution L2 cluster boosts already had, via
+a `hit_synapse_boost` event that also flags `recalled: true` for a hit pulled
+in purely by co-activation (absent from vector search) versus an existing hit
+re-ranked upward. See [Auditing retrievals over MCP](../use-cases/auditing-retrievals-over-mcp.md).
+
 #### Relevance sidecar *(v0.41.0+)*
 
 `--relevance` (with `--json`) attaches a structured `relevance` block so a

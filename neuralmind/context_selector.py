@@ -588,7 +588,10 @@ class ContextSelector:
             return results
 
         seeds = [r["id"] for r in results[: self.SYNAPSE_SEED_K] if r.get("id")]
-        energy = self._recall_energy(seeds)
+        if self._trace is not None:
+            energy, contributions = self._recall_energy_traced(seeds)
+        else:
+            energy, contributions = self._recall_energy(seeds), {}
         if not energy:
             return results
 
@@ -610,6 +613,14 @@ class ContextSelector:
             r["score"] = r.get("score", 0.0) + boost
             r["_synapse_boost"] = boost
             boosted = True
+            if self._trace is not None:
+                self._trace.record_hit_synapse_boost(
+                    seeds,
+                    nid,
+                    energy[nid],
+                    boost,
+                    namespace_contribution=contributions.get(nid),
+                )
         if boosted:
             results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
 
@@ -647,10 +658,20 @@ class ContextSelector:
 
         kept = results[: len(results) - len(fetched)]
         for node in fetched:
-            boost = self.SYNAPSE_BOOST_WEIGHT * energy_by_id.get(node.get("id"), 0.0)
+            nid = node.get("id")
+            boost = self.SYNAPSE_BOOST_WEIGHT * energy_by_id.get(nid, 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
+            if self._trace is not None:
+                self._trace.record_hit_synapse_boost(
+                    seeds,
+                    nid,
+                    energy_by_id.get(nid, 0.0),
+                    boost,
+                    namespace_contribution=contributions.get(nid),
+                    recalled=True,
+                )
         return kept + fetched
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:

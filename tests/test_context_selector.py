@@ -813,6 +813,39 @@ class TestSynapseBoost:
         assert low["score"] == 0.50
         assert "_synapse_boost" not in low
 
+    def test_boost_records_trace_event(self, mock_embedder, temp_project):
+        """When tracing, a boosted L3 hit records a hit_synapse_boost event."""
+        from neuralmind.context_selector import ContextSelector
+        from neuralmind.trace import RetrievalTrace
+
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+        selector._trace = RetrievalTrace(query="query")
+
+        selector.get_l3_search("query", n=4)
+
+        events = [e for e in selector._trace.events if e.kind == "hit_synapse_boost"]
+        assert len(events) == 1
+        assert events[0].data["node_id"] == "node_low"
+        assert events[0].data["weighted_boost"] == pytest.approx(0.30)
+        assert events[0].data["recalled"] is False
+
+    def test_kill_switch_disables_boost_trace(self, mock_embedder, temp_project, monkeypatch):
+        """Kill switch no-ops the trace call too, not just the boost itself."""
+        from neuralmind.context_selector import ContextSelector
+        from neuralmind.trace import RetrievalTrace
+
+        monkeypatch.setenv("NEURALMIND_SYNAPSE_INJECT", "0")
+        self._four_hit_embedder(mock_embedder)
+        selector = ContextSelector(mock_embedder, str(temp_project))
+        selector.synapse_recall = lambda seeds: [("node_low", 1.0)]
+        selector._trace = RetrievalTrace(query="query")
+
+        selector.get_l3_search("query", n=4)
+
+        assert not [e for e in selector._trace.events if e.kind == "hit_synapse_boost"]
+
     def test_pull_in_degrades_without_id_lookup(self, mock_embedder, temp_project):
         """If the embedder lacks get_nodes_by_ids, pull-in is skipped, not fatal."""
         from neuralmind.context_selector import ContextSelector

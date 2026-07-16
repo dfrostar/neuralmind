@@ -89,16 +89,29 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
     }
 
 
-def tool_query(project_path: str, question: str, include_relevance: bool = False) -> dict[str, Any]:
+def tool_query(
+    project_path: str,
+    question: str,
+    include_relevance: bool = False,
+    trace: bool = False,
+    trace_verbose: bool = False,
+) -> dict[str, Any]:
     """Get optimized context for a specific question.
 
     When ``include_relevance`` is set, attach a structured relevance sidecar
     (per-file, per-node score / synapse-boost / recall + line spans) so a
     downstream compressor can protect the load-bearing spans instead of
     shrinking them away. Off by default to keep responses small.
+
+    When ``trace`` is set, attach a per-layer retrieval trace (PRD 3) —
+    candidate pool, L2 cluster scoring, synapse/structural boost attribution,
+    final L3 hits, token budget — so a caller can see *why* this context was
+    selected, not just what it contains. ``trace_verbose`` keeps full
+    candidate/hit lists instead of the trimmed default. Off by default to
+    keep responses small.
     """
     mind = get_mind(project_path)
-    result = mind.query(question)
+    result = mind.query(question, trace=trace, trace_verbose=trace_verbose)
     out: dict[str, Any] = {
         "context": result.context,
         "tokens": result.budget.total,
@@ -111,6 +124,8 @@ def tool_query(project_path: str, question: str, include_relevance: bool = False
         from .relevance import build_relevance_sidecar
 
         out["relevance"] = build_relevance_sidecar(result.top_search_hits, mind)
+    if trace and result.trace is not None:
+        out["trace"] = result.trace
     return out
 
 
@@ -425,6 +440,17 @@ TOOLS = [
                     "score / synapse-boost / recall + line spans) so a downstream compressor "
                     "can protect the load-bearing spans. Default false.",
                 },
+                "trace": {
+                    "type": "boolean",
+                    "description": "Attach a per-layer retrieval trace (candidate pool, cluster "
+                    "scoring, synapse/structural boost attribution, final hits, token budget) "
+                    "showing why this context was selected. Default false.",
+                },
+                "trace_verbose": {
+                    "type": "boolean",
+                    "description": "With trace=true, keep full candidate/hit lists instead of "
+                    "the trimmed default. Default false.",
+                },
             },
             "required": ["project_path", "question"],
         },
@@ -701,7 +727,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
         "neuralmind_query": lambda args: tool_query(
-            args["project_path"], args["question"], args.get("include_relevance", False)
+            args["project_path"],
+            args["question"],
+            args.get("include_relevance", False),
+            args.get("trace", False),
+            args.get("trace_verbose", False),
         ),
         "neuralmind_search": lambda args: tool_search(
             args["project_path"], args["query"], args.get("n", 10)
