@@ -186,6 +186,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0460">
+            <h2>What's New in v0.46.0 — Audit trace over MCP</h2>
+            <p><strong>CLI users have had <code>--trace</code>/<code>--explain</code> since PRD 3 shipped. Agents talking to NeuralMind over MCP — the primary integration surface — couldn't ask "why did you give me this?" until now.</strong> <code>neuralmind_query(..., trace=true)</code> attaches the same structured retrieval trace the CLI has always produced: candidate pool, cluster scoring, synapse-boost attribution, final hits, token budget — as JSON on the MCP response.</p>
+            <h3>The one asymmetry the trace itself had</h3>
+            <p>L2 cluster-level synapse boosts were already traced; L3 hit-level boosts recorded a score delta but not <em>why</em> — which seed, how much co-activation energy. Both are now attributed consistently, closing the gap a competitive analysis surfaced when comparing NeuralMind's auditability against other MCP-native code-intelligence tools.</p>
+            <h3>Opt-in, zero overhead by default</h3>
+            <p><code>trace</code> and <code>trace_verbose</code> both default <code>false</code> — existing callers see no change in response shape or latency. No new storage: a trace lives for one query's lifetime, not a persistent, cross-session audit log.</p>
+            <div class="quote">Most of this machinery already existed and was already tested. This release is deliberately thin — it exposes what was already built, it doesn't build a new subsystem.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.46.0.md">Full v0.46.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/auditing-retrievals-over-mcp.md">Auditing retrievals over MCP walkthrough &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0450">
             <h2>What's New in v0.45.0 — The token receipt gets a price tag</h2>
             <p><strong><code>neuralmind savings</code> has always verified the 40-70x token claim against your own logged usage. v0.45.0 converts that receipt into the number stakeholders actually ask for: dollars.</strong> Run <code>neuralmind savings --cost</code> and the report gains a dollar-savings block — cost without NeuralMind, cost with it, the amount saved, and a daily/monthly projection — computed from the same opt-in event log the token report already reads.</p>

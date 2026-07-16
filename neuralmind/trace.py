@@ -160,6 +160,42 @@ class RetrievalTrace:
             **data,
         )
 
+    def record_hit_synapse_boost(
+        self,
+        seeds: list[str],
+        node_id: str,
+        energy: float,
+        weighted: float,
+        namespace_contribution: dict[str, float] | None = None,
+        recalled: bool = False,
+    ) -> None:
+        """L3 hit-level synapse boost — the per-result sibling of
+        :meth:`record_synapse_boost` (which attributes L2 cluster boosts).
+
+        ``record_synapse_boost`` is keyed by an int community id; L3 boosts
+        a specific node, so this takes ``node_id`` instead. ``recalled``
+        marks a hit pulled in purely by co-activation (absent from vector
+        search) rather than an existing hit re-ranked upward.
+        """
+        data = {
+            "seeds": seeds[:MAX_ITEMS],
+            "node_id": node_id,
+            "energy": round(energy, 4),
+            "weighted_boost": round(weighted, 4),
+            "recalled": recalled,
+        }
+        if namespace_contribution:
+            data["namespace_contribution"] = {
+                ns: round(value, 4) for ns, value in sorted(namespace_contribution.items())
+            }
+        verb = "pulled in" if recalled else "boosted"
+        self.add(
+            "synapse",
+            "hit_synapse_boost",
+            f"{node_id} {verb} +{weighted:.4f} from co-activation",
+            **data,
+        )
+
     def record_hits(self, results: list[dict]) -> None:
         items = []
         for r in results[:MAX_ITEMS]:

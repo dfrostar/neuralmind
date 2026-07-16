@@ -74,6 +74,23 @@ def test_record_synapse_boost_and_hits():
     assert "1 synapse-recalled" in hit_ev["summary"]
 
 
+def test_record_hit_synapse_boost():
+    tr = RetrievalTrace(query="q")
+    tr.record_hit_synapse_boost(["seed_a"], "node_low", energy=1.0, weighted=0.3)
+    tr.record_hit_synapse_boost(
+        ["seed_a"], "node_new", energy=0.5, weighted=0.15, recalled=True
+    )
+    d = tr.to_dict()
+    events = [e for e in d["events"] if e["kind"] == "hit_synapse_boost"]
+    assert len(events) == 2
+    boosted, pulled_in = events
+    assert boosted["data"]["node_id"] == "node_low"
+    assert boosted["data"]["recalled"] is False
+    assert pulled_in["data"]["node_id"] == "node_new"
+    assert pulled_in["data"]["recalled"] is True
+    assert "pulled in" in pulled_in["summary"]
+
+
 def test_record_budget():
     class B:
         l0_identity, l1_summary, l2_ondemand, l3_search, total = 100, 400, 300, 500, 1300

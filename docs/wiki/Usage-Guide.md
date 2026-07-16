@@ -694,7 +694,7 @@ pip install neuralmind
 | Tool | Since | Description |
 |------|-------|-------------|
 | `neuralmind_wakeup` | v0.1 | Get project overview (~600 tokens) |
-| `neuralmind_query` | v0.1 | Query with natural language (all 4 layers) |
+| `neuralmind_query` | v0.1 | Query with natural language (all 4 layers). `trace=true` (v0.46) attaches a structured retrieval trace — candidate pool, cluster scoring, synapse-boost attribution, final hits, budget — explaining why the context was selected |
 | `neuralmind_search` | v0.1 | Direct semantic search |
 | `neuralmind_build` | v0.1 | Rebuild index |
 | `neuralmind_stats` | v0.1 | Show index statistics |

@@ -251,7 +251,11 @@ keywords = [
     "load-bearing-span-protection",
     "dollar-savings",
     "llm-cost-tracking",
-    "token-cost-calculator"
+    "token-cost-calculator",
+    "retrieval-explainability",
+    "audit-trace",
+    "rag-transparency",
+    "explainable-retrieval"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

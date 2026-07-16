@@ -110,6 +110,67 @@ class TestQueryRelevanceSidecar:
         assert "relevance" in json.loads(raw)
 
 
+class TestQueryTrace:
+    """tool_query gains opt-in MCP trace exposure (PRD 3 Phase 2)."""
+
+    def _mock_mind(self, trace_value=None):
+        mind = MagicMock()
+        result = MagicMock()
+        result.context = "ctx"
+        result.budget.total = 100
+        result.reduction_ratio = 5.0
+        result.layers_used = ["L0"]
+        result.communities_loaded = [1]
+        result.search_hits = 1
+        result.top_search_hits = []
+        result.trace = trace_value
+        mind.query.return_value = result
+        return mind
+
+    def test_trace_attaches_payload(self):
+        from neuralmind.mcp_server import tool_query
+
+        trace_payload = {"query": "q", "verbose": False, "events": []}
+        with patch(
+            "neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)
+        ):
+            out = tool_query("/proj", "q", trace=True)
+        assert out["trace"] == trace_payload
+
+    def test_default_omits_trace(self):
+        """Backward-compatible: no trace key unless requested."""
+        from neuralmind.mcp_server import tool_query
+
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind(None)):
+            out = tool_query("/proj", "q")
+        assert "trace" not in out
+
+    def test_trace_true_but_result_has_no_trace_omits_key(self):
+        """trace=True with a mind.query() that returns no trace still omits the key."""
+        from neuralmind.mcp_server import tool_query
+
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind(None)):
+            out = tool_query("/proj", "q", trace=True)
+        assert "trace" not in out
+
+    def test_dispatch_threads_trace(self, temp_project):
+        """handle_tool_call forwards trace/trace_verbose from arguments."""
+        trace_payload = {"query": "q", "verbose": True, "events": []}
+        with patch(
+            "neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)
+        ):
+            raw = handle_tool_call(
+                "neuralmind_query",
+                {
+                    "project_path": str(temp_project),
+                    "question": "q",
+                    "trace": True,
+                    "trace_verbose": True,
+                },
+            )
+        assert json.loads(raw)["trace"] == trace_payload
+
+
 class TestHandleToolCall:
     """Tests for handle_tool_call() dispatcher."""
 
