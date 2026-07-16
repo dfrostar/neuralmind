@@ -1,7 +1,7 @@
 # TurboVec vs. ChromaDB-free MiniLM — memory/latency benchmark
 
 A two-script toolkit that answers the specific follow-up raised in the
-[v0.21.0 release notes](RELEASE_NOTES_v0.21.0.md):
+[v0.21.0 release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.21.0.md):
 
 > "A large-synthetic-repo memory/latency benchmark is a follow-up."
 
