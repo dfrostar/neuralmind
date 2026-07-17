@@ -40,6 +40,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def load_graph(self) -> bool:
         from . import ir as ir_mod
+
         if self._prefer_ir_over_graph():
             try:
                 ir_data = json.loads(self.ir_path.read_text(encoding="utf-8"))

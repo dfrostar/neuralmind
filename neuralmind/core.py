@@ -562,6 +562,7 @@ class NeuralMind:
             summary = index_ir.summary()
             summary["validation"] = ir_mod.validation_summary(issues)
             from neuralmind import __version__ as _nm_version  # lazy: avoids circular import
+
             summary["neuralmind_version"] = _nm_version
 
             self.ir_path.parent.mkdir(parents=True, exist_ok=True)

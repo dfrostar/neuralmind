@@ -93,11 +93,14 @@ def test_watcher_skips_dts_files(tmp_path):
 
 def test_watcher_skips_node_modules_nested(tmp_path):
     """node_modules nested at any depth is ignored."""
-    assert _is_ignored(
-        tmp_path / "frontend" / "node_modules" / "lodash" / "index.js",
-        tmp_path,
-        DEFAULT_IGNORES,
-    ) is True
+    assert (
+        _is_ignored(
+            tmp_path / "frontend" / "node_modules" / "lodash" / "index.js",
+            tmp_path,
+            DEFAULT_IGNORES,
+        )
+        is True
+    )
 
 
 def test_stop_is_idempotent(tmp_path):
