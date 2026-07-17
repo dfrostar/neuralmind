@@ -58,9 +58,7 @@ You'll likely see real benefit if **all** of these are true:
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.
-- Your codebase is in a language [graphify](https://github.com/dfrostar/graphify)
-  parses well: Python, TypeScript, JavaScript, and a handful of
-  others via tree-sitter. Coverage drops outside that set.
+- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/dfrostar/graphify) is optional and takes priority where present.
 
 If you check 3 of 5, marginal. If you check 4–5, run
 `bash scripts/demo.sh` and then `neuralmind benchmark .` on your repo.
@@ -82,11 +80,7 @@ If you check 3 of 5, marginal. If you check 4–5, run
   infrastructure. NeuralMind composes with caching but the marginal
   win is smaller. Run the benchmark to see if it justifies the
   setup; for many teams it won't.
-- **Your repo is non-standard** — heavily generated code, polyglot
-  with weak tree-sitter coverage, or unusual layouts. Retrieval
-  quality depends on graph quality, which depends on graphify, which
-  depends on tree-sitter parsers per language. Real-world quality
-  varies more than the headline numbers suggest.
+- **Your repo is non-standard** — heavily generated code, polyglot with weak tree-sitter coverage, or unusual layouts. Retrieval quality depends on graph quality, which depends on the extractor (built-in tree-sitter backend by default, or graphify if installed).
 
 ## What "40–70× reduction" actually means
 
@@ -161,10 +155,11 @@ are open contribution targets.
 | Step | First time | Re-run / re-build |
 |---|---|---|
 | `pip install neuralmind` | ~30s | n/a |
-| `graphify update .` (knowledge graph) | 10s–2min depending on repo size | seconds, incremental |
-| `neuralmind build .` (vector index) | 30s–5min depending on graph size | seconds, incremental |
+| `neuralmind build .` (index) | 30s–5min depending on repo size | seconds, incremental |
 | Editor / agent integration | 5–10min | n/a |
 | **Total to first query** | **~10–20 min for a 50K-line repo** | seconds |
+
+> Since **v0.15.0** the built-in **tree-sitter backend** generates the code graph automatically on first `neuralmind build` — no graphify step required. If you do install graphify, it takes priority over the built-in backend.
 
 Re-runs after code changes are fast (incremental). First-time setup
 is the friction point. If your monthly LLM bill is under $50, that
@@ -211,7 +206,8 @@ We'd downgrade our own claims if:
 - Community benchmarks (n ≥ 10 outside repos) show median
   reduction below 5×. (Currently directionally above this on n=2.)
 - Top-k retrieval hit rate on a real-world query set falls below
-  60%. (Currently 71.7% on the fixture.)
+  60%. (Currently 71.7% cold / 83.3% warm on the reference fixture — the
+  warm number reflects the learned synapse boost.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.
 
