@@ -1421,8 +1421,10 @@ class DynamicPythonImportTests(unittest.TestCase):
     def test_dynamic_py_variable_import_module(self) -> None:
         """pkg/e.py → synthetic ext__ node, confidence < 0.5."""
         matches = [
-            e for e in self.edges
-            if "pkg_e_py" in e["source"] and "ext__" in e["target"]
+            e
+            for e in self.edges
+            if "pkg_e_py" in e["source"]
+            and "ext__" in e["target"]
             and e["relation"] == "imports_from"
         ]
         self.assertTrue(matches, "edge from pkg/e.py to synthetic ext__ node should exist")
@@ -1467,8 +1469,10 @@ class DynamicTypeScriptImportTests(unittest.TestCase):
     def test_dynamic_ts_require_variable(self) -> None:
         """src/d.ts → ext__ synthetic node, confidence < 0.5."""
         matches = [
-            e for e in self.edges
-            if "src_d_ts" in e["source"] and "ext__" in e["target"]
+            e
+            for e in self.edges
+            if "src_d_ts" in e["source"]
+            and "ext__" in e["target"]
             and e["relation"] == "imports_from"
         ]
         self.assertTrue(matches, "edge from src/d.ts to ext__ node should exist")

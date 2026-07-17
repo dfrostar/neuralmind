@@ -110,6 +110,8 @@ def _dry_run_scan(project_path: str) -> dict:
         "est_query_tokens": est_query_tokens,
         "est_reduction_ratio": est_reduction,
     }
+
+
 def _check_version_mismatch(project_path: str) -> str | None:
     """Return a warning string if the project's ir_meta.json was built with
     a different NeuralMind version than the running one, else None.

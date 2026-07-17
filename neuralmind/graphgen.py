@@ -714,7 +714,9 @@ def _walk_top_level(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: 
             _emit_assignment(b, child, src, rel, container=file_id, file_id=file_id)
 
 
-def _emit_assignment(b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, container: str, file_id: str = "") -> None:
+def _emit_assignment(
+    b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, container: str, file_id: str = ""
+) -> None:
     """Emit a ``code`` node for a module/class-level assignment's simple target.
 
     Module constants (``SESSION_TTL = …``) and class/dataclass fields
@@ -1218,9 +1220,7 @@ def _ts_resolve_dynamic_imports(
         args_node = node.child_by_field_name("arguments")
         if args_node is None:
             return
-        positional = next(
-            (c for c in args_node.named_children if c.type != "comment"), None
-        )
+        positional = next((c for c in args_node.named_children if c.type != "comment"), None)
         if positional is None:
             return
         line = node.start_point[0] + 1
@@ -1242,9 +1242,7 @@ def _ts_resolve_dynamic_imports(
         elif positional.type == "template_literal":
             # Only handle template literals with no interpolation.
             content = _node_text(positional, src).strip().strip("`").strip()
-            raw_children = [
-                c for c in positional.named_children if c.type == "string_fragment"
-            ]
+            raw_children = [c for c in positional.named_children if c.type == "string_fragment"]
             if raw_children and len(raw_children) == positional.named_child_count:
                 # Simple template literal = plain string content.
                 key = _ts_resolve_import(rel, content)

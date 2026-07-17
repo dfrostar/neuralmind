@@ -53,6 +53,7 @@ def resolve_backend(backend: str | None) -> str:
         return "turbovec"
     if name in {"graph", "chroma", "chromadb"}:
         import warnings
+
         warnings.warn(
             f"the '{name}' backend (ChromaDB) is deprecated as of v0.46.0. "
             "Use the default turbovec backend (no config needed) or install "

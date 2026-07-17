@@ -22,7 +22,6 @@ import pytest
 
 from neuralmind import ir as ir_mod
 
-
 # --------------------------------------------------------------------------- #
 # Fixtures
 # --------------------------------------------------------------------------- #
@@ -130,16 +129,12 @@ class TestPreferIrOverGraph:
     def test_ir_absent_returns_false(self, in_memory_backend, project_dir: Path):
         assert in_memory_backend._prefer_ir_over_graph() is False
 
-    def test_ir_present_graph_absent_returns_true(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_ir_present_graph_absent_returns_true(self, in_memory_backend, project_dir: Path):
         ir_path = project_dir / ".neuralmind" / "index_ir.json"
         ir_path.write_text("{}", encoding="utf-8")
         assert in_memory_backend._prefer_ir_over_graph() is True
 
-    def test_ir_newer_than_graph_returns_true(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_ir_newer_than_graph_returns_true(self, in_memory_backend, project_dir: Path):
         graph_path = project_dir / "graphify-out" / "graph.json"
         graph_path.write_text("{}", encoding="utf-8")
         ir_path = project_dir / ".neuralmind" / "index_ir.json"
@@ -147,9 +142,7 @@ class TestPreferIrOverGraph:
         ir_path.write_text("{}", encoding="utf-8")
         assert in_memory_backend._prefer_ir_over_graph() is True
 
-    def test_ir_older_than_graph_returns_false(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_ir_older_than_graph_returns_false(self, in_memory_backend, project_dir: Path):
         ir_path = project_dir / ".neuralmind" / "index_ir.json"
         ir_path.write_text("{}", encoding="utf-8")
         graph_path = project_dir / "graphify-out" / "graph.json"
@@ -177,9 +170,7 @@ class TestLoadGraphIrFirst:
 
     # -- core cases --------------------------------------------------------- #
 
-    def test_load_graph_prefers_ir_when_newer(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_prefers_ir_when_newer(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_graph_json(project_dir, graph)
         time.sleep(0.05)
@@ -192,9 +183,7 @@ class TestLoadGraphIrFirst:
         assert "app_py" in by_id
         assert by_id["app_py"]["label"] == "app.py"
 
-    def test_load_graph_uses_graph_when_newer(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_uses_graph_when_newer(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_ir(project_dir, graph)
         time.sleep(0.05)
@@ -205,27 +194,21 @@ class TestLoadGraphIrFirst:
         # Verify edges came through (graph.json edges key)
         assert len(in_memory_backend.edges) == 2
 
-    def test_load_graph_falls_back_when_ir_absent(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_falls_back_when_ir_absent(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_graph_json(project_dir, graph)
         assert in_memory_backend.load_graph() is True
         assert len(in_memory_backend.nodes) == 4
         assert len(in_memory_backend.edges) == 2
 
-    def test_load_graph_fails_when_neither_exists(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_fails_when_neither_exists(self, in_memory_backend, project_dir: Path):
         assert in_memory_backend.load_graph() is False
         assert in_memory_backend.nodes == []
         assert in_memory_backend.edges == []
 
     # -- error handling ----------------------------------------------------- #
 
-    def test_load_graph_ir_malformed_falls_back(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_ir_malformed_falls_back(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_graph_json(project_dir, graph)
         time.sleep(0.05)
@@ -235,9 +218,7 @@ class TestLoadGraphIrFirst:
         # Fell back to graph.json
         assert len(in_memory_backend.nodes) == 4
 
-    def test_load_graph_ir_future_version_falls_back(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_ir_future_version_falls_back(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_graph_json(project_dir, graph)
         time.sleep(0.05)
@@ -250,9 +231,7 @@ class TestLoadGraphIrFirst:
         # Fell back to graph.json
         assert len(in_memory_backend.nodes) == 4
 
-    def test_load_graph_ir_malformed_no_graph(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_ir_malformed_no_graph(self, in_memory_backend, project_dir: Path):
         """Malformed IR with no graph.json to fall back to → returns False."""
         ir_path = project_dir / ".neuralmind" / "index_ir.json"
         ir_path.write_text("not valid json {{{", encoding="utf-8")
@@ -260,9 +239,7 @@ class TestLoadGraphIrFirst:
 
     # -- round-trip fidelity ------------------------------------------------ #
 
-    def test_load_graph_round_trip_preserves_node_count(
-        self, in_memory_backend, project_dir: Path
-    ):
+    def test_load_graph_round_trip_preserves_node_count(self, in_memory_backend, project_dir: Path):
         graph = _synthetic_graph()
         self._write_ir(project_dir, graph)
         assert in_memory_backend.load_graph() is True

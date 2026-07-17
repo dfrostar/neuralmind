@@ -165,6 +165,7 @@ def test_decay_constant_is_sane():
     # With time-based half-life decay, a fresh edge barely moves on one tick.
     # The real guard: half-life constants are positive.
     from neuralmind.synapses import HALF_LIFE_DAYS, SHARED_HALF_LIFE_DAYS, EPHEMERAL_HALF_LIFE_DAYS
+
     assert HALF_LIFE_DAYS > 0
     assert SHARED_HALF_LIFE_DAYS > 0
     assert EPHEMERAL_HALF_LIFE_DAYS > 0
@@ -562,9 +563,7 @@ def test_seed_from_structural_weight_capped(tmp_path):
     s.persist_structural_edges(edges)
     # call_count=50000 → raw = 0.10 + 0.05*ln(50001) ≈ 0.641, capped to 0.60
     with s._connect() as conn:
-        conn.execute(
-            "UPDATE structural_edges SET call_count = 50000 WHERE caller = 'A'"
-        )
+        conn.execute("UPDATE structural_edges SET call_count = 50000 WHERE caller = 'A'")
     count = s.seed_from_structural()
     assert count == 1
     # Read shared namespace raw so we test the stored weight, not the merged
@@ -596,7 +595,5 @@ def test_seed_from_structural_uses_shared_namespace(tmp_path):
     s.seed_from_structural()
     # Check namespace via raw SQL
     with s._connect() as conn:
-        ns = conn.execute(
-            "SELECT namespace FROM synapses WHERE node_a = 'A'"
-        ).fetchone()[0]
+        ns = conn.execute("SELECT namespace FROM synapses WHERE node_a = 'A'").fetchone()[0]
     assert ns == "shared"

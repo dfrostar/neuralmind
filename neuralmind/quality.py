@@ -258,9 +258,7 @@ class QualityThresholds:
             )
         ndcg = suite.mean_ndcg.get(self.ndcg_k)
         if ndcg is not None and ndcg < self.min_ndcg_at_k:
-            failures.append(
-                f"ndcg@{self.ndcg_k} {ndcg:.3f} < floor {self.min_ndcg_at_k:.3f}"
-            )
+            failures.append(f"ndcg@{self.ndcg_k} {ndcg:.3f} < floor {self.min_ndcg_at_k:.3f}")
         hit_rate = suite.mean_hit_rate.get(self.hit_rate_k)
         if hit_rate is not None and hit_rate < self.min_hit_rate_at_k:
             failures.append(

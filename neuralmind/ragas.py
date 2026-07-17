@@ -31,7 +31,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Callable
 
-
 # --------------------------------------------------------------------------- #
 # Embedding helpers                                                            #
 # --------------------------------------------------------------------------- #
@@ -59,7 +58,9 @@ def _tok(text: str) -> set[str]:
 # --------------------------------------------------------------------------- #
 
 
-def fact_recall(answer: str, gold_facts: Iterable[str], *, aliases: dict[str, list[str]] = {}) -> float:
+def fact_recall(
+    answer: str, gold_facts: Iterable[str], *, aliases: dict[str, list[str]] = {}
+) -> float:
     """Fraction of *informative* gold facts whose tokens appear in ``answer``.
 
     A fact is counted as "recalled" if every one of its tokens appears in the
@@ -100,9 +101,25 @@ def fact_recall(answer: str, gold_facts: Iterable[str], *, aliases: dict[str, li
 # Negation cue words: if a gold token-set appears in the answer with one of
 # these cued in front, we treat it as a negation-flip.
 _NEGATION_CUES = (
-    "no", "not", "never", "don't", "doesn't", "didn't", "isn't", "aren't",
-    "wasn't", "weren't", "cannot", "can't", "won't", "without", "false",
-    "incorrect", "invalid", "unable", "cannot",
+    "no",
+    "not",
+    "never",
+    "don't",
+    "doesn't",
+    "didn't",
+    "isn't",
+    "aren't",
+    "wasn't",
+    "weren't",
+    "cannot",
+    "can't",
+    "won't",
+    "without",
+    "false",
+    "incorrect",
+    "invalid",
+    "unable",
+    "cannot",
 )
 
 
@@ -112,7 +129,7 @@ def _is_negated(answer_lower: str, token: str) -> bool:
     idx = answer_lower.find(token)
     if idx < 0:
         return False
-    window = answer_lower[max(0, idx - 20):idx].split()
+    window = answer_lower[max(0, idx - 20) : idx].split()
     return any(cue in window[-3:] for cue in _NEGATION_CUES) if window else False
 
 
@@ -147,18 +164,22 @@ def contradiction_score(answer: str, gold_facts: Iterable[str]) -> float:
     # Curated pairs: if the answer picks one side of a mutually-exclusive
     # pair, the gold fact's side must also be present — else it's a flip.
     exclusive_pairs = [
-        {"sqlite", "postgresql"}, {"sqlite", "postgres"}, {"sqlite", "mysql"},
-        {"stripe", "paypal"}, {"jwt", "oauth"}, {"hs256", "rs256"},
-        {"soft-delete", "hard-delete"}, {"sync", "async"},
+        {"sqlite", "postgresql"},
+        {"sqlite", "postgres"},
+        {"sqlite", "mysql"},
+        {"stripe", "paypal"},
+        {"jwt", "oauth"},
+        {"hs256", "rs256"},
+        {"soft-delete", "hard-delete"},
+        {"sync", "async"},
     ]
     choice_hits = 0
     for fact in facts:
         fact_tokens = _tok(fact)
         for a, b in exclusive_pairs:
             # Fact mentions one side, answer mentions the other exclusively.
-            if (
-                (a in fact_tokens and b in answer_lower and a not in answer_lower)
-                or (b in fact_tokens and a in answer_lower and b not in answer_lower)
+            if (a in fact_tokens and b in answer_lower and a not in answer_lower) or (
+                b in fact_tokens and a in answer_lower and b not in answer_lower
             ):
                 choice_hits += 1
                 break
@@ -183,10 +204,16 @@ class RagasScore:
 
     def to_dict(self) -> dict:
         return {
-            "context_precision": (round(self.context_precision, 4) if self.context_precision is not None else None),
-            "context_recall": (round(self.context_recall, 4) if self.context_recall is not None else None),
+            "context_precision": (
+                round(self.context_precision, 4) if self.context_precision is not None else None
+            ),
+            "context_recall": (
+                round(self.context_recall, 4) if self.context_recall is not None else None
+            ),
             "faithfulness": round(self.faithfulness, 4),
-            "answer_relevance": (round(self.answer_relevance, 4) if self.answer_relevance is not None else None),
+            "answer_relevance": (
+                round(self.answer_relevance, 4) if self.answer_relevance is not None else None
+            ),
         }
 
 
@@ -206,10 +233,20 @@ class RagasSuiteReport:
         return {
             "suite": self.suite,
             "n_queries": self.n_queries,
-            "mean_context_precision": (round(self.mean_context_precision, 4) if self.mean_context_precision is not None else None),
-            "mean_context_recall": (round(self.mean_context_recall, 4) if self.mean_context_recall is not None else None),
+            "mean_context_precision": (
+                round(self.mean_context_precision, 4)
+                if self.mean_context_precision is not None
+                else None
+            ),
+            "mean_context_recall": (
+                round(self.mean_context_recall, 4) if self.mean_context_recall is not None else None
+            ),
             "mean_faithfulness": round(self.mean_faithfulness, 4),
-            "mean_answer_relevance": (round(self.mean_answer_relevance, 4) if self.mean_answer_relevance is not None else None),
+            "mean_answer_relevance": (
+                round(self.mean_answer_relevance, 4)
+                if self.mean_answer_relevance is not None
+                else None
+            ),
             "per_query": [q.to_dict() for q in self.per_query],
         }
 

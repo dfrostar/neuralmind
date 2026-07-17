@@ -115,9 +115,16 @@ W_SHARED = 0.5
 
 # Edge type vocabulary: the subset of graph.json relation strings we persist
 # to the structural_edges table. Maps to RELATION_VIEWS in structural.py.
-STRUCTURAL_EDGE_TYPES: frozenset[str] = frozenset({
-    "call", "import", "inherits", "implements", "uses", "contains",
-})
+STRUCTURAL_EDGE_TYPES: frozenset[str] = frozenset(
+    {
+        "call",
+        "import",
+        "inherits",
+        "implements",
+        "uses",
+        "contains",
+    }
+)
 
 # graph.json relation → structural_edges.edge_type. Covers both the in-repo
 # graphgen vocabulary and the real graphify one (they differ on 'imports_from'
@@ -141,8 +148,8 @@ RELATION_TO_EDGE_TYPE: dict[str, str] = {
 # decays to 50% after HALF_LIFE_DAYS days of inactivity, to 25% after 2× that,
 # etc. Per-namespace overrides below.
 HALF_LIFE_DAYS = 30.0
-SHARED_HALF_LIFE_DAYS = 60.0     # sticky team baseline decays slower
-EPHEMERAL_HALF_LIFE_DAYS = 1.0   # session scratch decays fast
+SHARED_HALF_LIFE_DAYS = 60.0  # sticky team baseline decays slower
+EPHEMERAL_HALF_LIFE_DAYS = 1.0  # session scratch decays fast
 
 
 NAMESPACE_HALF_LIVES: dict[str, float] = {
@@ -1025,11 +1032,7 @@ class SynapseStore:
                 continue
             raw = STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(call_count + 1)
             weight = min(raw, STRUCTURAL_MAX_WEIGHT)
-            rows.append(
-                self._canonical_synapse_row(
-                    pair[0], pair[1], weight, 1, ts, ts
-                )
-            )
+            rows.append(self._canonical_synapse_row(pair[0], pair[1], weight, 1, ts, ts))
 
         if not rows:
             return 0
