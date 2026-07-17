@@ -184,6 +184,8 @@ CREATE TABLE IF NOT EXISTS synapses (
     activation_count INTEGER NOT NULL DEFAULT 0,
     last_activated REAL NOT NULL,
     created_at REAL NOT NULL,
+    half_life_days REAL,
+    learned_at REAL,
     PRIMARY KEY (node_a, node_b, namespace),
     CHECK (node_a < node_b)
 );
@@ -371,6 +373,12 @@ class SynapseStore:
                 return
             conn.executescript(SCHEMA)
             self._stamp_schema_version(conn)
+            # Additive A3 columns: half_life_days + learned_at (nullable,
+            # backfilled as NULL so existing rows use the namespace default).
+            if not self._has_column(conn, "synapses", "half_life_days"):
+                conn.execute("ALTER TABLE synapses ADD COLUMN half_life_days REAL")
+            if not self._has_column(conn, "synapses", "learned_at"):
+                conn.execute("ALTER TABLE synapses ADD COLUMN learned_at REAL")
 
     @staticmethod
     def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
@@ -577,8 +585,8 @@ class SynapseStore:
                         """
                         INSERT INTO synapses(
                             node_a, node_b, namespace, weight, activation_count,
-                            last_activated, created_at
-                        ) VALUES (?, ?, ?, ?, 1, ?, ?)
+                            last_activated, created_at, half_life_days, learned_at
+                        ) VALUES (?, ?, ?, ?, 1, ?, ?, NULL, NULL)
                         ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
                             weight = MIN(?, synapses.weight + ?),
                             activation_count = synapses.activation_count + 1,
@@ -732,8 +740,14 @@ class SynapseStore:
                 # ephemeral: fast decay, no LTP floor, prune regardless of count.
                 conn.execute(
                     "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE namespace = ?",
+                    "WHERE namespace = ? AND half_life_days IS NULL",
                     (ephemeral_lambda, ts, EPHEMERAL_NAMESPACE),
+                )
+                # A3: per-edge learned half-life overrides (ephemeral, rare but allowed).
+                conn.execute(
+                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "WHERE namespace = ? AND half_life_days IS NOT NULL",
+                    (ts, EPHEMERAL_NAMESPACE),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ?",
@@ -744,12 +758,12 @@ class SynapseStore:
                 # shared: sticky decay; LTP floor still honored.
                 conn.execute(
                     "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
-                    "WHERE namespace = ? AND activation_count >= ?",
+                    "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NULL",
                     (LTP_FLOOR, shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
                     "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                    "WHERE namespace = ? AND activation_count < ?",
+                    "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NULL",
                     (shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 cur = conn.execute(
