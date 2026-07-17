@@ -31,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_se_last_seen ON structural_edges(last_seen);
 
 No schema version bump — the new table is additive and `CREATE TABLE IF NOT EXISTS` is idempotent for both fresh and existing databases.
 
-### 1.2 New methods on `SynapseStore`
+### 1.2 New method on `SynapseStore`
 
 ```python
 def persist_structural_edges(
@@ -46,21 +46,6 @@ def persist_structural_edges(
 
     Returns the number of edge rows upserted.
     """
-
-def recall_structural(
-    self, seed_ids: Iterable[str], relations: Iterable[str] | None = None,
-    top_k: int = 8
-) -> list[tuple[str, float]]:
-    """Return weighted structural neighbors of seed node ids.
-
-    Unions the callees/importers/inheritors of each seed, optionally
-    filtered by edge_type. Weight is LOG(call_count + 1) * recency_factor
-    where recency_factor decays with age from last_seen. Returns
-    [(node_id, weight), ...] strongest first, capped at top_k.
-    """
-
-def structural_edge_count(self) -> int:
-    """Return the number of rows in the structural_edges table."""
 ```
 
 ### 1.3 Constants added
@@ -102,9 +87,7 @@ if self.enable_synapses and self._synapses is not None:
 
 ### 1.5 Retrieval
 
-The existing `StructuralIndex.recall()` and `context_selector._apply_structural_expansion()` already drive L3 retrieval when `NEURALMIND_STRUCTURAL_RECALL=1`. The `structural_edges` table adds a **persisted** queryable surface: `recall_structall()` mirrors the in-memory `StructuralIndex.recall()` but reads from SQLite so it's always available without re-injection.
-
-Note: production retrieval still routes through the in-memory `StructuralIndex` (it's faster and already wired). The `structural_edges` table provides durability and a standalone query surface for CLI/MCP tools.
+The existing in-memory `StructuralIndex.recall()` and `context_selector._apply_structural_expansion()` already drive L3 retrieval when `NEURALMIND_STRUCTURAL_RECALL=1`. The `structural_edges` table adds durability — the in-memory index is lost on process exit, but the table persists across sessions and can be queried via direct SQL for CLI/MCP tools.
 
 ---
 
@@ -210,25 +193,26 @@ def _check_version_mismatch(project_path: str) -> str | None:
 
 | Test | File | Verifies |
 |------|------|----------|
-| `test_structural_edges_persisted_on_build` | `test_synapses.py` | `persist_structural_edges()` upserts correctly |
-| `test_structural_recall_returns_known_callees` | `test_synapses.py` | `recall_structall()` returns expected callees |
-| `test_structural_edges_survive_rebuild` | `test_synapses.py` | Data persists across `SynapseStore` reopen |
-| `test_structural_edges_increment_call_count` | `test_synapses.py` | Re-upsert increments call_count |
-| `test_structural_edges_skip_unknown_relations` | `test_synapses.py` | Edges with unknown relation are dropped |
-| `test_decay_weight_half_life_math` | `test_synapses.py` | `decay_weight()` values match hand-computed |
-| `test_decay_weight_zero_age_is_identity` | `test_synapses.py` | age_days=0 → weight unchanged |
-| `test_time_decay_respects_wall_clock` | `test_synapses.py` | Old `last_activated` edges decay more than fresh ones |
-| `test_time_decay_ltp_floor_preserved` | `test_synapses.py` | LTP edges floor at LTP_FLOOR after time decay |
-| `test_migration_warning_fires_on_mismatch` | `test_cli.py` | Warning printed when versions differ |
-| `test_migration_warning_silent_when_matching` | `test_cli.py` | No warning when versions match |
-| `test_migration_warning_silent_without_ir_meta` | `test_cli.py` | No warning when ir_meta.json absent |
+| `test_persist_basic` | `tests/test_tier1.py` | Table populated after `persist_structural_edges()` |
+| `test_persist_idempotent` | `tests/test_tier1.py` | Re-upsert increments call_count, not rows |
+| `test_persist_skip_unknown_relations` | `tests/test_tier1.py` | Unknown relations dropped |
+| `test_persist_survives_reopen` | `tests/test_tier1.py` | Data persists across `SynapseStore` reopen |
+| `test_decay_weight_half_life_math` | `tests/test_tier1.py` | `decay_weight()` values match hand-computed |
+| `test_decay_weight_zero_age_is_identity` | `tests/test_tier1.py` | age_days=0 → weight unchanged |
+| `test_time_decay_reduces_old_edges` | `tests/test_tier1.py` | Old `last_activated` edges decay more than fresh ones |
+| `test_time_decay_ltp_floor_preserved` | `tests/test_tier1.py` | LTP edges floor at LTP_FLOOR after time decay |
+| `test_time_decay_prunes_weak_old_edges` | `tests/test_tier1.py` | Old weak edges pruned |
+| `test_time_decay_fresh_edges_unchanged` | `tests/test_tier1.py` | Fresh edges unaffected by decay tick |
+| `test_migration_warning_fires_on_version_mismatch` | `tests/test_tier1.py` | CLI warns when `ir_meta.json` version ≠ running version |
+| `test_no_warning_when_versions_match` | `tests/test_tier1.py` | No warning on matching versions |
+| `test_no_warning_without_ir_meta` | `tests/test_tier1.py` | No warning when ir_meta.json absent |
 
 ---
 
 ## 5. Backward compatibility
 
 | Concern | Handling |
-|---------|---------|
+|---------|---------|---------|
 | Existing `synapses.db` without `structural_edges` | `CREATE TABLE IF NOT EXISTS` — created lazily on first use |
 | Existing `ir_meta.json` without `neuralmind_version` | `stored` is None → no warning. Population happens on next build. |
 | Tick-based callers of `decay()` | Signature unchanged. `Hook` SessionStart path works without modification. |
@@ -238,8 +222,6 @@ def _check_version_mismatch(project_path: str) -> str | None:
 
 ## 6. Open questions
 
-1. **Should `recall_structall()` replace or supplement the in-memory `StructuralIndex.recall()`?** → Supplement. In-memory is faster and already wired; the table provides durability and a standalone API.
+1. **Should `persist_structural_edges()` be called even when synapses are disabled?** → No. The table lives in `synapses.db`; if synapses are off, the graph.json links are still accessible via the existing `StructuralIndex` when built.
 
-2. **Should `persist_structural_edges()` be called even when synapses are disabled?** → No. The table lives in `synapses.db`; if synapses are off, the graph.json links are still accessible via the existing `StructuralIndex` when built.
-
-3. **What if `EXP()` is missing from a very old SQLite?** → Fallback: fetch rows, compute in Python, batch update. Likely unnecessary in practice.
+2. **What if `EXP()` is missing from a very old SQLite?** → Fallback: fetch rows, compute in Python, batch update. Likely unnecessary in practice (verified on this system).

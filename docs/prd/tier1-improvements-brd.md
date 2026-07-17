@@ -32,7 +32,6 @@ The brutal analysis (verified on polymarket, 1779 nodes / 2240 edges) found:
 ### In scope (Tier 1)
 - `structural_edges` table in `neuralmind/synapses.py`
 - Persistence logic in `neuralmind/core.py` build()
-- Retrieval prior via new `recall_structural()` method
 - Exponential half-life decay in `synapses.py`
 - `neuralmind_version` stamp in `ir_meta.json`
 - Version mismatch warning in `cli.py`
@@ -46,11 +45,15 @@ The brutal analysis (verified on polymarket, 1779 nodes / 2240 edges) found:
 
 ### 4.1 Structural edges table
 
-Add a directed `structural_edges` table to `synapses.db`. On `neuralmind build`, extract calls/imports/inherits from `embedder.edges` (already loaded). Store with caller→callee direction and edge type. Expose `recall_structall(seed_ids)` for retrieval. Unlike the in-memory `StructuralIndex`, this table persists across sessions.
+Add a directed `structural_edges` table to `synapses.db`. On `neuralmind build`, extract calls/imports/inherits from `embedder.edges` (already loaded). Store with caller→callee direction and edge type. Unlike the in-memory `StructuralIndex`, this table persists across sessions.
+
+**Retrieval note:** The existing in-memory `StructuralIndex` (built from the same edges) already drives L3 retrieval via `_apply_structural_expansion()` when `NEURALMIND_STRUCTURAL_RECALL=1`. The `structural_edges` table provides durability and a standalone query surface for CLI/MCP tools — it does not replace the in-memory index for retrieval.
 
 ### 4.2 Half-life decay
 
 Replace the fixed `DECAY_RATE * weight` tick with `weight * exp(-λ * age_days)` where `λ = ln(2) / half_life_days` and `age_days` is derived from the existing `last_activated` SQL column. This uses SQLite's native `EXP()` function for batch efficiency. LTP floor and per-namespace policies are preserved.
+
+A pure-Python `decay_weight()` helper is exposed for testing and callers that need single-edge decay math.
 
 ### 4.3 Migration check
 
@@ -60,19 +63,24 @@ In `core.py._materialize_ir()`, add `neuralmind_version` to the metadata summary
 
 | Test | File | What it verifies |
 |------|------|-----------------|
-| `test_structural_edges_persisted_on_build` | `tests/test_synapses.py` | Table populated after `persist_structural_edges()` |
-| `test_structural_recall_returns_callers` | `tests/test_synapses.py` | `recall_structall()` returns known callers |
-| `test_structural_edges_survive_rebuild` | `tests/test_synapses.py` | Data persists across store reopen |
-| `test_decay_weight_half_life_math` | `tests/test_synapses.py` | `decay_weight()` returns correct decayed values |
-| `test_time_decay_reduces_old_edges` | `tests/test_synapses.py` | Edges decay by wall-clock age, not call count |
-| `test_migration_warning_fires_on_version_mismatch` | `tests/test_cli.py` | CLI warns when `ir_meta.json` version ≠ running version |
-| `test_no_warning_when_versions_match` | `tests/test_cli.py` | No warning on matching versions |
+| `test_persist_basic` | `tests/test_tier1.py` | Table populated after `persist_structural_edges()` |
+| `test_persist_idempotent` | `tests/test_tier1.py` | Re-upsert increments call_count, not rows |
+| `test_persist_skip_unknown_relations` | `tests/test_tier1.py` | Unknown relations dropped |
+| `test_persist_survives_reopen` | `tests/test_tier1.py` | Data persists across store reopen |
+| `test_decay_weight_half_life_math` | `tests/test_tier1.py` | `decay_weight()` returns correct decayed values |
+| `test_time_decay_reduces_old_edges` | `tests/test_tier1.py` | Edges decay by wall-clock age, not call count |
+| `test_time_decay_ltp_floor_preserved` | `tests/test_tier1.py` | LTP edges floor at LTP_FLOOR after time decay |
+| `test_time_decay_prunes_weak_old_edges` | `tests/test_tier1.py` | Old weak edges pruned |
+| `test_time_decay_fresh_edges_unchanged` | `tests/test_tier1.py` | Fresh edges unaffected by decay tick |
+| `test_migration_warning_fires_on_version_mismatch` | `tests/test_tier1.py` | CLI warns when `ir_meta.json` version ≠ running version |
+| `test_no_warning_when_versions_match` | `tests/test_tier1.py` | No warning on matching versions |
+| `test_no_warning_without_ir_meta` | `tests/test_tier1.py` | No warning when ir_meta.json absent |
 
 ## 6. Risks
 
 | Risk | Mitigation |
 |------|-----------|
 | Schema bump breaks existing DBs | New table is purely additive (`CREATE TABLE IF NOT EXISTS`) — no migration needed |
-| SQLite `EXP()` not available on all platforms | Available in every SQLite build since 3.35 (2021); fallback to Python calc if missing |
+| SQLite `EXP()` not available on all platforms | Available in every SQLite build since 3.35 (2021); verified on this system |
 | Slow build on large graphs | Structural edges already extracted by graphify; we just persist what's loaded |
 | Time-decay feels wrong if user is inactive for months | Half-life is 30 days; after 90 days edges are ~12% — still recoverable on next activation |
