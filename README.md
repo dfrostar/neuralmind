@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
-[![Offline](https://img.shields.io/badge/Offline-100%25-blue.svg)](#-security--compliance)
+[![Offline](https://img.shields.io/badge/Offline-100%20-blue.svg)](#-security--compliance)
 
 **Persistent memory and context compression for AI coding agents.**
 
@@ -15,6 +15,23 @@
 > - Queries your codebase in ~800 tokens instead of ~50,000
 >
 > If you don't use Claude Code, configure: `neuralmind install-mcp --all`
+
+---
+
+## v2.0 — The four waves complete (July 2026)
+
+> v2.0 wasn't a feature release. It was a planned 4-wave executed sequence of 26 workstreams across 7 buckets.
+
+**What shipped in v2.0 (v0.47.0 → v0.48.0):**
+
+| Wave | Bucket | What |
+|------|--------|------|
+| Wave 1 | D, B1, G1 | IR-as-contract, RAGAS-axis offline judge, dynamic import resolution |
+| Wave 2 | C1, A1, A2, B2, B3, G2 | Multi-objective fitness, reasoning traces, entity resolution, learned sparse, cross-encoder, SCIP |
+| Wave 3 | C2, C3, A3, A4, B4, F1, F2 | Pop. evolutionary tuner, learned decay, sleep consolidation, hierarchical summarization, Streamable HTTP, shared daemon memory |
+| Wave 4 | **C4, G3, G4, E1-E4, F3, F4, D3, D4** | **CI-gated promotion, Louvain modularity, incremental re-extraction, team memory flywheel (scoring + merge + peer review + staleness), tool-use metrics, backpressure + circuit breakers, judge transcripts, per-language fixtures (10 langs)** |
+
+**Read the full plan:** [docs/FUTURE-PROOFING-PLAN.md](docs/FUTURE-PROOFING-PLAN.md) · [Handoff v2→v0.48.0](docs/SESSION-HANDOFF-WAVE4.md) · [Complete changelog](CHANGELOG.md)
 
 ---
 
