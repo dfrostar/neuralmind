@@ -11,6 +11,7 @@
 ### Documentation
 
 * audit fixes for v0.46.0 release — archive stale NEXT-RELEASE-PLAN.md (v0.13→v0.16, project at v0.45), bump ROADMAP.md banner to v0.45.0, correct README synapse A/B claim (+12pts → +11.6pts, 71.7%→83.3%), remove unverifiable +6.5pts claim, fix HONEST-ASSESSMENT.md install instructions (graphifyy optional since v0.15) ([4f73a15](https://github.com/dfrostar/neuralmind/commit/4f73a15))
+* fix stale `test_doctor.py` assertions — `test_backend_check_reports_auto_resolution` and `test_backend_check_treats_null_config_as_auto` expected "graph" in detail but v0.29+ resolves auto to turbovec; updated to match `doctor._check_backend` actual output
 
 ## [0.45.0](https://github.com/dfrostar/neuralmind/compare/v0.44.0...v0.45.0) (2026-07-16)
 
