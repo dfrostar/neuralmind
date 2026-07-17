@@ -21,6 +21,7 @@ Usage:
     uvx neuralmind-mcp
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -784,8 +785,6 @@ async def run_mcp_server():
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict):
-        import asyncio
-
         result = await asyncio.to_thread(handle_tool_call, name, arguments)
         return [TextContent(type="text", text=result)]
 
@@ -795,8 +794,6 @@ async def run_mcp_server():
 
 def main():
     """Main entry point."""
-    import asyncio
-
     asyncio.run(run_mcp_server())
 
 
