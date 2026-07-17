@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.46.0](https://github.com/dfrostar/neuralmind/compare/v0.45.0...v0.46.0) (2026-07-17)
+
+
+### Features
+
+* **synapse:** seed synapses from structural graph edges — `seed_from_structural()` persists weighted code-to-code synapses derived from the structural_edges table on every build, so the learned-association layer starts with real architectural signal instead of waiting weeks for co-activation to accumulate. Seeded edges land in `shared` namespace (60-day half-life), weights are log-scaled by call_count and capped at 0.60. Wired into `core.py build()` after `persist_structural_edges()` with fail-open pattern. ([2049bbb](https://github.com/dfrostar/neuralmind/commit/2049bbb))
+
+
+### Documentation
+
+* audit fixes for v0.46.0 release — archive stale NEXT-RELEASE-PLAN.md (v0.13→v0.16, project at v0.45), bump ROADMAP.md banner to v0.45.0, correct README synapse A/B claim (+12pts → +11.6pts, 71.7%→83.3%), remove unverifiable +6.5pts claim, fix HONEST-ASSESSMENT.md install instructions (graphifyy optional since v0.15) ([4f73a15](https://github.com/dfrostar/neuralmind/commit/4f73a15))
+
 ## [0.45.0](https://github.com/dfrostar/neuralmind/compare/v0.44.0...v0.45.0) (2026-07-16)
 
 
