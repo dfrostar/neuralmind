@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.47.1](https://github.com/dfrostar/neuralmind/compare/v0.47.0...v0.47.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **ci**: black formatting drift across 16 files — no logic changes, purely formatting. Re-releases v0.47.0 content with clean lint gate.
+
 ## [0.47.0](https://github.com/dfrostar/neuralmind/compare/v0.46.2...v0.47.0) (2026-07-17)
 
 
