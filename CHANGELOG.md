@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.46.2](https://github.com/dfrostar/neuralmind/compare/v0.46.0...v0.46.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **mcp_server.py**: run MCP tool handler via `asyncio.to_thread()` to keep the asyncio event loop free during SQLite lock contention — prevents MCP timeout hangs when two `neuralmind-mcp` processes target the same project ([a8c2063](https://github.com/dfrostar/neuralmind/commit/a8c2063))
+* **synapses.py**: raise SQLite busy timeout from 5s to 30s so transient write contention resolves without failing writes under concurrent access
+
+
+### Tests
+
+* **test_mcp_server.py**: verify SynapseStore busy timeout is 30s — regression guard for #363
+
 ## [0.46.0](https://github.com/dfrostar/neuralmind/compare/v0.45.0...v0.46.0) (2026-07-17)
 
 

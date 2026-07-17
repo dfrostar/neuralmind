@@ -343,7 +343,7 @@ class SynapseStore:
 
     @contextmanager
     def _connect(self):
-        conn = sqlite3.connect(self.db_path, timeout=5.0, isolation_level=None)
+        conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
