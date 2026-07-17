@@ -113,6 +113,27 @@ class PopulationTuner:
         )
         self.eval_days = eval_days or float(os.environ.get("NEURALMIND_TUNER_EVAL_DAYS", 14.0))
         self._rng = random.Random()
+        # Defensive coerce: truthy negative values pass through `or` and silently
+        # invert the promotion gate (negative hysteresis), skip the loop
+        # (negative population_size / generations), or break the sampling
+        # distribution (uniform_explore_p outside [0, 1]).
+        if self.hysteresis <= 0.0:
+            log.warning("hysteresis must be positive, got %r — using default 0.05", self.hysteresis)
+            self.hysteresis = 0.05
+        if self.population_size <= 0:
+            log.warning("population_size must be positive, got %r — using default", self.population_size)
+            self.population_size = int(os.environ.get("NEURALMIND_TUNER_POPULATION", 15))
+        if self.generations <= 0:
+            log.warning("generations must be positive, got %r — using default 8", self.generations)
+            self.generations = int(os.environ.get("NEURALMIND_TUNER_GENERATIONS", 8))
+        if self.uniform_explore_p < 0.0:
+            log.warning("uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p)
+            self.uniform_explore_p = 0.0
+        elif self.uniform_explore_p > 1.0:
+            log.warning("uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p)
+            self.uniform_explore_p = 1.0
+        if self.eval_days <= 0.0:
+            self.eval_days = 14.0
 
     # ------------------------------------------------------------------- #
     # Population sampling

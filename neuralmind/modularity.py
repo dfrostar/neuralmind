@@ -41,28 +41,37 @@ def _modularity_gain(
 ) -> float:
     """
     Compute modularity gain for moving `node` into `target_community`.
-    
-    Louvain's ΔQ formula for moving node i (singleton) to community c:
-        ΔQ = k_i,in / (2m) - Σ_tot * k_i / (4m²)
-    
+
+    Louvain's ΔQ formula for moving node i from community C_i to C_j:
+        ΔQ = [k_i,in(C_j) - Σ_tot(C_j) * k_i / (2m)] / m
+            - [k_i,in(C_i) - (Σ_tot(C_i) - k_i) * k_i / (2m)] / m
+
     where:
-        k_i,in = sum of edge weights from node to target community
-        Σ_tot = sum of degrees in target community (before move)
+        k_i,in(X) = sum of edge weights from node to community X
+        Σ_tot(X) = sum of degrees in community X (excluding `node`)
         k_i = degree of node
         m = total edge weight in graph
-    
+
     Positive gain means the move increases modularity.
     """
     if total_weight <= 0:
         return 0.0
     k_i = sum(adj.get(node, {}).values())
-    k_i_in = sum(
+    k_i_in_target = sum(
         w for n, w in adj.get(node, {}).items()
         if node_community.get(n) == target_community
     )
-    sigma_tot = community_weights.get(target_community, 0.0)
-    # ΔQ = k_i,in / (2m) - Σ_tot * k_i / (4m²)
-    return (k_i_in / (2.0 * total_weight)) - (sigma_tot * k_i / (4.0 * total_weight * total_weight))
+    k_i_in_current = sum(
+        w for n, w in adj.get(node, {}).items()
+        if node_community.get(n) == node_community[node]
+    )
+    sigma_tot_target = community_weights.get(target_community, 0.0)
+    sigma_tot_current = community_weights.get(node_community[node], 0.0)
+    m = total_weight
+    # ΔQ = gain from target community - loss from current community
+    gain_from_target = k_i_in_target - sigma_tot_target * k_i / (2.0 * m)
+    loss_from_current = k_i_in_current - sigma_tot_current * k_i / (2.0 * m)
+    return (gain_from_target - loss_from_current) / m
 
 
 def louvain_clustering(
@@ -138,7 +147,7 @@ def louvain_clustering(
                     adj, node, neighbor_c, node_community,
                     community_weights, total_weight,
                 )
-                if gain >= best_gain:
+                if gain > best_gain:
                     best_gain = gain
                     best_community = neighbor_c
             
@@ -162,7 +171,12 @@ def louvain_clustering(
             c_n = node_community[n]
             for m, w in neighbors.items():
                 c_m = node_community[m]
-                if c_n != c_m:
+                if c_n == c_m:
+                    # Intra-community edge: becomes self-loop in coarse graph.
+                    # Without this, the coarse graph loses intra-weight,
+                    # inflating inter-community ΔQ and over-merging.
+                    new_adj[c_n][c_n] = new_adj[c_n].get(c_n, 0.0) + w
+                else:
                     new_adj[c_n][c_m] = new_adj[c_n].get(c_m, 0.0) + w
         
         # Recurse on coarse graph
