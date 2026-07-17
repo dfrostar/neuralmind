@@ -51,6 +51,18 @@ SUITES: dict[str, dict[str, str]] = {
         "fixture": "tests/fixtures/sample_project_cpp",
         "queries": "tests/fixtures/benchmark_queries_cpp.json",
     },
+    "csharp": {
+        "fixture": "tests/fixtures/sample_project_csharp",
+        "queries": "tests/fixtures/benchmark_queries_csharp.json",
+    },
+    "ruby": {
+        "fixture": "tests/fixtures/sample_project_ruby",
+        "queries": "tests/fixtures/benchmark_queries_ruby.json",
+    },
+    "php": {
+        "fixture": "tests/fixtures/sample_project_php",
+        "queries": "tests/fixtures/benchmark_queries_php.json",
+    },
 }
 
 

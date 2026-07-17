@@ -131,9 +131,7 @@ class EntityResolver:
         key = EntityKey.from_label(label, anchor=anchor)
         self._entities[(key.norm, anchor)] = (entity_id, key)
 
-    def register_many(
-        self, entities: Iterable[tuple[str, str, str | None]]
-    ) -> None:
+    def register_many(self, entities: Iterable[tuple[str, str, str | None]]) -> None:
         """Register many entities at once: (entity_id, label, anchor?)."""
         for entity_id, label, anchor in entities:
             self.register(entity_id, label, anchor=anchor)
@@ -196,9 +194,7 @@ class EntityResolver:
             message=f"no match above threshold ({best_confidence:.3f})",
         )
 
-    def resolve_many(
-        self, labels: Iterable[str]
-    ) -> list[ResolutionResult]:
+    def resolve_many(self, labels: Iterable[str]) -> list[ResolutionResult]:
         """Resolve multiple entities. Convenience wrapper."""
         return [self.resolve(label) for label in labels]
 

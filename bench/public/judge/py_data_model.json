@@ -1,0 +1,9 @@
+{
+  "query": "What is the data model for users?",
+  "reference_answer": "The User dataclass in pkg/user.py has fields: id (str), name (str), email (str), and role (str). It is persisted by UserStore in pkg/store.py.",
+  "source_files": [
+    "sample_project/pkg/user.py",
+    "sample_project/pkg/store.py"
+  ],
+  "category": "architecture"
+}

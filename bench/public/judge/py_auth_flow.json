@@ -1,0 +1,9 @@
+{
+  "query": "How does authentication work in the sample project?",
+  "reference_answer": "Authentication is handled by the AuthManager class in pkg/auth.py, which validates tokens against the UserStore. The login() method returns a session token.",
+  "source_files": [
+    "sample_project/pkg/auth.py",
+    "sample_project/pkg/user.py"
+  ],
+  "category": "architecture"
+}

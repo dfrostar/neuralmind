@@ -122,7 +122,5 @@ def apply_scip_if_available(
     index_path: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Convenience: apply SCIP precision pass if enabled."""
-    backend = ScipBackend(
-        ScipConfig(enabled=enabled, index_path=index_path)
-    )
+    backend = ScipBackend(ScipConfig(enabled=enabled, index_path=index_path))
     return backend.refine_graph(graph)

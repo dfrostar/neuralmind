@@ -31,7 +31,7 @@ def test_selfcheck_passes():
     assert runner._selfcheck() == 0
 
 
-def test_suite_registry_has_seven_polyglot_suites():
+def test_suite_registry_has_ten_polyglot_suites():
     assert set(runner.all_suites()) == {
         "python",
         "typescript",
@@ -40,6 +40,9 @@ def test_suite_registry_has_seven_polyglot_suites():
         "java",
         "c",
         "cpp",
+        "csharp",
+        "ruby",
+        "php",
     }
     assert runner.total_query_count() >= 50
 

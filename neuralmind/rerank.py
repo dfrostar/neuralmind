@@ -94,9 +94,7 @@ class CrossEncoderReranker:
         """Lazily load the ONNX model. Fail-open on any error."""
         if self._model is not None:
             return
-        model_path = self.config.model_path or os.environ.get(
-            "NEURALMIND_RERANK_MODEL"
-        )
+        model_path = self.config.model_path or os.environ.get("NEURALMIND_RERANK_MODEL")
         if not model_path:
             return
         try:
@@ -142,9 +140,7 @@ class CrossEncoderReranker:
         if self._avg_latency_ms > self.config.max_latency_ms:
             return list(zip(candidates, [0.0] * len(candidates)))
 
-        scored = [
-            (cand, self.score_pair(query, cand)) for cand in candidates
-        ]
+        scored = [(cand, self.score_pair(query, cand)) for cand in candidates]
         scored.sort(key=lambda x: x[1], reverse=True)
 
         elapsed_ms = (time.monotonic() - start) * 1000.0

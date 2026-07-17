@@ -1,0 +1,10 @@
+{
+  "description": "Offline judge transcripts for CI evaluation",
+  "transcripts": [
+    "go_package_struct",
+    "py_auth_flow",
+    "py_data_model",
+    "ts_api_surface"
+  ],
+  "n_transcripts": 4
+}
