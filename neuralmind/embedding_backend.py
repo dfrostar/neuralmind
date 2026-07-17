@@ -28,6 +28,15 @@ class EmbeddingBackend(ABC):
     def project_path(self) -> Path:
         """Get the project path."""
 
+    @property
+    def ir_path(self) -> Path:
+        """Get the path to the canonical IR file (.neuralmind/index_ir.json).
+
+        Default implementation derives this from ``_project_path``. Backends
+        may override — the contract is just that a stable ``Path`` is returned.
+        """
+        return self._project_path / ".neuralmind" / "index_ir.json"
+
     @abstractmethod
     def load_graph(self) -> bool:
         """

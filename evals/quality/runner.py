@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -35,6 +35,22 @@ SUITES: dict[str, dict[str, str]] = {
         "fixture": "tests/fixtures/sample_project_go",
         "queries": "tests/fixtures/benchmark_queries_go.json",
     },
+    "rust": {
+        "fixture": "tests/fixtures/sample_project_rust",
+        "queries": "tests/fixtures/benchmark_queries_rust.json",
+    },
+    "java": {
+        "fixture": "tests/fixtures/sample_project_java",
+        "queries": "tests/fixtures/benchmark_queries_java.json",
+    },
+    "c": {
+        "fixture": "tests/fixtures/sample_project_c",
+        "queries": "tests/fixtures/benchmark_queries_c.json",
+    },
+    "cpp": {
+        "fixture": "tests/fixtures/sample_project_cpp",
+        "queries": "tests/fixtures/benchmark_queries_cpp.json",
+    },
 }
 
 
@@ -45,6 +61,7 @@ class Query:
     shape: str
     category: str  # PRD 2 task type: architecture / bug-localization / refactor / next-edit
     expected_modules: list[str]
+    expected_facts: list[dict[str, str | list[str]]] = field(default_factory=list)
 
 
 @dataclass
@@ -85,6 +102,15 @@ def load_suite(name: str) -> Suite:
                 shape=q.get("shape", "unknown"),
                 category=q.get("category", "architecture"),
                 expected_modules=list(q["expected_modules"]),
+                expected_facts=[
+                    {
+                        "id": f["id"],
+                        "fact": f["fact"],
+                        "aliases": list(f.get("aliases", [])),
+                    }
+                    for f in q.get("expected_facts", [])
+                    if "id" in f and "fact" in f
+                ],
             )
         )
     if not queries:
@@ -123,14 +149,14 @@ def _selfcheck() -> int:
         print(f"  [{marker}] {name}: {len(suite)} queries, fixture {suite.fixture_dir.name}")
         total += len(suite)
 
-    # PRD target: at least 25 golden queries across 3+ repos.
+    # PRD target: at least 50 golden queries across 7+ repos.
     print("-" * 60)
     print(f"  suites: {len(SUITES)}  total queries: {total}")
-    if len(SUITES) < 3:
-        print(f"  [FAIL] expected >=3 suites, found {len(SUITES)}")
+    if len(SUITES) < 7:
+        print(f"  [FAIL] expected >=7 suites, found {len(SUITES)}")
         return 1
-    if total < 25:
-        print(f"  [FAIL] expected >=25 golden queries, found {total}")
+    if total < 50:
+        print(f"  [FAIL] expected >=50 golden queries, found {total}")
         return 1
 
     # Metric sanity: a perfect ranking scores 1.0, a miss scores 0.0.

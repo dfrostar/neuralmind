@@ -11,6 +11,47 @@
         "src/auth/handlers.rs",
         "src/auth/jwt_utils.rs",
         "src/users/crud.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "auth-lookup-by-email",
+          "fact": "the user is looked up by email",
+          "aliases": [
+            "get_user_by_email",
+            "lookup by email",
+            "find user by email"
+          ]
+        },
+        {
+          "id": "auth-verify-password",
+          "fact": "the password hash is verified",
+          "aliases": [
+            "verify_password",
+            "password hash",
+            "check password",
+            "compare_digest"
+          ]
+        },
+        {
+          "id": "auth-issues-jwt-pair",
+          "fact": "a JWT access token and refresh token pair is issued on success",
+          "aliases": [
+            "access_token",
+            "refresh_token",
+            "access and refresh",
+            "token pair",
+            "encode_token"
+          ]
+        },
+        {
+          "id": "auth-invalid-credentials",
+          "fact": "InvalidCredentialsError is raised when email or password do not match",
+          "aliases": [
+            "InvalidCredentialsError",
+            "bad password",
+            "unknown email"
+          ]
+        }
       ]
     },
     {
@@ -19,6 +60,51 @@
       "shape": "focused",
       "expected_modules": [
         "src/api/routes.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "api-auth-routes",
+          "fact": "there are auth routes for login, refresh, and logout",
+          "aliases": [
+            "/api/auth/login",
+            "/api/auth/refresh",
+            "/api/auth/logout",
+            "login",
+            "logout"
+          ]
+        },
+        {
+          "id": "api-user-routes",
+          "fact": "there are user routes to create a user and read/delete the current user",
+          "aliases": [
+            "/api/users",
+            "/api/users/me",
+            "create user",
+            "get_me",
+            "delete_me"
+          ]
+        },
+        {
+          "id": "api-billing-routes",
+          "fact": "there are billing routes for charge, refund, and invoices",
+          "aliases": [
+            "/api/billing/charge",
+            "/api/billing/refund",
+            "/api/billing/invoices",
+            "charge",
+            "refund",
+            "invoices"
+          ]
+        },
+        {
+          "id": "api-webhook-route",
+          "fact": "there is a Stripe webhook endpoint",
+          "aliases": [
+            "/webhooks/stripe",
+            "webhook",
+            "stripe webhook"
+          ]
+        }
       ]
     },
     {
@@ -29,6 +115,48 @@
         "src/billing/stripe_client.rs",
         "src/billing/invoices.rs",
         "src/users/crud.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "charge-validate-user",
+          "fact": "the user is validated and must be active before charging",
+          "aliases": [
+            "get_user",
+            "is_active",
+            "not chargeable",
+            "validate user",
+            "BillingError"
+          ]
+        },
+        {
+          "id": "charge-stripe",
+          "fact": "a charge is created via the Stripe API",
+          "aliases": [
+            "stripe",
+            "Charge.create",
+            "charge_customer",
+            "_fake_stripe_charge"
+          ]
+        },
+        {
+          "id": "charge-record",
+          "fact": "the charge is mirrored into a local charges table",
+          "aliases": [
+            "charges table",
+            "INSERT INTO charges",
+            "billing record",
+            "charges"
+          ]
+        },
+        {
+          "id": "charge-invoice",
+          "fact": "an invoice is created on a successful charge",
+          "aliases": [
+            "create_invoice",
+            "invoice",
+            "invoices"
+          ]
+        }
       ]
     },
     {
@@ -38,6 +166,39 @@
       "expected_modules": [
         "src/users/crud.rs",
         "src/db/connection.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "user-table",
+          "fact": "users are stored in a users table",
+          "aliases": [
+            "users table",
+            "CREATE TABLE",
+            "users"
+          ]
+        },
+        {
+          "id": "user-columns",
+          "fact": "the user record has id, email, password_hash, created_at, last_login, and is_active fields",
+          "aliases": [
+            "password_hash",
+            "is_active",
+            "last_login",
+            "created_at",
+            "users.id",
+            "users.email"
+          ]
+        },
+        {
+          "id": "user-soft-delete",
+          "fact": "users are soft-deleted by flipping the is_active flag rather than being removed",
+          "aliases": [
+            "soft-delete",
+            "soft delete",
+            "is_active",
+            "deactivate_user"
+          ]
+        }
       ]
     },
     {
@@ -46,6 +207,55 @@
       "shape": "focused",
       "expected_modules": [
         "src/auth/jwt_utils.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "jwt-hs256",
+          "fact": "tokens are signed with HMAC-SHA256 (HS256)",
+          "aliases": [
+            "HS256",
+            "HMAC",
+            "hmac.new",
+            "sha256",
+            "hashlib.sha256"
+          ]
+        },
+        {
+          "id": "jwt-three-segments",
+          "fact": "the token is split into three dot-separated segments: header, payload, signature",
+          "aliases": [
+            "3 segments",
+            "three segments",
+            "header.payload.signature"
+          ]
+        },
+        {
+          "id": "jwt-constant-time",
+          "fact": "the signature is compared in constant time with hmac.compare_digest",
+          "aliases": [
+            "compare_digest",
+            "constant time",
+            "constant-time"
+          ]
+        },
+        {
+          "id": "jwt-invalid-signature",
+          "fact": "InvalidSignatureError is raised on a signature mismatch",
+          "aliases": [
+            "InvalidSignatureError",
+            "signature mismatch"
+          ]
+        },
+        {
+          "id": "jwt-expiry-check",
+          "fact": "the exp claim is checked and TokenExpiredError is raised when expired",
+          "aliases": [
+            "TokenExpiredError",
+            "exp",
+            "expired",
+            "expiry"
+          ]
+        }
       ]
     },
     {
@@ -54,6 +264,41 @@
       "shape": "focused",
       "expected_modules": [
         "src/billing/stripe_client.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "webhook-verify-sig",
+          "fact": "the webhook signature is verified before processing",
+          "aliases": [
+            "verify_webhook",
+            "signature",
+            "Stripe-Signature",
+            "verify"
+          ]
+        },
+        {
+          "id": "webhook-tolerance",
+          "fact": "the signature timestamp must be within a tolerance window (replay protection)",
+          "aliases": [
+            "WEBHOOK_TOLERANCE_SEC",
+            "tolerance",
+            "timestamp",
+            "300",
+            "replay"
+          ]
+        },
+        {
+          "id": "webhook-dispatch",
+          "fact": "verified events are dispatched by type (charge.succeeded/failed/refunded) to update charge status",
+          "aliases": [
+            "handle_webhook_event",
+            "charge.succeeded",
+            "charge.failed",
+            "charge.refunded",
+            "dispatch",
+            "event type"
+          ]
+        }
       ]
     },
     {
@@ -63,6 +308,37 @@
       "expected_modules": [
         "src/users/crud.rs",
         "src/api/routes.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "create-user-endpoint",
+          "fact": "POST /api/users is the sign-up endpoint",
+          "aliases": [
+            "/api/users",
+            "POST /api/users",
+            "sign-up",
+            "signup"
+          ]
+        },
+        {
+          "id": "create-user-insert",
+          "fact": "create_user inserts a row into the users table and returns the User record",
+          "aliases": [
+            "create_user",
+            "INSERT INTO users",
+            "User",
+            "returns user"
+          ]
+        },
+        {
+          "id": "create-user-stores-hash",
+          "fact": "the user is stored with email and a password_hash",
+          "aliases": [
+            "password_hash",
+            "email",
+            "hash"
+          ]
+        }
       ]
     },
     {
@@ -71,6 +347,38 @@
       "shape": "focused",
       "expected_modules": [
         "src/billing/stripe_client.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "refund-lookup",
+          "fact": "the charge is looked up by its stripe id",
+          "aliases": [
+            "stripe_id",
+            "SELECT",
+            "charges WHERE",
+            "look up charge"
+          ]
+        },
+        {
+          "id": "refund-double-guard",
+          "fact": "an already-refunded charge raises BillingError to prevent double refunds",
+          "aliases": [
+            "already refunded",
+            "BillingError",
+            "double refund",
+            "refunded"
+          ]
+        },
+        {
+          "id": "refund-status-update",
+          "fact": "the charge status is updated to refunded and a refunds row is written",
+          "aliases": [
+            "status = 'refunded'",
+            "UPDATE charges",
+            "INSERT INTO refunds",
+            "refunds table"
+          ]
+        }
       ]
     },
     {
@@ -79,6 +387,37 @@
       "shape": "identity",
       "expected_modules": [
         "src/db/connection.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "db-sqlite",
+          "fact": "the fixture uses SQLite",
+          "aliases": [
+            "sqlite",
+            "sqlite3",
+            "SQLite"
+          ]
+        },
+        {
+          "id": "db-thread-local",
+          "fact": "connections are thread-local",
+          "aliases": [
+            "thread-local",
+            "threading.local",
+            "thread local"
+          ]
+        },
+        {
+          "id": "db-lazy-schema",
+          "fact": "the schema is created lazily on first connection",
+          "aliases": [
+            "lazily",
+            "lazy",
+            "_ensure_schema",
+            "CREATE TABLE IF NOT EXISTS",
+            "first access"
+          ]
+        }
       ]
     },
     {
@@ -88,6 +427,39 @@
       "expected_modules": [
         "src/billing/invoices.rs",
         "src/users/crud.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "invoice-lookup",
+          "fact": "the invoice is loaded by id and the recipient user is fetched",
+          "aliases": [
+            "send_invoice_email",
+            "SELECT",
+            "get_user",
+            "load invoice",
+            "invoice id"
+          ]
+        },
+        {
+          "id": "invoice-not-found",
+          "fact": "a missing invoice or user raises InvoiceNotFoundError",
+          "aliases": [
+            "InvoiceNotFoundError",
+            "not found",
+            "missing"
+          ]
+        },
+        {
+          "id": "invoice-mark-sent",
+          "fact": "the invoice is queued to the mail transport and stamped with sent_at",
+          "aliases": [
+            "sent_at",
+            "_render_and_queue",
+            "mail",
+            "UPDATE invoices",
+            "mark sent"
+          ]
+        }
       ]
     },
     {
@@ -97,6 +469,27 @@
       "category": "bug-localization",
       "expected_modules": [
         "src/auth/handlers.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "debug-login-silent-auth",
+          "fact": "authentication uses JWT tokens with HMAC-SHA256",
+          "aliases": [
+            "jwt",
+            "hs256",
+            "auth",
+            "hmac"
+          ]
+        },
+        {
+          "id": "debug-login-silent-users",
+          "fact": "user records are stored in a users table",
+          "aliases": [
+            "users table",
+            "user",
+            "crud"
+          ]
+        }
       ]
     },
     {
@@ -106,6 +499,17 @@
       "category": "bug-localization",
       "expected_modules": [
         "src/billing/stripe_client.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "debug-webhook-reject-webhook",
+          "fact": "webhook signatures are verified with HMAC-SHA256",
+          "aliases": [
+            "webhook",
+            "signature",
+            "verify"
+          ]
+        }
       ]
     },
     {
@@ -116,6 +520,17 @@
       "expected_modules": [
         "src/billing/invoices.rs",
         "src/users/crud.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "debug-invoice-missing-users",
+          "fact": "user records are stored in a users table",
+          "aliases": [
+            "users table",
+            "user",
+            "crud"
+          ]
+        }
       ]
     },
     {
@@ -125,6 +540,17 @@
       "category": "bug-localization",
       "expected_modules": [
         "src/auth/jwt_utils.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "debug-token-expire-users",
+          "fact": "user records are stored in a users table",
+          "aliases": [
+            "users table",
+            "user",
+            "crud"
+          ]
+        }
       ]
     },
     {
@@ -135,6 +561,17 @@
       "expected_modules": [
         "src/users/crud.rs",
         "src/db/connection.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "refactor-add-user-field-users",
+          "fact": "user records are stored in a users table",
+          "aliases": [
+            "users table",
+            "user",
+            "crud"
+          ]
+        }
       ]
     },
     {
@@ -144,6 +581,17 @@
       "category": "refactor",
       "expected_modules": [
         "src/db/connection.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "refactor-swap-database-db",
+          "fact": "the project uses SQLite as its database",
+          "aliases": [
+            "sqlite",
+            "sqlite3",
+            "database"
+          ]
+        }
       ]
     },
     {
@@ -154,6 +602,18 @@
       "expected_modules": [
         "src/auth/handlers.rs",
         "src/auth/jwt_utils.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "refactor-add-mfa-auth",
+          "fact": "authentication uses JWT tokens with HMAC-SHA256",
+          "aliases": [
+            "jwt",
+            "hs256",
+            "auth",
+            "hmac"
+          ]
+        }
       ]
     },
     {
@@ -164,6 +624,18 @@
       "expected_modules": [
         "src/auth/jwt_utils.rs",
         "src/auth/handlers.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "next-after-jwt-change-auth",
+          "fact": "authentication uses JWT tokens with HMAC-SHA256",
+          "aliases": [
+            "jwt",
+            "hs256",
+            "auth",
+            "hmac"
+          ]
+        }
       ]
     },
     {
@@ -174,6 +646,17 @@
       "expected_modules": [
         "src/billing/invoices.rs",
         "src/billing/stripe_client.rs"
+      ],
+      "expected_facts": [
+        {
+          "id": "next-after-charge-change-billing",
+          "fact": "the billing logic uses the Stripe API",
+          "aliases": [
+            "stripe",
+            "charge",
+            "billing"
+          ]
+        }
       ]
     }
   ],

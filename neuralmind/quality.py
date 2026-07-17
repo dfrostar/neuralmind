@@ -28,12 +28,14 @@ relevant ones):
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 # Cutoffs reported by default. The primary cutoff (answerability + the headline
 # precision/recall) is the largest; the smaller ones show ranking quality.
-DEFAULT_KS: tuple[int, ...] = (1, 3, 5)
+# 10 added for nDCG@10 / hit-rate@10 (PRD 2 D2).
+DEFAULT_KS: tuple[int, ...] = (1, 3, 5, 10)
 
 
 def dedup_preserve_order(items: Iterable[str]) -> list[str]:
@@ -80,6 +82,35 @@ def answerable_at_k(ranked: list[str], relevant: set[str], k: int) -> bool:
     return bool(set(ranked[:k]) & relevant)
 
 
+def ndcg_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
+    """Discounted Cumulative Gain / IDCG at k (binary relevance).
+
+    Each relevant hit at rank *r* (1-based) contributes ``1/log2(r+1)`` to
+    the DCG. The ideal DCG is the same sum over the top ``min(k, |relevant|)``
+    ranks. Returns 0.0 when ``relevant`` is empty or ``k <= 0`` (nothing to
+    gain), so a suite with no relevant gold never inflates the score.
+    """
+    if k <= 0 or not relevant:
+        return 0.0
+    dcg = 0.0
+    for i, m in enumerate(ranked[:k], start=1):
+        if m in relevant:
+            dcg += 1.0 / math.log2(i + 1)
+    # Ideal DCG: pack the |relevant| hits into the earliest ranks.
+    n_ideal = min(k, len(relevant))
+    idcg = sum(1.0 / math.log2(r + 1) for r in range(1, n_ideal + 1))
+    if idcg <= 0.0:
+        return 0.0
+    return dcg / idcg
+
+
+def hit_rate_at_k(ranked: list[str], relevant: set[str], k: int) -> float:
+    """1.0 if any relevant module appears in the top-k, else 0.0."""
+    if k <= 0 or not relevant:
+        return 0.0
+    return 1.0 if any(m in relevant for m in ranked[:k]) else 0.0
+
+
 @dataclass
 class QueryQuality:
     """Per-query metrics. ``ranked`` is the dedup'd module ranking evaluated."""
@@ -89,6 +120,8 @@ class QueryQuality:
     relevant: list[str]
     precision: dict[int, float] = field(default_factory=dict)
     recall: dict[int, float] = field(default_factory=dict)
+    ndcg: dict[int, float] = field(default_factory=dict)
+    hit_rate: dict[int, float] = field(default_factory=dict)
     reciprocal_rank: float = 0.0
     answerable: bool = False
 
@@ -99,6 +132,8 @@ class QueryQuality:
             "relevant": self.relevant,
             "precision": {str(k): round(v, 4) for k, v in self.precision.items()},
             "recall": {str(k): round(v, 4) for k, v in self.recall.items()},
+            "ndcg": {str(k): round(v, 4) for k, v in self.ndcg.items()},
+            "hit_rate": {str(k): round(v, 4) for k, v in self.hit_rate.items()},
             "reciprocal_rank": round(self.reciprocal_rank, 4),
             "answerable": self.answerable,
         }
@@ -122,6 +157,8 @@ def evaluate_query(
         relevant=sorted(relevant_set),
         precision={k: precision_at_k(ranked_list, relevant_set, k) for k in ks},
         recall={k: recall_at_k(ranked_list, relevant_set, k) for k in ks},
+        ndcg={k: ndcg_at_k(ranked_list, relevant_set, k) for k in ks},
+        hit_rate={k: hit_rate_at_k(ranked_list, relevant_set, k) for k in ks},
         reciprocal_rank=reciprocal_rank(ranked_list, relevant_set),
         answerable=answerable_at_k(ranked_list, relevant_set, answer_k),
     )
@@ -136,6 +173,8 @@ class SuiteQuality:
     ks: tuple[int, ...]
     mean_precision: dict[int, float]
     mean_recall: dict[int, float]
+    mean_ndcg: dict[int, float]
+    mean_hit_rate: dict[int, float]
     mrr: float
     answerability: float
     per_query: list[QueryQuality] = field(default_factory=list)
@@ -147,6 +186,8 @@ class SuiteQuality:
             "ks": list(self.ks),
             "mean_precision": {str(k): round(v, 4) for k, v in self.mean_precision.items()},
             "mean_recall": {str(k): round(v, 4) for k, v in self.mean_recall.items()},
+            "mean_ndcg": {str(k): round(v, 4) for k, v in self.mean_ndcg.items()},
+            "mean_hit_rate": {str(k): round(v, 4) for k, v in self.mean_hit_rate.items()},
             "mrr": round(self.mrr, 4),
             "answerability": round(self.answerability, 4),
             "per_query": [q.to_dict() for q in self.per_query],
@@ -170,6 +211,8 @@ def aggregate(
         ks=ks,
         mean_precision={k: _mean([q.precision.get(k, 0.0) for q in per_query]) for k in ks},
         mean_recall={k: _mean([q.recall.get(k, 0.0) for q in per_query]) for k in ks},
+        mean_ndcg={k: _mean([q.ndcg.get(k, 0.0) for q in per_query]) for k in ks},
+        mean_hit_rate={k: _mean([q.hit_rate.get(k, 0.0) for q in per_query]) for k in ks},
         mrr=_mean([q.reciprocal_rank for q in per_query]),
         answerability=_mean([1.0 if q.answerable else 0.0 for q in per_query]),
         per_query=per_query,
@@ -194,6 +237,10 @@ class QualityThresholds:
     min_answerability: float = 0.7
     min_recall_at_k: float = 0.5
     recall_k: int = 5
+    min_ndcg_at_k: float = 0.5
+    ndcg_k: int = 5
+    min_hit_rate_at_k: float = 0.8
+    hit_rate_k: int = 5
 
     def check(self, suite: SuiteQuality) -> list[str]:
         """Return a list of human-readable failure messages (empty == pass)."""
@@ -208,6 +255,16 @@ class QualityThresholds:
         if recall is not None and recall < self.min_recall_at_k:
             failures.append(
                 f"recall@{self.recall_k} {recall:.3f} < floor {self.min_recall_at_k:.3f}"
+            )
+        ndcg = suite.mean_ndcg.get(self.ndcg_k)
+        if ndcg is not None and ndcg < self.min_ndcg_at_k:
+            failures.append(
+                f"ndcg@{self.ndcg_k} {ndcg:.3f} < floor {self.min_ndcg_at_k:.3f}"
+            )
+        hit_rate = suite.mean_hit_rate.get(self.hit_rate_k)
+        if hit_rate is not None and hit_rate < self.min_hit_rate_at_k:
+            failures.append(
+                f"hit_rate@{self.hit_rate_k} {hit_rate:.3f} < floor {self.min_hit_rate_at_k:.3f}"
             )
         return failures
 
@@ -236,8 +293,9 @@ class BaselineDelta:
 def compare_to_baseline(suite: SuiteQuality, baseline: dict) -> list[BaselineDelta]:
     """Diff a suite's headline metrics against a previously saved ``to_dict``.
 
-    Compares MRR, answerability, and per-k mean recall. Missing baseline keys
-    are skipped so an older baseline still produces a partial comparison.
+    Compares MRR, answerability, mean recall, mean nDCG, and mean hit-rate.
+    Missing baseline keys are skipped so an older baseline still produces a
+    partial comparison.
     """
     deltas: list[BaselineDelta] = []
     if "mrr" in baseline:
@@ -255,6 +313,28 @@ def compare_to_baseline(suite: SuiteQuality, baseline: dict) -> list[BaselineDel
                     f"recall@{k}",
                     float(base_recall[key]),
                     suite.mean_recall.get(k, 0.0),
+                )
+            )
+    base_ndcg = baseline.get("mean_ndcg", {})
+    for k in suite.ks:
+        key = str(k)
+        if key in base_ndcg:
+            deltas.append(
+                BaselineDelta(
+                    f"ndcg@{k}",
+                    float(base_ndcg[key]),
+                    suite.mean_ndcg.get(k, 0.0),
+                )
+            )
+    base_hit_rate = baseline.get("mean_hit_rate", {})
+    for k in suite.ks:
+        key = str(k)
+        if key in base_hit_rate:
+            deltas.append(
+                BaselineDelta(
+                    f"hit_rate@{k}",
+                    float(base_hit_rate[key]),
+                    suite.mean_hit_rate.get(k, 0.0),
                 )
             )
     return deltas
