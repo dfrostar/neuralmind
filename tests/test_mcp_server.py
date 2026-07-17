@@ -350,3 +350,17 @@ class TestToolDefinitions:
             "neuralmind_review",
         }
         assert tool_names == expected
+
+
+class TestAsyncToolHandler:
+    """Tests for async MCP tool handler — verifies fix for #363."""
+
+    def test_sqlite_timeout_is_30s(self, tmp_path):
+        """SynapseStore uses 30s SQLite busy timeout to prevent hangs under contention."""
+        from neuralmind.synapses import SynapseStore
+
+        store = SynapseStore(tmp_path / "test.db")
+        with store._connect() as conn:
+            # PRAGMA busy_timeout is in milliseconds
+            row = conn.execute("PRAGMA busy_timeout").fetchone()
+            assert row[0] == 30000, f"Expected 30000ms, got {row[0]}"
