@@ -143,8 +143,7 @@ quality** weakly (top-k hit rate on a 10-query fixture). It does
 - **End-to-end cost reduction.** Real workloads have multi-turn
   conversations, tool calls, and output generation — not just
   retrieval. We measure the retrieval step, not the workload.
-- **Quality on languages other than Python.** The fixture is
-  Python-only.
+- **Quality on languages other than Python.** The primary fixture is Python; v2.0 added golden-query suites for 9 more languages (TS, Go, Rust, Java, C, C++, C#, Ruby, PHP) but the cross-language retrieval quality comparison is still thin.
 - **Quality on large real-world repos.** The fixture is ~500 lines.
 
 These are tracked on [ROADMAP.md](../ROADMAP.md) under "Next" and
