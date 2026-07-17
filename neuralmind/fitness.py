@@ -161,7 +161,9 @@ def compute_fitness(
     # Clamp inputs: rq and sh are bounded [0, 1]. Efficiency > 1.0 is
     # valid (reduction ratio 2.0 = half the tokens) and must NOT be clamped.
     rq = _clamp(inputs.retrieval_quality, 0.0, 1.0)
-    ef = _clamp(inputs.efficiency, 0.0)  # no upper bound
+    # Efficiency has no documented upper bound, but clamp to defend against
+    # float overflow from pathological efficiency_ratio values.
+    ef = min(inputs.efficiency, 10.0)
     sh = _clamp(inputs.session_health, 0.0, 1.0)
 
     # Weighted product in log space: avoids underflow with small weights.
@@ -169,11 +171,7 @@ def compute_fitness(
     if rq == 0.0 or ef == 0.0 or sh == 0.0:
         total = 0.0
     else:
-        log_sum = (
-            weights[0] * math.log(rq)
-            + weights[1] * math.log(ef)
-            + weights[2] * math.log(sh)
-        )
+        log_sum = weights[0] * math.log(rq) + weights[1] * math.log(ef) + weights[2] * math.log(sh)
         total = math.exp(log_sum)
 
     return FitnessScore(

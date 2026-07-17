@@ -20,11 +20,17 @@ log = logging.getLogger(__name__)
 
 
 class StreamableHTTPMCP:
-    """MCP server over Streamable HTTP (2026 spec).
+    """MCP transport skeleton over Streamable HTTP (2026 spec).
 
-    Usage:
-        mcp_transport = StreamableHTTPMCP(mind=my_neuralmind_instance)
-        app = mcp_transport.get_starlette_app()
+    Skeleton — provides session lifecycle + Starlette app factory.
+    The MCP protocol wire format (JSON-RPC parsing, method dispatch,
+    OAuth 2.1 flows) is NOT yet implemented. Callers MUST check
+    ``enabled`` before attempting to serve; when disabled, fall back
+    to stdio via ``mcp_server.py:run_mcp_server``.
+
+    Usage after full wire implementation:
+        transport = StreamableHTTPMCP(mind=my_neuralmind_instance)
+        app = transport.get_starlette_app()
         # Mount ``app`` into your ASGI server (uvicorn, hypercorn, etc.).
     """
 
