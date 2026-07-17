@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from neuralmind import __version__
 from neuralmind import memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
@@ -109,6 +110,29 @@ def _dry_run_scan(project_path: str) -> dict:
         "est_query_tokens": est_query_tokens,
         "est_reduction_ratio": est_reduction,
     }
+def _check_version_mismatch(project_path: str) -> str | None:
+    """Return a warning string if the project's ir_meta.json was built with
+    a different NeuralMind version than the running one, else None.
+
+    A missing file or a file without a version stamp (pre-v0.46.0 builds)
+    yields None — we only warn when there is a concrete mismatch, so users
+    who upgrade don't get false alarms on actively-built projects.
+    """
+    ir_meta_path = Path(project_path) / ".neuralmind" / "ir_meta.json"
+    if not ir_meta_path.exists():
+        return None
+    try:
+        meta = json.loads(ir_meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    stored = meta.get("neuralmind_version")
+    if stored and stored != __version__:
+        return (
+            f"This project was indexed with NeuralMind v{stored}.\n"
+            f"v{__version__} requires a one-time reindex.\n"
+            f"Run: neuralmind build --force"
+        )
+    return None
 
 
 def cmd_build(args):
@@ -132,12 +156,14 @@ def cmd_build(args):
             )
             print(f"  Languages     : {langs}")
         print()
+
         print(f"  Estimated nodes       : {scan['est_nodes']:,}")
         print(f"  Est. full-codebase    : ~{scan['est_full_tokens']:,} tokens")
         print(f"  Est. wake-up context  : ~{scan['est_wakeup_tokens']:,} tokens")
         print(f"  Est. query context    : ~{scan['est_query_tokens']:,} tokens")
         print(f"  Est. token reduction  : ~{scan['est_reduction_ratio']}x per query")
         print()
+
         print("No index was built. Run `neuralmind build .` to activate these savings.")
         return
 
@@ -153,6 +179,14 @@ def cmd_build(args):
     if not path.is_dir():
         print(f"Build failed: project path is not a directory: {project_path}")
         sys.exit(1)
+
+    # Migration check: surface mismatched version before slow reindex
+    _migrate_warning = _check_version_mismatch(project_path)
+    if _migrate_warning:
+        print(
+            f"\n⚠  {_migrate_warning}\n",
+            file=sys.stderr,
+        )
 
     mind = NeuralMind(project_path)
     result = mind.build(force=force)
@@ -262,6 +296,15 @@ def _print_explain(result) -> None:
 
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+
+    # Migration check: warn on version mismatch before slow reindex
+    _migrate_warning = _check_version_mismatch(args.project_path or ".")
+    if _migrate_warning:
+        print(
+            f"\n⚠  {_migrate_warning}\n",
+            file=sys.stderr,
+        )
+
     trace = getattr(args, "trace", False) is True
     trace_verbose = getattr(args, "trace_verbose", False) is True
     relevance = getattr(args, "relevance", False) is True

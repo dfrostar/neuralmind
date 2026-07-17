@@ -135,6 +135,46 @@ NAMESPACE_TRANSITION_DECAY_RATES: dict[str, float] = {
     EPHEMERAL_NAMESPACE: EPHEMERAL_TRANSITION_DECAY_RATE,
 }
 
+# --------------------------------------------------------------------------- #
+# Structural edges — persisted call/import/inherits graph (Tier 1, BRD §4.1)
+# --------------------------------------------------------------------------- #
+
+# Edge type vocabulary: the subset of graph.json relation strings we persist
+# to the structural_edges table. Maps to RELATION_VIEWS in structural.py.
+STRUCTURAL_EDGE_TYPES: frozenset[str] = frozenset({
+    "call", "import", "inherits", "implements", "uses", "contains",
+})
+
+# graph.json relation → structural_edges.edge_type. Covers both the in-repo
+# graphgen vocabulary and the real graphify one (they differ on 'imports_from'
+# vs 'imports').
+RELATION_TO_EDGE_TYPE: dict[str, str] = {
+    "calls": "call",
+    "imports_from": "import",
+    "imports": "import",
+    "inherits": "inherits",
+    "implements": "implements",
+    "uses": "uses",
+    "references": "uses",
+    "contains": "contains",
+}
+
+# --------------------------------------------------------------------------- #
+# Time-based half-life decay (Tier 1, BRD §4.2)
+# --------------------------------------------------------------------------- #
+
+# Default exponential half-life (days) for synapse weight decay. A weight
+# decays to 50% after HALF_LIFE_DAYS days of inactivity, to 25% after 2× that,
+# etc. Per-namespace overrides below.
+HALF_LIFE_DAYS = 30.0
+SHARED_HALF_LIFE_DAYS = 60.0     # sticky team baseline decays slower
+EPHEMERAL_HALF_LIFE_DAYS = 1.0   # session scratch decays fast
+
+NAMESPACE_HALF_LIVES: dict[str, float] = {
+    SHARED_NAMESPACE: SHARED_HALF_LIFE_DAYS,
+    EPHEMERAL_NAMESPACE: EPHEMERAL_HALF_LIFE_DAYS,
+}
+
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS synapses (
     node_a TEXT NOT NULL,
@@ -179,6 +219,19 @@ CREATE TABLE IF NOT EXISTS meta (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS structural_edges (
+    caller TEXT NOT NULL,
+    callee TEXT NOT NULL,
+    call_count INTEGER NOT NULL DEFAULT 1,
+    edge_type TEXT NOT NULL DEFAULT 'call',
+    last_seen REAL NOT NULL,
+    PRIMARY KEY (caller, callee, edge_type)
+);
+CREATE INDEX IF NOT EXISTS idx_se_caller ON structural_edges(caller);
+CREATE INDEX IF NOT EXISTS idx_se_callee ON structural_edges(callee);
+CREATE INDEX IF NOT EXISTS idx_se_type ON structural_edges(edge_type);
+CREATE INDEX IF NOT EXISTS idx_se_last_seen ON structural_edges(last_seen);
 """
 
 # Index names from the v0 (pre-namespace) schema. ALTER TABLE ... RENAME
@@ -245,6 +298,35 @@ def _chunks(items: list, size: int) -> Iterable[list]:
 # handful of extra bound params in each UPDATE/DELETE, the statement stays
 # below SQLite's legacy 999 bound-variable limit (SQLITE_MAX_VARIABLE_NUMBER).
 DECAY_NAMESPACE_CHUNK = 900
+
+
+def decay_weight(
+    current_weight: float,
+    last_activated: float,
+    half_life_days: float = HALF_LIFE_DAYS,
+    now: float | None = None,
+) -> float:
+    """Exponential half-life decay on a single synapse weight.
+
+    Returns ``current_weight * exp(-λ * age_days)`` where
+    ``λ = ln(2) / half_life_days`` and ``age_days`` is the wall-clock time
+    since ``last_activated``. This replaces the old tick-based multiplicative
+    decay (which shrank weights by a fixed ratio every SessionStart) with a
+    true time-based model: a 60-day-old edge has exactly half the weight of a
+    1-day-old edge (with the default 30-day half-life).
+
+    When ``age_days <= 0`` (future timestamps, already-decayed edges) the
+    weight is returned unchanged — decay is a one-way process that only kicks
+    in for genuinely aged edges.
+    """
+    if current_weight <= 0.0:
+        return 0.0
+    ts = now if now is not None else time.time()
+    age_days = (ts - last_activated) / 86400.0
+    if age_days <= 0.0:
+        return current_weight
+    lam = 0.6931471805599453 / half_life_days  # ln(2) / half_life_days
+    return current_weight * math.exp(-lam * age_days)
 
 
 class SynapseStore:
@@ -616,40 +698,42 @@ class SynapseStore:
     # ----------------------------------------------------------------- #
 
     def decay(self, now: float | None = None) -> dict:
-        """Multiplicatively shrink all weights, honoring per-namespace policy.
+        """Time-based half-life decay on all weights, honoring per-namespace policy.
 
-        Default namespaces (personal, branch:*, custom): LTP edges
-        (activation_count >= LTP_THRESHOLD) decay at LTP_DECAY_RATE and are
-        floored at LTP_FLOOR; non-LTP edges decay at DECAY_RATE and are
-        pruned below PRUNE_THRESHOLD. ``shared`` decays at the sticky
-        SHARED_DECAY_RATE (LTP floor still applies). ``ephemeral`` decays at
-        the fast EPHEMERAL_DECAY_RATE with no LTP exemption — session
-        scratch is meant to fade. Transitions follow the same policy with
-        the TRANSITION_* counterparts. Returns counts of decayed and pruned
-        for both signals.
+        Replaces the old tick-based multiplicative decay (fixed ratio per call)
+        with a true wall-clock half-life model: a weight decays to 50% after
+        its namespace's half-life days of inactivity, to 25% after 2× that,
+        etc. The per-row ``last_activated`` timestamp drives the age, so edges
+        decay by how long ago they were last used — not by how many times
+        ``decay()`` has been called.
 
-        Decay multiplies weights, so it is *not* idempotent: running it
-        twice decays twice. The whole tick therefore commits in ONE
-        transaction — a partial commit followed by a retry (after a crash)
-        would double-decay the already-committed namespaces. Default
-        namespaces are still processed in bounded ``IN (...)`` chunks
-        (``DECAY_NAMESPACE_CHUNK`` per statement) to keep any single
-        statement under SQLite's bound-variable limit, but every statement
-        lands inside the same BEGIN/COMMIT.
+        Default namespaces (personal, branch:*, custom): half-life
+        HALF_LIFE_DAYS, LTP edges (activation_count >= LTP_THRESHOLD) are
+        floored at LTP_FLOOR. ``shared`` decays at the sticky
+        SHARED_HALF_LIFE_DAYS. ``ephemeral`` decays at the fast
+        EPHEMERAL_HALF_LIFE_DAYS with no LTP exemption. Transitions follow
+        the same policy with the same half-lives.
+
+        Returns counts of decayed and pruned for both signals.
         """
         ts = now if now is not None else time.time()
         pruned: int = 0
         pruned_transitions: int = 0
-        # Snapshot the namespaces to decay before opening the write txn.
         default_nss = self._default_namespaces()
+
+        # λ = ln(2) / half_life_days for each namespace class
+        default_lambda = 0.6931471805599453 / HALF_LIFE_DAYS
+        shared_lambda = 0.6931471805599453 / SHARED_HALF_LIFE_DAYS
+        ephemeral_lambda = 0.6931471805599453 / EPHEMERAL_HALF_LIFE_DAYS
 
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
                 # ephemeral: fast decay, no LTP floor, prune regardless of count.
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * (1.0 - ?) WHERE namespace = ?",
-                    (EPHEMERAL_DECAY_RATE, EPHEMERAL_NAMESPACE),
+                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "WHERE namespace = ?",
+                    (ephemeral_lambda, ts, EPHEMERAL_NAMESPACE),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ?",
@@ -659,20 +743,14 @@ class SynapseStore:
 
                 # shared: sticky decay; LTP floor still honored.
                 conn.execute(
-                    """
-                    UPDATE synapses
-                    SET weight = MAX(?, weight * (1.0 - ?))
-                    WHERE namespace = ? AND activation_count >= ?
-                    """,
-                    (LTP_FLOOR, SHARED_DECAY_RATE, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                    "WHERE namespace = ? AND activation_count >= ?",
+                    (LTP_FLOOR, shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
-                    """
-                    UPDATE synapses
-                    SET weight = weight * (1.0 - ?)
-                    WHERE namespace = ? AND activation_count < ?
-                    """,
-                    (SHARED_DECAY_RATE, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "WHERE namespace = ? AND activation_count < ?",
+                    (shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ? "
@@ -685,52 +763,40 @@ class SynapseStore:
                 for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
                     ph = ", ".join("?" for _ in chunk)
                     conn.execute(
-                        f"""
-                        UPDATE synapses
-                        SET weight = MAX(?, weight * (1.0 - ?))
-                        WHERE namespace IN ({ph}) AND activation_count >= ?
-                        """,
-                        (LTP_FLOOR, LTP_DECAY_RATE, *chunk, LTP_THRESHOLD),
+                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                        f"WHERE namespace IN ({ph}) AND activation_count >= ?",
+                        (LTP_FLOOR, default_lambda, ts, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
-                        f"""
-                        UPDATE synapses
-                        SET weight = weight * (1.0 - ?)
-                        WHERE namespace IN ({ph}) AND activation_count < ?
-                        """,
-                        (DECAY_RATE, *chunk, LTP_THRESHOLD),
+                        f"UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"WHERE namespace IN ({ph}) AND activation_count < ?",
+                        (default_lambda, ts, *chunk, LTP_THRESHOLD),
                     )
                     cur = conn.execute(
-                        f"""
-                        DELETE FROM synapses
-                        WHERE namespace IN ({ph}) AND weight < ?
-                        AND activation_count < ?
-                        """,
+                        f"DELETE FROM synapses WHERE namespace IN ({ph}) AND weight < ? "
+                        f"AND activation_count < ?",
                         (*chunk, PRUNE_THRESHOLD, LTP_THRESHOLD),
                     )
                     pruned += cur.rowcount
 
                 # transitions: ephemeral + shared (single ns each).
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * (1.0 - ?) "
+                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
                     "WHERE namespace = ?",
-                    (EPHEMERAL_TRANSITION_DECAY_RATE, EPHEMERAL_NAMESPACE),
+                    (ephemeral_lambda, ts, EPHEMERAL_NAMESPACE),
                 )
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * (1.0 - ?) "
+                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
                     "WHERE namespace = ?",
-                    (SHARED_TRANSITION_DECAY_RATE, SHARED_NAMESPACE),
+                    (shared_lambda, ts, SHARED_NAMESPACE),
                 )
                 # transitions: default namespaces, chunked updates.
                 for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
                     ph = ", ".join("?" for _ in chunk)
                     conn.execute(
-                        f"""
-                        UPDATE synapse_transitions
-                        SET weight = weight * (1.0 - ?)
-                        WHERE namespace IN ({ph})
-                        """,
-                        (TRANSITION_DECAY_RATE, *chunk),
+                        f"UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"WHERE namespace IN ({ph})",
+                        (default_lambda, ts, *chunk),
                     )
                 # prune ALL dead transitions (no LTP-gated transitions).
                 cur = conn.execute(
@@ -832,6 +898,134 @@ class SynapseStore:
                 raise
 
         return {"node_id": node_id, "pruned": pruned}
+
+    # ----------------------------------------------------------------- #
+    # Structural edges — persisted call/import/inherits graph (Tier 1)
+    # ----------------------------------------------------------------- #
+
+    def persist_structural_edges(
+        self,
+        edges: Iterable[dict],
+        now: float | None = None,
+    ) -> int:
+        """Persist directed structural edges from the loaded graph.
+
+        Reads ``edge['source']/edge['target']/edge['relation']`` with
+        fallbacks for graphify's ``_src/_tgt`` and ``label/kind``. Only
+        edges whose relation maps to a known ``edge_type`` (see
+        ``RELATION_TO_EDGE_TYPE``) are stored. Idempotent: re-running
+        ``build()`` increments ``call_count`` and updates ``last_seen``
+        on conflict.
+
+        Returns the number of edge rows upserted.
+        """
+        ts = now if now is not None else time.time()
+        rows: list[tuple[str, str, int, str, float]] = []
+        for edge in edges or ():
+            src = edge.get("source", edge.get("_src"))
+            tgt = edge.get("target", edge.get("_tgt"))
+            if not src or not tgt or src == tgt:
+                continue
+            relation = edge.get("relation", edge.get("label", edge.get("kind", "")))
+            edge_type = RELATION_TO_EDGE_TYPE.get(relation)
+            if edge_type is None:
+                continue
+            try:
+                confidence = float(edge.get("confidence_score", 1.0))
+            except (TypeError, ValueError):
+                confidence = 1.0
+            if confidence < 0.0:
+                continue
+            rows.append((str(src), str(tgt), 1, edge_type, ts))
+
+        if not rows:
+            return 0
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO structural_edges(
+                        caller, callee, call_count, edge_type, last_seen
+                    ) VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(caller, callee, edge_type) DO UPDATE SET
+                        call_count = structural_edges.call_count + 1,
+                        last_seen = excluded.last_seen
+                    """,
+                    rows,
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(rows)
+
+    def recall_structural(
+        self,
+        seed_ids: Iterable[str],
+        relations: Iterable[str] | None = None,
+        top_k: int = 8,
+        now: float | None = None,
+    ) -> list[tuple[str, float]]:
+        """Return weighted structural neighbors of seed node ids.
+
+        Unions the callees/importers/inheritors of each seed, optionally
+        filtered by ``edge_type``. Weight is ``LOG(call_count + 1) *
+        recency_factor`` where recency_factor decays with age from
+        ``last_seen`` (half-life 90 days — structural edges are durable
+        but still fade). Returns ``[(node_id, weight), ...]`` strongest
+        first, capped at ``top_k``.
+        """
+        seeds = [s for s in dict.fromkeys(seed_ids) if s]
+        if not seeds or top_k <= 0:
+            return []
+        ts = now if now is not None else time.time()
+        seed_set = set(seeds)
+
+        # Build the relation filter
+        if relations is not None:
+            allowed = set(relations) & STRUCTURAL_EDGE_TYPES
+            if not allowed:
+                return []
+            rel_ph = ", ".join("?" for _ in allowed)
+            rel_clause = f"AND edge_type IN ({rel_ph})"
+            rel_params = list(allowed)
+        else:
+            rel_clause = ""
+            rel_params = []
+
+        seed_ph = ", ".join("?" for _ in seeds)
+        query = f"""
+            SELECT callee, call_count, last_seen
+            FROM structural_edges
+            WHERE caller IN ({seed_ph}) {rel_clause}
+        """
+        params = list(seeds) + rel_params
+
+        with self._connect() as conn:
+            cur = conn.execute(query, params)
+            rows = cur.fetchall()
+
+        # Weight = LOG(call_count + 1) * recency_factor
+        # recency_factor = exp(-λ * age_days), λ = ln(2)/90
+        lam = 0.6931471805599453 / 90.0
+        scores: dict[str, float] = {}
+        for callee, call_count, last_seen in rows:
+            if callee in seed_set:
+                continue
+            age_days = (ts - last_seen) / 86400.0
+            recency = math.exp(-lam * max(0.0, age_days))
+            weight = math.log(call_count + 1) * recency
+            scores[callee] = max(scores.get(callee, 0.0), weight)
+
+        ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
+        return ranked[:top_k]
+
+    def structural_edge_count(self) -> int:
+        """Return the number of rows in the ``structural_edges`` table."""
+        with self._connect() as conn:
+            cur = conn.execute("SELECT COUNT(*) FROM structural_edges")
+            return cur.fetchone()[0]
 
     # ----------------------------------------------------------------- #
     # Reads
