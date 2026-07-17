@@ -160,7 +160,7 @@ are open contribution targets.
 
 | Step | First time | Re-run / re-build |
 |---|---|---|
-| `pip install neuralmind graphifyy` | ~30s | n/a |
+| `pip install neuralmind` | ~30s | n/a |
 | `graphify update .` (knowledge graph) | 10s–2min depending on repo size | seconds, incremental |
 | `neuralmind build .` (vector index) | 30s–5min depending on graph size | seconds, incremental |
 | Editor / agent integration | 5–10min | n/a |
