@@ -175,38 +175,44 @@ def get_l2_summary(
 ) -> str:
     """Generate a learned summary for an L2 community.
 
-    Falls back to a simple truncation when ``NEURALMIND_SUMMARIZE`` is not
-    enabled or the community is empty.
+    Reads community node data via the IR contract (B1), applies
+    RAPTOR-style recursive summarization, and returns the result as a
+    compact string. Falls back to an empty string (so the selector uses
+    its existing L2 retrieval) when ``NEURALMIND_SUMMARIZE`` is not
+    enabled, the IR is missing, or the community is empty.
     """
     enabled = os.environ.get("NEURALMIND_SUMMARIZE") == "1"
     if not enabled:
-        # Fall back: the existing context selector will truncate instead.
         return ""
 
     budget = max_tokens or effective_int(project_path, "L2_MAX_TOKENS")
 
-    if store is None:
+    if store is None or project_path is None:
         return ""
 
+    # B1: IR is the contract for community/node data. Pull from the
+    # serialized IR rather than querying nonexistent tables.
     try:
-        with store._connect() as conn:
-            cur = conn.execute(
-                """SELECT n.id, n.label, n.description
-                   FROM ir_nodes n
-                   JOIN ir_clusters c ON n.cluster_id = c.id
-                   WHERE c.id = ?
-                   ORDER BY n.label""",
-                (community_id,),
-            )
-            rows = cur.fetchall()
-        if not rows:
+        from pathlib import Path
+
+        from . import ir as ir_mod
+
+        ir_path = ir_mod.project_artifact(Path(project_path), ".neuralmind", "index_ir.json")
+        if not ir_path.exists():
+            return ""
+        index_ir = ir_mod.IndexIR.read(ir_path)
+        # IRCluster has no `nodes` attr — filter the flat node list by cluster id.
+        cluster_nodes = [n for n in index_ir.nodes if n.cluster == community_id]
+        if not cluster_nodes:
             return ""
         parts = [f"### Community {community_id}", ""]
-        for label, desc in [(r[1], r[2]) for r in rows]:
+        for ir_node in cluster_nodes:
+            # IRNode has no `description` — check the extra dict.
+            desc = ir_node.extra.get("description", "") if ir_node.extra else ""
             if desc:
-                parts.append(f"- **{label}**: {desc}")
+                parts.append(f"- **{ir_node.label}**: {desc}")
             else:
-                parts.append(f"- {label}")
+                parts.append(f"- {ir_node.label}")
         text = "\n".join(parts)
     except Exception:
         return ""

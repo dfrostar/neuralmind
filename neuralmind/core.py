@@ -403,6 +403,11 @@ class NeuralMind:
         # MCP agents (which don't run Claude Code hooks) inherit it too.
         self._maybe_inherit_team_memory()
 
+        # Wave 3 C3 integration: run the population tuner if its schedule gate
+        # fires (weekly by default). Runs after team memory so the incumbent
+        # config is current. Gated on NEURALMIND_TUNER_ENABLED=1.
+        self._maybe_run_tuner()
+
         # Convert the loaded graph into the canonical, versioned IR before
         # indexing (PRD 1 FR1). Validated and written to .neuralmind/; the
         # embedder still reads graph.json, so this is a parity-checked internal
@@ -608,6 +613,31 @@ class NeuralMind:
                         f"[neuralmind] inherited team memory → +{summary['synapses']} shared "
                         f"synapses, +{summary['transitions']} transitions "
                         "(set NEURALMIND_TEAM_MEMORY=0 to disable)"
+                    )
+        except Exception:
+            pass
+
+    def _maybe_run_tuner(self) -> None:
+        """Run the population tuner if its schedule gate fires.
+
+        Gated on ``NEURALMIND_TUNER_ENABLED=1``. Runs in the build hook so
+        it gets exercised on ``neuralmind build`` and ``neuralmind watch``
+        wake events. Fail-open: any tuner failure is logged and swallowed.
+        """
+        import os
+
+        if os.environ.get("NEURALMIND_TUNER_ENABLED") != "1":
+            return
+        try:
+            from .tuner import PopulationTuner
+
+            tuner = PopulationTuner(project_path=self.project_path)
+            if tuner.should_run():
+                result = tuner.run_generation()
+                if result is not None and result.promoted:
+                    print(
+                        f"[neuralmind] tuner promoted new config "
+                        f"(fitness {result.best_fitness:.4f})"
                     )
         except Exception:
             pass

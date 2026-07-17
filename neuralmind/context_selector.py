@@ -71,6 +71,27 @@ class ContextResult:
         return self.budget.total
 
 
+_DEFAULT_PARAM_FALLBACK = {
+    "SYNAPSE_SEED_K": 3,
+    "SYNAPSE_BOOST_WEIGHT": 0.3,
+    "SYNAPSE_PULL_IN_MAX": 2,
+    "SYNAPSE_PULL_IN_MIN_ENERGY": 0.15,
+    "STRUCTURAL_SEED_K": 3,
+    "STRUCTURAL_BOOST_WEIGHT": 0.35,
+    "STRUCTURAL_PULL_IN_MAX": 2,
+    "L0_MAX_TOKENS": 150,
+    "L1_MAX_TOKENS": 600,
+    "L2_MAX_TOKENS": 800,
+    "L3_MAX_TOKENS": 1000,
+    "SPREAD_DEPTH": 2,
+    "SPREAD_DECAY": 0.6,
+    "SPREAD_TOP_K": 12,
+    "STRUCTURAL_HUB_DEGREE": 50,
+    "DECAY_RATE_MIN": 3.0,
+    "DECAY_RATE_MAX": 120.0,
+}
+
+
 def _resolve_params(project_path):
     """Fail-open registry read. Returns the effective param map.
 
@@ -82,19 +103,7 @@ def _resolve_params(project_path):
 
         return resolve_effective(project_path)
     except Exception:
-        return {
-            "SYNAPSE_SEED_K": 3,
-            "SYNAPSE_BOOST_WEIGHT": 0.3,
-            "SYNAPSE_PULL_IN_MAX": 2,
-            "SYNAPSE_PULL_IN_MIN_ENERGY": 0.15,
-            "STRUCTURAL_SEED_K": 3,
-            "STRUCTURAL_BOOST_WEIGHT": 0.35,
-            "STRUCTURAL_PULL_IN_MAX": 2,
-            "L0_MAX_TOKENS": 150,
-            "L1_MAX_TOKENS": 600,
-            "L2_MAX_TOKENS": 800,
-            "L3_MAX_TOKENS": 1000,
-        }
+        return dict(_DEFAULT_PARAM_FALLBACK)
 
 
 class ContextSelector:

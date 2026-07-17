@@ -69,9 +69,12 @@ class SharedDaemonMemory:
         """Check whether a client may access another project's synapses.
 
         A client can read:
-          - its own project's synapses
-          - synapses in the `shared` namespace (team baseline)
-          - synapses in any project explicitly shared with it
+          - its own project's synapses (matched by path)
+          - the canonical `shared` namespace (team baseline) — compared
+            against ``shared.SHARED_NAMESPACE`` constant, not the literal
+            ``"shared"``, to avoid collision with a project literally
+            named "shared"
+          - any project explicitly shared with it via ``share_project``
 
         Cross-project reads are denied otherwise.
         """
@@ -81,8 +84,12 @@ class SharedDaemonMemory:
                 return False
             if mine["project_path"] == target_project:
                 return True
-            # Shared namespace is always allowed (it is the team baseline).
-            if target_project == "shared":
+            # Shared namespace: always allowed (it is the team baseline).
+            # Compare via the canonical constant to avoid collision with
+            # a project literally named "shared".
+            from .synapses import SHARED_NAMESPACE
+
+            if target_project == SHARED_NAMESPACE:
                 return True
             # Explicitly shared projects.
             shared_projects = mine.get("shared_with", [])

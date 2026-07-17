@@ -185,7 +185,22 @@ class PopulationTuner:
         params: dict[str, float],
         store: Any | None,
     ) -> float:
-        """Derive a C1 fitness score from reasoning traces + param map."""
+        """Derive a C1 fitness score from reasoning traces + param map.
+
+        LIMITATION: The retrieval_quality and session_health proxies are
+        derived from *historical* traces that are fixed across candidates,
+        so only the efficiency axis (total L0-L3 budget) actually varies.
+        This makes the tuner effectively a single-variable budget optimizer.
+
+        A faithful multi-objective eval would re-run retrieval with each
+        candidate and measure real faithfulness delta — see TRD §4.2 steps
+        2-4. That wiring is out of scope for this release; the proxy
+        stature is documented here so the limitation isn't mistaken
+        for a real measurement.
+
+        Returns 0.0 if traces are unavailable (fail-open: an
+        un-evaluable candidate is never promoted over a valid incumbent).
+        """
         from .synapses import default_db_path
         from .traces import TraceStore
 
@@ -236,7 +251,11 @@ class PopulationTuner:
         )
         if candidate_budget <= 0:
             return 1.0
-        return default_budget / candidate_budget
+        # Cap so clamp-minimum budgets cannot push fitness unboundedly high.
+        # TUNABLE_PARAMS bounds currently limit L0-L3 minima to ~50/200/400/500,
+        # yielding a raw ratio of ~2.2x at the clamp floor; 10x ceiling provides
+        # headroom against future bound changes while preventing float overflow.
+        return min(default_budget / candidate_budget, 10.0)
 
     def _re_query_rate_from_traces(self, traces: list[Any]) -> float:
         """Estimate re-query rate: fraction of traces sharing fingerprints."""
@@ -268,9 +287,12 @@ class PopulationTuner:
     # ------------------------------------------------------------------- #
 
     def run_generation(self) -> TuneRun | None:
-        """Run one full generation (population sample + eval + promote).
+        """Run evolutionary search across ``self.generations`` generations.
 
-        Returns ``None`` when no-op (no project, empty traces, etc.).
+        Each generation samples ``self.population_size`` candidates,
+        evaluates them, and (if a candidate beats the incumbent by the
+        hysteresis margin) promotes it. Returns the result of the final
+        generation, or ``None`` if the tuner is a no-op.
         """
         if self.project_path is None:
             return None
@@ -281,23 +303,38 @@ class PopulationTuner:
             incumbent_fitness = self.evaluate_candidate(incumbent)
             self._save_incumbent(incumbent, incumbent_fitness)
 
-        rng = random.Random()
         best_params = incumbent
         best_fitness = incumbent_fitness
-        for _ in range(self.population_size):
-            candidate_map = self.sample_candidate(incumbent, rng=rng)
-            candidate_fitness = self.evaluate_candidate(candidate_map)
-            if candidate_fitness > best_fitness:
-                best_fitness = candidate_fitness
-                best_params = candidate_map
-
         promoted = False
-        if self.promote_if_better(best_params, best_fitness, incumbent_fitness):
-            self._save_incumbent(best_params, best_fitness)
-            promoted = True
+
+        # Multi-generation loop. Each generation samples a new population
+        # around the current incumbent (which may have been promoted at the
+        # end of the previous generation).
+        for gen in range(self.generations):
+            rng = random.Random()
+            gen_best_params = incumbent
+            gen_best_fitness = self.evaluate_candidate(incumbent)
+            for _ in range(self.population_size):
+                candidate_map = self.sample_candidate(incumbent, rng=rng)
+                candidate_fitness = self.evaluate_candidate(candidate_map)
+                if candidate_fitness > gen_best_fitness:
+                    gen_best_fitness = candidate_fitness
+                    gen_best_params = candidate_map
+
+            if self.promote_if_better(gen_best_params, gen_best_fitness, incumbent_fitness):
+                self._save_incumbent(gen_best_params, gen_best_fitness)
+                incumbent = gen_best_params
+                incumbent_fitness = gen_best_fitness
+                best_params = gen_best_params
+                best_fitness = gen_best_fitness
+                promoted = True
+            else:
+                # No improvement this generation — carry forward.
+                best_params = gen_best_params
+                best_fitness = gen_best_fitness
 
         return TuneRun(
-            generation=0,
+            generation=self.generations - 1,
             population_size=self.population_size,
             best_fitness=best_fitness,
             incumbent_fitness=incumbent_fitness,

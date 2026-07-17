@@ -99,19 +99,24 @@ class TestSchemaMigration:
         assert "half_life_days" in cols
         assert "learned_at" in cols
 
-    def test_existing_rows_null_half_life(self, tmp_path) -> None:
-        """Backfill: existing rows have NULL half_life_days (fall back to namespace default)."""
+    def test_reinforce_writes_learned_half_life(self, tmp_path) -> None:
+        """A3: reinforce() now writes non-NULL half_life_days via update_learned_half_life."""
+        import time
+
         from neuralmind.synapses import SynapseStore, default_db_path
 
         store = SynapseStore(default_db_path(tmp_path))
         store.reinforce(["a", "b"])
+        time.sleep(0.01)
         with store._connect() as conn:
             cur = conn.execute(
                 "SELECT half_life_days FROM synapses WHERE node_a='a' AND node_b='b'"
             )
             row = cur.fetchone()
             assert row is not None
-            assert row[0] is None
+            # After reinforce, half_life_days should be a non-None float.
+            assert row[0] is not None
+            assert row[0] > 0
 
 
 class TestUpdateLearnedHalfLife:
@@ -152,6 +157,8 @@ class TestDecayFunctionWithLearnedRate:
         for _ in range(10):
             store.reinforce(["c", "d"])
         # Manually set learned half-lives to diverge.
+        # Short rate (10-day HL) decays to ~12% over 30 days — survives PRUNE_THRESHOLD (0.01).
+        # Long rate (120-day HL) decays to ~84% — strong contrast.
         with store._connect() as conn:
             conn.execute(
                 "UPDATE synapses SET half_life_days = ? WHERE node_a = ? AND node_b = ?",
@@ -159,7 +166,7 @@ class TestDecayFunctionWithLearnedRate:
             )
             conn.execute(
                 "UPDATE synapses SET half_life_days = ? WHERE node_a = ? AND node_b = ?",
-                (3.0, "a", "b"),
+                (10.0, "a", "b"),
             )
             conn.execute(
                 "UPDATE synapses SET learned_at = ? WHERE node_a IN (?, ?)",
@@ -180,3 +187,67 @@ class TestDecayFunctionWithLearnedRate:
             )
             w_short = cur.fetchone()[0]
         assert w_long > w_short
+
+    def test_personal_namespace_uses_learned_rate(self, tmp_path) -> None:
+        """Personal namespace edges with non-null half_life_days use the learned rate."""
+        import time
+
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        store.reinforce(["a", "b"])
+        # Set a long learned half-life on a personal edge.
+        with store._connect() as conn:
+            conn.execute(
+                "UPDATE synapses SET half_life_days = ?, learned_at = ? WHERE node_a = ? AND node_b = ?",
+                (120.0, time.time(), "a", "b"),
+            )
+        # Decay 30 days into the future.
+        future = time.time() + 86400 * 30
+        store.decay(now=future)
+        with store._connect() as conn:
+            cur = conn.execute(
+                "SELECT weight FROM synapses WHERE node_a=? AND node_b=?",
+                ("a", "b"),
+            )
+            weight = cur.fetchone()[0]
+        # With 120-day half-life over 30 days: retention ≈ 0.84.
+        # With 30-day namespace default: retention = 0.5.
+        # The learned rate should give significantly more retention.
+        assert weight > 0.10
+
+    def test_null_half_life_uses_namespace_default(self, tmp_path) -> None:
+        """Edges with NULL half_life_days fall back to namespace default."""
+        import time
+
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        store.reinforce(["a", "b"])
+        # Ensure half_life_days is NULL (default).
+        with store._connect() as conn:
+            conn.execute(
+                "UPDATE synapses SET half_life_days = NULL WHERE node_a = ? AND node_b = ?",
+                ("a", "b"),
+            )
+        future = time.time() + 86400 * 30
+        store.decay(now=future)
+        with store._connect() as conn:
+            cur = conn.execute(
+                "SELECT weight FROM synapses WHERE node_a=? AND node_b=?",
+                ("a", "b"),
+            )
+            weight = cur.fetchone()[0]
+        # With 30-day namespace default over 30 days: retention = 0.5.
+        assert weight < 0.10
+
+    def test_update_learned_half_life_passes_project_path(self, tmp_path) -> None:
+        """update_learned_half_life passes project_path to default_bounds."""
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(tmp_path))
+        store.reinforce(["a", "b"])
+        result = learned_decay.update_learned_half_life(store, "a", "b", project_path=tmp_path)
+        assert result is not None
+        lo, hi = learned_decay.default_bounds(tmp_path)
+        assert lo <= result <= hi

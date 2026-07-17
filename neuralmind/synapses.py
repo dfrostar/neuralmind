@@ -193,6 +193,7 @@ CREATE INDEX IF NOT EXISTS idx_syn_a ON synapses(node_a);
 CREATE INDEX IF NOT EXISTS idx_syn_b ON synapses(node_b);
 CREATE INDEX IF NOT EXISTS idx_syn_weight ON synapses(weight);
 CREATE INDEX IF NOT EXISTS idx_syn_ns ON synapses(namespace, weight);
+CREATE INDEX IF NOT EXISTS idx_syn_ns_hl ON synapses(namespace, half_life_days);
 
 CREATE TABLE IF NOT EXISTS synapse_transitions (
     from_node TEXT NOT NULL,
@@ -594,6 +595,16 @@ class SynapseStore:
                         """,
                         pair_rows,
                     )
+                # A3: recompute and persist the learned per-edge half-life
+                # within the SAME transaction (before COMMIT).
+                if pairs:
+                    try:
+                        from .learned_decay import update_learned_half_life
+
+                        for a, b in pairs:
+                            update_learned_half_life(store=self, node_a=a, node_b=b, conn=conn)
+                    except Exception:
+                        pass
                 conn.execute("COMMIT")
             except Exception:
                 conn.execute("ROLLBACK")
@@ -766,6 +777,17 @@ class SynapseStore:
                     "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NULL",
                     (shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
+                # A3: per-edge learned overrides for shared.
+                conn.execute(
+                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                    "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NOT NULL",
+                    (LTP_FLOOR, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                )
+                conn.execute(
+                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NOT NULL",
+                    (ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ? "
                     "AND activation_count < ?",
@@ -776,15 +798,27 @@ class SynapseStore:
                 # default policy: personal, branch:*, and any custom namespace.
                 for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
                     ph = ", ".join("?" for _ in chunk)
+                    # Namespace default rate (no per-edge override).
                     conn.execute(
                         f"UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
-                        f"WHERE namespace IN ({ph}) AND activation_count >= ?",
+                        f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NULL",
                         (LTP_FLOOR, default_lambda, ts, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
                         f"UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
-                        f"WHERE namespace IN ({ph}) AND activation_count < ?",
+                        f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NULL",
                         (default_lambda, ts, *chunk, LTP_THRESHOLD),
+                    )
+                    # A3: per-edge learned half-life overrides for non-ephemeral, non-shared namespaces.
+                    conn.execute(
+                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                        f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NOT NULL",
+                        (LTP_FLOOR, ts, *chunk, LTP_THRESHOLD),
+                    )
+                    conn.execute(
+                        f"UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NOT NULL",
+                        (ts, *chunk, LTP_THRESHOLD),
                     )
                     cur = conn.execute(
                         f"DELETE FROM synapses WHERE namespace IN ({ph}) AND weight < ? "

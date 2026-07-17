@@ -159,7 +159,18 @@ class DaemonSleep:
             return cur.rowcount
 
     def promote_ltp_edges(self) -> int:
-        """Promote LTP edges that survived decay (raise LTP floor slightly)."""
+        """Gradually restore LTP edges toward their pre-decay weight.
+
+        LTP edges (activation_count >= LTP_THRESHOLD) are floored at
+        LTP_FLOOR during decay, but repeated decay cycles can leave them
+        well below their original weight. This pass applies a small
+        multiplicative restoration (1.1x) to nudge them back up.
+
+        NOTE: This is gradual restoration, not full restoration. We do
+        not track pre-decay weight, so we cannot restore exactly. The
+        multiplier is chosen so that edges converge toward WEIGHT_CAP
+        over multiple sleep passes without overshooting.
+        """
         with self.store._connect() as conn:
             cur = conn.execute("""UPDATE synapses SET weight = MIN(1.0, weight * 1.1)
                    WHERE activation_count >= 5
@@ -207,17 +218,16 @@ class DaemonSleep:
             return None
 
     def detect_stale_edges(self) -> list[str]:
-        """Flag edges with no reinforcement in N days."""
+        """Flag edges with no reinforcement in N days (all namespaces)."""
         cutoff = time.time() - (self.stale_days * 86400)
         with self.store._connect() as conn:
             cur = conn.execute(
-                """SELECT node_a, node_b FROM synapses
-                   WHERE namespace = 'shared'
-                     AND last_activated < ?
+                """SELECT node_a, node_b, namespace FROM synapses
+                   WHERE last_activated < ?
                    ORDER BY weight ASC""",
                 (cutoff,),
             )
-            return [f"{r[0]}-{r[1]}" for r in cur.fetchall()]
+            return [f"{r[2]}:{r[0]}-{r[1]}" for r in cur.fetchall()]
 
     def _store(self) -> Any:
         if self.project_path is None:

@@ -42,6 +42,7 @@ def compute_edge_half_life(
     first_activated: float,
     namespace_default: float,
     project_path: Any = None,
+    min_floor: float | None = None,
 ) -> float:
     """Adapt half-life from reinforcement frequency + recency.
 
@@ -53,8 +54,15 @@ def compute_edge_half_life(
     and ``first_activated`` are unix timestamps. ``namespace_default`` is
     the namespace's canonical half-life (fallback when the edge is too new
     to have a meaningful rate).
+
+    ``min_floor`` sets the minimum learned half-life. Defaults to ``lo``
+    from the effective param map. For shared-team namespaces, pass
+    ``namespace_default`` so the learned rate never falls below the
+    namespace's sticky baseline.
     """
     lo, hi = default_bounds(project_path)
+    if min_floor is not None:
+        lo = max(lo, min_floor)
     now = time.time()
 
     # Age of the edge in days.
@@ -90,13 +98,19 @@ def update_learned_half_life(
     node_a: str,
     node_b: str,
     namespace: str | None = None,
+    project_path: Any = None,
+    conn: Any = None,
 ) -> float | None:
     """Recompute and persist the per-edge half-life for a synapse.
 
     Returns the learned value, or ``None`` on any failure (fail-open).
+
+    If ``conn`` is provided, the function uses it instead of opening a new
+    connection. This lets ``reinforce()`` compute learned half-lives within
+    its existing upsert transaction.
     """
     try:
-        from .synapses import SynapseStore, _canonical
+        from .synapses import SHARED_NAMESPACE, SynapseStore, _canonical
 
         canonical = _canonical(node_a, node_b)
         if canonical is None:
@@ -104,8 +118,8 @@ def update_learned_half_life(
         a, b = canonical
         ns = namespace or store.namespace
 
-        with store._connect() as conn:
-            cur = conn.execute(
+        def _compute_and_update(existing_conn):
+            cur = existing_conn.execute(
                 """SELECT weight, activation_count, last_activated, created_at,
                           half_life_days
                    FROM synapses WHERE node_a = ? AND node_b = ? AND namespace = ?""",
@@ -116,7 +130,6 @@ def update_learned_half_life(
                 return None
             weight, act_count, last_act, created_at, existing = row
 
-            # Determine namespace default half-life.
             from .synapses import NAMESPACE_HALF_LIVES, HALF_LIFE_DAYS
 
             ns_default = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
@@ -126,13 +139,20 @@ def update_learned_half_life(
                 last_activated=last_act,
                 first_activated=created_at,
                 namespace_default=ns_default,
+                project_path=project_path,
+                min_floor=ns_default if ns == SHARED_NAMESPACE else None,
             )
-            conn.execute(
+            existing_conn.execute(
                 "UPDATE synapses SET half_life_days = ?, learned_at = ? "
                 "WHERE node_a = ? AND node_b = ? AND namespace = ?",
                 (learned, time.time(), a, b, ns),
             )
             return learned
+
+        if conn is not None:
+            return _compute_and_update(conn)
+        with store._connect() as new_conn:
+            return _compute_and_update(new_conn)
     except Exception as exc:  # noqa: BLE001 — fail-open
         log.debug("update_learned_half_life failed: %s", exc)
         return None
