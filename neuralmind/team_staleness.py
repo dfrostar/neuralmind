@@ -143,6 +143,10 @@ class TeamStalenessDetector:
         """
         Apply accelerated decay to a list of stale edges.
         
+        Decay is time-proportional: weight × 2^(−fast_decay × days_past_threshold / half_life).
+        After 1 day past stale: 2^(−5/30) ≈ 0.891
+        After 30 days past stale: 2^(−5) = 1/32 — matches intent
+        
         Returns the number of edges updated. Fail-open: partial
         failures return the count of successful updates.
         """
@@ -156,10 +160,11 @@ class TeamStalenessDetector:
                 for edge in stale_edges:
                     if not edge.fast_decay_eligible:
                         continue
-                    # Apply fast decay: weight multiplied by 2^(-fast_decay / half_life)
-                    # For a default 30-day half-life and FAST_DECAY=5, this equals
-                    # approximately 5x the normal decay rate.
-                    decay_factor = 2.0 ** (-self.fast_decay)  # 1/32 for fast_decay=5
+                    # Time-proportional decay: scales by days past threshold
+                    days_past = max(0.0, edge.days_since_last - self.stale_threshold(edge.namespace))
+                    half_life_days = self.stale_threshold(edge.namespace)
+                    decay_exponent = self.fast_decay * days_past / max(1.0, half_life_days)
+                    decay_factor = 2.0 ** (-decay_exponent)
                     conn.execute(
                         """UPDATE synapses SET weight = weight * ?
                            WHERE node_a = ? AND node_b = ? AND namespace = ?""",

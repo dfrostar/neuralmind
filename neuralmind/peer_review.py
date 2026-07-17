@@ -18,7 +18,7 @@ from typing import Any
 from .contribution_scoring import ContributionQualityScorer, EdgeQuality
 
 # Threshold: edges at or above this score auto-promote to shared
-AUTO_PROMOTE_THRESHOLD = 0.75
+AUTO_PROMOTE_THRESHOLD = 0.70
 
 # Edges below this score are rejected outright
 REJECT_THRESHOLD = 0.15
