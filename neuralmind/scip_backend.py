@@ -72,9 +72,8 @@ class ScipBackend:
             return self.config.index_path
         from . import precision
 
-        # Auto-detect in the caller's project graph root.
-        # (graphgen.py passes the project path via refine_graph call.)
-        return None
+        found = precision.find_scip_index(getattr(self, "_project_path", "."))
+        return str(found) if found else None
 
     def refine_graph(self, graph: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """Apply the SCIP precision pass if available and enabled.

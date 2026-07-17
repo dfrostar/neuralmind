@@ -46,8 +46,14 @@ class TestClamp:
     def test_below_lo(self):
         assert _clamp(-0.5) == 0.0
 
-    def test_above_hi(self):
-        assert _clamp(1.5) == 1.0
+    def test_above_hi_with_bound(self):
+        assert _clamp(1.5, hi=1.0) == 1.0
+
+    def test_above_hi_no_bound(self):
+        assert _clamp(1.5) == 1.5
+
+    def test_no_upper_bound(self):
+        assert _clamp(100.0, lo=0.0) == 100.0
 
 
 class TestComputeFitness:
@@ -56,7 +62,7 @@ class TestComputeFitness:
         score = compute_fitness(inputs)
         assert 0.0 <= score.total <= 1.0
         assert score.retrieval_quality == 0.8
-        assert score.efficiency == 1.0  # clamped to 1.0
+        assert score.efficiency == 1.2  # not clamped (efficiency > 1.0 is valid)
         assert score.session_health == 0.9
 
     def test_zero_on_any_axis_dominates(self):
@@ -79,6 +85,12 @@ class TestComputeFitness:
     def test_effective_weights_sum_to_one(self):
         score = compute_fitness(FitnessInputs(0.5, 0.5, 0.5))
         assert sum(score.weights) == pytest.approx(1.0)
+
+    def test_efficiency_above_one_not_clamped(self):
+        """Efficiency > 1.0 is valid (reduction ratio). Must NOT be clamped."""
+        inputs = FitnessInputs(retrieval_quality=0.8, efficiency=1.5, session_health=0.8)
+        score = compute_fitness(inputs)
+        assert score.efficiency == 1.5
 
 
 class TestGetSetWeights:

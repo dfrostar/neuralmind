@@ -37,6 +37,7 @@ META_KEY_FITNESS_TS = "self_improve:fitness_timestamp"
 DEFAULT_WEIGHTS = (0.5, 0.3, 0.2)
 
 # Hysteresis margin: a candidate must beat the incumbent by this fraction to promote.
+# Used by the tuner (C3) — not by fitness itself.
 DEFAULT_HYSTERESIS = 0.05
 
 
@@ -130,8 +131,13 @@ class FitnessScore:
         }
 
 
-def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    return max(lo, min(hi, value))
+def _clamp(value: float, lo: float = 0.0, hi: float | None = None) -> float:
+    """Clamp value to [lo, hi]. If hi is None, no upper bound."""
+    if value < lo:
+        return lo
+    if hi is not None and value > hi:
+        return hi
+    return value
 
 
 def compute_fitness(
@@ -152,11 +158,11 @@ def compute_fitness(
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
-    # Clamp inputs to [0, 1] for the product (efficiency > 1.0 is possible
-    # from the reduction ratio, so we treat >1.0 as "good" by clamping hi).
-    rq = _clamp(inputs.retrieval_quality)
-    ef = _clamp(inputs.efficiency)
-    sh = _clamp(inputs.session_health)
+    # Clamp inputs: rq and sh are bounded [0, 1]. Efficiency > 1.0 is
+    # valid (reduction ratio 2.0 = half the tokens) and must NOT be clamped.
+    rq = _clamp(inputs.retrieval_quality, 0.0, 1.0)
+    ef = _clamp(inputs.efficiency, 0.0)  # no upper bound
+    sh = _clamp(inputs.session_health, 0.0, 1.0)
 
     # Weighted product in log space: avoids underflow with small weights.
     # When any component is exactly 0, the product is 0 (correct dominance).
@@ -195,13 +201,13 @@ def session_health_from_events(
     scores 1.0; a session where every query is a re-query scores 0.0.
     """
     if re_query_rate_override is not None:
-        return _clamp(1.0 - re_query_rate_override)
+        return _clamp(1.0 - re_query_rate_override, 0.0, 1.0)
     if not events:
         return 1.0
     from .memory import re_query_rate
 
     rate = re_query_rate(events)
-    return _clamp(1.0 - rate)
+    return _clamp(1.0 - rate, 0.0, 1.0)
 
 
 def compute_fitness_from_events(

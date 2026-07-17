@@ -38,6 +38,15 @@ class RerankConfig:
     # ONNX model path (optional, falls back to heuristic reranking).
     model_path: str | None = None
 
+    @classmethod
+    def from_env(cls) -> "RerankConfig":
+        """Build config from environment variables."""
+        return cls(
+            enabled=os.environ.get("NEURALMIND_RERANK", "") in ("1", "true", "True"),
+            max_latency_ms=float(os.environ.get("NEURALMIND_RERANK_MAX_MS", "50.0")),
+            model_path=os.environ.get("NEURALMIND_RERANK_MODEL"),
+        )
+
 
 # ---------------------------------------------------------------------------
 # Heuristic baseline reranker (no model dependency)

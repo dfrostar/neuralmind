@@ -26,10 +26,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-# ---------------------------------------------------------------------------
-# Tokenizer (stdlib-only, same as BM25)
-# ---------------------------------------------------------------------------
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def is_sparse_enabled() -> bool:
+    """True if learned sparse retrieval is enabled (env NEURALMIND_SPARSE=1)."""
+    return os.environ.get("NEURALMIND_SPARSE", "") in ("1", "true", "True")
 
 
 def tokenize(text: str) -> list[str]:
