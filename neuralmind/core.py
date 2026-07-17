@@ -472,6 +472,19 @@ class NeuralMind:
             except Exception:
                 pass
 
+        # Seed synapse weights from the structural graph so the learned
+        # association layer starts with real architectural signal instead of
+        # waiting weeks for co-activation to accumulate. Fail-open: seeding
+        # is non-critical — a failure here must not break the build.
+        _structural_synapse_count = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    _structural_synapse_count = store.seed_from_structural()
+            except Exception:
+                pass
+
         # Get final stats
         final_stats = self.embedder.get_stats()
 
@@ -492,6 +505,8 @@ class NeuralMind:
         }
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
+        if _structural_synapse_count:
+            self._build_stats["structural_synapses"] = _structural_synapse_count
         if ir_summary is not None:
             self._build_stats["ir"] = ir_summary
 

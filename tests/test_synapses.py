@@ -5,14 +5,20 @@ from __future__ import annotations
 import threading
 import time
 
+import pytest
+
 from neuralmind.synapses import (
     LEARNING_RATE,
     LTP_FLOOR,
     LTP_THRESHOLD,
     PRUNE_THRESHOLD,
+    STRUCTURAL_BASE_WEIGHT,
+    STRUCTURAL_LOG_SCALE,
+    STRUCTURAL_MAX_WEIGHT,
     TRANSITION_PRUNE_THRESHOLD,
     TRANSITION_WEIGHT_CAP,
     WEIGHT_CAP,
+    SHARED_NAMESPACE,
     SynapseStore,
 )
 
@@ -525,3 +531,72 @@ def test_decay_commits_in_single_transaction(tmp_path):
 
     _, connects = _count_connect_calls(s, lambda: s.decay())
     assert connects == 1, f"decay should commit in exactly one transaction, opened {connects}"
+
+
+# --------------------------------------------------------------------------- #
+# Structural → synapse seeding tests
+# --------------------------------------------------------------------------- #
+
+
+def test_seed_from_structural_basic(tmp_path):
+    """Structural edges in the table should seed synapse edges."""
+    s = _store(tmp_path)
+    edges = [
+        {"source": "A", "target": "B", "relation": "calls"},
+        {"source": "B", "target": "C", "relation": "imports_from"},
+    ]
+    s.persist_structural_edges(edges)
+    count = s.seed_from_structural()
+    assert count == 2
+    all_edges = s.edges()
+    assert len(all_edges) == 2
+    for _, _, weight, _ in all_edges:
+        assert 0.0 < weight <= STRUCTURAL_MAX_WEIGHT
+
+
+def test_seed_from_structural_weight_capped(tmp_path):
+    """Very high call_count should still cap at STRUCTURAL_MAX_WEIGHT."""
+
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    # call_count=50000 → raw = 0.10 + 0.05*ln(50001) ≈ 0.641, capped to 0.60
+    with s._connect() as conn:
+        conn.execute(
+            "UPDATE structural_edges SET call_count = 50000 WHERE caller = 'A'"
+        )
+    count = s.seed_from_structural()
+    assert count == 1
+    # Read shared namespace raw so we test the stored weight, not the merged
+    # view (which scales by W_SHARED=0.5).
+    with s._connect() as conn:
+        raw_weight = conn.execute(
+            "SELECT weight FROM synapses WHERE namespace = ?",
+            (SHARED_NAMESPACE,),
+        ).fetchone()[0]
+    assert raw_weight == pytest.approx(STRUCTURAL_MAX_WEIGHT)
+
+
+def test_seed_from_structural_idempotent(tmp_path):
+    """Re-seeding should increment activation_count, not add rows."""
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    s.seed_from_structural()
+    s.seed_from_structural()
+    assert len(s.edges()) == 1  # still one edge
+    assert s.edges()[0][3] == 2  # activation_count incremented
+
+
+def test_seed_from_structural_uses_shared_namespace(tmp_path):
+    """Seeded edges should land in 'shared' namespace."""
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    s.seed_from_structural()
+    # Check namespace via raw SQL
+    with s._connect() as conn:
+        ns = conn.execute(
+            "SELECT namespace FROM synapses WHERE node_a = 'A'"
+        ).fetchone()[0]
+    assert ns == "shared"

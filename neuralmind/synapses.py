@@ -144,10 +144,29 @@ HALF_LIFE_DAYS = 30.0
 SHARED_HALF_LIFE_DAYS = 60.0     # sticky team baseline decays slower
 EPHEMERAL_HALF_LIFE_DAYS = 1.0   # session scratch decays fast
 
+
 NAMESPACE_HALF_LIVES: dict[str, float] = {
     SHARED_NAMESPACE: SHARED_HALF_LIFE_DAYS,
     EPHEMERAL_NAMESPACE: EPHEMERAL_HALF_LIFE_DAYS,
 }
+
+
+# --------------------------------------------------------------------------- #
+# Structural -> synapse seeding (BRD §4.1, TRD §2)
+# --------------------------------------------------------------------------- #
+
+# Seeds structural call-graph edges into the synapse store so the
+# learned-association layer starts with real architectural signal (instead of
+# waiting weeks for co-activation to accumulate).
+#
+#   weight = clamp(BASE + LOG_SCALE * ln(call_count + 1), MAX)
+#
+# Below LEARNING_RATE (0.15) for single-observation edges but grows for hot
+# call paths. Below LTP_FLOOR (0.20) so structural edges can be pruned if
+# they decay long enough without a rebuild.
+STRUCTURAL_BASE_WEIGHT = 0.10
+STRUCTURAL_LOG_SCALE = 0.05
+STRUCTURAL_MAX_WEIGHT = 0.60
 
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS synapses (
@@ -920,6 +939,114 @@ class SynapseStore:
                     ON CONFLICT(caller, callee, edge_type) DO UPDATE SET
                         call_count = structural_edges.call_count + 1,
                         last_seen = excluded.last_seen
+                    """,
+                    rows,
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(rows)
+
+    # ----------------------------------------------------------------- #
+    # Structural → synapse seeding (TRD §2.3–2.5)
+    # ----------------------------------------------------------------- #
+
+    def _canonical_synapse_row(
+        self,
+        node_a: str,
+        node_b: str,
+        weight: float,
+        activation_count: int,
+        last_activated: float,
+        created_at: float,
+    ) -> tuple[str, str, str, float, int, float, float]:
+        """Canonicalize undirected edge direction and add ``shared`` namespace.
+
+        Synapses are undirected and stored under ``node_a < node_b`` — this
+        helper enforces that ordering and attaches the ``SHARED_NAMESPACE``
+        string so seeded edges land in the slower-decaying shared pool
+        (60-day half-life) instead of the personal one.
+
+        Returns a 7-tuple matching the ``synapses`` table column order:
+        ``(node_a, node_b, namespace, weight, activation_count,
+        last_activated, created_at)``.
+        """
+        if node_a > node_b:
+            node_a, node_b = node_b, node_a
+        return (
+            node_a,
+            node_b,
+            SHARED_NAMESPACE,
+            weight,
+            activation_count,
+            last_activated,
+            created_at,
+        )
+
+    def seed_from_structural(self, now: float | None = None) -> int:
+        """Seed synapse weights from the ``structural_edges`` table.
+
+        For each ``(caller, callee)`` row in ``structural_edges``, create or
+        reinforce an undirected synapse edge using the weight formula::
+
+            weight = clamp(
+                STRUCTURAL_BASE_WEIGHT
+                + STRUCTURAL_LOG_SCALE * ln(call_count + 1),
+                STRUCTURAL_MAX_WEIGHT,
+            )
+
+        Seeded edges land in ``shared`` namespace with ``activation_count =
+        1``. They decay at the namespace's half-life (60 days) and are NOT
+        LTP-protected, so a path that disappears from the graph will
+        eventually prune after enough builds skip it.
+
+        Idempotent: re-running ``build()`` re-seeds and increments
+        ``activation_count``, but weight is clamped at
+        ``STRUCTURAL_MAX_WEIGHT`` so it doesn't grow unbounded.
+
+        Returns the number of synapse edges upserted (0 if the structural
+        table is empty, e.g. a fresh project with no graph).
+        """
+        ts = now if now is not None else time.time()
+
+        with self._connect() as conn:
+            structural_rows = conn.execute(
+                "SELECT caller, callee, call_count FROM structural_edges"
+            ).fetchall()
+
+        if not structural_rows:
+            return 0
+
+        rows: list[tuple[str, str, str, float, int, float, float]] = []
+        for caller, callee, call_count in structural_rows:
+            pair = _canonical(caller, callee)
+            if pair is None:
+                continue
+            raw = STRUCTURAL_BASE_WEIGHT + STRUCTURAL_LOG_SCALE * math.log(call_count + 1)
+            weight = min(raw, STRUCTURAL_MAX_WEIGHT)
+            rows.append(
+                self._canonical_synapse_row(
+                    pair[0], pair[1], weight, 1, ts, ts
+                )
+            )
+
+        if not rows:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO synapses(
+                        node_a, node_b, namespace, weight, activation_count,
+                        last_activated, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                        weight = MAX(synapses.weight, excluded.weight),
+                        activation_count = synapses.activation_count + 1,
+                        last_activated = excluded.last_activated
                     """,
                     rows,
                 )
