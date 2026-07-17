@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.48.0](https://github.com/dfrostar/neuralmind/compare/v0.47.1...v0.48.0) (2026-07-17)
+
+
+### Features — Wave 4 completes NeuralMind v2.0
+
+> **v2.0 is complete.** Four waves, 26 workstreams, 7 buckets. The future-proofing plan v2.0 is fully implemented.
+
+* **CI-gated tuner promotion (C4)**: wraps the population tuner (C3) with a fixture-evaluated promotion gate — runs `neuralmind benchmark --tuner-ci`, promotes only if fitness beats incumbent by hysteresis margin
+* **Modularity clustering (G3)**: Louvain clustering over structural edges replaces balanced-per-file communities; `detect_structural_communities()` returns architecturally-boundary communities for L2
+* **Incremental re-extraction (G4)**: `IncrementalExtractor` tracks file content hashes; builds re-extract symbols and callers/importers from changed files only
+* **Contribution-quality scoring (E1)**: `ContributionQualityScorer` scores edges by reinforcement frequency + recency − conflict rate; gates promotion to `shared` namespace
+* **Quality-weighted merge semantics (E2)**: `QualityWeightedMerger` resolves conflicting edges from two contributors by quality score instead of last-write-wins
+* **Peer review gate (E3)**: `PeerReviewGate` auto-promotes high-quality edges, flags marginal ones for review, rejects very-low-quality edges
+* **Team staleness detection (E4)**: `TeamStalenessDetector` applies accelerated decay to team edges with no reinforcement in N days (30/14 day thresholds)
+* **Tool-use metrics pipeline (F3)**: `MetricsCollector` logs per-query latency, retrieval reuse rate, tool success rate, token cost to bounded JSONL files under `.neuralmind/metrics/`
+* **Backpressure + circuit breakers (F4)**: `ProjectBackpressure`, `CircuitBreaker`, `ProjectLock` for graceful degradation under concurrent daemon/query/watch
+* **Judge transcripts (D3)**: populated `bench/public/judge/` with fixture queries and reference answers for offline `--judge` evaluation
+* **Per-language fixtures (D4)**: registered C#, Ruby, PHP suites in `evals/quality/runner.py` — 10-language golden-query coverage (128 queries across 10 fixtures)
+
+
+### Writes
+
+* **New modules**: `neuralmind/ci_tuner.py`, `neuralmind/modularity.py`, `neuralmind/incremental_extract.py`, `neuralmind/contribution_scoring.py`, `neuralmind/merge_semantics.py`, `neuralmind/peer_review.py`, `neuralmind/team_staleness.py`, `neuralmind/metrics_pipeline.py`, `neuralmind/backpressure.py`, `neuralmind/judge_transcripts.py`
+
+
+### Tests
+
+* 38 new tests across 8 test files; all 1374 tests pass
+
 ## [0.47.1](https://github.com/dfrostar/neuralmind/compare/v0.47.0...v0.47.1) (2026-07-17)
 
 
