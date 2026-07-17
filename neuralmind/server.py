@@ -484,6 +484,9 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     Without this the build call surfaces a terse "Could not load graph
     from ..." message that doesn't tell first-time users what to do.
     """
+    # Accept either the IR or a legacy graph.json as evidence of a build
+    if (project_path / ".neuralmind" / "index_ir.json").exists():
+        return
     graph_path = project_path / "graphify-out" / "graph.json"
     if graph_path.exists():
         return

@@ -1342,5 +1342,144 @@ class SchemaArtifactTests(unittest.TestCase):
             )
 
 
+# --------------------------------------------------------------------------- #
+# G1 — Dynamic Import Resolution tests
+# --------------------------------------------------------------------------- #
+FIXTURE_DYN_PY = _REPO / "tests" / "fixtures" / "sample_project_dynamic_py"
+FIXTURE_DYN_TS = _REPO / "tests" / "fixtures" / "sample_project_dynamic_ts"
+
+
+@unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
+class AddEdgeConfidenceScoreTests(unittest.TestCase):
+    """Direct unit tests for add_edge's confidence_score parameter."""
+
+    def test_add_edge_confidence_score_override(self) -> None:
+        b = graphgen._GraphBuilder()
+        b.add_edge("imports_from", "a", "b", "test.py", 1, confidence_score=0.2)
+        self.assertEqual(b.edges[-1]["confidence_score"], 0.2)
+
+    def test_add_edge_confidence_score_default(self) -> None:
+        b = graphgen._GraphBuilder()
+        b.add_edge("imports_from", "a", "b", "test.py", 1)
+        self.assertEqual(b.edges[-1]["confidence_score"], 1.0)
+
+
+@unittest.skipUnless(graphgen.is_available(), "tree-sister not installed")
+class EnsureExtNodeTests(unittest.TestCase):
+    """Idempotency + required keys on synthetic ext__ nodes."""
+
+    def test_ensure_ext_node_idempotent(self) -> None:
+        b = graphgen._GraphBuilder()
+        id1 = graphgen._ensure_ext_node(b, "Foo", "test.py", 1)
+        id2 = graphgen._ensure_ext_node(b, "Foo", "test.py", 5)
+        self.assertEqual(id1, id2)
+        # Only one node created.
+        self.assertEqual(len(b.nodes), 1)
+
+    def test_ext_node_synthetic(self) -> None:
+        b = graphgen._GraphBuilder()
+        nid = graphgen._ensure_ext_node(b, "ExternalGem", "test.py", 3)
+        self.assertTrue(nid.startswith("ext__"))
+        self.assertTrue(nid.endswith("_cls"))
+        node = b.nodes[nid]
+        self.assertEqual(node["label"], "ExternalGem")
+        self.assertEqual(node["file_type"], "code")
+
+
+@unittest.skipUnless(graphgen.is_available(), "tree-sitter not installed")
+class DynamicPythonImportTests(unittest.TestCase):
+    """G1: Python dynamic import resolution at graphgen time."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_DYN_PY)
+        cls.edges = cls.graph["links"]
+
+    def _edge_from_to(self, src_substr: str, tgt_substr: str) -> list[dict]:
+        results = []
+        for e in self.edges:
+            src = e["source"]
+            tgt = e["target"]
+            if src_substr in src and tgt_substr in tgt and e["relation"] == "imports_from":
+                results.append(e)
+        return results
+
+    def test_dynamic_py_literal_import_module(self) -> None:
+        """pkg/a.py → pkg/b.py via importlib.import_module("pkg.b"), confidence=1.0"""
+        matches = self._edge_from_to("pkg_a_py", "pkg_b_py")
+        self.assertTrue(matches, "edge from pkg/a.py to pkg/b.py should exist")
+        self.assertEqual(matches[0]["confidence_score"], 1.0)
+
+    def test_dynamic_py_const_import_module(self) -> None:
+        """pkg/d.py → pkg/c.py via MODULE variable → confidence 0.5..1.0."""
+        matches = self._edge_from_to("pkg_d_py", "pkg_c_py")
+        self.assertTrue(matches, "edge from pkg/d.py to pkg/c.py should exist")
+        score = matches[0]["confidence_score"]
+        self.assertGreater(score, 0.5)
+        self.assertLess(score, 1.0)
+
+    def test_dynamic_py_variable_import_module(self) -> None:
+        """pkg/e.py → synthetic ext__ node, confidence < 0.5."""
+        matches = [
+            e for e in self.edges
+            if "pkg_e_py" in e["source"] and "ext__" in e["target"]
+            and e["relation"] == "imports_from"
+        ]
+        self.assertTrue(matches, "edge from pkg/e.py to synthetic ext__ node should exist")
+        self.assertLess(matches[0]["confidence_score"], 0.5)
+
+    def test_low_confidence_edges_emitted(self) -> None:
+        """Edges with confidence_score < 0.5 exist in graph."""
+        low = [e for e in self.edges if e["confidence_score"] < 0.5]
+        self.assertTrue(low, "should have low-confidence dynamic import edges")
+
+    def test_schema_version_bumped(self) -> None:
+        self.assertEqual(self.graph["schema_version"], 2)
+
+
+@unittest.skipUnless(
+    graphgen.is_available() and graphgen.language_available("typescript"),
+    "tree-sitter-typescript not installed",
+)
+class DynamicTypeScriptImportTests(unittest.TestCase):
+    """G1: TypeScript dynamic require/import resolution."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.graph = graphgen.build_graph(FIXTURE_DYN_TS)
+        cls.edges = cls.graph["links"]
+
+    def _edge_from_to(self, src_substr: str, tgt_substr: str) -> list[dict]:
+        results = []
+        for e in self.edges:
+            src = e["source"]
+            tgt = e["target"]
+            if src_substr in src and tgt_substr in tgt and e["relation"] == "imports_from":
+                results.append(e)
+        return results
+
+    def test_dynamic_ts_require_literal(self) -> None:
+        """src/a.ts → src/b.ts via require("./b"), confidence=1.0."""
+        matches = self._edge_from_to("src_a_ts", "src_b_ts")
+        self.assertTrue(matches, "edge from src/a.ts to src/b.ts should exist")
+        self.assertEqual(matches[0]["confidence_score"], 1.0)
+
+    def test_dynamic_ts_require_variable(self) -> None:
+        """src/d.ts → ext__ synthetic node, confidence < 0.5."""
+        matches = [
+            e for e in self.edges
+            if "src_d_ts" in e["source"] and "ext__" in e["target"]
+            and e["relation"] == "imports_from"
+        ]
+        self.assertTrue(matches, "edge from src/d.ts to ext__ node should exist")
+        self.assertLess(matches[0]["confidence_score"], 0.5)
+
+    def test_dynamic_ts_import_literal(self) -> None:
+        """src/e.ts → src/c.ts via import("./c"), confidence=1.0."""
+        matches = self._edge_from_to("src_e_ts", "src_c_ts")
+        self.assertTrue(matches, "edge from src/e.ts to src/c.ts should exist")
+        self.assertEqual(matches[0]["confidence_score"], 1.0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

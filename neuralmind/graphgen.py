@@ -65,7 +65,8 @@ _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
 # Bumped when the emitted graph.json contract changes (new node/edge kinds,
 # field semantics). v1 = symbol-level code nodes + contains/calls/imports_from/
 # inherits + docstring rationale, graphify-compatible.
-SCHEMA_VERSION = 1
+# v2 = G1 dynamic import resolution (confidence_score, synthetic ext__ nodes).
+SCHEMA_VERSION = 2
 
 # Suffix → tree-sitter language. The walk dispatches per file to the matching
 # extractor, so adding a grammar is additive — no re-architecting. Python ships
@@ -296,6 +297,9 @@ class _GraphBuilder:
         # Go package directory's last segment → file node ids in it (Go imports
         # a package/dir, not a single file).
         self.go_pkg_files: dict[str, list[str]] = {}
+        # file_id → {name → literal_value}: module-level string constants for
+        # dynamic-import variable resolution (G1).
+        self.file_constants: dict[str, dict[str, str]] = {}
 
     # -- node/edge helpers ------------------------------------------------- #
     def add_node(
@@ -326,6 +330,7 @@ class _GraphBuilder:
         source_file: str,
         line: int,
         context: str = "",
+        confidence_score: float = 1.0,
     ) -> None:
         self.edges.append(
             {
@@ -337,7 +342,7 @@ class _GraphBuilder:
                 "weight": 1.0,
                 "source": source,
                 "target": target,
-                "confidence_score": 1.0,
+                "confidence_score": confidence_score,
             }
         )
 
@@ -655,6 +660,20 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
 
 
 # --------------------------------------------------------------------------- #
+# Synthetic external-node helper (shared across languages)
+# --------------------------------------------------------------------------- #
+def _ensure_ext_node(b: _GraphBuilder, name: str, rel: str, line: int) -> str:
+    """Return (creating if needed) an ``ext__<slug>_cls`` node id for an
+    external/unresolved target. Idempotent across repeated calls with the same
+    name — reuses the existing id if a node was already synthesized.
+    """
+    nid = f"ext__{_slug(name)}_cls"
+    if nid not in b.nodes:
+        b.add_node(nid, name, "code", rel, line)
+    return nid
+
+
+# --------------------------------------------------------------------------- #
 # Python extractor
 # --------------------------------------------------------------------------- #
 def _py_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -669,10 +688,11 @@ def _py_extract_symbols(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
 
 
 def _py_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    """Pass 2 for Python: imports / inherits / calls."""
+    """Pass 2 for Python: static imports / inherits / calls, then dynamic-import resolution."""
     _resolve_imports(b, root_node, src, rel, file_id)
     _resolve_inherits(b, root_node, src, rel)
     _resolve_calls(b, root_node, src, rel)
+    _py_resolve_dynamic_imports(b, root_node, src, rel, file_id)
 
 
 def _walk_top_level(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -691,19 +711,22 @@ def _walk_top_level(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: 
             elif inner.type == "class_definition":
                 _emit_class(b, inner, src, rel, file_id)
         elif child.type == "expression_statement":
-            _emit_assignment(b, child, src, rel, container=file_id)
+            _emit_assignment(b, child, src, rel, container=file_id, file_id=file_id)
 
 
-def _emit_assignment(b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, container: str) -> None:
+def _emit_assignment(b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, container: str, file_id: str = "") -> None:
     """Emit a ``code`` node for a module/class-level assignment's simple target.
 
     Module constants (``SESSION_TTL = …``) and class/dataclass fields
     (``password_hash: str``) are first-class symbols a query can ask about
-    ("how long is a session?", "what fields does a user record have?"), but
-    they live in neither a function nor a docstring. Surfacing them as named
+    ("how long is a session?", "what fields does a user record have?"),
+    but live in neither a function nor a docstring. Surfacing them as named
     code nodes lets the selector retrieve them by name. Only simple identifier
     targets are taken — tuple/attribute/subscript LHS (``self.x``, ``a, b = …``)
     are skipped to avoid noise.
+
+    Module-level string constants are also registered into ``file_constants``
+    (G1 dynamic-import variable resolution).
     """
     if not stmt_node.named_child_count:
         return
@@ -721,6 +744,12 @@ def _emit_assignment(b: _GraphBuilder, stmt_node, src: bytes, rel: str, *, conta
     sid = f"{container}__{_slug(name)}_sym"
     b.add_node(sid, name, "code", rel, line)
     b.add_edge("contains", container, sid, rel, line)
+    # Module-level string constant → register for dynamic-import resolution.
+    if container == file_id and file_id:
+        right = assign.child_by_field_name("right")
+        if right is not None and right.type == "string":
+            literal = _node_text(right, src).strip().strip("'\"")
+            b.file_constants.setdefault(file_id, {})[name] = literal
 
 
 def _name_of(defn_node, src: bytes) -> str | None:
@@ -871,6 +900,140 @@ def _resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
+# G1 — Dynamic import resolution (Python)
+# --------------------------------------------------------------------------- #
+_DYNAMIC_IMPORT_CALLEES: frozenset[str] = frozenset(
+    {"importlib.import_module", "__import__", "builtins.__import__"}
+)
+
+
+def _py_resolve_dynamic_imports(
+    b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str
+) -> None:
+    """Resolve dynamic ``importlib.import_module`` / ``__import__`` calls.
+
+    Walks every ``call`` node, matches the callee name, extracts the first
+    positional argument, and emits an ``imports_from`` edge at a confidence
+    that reflects how concretely we can resolve the target:
+
+    - string literal            → confidence 1.0 (direct module key lookup)
+    - dotted-relative literal   → confidence 1.0 (resolved against importer's prefix)
+    - identifier (variable)     → confidence 0.8 (via ``file_constants`` lookup)
+    - computed / env / concat   → confidence 0.2 (synthetic ``ext__`` node)
+    """
+
+    def _resolve_literal_module(spec: str) -> str | None:
+        """Resolve a dotted module spec to a file node id, or None.
+        Handles both absolute (``pkg.b``) and parent-relative (``.foo``) specs."""
+        spec = spec.strip()
+        if not spec:
+            return None
+        if spec.startswith("."):
+            # Relative to importer's module prefix: derive the importer's dotted
+            # module and strip trailing segments per leading dots.
+            importer_dotted = _module_dotted(rel)
+            base_parts = importer_dotted.split(".")
+            # Count leading dots (each beyond the first walks up one level).
+            stripped = spec.lstrip(".")
+            up = len(spec) - len(stripped) - 1
+            if up > 0:
+                base_parts = base_parts[:-up] if up < len(base_parts) else []
+            if stripped:
+                base_parts.append(stripped)
+            target_dotted = ".".join(base_parts)
+        else:
+            target_dotted = spec
+        return b.file_by_module.get(target_dotted)
+
+    def _visit_call(node) -> None:
+        fn_field = node.child_by_field_name("function")
+        if fn_field is None:
+            return
+        callee = _node_text(fn_field, src).strip().lower()
+        # Match `importlib.import_module`, `__import__`, `builtins.__import__`
+        if callee not in {c.lower() for c in _DYNAMIC_IMPORT_CALLEES}:
+            return
+        # Extract first positional argument from the argument list.
+        args_node = node.child_by_field_name("arguments")
+        if args_node is None:
+            return
+        # Collect positional (non-keyword) arguments.
+        positional: list = []
+        for child in args_node.named_children:
+            if child.type == "keyword_argument":
+                continue
+            positional.append(child)
+            break  # only the first positional arg
+        if not positional:
+            return
+        arg = positional[0]
+        line = node.start_point[0] + 1
+
+        if arg.type == "string":
+            spec = _node_text(arg, src).strip().strip("'\"").strip()
+            target = _resolve_literal_module(spec)
+            if target and target != file_id:
+                b.add_edge(
+                    "imports_from",
+                    file_id,
+                    target,
+                    rel,
+                    line,
+                    context="dynamic_import",
+                    confidence_score=1.0,
+                )
+        elif arg.type == "identifier":
+            name = _node_text(arg, src).strip()
+            consts = b.file_constants.get(file_id, {})
+            resolved = consts.get(name)
+            if resolved:
+                target = _resolve_literal_module(resolved)
+                if target and target != file_id:
+                    b.add_edge(
+                        "imports_from",
+                        file_id,
+                        target,
+                        rel,
+                        line,
+                        context="dynamic_import_const",
+                        confidence_score=0.8,
+                    )
+            else:
+                ext = _ensure_ext_node(b, name, rel, line)
+                b.add_edge(
+                    "imports_from",
+                    file_id,
+                    ext,
+                    rel,
+                    line,
+                    context="dynamic_import_possible",
+                    confidence_score=0.2,
+                )
+        else:
+            # Computed (env var, f-string, concat, subscript, etc.) → synthetic ext__ node.
+            label = _node_text(arg, src).strip()
+            ext_name = label if len(label) <= 40 else "computed_import"
+            ext = _ensure_ext_node(b, ext_name, rel, line)
+            b.add_edge(
+                "imports_from",
+                file_id,
+                ext,
+                rel,
+                line,
+                context="dynamic_import_possible",
+                confidence_score=0.2,
+            )
+
+    def _walk_for_calls(node) -> None:
+        for child in node.named_children:
+            if child.type == "call":
+                _visit_call(child)
+            _walk_for_calls(child)
+
+    _walk_for_calls(root_node)
+
+
+# --------------------------------------------------------------------------- #
 # Comment-based rationale (TypeScript / Go) — docstrings live in the comment(s)
 # immediately preceding a declaration, not in a first-statement string literal.
 # --------------------------------------------------------------------------- #
@@ -1006,7 +1169,7 @@ def _ts_emit_decl(b: _GraphBuilder, decl, outer, src: bytes, rel: str, file_id: 
 
 
 def _ts_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
-    """Pass 2 for TypeScript: imports (relative) + inherits (extends/implements) + calls."""
+    """Pass 2 for TypeScript: static imports + inherits + calls, then dynamic resolution."""
     # imports
     for child in root_node.named_children:
         if child.type != "import_statement":
@@ -1025,6 +1188,110 @@ def _ts_resolve_edges(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id
     # inherits + calls
     _ts_resolve_inherits(b, root_node, src, rel, file_id)
     _ts_resolve_calls(b, root_node, src, rel, file_id)
+    # dynamic require/import resolution
+    _ts_resolve_dynamic_imports(b, root_node, src, rel, file_id)
+
+
+# --------------------------------------------------------------------------- #
+# G1 — Dynamic require/import resolution (TypeScript)
+# --------------------------------------------------------------------------- #
+def _ts_resolve_dynamic_imports(
+    b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str
+) -> None:
+    """Resolve dynamic ``require(...)`` and ``import(...)`` calls in TypeScript.
+
+    Matches call expressions whose callee is ``require`` or ``import`` and
+    resolves the first argument similarly to Python:
+
+    - string literal               → confidence 1.0 (module key lookup)
+    - template literal (no interp) → confidence 1.0
+    - identifier / computed        → confidence 0.2 (synthetic ext__ node)
+    """
+
+    def _visit_call(node) -> None:
+        fn_field = node.child_by_field_name("function")
+        if fn_field is None:
+            return
+        callee = _node_text(fn_field, src).strip().lower()
+        if callee not in ("require", "import"):
+            return
+        args_node = node.child_by_field_name("arguments")
+        if args_node is None:
+            return
+        positional = next(
+            (c for c in args_node.named_children if c.type != "comment"), None
+        )
+        if positional is None:
+            return
+        line = node.start_point[0] + 1
+
+        if positional.type == "string":
+            spec = _node_text(positional, src).strip().strip("'\"`").strip()
+            key = _ts_resolve_import(rel, spec)
+            target = b.file_by_module.get(key) if key else None
+            if target and target != file_id:
+                b.add_edge(
+                    "imports_from",
+                    file_id,
+                    target,
+                    rel,
+                    line,
+                    context="dynamic_require",
+                    confidence_score=1.0,
+                )
+        elif positional.type == "template_literal":
+            # Only handle template literals with no interpolation.
+            content = _node_text(positional, src).strip().strip("`").strip()
+            raw_children = [
+                c for c in positional.named_children if c.type == "string_fragment"
+            ]
+            if raw_children and len(raw_children) == positional.named_child_count:
+                # Simple template literal = plain string content.
+                key = _ts_resolve_import(rel, content)
+                target = b.file_by_module.get(key) if key else None
+                if target and target != file_id:
+                    b.add_edge(
+                        "imports_from",
+                        file_id,
+                        target,
+                        rel,
+                        line,
+                        context="dynamic_require",
+                        confidence_score=1.0,
+                    )
+                return
+            # Has interpolation → unresolved.
+            ext = _ensure_ext_node(b, content or "template_require", rel, line)
+            b.add_edge(
+                "imports_from",
+                file_id,
+                ext,
+                rel,
+                line,
+                context="dynamic_require",
+                confidence_score=0.2,
+            )
+        else:
+            ext_name = _node_text(positional, src).strip()
+            ext_name = ext_name if len(ext_name) <= 40 else "dynamic_require"
+            ext = _ensure_ext_node(b, ext_name, rel, line)
+            b.add_edge(
+                "imports_from",
+                file_id,
+                ext,
+                rel,
+                line,
+                context="dynamic_require",
+                confidence_score=0.2,
+            )
+
+    def _walk(node) -> None:
+        for child in node.named_children:
+            if child.type == "call_expression":
+                _visit_call(child)
+            _walk(child)
+
+    _walk(root_node)
 
 
 def _ts_resolve_inherits(b: _GraphBuilder, root_node, src: bytes, rel: str, file_id: str) -> None:
@@ -2697,19 +2964,43 @@ def _ruby_resolve_calls(b: _GraphBuilder, root_node, src: bytes, rel: str, file_
 
 
 def _ruby_resolve_requires(b: _GraphBuilder, node, src: bytes, rel: str, file_id: str) -> None:
-    """``require_relative "x"`` → ``imports_from`` (resolved to the project file
-    by relative path; emitted only to existing file ids, so never dangles)."""
+    """``require_relative "x"`` / ``require "x"`` → ``imports_from``.
+
+    ``require_relative`` resolves against project files by relative path
+    (existing behaviour). A bare ``require "gem"`` is treated as a gem load
+    path — a low-confidence synthetic ``ext__`` node pointing at the gem name.
+    ``require some_var`` is similarly unresolved at low confidence.
+    """
     for child in node.named_children:
-        if child.type == "call" and _ruby_call_method_name(child, src) == "require_relative":
-            args = child.child_by_field_name("arguments") or next(
-                (c for c in child.named_children if c.type == "argument_list"), None
-            )
-            if args is None:
-                continue
-            str_node = next((c for c in args.named_children if c.type == "string"), None)
-            if str_node is None:
-                continue
-            spec = _node_text(str_node, src).strip().strip("\"'")
+        if child.type != "call":
+            continue
+        method_name = _ruby_call_method_name(child, src)
+        if method_name not in ("require_relative", "require"):
+            continue
+        args = child.child_by_field_name("arguments") or next(
+            (c for c in child.named_children if c.type == "argument_list"), None
+        )
+        if args is None:
+            continue
+        str_node = next((c for c in args.named_children if c.type == "string"), None)
+        if str_node is None:
+            # require some_var → dynamic, unresolved.
+            first_arg = next((c for c in args.named_children if c.type != "comment"), None)
+            if first_arg is not None and first_arg.type == "identifier":
+                var_name = _node_text(first_arg, src).strip()
+                ext = _ensure_ext_node(b, var_name, rel, child.start_point[0] + 1)
+                b.add_edge(
+                    "imports_from",
+                    file_id,
+                    ext,
+                    rel,
+                    child.start_point[0] + 1,
+                    context="dynamic_require",
+                    confidence_score=0.2,
+                )
+            continue
+        spec = _node_text(str_node, src).strip().strip("\"'")
+        if method_name == "require_relative":
             key = _ts_resolve_import(rel, spec if spec.startswith(".") else "./" + spec)
             target = b.file_by_module.get(key) if key else None
             if target and target != file_id:
@@ -2721,6 +3012,19 @@ def _ruby_resolve_requires(b: _GraphBuilder, node, src: bytes, rel: str, file_id
                     child.start_point[0] + 1,
                     context="require",
                 )
+        else:
+            # Bare require — treat as gem load path (low confidence).
+            gem_name = spec.split("/")[0].split("-")[0].strip() or spec
+            ext = _ensure_ext_node(b, gem_name, rel, child.start_point[0] + 1)
+            b.add_edge(
+                "imports_from",
+                file_id,
+                ext,
+                rel,
+                child.start_point[0] + 1,
+                context="require_gem",
+                confidence_score=0.1,
+            )
         # require_relative is always top-level in the fixtures; no recursion needed.
 
 

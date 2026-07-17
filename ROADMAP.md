@@ -4,18 +4,11 @@ A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for how to start.
 
-For the longer-horizon engineering plan (release cadence, monitoring,
-compliance, scale targets), see
-[`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). For the
-sequenced feature map of the next arc, see
-[`docs/NEXT-RELEASE-PLAN.md`](docs/NEXT-RELEASE-PLAN.md). For the
-nine-initiative durability arc beyond that (versioned IR, retrieval quality
-harness, daemon-first architecture, and more), see
-[`docs/plans/2026-06-10-future-proofing-prd-pack.md`](docs/plans/2026-06-10-future-proofing-prd-pack.md).
-For the enterprise competition + monetization plan (supersedes the
-enterprise lane in `NEXT-RELEASE-PLAN.md` §5 now that team memory has
-shipped), see
-[`docs/plans/2026-07-15-enterprise-competition-plan.md`](docs/plans/2026-07-15-enterprise-competition-plan.md).
+For the longer-horizon engineering plan (memory deepening, retrieval quality,
+self-improvement engine, team memory, daemon/MCP hardening, graph precision),
+see [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). The
+nine-initiative durability arc, enterprise competition plan, and feature map
+of the next arc live there too.
 
 ## Now — v0.41.0 (shipped & published)
 

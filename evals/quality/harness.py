@@ -17,9 +17,10 @@ from neuralmind import quality
 
 from .runner import Suite, load_suite
 
-# Retrieval depth fed to the metrics. The largest reported cutoff is 5, so 10
-# hits give MRR room to find a relevant module past the top few.
-SEARCH_K = 10
+# Retrieval depth fed to the metrics. The largest reported cutoff is 5, so 20
+# hits give MRR room to find a relevant module past the top few and allow the
+# nDCG@10 / hit-rate@10 reporting to see deeper.
+SEARCH_K = 20
 REPORT_KS = (1, 3, 5)
 
 # Conservative CI floors — far below NeuralMind's real retrieval quality, so

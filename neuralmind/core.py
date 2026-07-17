@@ -389,7 +389,7 @@ class NeuralMind:
             )
             return {
                 "success": False,
-                "error": f"Could not load graph from {self.embedder.graph_path}",
+                "error": f"No index found (tried {self.embedder.ir_path} and {self.embedder.graph_path})",
                 "duration_seconds": 0,
             }
 
@@ -819,15 +819,16 @@ class NeuralMind:
         if not self._built or self.selector is None:
             result = self.build()
             if self.selector is None:
+                ir_path = self.project_path / ".neuralmind" / "index_ir.json"
                 graph_path = self.project_path / "graphify-out" / "graph.json"
-                if not graph_path.exists():
+                if not ir_path.exists() and not graph_path.exists():
                     raise GraphNotBuiltError(
-                        f"No code graph found at {graph_path}.\n"
+                        f"No code graph found at {ir_path} or {graph_path}.\n"
                         f"NeuralMind builds one automatically with its bundled "
                         f"tree-sitter backend — install the parser if it's missing:\n"
                         f"  pip install tree-sitter tree-sitter-python\n"
                         f"  neuralmind build {self.project_path}\n"
-                        f"(Or generate it with graphify: `graphify update {self.project_path}`.)"
+                        f"(Or generate it with graphify: `graphify update {self.project_path}.`)"
                     )
                 raise GraphNotBuiltError(
                     result.get("error", "Failed to build the NeuralMind index.")
