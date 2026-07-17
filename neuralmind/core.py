@@ -457,6 +457,21 @@ class NeuralMind:
         else:
             self._structural_index = None
 
+        # Persist structural edges to the synapse store so they survive
+        # rebuilds (the in-memory StructuralIndex is lost on process exit).
+        # Fail-open: persistence is non-critical observability.
+        # Access `self.synapses` (property) to lazy-init the store — `self._synapses`
+        # is None until first accessed.
+        _structural_edge_count = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    edges = getattr(self.embedder, "edges", None) or []
+                    _structural_edge_count = store.persist_structural_edges(edges)
+            except Exception:
+                pass
+
         # Get final stats
         final_stats = self.embedder.get_stats()
 
@@ -475,6 +490,8 @@ class NeuralMind:
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
         }
+        if _structural_edge_count:
+            self._build_stats["structural_edges"] = _structural_edge_count
         if ir_summary is not None:
             self._build_stats["ir"] = ir_summary
 
@@ -529,6 +546,10 @@ class NeuralMind:
             issues = ir_mod.validate_ir(index_ir)
             summary = index_ir.summary()
             summary["validation"] = ir_mod.validation_summary(issues)
+            # Lazy import avoids circular import (core.py is imported during
+            # neuralmind package init).
+            from neuralmind import __version__ as _nm_version
+            summary["neuralmind_version"] = _nm_version
 
             self.ir_path.parent.mkdir(parents=True, exist_ok=True)
             index_ir.write(self.ir_path)

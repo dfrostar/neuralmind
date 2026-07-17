@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+import time
 
 from neuralmind.synapses import (
     DECAY_RATE,
@@ -54,18 +55,25 @@ def test_repeated_reinforce_accumulates_up_to_cap(tmp_path):
 
 def test_decay_prunes_weak_edges_but_keeps_ltp_floor(tmp_path):
     s = _store(tmp_path)
-    # weak edge: one activation, will decay below prune threshold
-    s.reinforce(["weak_a", "weak_b"])
-    # strong edge: cross LTP threshold
+    # weak edge: one activation, old — will decay below prune threshold
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    s.reinforce(["weak_a", "weak_b"], now=old_ts)
+    # strong edge: cross LTP threshold, old — decays but floor preserves it
     for _ in range(LTP_THRESHOLD + 2):
-        s.reinforce(["strong_a", "strong_b"])
-    # heavy decay: many ticks
-    for _ in range(500):
-        s.decay()
+        s.reinforce(["strong_a", "strong_b"], now=old_ts)
+    s.decay()
     weak = dict(s.neighbors("weak_a"))
     strong = dict(s.neighbors("strong_a"))
     assert "weak_b" not in weak  # pruned
     assert strong.get("strong_b", 0.0) >= LTP_FLOOR - 1e-9
+
+
+def test_decay_fresh_edges_preserved(tmp_path):
+    """Freshly-activated edges should not be pruned by a decay tick."""
+    s = _store(tmp_path)
+    s.reinforce(["fresh_a", "fresh_b"], now=time.time())
+    s.decay()
+    assert "fresh_b" in dict(s.neighbors("fresh_a"))
 
 
 def test_spreading_activation_finds_indirect_neighbors(tmp_path):
@@ -217,10 +225,10 @@ def test_transitions_filters_by_source(tmp_path):
 
 def test_transition_decay_prunes_weak_transitions(tmp_path):
     s = _store(tmp_path)
-    s.record_sequence(["weak_a", "weak_b"])  # one observation
-    # Many decay ticks should drop it below TRANSITION_PRUNE_THRESHOLD.
-    for _ in range(500):
-        s.decay()
+    # old transition: one observation, 200 days ago — decays below threshold
+    old_ts = time.time() - 200 * 86400
+    s.record_sequence(["weak_a", "weak_b"], now=old_ts)
+    s.decay()
     assert s.next_likely("weak_a") == []
 
 
@@ -369,14 +377,14 @@ def test_decay_returns_transition_counts(tmp_path):
     so monitoring callers (the watch loop, the SessionStart hook) can
     surface them."""
     s = _store(tmp_path)
-    s.record_sequence(["weak_a", "weak_b"])  # one obs, will prune
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    s.record_sequence(["weak_a", "weak_b"], now=old_ts)  # one obs, old → prunes
     for _ in range(10):
-        s.record_sequence(["strong_a", "strong_b"])  # survives
+        s.record_sequence(["strong_a", "strong_b"])  # fresh → survives
     # Drive enough decay to prune the weak edge.
     pruned_transitions = 0
-    for _ in range(200):
-        result = s.decay()
-        pruned_transitions += result.get("pruned_transitions", 0)
+    result = s.decay()
+    pruned_transitions += result.get("pruned_transitions", 0)
     assert pruned_transitions >= 1
     remaining = s.decay()["remaining_transitions"]
     assert remaining >= 1  # strong pair survives
