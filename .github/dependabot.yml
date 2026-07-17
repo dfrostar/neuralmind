@@ -13,13 +13,19 @@ updates:
     commit-message:
       prefix: "chore(deps):"
 
-  # GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  # JavaScript (site/ — marketing site, static export)
+  # Auto-PR disabled. Site deploys as Cloudflare Pages static export;
+  # no middleware, no API, no RSC. Any new GHSA alerts are handled by
+  # dismissing via API with rationale documented in DISMISSAL_DECISIONS.md.
+  # Dependabot security-alert scanning still operates here (GHSA DB) —
+  # that is tolerated. PRs would be noise.
+  - package-ecosystem: "npm"
+    directory: "/site"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
+    open-pull-requests-limit: 0
     labels:
       - "dependencies"
-      - "priority: low"
+      - "deprioritized:next-eol"
     commit-message:
-      prefix: "chore(ci):"
+      prefix: "chore(deps):"
