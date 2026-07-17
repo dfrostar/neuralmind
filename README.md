@@ -9,9 +9,14 @@
 
 **Persistent memory and context compression for AI coding agents.**
 
-> Your AI coding agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and NeuralMind **compresses tool output before the model reads it**, so the agent spends tokens only on what matters. The memory persists across sessions and surfaces automatically. No MCP tool call required: NeuralMind writes a `SYNAPSE_MEMORY.md` file that Claude Code loads on every session start, so the agent boots with what it's learned about your code already in context.
+> After install, your agent:
+> - Boots with SYNAPSE_MEMORY.md (learned associations, strongest hub files)
+> - Receives PostToolUse compression automatically (Bash output → errors + signals)
+> - Queries your codebase in ~800 tokens instead of ~50,000
+>
+> If you don't use Claude Code, configure: `neuralmind install-mcp --all`
 
-> Works with Claude Code (including Claude Fable 5), Cursor, Cline, Continue, and any MCP-compatible agent. NeuralMind itself runs 100% locally — zero network calls of its own, no telemetry. The more capable the model, the more every saved token is worth, so context compression and persistent memory pay off more on a frontier model like Fable 5. (Side effect: ~5–10× cheaper agent sessions because the agent stops re-loading context it already understood. [Benchmarks below ↓](#-benchmarks).)
+---
 
 ## Why NeuralMind — four benefits, each backed by an eval you can run
 
@@ -35,7 +40,11 @@ raw tokens; that's in the benchmark table.
 
 
 
-> **🆕 New in v0.44.0 — P0 Safety Net: impact analysis, change detection, coordinated rename.** Three new graph-aware MCP tools that make the operations that *break everything* observable before the agent commits to them. **(1) `neuralmind_impact`** — blast-radius analysis: walks the call graph upward from a symbol, groups impacts by hop distance (direct/transitive/edge), confidence-scores each, augments with the learned synapse layer. **(2) `neuralmind_detect_changes`** — maps a git diff's changed lines to code symbols via spatial index, classifies each hit as direct/indirect/none; optional blast-radius on direct hits (composes with `neuralmind_impact`). **(3) `neuralmind_rename`** — graph-aware multi-file rename: the call graph narrows the file search, whole-word text search finds the references the graph misses, definition line skipped, dry-run by default, backup-based Rollback on failure. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.44.0.md)
+> **🌐 [Visit the landing page](https://dfrostar.github.io/neuralmind/) • 📖 [Read the About page](https://dfrostar.github.io/neuralmind/about.html) • ⚖️ Not affiliated with NeuralMind.ai**
+
+---
+
+## 🧠 What changes when an agent has memory
 >
 > **🆕 New in v0.45.0 — The token receipt gets a price tag.** `neuralmind savings` has always verified the 40-70x token claim against your own logged usage; v0.45.0 converts that into the number stakeholders actually ask for: **dollars**. `neuralmind savings --cost` appends a dollar-savings block — cost without NeuralMind, cost with it, amount saved, and a labeled daily/monthly projection — priced on **input tokens** (NeuralMind is a retrieval layer; it only ever decides which *input* tokens ship, so output pricing never enters the math). `--model` picks from a built-in input-price table (Claude Fable 5 / Opus 4.8 / Sonnet 5 / Haiku 4.5, GPT-5.1/mini, Gemini 2.5 Pro/Flash — snapshot 2026-07), `--queries-per-day` tunes the projection, and `--json` adds a machine-readable `dollar_savings` block for dashboards. The math is deliberately boring: totals come straight from the token totals at the price per MTok, projections scale the observed per-event average — every assumption printed where you can see it. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.45.0.md)
 >
