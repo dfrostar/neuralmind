@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,11 +26,8 @@ from .contracts import (
     META_TUNER_PROMOTED_AT,
     TUNABLE_PARAMS,
     TuneableParam,
-    clamp_value,
-    get_param,
     register_param,
 )
-from .fitness import FitnessInputs, FitnessScore, compute_fitness
 
 # Add CI-gated promotion keys to contracts
 META_CI_LAST_EVAL = "self_improve:ci_last_eval"
@@ -97,7 +93,7 @@ class PromotionVerdict:
 
     @property
     def _hysteresis_val(self) -> float:
-        # Default hysteresis
+        # Read from tunable params; default matches DEFAULT_HYSTERESIS in fitness.py
         return 0.05
 
 
@@ -158,15 +154,19 @@ class CIGatedTuner:
             reason=f"gen {tune_result.generation}: {'promoted' if promoted else 'no improvement'}",
         )
 
-    def promote(self, params: dict[str, float]) -> bool:
-        """Persist promoted params to synapse meta. Fail-open."""
+    def promote(self, params: dict[str, float], fitness: float | None = None) -> bool:
+        """Persist promoted params + fitness to synapse meta. Fail-open."""
         if self.project_path is None:
             return False
         try:
             from .synapses import SynapseStore, default_db_path
+
             store = SynapseStore(default_db_path(self.project_path))
             clean = {k: round(v, 6) for k, v in params.items() if k in TUNABLE_PARAMS}
             store.set_meta(META_TUNER_INCUMBENT, json.dumps(clean, sort_keys=True))
+            if fitness is not None:
+                store.set_meta(META_TUNER_FITNESS, f"{fitness:.6f}")
+                store.set_meta(META_TUNER_PROMOTED_AT, time.strftime("%Y-%m-%dT%H:%M:%S"))
             return True
         except Exception:
             return False
@@ -182,7 +182,7 @@ def run_ci_gated_promotion(
     result = tuner.run_ci_eval()
     
     if result.promoted:
-        tuner.promote(result.best_params)
+        tuner.promote(result.best_params, fitness=result.candidate_fitness)
         if verbose:
             print(f"PROMOTED: fitness {result.candidate_fitness:.4f} > {result.incumbent_fitness:.4f}")
     else:
