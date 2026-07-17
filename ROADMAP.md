@@ -19,7 +19,7 @@ shipped), see
 
 ## Now — v0.41.0 (shipped & published)
 
-Latest release **v0.41.0** is live on
+Latest release **v0.45.0** is live on PyPI and GHCR
 [PyPI](https://pypi.org/project/neuralmind/) and GHCR. The
 v0.13 → v0.16 "eval-first" arc that used to sit here is **fully shipped**
 and the project has carried well past it — see

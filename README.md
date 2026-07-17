@@ -668,7 +668,7 @@ We'd rather you trust the numbers than be wowed by them, so here's the candid ta
 
 **What genuinely sets it apart**
 
-- **It measures whether the memory actually helps — and gates it in CI.** Most code-RAG tools assert; NeuralMind ships a faithfulness eval (+0.143 vs naive at a *matched* token budget), an onboarding-lift eval (+6.5 pts), and a synapse-recall A/B (+12 pts), each failing the build on regression. That measurement discipline is the real moat. ([Benchmarks](docs/wiki/Benchmarks.md))
+- **It measures whether the memory actually helps — and gates it in CI.** Most code-RAG tools assert; NeuralMind ships a faithfulness eval (measured at +0.143 on the reference fixture at a *matched* token budget) and a synapse-recall A/B (+11.6 pts, 71.7%→83.3%), each failing the build on regression. That measurement discipline is the real moat. ([Benchmarks](docs/wiki/Benchmarks.md))
 - **Learned *usage* memory, not just embeddings.** The synapse layer learns what your team edits together and what you touch next — and the onboarding-lift metric proves it's not decoration.
 - **100% local, and [ChromaDB-free by default](docs/use-cases/chromadb-free-local.md)** (v0.29.0) with byte-identical embeddings and an 8–16× smaller index.
 
