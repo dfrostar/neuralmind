@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import subprocess
+import time
 from pathlib import Path
 
 from neuralmind import namespaces
@@ -318,11 +319,12 @@ def test_clear_namespace_leaves_other_namespaces_intact(tmp_path):
 
 def test_ephemeral_decays_much_faster_than_personal(tmp_path):
     store = _store(tmp_path)
-    store.reinforce(["a", "b"], namespace=EPHEMERAL_NAMESPACE)
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    store.reinforce(["a", "b"], namespace=EPHEMERAL_NAMESPACE, now=old_ts)
     store.reinforce(["a", "b"], namespace=DEFAULT_NAMESPACE)
-    for _ in range(10):
-        store.decay()
-    # 0.15 * 0.75^10 ≈ 0.008 → pruned; personal at 0.15 * 0.98^10 ≈ 0.12 lives.
+    store.decay()
+    # Ephemeral half-life=1d → 200-day-old edge decays below prune threshold.
+    # Personal half-life=30d, fresh edge barely moves on one decay tick.
     assert store.edges(namespaces=[EPHEMERAL_NAMESPACE]) == []
     assert store.edges(namespaces=[DEFAULT_NAMESPACE]) != []
 
@@ -342,20 +344,22 @@ def test_ephemeral_gets_no_ltp_immunity(tmp_path):
     """Even a heavily-reinforced ephemeral edge fades: session scratch must
     never become permanent through the LTP floor."""
     store = _store(tmp_path)
+    old_ts = time.time() - 200 * 86400  # 200 days ago
     for _ in range(10):  # well past LTP_THRESHOLD
-        store.reinforce(["hot_a", "hot_b"], namespace=EPHEMERAL_NAMESPACE)
-    for _ in range(30):
-        store.decay()
+        store.reinforce(["hot_a", "hot_b"], namespace=EPHEMERAL_NAMESPACE, now=old_ts)
+    store.decay()
+    # Ephemeral half-life=1d, no LTP floor → 200-day-old edge prunes completely.
     assert store.edges(namespaces=[EPHEMERAL_NAMESPACE]) == []
 
 
 def test_ephemeral_transitions_prune_fast(tmp_path):
     store = _store(tmp_path)
-    store.record_sequence(["a", "b"], namespace=EPHEMERAL_NAMESPACE)
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    store.record_sequence(["a", "b"], namespace=EPHEMERAL_NAMESPACE, now=old_ts)
     store.record_sequence(["a", "b"], namespace=DEFAULT_NAMESPACE)
-    for _ in range(5):
-        store.decay()
-    # 1.0 * 0.75^5 ≈ 0.24 < prune threshold 0.5; personal 1.0 * 0.99^5 survives.
+    store.decay()
+    # Ephemeral half-life=1d → 200-day-old transition prunes.
+    # Personal half-life=30d, fresh transition barely moves on one decay tick.
     assert store.next_likely("a", namespaces=[EPHEMERAL_NAMESPACE]) == []
     assert store.next_likely("a", namespaces=[DEFAULT_NAMESPACE]) != []
 
