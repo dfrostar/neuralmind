@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.47.0](https://github.com/dfrostar/neuralmind/compare/v0.46.2...v0.47.0) (2026-07-17)
+
+
+### Features
+
+* **quality harness (D)**: RAGAS-axis offline judge at `neuralmind/ragas.py` — faithfulness, context precision, context recall, answer relevance. Faithfulness is stdlib-only and CI-gated; cosine columns use injectable `embed_fn` for model-free CI ([7948edc](https://github.com/dfrostar/neuralmind/commit/7948edc))
+* **quality harness (D)**: nDCG@k and hit-rate@k metrics added to `neuralmind/quality.py` alongside MRR, answerability, precision/recall — per-language fixtures for 7 languages registered in `evals/quality/runner.py`
+* **IR migration (B1)**: embedder now reads `.neuralmind/index_ir.json` as the canonical source with `graphify-out/graph.json` mtime-fallback. The IR is no longer write-only archival — it's the live read path. All three backends (GraphEmbedder, TurboVecEmbedder, InMemoryEmbeddingBackend) + `core.py` + `server.py` updated
+* **dynamic import resolution (G1)**: `add_edge` gains `confidence_score` param; Python/TS/Ruby dynamic import resolvers emit deterministic edges for string-literal imports (confidence 1.0), variable-const lookups (0.8), and synthetic `ext__` nodes for unresolvable dynamics (0.2). `SCHEMA_VERSION` 1→2
+
+### Tests
+
+* 14 IR migration tests in `tests/test_ir_load.py`; 12 dynamic import tests in `tests/test_graphgen.py`; 11 new RAGAS + nDCG + hit-rate tests in `tests/test_quality_harness.py`
+
 ## [0.46.2](https://github.com/dfrostar/neuralmind/compare/v0.46.0...v0.46.2) (2026-07-17)
 
 
