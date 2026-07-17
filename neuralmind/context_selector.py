@@ -71,6 +71,32 @@ class ContextResult:
         return self.budget.total
 
 
+def _resolve_params(project_path):
+    """Fail-open registry read. Returns the effective param map.
+
+    When the registry cannot be imported or persisted values are
+    unreadable, returns the defaults (matches legacy class constants).
+    """
+    try:
+        from .tuning import resolve_effective
+
+        return resolve_effective(project_path)
+    except Exception:
+        return {
+            "SYNAPSE_SEED_K": 3,
+            "SYNAPSE_BOOST_WEIGHT": 0.3,
+            "SYNAPSE_PULL_IN_MAX": 2,
+            "SYNAPSE_PULL_IN_MIN_ENERGY": 0.15,
+            "STRUCTURAL_SEED_K": 3,
+            "STRUCTURAL_BOOST_WEIGHT": 0.35,
+            "STRUCTURAL_PULL_IN_MAX": 2,
+            "L0_MAX_TOKENS": 150,
+            "L1_MAX_TOKENS": 600,
+            "L2_MAX_TOKENS": 800,
+            "L3_MAX_TOKENS": 1000,
+        }
+
+
 class ContextSelector:
     """
     Intelligent context selection for massive token reduction.
@@ -154,6 +180,26 @@ class ContextSelector:
             )
         else:
             self.project_path = Path.cwd()
+
+        # Registry-aware parameter reads (C2): at runtime the selector
+        # reads effective values (defaults + persisted overrides) from the
+        # tuneable-parameter registry. When nothing has been persisted the
+        # effective value equals the class constant below — so existing
+        # behavior is byte-compatible. Fail-open: any lookup error falls
+        # back to the registry default.
+        self._params = _resolve_params(project_path)
+        p = self._params
+        self._l0_max_tokens = int(p["L0_MAX_TOKENS"])
+        self._l1_max_tokens = int(p["L1_MAX_TOKENS"])
+        self._l2_max_tokens = int(p["L2_MAX_TOKENS"])
+        self._l3_max_tokens = int(p["L3_MAX_TOKENS"])
+        self._synapse_seed_k = int(p["SYNAPSE_SEED_K"])
+        self._synapse_boost_weight = p["SYNAPSE_BOOST_WEIGHT"]
+        self._synapse_pull_in_max = int(p["SYNAPSE_PULL_IN_MAX"])
+        self._synapse_pull_in_min_energy = p["SYNAPSE_PULL_IN_MIN_ENERGY"]
+        self._structural_seed_k = int(p["STRUCTURAL_SEED_K"])
+        self._structural_boost_weight = p["STRUCTURAL_BOOST_WEIGHT"]
+        self._structural_pull_in_max = int(p["STRUCTURAL_PULL_IN_MAX"])
 
         # Optional retrieval trace (PRD 3). None = tracing off (zero overhead);
         # set per-query by get_query_context(trace=True). Every record site is
@@ -364,7 +410,7 @@ class ContextSelector:
             ]
         )
 
-        self._l0_cache = self._truncate_to_tokens("\n".join(parts), self.L0_MAX_TOKENS)
+        self._l0_cache = self._truncate_to_tokens("\n".join(parts), self._l0_max_tokens)
         return self._l0_cache
 
     def get_l1_summary(self) -> str:
@@ -416,7 +462,7 @@ class ContextSelector:
             except Exception:
                 pass
 
-        self._l1_cache = self._truncate_to_tokens("\n".join(parts), self.L1_MAX_TOKENS)
+        self._l1_cache = self._truncate_to_tokens("\n".join(parts), self._l1_max_tokens)
         return self._l1_cache
 
     def get_l2_context(
@@ -499,7 +545,7 @@ class ContextSelector:
 
             parts.append("")
 
-        context = self._truncate_to_tokens("\n".join(parts), self.L2_MAX_TOKENS)
+        context = self._truncate_to_tokens("\n".join(parts), self._l2_max_tokens)
         return context, loaded_communities
 
     def _synapse_disabled(self) -> bool:
@@ -548,7 +594,7 @@ class ContextSelector:
         """
         if self._synapse_disabled():
             return
-        seeds = [r["id"] for r in search_results[: self.SYNAPSE_SEED_K] if r.get("id")]
+        seeds = [r["id"] for r in search_results[: self._synapse_seed_k] if r.get("id")]
         if self._trace is not None:
             energies, contributions = self._recall_energy_traced(seeds)
         else:
@@ -560,7 +606,7 @@ class ContextSelector:
                 comm = int(node_id[len("community_") :])
             except ValueError:
                 continue
-            weighted = energy * self.SYNAPSE_BOOST_WEIGHT
+            weighted = energy * self._synapse_boost_weight
             community_scores[comm] = community_scores.get(comm, 0.0) + weighted
             if self._trace is not None:
                 self._trace.record_synapse_boost(
@@ -587,7 +633,7 @@ class ContextSelector:
         if self._synapse_disabled():
             return results
 
-        seeds = [r["id"] for r in results[: self.SYNAPSE_SEED_K] if r.get("id")]
+        seeds = [r["id"] for r in results[: self._synapse_seed_k] if r.get("id")]
         energy = self._recall_energy(seeds)
         if not energy:
             return results
@@ -606,7 +652,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in energy:
                 continue
-            boost = self.SYNAPSE_BOOST_WEIGHT * energy[nid]
+            boost = self._synapse_boost_weight * energy[nid]
             r["score"] = r.get("score", 0.0) + boost
             r["_synapse_boost"] = boost
             boosted = True
@@ -628,11 +674,11 @@ class ContextSelector:
                 for nid, e in energy.items()
                 if nid not in present
                 and not nid.startswith("community_")
-                and e >= self.SYNAPSE_PULL_IN_MIN_ENERGY
+                and e >= self._synapse_pull_in_min_energy
             ),
             key=lambda x: x[1],
             reverse=True,
-        )[: self.SYNAPSE_PULL_IN_MAX]
+        )[: self._synapse_pull_in_max]
         if not candidates:
             return results
 
@@ -647,7 +693,7 @@ class ContextSelector:
 
         kept = results[: len(results) - len(fetched)]
         for node in fetched:
-            boost = self.SYNAPSE_BOOST_WEIGHT * energy_by_id.get(node.get("id"), 0.0)
+            boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
@@ -673,7 +719,7 @@ class ContextSelector:
         if self._structural_disabled():
             return results
 
-        seeds = [r["id"] for r in results[: self.STRUCTURAL_SEED_K] if r.get("id")]
+        seeds = [r["id"] for r in results[: self._structural_seed_k] if r.get("id")]
         if not seeds:
             return results
         try:
@@ -696,7 +742,7 @@ class ContextSelector:
             nid = r.get("id")
             if nid in seed_set or nid not in recalled:
                 continue
-            boost = self.STRUCTURAL_BOOST_WEIGHT * recalled[nid]
+            boost = self._structural_boost_weight * recalled[nid]
             r["score"] = r.get("score", 0.0) + boost
             r["_structural_boost"] = boost
             boosted = True
@@ -713,7 +759,7 @@ class ContextSelector:
             ((nid, w) for nid, w in recalled.items() if nid not in present),
             key=lambda x: x[1],
             reverse=True,
-        )[: self.STRUCTURAL_PULL_IN_MAX]
+        )[: self._structural_pull_in_max]
         if not candidates:
             return results
 
@@ -727,7 +773,7 @@ class ContextSelector:
 
         kept = results[: len(results) - len(fetched)]
         for node in fetched:
-            boost = self.STRUCTURAL_BOOST_WEIGHT * weight_by_id.get(node.get("id"), 0.0)
+            boost = self._structural_boost_weight * weight_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_structural_boost"] = boost
             node["_structural_recalled"] = True
@@ -792,7 +838,7 @@ class ContextSelector:
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
             parts.append("")
 
-        context = self._truncate_to_tokens("\n".join(parts), self.L3_MAX_TOKENS)
+        context = self._truncate_to_tokens("\n".join(parts), self._l3_max_tokens)
         return context, len(results)
 
     def get_context(
