@@ -62,10 +62,8 @@ from pathlib import Path
 LEARNING_RATE = 0.15
 WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
-DECAY_RATE = 0.02
 LTP_THRESHOLD = 5
 LTP_FLOOR = 0.20
-LTP_DECAY_RATE = 0.005
 HUB_DEGREE = 50
 SPREAD_DECAY = 0.6
 DEFAULT_SPREAD_DEPTH = 2
@@ -73,7 +71,6 @@ DEFAULT_SPREAD_TOP_K = 12
 
 TRANSITION_LEARNING_RATE = 1.0
 TRANSITION_WEIGHT_CAP = 100.0
-TRANSITION_DECAY_RATE = 0.01
 TRANSITION_PRUNE_THRESHOLD = 0.5
 DEFAULT_NEXT_TOP_K = 5
 
@@ -111,29 +108,6 @@ BRANCH_NAMESPACE_PREFIX = "branch:"
 W_BRANCH = 1.0
 W_PERSONAL = 0.8
 W_SHARED = 0.5
-
-# Per-namespace decay policy. Namespaces not named here (personal,
-# branch:*, and any custom name) decay at the default DECAY_RATE /
-# TRANSITION_DECAY_RATE above.
-#
-# - ``shared`` is sticky: a team baseline shouldn't evaporate because one
-#   developer stopped touching that area (matches the LTP decay rate).
-# - ``ephemeral`` is session scratch: it decays fast, gets no LTP floor,
-#   and is cleared outright at session boundaries (SessionStart hook,
-#   daemon shutdown) via ``clear_namespace``.
-SHARED_DECAY_RATE = 0.005
-EPHEMERAL_DECAY_RATE = 0.25
-SHARED_TRANSITION_DECAY_RATE = 0.0025
-EPHEMERAL_TRANSITION_DECAY_RATE = 0.25
-
-NAMESPACE_DECAY_RATES: dict[str, float] = {
-    SHARED_NAMESPACE: SHARED_DECAY_RATE,
-    EPHEMERAL_NAMESPACE: EPHEMERAL_DECAY_RATE,
-}
-NAMESPACE_TRANSITION_DECAY_RATES: dict[str, float] = {
-    SHARED_NAMESPACE: SHARED_TRANSITION_DECAY_RATE,
-    EPHEMERAL_NAMESPACE: EPHEMERAL_TRANSITION_DECAY_RATE,
-}
 
 # --------------------------------------------------------------------------- #
 # Structural edges — persisted call/import/inherits graph (Tier 1, BRD §4.1)

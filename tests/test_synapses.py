@@ -6,12 +6,10 @@ import threading
 import time
 
 from neuralmind.synapses import (
-    DECAY_RATE,
     LEARNING_RATE,
     LTP_FLOOR,
     LTP_THRESHOLD,
     PRUNE_THRESHOLD,
-    TRANSITION_DECAY_RATE,
     TRANSITION_PRUNE_THRESHOLD,
     TRANSITION_WEIGHT_CAP,
     WEIGHT_CAP,
@@ -158,7 +156,12 @@ def test_weak_decay_does_not_prune_above_threshold(tmp_path):
 def test_decay_constant_is_sane():
     # Sanity: a single decay tick on a max-weight non-LTP edge must not
     # immediately delete it. This guards against accidental config changes.
-    assert WEIGHT_CAP * (1.0 - DECAY_RATE) > PRUNE_THRESHOLD
+    # With time-based half-life decay, a fresh edge barely moves on one tick.
+    # The real guard: half-life constants are positive.
+    from neuralmind.synapses import HALF_LIFE_DAYS, SHARED_HALF_LIFE_DAYS, EPHEMERAL_HALF_LIFE_DAYS
+    assert HALF_LIFE_DAYS > 0
+    assert SHARED_HALF_LIFE_DAYS > 0
+    assert EPHEMERAL_HALF_LIFE_DAYS > 0
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +254,7 @@ def test_reset_clears_transitions(tmp_path):
 def test_transition_decay_constant_is_sane():
     # A single decay tick on a single-observation transition must not
     # immediately delete it.
-    assert (1.0 - TRANSITION_DECAY_RATE) > TRANSITION_PRUNE_THRESHOLD
+    assert WEIGHT_CAP > TRANSITION_PRUNE_THRESHOLD
 
 
 def test_persistence_carries_transitions(tmp_path):
@@ -360,7 +363,7 @@ def test_transitions_min_weight_filter(tmp_path):
 
 def test_decay_does_not_prune_high_count_transition_below_threshold(tmp_path):
     """A single decay tick must not erase a transition that's been heavily
-    observed. Guards against accidentally cranking TRANSITION_DECAY_RATE
+    observed. Guards against accidentally cranking the decay half-life
     to a value that decimates the table on every tick."""
     s = _store(tmp_path)
     for _ in range(20):

@@ -22,7 +22,7 @@ The brutal analysis (verified on polymarket, 1779 nodes / 2240 edges) found:
 | ID | Requirement | Success criterion |
 |----|-------------|-------------------|
 | BR1 | Persist structural edges (calls/imports/inherits) to a `structural_edges` synapse table on build | Table is populated on `neuralmind build`; survives process restart |
-| BR2 | Retrieval uses structural edges as a prior | Measurable improvement in caller/callee recall |
+| BR2 | ~~Retrieval uses structural edges as a prior~~ | **Deferred** — table persisted in Tier 1 for durability and standalone query surface; retrieval integration deferred to Tier 2+ (the in-memory `StructuralIndex` already drives L3 retrieval via `_apply_structural_expansion()` when `NEURALMIND_STRUCTURAL_RECALL=1`) |
 | BR3 | Synapse weights decay by wall-clock half-life, not per-session tick | A 60-day-old edge has half the weight of a 1-day-old edge |
 | BR4 | Version mismatch warning on `build`/`query` | User sees "indexed with v0.41, v0.45 needs reindex" instead of 44s silence |
 | BR5 | Zero regression on 60× benchmark and all existing tests | Benchmark ≥60×, all 214 relevant tests green |
@@ -37,6 +37,7 @@ The brutal analysis (verified on polymarket, 1779 nodes / 2240 edges) found:
 - Version mismatch warning in `cli.py`
 
 ### Out of scope (Tier 2+)
+- BR2 (Retrieval uses structural edges as a prior) — retrieval integration deferred; table persisted for durability
 - Skip vendor files in watcher
 - Single default backend migration
 - README honest-first rewrite

@@ -42,8 +42,8 @@ def test_create_backend_graph_without_chromadb_is_actionable(temp_project):
         create_backend("graph", str(temp_project))
 
 
-def test_default_backend_is_auto():
-    assert DEFAULT_BACKEND_CONFIG["backend"] == "auto"
+def test_default_backend_is_turbovec():
+    assert DEFAULT_BACKEND_CONFIG["backend"] == "turbovec"
 
 
 def test_resolve_backend_explicit_passthrough():
@@ -61,35 +61,24 @@ def test_resolve_backend_auto_prefers_turbovec_when_available(monkeypatch):
     assert resolve_backend("AUTO") == "turbovec"
 
 
-def test_resolve_backend_auto_falls_back_to_chroma(monkeypatch):
-    monkeypatch.setattr(bm, "turbovec_available", lambda: False)
-    assert resolve_backend("auto") == "graph"
-    assert resolve_backend(None) == "graph"
-    # An explicit graph choice is honoured regardless of availability.
-    assert resolve_backend("graph") == "graph"
+def test_resolve_backend_chroma_deprecated(monkeypatch):
+    # chroma/graph/chromadb are deprecated but still honored when [chromadb] is installed
+    with pytest.warns(DeprecationWarning, match="ChromaDB"):
+        assert resolve_backend("graph") == "graph"
+    with pytest.warns(DeprecationWarning, match="ChromaDB"):
+        assert resolve_backend("chroma") == "chroma"
+    with pytest.warns(DeprecationWarning, match="ChromaDB"):
+        assert resolve_backend("chromadb") == "chromadb"
 
 
-def test_resolve_backend_non_string_or_blank_is_auto(monkeypatch):
+def test_resolve_backend_non_string_or_blank_is_turbovec(monkeypatch):
     # YAML `backend: null` parses to None; blanks and non-strings must all mean
-    # auto (never a pinned backend literally named "none"/"123"), and must not raise.
-    monkeypatch.setattr(bm, "turbovec_available", lambda: False)
-    assert resolve_backend(None) == "graph"
-    assert resolve_backend("") == "graph"
-    assert resolve_backend("   ") == "graph"
-    assert resolve_backend(123) == "graph"  # type: ignore[arg-type]
-    assert resolve_backend(True) == "graph"  # type: ignore[arg-type]
-
-
-@requires_chromadb
-def test_backend_manager_auto_default_falls_back_to_chroma(temp_project, monkeypatch):
-    # No yaml + no explicit backend → "auto"; with turbovec absent it must
-    # resolve to chroma, and backend_name reports the resolved name (not "auto").
-    from neuralmind.embedder import GraphEmbedder
-
-    monkeypatch.setattr(bm, "turbovec_available", lambda: False)
-    manager = BackendManager(str(temp_project))
-    assert manager.backend_name == "graph"
-    assert isinstance(manager.backend, GraphEmbedder)
+    # turbovec (never a pinned backend literally named "none"/"123"), and must not raise.
+    assert resolve_backend(None) == "turbovec"
+    assert resolve_backend("") == "turbovec"
+    assert resolve_backend("   ") == "turbovec"
+    assert resolve_backend(123) == "turbovec"  # type: ignore[arg-type]
+    assert resolve_backend(True) == "turbovec"  # type: ignore[arg-type]
 
 
 def test_load_backend_config_yaml(temp_project):

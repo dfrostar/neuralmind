@@ -15,7 +15,6 @@ from pathlib import Path
 import pytest
 
 from neuralmind.synapses import (
-    DECAY_RATE,
     HALF_LIFE_DAYS,
     LEARNING_RATE,
     LTP_FLOOR,
@@ -253,4 +252,3 @@ class TestConstants:
 
     def test_half_life_constants_positive(self):
         assert HALF_LIFE_DAYS > 0
-        assert DECAY_RATE > 0
