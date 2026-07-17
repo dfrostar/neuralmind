@@ -848,49 +848,44 @@ class SynapseStore:
             )
             return [row[0] for row in cur.fetchall()]
 
-    def decay_node(self, node_id: str) -> dict:
-        """Apply one targeted decay tick to all edges touching ``node_id``.
+    def decay_node(self, node_id: str, now: float | None = None) -> dict:
+        """Apply one targeted time-based decay tick to all edges touching ``node_node``.
 
         Used by the explicit feedback tool (``neuralmind_feedback signal=negative``)
-        to soften a node that the agent marked as unhelpful. The same policy as
-        ``decay()`` applies — LTP-protected edges (activation_count >= LTP_THRESHOLD)
-        are floored at LTP_FLOOR, so long-established associations can't be
-        wiped out by a single negative signal. Non-LTP edges below PRUNE_THRESHOLD
-        after decay are pruned. Transitions from this node are also decayed one tick.
+        to soften a node that the agent marked as unhelpful. The same time-based
+        half-life model as ``decay()`` applies — LTP-protected edges
+        (activation_count >= LTP_THRESHOLD) are floored at LTP_FLOOR, so
+        long-established associations can't be wiped out by a single negative
+        signal. Non-LTP edges below PRUNE_THRESHOLD after decay are pruned.
+        Transitions from this node are also decayed one tick.
         """
+        ts = now if now is not None else time.time()
+        default_lambda = 0.6931471805599453 / HALF_LIFE_DAYS
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
                 # Decay synapse edges where node_id is either endpoint
                 conn.execute(
-                    """
-                    UPDATE synapses
-                    SET weight = MAX(?, weight * (1.0 - ?))
-                    WHERE (node_a = ? OR node_b = ?) AND activation_count >= ?
-                    """,
-                    (LTP_FLOOR, LTP_DECAY_RATE, node_id, node_id, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                    "WHERE (node_a = ? OR node_b = ?) AND activation_count >= ?",
+                    (LTP_FLOOR, default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
                 )
                 conn.execute(
-                    """
-                    UPDATE synapses
-                    SET weight = weight * (1.0 - ?)
-                    WHERE (node_a = ? OR node_b = ?) AND activation_count < ?
-                    """,
-                    (DECAY_RATE, node_id, node_id, LTP_THRESHOLD),
+                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "WHERE (node_a = ? OR node_b = ?) AND activation_count < ?",
+                    (default_lambda, ts, node_id, node_id, LTP_THRESHOLD),
                 )
                 pruned_cur = conn.execute(
-                    """
-                    DELETE FROM synapses
-                    WHERE (node_a = ? OR node_b = ?) AND weight < ? AND activation_count < ?
-                    """,
+                    "DELETE FROM synapses "
+                    "WHERE (node_a = ? OR node_b = ?) AND weight < ? AND activation_count < ?",
                     (node_id, node_id, PRUNE_THRESHOLD, LTP_THRESHOLD),
                 )
                 pruned = pruned_cur.rowcount
                 # Decay outgoing transitions for this node
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * (1.0 - ?) "
+                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
                     "WHERE from_node = ?",
-                    (DECAY_RATE, node_id),
+                    (default_lambda, ts, node_id),
                 )
                 conn.execute("COMMIT")
             except Exception:
@@ -959,73 +954,6 @@ class SynapseStore:
                 conn.execute("ROLLBACK")
                 raise
         return len(rows)
-
-    def recall_structural(
-        self,
-        seed_ids: Iterable[str],
-        relations: Iterable[str] | None = None,
-        top_k: int = 8,
-        now: float | None = None,
-    ) -> list[tuple[str, float]]:
-        """Return weighted structural neighbors of seed node ids.
-
-        Unions the callees/importers/inheritors of each seed, optionally
-        filtered by ``edge_type``. Weight is ``LOG(call_count + 1) *
-        recency_factor`` where recency_factor decays with age from
-        ``last_seen`` (half-life 90 days — structural edges are durable
-        but still fade). Returns ``[(node_id, weight), ...]`` strongest
-        first, capped at ``top_k``.
-        """
-        seeds = [s for s in dict.fromkeys(seed_ids) if s]
-        if not seeds or top_k <= 0:
-            return []
-        ts = now if now is not None else time.time()
-        seed_set = set(seeds)
-
-        # Build the relation filter
-        if relations is not None:
-            allowed = set(relations) & STRUCTURAL_EDGE_TYPES
-            if not allowed:
-                return []
-            rel_ph = ", ".join("?" for _ in allowed)
-            rel_clause = f"AND edge_type IN ({rel_ph})"
-            rel_params = list(allowed)
-        else:
-            rel_clause = ""
-            rel_params = []
-
-        seed_ph = ", ".join("?" for _ in seeds)
-        query = f"""
-            SELECT callee, call_count, last_seen
-            FROM structural_edges
-            WHERE caller IN ({seed_ph}) {rel_clause}
-        """
-        params = list(seeds) + rel_params
-
-        with self._connect() as conn:
-            cur = conn.execute(query, params)
-            rows = cur.fetchall()
-
-        # Weight = LOG(call_count + 1) * recency_factor
-        # recency_factor = exp(-λ * age_days), λ = ln(2)/90
-        lam = 0.6931471805599453 / 90.0
-        scores: dict[str, float] = {}
-        for callee, call_count, last_seen in rows:
-            if callee in seed_set:
-                continue
-            age_days = (ts - last_seen) / 86400.0
-            recency = math.exp(-lam * max(0.0, age_days))
-            weight = math.log(call_count + 1) * recency
-            scores[callee] = max(scores.get(callee, 0.0), weight)
-
-        ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
-        return ranked[:top_k]
-
-    def structural_edge_count(self) -> int:
-        """Return the number of rows in the ``structural_edges`` table."""
-        with self._connect() as conn:
-            cur = conn.execute("SELECT COUNT(*) FROM structural_edges")
-            return cur.fetchone()[0]
 
     # ----------------------------------------------------------------- #
     # Reads

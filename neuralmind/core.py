@@ -546,9 +546,7 @@ class NeuralMind:
             issues = ir_mod.validate_ir(index_ir)
             summary = index_ir.summary()
             summary["validation"] = ir_mod.validation_summary(issues)
-            # Lazy import avoids circular import (core.py is imported during
-            # neuralmind package init).
-            from neuralmind import __version__ as _nm_version
+            from neuralmind import __version__ as _nm_version  # lazy: avoids circular import
             summary["neuralmind_version"] = _nm_version
 
             self.ir_path.parent.mkdir(parents=True, exist_ok=True)
