@@ -10,9 +10,9 @@ see [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). The
 nine-initiative durability arc, enterprise competition plan, and feature map
 of the next arc live there too.
 
-## Now — v0.47.0 (shipped & published)
+## Now — v0.46.2 (shipped & published)
 
-Latest release **v0.47.0** is live on PyPI and GHCR
+Latest release **v0.46.2** is live on PyPI and GHCR
 [PyPI](https://pypi.org/project/neuralmind/) and GHCR. The
 v0.13 → v0.16 "eval-first" arc that used to sit here is **fully shipped**
 and the project has carried well past it — see
@@ -23,11 +23,10 @@ detail lives in `RELEASE_NOTES_v*.md` at the repo root and in
 **Remaining work for the current arc is execution, not engineering:**
 
 - **Answerability proof.** The opt-in `--judge` harness shipped in
-  v0.34.0, but `bench/public/judge/` is still empty. Run
-  `neuralmind benchmark --public --judge` with `ANTHROPIC_API_KEY` set
-  and commit the transcripts, so the launch materials show a concrete
-  answerability table instead of "run it yourself." Pre-empts the
-  "recall ≠ answering" critique.
+  v0.34.0 and can generate transcripts; run `neuralmind benchmark --public --judge`
+  with `ANTHROPIC_API_KEY` set and commit the transcripts under `bench/public/judge/`,
+  so the launch materials show a concrete answerability table instead of
+  "run it yourself." Pre-empts the "recall ≠ answering" critique.
 - **Launch — disclosed-maker only.** Copy is ready in
   [`docs/launch/`](docs/launch/) (Show HN, r/LocalLLaMA, awesome-mcp
   PR). Standing rule: outreach is disclosed-maker only — no
