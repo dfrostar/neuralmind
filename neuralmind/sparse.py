@@ -137,10 +137,7 @@ class SpladeExpander:
             for tok in tokens:
                 df[tok] += 1
         self._corpus_size = n
-        self._idf = {
-            tok: math.log((n + 1) / (freq + 1)) + 1.0
-            for tok, freq in df.items()
-        }
+        self._idf = {tok: math.log((n + 1) / (freq + 1)) + 1.0 for tok, freq in df.items()}
         self._fitted = True
 
     # -----------------------------------------------------------------
@@ -206,9 +203,7 @@ class SpladeExpander:
             return {}
 
         if self.config.use_idf and self._idf:
-            weighted = {
-                tok: 1.0 * self._idf.get(tok, 1.0) for tok in set(tokens)
-            }
+            weighted = {tok: 1.0 * self._idf.get(tok, 1.0) for tok in set(tokens)}
         else:
             weighted = {tok: 1.0 for tok in set(tokens)}
 
@@ -241,8 +236,7 @@ class SpladeExpander:
         chunk_list = list(chunks)
         chunk_vecs = self.expand_batch(chunk_list)
         scored = [
-            (chunk, self.score(query_vec, cvec))
-            for chunk, cvec in zip(chunk_list, chunk_vecs)
+            (chunk, self.score(query_vec, cvec)) for chunk, cvec in zip(chunk_list, chunk_vecs)
         ]
         return sorted(scored, key=lambda x: x[1], reverse=True)[:top_k]
 
@@ -271,8 +265,5 @@ class SparseIndex:
         query_vec = self.expander.expand_query(query)
         if not query_vec:
             return []
-        scored = [
-            (cid, cosine_sparse(query_vec, svec))
-            for cid, svec in self.vectors.items()
-        ]
+        scored = [(cid, cosine_sparse(query_vec, svec)) for cid, svec in self.vectors.items()]
         return sorted(scored, key=lambda x: x[1], reverse=True)[:top_k]

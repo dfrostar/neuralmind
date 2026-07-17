@@ -27,7 +27,14 @@ class TestFingerprint:
 class TestTraceStore:
     def test_record_and_query(self, tmp_path):
         store = TraceStore(tmp_path / "test.db")
-        store.record("sess-1", "How does auth work?", strategy="search", tools_used=["grep"], outcome="success", success_signal=0.9)
+        store.record(
+            "sess-1",
+            "How does auth work?",
+            strategy="search",
+            tools_used=["grep"],
+            outcome="success",
+            success_signal=0.9,
+        )
         traces = store.query(session_id="sess-1")
         assert len(traces) == 1
         assert traces[0].strategy == "search"

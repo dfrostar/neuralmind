@@ -1,0 +1,37 @@
+{
+  "_comment": "C# counterpart of benchmark_queries.json. Same query shapes as the Python fixture. Used to measure top-k retrieval hit-rate for the bundled tree-sitter C# extractor.",
+  "language": "csharp",
+  "fixture": "sample_project_csharp",
+  "queries": [
+    {
+      "id": "auth-flow",
+      "question": "How does authentication work in this codebase?",
+      "shape": "cross-file",
+      "expected_modules": ["src/Auth/AuthHandler.cs", "src/Auth/JwtValidator.cs"]
+    },
+    {
+      "id": "api-endpoints",
+      "question": "What are the main API endpoints and how are requests routed?",
+      "shape": "focused",
+      "expected_modules": ["src/Routes/Endpoints.cs"]
+    },
+    {
+      "id": "billing-flow",
+      "question": "Explain the billing flow and how invoices are charged.",
+      "shape": "cross-file",
+      "expected_modules": ["src/Billing/InvoiceService.cs"]
+    },
+    {
+      "id": "user-storage",
+      "question": "Where are user records created and stored?",
+      "shape": "cross-file",
+      "expected_modules": ["src/Users/UserRepository.cs"]
+    },
+    {
+      "id": "jwt-verify",
+      "question": "How is a JWT token signed and verified?",
+      "shape": "focused",
+      "expected_modules": ["src/Auth/JwtValidator.cs"]
+    }
+  ]
+}

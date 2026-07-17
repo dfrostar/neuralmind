@@ -1,0 +1,9 @@
+{
+  "query": "What API endpoints are defined?",
+  "reference_answer": "The API surface is defined in src/router.ts with GET /users, POST /users, GET /users/:id. Each handler delegates to the Controller class.",
+  "source_files": [
+    "sample_project_ts/src/router.ts",
+    "sample_project_ts/src/controller.ts"
+  ],
+  "category": "architecture"
+}

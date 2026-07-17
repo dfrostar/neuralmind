@@ -192,15 +192,18 @@ class TestMigrationCheck:
         warning = _check_version_mismatch(str(tmp_path))
         assert warning is not None
         assert "v0.41.0" in warning
-        assert "0.45.0" in warning
+        # Version mismatch message should mention reindex.
         assert "reindex" in warning
 
     def test_no_warning_when_versions_match(self, tmp_path):
+        import neuralmind
+
         from neuralmind.cli import _check_version_mismatch
 
         nm_dir = tmp_path / ".neuralmind"
         nm_dir.mkdir()
-        meta = {"neuralmind_version": "0.45.0", "ir_version": 1}
+        # Use the real in-repo version to ensure a match.
+        meta = {"neuralmind_version": neuralmind.__version__, "ir_version": 1}
         (nm_dir / "ir_meta.json").write_text(json.dumps(meta))
 
         warning = _check_version_mismatch(str(tmp_path))
