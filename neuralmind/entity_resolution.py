@@ -122,13 +122,14 @@ class EntityResolver:
     ):
         self.auto_merge_threshold = auto_merge_threshold
         self.review_threshold = review_threshold
-        # norm_label → (entity_id, EntityKey) for registered entities
-        self._entities: dict[str, tuple[str, EntityKey]] = {}
+        # (norm_label, structural_anchor) → (entity_id, EntityKey) for registered entities.
+        # The anchor disambiguates same-norm labels (e.g., auth.Handle vs auth_handle).
+        self._entities: dict[tuple[str, str | None], tuple[str, EntityKey]] = {}
 
     def register(self, entity_id: str, label: str, anchor: str | None = None) -> None:
         """Register an existing graph entity for resolution."""
         key = EntityKey.from_label(label, anchor=anchor)
-        self._entities[key.norm] = (entity_id, key)
+        self._entities[(key.norm, anchor)] = (entity_id, key)
 
     def register_many(
         self, entities: Iterable[tuple[str, str, str | None]]
@@ -153,19 +154,19 @@ class EntityResolver:
             )
 
         # Fast path: exact normalized match.
-        if incoming.norm in self._entities:
-            target_id, _ = self._entities[incoming.norm]
+        if (incoming.norm, anchor) in self._entities:
+            target_id, _ = self._entities[(incoming.norm, anchor)]
             return ResolutionResult(
                 status="merge",
                 confidence=1.0,
                 target_id=target_id,
-                message=f"exact norm match: {incoming.norm}",
+                message=f"exact norm+anchor match: {incoming.norm}@{anchor}",
             )
 
         # Slow path: cosine similarity against all registered entities.
         best_id: str | None = None
         best_confidence = 0.0
-        for norm, (eid, key) in self._entities.items():
+        for (norm, reg_anchor), (eid, key) in self._entities.items():
             # Cheap pre-filter: if either token set is empty or label prefixes
             # differ, skip the full cosine.
             if not key.tokens:

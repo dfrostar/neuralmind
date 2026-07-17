@@ -230,12 +230,21 @@ class TraceStore:
         session_id: str | None = None,
         limit: int = 50,
     ) -> list[str]:
-        """Return fingerprints of successful past queries (for recall boosting)."""
-        return [
-            t.query_fingerprint
-            for t in self.query(
-                session_id=session_id,
-                min_success=min_success,
-                limit=limit,
-            )
-        ]
+        """Return fingerprints of successful past queries (for recall boosting).
+
+        Deduplicated — a fingerprint appearing N times in the traces still
+        returns once in this list, so popular queries don't overweight recall.
+        """
+        seen: set[str] = set()
+        results: list[str] = []
+        for t in self.query(
+            session_id=session_id,
+            min_success=min_success,
+            limit=limit * 2,  # fetch extra to cover dedup shrinkage
+        ):
+            if t.query_fingerprint not in seen:
+                seen.add(t.query_fingerprint)
+                results.append(t.query_fingerprint)
+                if len(results) >= limit:
+                    break
+        return results

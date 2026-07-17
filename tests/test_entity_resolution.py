@@ -103,3 +103,16 @@ class TestEntityResolver:
         assert stats["registered_entities"] == 0
         assert stats["auto_merge_threshold"] == 0.9
         assert stats["review_threshold"] == 0.8
+
+    def test_review_threshold_medium_confidence(self):
+        """A medium-confidence match (0.85 < sim < 0.95) should produce 'review'.
+
+        Two 10-token sets sharing 9 tokens → cosine = 9/sqrt(100) = 0.9.
+        """
+        resolver = EntityResolver()
+        # Register with anchor to avoid fast-path exact match
+        resolver.register("node-1", "shared_token_0 shared_token_1 shared_token_2 shared_token_3 shared_token_4 shared_token_5 shared_token_6 shared_token_7 shared_token_8 unique_a", anchor="class_a")
+        # Query shares 9 tokens but has different norm (unique_b instead of unique_a)
+        result = resolver.resolve("shared_token_0 shared_token_1 shared_token_2 shared_token_3 shared_token_4 shared_token_5 shared_token_6 shared_token_7 shared_token_8 unique_b", anchor="class_b")
+        assert result.status == "review"
+        assert result.confidence == pytest.approx(0.9, abs=0.05)
