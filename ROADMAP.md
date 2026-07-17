@@ -10,30 +10,21 @@ see [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). The
 nine-initiative durability arc, enterprise competition plan, and feature map
 of the next arc live there too.
 
-## Now — v0.46.2 (shipped & published)
+## Now — v0.48.0 (v2.0 complete)
 
-Latest release **v0.46.2** is live on PyPI and GHCR
-[PyPI](https://pypi.org/project/neuralmind/) and GHCR. The
-v0.13 → v0.16 "eval-first" arc that used to sit here is **fully shipped**
-and the project has carried well past it — see
-[Shipped v0.13 → v0.41](#shipped-v013--v041) below. Full per-release
-detail lives in `RELEASE_NOTES_v*.md` at the repo root and in
-[`CHANGELOG.md`](CHANGELOG.md).
+Latest release **v0.48.0** is live on PyPI and GHCR — marks the
+completion of the v2.0 future-proofing plan (4 waves, 26 workstreams, 7 buckets).
+See [CHANGELOG.md](CHANGELOG.md) and [docs/FUTURE-PROOFING-PLAN.md](docs/FUTURE-PROOFING-PLAN.md).
 
-**Remaining work for the current arc is execution, not engineering:**
+**Remaining work is growth and execution, not core engineering:**
 
-- **Answerability proof.** The opt-in `--judge` harness shipped in
-  v0.34.0 and can generate transcripts; run `neuralmind benchmark --public --judge`
-  with `ANTHROPIC_API_KEY` set and commit the transcripts under `bench/public/judge/`,
-  so the launch materials show a concrete answerability table instead of
-  "run it yourself." Pre-empts the "recall ≠ answering" critique.
-- **Launch — disclosed-maker only.** Copy is ready in
-  [`docs/launch/`](docs/launch/) (Show HN, r/LocalLLaMA, awesome-mcp
-  PR). Standing rule: outreach is disclosed-maker only — no
-  unaffiliated-user posts, no personas.
-- **Two GitHub-UI edits** the maker does by hand: repo About / Topics
-  (comparison terms for search weighting) and the v0.37.0 Release body
-  (umbrella notes + honest comparison footer).
+- **Outreach — disclosed-maker only.** Copy is ready for Show HN, r/LocalLLaMA,
+  Hacker News. Standing rule: disclosed-maker only — no unaffiliated-user posts.
+- **GitHub-UI polish.** Repo About / Topics updated for v2.0 comparison terms
+  (codebase-memory, agent-memory, local-first, MCP). Release body for v0.48.0.
+- **Real-repo benchmark harvest.** Community submissions to bench/public/ —
+  two maintainer entries now; outside contributors' numbers are the single most
+  valuable input.
 
 ## Next — forward candidates
 
