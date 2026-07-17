@@ -133,17 +133,18 @@ def test_memory_check_reflects_flag(monkeypatch):
 def test_backend_check_reports_auto_resolution(temp_project, monkeypatch):
     import neuralmind.backend_manager as bm
 
-    # No yaml -> "auto". With turbovec absent it must resolve to chroma (graph)
-    # and say so, plus point at how to pin a backend.
+    # With `backend: auto` in yaml, doctor reports auto-selection.
+    # turbovec_available() is informational only (reports install status).
     monkeypatch.setattr(bm, "turbovec_available", lambda: False)
+    (temp_project / "neuralmind-backend.yaml").write_text("backend: auto\n", encoding="utf-8")
     check = doctor._check_backend(temp_project)
     assert check.status == doctor.OK
-    assert "graph" in check.detail
+    assert "turbovec" in check.detail
     assert "auto-selected" in check.detail
     assert "not installed" in check.detail
     assert "neuralmind-backend.yaml" in check.fix
 
-    # With the turbovec stack available, auto resolves to turbovec.
+    # With turbovec available, info message changes; resolved backend is turbovec.
     monkeypatch.setattr(bm, "turbovec_available", lambda: True)
     assert "turbovec" in doctor._check_backend(temp_project).detail
 
@@ -166,7 +167,7 @@ def test_backend_check_treats_null_config_as_auto(temp_project, monkeypatch):
     check = doctor._check_backend(temp_project)
     assert check.status == doctor.OK
     assert "auto-selected" in check.detail
-    assert "graph" in check.detail
+    assert "turbovec" in check.detail
 
 
 def test_run_diagnostics_returns_all_checks(temp_project):
