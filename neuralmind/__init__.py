@@ -1,3 +1,4 @@
+import importlib
 import logging
 import os
 import warnings
@@ -184,4 +185,6 @@ def __getattr__(name: str):
         from .embedder import GraphEmbedder
 
         return GraphEmbedder
+    if name == "embedder":
+        return importlib.import_module(f"{__name__}.embedder")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
