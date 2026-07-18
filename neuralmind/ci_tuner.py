@@ -29,39 +29,7 @@ from .contracts import (
     register_param,
 )
 
-# Add CI-gated promotion keys to contracts
-META_CI_LAST_EVAL = "self_improve:ci_last_eval"
-META_CI_EVAL_BASELINE = "self_improve:ci_eval_baseline"
-META_CI_HYSTERESIS = "self_improve:ci_hysteresis"
 
-# Register CI-gated tuner parameters
-register_param(
-    TuneableParam(
-        "CI_MIN_FAITHFULNESS",
-        0.0,
-        1.0,
-        0.7,
-        "Minimum faithfulness score for CI promotion gate",
-    )
-)
-register_param(
-    TuneableParam(
-        "CI_MIN_SESSION_HEALTH",
-        0.0,
-        1.0,
-        0.5,
-        "Minimum session health score for CI promotion gate",
-    )
-)
-register_param(
-    TuneableParam(
-        "CI_HYSTERESIS",
-        0.01,
-        0.5,
-        0.05,
-        "Hysteresis margin: candidate must beat incumbent by this fraction",
-    )
-)
 
 
 @dataclass
@@ -71,30 +39,21 @@ class PromotionVerdict:
     candidate_fitness: float
     incumbent_fitness: float
     best_params: dict[str, float]
-    best_candidate: dict[str, float] | None = None
     reason: str = ""
     generation: int = 0
+    hysteresis: float = 0.05
 
     def to_dict(self) -> dict:
         return {
             "promoted": self.promoted,
             "candidate_fitness": round(self.candidate_fitness, 6),
             "incumbent_fitness": round(self.incumbent_fitness, 6),
-            "hysteresis": self.hysteresis_to_dict(),
+            "hysteresis": self.hysteresis,
+            "threshold": round(self.incumbent_fitness * (1.0 + self.hysteresis), 6),
             "generation": self.generation,
             "reason": self.reason,
         }
 
-    def hysteresis_to_dict(self) -> dict:
-        return {
-            "threshold": self.incumbent_fitness * (1.0 + self._hysteresis_val),
-            "margin": self._hysteresis_val,
-        }
-
-    @property
-    def _hysteresis_val(self) -> float:
-        # Read from tunable params; default matches DEFAULT_HYSTERESIS in fitness.py
-        return 0.05
 
 
 class CIGatedTuner:
@@ -151,6 +110,7 @@ class CIGatedTuner:
             incumbent_fitness=incumbent_fitness,
             best_params=tune_result.best_params,
             generation=tune_result.generation,
+            hysteresis=self.tuner.hysteresis,
             reason=f"gen {tune_result.generation}: {'promoted' if promoted else 'no improvement'}",
         )
 
