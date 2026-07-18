@@ -32,6 +32,7 @@ Design notes:
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -577,8 +578,30 @@ def _module_dotted(rel: str) -> str:
     return ".".join(parts)
 
 
+def _load_existing_graph(project_path: Path) -> dict[str, Any] | None:
+    """Load the previous graph.json for incremental reuse.
+
+    Returns None when no graph, unreadable, or not from this backend.
+    Fail-open: missing/corrupt graph → caller does a full build.
+    """
+    graph_path = project_path / "graphify-out" / "graph.json"
+    if not graph_path.exists():
+        return None
+    try:
+        graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        if "neuralmind.graphgen" not in str(graph.get("generated_by", "")):
+            return None
+        return graph
+    except Exception:
+        return None
+
+
 def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]:
     """Parse ``project_path`` and return a graphify-compatible graph dict.
+
+    When an extraction cache exists, skips unchanged files and only
+    re-extracts changed files + their transitive importers. Unchanged
+    files keep their nodes, edges, and community ids byte-for-byte.
 
     Raises ``RuntimeError`` if the tree-sitter Python stack is unavailable.
     """
@@ -591,7 +614,60 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     root = Path(project_path).resolve()
     b = _GraphBuilder()
 
+    # --- Incremental extraction setup ------------------------------------
+    from neuralmind.incremental_extract import (
+        IncrementalExtractor,
+        build_importer_index_from_graph,
+        load_importer_index,
+        save_importer_index,
+    )
+
+    extractor = IncrementalExtractor(root)
+    importer_index = load_importer_index(root)
+    existing_graph = _load_existing_graph(root)
+
+    # If importer_index is empty but we have an existing graph, build it
+    # from the graph's structural edges (best-effort; empty index still
+    # correct but less precise — only directly-changed files re-extracted).
+    if not importer_index and existing_graph:
+        importer_index = build_importer_index_from_graph(existing_graph)
+
+    suffixes = frozenset(_SUFFIX_LANG.keys())
+    if extractor._cache:
+        changed_files = extractor.get_changed_with_dependents(root, suffixes, importer_index)
+        re_extract_set: set[str] = set(changed_files)
+    else:
+        # First build (no cache): all files need extraction
+        re_extract_set = set()
+
     files = _iter_source_files(root, _DEFAULT_IGNORES)
+
+    # If we have an existing graph + cache, reuse unchanged nodes/edges
+    unchanged_nodes: list[dict] = []
+    unchanged_edges: list[dict] = []
+    deleted_files: set[str] = set()
+    if existing_graph and extractor._cache:
+        changed_set = re_extract_set  # already includes transitive importers
+        for node in existing_graph.get("nodes", []):
+            sf = node.get("source_file", "")
+            if sf in changed_set:
+                continue
+            if not (root / sf).exists() if sf else False:
+                deleted_files.add(sf)
+                continue
+            unchanged_nodes.append(dict(node))
+        for edge in existing_graph.get("links", []):
+            src_file = edge.get("source_file", "")
+            # Preserve edges from unchanged files; re-derive edges for changed files
+            if src_file in changed_set:
+                continue
+            # Also drop edges pointing into deleted files
+            target = edge.get("target", "")
+            source = edge.get("source", "")
+            unchanged_edges.append(dict(edge))
+    else:
+        # No cache or no existing graph → full extraction, all files re-extracted
+        re_extract_set = {f.relative_to(root).as_posix() for f in files}
 
     # Group files by language and process each with its own extractor. A
     # language whose grammar isn't installed is skipped (Python is the only
@@ -599,9 +675,20 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # than failing the whole build.
     by_lang: dict[str, list[Path]] = {}
     for fpath in files:
+        rel = fpath.relative_to(root).as_posix()
+        if rel not in re_extract_set:
+            continue
         lang = _SUFFIX_LANG.get(fpath.suffix)
         if lang:
             by_lang.setdefault(lang, []).append(fpath)
+
+    # Pre-seed the builder with unchanged nodes (so cross-file resolution
+    # against unchanged symbols still works) and register their symbols.
+    for node in unchanged_nodes:
+        b.nodes[node["id"]] = node
+        _register_node_symbol(b, node)
+    for edge in unchanged_edges:
+        b.edges.append(edge)
 
     for lang in sorted(by_lang):
         spec = _EXTRACTORS.get(lang)
@@ -636,12 +723,28 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
     for sa_path in _iter_files(root, _DEFAULT_IGNORES, _SCHEMA_SUFFIXES):
         rel = sa_path.relative_to(root).as_posix()
-        extractor = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
-        if extractor:
-            extractor(b, sa_path, rel)
+        extractor_ = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
+        if extractor_:
+            extractor_(b, sa_path, rel)
 
     # ---- communities (per-file, balanced) --------------------------------- #
     _assign_communities(b)
+
+    # --- Post-build cache update -----------------------------------------
+    # Update content hashes for freshly extracted files so the next build
+    # is incremental. Remove deleted files from cache.
+    if re_extract_set:
+        extractor.update_cache(list(re_extract_set), root)
+    if deleted_files:
+        extractor.remove_from_cache(list(deleted_files))
+
+    # Persist importer_index for the next build (best-effort; fail-open).
+    if existing_graph or extractor._cache:
+        new_index = build_importer_index_from_graph({
+            "nodes": list(b.nodes.values()),
+            "links": b.edges,
+        })
+        save_importer_index(root, new_index)
 
     return {
         "directed": False,
