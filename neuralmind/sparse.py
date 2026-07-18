@@ -235,7 +235,8 @@ class SpladeExpander:
         chunk_list = list(chunks)
         chunk_vecs = self.expand_batch(chunk_list)
         scored = [
-            (chunk, self.score(query_vec, cvec)) for chunk, cvec in zip(chunk_list, chunk_vecs)
+            (chunk, self.score(query_vec, cvec))
+            for chunk, cvec in zip(chunk_list, chunk_vecs, strict=False)
         ]
         return sorted(scored, key=lambda x: x[1], reverse=True)[:top_k]
 
