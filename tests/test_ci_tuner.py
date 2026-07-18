@@ -1,7 +1,6 @@
 """Tests for C4 — CI-gated tuner promotion."""
-import pytest
-from unittest.mock import MagicMock, patch
-from neuralmind.ci_tuner import CIGatedTuner, PromotionVerdict, run_ci_gated_promotion
+
+from neuralmind.ci_tuner import CIGatedTuner, PromotionVerdict
 
 
 class TestCIGatedTuner:

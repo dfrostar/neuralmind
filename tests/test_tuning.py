@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
-from neuralmind import contracts, tuning
-from neuralmind.contracts import TUNABLE_PARAMS, get_param, clamp_value, register_param
+from neuralmind import tuning
+from neuralmind.contracts import TUNABLE_PARAMS, clamp_value, get_param, register_param
 
 
 class TestParamRegistration:

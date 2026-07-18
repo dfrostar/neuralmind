@@ -8,21 +8,18 @@ behavior and axis independence.
 from __future__ import annotations
 
 import json
-import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from neuralmind import tuner
-from neuralmind.tuner import PopulationTuner
-from neuralmind.fitness import FitnessInputs, compute_fitness
 from neuralmind.fixtures import FixtureQuery, load_fixture_queries, save_fixture_queries
-
+from neuralmind.tuner import PopulationTuner
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def project(tmp_path: Path) -> Path:
@@ -52,6 +49,7 @@ def default_params() -> dict[str, float]:
 # Determinism
 # ---------------------------------------------------------------------------
 
+
 class TestDeterminism:
     """Same candidate + same fixtures → same fitness."""
 
@@ -71,9 +69,7 @@ class TestDeterminism:
         with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
-            mock_embedder.search.return_value = [
-                {"id": "helper_fn"}, {"id": "main_fn"}
-            ]
+            mock_embedder.search.return_value = [{"id": "helper_fn"}, {"id": "main_fn"}]
             MockEmbedder.return_value = mock_embedder
 
             f1 = tuner_fixture.evaluate_candidate(default_params)
@@ -85,6 +81,7 @@ class TestDeterminism:
 # ---------------------------------------------------------------------------
 # Axis independence
 # ---------------------------------------------------------------------------
+
 
 class TestAxisIndependence:
     """Different retrieval params → different fitness values."""
@@ -106,20 +103,20 @@ class TestAxisIndependence:
         with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
+
             # Return ALL expected nodes when asked for enough results,
             # but only SOME when asked for fewer. This simulates the real
             # behavior where retrieval depth affects recall.
             def fake_search(query, n=10):
                 if n >= 50:
                     return [{"id": "node1"}, {"id": "node2"}, {"id": "node3"}]
-                else:
-                    return [{"id": "node1"}]  # shallow search misses some
+                return [{"id": "node1"}]  # shallow search misses some
 
             mock_embedder.search.side_effect = fake_search
             MockEmbedder.return_value = mock_embedder
 
             params_high = dict(default_params, STRUCTURAL_SEED_K=10.0)  # search_n=50
-            params_low = dict(default_params, STRUCTURAL_SEED_K=1.0)     # search_n=5
+            params_low = dict(default_params, STRUCTURAL_SEED_K=1.0)  # search_n=5
 
             f_high = tuner_fixture.evaluate_candidate(params_high)
             f_low = tuner_fixture.evaluate_candidate(params_low)
@@ -151,12 +148,20 @@ class TestAxisIndependence:
             mock_embedder.search.return_value = [{"id": "node1"}, {"id": "node2"}]
             MockEmbedder.return_value = mock_embedder
 
-            params_big = dict(default_params,
-                              L0_MAX_TOKENS=300.0, L1_MAX_TOKENS=1000.0,
-                              L2_MAX_TOKENS=1500.0, L3_MAX_TOKENS=2000.0)
-            params_small = dict(default_params,
-                                L0_MAX_TOKENS=50.0, L1_MAX_TOKENS=200.0,
-                                L2_MAX_TOKENS=400.0, L3_MAX_TOKENS=500.0)
+            params_big = dict(
+                default_params,
+                L0_MAX_TOKENS=300.0,
+                L1_MAX_TOKENS=1000.0,
+                L2_MAX_TOKENS=1500.0,
+                L3_MAX_TOKENS=2000.0,
+            )
+            params_small = dict(
+                default_params,
+                L0_MAX_TOKENS=50.0,
+                L1_MAX_TOKENS=200.0,
+                L2_MAX_TOKENS=400.0,
+                L3_MAX_TOKENS=500.0,
+            )
 
             f_big = tuner_fixture.evaluate_candidate(params_big)
             f_small = tuner_fixture.evaluate_candidate(params_small)
@@ -167,6 +172,7 @@ class TestAxisIndependence:
 # ---------------------------------------------------------------------------
 # Fail-open behavior
 # ---------------------------------------------------------------------------
+
 
 class TestFailOpen:
     """evaluate_candidate must never raise; always return float."""
@@ -218,12 +224,11 @@ class TestFailOpen:
 # Integration: tuner beats random search
 # ---------------------------------------------------------------------------
 
+
 class TestIntegration:
     """Integration: tuner finds better config than random on fixture."""
 
-    def test_tuner_runs_with_live_eval(
-        self, project: Path
-    ) -> None:
+    def test_tuner_runs_with_live_eval(self, project: Path) -> None:
         """run_generation completes without error when live eval is available."""
         fixtures = [
             FixtureQuery(query="q1", expected_node_ids=("node1",)),
@@ -234,13 +239,13 @@ class TestIntegration:
         with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
-            mock_embedder.search.return_value = [
-                {"id": "node1"}, {"id": "node2"}
-            ]
+            mock_embedder.search.return_value = [{"id": "node1"}, {"id": "node2"}]
             MockEmbedder.return_value = mock_embedder
 
             t = PopulationTuner(
-                project_path=project, population_size=5, generations=2,
+                project_path=project,
+                population_size=5,
+                generations=2,
                 hysteresis=0.0,
             )
             result = t.run_generation()
@@ -255,17 +260,23 @@ class TestIntegration:
 # Fixture queries helper
 # ---------------------------------------------------------------------------
 
+
 class TestFixtureQueries:
     """load_fixture_queries returns deterministic, sorted, capped list."""
 
     def test_load_from_file(self, project: Path) -> None:
         file_path = project / ".neuralmind" / "fixture_queries.json"
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(json.dumps([
-            {"query": "zebra", "expected_node_ids": ["z1"]},
-            {"query": "alpha", "expected_node_ids": ["a1"]},
-            "simple query",
-        ], indent=2))
+        file_path.write_text(
+            json.dumps(
+                [
+                    {"query": "zebra", "expected_node_ids": ["z1"]},
+                    {"query": "alpha", "expected_node_ids": ["a1"]},
+                    "simple query",
+                ],
+                indent=2,
+            )
+        )
 
         queries = load_fixture_queries(project)
         assert len(queries) == 3
@@ -304,6 +315,7 @@ class TestFixtureQueries:
 # Efficiency axis varies
 # ---------------------------------------------------------------------------
 
+
 class TestEfficiencyAxis:
     """Efficiency axis still varies after refactor."""
 
@@ -326,9 +338,13 @@ class TestEfficiencyAxis:
             MockEmbedder.return_value = mock_embedder
 
             params_default = default_params
-            params_low_budget = dict(default_params,
-                                     L0_MAX_TOKENS=50.0, L1_MAX_TOKENS=200.0,
-                                     L2_MAX_TOKENS=400.0, L3_MAX_TOKENS=500.0)
+            params_low_budget = dict(
+                default_params,
+                L0_MAX_TOKENS=50.0,
+                L1_MAX_TOKENS=200.0,
+                L2_MAX_TOKENS=400.0,
+                L3_MAX_TOKENS=500.0,
+            )
 
             f_default = tuner_fixture.evaluate_candidate(params_default)
             f_low = tuner_fixture.evaluate_candidate(params_low_budget)
@@ -336,16 +352,22 @@ class TestEfficiencyAxis:
         # Different budgets → different fitness
         assert f_default != f_low
 
-    def test_efficiency_ratio_monotonic(
-        self, tuner_fixture: PopulationTuner
-    ) -> None:
+    def test_efficiency_ratio_monotonic(self, tuner_fixture: PopulationTuner) -> None:
         """Lower budget → higher efficiency ratio → higher fitness."""
         # Default budget = 150+600+800+1000 = 2550
-        params_default: dict[str, float] = {"L0_MAX_TOKENS": 150.0, "L1_MAX_TOKENS": 600.0,
-                                            "L2_MAX_TOKENS": 800.0, "L3_MAX_TOKENS": 1000.0}
+        params_default: dict[str, float] = {
+            "L0_MAX_TOKENS": 150.0,
+            "L1_MAX_TOKENS": 600.0,
+            "L2_MAX_TOKENS": 800.0,
+            "L3_MAX_TOKENS": 1000.0,
+        }
         # Lower budget → higher efficiency ratio
-        params_lower: dict[str, float] = {"L0_MAX_TOKENS": 75.0, "L1_MAX_TOKENS": 300.0,
-                                          "L2_MAX_TOKENS": 400.0, "L3_MAX_TOKENS": 500.0}
+        params_lower: dict[str, float] = {
+            "L0_MAX_TOKENS": 75.0,
+            "L1_MAX_TOKENS": 300.0,
+            "L2_MAX_TOKENS": 400.0,
+            "L3_MAX_TOKENS": 500.0,
+        }
 
         ratio_default = tuner_fixture._efficiency_ratio(params_default)
         ratio_lower = tuner_fixture._efficiency_ratio(params_lower)

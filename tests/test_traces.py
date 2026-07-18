@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from neuralmind.traces import (
     TraceStore,
     _fingerprint,
-    ReasoningTrace,
 )
 
 

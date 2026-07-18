@@ -7,12 +7,7 @@ Stdlib-only, no neuralmind dependencies beyond what test_synapses.py uses.
 from __future__ import annotations
 
 import json
-import math
-import sqlite3
 import time
-from pathlib import Path
-
-import pytest
 
 from neuralmind.synapses import (
     HALF_LIFE_DAYS,
@@ -197,7 +192,6 @@ class TestMigrationCheck:
 
     def test_no_warning_when_versions_match(self, tmp_path):
         import neuralmind
-
         from neuralmind.cli import _check_version_mismatch
 
         nm_dir = tmp_path / ".neuralmind"

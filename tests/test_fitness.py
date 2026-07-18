@@ -7,12 +7,12 @@ import pytest
 from neuralmind.fitness import (
     DEFAULT_WEIGHTS,
     FitnessInputs,
-    _parse_weights,
     _clamp,
+    _parse_weights,
     compute_fitness,
     get_weights,
-    set_weights,
     session_health_from_events,
+    set_weights,
 )
 
 

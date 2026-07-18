@@ -12,13 +12,11 @@ from neuralmind.synapses import (
     LTP_FLOOR,
     LTP_THRESHOLD,
     PRUNE_THRESHOLD,
-    STRUCTURAL_BASE_WEIGHT,
-    STRUCTURAL_LOG_SCALE,
+    SHARED_NAMESPACE,
     STRUCTURAL_MAX_WEIGHT,
     TRANSITION_PRUNE_THRESHOLD,
     TRANSITION_WEIGHT_CAP,
     WEIGHT_CAP,
-    SHARED_NAMESPACE,
     SynapseStore,
 )
 
@@ -164,7 +162,7 @@ def test_decay_constant_is_sane():
     # immediately delete it. This guards against accidental config changes.
     # With time-based half-life decay, a fresh edge barely moves on one tick.
     # The real guard: half-life constants are positive.
-    from neuralmind.synapses import HALF_LIFE_DAYS, SHARED_HALF_LIFE_DAYS, EPHEMERAL_HALF_LIFE_DAYS
+    from neuralmind.synapses import EPHEMERAL_HALF_LIFE_DAYS, HALF_LIFE_DAYS, SHARED_HALF_LIFE_DAYS
 
     assert HALF_LIFE_DAYS > 0
     assert SHARED_HALF_LIFE_DAYS > 0
