@@ -1,12 +1,16 @@
 """
 G4 — Incremental re-extraction.
 
-Currently only re-embedding is incremental. On each build,
-re-extract symbols from changed files + their callers/importers
-(reverse edges already indexed in structural_edges). Skip
-full-tree reparse for large repos.
+Tracks file content hashes to determine which files need re-extraction on
+each build. Also resolves reverse edges (importers/callers) that may need
+re-extraction when a dependency changes.
 
-Requires G3 (modularity tracking), structural_edges (done).
+Part of Wave 5 — wired into build_graph() so `neuralmind build` skips
+unchanged files.
+
+Skip-path: if no cache exists (first run, corrupted), does a full
+extraction. If a file's mtime and hash are unchanged from the last
+build, it's skipped.
 """
 
 from __future__ import annotations
@@ -14,16 +18,18 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 CACHE_FILE = ".neuralmind/extraction_cache.json"
+IMPORTER_INDEX_FILE = ".neuralmind/importer_index.json"
 
 
 @dataclass
 class FileCache:
     """Per-file cache entry for incremental extraction."""
+
     path: str
     mtime: float
     content_hash: str
@@ -53,7 +59,7 @@ class IncrementalExtractor:
     re-extraction on each build. Also resolves reverse edges
     (importers/callers) that may need re-extraction when a
     dependency changes.
-    
+
     Skip-path: if no cache exists (first run, corrupted), does
     a full extraction. If a file's mtime and hash are unchanged
     from the last build, it's skipped.
@@ -106,7 +112,7 @@ class IncrementalExtractor:
     ) -> tuple[list[str], list[str], list[str]]:
         """
         Compare current files against cache to find changes.
-        
+
         Returns: (added, modified, deleted) file path lists
         """
         current_files: dict[str, float] = {}
@@ -149,7 +155,7 @@ class IncrementalExtractor:
     ) -> list[str]:
         """
         Get changed files plus files that import them (reverse edges).
-        
+
         importer_index: maps file -> list of files that import it.
         """
         added, modified, deleted = self.scan_files(root, suffixes)
@@ -172,7 +178,7 @@ class IncrementalExtractor:
         modified_list = [f for f in modified if f not in added]
         # Importers get added to modified for re-extraction
         importer_list = [f for f in changed if f not in added and f not in modified and f not in deleted]
-        
+
         return added_list + modified_list + importer_list
 
     def update_cache(self, file_paths: list[str], root: Path) -> None:
@@ -203,3 +209,88 @@ class IncrementalExtractor:
             "n_cached": len(self._cache),
             "cache_file": str(self.cache_path),
         }
+
+
+def build_importer_index_from_graph(graph: dict[str, Any]) -> dict[str, list[str]]:
+    """Build importer_index from a graph's structural edges.
+
+    Inverts the direction of imports_from/calls/inherits edges:
+    if file A imports file B, the result maps B -> [A].
+
+    The importer_index is the reverse-edge traversal map needed by
+    get_changed_with_dependents(). It answers: "if file X changed,
+    which files need re-extraction because they import/call/inherit
+    from X?"
+    """
+    index: dict[str, list[str]] = {}
+
+    # Build file_id -> source_file mapping
+    file_nodes = [n for n in graph.get("nodes", []) if n.get("file_type") == "code"]
+    file_by_id: dict[str, str] = {}
+    for n in file_nodes:
+        nid = n.get("id", "")
+        sf = n.get("source_file", "")
+        if nid == _slug(sf):  # file node id matches slug of its own path
+            file_by_id[nid] = sf
+        elif sf:
+            file_by_id[nid] = sf
+
+    # Invert structural edges: for each edge where target is in file B,
+    # register the source's file as an importer of B
+    reverse_relations = {"imports_from", "calls", "inherits", "contains"}
+    for edge in graph.get("links", []):
+        rel = edge.get("relation", "")
+        if rel not in reverse_relations:
+            continue
+        target = edge.get("target", "")
+        source = edge.get("source", "")
+        # Find the file that owns target
+        target_file = file_by_id.get(target, "")
+        source_file = file_by_id.get(source, "")
+        if target_file and source_file and target_file != source_file:
+            if target_file not in index:
+                index[target_file] = []
+            if source_file not in index[target_file]:
+                index[target_file].append(source_file)
+
+    return index
+
+
+def _slug(text: str) -> str:
+    """Stable id fragment: collapse non-alphanumerics to single underscores."""
+    import re
+    _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
+    return _SLUG_RE.sub("_", text).strip("_").lower()
+
+
+def save_importer_index(project_path: str | Path, index: dict[str, list[str]]) -> bool:
+    """Persist importer_index to .neuralmind/ for subsequent builds.
+
+    Returns False on any error (fail-open — never raises).
+    """
+    try:
+        file_path = Path(project_path) / IMPORTER_INDEX_FILE
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        file_path.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        return True
+    except Exception:
+        return False
+
+
+def load_importer_index(project_path: str | Path) -> dict[str, list[str]]:
+    """Load importer_index from .neuralmind/.
+
+    Returns empty dict when the file doesn't exist, is unreadable, or
+    contains malformed JSON (fail-open).
+    """
+    try:
+        file_path = Path(project_path) / IMPORTER_INDEX_FILE
+        if not file_path.exists():
+            return {}
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return {}
+        # Validate: every value must be a list of strings
+        return {k: v for k, v in data.items() if isinstance(v, list)}
+    except Exception:
+        return {}
