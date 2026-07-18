@@ -14,9 +14,7 @@ import pytest
 
 from neuralmind import graphgen
 from neuralmind.incremental_extract import (
-    IncrementalExtractor,
     load_importer_index,
-    save_importer_index,
 )
 
 

@@ -11,7 +11,16 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - if: github.event_name != 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -23,11 +32,63 @@ jobs:
           python -m pip install --upgrade pip
           pip install ruff black
 
+      - name: Compute changed Python files
+        id: changed-python
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          case "${{ github.event_name }}" in
+            pull_request)
+              base_sha="${{ github.event.pull_request.base.sha }}"
+              target_sha="${{ github.event.pull_request.head.sha }}"
+              ;;
+            push)
+              base_sha="${{ github.event.before }}"
+              target_sha="$GITHUB_SHA"
+              ;;
+            *)
+              echo "Unsupported event: ${{ github.event_name }}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ "$base_sha" =~ ^0+$ ]]; then
+            base_sha="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+          fi
+
+          files_file="$RUNNER_TEMP/changed-python-files.txt"
+          mapfile -t python_files < <(
+            git diff --name-only --diff-filter=ACMR "$base_sha...$target_sha" -- "*.py" "*.pyi"
+          )
+
+          printf '%s\n' "${python_files[@]}" > "$files_file"
+          echo "files-file=$files_file" >> "$GITHUB_OUTPUT"
+
+          if ((${#python_files[@]} == 0)); then
+            echo "has-files=false" >> "$GITHUB_OUTPUT"
+            echo "No changed Python files to lint."
+            exit 0
+          fi
+
+          echo "has-files=true" >> "$GITHUB_OUTPUT"
+          printf 'Changed Python files:\n%s\n' "${python_files[@]}"
+
       - name: Check formatting with Black
-        run: black --check --diff .
+        if: steps.changed-python.outputs.has-files == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t python_files < "${{ steps.changed-python.outputs.files-file }}"
+          black --check --diff "${python_files[@]}"
 
       - name: Lint with Ruff
-        run: ruff check .
+        if: steps.changed-python.outputs.has-files == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t python_files < "${{ steps.changed-python.outputs.files-file }}"
+          ruff check "${python_files[@]}"
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
