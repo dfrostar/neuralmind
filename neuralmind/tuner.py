@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import json
 import logging
-import hashlib
 import math
 import os
 import random
@@ -31,11 +30,9 @@ from .contracts import (
     META_TUNER_INCUMBENT,
     META_TUNER_PROMOTED_AT,
     TUNABLE_PARAMS,
-    TuneableParam,
     clamp_value,
-    get_param,
 )
-from .fitness import FitnessInputs, FitnessScore, compute_fitness
+from .fitness import FitnessInputs, compute_fitness
 from .tuning import resolve_effective
 
 log = logging.getLogger(__name__)
@@ -44,14 +41,6 @@ log = logging.getLogger(__name__)
 # ----------------------------------------------------------------------- #
 # Dataclasses
 # ----------------------------------------------------------------------- #
-
-
-@dataclass
-class CandidateConfig:
-    """One candidate parameter set."""
-
-    params: dict[str, float]
-    fitness: float = 0.0
 
 
 @dataclass
@@ -239,7 +228,6 @@ class PopulationTuner:
         successes = 0
         re_queries = 0
         queries_attempted = 0
-        prev_query_fp = None
         for fq in fixture_queries:
             try:
                 results = embedder.search(fq.query, n=max(search_n, 10))
@@ -255,11 +243,11 @@ class PopulationTuner:
             elif results:
                 successes += 1
 
-            # re-query detection: same fingerprint as previous query
-            query_fp = int(hashlib.sha256(fq.query.encode()).hexdigest(), 16) % 10000
-            if prev_query_fp is not None and query_fp == prev_query_fp:
+            # Re-query proxy: queries returning zero results force the user
+            # to re-phrase. This varies with search_n (retrieval depth),
+            # which is candidate-dependent.
+            if not results:
                 re_queries += 1
-            prev_query_fp = query_fp
 
         retrieval_quality = successes / queries_attempted if queries_attempted else 0.0
         session_health = max(0.0, min(1.0, 1.0 - re_queries / queries_attempted)) if queries_attempted else 1.0
