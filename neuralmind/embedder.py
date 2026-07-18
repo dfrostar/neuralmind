@@ -78,11 +78,11 @@ class GraphEmbedder(EmbeddingBackend):
 
         # Initialize ChromaDB (imported lazily so neuralmind.embedder is
         # importable even when the optional [chromadb] extra is not installed)
-        import chromadb as _chromadb
+        import chromadb
         from chromadb.config import Settings
 
         _silence_chroma_telemetry()
-        self.client = _chromadb.PersistentClient(
+        self.client = chromadb.PersistentClient(
             path=self.db_path, settings=Settings(anonymized_telemetry=False)
         )
 
