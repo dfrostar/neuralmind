@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import random
 import time
 from pathlib import Path
-from typing import Any
 
 import pytest
 
-from neuralmind import tuner, tuning
-from neuralmind.contracts import META_TUNER_FITNESS, META_TUNER_INCUMBENT
 from neuralmind.tuner import PopulationTuner, TuneRun
 
 
@@ -33,8 +29,8 @@ class PopulationTuningHarness:
 
     def _seed_traces(self) -> None:
         """Write a set of reasoning traces to the project's synapse db."""
-        from neuralmind.traces import TraceStore
         from neuralmind.synapses import default_db_path
+        from neuralmind.traces import TraceStore
 
         ts = TraceStore(default_db_path(self.project_path))
         rng = random.Random(42)
@@ -188,7 +184,7 @@ class TestEfficiencyRatio:
 
     def test_efficiency_zero_candidate_budget(self, tuner_populated) -> None:
         t = tuner_populated.tuner
-        params = {k: 0.0 for k in t._default_param_map()}
+        params = dict.fromkeys(t._default_param_map(), 0.0)
         assert t._efficiency_ratio(params) == 1.0
 
 

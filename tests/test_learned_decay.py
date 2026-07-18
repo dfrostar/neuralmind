@@ -4,10 +4,7 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from neuralmind import learned_decay
-from neuralmind.contracts import TUNABLE_PARAMS
 
 
 class TestDefaultBounds:
@@ -87,8 +84,6 @@ class TestSchemaMigration:
     """A3 schema additions"""
 
     def test_synapses_table_has_half_life_days(self, tmp_path) -> None:
-        import sqlite3
-        from pathlib import Path
 
         from neuralmind.synapses import SynapseStore, default_db_path
 

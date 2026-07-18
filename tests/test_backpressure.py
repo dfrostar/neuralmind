@@ -1,5 +1,5 @@
 """Tests for F4 — backpressure + circuit breakers."""
-import pytest
+
 from neuralmind.backpressure import (
     CircuitBreaker,
     CircuitState,
@@ -31,7 +31,9 @@ class TestCircuitBreaker:
         cb.record_failure()
         cb.record_failure()
         assert cb.state == CircuitState.OPEN
-        import time; time.sleep(0.02)
+        import time
+
+        time.sleep(0.02)
         assert cb.state == CircuitState.HALF_OPEN
         assert cb.allow_request()
 
@@ -39,7 +41,9 @@ class TestCircuitBreaker:
         cb = CircuitBreaker("test", failure_threshold=2, recovery_timeout=0.01)
         cb.record_failure()
         cb.record_failure()
-        import time; time.sleep(0.02)
+        import time
+
+        time.sleep(0.02)
         assert cb.state == CircuitState.HALF_OPEN
         cb.record_success()
         assert cb.state == CircuitState.CLOSED

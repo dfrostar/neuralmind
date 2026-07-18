@@ -1,6 +1,8 @@
 """Tests for E1 — contribution-quality scoring."""
+
 import time
-from neuralmind.contribution_scoring import ContributionQualityScorer, EdgeQuality
+
+from neuralmind.contribution_scoring import ContributionQualityScorer
 
 
 class TestContributionQualityScorer:

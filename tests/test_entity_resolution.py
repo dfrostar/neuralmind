@@ -5,12 +5,10 @@ from __future__ import annotations
 import pytest
 
 from neuralmind.entity_resolution import (
-    EntityResolver,
     EntityKey,
-    norm_label,
+    EntityResolver,
     cosine_similarity,
-    AUTO_MERGE_THRESHOLD,
-    REVIEW_FLAG_THRESHOLD,
+    norm_label,
 )
 
 

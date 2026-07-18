@@ -5,14 +5,14 @@ from __future__ import annotations
 import pytest
 
 from neuralmind.sparse import (
-    SpladeExpander,
-    SpladeConfig,
     SparseIndex,
-    tokenize,
-    sparse_dot,
-    sparse_norm,
+    SpladeConfig,
+    SpladeExpander,
     cosine_sparse,
     normalize_sparse,
+    sparse_dot,
+    sparse_norm,
+    tokenize,
     truncate_sparse,
 )
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from neuralmind.scip_backend import (
     ScipBackend,
     ScipConfig,

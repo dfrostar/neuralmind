@@ -1,5 +1,6 @@
 """Tests for G3 — modularity clustering."""
-from neuralmind.modularity import louvain_clustering, _build_adjacency
+
+from neuralmind.modularity import louvain_clustering
 
 
 class TestLouvain:
