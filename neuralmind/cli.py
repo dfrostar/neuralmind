@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
+from neuralmind.metrics_pipeline import MetricsCollector
 
 
 def _force_utf8_io() -> None:
@@ -1131,6 +1132,52 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
+
+
+def cmd_metrics(args):
+    """Show aggregated metrics summary from .neuralmind/metrics/ JSONL files.
+
+    Wraps MetricsCollector.summarize() with CLI-friendly ASCII table output
+    and optional JSON export.
+    """
+    project_path = Path(getattr(args, "project_path", ".")).resolve()
+    days = getattr(args, "days", 7)
+    collector = MetricsCollector(project_path)
+    summary = collector.summarize(days=days, event_type="query")
+
+    if getattr(args, "json", False):
+        print(json.dumps(summary, indent=2))
+        return
+
+    if not summary or summary.get("n_events", 0) == 0:
+        print(f"No metrics data for {project_path.name} (last {days} days)")
+        print(f"Metrics dir: {collector.project_path}/.neuralmind/metrics/")
+        print("Run some queries to populate metrics.")
+        return
+
+    print(f"NeuralMind metrics — {project_path.name} (last {days} days)")
+    print()
+
+    queries = summary.get("queries", {})
+    builds = summary.get("builds", {})
+    print(f"{'Metric':<30} {'Value':>12}")
+    print("-" * 43)
+
+    if queries:
+        print(f"{'Queries':.<30} {queries.get('n_queries', 0):>12,}")
+        print(f"{'Mean latency (ms)':.<30} {queries.get('mean_latency_ms', 0):>12,.2f}")
+        print(f"{'Mean tokens/query':.<30} {queries.get('mean_tokens_used', 0):>12,.0f}")
+        print(f"{'Mean retrieval reuse':.<30} {queries.get('mean_retrieval_reuse_rate', 0):>12.4f}")
+        print(f"{'Mean synapses fired':.<30} {queries.get('mean_synapses_activated', 0):>12.1f}")
+        calls = queries.get("sum_tool_calls", 0)
+        successes = queries.get("sum_tool_successes", 0)
+        success_pct = (successes / calls * 100) if calls > 0 else 0.0
+        print(f"{'Tool success rate':.<30} {success_pct:>11.1f}%")
+        print(f"{'Total tool calls':.<30} {calls:>12,}")
+
+    if builds:
+        print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
+        print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
 
 
 def cmd_validate(args):
@@ -2485,6 +2532,21 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    metrics_p = subparsers.add_parser(
+        "metrics",
+        help="Show aggregated metrics summary from .neuralmind/metrics/ JSONL files",
+    )
+    metrics_p.add_argument("project_path", nargs="?", default=".")
+    metrics_p.add_argument(
+        "--days",
+        "-d",
+        type=int,
+        default=7,
+        help="Window in days for metrics aggregation (default: 7)",
+    )
+    metrics_p.add_argument("--json", "-j", action="store_true")
+    metrics_p.set_defaults(func=cmd_metrics)
 
     validate_p = subparsers.add_parser(
         "validate",
