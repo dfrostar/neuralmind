@@ -1,0 +1,28 @@
+{
+  "ir_version": 1,
+  "generated_by": "neuralmind.ir.from_graph_json",
+  "source_backend": "turbovec",
+  "source_schema_version": null,
+  "coverage": "coarse",
+  "built_at_commit": "handauthored0000000000000000000000000000",
+  "created_at": "2026-07-18T00:36:54.212477+00:00",
+  "nodes": 92,
+  "edges": 103,
+  "clusters": 9,
+  "synapses": 0,
+  "node_kinds": {
+    "symbol": 33,
+    "document": 37,
+    "function": 22
+  },
+  "languages": {
+    "markdown": 4
+  },
+  "validation": {
+    "ok": true,
+    "errors": 0,
+    "warnings": 0,
+    "issues": []
+  },
+  "neuralmind_version": "0.48.0"
+}
