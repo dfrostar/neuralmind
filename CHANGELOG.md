@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.49.3](https://github.com/dfrostar/neuralmind/compare/v0.49.2...v0.49.3) (2026-07-18)
+
+
+### Bug Fixes
+
+* **ci:** complete lint sweep — all ruff errors patched ([e96b805](https://github.com/dfrostar/neuralmind/commit/e96b805f12e6886cb7a4701a7967437e5fc28931))
+* **ci:** lint cleanup + tests package breakage ([76c8668](https://github.com/dfrostar/neuralmind/commit/76c8668924a0f501a54651fba9b80b2d293679d9))
+* **ci:** patch stale test assertions post-wave4 cleanup ([5a13c16](https://github.com/dfrostar/neuralmind/commit/5a13c163c6d100e9aedf8c82504173266bdc84e6))
+* **ci:** restore CI green — lint + test infra patches ([e19e631](https://github.com/dfrostar/neuralmind/commit/e19e631dfc636b240028dd3e7054cdedea971d3c))
+
 ## [0.48.0](https://github.com/dfrostar/neuralmind/compare/v0.47.1...v0.48.0) (2026-07-17)
 
 
