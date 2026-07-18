@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.4](https://github.com/dfrostar/neuralmind/compare/v0.49.3...v0.49.4) (2026-07-18)
+
+
+### Bug Fixes
+
+* **ci:** complete lint sweep — all ruff errors patched ([e96b805](https://github.com/dfrostar/neuralmind/commit/e96b805f12e6886cb7a4701a7967437e5fc28931))
+
 ## [0.49.3](https://github.com/dfrostar/neuralmind/compare/v0.49.2...v0.49.3) (2026-07-18)
 
 
