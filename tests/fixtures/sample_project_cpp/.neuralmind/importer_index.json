@@ -1,0 +1,28 @@
+{
+  "include/app/billing.hpp": [
+    "include/app/router.hpp",
+    "src/billing/invoices.cpp"
+  ],
+  "include/app/db.hpp": [
+    "src/db/connection.cpp"
+  ],
+  "include/app/handlers.hpp": [
+    "include/app/router.hpp",
+    "src/api/router.cpp",
+    "src/auth/handlers.cpp"
+  ],
+  "include/app/jwt.hpp": [
+    "include/app/handlers.hpp",
+    "src/auth/handlers.cpp",
+    "src/auth/jwt.cpp"
+  ],
+  "include/app/router.hpp": [
+    "src/api/router.cpp"
+  ],
+  "include/app/user.hpp": [
+    "include/app/billing.hpp",
+    "include/app/router.hpp",
+    "src/api/router.cpp",
+    "src/users/crud.cpp"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "src/Auth/Handlers.cs": [
+    "src/Api/Routes.cs"
+  ],
+  "src/Auth/JwtUtils.cs": [
+    "src/Auth/Handlers.cs"
+  ],
+  "src/Billing/Invoices.cs": [
+    "src/Api/Routes.cs"
+  ],
+  "src/Billing/StripeClient.cs": [
+    "src/Api/Routes.cs",
+    "src/Billing/Invoices.cs"
+  ],
+  "src/Db/Connection.cs": [
+    "src/Api/Routes.cs",
+    "src/Auth/Handlers.cs",
+    "src/Users/Crud.cs"
+  ],
+  "src/Users/Crud.cs": [
+    "src/Auth/Handlers.cs",
+    "src/Billing/Invoices.cs"
+  ]
+}

@@ -650,9 +650,11 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         changed_set = re_extract_set  # already includes transitive importers
         for node in existing_graph.get("nodes", []):
             sf = node.get("source_file", "")
+            if not sf:
+                continue  # skip nonsensical nodes with empty source_file
             if sf in changed_set:
                 continue
-            if not (root / sf).exists() if sf else False:
+            if not (root / sf).exists():
                 deleted_files.add(sf)
                 continue
             unchanged_nodes.append(dict(node))
@@ -728,13 +730,31 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             extractor_(b, sa_path, rel)
 
     # ---- communities (per-file, balanced) --------------------------------- #
-    _assign_communities(b)
+    # Carry over community IDs from existing graph so unchanged files keep
+    # their numbers byte-for-byte (defeats the point of incremental otherwise).
+    comm_of_file: dict[str, int] = {}
+    if existing_graph:
+        for n in existing_graph.get("nodes", []):
+            comm_of_file.setdefault(n["source_file"], n["community"])
+    next_comm = max(comm_of_file.values(), default=-1) + 1
+    for n in b.nodes.values():
+        sf = n["source_file"]
+        if sf not in comm_of_file:
+            comm_of_file[sf] = next_comm
+            next_comm += 1
+        n["community"] = comm_of_file[sf]
 
     # --- Post-build cache update -----------------------------------------
     # Update content hashes for freshly extracted files so the next build
     # is incremental. Remove deleted files from cache.
+    # Only write cache entries for files we actually extracted — filter
+    # through _iter_source_files to avoid cache pollution from
+    # node_modules, target/, graphify-out/ etc.
     if re_extract_set:
-        extractor.update_cache(list(re_extract_set), root)
+        extractable = {f.relative_to(root).as_posix() for f in _iter_source_files(root, _DEFAULT_IGNORES)}
+        cacheable = re_extract_set & extractable
+        if cacheable:
+            extractor.update_cache(list(cacheable), root)
     if deleted_files:
         extractor.remove_from_cache(list(deleted_files))
 
