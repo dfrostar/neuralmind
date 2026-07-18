@@ -15,18 +15,18 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
 
 class CircuitState(Enum):
-    CLOSED = "closed"          # Normal operation
-    OPEN = "open"              # Failing fast, reject requests
-    HALF_OPEN = "half_open"    # Testing recovery with limited traffic
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Failing fast, reject requests
+    HALF_OPEN = "half_open"  # Testing recovery with limited traffic
 
 
 @dataclass
 class CircuitStats:
     """Stats for a single circuit breaker."""
+
     state: str
     failures: int
     successes: int
@@ -38,14 +38,14 @@ class CircuitStats:
 class CircuitBreaker:
     """
     Per-project circuit breaker with closed → open → half-open state machine.
-    
+
     - CLOSED: normal operation. After `failure_threshold` consecutive
       failures, transitions to OPEN.
     - OPEN: all requests fail-fast. After `recovery_timeout` seconds,
       transitions to HALF_OPEN.
     - HALF_OPEN: allows a single test request through. If it succeeds,
       transitions back to CLOSED. If it fails, transitions back to OPEN.
-    
+
     Fail-open: a non-critical subsystem (like the daemon watcher) should
     never break the main query/build path when its own storage or
     connection fails.
@@ -79,7 +79,6 @@ class CircuitBreaker:
 
     def _transition(self, new_state: CircuitState) -> None:
         """Transition to a new state (must hold _lock)."""
-        old = self._state
         self._state = new_state
         self._last_state_change_ts = time.time()
         if new_state == CircuitState.CLOSED:
@@ -102,15 +101,14 @@ class CircuitBreaker:
             if self._state == CircuitState.HALF_OPEN:
                 self._transition(CircuitState.OPEN)
             elif (
-                self._state == CircuitState.CLOSED
-                and self._failure_count >= self.failure_threshold
+                self._state == CircuitState.CLOSED and self._failure_count >= self.failure_threshold
             ):
                 self._transition(CircuitState.OPEN)
 
     def allow_request(self) -> bool:
         """
         Check if a request should be allowed through.
-        
+
         Returns True if the request may proceed, False if the circuit
         is OPEN (and increments rejected counter for stats).
         """
@@ -137,11 +135,11 @@ class ProjectBackpressure:
     """
     Per-project backpressure: bounds the number of concurrent
     operations and rejects new requests when the queue is full.
-    
+
     Uses a semaphore-like counter with a max depth. Operations call
     `acquire()` before starting and `release()` when done. If the
     queue is full, `acquire()` returns False (fail-fast).
-    
+
     Each project gets its own ProjectBackpressure instance tracked
     in the class-level `_instances` dict.
     """
@@ -173,7 +171,7 @@ class ProjectBackpressure:
     def acquire(self, *, timeout: float = 0.0) -> bool:
         """
         Attempt to acquire a slot. Returns True if acquired.
-        
+
         If `timeout > 0`, blocks up to `timeout` seconds waiting for
         a slot (used for operations that can wait, like background
         metrics). If `timeout == 0`, returns immediately (fail-fast).
@@ -226,7 +224,7 @@ class ProjectBackpressure:
 class ProjectLock:
     """
     Per-project lock compatible with ProjectBackpressure.
-    
+
     Combines a threading.Lock-like API with backpressure integration:
     if the backpressure queue is full, the lock acquisition fails
     immediately (fail-fast).
@@ -246,7 +244,7 @@ class ProjectLock:
         return self._entered
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if getattr(self, '_entered', False):
+        if getattr(self, "_entered", False):
             self.release()
 
     def acquire(self, *, timeout: float = 0.0) -> bool:
