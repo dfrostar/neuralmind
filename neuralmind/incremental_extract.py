@@ -91,7 +91,9 @@ class IncrementalExtractor:
             pass  # fail-open
 
     def _content_hash(self, filepath: Path) -> str:
-        """SHA-256 of file content."""
+        """SHA-256 of file content. Returns empty string when unreadable."""
+        if not filepath.exists():
+            return ""
         try:
             return hashlib.sha256(filepath.read_bytes()).hexdigest()
         except Exception:
