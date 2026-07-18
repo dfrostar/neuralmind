@@ -151,8 +151,8 @@ class RaptorSummarizer:
             centroid = [x / len(embeddings) for x in centroid]
             # Proximity to centroid.
             results = []
-            for emb, chunk in zip(embeddings, chunks):
-                dist = sum((a - b) ** 2 for a, b in zip(emb, centroid)) ** 0.5
+            for emb, chunk in zip(embeddings, chunks, strict=False):
+                dist = sum((a - b) ** 2 for a, b in zip(emb, centroid, strict=False)) ** 0.5
                 results.append((-dist, chunk))  # negative for descending
             results.sort(key=lambda x: x[0], reverse=True)
             return results

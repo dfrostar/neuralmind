@@ -64,11 +64,11 @@ class TestQueriesAttempted:
         ]
 
         with patch("neuralmind.fixtures.load_fixture_queries", return_value=fixtures), \
-             patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+             patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             mock_embedder.search.return_value = [{"id": "node1"}, {"id": "node2"}]
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             result = t._fitness_from_live_eval({
                 "STRUCTURAL_SEED_K": 3.0,
@@ -96,7 +96,7 @@ class TestQueriesAttempted:
         ]
 
         with patch("neuralmind.fixtures.load_fixture_queries", return_value=fixtures), \
-             patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+             patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             # First 2 succeed, last 2 raise
@@ -105,7 +105,7 @@ class TestQueriesAttempted:
                     return [{"id": "node1"}]
                 raise RuntimeError("embedder error")
             mock_embedder.search.side_effect = fake_search
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             result = t._fitness_from_live_eval({
                 "STRUCTURAL_SEED_K": 3.0,

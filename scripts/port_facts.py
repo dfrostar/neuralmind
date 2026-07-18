@@ -47,7 +47,7 @@ def main() -> None:
     faith = json.loads(FAITH.read_text(encoding="utf-8"))
     faith_by_id = {q["id"]: q for q in faith["queries"]}
 
-    for lang, cfg in LANGS.items():
+    for _lang, cfg in LANGS.items():
         path = REPO / cfg["file"]
         data = json.loads(path.read_text(encoding="utf-8"))
         ext = cfg["ext"]

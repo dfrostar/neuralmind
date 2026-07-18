@@ -68,13 +68,13 @@ class TestDeterminism:
             pytest.skip("no project_path")
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             mock_embedder.search.return_value = [
                 {"id": "helper_fn"}, {"id": "main_fn"}
             ]
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             f1 = tuner_fixture.evaluate_candidate(default_params)
             f2 = tuner_fixture.evaluate_candidate(default_params)
@@ -103,7 +103,7 @@ class TestAxisIndependence:
             pytest.skip("no project_path")
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             # Return ALL expected nodes when asked for enough results,
@@ -116,7 +116,7 @@ class TestAxisIndependence:
                     return [{"id": "node1"}]  # shallow search misses some
 
             mock_embedder.search.side_effect = fake_search
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             params_high = dict(default_params, STRUCTURAL_SEED_K=10.0)  # search_n=50
             params_low = dict(default_params, STRUCTURAL_SEED_K=1.0)     # search_n=5
@@ -145,11 +145,11 @@ class TestAxisIndependence:
             pytest.skip("no project_path")
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             mock_embedder.search.return_value = [{"id": "node1"}, {"id": "node2"}]
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             params_big = dict(default_params,
                               L0_MAX_TOKENS=300.0, L1_MAX_TOKENS=1000.0,
@@ -196,8 +196,8 @@ class TestFailOpen:
             pytest.skip("no project_path")
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
-            MockEmbedder.side_effect = RuntimeError("no graph backend")
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
+            mock_embedder_cls.side_effect = RuntimeError("no graph backend")
             result = tuner_fixture.evaluate_candidate(default_params)
 
         # Live eval fails → trace fallback (no traces) → 0.0
@@ -231,13 +231,13 @@ class TestIntegration:
         ]
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             mock_embedder.search.return_value = [
                 {"id": "node1"}, {"id": "node2"}
             ]
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             t = PopulationTuner(
                 project_path=project, population_size=5, generations=2,
@@ -319,11 +319,11 @@ class TestEfficiencyAxis:
             pytest.skip("no project_path")
         save_fixture_queries(project, fixtures)
 
-        with patch("neuralmind.embedder.GraphEmbedder") as MockEmbedder:
+        with patch("neuralmind.embedder.GraphEmbedder") as mock_embedder_cls:
             mock_embedder = MagicMock()
             mock_embedder.load_graph.return_value = True
             mock_embedder.search.return_value = [{"id": "node1"}]
-            MockEmbedder.return_value = mock_embedder
+            mock_embedder_cls.return_value = mock_embedder
 
             params_default = default_params
             params_low_budget = dict(default_params,

@@ -122,7 +122,7 @@ class IncrementalExtractor:
                     rel = str(f.relative_to(root))
                     parts = Path(rel).parts
                     # Skip common non-source dirs + _DEFAULT_IGNORES
-                    if any(p.startswith(".") or p.startswith("__") for p in parts):
+                    if any(p.startswith((".", "__")) for p in parts):
                         continue
                     # Also skip if any part is in the global ignores set
                     if any(
@@ -181,7 +181,7 @@ class IncrementalExtractor:
                     changed.add(importer)
                     to_check.append(importer)
 
-        added_list = [f for f in added]
+        added_list = list(added)
         modified_list = [f for f in modified if f not in added]
         # Importers get added to modified for re-extraction
         importer_list = [f for f in changed if f not in added and f not in modified and f not in deleted]
@@ -266,8 +266,8 @@ def build_importer_index_from_graph(graph: dict[str, Any]) -> dict[str, list[str
 def _slug(text: str) -> str:
     """Stable id fragment: collapse non-alphanumerics to single underscores."""
     import re
-    _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
-    return _SLUG_RE.sub("_", text).strip("_").lower()
+    _slug_re = re.compile(r"[^a-zA-Z0-9]+")
+    return _slug_re.sub("_", text).strip("_").lower()
 
 
 def save_importer_index(project_path: str | Path, index: dict[str, list[str]]) -> bool:
