@@ -120,8 +120,15 @@ class IncrementalExtractor:
             if f.is_file() and f.suffix in suffixes:
                 try:
                     rel = str(f.relative_to(root))
-                    # Skip common non-source dirs
-                    if any(p.startswith(".") or p.startswith("__") for p in Path(rel).parts):
+                    parts = Path(rel).parts
+                    # Skip common non-source dirs + _DEFAULT_IGNORES
+                    if any(p.startswith(".") or p.startswith("__") for p in parts):
+                        continue
+                    # Also skip if any part is in the global ignores set
+                    if any(
+                        p in ("node_modules", "graphify-out", "__pycache__", ".venv", "venv", "target", "build", "dist")
+                        for p in parts
+                    ):
                         continue
                     stat = f.stat()
                     current_files[rel] = stat.st_mtime

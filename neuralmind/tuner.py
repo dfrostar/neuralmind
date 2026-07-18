@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import hashlib
 import math
 import os
 import random
@@ -187,7 +188,6 @@ class PopulationTuner:
     def evaluate_candidate(
         self,
         params: dict[str, float],
-        store: Any | None = None,
     ) -> float:
         """Evaluate a candidate against C1 fitness via live retrieval eval.
 
@@ -201,64 +201,11 @@ class PopulationTuner:
         except Exception as exc:
             log.warning("live eval failed, falling back to traces: %s", exc)
             try:
-                return self._fitness_from_traces(params, store)
+                return self._fitness_from_traces(params)
             except Exception as exc2:  # noqa: BLE001 — fail-open
                 log.warning("trace fallback also failed: %s", exc2)
                 return 0.0
 
-    def _fitness_from_live_eval(self, params: dict[str, float]) -> float:
-        """Faithful multi-objective eval: run retrieval with candidate params.
-
-        Measures real retrieval_quality (success-rate@5) and session_health
-        (re-query-rate) by running fixture queries through the embedder
-        with the candidate's retrieval parameters applied. This makes all
-        three fitness axes (retrieval_quality, session_health, efficiency)
-        vary per candidate.
-
-        LIMITATION: Live eval requires an existing graph + embeddings. If
-        either is missing, the caller falls back to the trace-proxy eval.
-
-        Returns 0.0 if fixtures or embedder are unavailable (fail-open).
-        """
-        from .fixtures import load_fixture_queries
-        from .embedder import GraphEmbedder
-
-        if self.project_path is None:
-            return 0.0
-
-        fixture_queries = load_fixture_queries(self.project_path, n=20)
-        if not fixture_queries:
-            return 0.0
-
-        try:
-            embedder = GraphEmbedder(str(self.project_path))
-            if not embedder.load_graph():
-                return 0.0
-        except Exception:
-            return 0.0
-
-        # Apply candidate's retrieval parameters to the embedder search.
-        # The embedder doesn't take per-call params today, so we measure
-        # the effect of different budgets on retrieval quality by varying
-        # the number of results retained (n) and measuring how many of the
-        # expected nodes appear in the top-n. Higher structural_seed_k and
-        # synapse_seed_k → more results retained → higher recall but more
-        # tokens (lower efficiency). Lower layer budgets → more re-queries.
-        structural_seed_k = int(round(params.get("STRUCTURAL_SEED_K", 3)))
-        synapse_seed_k = int(round(params.get("SYNAPSE_SEED_K", 3)))
-        # Search depth scales with seed_k values
-        search_n = max(structural_seed_k, synapse_seed_k) * 5  # 5x for recall
-
-        successes = 0
-        re_queries = 0
-        prev_query_fp = None
-        for fq in fixture_queries:
-            try:
-                results = embedder.search(fq.query, n=max(search_n, 10))
-            except Exception:
-                continue
-
-            # success = any expected node id appears in results
     def _fitness_from_live_eval(self, params: dict[str, float]) -> float:
         """Faithful multi-objective eval: run retrieval with candidate params.
 
@@ -291,6 +238,7 @@ class PopulationTuner:
 
         successes = 0
         re_queries = 0
+        queries_attempted = 0
         prev_query_fp = None
         for fq in fixture_queries:
             try:
@@ -298,6 +246,7 @@ class PopulationTuner:
             except Exception:
                 continue
 
+            queries_attempted += 1
             # success = any expected node id in retrieved set
             retrieved_ids = {r.get("id", "") for r in results}
             if fq.expected_node_ids:
@@ -307,13 +256,13 @@ class PopulationTuner:
                 successes += 1
 
             # re-query detection: same fingerprint as previous query
-            query_fp = hash(fq.query) % 10000
+            query_fp = int(hashlib.sha256(fq.query.encode()).hexdigest(), 16) % 10000
             if prev_query_fp is not None and query_fp == prev_query_fp:
                 re_queries += 1
             prev_query_fp = query_fp
 
-        retrieval_quality = successes / len(fixture_queries) if fixture_queries else 0.0
-        session_health = max(0.0, min(1.0, 1.0 - re_queries / len(fixture_queries))) if fixture_queries else 1.0
+        retrieval_quality = successes / queries_attempted if queries_attempted else 0.0
+        session_health = max(0.0, min(1.0, 1.0 - re_queries / queries_attempted)) if queries_attempted else 1.0
         efficiency = self._efficiency_ratio(params)
 
         inputs = FitnessInputs(
@@ -326,7 +275,6 @@ class PopulationTuner:
     def _fitness_from_traces(
         self,
         params: dict[str, float],
-        store: Any | None,
     ) -> float:
         """Derive a C1 fitness score from reasoning traces + param map.
 
@@ -359,7 +307,10 @@ class PopulationTuner:
             return 0.0
 
         # Retrieval quality proxy: weighted mean success signal.
-        success_total = sum(t.success_signal for t in traces)
+        success_total = sum(
+            t.success_signal for t in traces
+            if math.isfinite(t.success_signal)
+        )
         retrieval_quality = success_total / len(traces)
 
         # Efficiency proxy: compare candidate's L0-L3 token budget to default.

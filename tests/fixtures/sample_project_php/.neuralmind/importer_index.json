@@ -1,0 +1,23 @@
+{
+  "src/Auth/Handlers.php": [
+    "src/Api/Routes.php"
+  ],
+  "src/Auth/JwtUtils.php": [
+    "src/Auth/Handlers.php"
+  ],
+  "src/Billing/StripeClient.php": [
+    "src/Api/Routes.php",
+    "src/Billing/Invoices.php"
+  ],
+  "src/Db/Connection.php": [
+    "src/Api/Routes.php",
+    "src/Auth/Handlers.php",
+    "src/Users/Crud.php"
+  ],
+  "src/Users/Crud.php": [
+    "src/Auth/Handlers.php"
+  ],
+  "src/Users/User.php": [
+    "src/Billing/Invoices.php"
+  ]
+}

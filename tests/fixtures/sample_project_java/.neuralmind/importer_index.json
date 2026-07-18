@@ -1,0 +1,24 @@
+{
+  "src/main/java/com/example/auth/Handlers.java": [
+    "src/main/java/com/example/api/Routes.java"
+  ],
+  "src/main/java/com/example/auth/JwtUtils.java": [
+    "src/main/java/com/example/auth/Handlers.java"
+  ],
+  "src/main/java/com/example/billing/StripeClient.java": [
+    "src/main/java/com/example/api/Routes.java",
+    "src/main/java/com/example/billing/Invoices.java"
+  ],
+  "src/main/java/com/example/db/Connection.java": [
+    "src/main/java/com/example/api/Routes.java",
+    "src/main/java/com/example/auth/Handlers.java",
+    "src/main/java/com/example/users/Crud.java"
+  ],
+  "src/main/java/com/example/users/Crud.java": [
+    "src/main/java/com/example/auth/Handlers.java"
+  ],
+  "src/main/java/com/example/users/User.java": [
+    "src/main/java/com/example/auth/Handlers.java",
+    "src/main/java/com/example/billing/Invoices.java"
+  ]
+}

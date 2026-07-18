@@ -1,0 +1,24 @@
+{
+  "src/auth/handlers.rb": [
+    "src/api/routes.rb"
+  ],
+  "src/auth/jwt_utils.rb": [
+    "src/auth/handlers.rb"
+  ],
+  "src/billing/stripe_client.rb": [
+    "src/api/routes.rb",
+    "src/billing/invoices.rb"
+  ],
+  "src/db/connection.rb": [
+    "src/api/routes.rb",
+    "src/auth/handlers.rb",
+    "src/users/crud.rb"
+  ],
+  "src/users/crud.rb": [
+    "src/auth/handlers.rb"
+  ],
+  "src/users/user.rb": [
+    "src/billing/invoices.rb",
+    "src/users/crud.rb"
+  ]
+}

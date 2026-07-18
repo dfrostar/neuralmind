@@ -22,6 +22,7 @@ imported lazily so the fitness module imports cleanly in any context.
 from __future__ import annotations
 
 import os
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -132,7 +133,9 @@ class FitnessScore:
 
 
 def _clamp(value: float, lo: float = 0.0, hi: float | None = None) -> float:
-    """Clamp value to [lo, hi]. If hi is None, no upper bound."""
+    """Clamp value to [lo, hi]. If hi is None, no upper bound. NaN/Inf → lo."""
+    if math.isnan(value) or math.isinf(value):
+        return lo
     if value < lo:
         return lo
     if hi is not None and value > hi:

@@ -1,0 +1,26 @@
+{
+  "include/billing.h": [
+    "src/api/routes.c",
+    "src/billing/invoices.c"
+  ],
+  "include/db.h": [
+    "src/db/connection.c"
+  ],
+  "include/handlers.h": [
+    "src/api/routes.c",
+    "src/auth/handlers.c"
+  ],
+  "include/jwt.h": [
+    "include/handlers.h",
+    "src/auth/handlers.c",
+    "src/auth/jwt.c"
+  ],
+  "include/routes.h": [
+    "src/api/routes.c"
+  ],
+  "include/user.h": [
+    "include/billing.h",
+    "src/api/routes.c",
+    "src/users/crud.c"
+  ]
+}
