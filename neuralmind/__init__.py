@@ -184,4 +184,8 @@ def __getattr__(name: str):
         from .embedder import GraphEmbedder
 
         return GraphEmbedder
+    if name == "embedder":
+        import importlib
+
+        return importlib.import_module("neuralmind.embedder")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
