@@ -7,25 +7,25 @@
       "id": "auth-flow",
       "question": "How does authentication work in this codebase?",
       "shape": "cross-file",
-      "expected_modules": ["src/Services/AuthService.php", "src/Models/User.php"]
+      "expected_modules": ["src/Auth/Handlers.php", "src/Users/User.php"]
     },
     {
       "id": "api-endpoints",
       "question": "What are the main API endpoints and how are requests routed?",
       "shape": "focused",
-      "expected_modules": ["src/Routes/api.php"]
+      "expected_modules": ["src/Api/Routes.php"]
     },
     {
       "id": "billing-flow",
       "question": "Explain the billing flow and how invoices are charged.",
       "shape": "cross-file",
-      "expected_modules": ["src/Services/BillingService.php"]
+      "expected_modules": ["src/Billing/Invoices.php"]
     },
     {
       "id": "user-storage",
       "question": "Where are user records created and stored?",
       "shape": "cross-file",
-      "expected_modules": ["src/Models/User.php", "src/Repositories/UserRepository.php"]
+      "expected_modules": ["src/Users/User.php", "src/Users/Crud.php"]
     }
   ]
 }
