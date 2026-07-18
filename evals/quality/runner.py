@@ -107,6 +107,11 @@ def load_suite(name: str) -> Suite:
                 raise ValueError(f"suite {name!r} query #{i} missing required field {key!r}")
         if not q["expected_modules"]:
             raise ValueError(f"suite {name!r} query {q['id']!r} has empty expected_modules")
+        missing = [mod for mod in q["expected_modules"] if not (fixture_dir / mod).exists()]
+        if missing:
+            raise ValueError(
+                f"suite {name!r} query {q['id']!r} references missing modules: {missing}"
+            )
         queries.append(
             Query(
                 id=q["id"],
