@@ -129,14 +129,14 @@ class CrossEncoderReranker:
         max_latency_ms, returns the candidates unmodified.
         """
         if not self.config.enabled:
-            return list(zip(candidates, [0.0] * len(candidates)))
+            return list(zip(candidates, [0.0] * len(candidates), strict=False))
 
         top_k = top_k or len(candidates)
         start = time.monotonic()
 
         # Check latency budget against the running average.
         if self._avg_latency_ms > self.config.max_latency_ms:
-            return list(zip(candidates, [0.0] * len(candidates)))
+            return list(zip(candidates, [0.0] * len(candidates), strict=False))
 
         scored = [(cand, self.score_pair(query, cand)) for cand in candidates]
         scored.sort(key=lambda x: x[1], reverse=True)
