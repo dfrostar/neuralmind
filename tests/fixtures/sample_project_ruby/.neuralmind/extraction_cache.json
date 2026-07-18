@@ -4,50 +4,50 @@
       "path": "src/auth/handlers.rb",
       "mtime": 1783806958.2844498,
       "content_hash": "8e122b56977cf9f28aef75029744271e5477d582d8e6f10fbf76f899a679cf86",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/billing/invoices.rb",
       "mtime": 1783806958.2844498,
       "content_hash": "7ac0cf23ab57d5074d9c1addc878f48d356846efce9580878d000bd155471232",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/users/user.rb",
       "mtime": 1783806958.2854497,
       "content_hash": "079d6463fc7f40bf719becfc7e3feecb2020e46c0d319c35f3a380d48550e39d",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/db/connection.rb",
       "mtime": 1783806958.2854497,
       "content_hash": "a69d7d8d9a852cddb229c5642c6074d120b45bcd20c6ceae6819b6164523c368",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/billing/stripe_client.rb",
       "mtime": 1783806958.2854497,
       "content_hash": "2929b98a5f07ef9b126d36d31f969f0798ee815bbcb3bac1fa31977906cfca7a",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/api/routes.rb",
       "mtime": 1783806958.2844498,
       "content_hash": "1c8de6872dfba16918ab831b9a6b86c3f4595fa28e9dcf2a4fc20b418bd7c08e",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/auth/jwt_utils.rb",
       "mtime": 1783806958.2844498,
       "content_hash": "cb732c2cce28140a1d46c422b5df2446054c679688018b732ba67d4915944411",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     },
     {
       "path": "src/users/crud.rb",
       "mtime": 1783806958.2854497,
       "content_hash": "da5c692c3637649c77e974a2d71baae8bbbb1bf7955f739df867dd847ef4133a",
-      "extracted_at": 1784354664.3916967
+      "extracted_at": 1784380923.5180874
     }
   ],
-  "saved_at": 1784354664.3923283
+  "saved_at": 1784380923.518726
 }
