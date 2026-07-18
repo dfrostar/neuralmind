@@ -111,6 +111,8 @@ def create_backend(
         # ModuleNotFoundError from deep in the import.
         try:
             from .embedder import GraphEmbedder
+
+            return GraphEmbedder(project_path, db_path=db_path)
         except ModuleNotFoundError as exc:
             if exc.name and exc.name.split(".")[0] == "chromadb":
                 raise ModuleNotFoundError(
@@ -123,7 +125,6 @@ def create_backend(
                 ) from exc
             raise
 
-        return GraphEmbedder(project_path, db_path=db_path)
     if normalized in {"in_memory", "inmemory", "memory"}:
         return InMemoryEmbeddingBackend(project_path, db_path=db_path)
     if normalized in {"turbovec", "turboquant"}:

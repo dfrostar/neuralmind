@@ -18,9 +18,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import chromadb
-from chromadb.config import Settings
-
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
 
@@ -30,9 +27,9 @@ def _silence_chroma_telemetry() -> None:
 
     Belt-and-suspenders against any chromadb version whose telemetry logger
     hierarchy doesn't propagate as expected (env vars + CRITICAL log levels are
-    set in :mod:`neuralmind.__init__`). Lives here — next to the only
-    module-level ``import chromadb`` — so it runs exactly when the chroma
-    backend is loaded, and never when merely importing the ``neuralmind``
+    set in :mod:`neuralmind.__init__`). Called lazily inside
+    :meth:`GraphEmbedder.__init__` so it runs exactly when the chroma backend
+    is first constructed, and never when merely importing the ``neuralmind``
     package (which must stay ChromaDB-free as of v0.22).
     """
     try:
@@ -44,9 +41,6 @@ def _silence_chroma_telemetry() -> None:
         _ChromaPosthog.capture = _noop_capture
     except Exception:  # pragma: no cover
         pass
-
-
-_silence_chroma_telemetry()
 
 
 class GraphEmbedder(EmbeddingBackend):
@@ -82,8 +76,13 @@ class GraphEmbedder(EmbeddingBackend):
         self.nodes: list[dict] = []
         self.edges: list[dict] = []
 
-        # Initialize ChromaDB
-        self.client = chromadb.PersistentClient(
+        # Initialize ChromaDB (imported lazily so neuralmind.embedder is
+        # importable even when the optional [chromadb] extra is not installed)
+        import chromadb as _chromadb
+        from chromadb.config import Settings
+
+        _silence_chroma_telemetry()
+        self.client = _chromadb.PersistentClient(
             path=self.db_path, settings=Settings(anonymized_telemetry=False)
         )
 
