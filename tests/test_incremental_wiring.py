@@ -206,7 +206,7 @@ class TestPerformanceTarget:
         graphgen.build_graph(project_with_output)
         incremental_time = time.time() - start
 
-        # Incremental should be faster than a full rebuild.
+        # Incremental should be in the same ballpark as a full rebuild (and ideally faster).
         # On a tiny fixture project both builds complete in milliseconds, so cache
         # I/O overhead can dominate and the ratio becomes meaningless.  Skip the
         # comparison when the full build is sub-50 ms (i.e. both are essentially
