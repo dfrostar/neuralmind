@@ -18,8 +18,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import chromadb
-from chromadb.config import Settings
+try:
+    import chromadb
+    from chromadb.config import Settings
+
+    _CHROMADB_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _CHROMADB_AVAILABLE = False
 
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
@@ -70,6 +75,13 @@ class GraphEmbedder(EmbeddingBackend):
             project_path: Path to project root (where graphify-out/ lives)
             db_path: Optional custom path for ChromaDB storage
         """
+        if not _CHROMADB_AVAILABLE:
+            raise ModuleNotFoundError(
+                "chromadb is required for GraphEmbedder. "
+                "Install it with: pip install 'neuralmind[chromadb]'",
+                name="chromadb",
+            )
+
         self._project_path = Path(project_path)
         self.graph_path = self._project_path / "graphify-out" / "graph.json"
 
