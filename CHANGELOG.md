@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.49.5](https://github.com/dfrostar/neuralmind/compare/v0.49.4...v0.49.5) (2026-07-18)
+
+
+### Bug Fixes
+
+* **lint:** reapply ruff N806 fixes post-PR367 merge ([06ee806](https://github.com/dfrostar/neuralmind/commit/06ee806cc92ecd3488a037d3105f2370cb27dabb))
+
 ## [0.49.4](https://github.com/dfrostar/neuralmind/compare/v0.49.3...v0.49.4) (2026-07-18)
 
 
