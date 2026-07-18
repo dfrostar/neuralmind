@@ -58,6 +58,12 @@ jobs:
           fi
 
           files_file="$RUNNER_TEMP/changed-python-files.txt"
+
+          # Ensure the base commit exists locally before diffing.
+          if ! git cat-file -e "${base_sha}^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$base_sha"
+          fi
+
           mapfile -t python_files < <(
             git diff --name-only --diff-filter=ACMR "$base_sha...$target_sha" -- "*.py" "*.pyi"
           )
