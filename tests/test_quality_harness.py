@@ -18,7 +18,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from evals.quality import runner
-from neuralmind.quality import ndcg_at_k, hit_rate_at_k
+from neuralmind.quality import hit_rate_at_k, ndcg_at_k
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PY_FIXTURE_GRAPH = (
@@ -57,6 +57,10 @@ def test_every_query_has_relevant_modules():
         suite = runner.load_suite(name)
         for q in suite.queries:
             assert q.expected_modules, f"{name}/{q.id} has no expected_modules"
+            for mod in q.expected_modules:
+                assert (
+                    suite.fixture_dir / mod
+                ).exists(), f"{name}/{q.id} missing fixture path {mod}"
 
 
 def test_cmd_benchmark_routes_to_quality_only_on_literal_true(monkeypatch):
@@ -308,7 +312,7 @@ def test_ragas_facts_only():
 
 def test_ragas_with_injected_fake_embeddings():
     """Deterministic fake embed_fn → pre-computed cosine columns."""
-    from neuralmind.ragas import score, cosine
+    from neuralmind.ragas import score
 
     # Fake embedder: hash-based deterministic 4-dim vectors
     def fake_embed(text: str) -> list[float]:
