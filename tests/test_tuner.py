@@ -12,7 +12,7 @@ import pytest
 
 from neuralmind import tuner, tuning
 from neuralmind.contracts import META_TUNER_FITNESS, META_TUNER_INCUMBENT
-from neuralmind.tuner import CandidateConfig, PopulationTuner, TuneRun
+from neuralmind.tuner import PopulationTuner, TuneRun
 
 
 @pytest.fixture
