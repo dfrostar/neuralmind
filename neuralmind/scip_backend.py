@@ -13,8 +13,7 @@ with the same interface as the tree-sitter backend for drop-in replacement.
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 

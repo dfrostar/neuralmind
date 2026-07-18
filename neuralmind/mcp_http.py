@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import logging
 import os
 import secrets
@@ -45,19 +46,17 @@ class StreamableHTTPMCP:
     def _try_import_deps(self) -> None:
         """Lazily import optional dependencies."""
         try:
-            from starlette.applications import Starlette
-            from starlette.routing import Route
-
+            importlib.util.find_spec("starlette.applications")
+            importlib.util.find_spec("starlette.routing")
             self._starlette_available = True
-        except ImportError:
+        except (ImportError, AttributeError, ValueError):
             log.debug("starlette not available — Streamable HTTP disabled")
             return
 
         try:
-            from mcp.server.streamable_http import StreamableHTTPServer
-
+            importlib.util.find_spec("mcp.server.streamable_http")
             self._mcp_available = True
-        except (ImportError, AttributeError):
+        except (ImportError, AttributeError, ValueError):
             log.debug("mcp not available — Streamable HTTP disabled")
 
     @property

@@ -19,7 +19,6 @@ import hashlib
 import json
 import sqlite3
 import time
-from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path

@@ -664,8 +664,6 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
             if src_file in changed_set:
                 continue
             # Also drop edges pointing into deleted files
-            target = edge.get("target", "")
-            source = edge.get("source", "")
             unchanged_edges.append(dict(edge))
     else:
         # No cache or no existing graph → full extraction, all files re-extracted
@@ -751,7 +749,9 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # through _iter_source_files to avoid cache pollution from
     # node_modules, target/, graphify-out/ etc.
     if re_extract_set:
-        extractable = {f.relative_to(root).as_posix() for f in _iter_source_files(root, _DEFAULT_IGNORES)}
+        extractable = {
+            f.relative_to(root).as_posix() for f in _iter_source_files(root, _DEFAULT_IGNORES)
+        }
         cacheable = re_extract_set & extractable
         if cacheable:
             extractor.update_cache(list(cacheable), root)
@@ -760,10 +760,12 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
 
     # Persist importer_index for the next build (best-effort; fail-open).
     if existing_graph or extractor._cache:
-        new_index = build_importer_index_from_graph({
-            "nodes": list(b.nodes.values()),
-            "links": b.edges,
-        })
+        new_index = build_importer_index_from_graph(
+            {
+                "nodes": list(b.nodes.values()),
+                "links": b.edges,
+            }
+        )
         save_importer_index(root, new_index)
 
     return {

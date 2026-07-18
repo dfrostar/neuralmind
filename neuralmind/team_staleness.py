@@ -13,7 +13,7 @@ Local-first. Stdlib-only. Fail-open.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 # Stale days for team-shared edges — shorter than personal because a
@@ -28,6 +28,7 @@ FAST_DECAY_MULTIPLIER = 5.0  # 5x faster decay when stale
 @dataclass
 class StaleEdge:
     """A team edge flagged as stale."""
+
     source: str
     target: str
     namespace: str
@@ -55,7 +56,7 @@ class TeamStalenessDetector:
     Detects stale team edges in the synapse store and marks them for
     accelerated decay. Team edges decay faster than personal edges
     when no teammate is reinforcing them.
-    
+
     Requires A4 (DaemonSleep with detect_stale_edges method) for the
     per-namespace query; this class adds the team-baseline policy on
     top of that mechanism.
@@ -99,7 +100,7 @@ class TeamStalenessDetector:
     ) -> list[StaleEdge]:
         """
         Query a SynapseStore for stale team edges in a namespace.
-        
+
         Requires store with _connect() andsynapses table schema including
         last_activated and namespace. Fail-open: returns empty on error.
         """
@@ -142,17 +143,16 @@ class TeamStalenessDetector:
     ) -> int:
         """
         Apply accelerated decay to a list of stale edges.
-        
+
         Decay is time-proportional: weight × 2^(−fast_decay × days_past_threshold / half_life).
         After 1 day past stale: 2^(−5/30) ≈ 0.891
         After 30 days past stale: 2^(−5) = 1/32 — matches intent
-        
+
         Returns the number of edges updated. Fail-open: partial
         failures return the count of successful updates.
         """
         if not stale_edges:
             return 0
-        now = time.time()
         updated = 0
         try:
             with store._connect() as conn:
@@ -161,7 +161,9 @@ class TeamStalenessDetector:
                     if not edge.fast_decay_eligible:
                         continue
                     # Time-proportional decay: scales by days past threshold
-                    days_past = max(0.0, edge.days_since_last - self.stale_threshold(edge.namespace))
+                    days_past = max(
+                        0.0, edge.days_since_last - self.stale_threshold(edge.namespace)
+                    )
                     half_life_days = self.stale_threshold(edge.namespace)
                     decay_exponent = self.fast_decay * days_past / max(1.0, half_life_days)
                     decay_factor = 2.0 ** (-decay_exponent)

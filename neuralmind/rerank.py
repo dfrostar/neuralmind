@@ -17,9 +17,7 @@ from __future__ import annotations
 
 import os
 import time
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Callable
+from dataclasses import dataclass
 
 
 # ---------------------------------------------------------------------------
@@ -39,7 +37,7 @@ class RerankConfig:
     model_path: str | None = None
 
     @classmethod
-    def from_env(cls) -> "RerankConfig":
+    def from_env(cls) -> RerankConfig:
         """Build config from environment variables."""
         return cls(
             enabled=os.environ.get("NEURALMIND_RERANK", "") in ("1", "true", "True"),

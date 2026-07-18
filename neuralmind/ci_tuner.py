@@ -14,27 +14,22 @@ Local-first. Stdlib-only. Fail-open.
 from __future__ import annotations
 
 import json
-import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from .contracts import (
     META_TUNER_FITNESS,
     META_TUNER_INCUMBENT,
     META_TUNER_PROMOTED_AT,
     TUNABLE_PARAMS,
-    TuneableParam,
-    register_param,
 )
-
-
 
 
 @dataclass
 class PromotionVerdict:
     """Result of a CI-gated promotion check."""
+
     promoted: bool
     candidate_fitness: float
     incumbent_fitness: float
@@ -53,7 +48,6 @@ class PromotionVerdict:
             "generation": self.generation,
             "reason": self.reason,
         }
-
 
 
 class CIGatedTuner:
@@ -76,6 +70,7 @@ class CIGatedTuner:
         hysteresis: float | None = None,
     ):
         from .tuner import PopulationTuner
+
         self.tuner = PopulationTuner(
             project_path=project_path,
             population_size=population_size,
@@ -87,7 +82,7 @@ class CIGatedTuner:
     def run_ci_eval(self) -> PromotionVerdict:
         """
         Run tuner generation and evaluate against CI gate.
-        
+
         Returns PromotionVerdict with promotion decision.
         """
         tune_result = self.tuner.run_generation()
@@ -140,20 +135,25 @@ def run_ci_gated_promotion(
     """Entry point for `neuralmind benchmark --tuner-ci`."""
     tuner = CIGatedTuner(project_path=project_path)
     result = tuner.run_ci_eval()
-    
+
     if result.promoted:
         tuner.promote(result.best_params, fitness=result.candidate_fitness)
         if verbose:
-            print(f"PROMOTED: fitness {result.candidate_fitness:.4f} > {result.incumbent_fitness:.4f}")
+            print(
+                f"PROMOTED: fitness {result.candidate_fitness:.4f} > {result.incumbent_fitness:.4f}"
+            )
     else:
         if verbose:
-            print(f"KEPT INCUMBENT: {result.candidate_fitness:.4f} vs {result.incumbent_fitness:.4f}")
-    
+            print(
+                f"KEPT INCUMBENT: {result.candidate_fitness:.4f} vs {result.incumbent_fitness:.4f}"
+            )
+
     return result.to_dict()
 
 
 if __name__ == "__main__":
     import sys
+
     project = sys.argv[1] if len(sys.argv) > 1 else "."
     result = run_ci_gated_promotion(project, verbose=True)
     print(json.dumps(result, indent=2))

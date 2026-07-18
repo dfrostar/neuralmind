@@ -10,8 +10,7 @@ Local-first. Stdlib-only. Fail-open.
 
 from __future__ import annotations
 
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .contribution_scoring import ContributionQualityScorer, EdgeQuality
@@ -20,6 +19,7 @@ from .contribution_scoring import ContributionQualityScorer, EdgeQuality
 @dataclass
 class MergeConflict:
     """Two edges that disagree on the same (source, target) pair."""
+
     source: str
     target: str
     edge_a: EdgeQuality
@@ -49,7 +49,7 @@ class QualityWeightedMerger:
     Resolves conflicts between contributor edges using quality-weighted
     resolution. The edge with higher quality wins; ties fall back to
     the edge with higher activation count.
-    
+
     Fail-open: if scoring fails for either edge, the original edge stands
     rather than corrupting the namespace.
     """
@@ -64,7 +64,7 @@ class QualityWeightedMerger:
     ) -> MergeConflict:
         """
         Resolve a conflict between two edges for the same (source, target).
-        
+
         Returns MergeConflict with winner + merged weight.
         """
         conflict = MergeConflict(
@@ -105,23 +105,19 @@ class QualityWeightedMerger:
     ) -> tuple[list[EdgeQuality], list[MergeConflict]]:
         """
         Merge two team-memory bundles, resolving conflicts quality-weighted.
-        
+
         Scores both bundles, then for overlapping (source, target) pairs,
         the higher-quality edge wins. Non-overlapping edges pass through
         with their score.
-        
+
         Returns: (merged_edges, conflicts_resolved)
         """
         scored_a = self.scorer.score_bundle(bundle_a)
         scored_b = self.scorer.score_bundle(bundle_b)
 
         # Index by (source, target) for overlap detection
-        index_a: dict[tuple[str, str], EdgeQuality] = {
-            (e.source, e.target): e for e in scored_a
-        }
-        index_b: dict[tuple[str, str], EdgeQuality] = {
-            (e.source, e.target): e for e in scored_b
-        }
+        index_a: dict[tuple[str, str], EdgeQuality] = {(e.source, e.target): e for e in scored_a}
+        index_b: dict[tuple[str, str], EdgeQuality] = {(e.source, e.target): e for e in scored_b}
 
         merged: list[EdgeQuality] = []
         conflicts: list[MergeConflict] = []

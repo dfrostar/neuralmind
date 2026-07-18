@@ -11,8 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neuralmind import __version__
-from neuralmind import memory
+from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 
@@ -2261,6 +2260,7 @@ def main():
         ),
     )
     from . import __version__
+
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
