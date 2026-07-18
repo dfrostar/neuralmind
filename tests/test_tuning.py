@@ -14,8 +14,6 @@ class TestParamRegistration:
     def test_all_default_params_registered(self) -> None:
         # init_registry happened at import time; the canonical set must be there.
         expected = {p.name for p in tuning.DEFAULT_PARAMS}
-        # Also include CI-gated tuner params registered in ci_tuner.py
-        expected.update({"CI_MIN_FAITHFULNESS", "CI_MIN_SESSION_HEALTH", "CI_HYSTERESIS"})
         assert expected == set(TUNABLE_PARAMS.keys())
 
     def test_register_param_idempotent(self) -> None:
