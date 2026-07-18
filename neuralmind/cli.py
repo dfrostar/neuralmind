@@ -2260,6 +2260,8 @@ def main():
             "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
         ),
     )
+    from . import __version__
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
