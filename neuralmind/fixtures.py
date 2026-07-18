@@ -10,7 +10,6 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -20,6 +19,7 @@ FIXTURE_QUERIES_FILE = ".neuralmind/fixture_queries.json"
 @dataclass(frozen=True)
 class FixtureQuery:
     """One fixture query with expected results for success measurement."""
+
     query: str
     expected_node_ids: tuple[str, ...]
 
@@ -79,6 +79,7 @@ def _generate_from_graph(project_path: Path) -> list[FixtureQuery]:
     """
     try:
         from .embedder import GraphEmbedder
+
         embedder = GraphEmbedder(str(project_path))
         if not embedder.load_graph():
             return []
@@ -91,10 +92,12 @@ def _generate_from_graph(project_path: Path) -> list[FixtureQuery]:
             # Skip duplicates and empty labels
             if label and label not in seen and node_id:
                 seen.add(label)
-                queries.append(FixtureQuery(
-                    query=label,
-                    expected_node_ids=(node_id,),
-                ))
+                queries.append(
+                    FixtureQuery(
+                        query=label,
+                        expected_node_ids=(node_id,),
+                    )
+                )
             if len(queries) >= 50:
                 break
         return queries
@@ -114,10 +117,7 @@ def save_fixture_queries(
     try:
         file_path = Path(project_path) / FIXTURE_QUERIES_FILE
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        data = [
-            {"query": q.query, "expected_node_ids": list(q.expected_node_ids)}
-            for q in queries
-        ]
+        data = [{"query": q.query, "expected_node_ids": list(q.expected_node_ids)} for q in queries]
         file_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         return True
     except Exception as exc:

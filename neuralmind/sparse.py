@@ -24,7 +24,6 @@ from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
@@ -205,7 +204,7 @@ class SpladeExpander:
         if self.config.use_idf and self._idf:
             weighted = {tok: 1.0 * self._idf.get(tok, 1.0) for tok in set(tokens)}
         else:
-            weighted = {tok: 1.0 for tok in set(tokens)}
+            weighted = dict.fromkeys(set(tokens), 1.0)
 
         if self.config.normalize:
             weighted = normalize_sparse(weighted)

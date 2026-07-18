@@ -12,7 +12,7 @@ Local-first. Stdlib-only. Fail-open.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .contribution_scoring import ContributionQualityScorer, EdgeQuality
@@ -27,6 +27,7 @@ REJECT_THRESHOLD = 0.15
 @dataclass
 class ReviewDecision:
     """Decision for a single team-memory edge."""
+
     edge: EdgeQuality
     action: str  # "auto_promote" | "review_required" | "reject"
     reason: str = ""
@@ -64,7 +65,7 @@ class PeerReviewGate:
     def decide(self, edge: EdgeQuality) -> ReviewDecision:
         """
         Classify one edge into auto-promote, review-required, or reject.
-        
+
         - score >= auto_promote threshold → auto-promote
         - score < reject threshold → reject
         - otherwise → flag for review
@@ -75,29 +76,28 @@ class PeerReviewGate:
                 action="auto_promote",
                 reason=f"score {edge.score:.3f} >= auto_promote {self.auto_promote}",
             )
-        elif edge.score < self.reject:
+        if edge.score < self.reject:
             return ReviewDecision(
                 edge=edge,
                 action="reject",
                 reason=f"score {edge.score:.3f} < reject {self.reject}",
                 reviewer_hint="Low reinforcement + stale + high conflict — likely noise.",
             )
-        else:
-            hint_parts = []
-            if edge.reinforcement_score < 0.3:
-                hint_parts.append("low reinforcement")
-            if edge.recency_score < 0.3:
-                hint_parts.append("stale")
-            if edge.conflict_rate > 0.5:
-                hint_parts.append("high conflict")
-            hint = ", ".join(hint_parts) if hint_parts else "marginal score"
+        hint_parts = []
+        if edge.reinforcement_score < 0.3:
+            hint_parts.append("low reinforcement")
+        if edge.recency_score < 0.3:
+            hint_parts.append("stale")
+        if edge.conflict_rate > 0.5:
+            hint_parts.append("high conflict")
+        hint = ", ".join(hint_parts) if hint_parts else "marginal score"
 
-            return ReviewDecision(
-                edge=edge,
-                action="review_required",
-                reason=f"score {edge.score:.3f} in review band [{self.reject}, {self.auto_promote})",
-                reviewer_hint=hint,
-            )
+        return ReviewDecision(
+            edge=edge,
+            action="review_required",
+            reason=f"score {edge.score:.3f} in review band [{self.reject}, {self.auto_promote})",
+            reviewer_hint=hint,
+        )
 
     def gate_bundle(
         self,
@@ -105,7 +105,7 @@ class PeerReviewGate:
     ) -> tuple[list[ReviewDecision], list[ReviewDecision], list[ReviewDecision]]:
         """
         Apply the peer-review gate to all edges in a bundle.
-        
+
         Returns: (auto_promoted, review_required, rejected)
         """
         scored = self.scorer.score_bundle(bundle)

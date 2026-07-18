@@ -27,9 +27,8 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable
 
 # --------------------------------------------------------------------------- #
 # Embedding helpers                                                            #
@@ -59,7 +58,7 @@ def _tok(text: str) -> set[str]:
 
 
 def fact_recall(
-    answer: str, gold_facts: Iterable[str], *, aliases: dict[str, list[str]] = {}
+    answer: str, gold_facts: Iterable[str], *, aliases: dict[str, list[str]] | None = None
 ) -> float:
     """Fraction of *informative* gold facts whose tokens appear in ``answer``.
 
@@ -263,7 +262,7 @@ def score(
     answer: str,
     gold_facts: Iterable[str],
     embed_fn: Callable[[str], list[float]] | None = None,
-    facts_have_aliases: dict[str, list[str]] = {},
+    facts_have_aliases: dict[str, list[str]] | None = None,
 ) -> RagasScore:
     """Score one query end-to-end.
 

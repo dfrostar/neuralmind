@@ -19,9 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import (
-    META_SLEEP_INTERVAL_DAYS,
     META_SLEEP_LAST_RUN,
-    META_SLEEP_STALE_DAYS,
 )
 
 log = logging.getLogger(__name__)

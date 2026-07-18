@@ -14,7 +14,6 @@ import math
 import time
 from typing import Any
 
-from .contracts import META_DECAY_RATE_MAX, META_DECAY_RATE_MIN
 from .tuning import resolve_effective
 
 log = logging.getLogger(__name__)
@@ -110,7 +109,7 @@ def update_learned_half_life(
     its existing upsert transaction.
     """
     try:
-        from .synapses import SHARED_NAMESPACE, SynapseStore, _canonical
+        from .synapses import SHARED_NAMESPACE, _canonical
 
         canonical = _canonical(node_a, node_b)
         if canonical is None:
@@ -130,7 +129,7 @@ def update_learned_half_life(
                 return None
             weight, act_count, last_act, created_at, existing = row
 
-            from .synapses import NAMESPACE_HALF_LIVES, HALF_LIFE_DAYS
+            from .synapses import HALF_LIFE_DAYS, NAMESPACE_HALF_LIVES
 
             ns_default = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
 

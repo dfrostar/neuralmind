@@ -111,16 +111,22 @@ class PopulationTuner:
             log.warning("hysteresis must be positive, got %r — using default 0.05", self.hysteresis)
             self.hysteresis = 0.05
         if self.population_size <= 0:
-            log.warning("population_size must be positive, got %r — using default", self.population_size)
+            log.warning(
+                "population_size must be positive, got %r — using default", self.population_size
+            )
             self.population_size = int(os.environ.get("NEURALMIND_TUNER_POPULATION", 15))
         if self.generations <= 0:
             log.warning("generations must be positive, got %r — using default 8", self.generations)
             self.generations = int(os.environ.get("NEURALMIND_TUNER_GENERATIONS", 8))
         if self.uniform_explore_p < 0.0:
-            log.warning("uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p)
+            log.warning(
+                "uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p
+            )
             self.uniform_explore_p = 0.0
         elif self.uniform_explore_p > 1.0:
-            log.warning("uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p)
+            log.warning(
+                "uniform_explore_p must be in [0,1], got %r — clamping", self.uniform_explore_p
+            )
             self.uniform_explore_p = 1.0
         if self.eval_days <= 0.0:
             self.eval_days = 14.0
@@ -204,8 +210,8 @@ class PopulationTuner:
 
         Returns 0.0 if fixtures or embedder unavailable (fail-open).
         """
-        from .fixtures import load_fixture_queries
         from .embedder import GraphEmbedder
+        from .fixtures import load_fixture_queries
 
         if self.project_path is None:
             return 0.0
@@ -250,7 +256,9 @@ class PopulationTuner:
                 re_queries += 1
 
         retrieval_quality = successes / queries_attempted if queries_attempted else 0.0
-        session_health = max(0.0, min(1.0, 1.0 - re_queries / queries_attempted)) if queries_attempted else 1.0
+        session_health = (
+            max(0.0, min(1.0, 1.0 - re_queries / queries_attempted)) if queries_attempted else 1.0
+        )
         efficiency = self._efficiency_ratio(params)
 
         inputs = FitnessInputs(
@@ -295,10 +303,7 @@ class PopulationTuner:
             return 0.0
 
         # Retrieval quality proxy: weighted mean success signal.
-        success_total = sum(
-            t.success_signal for t in traces
-            if math.isfinite(t.success_signal)
-        )
+        success_total = sum(t.success_signal for t in traces if math.isfinite(t.success_signal))
         retrieval_quality = success_total / len(traces)
 
         # Efficiency proxy: compare candidate's L0-L3 token budget to default.
@@ -392,7 +397,7 @@ class PopulationTuner:
         # Multi-generation loop. Each generation samples a new population
         # around the current incumbent (which may have been promoted at the
         # end of the previous generation).
-        for gen in range(self.generations):
+        for _gen in range(self.generations):
             rng = random.Random()
             gen_best_params = incumbent
             gen_best_fitness = self.evaluate_candidate(incumbent)

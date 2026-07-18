@@ -44,7 +44,7 @@ class FileCache:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "FileCache":
+    def from_dict(cls, d: dict) -> FileCache:
         return cls(
             path=d["path"],
             mtime=d["mtime"],
@@ -90,9 +90,7 @@ class IncrementalExtractor:
                 "files": [fc.to_dict() for fc in self._cache.values()],
                 "saved_at": time.time(),
             }
-            self.cache_path.write_text(
-                json.dumps(data, indent=2) + "\n", encoding="utf-8"
-            )
+            self.cache_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         except Exception:
             pass  # fail-open
 
@@ -126,7 +124,17 @@ class IncrementalExtractor:
                         continue
                     # Also skip if any part is in the global ignores set
                     if any(
-                        p in ("node_modules", "graphify-out", "__pycache__", ".venv", "venv", "target", "build", "dist")
+                        p
+                        in (
+                            "node_modules",
+                            "graphify-out",
+                            "__pycache__",
+                            ".venv",
+                            "venv",
+                            "target",
+                            "build",
+                            "dist",
+                        )
                         for p in parts
                     ):
                         continue
@@ -184,7 +192,9 @@ class IncrementalExtractor:
         added_list = [f for f in added]
         modified_list = [f for f in modified if f not in added]
         # Importers get added to modified for re-extraction
-        importer_list = [f for f in changed if f not in added and f not in modified and f not in deleted]
+        importer_list = [
+            f for f in changed if f not in added and f not in modified and f not in deleted
+        ]
 
         return added_list + modified_list + importer_list
 
@@ -266,6 +276,7 @@ def build_importer_index_from_graph(graph: dict[str, Any]) -> dict[str, list[str
 def _slug(text: str) -> str:
     """Stable id fragment: collapse non-alphanumerics to single underscores."""
     import re
+
     _SLUG_RE = re.compile(r"[^a-zA-Z0-9]+")
     return _SLUG_RE.sub("_", text).strip("_").lower()
 

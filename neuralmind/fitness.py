@@ -21,12 +21,10 @@ imported lazily so the fitness module imports cleanly in any context.
 
 from __future__ import annotations
 
-import os
 import math
+import os
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable
 
 # Synapse meta table keys for persistence
 META_KEY_FITNESS_WEIGHTS = "self_improve:fitness_weights"

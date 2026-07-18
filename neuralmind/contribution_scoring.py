@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from typing import Any
 
 # Quality thresholds for promotion
-QUALITY_THRESHOLD_HIGH = 0.7   # edges above this promote to shared
-QUALITY_THRESHOLD_LOW = 0.3    # edges below this are flagged for decay
+QUALITY_THRESHOLD_HIGH = 0.7  # edges above this promote to shared
+QUALITY_THRESHOLD_LOW = 0.3  # edges below this are flagged for decay
 
 # Scoring weights
 WEIGHT_REINFORCEMENT = 0.4
@@ -32,6 +32,7 @@ WEIGHT_CONFLICT_PENALTY = 0.25
 @dataclass
 class EdgeQuality:
     """Quality score for a single contributor edge."""
+
     source: str
     target: str
     namespace: str
@@ -65,7 +66,7 @@ class ContributionQualityScorer:
     Scores edges from team-memory bundles by reinforcement, recency,
     and conflict rate. Outputs promote/decay decisions for E2 (merge
     semantics) and E3 (peer review gate) to consume.
-    
+
     Fail-open: scoring errors return neutral 0.5 scores rather than
     raising, so a partial failure doesn't block team memory import.
     """
@@ -98,6 +99,7 @@ class ContributionQualityScorer:
         # Reinforcement score: saturating function of activation_count
         # log1p(activations) / log1p(30) → ~1.0 at 30 activations
         import math
+
         reinforcement_score = min(1.0, math.log1p(activation_count) / math.log1p(30.0))
 
         # Recency score: exponential decay over 30 days
@@ -159,16 +161,13 @@ class ContributionQualityScorer:
         bundle: dict[str, Any],
     ) -> tuple[list[EdgeQuality], list[EdgeQuality], list[EdgeQuality]]:
         """
-        Separate a bundle into promote/shared, neutral/personal, and 
+        Separate a bundle into promote/shared, neutral/personal, and
         decay/flagged edge lists.
-        
+
         Returns: (promote_edges, neutral_edges, decay_edges)
         """
         scored = self.score_bundle(bundle)
         promote = [e for e in scored if e.should_promote]
         decay = [e for e in scored if e.should_decay]
-        neutral = [
-            e for e in scored
-            if not e.should_promote and not e.should_decay
-        ]
+        neutral = [e for e in scored if not e.should_promote and not e.should_decay]
         return promote, neutral, decay

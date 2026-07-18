@@ -21,9 +21,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Callable
+from dataclasses import dataclass
 
 
 def norm_label(label: str) -> str:
@@ -35,8 +33,7 @@ def norm_label(label: str) -> str:
     """
     s = label.strip().lower()
     s = re.sub(r"[^a-z0-9]+", "_", s)
-    s = re.sub(r"_+", "_", s).strip("_")
-    return s
+    return re.sub(r"_+", "_", s).strip("_")
 
 
 def _tok(text: str) -> set[str]:
@@ -76,7 +73,7 @@ class EntityKey:
     structural_anchor: str | None = None
 
     @classmethod
-    def from_label(cls, label: str, anchor: str | None = None) -> "EntityKey":
+    def from_label(cls, label: str, anchor: str | None = None) -> EntityKey:
         return cls(
             raw_label=label,
             norm=norm_label(label),
@@ -164,7 +161,7 @@ class EntityResolver:
         # Slow path: cosine similarity against all registered entities.
         best_id: str | None = None
         best_confidence = 0.0
-        for (norm, reg_anchor), (eid, key) in self._entities.items():
+        for (_norm, _reg_anchor), (eid, key) in self._entities.items():
             # Cheap pre-filter: if either token set is empty or label prefixes
             # differ, skip the full cosine.
             if not key.tokens:

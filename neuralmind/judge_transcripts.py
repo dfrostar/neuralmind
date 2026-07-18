@@ -67,7 +67,7 @@ JUDGE_TRANSCRIPTS: dict[str, dict] = {
 def populate_judge_transcripts() -> dict[str, Path]:
     """
     Write fixture judge transcripts to bench/public/judge/.
-    
+
     Returns: {transcript_id: written_path}
     """
     JUDGE_DIR.mkdir(parents=True, exist_ok=True)
