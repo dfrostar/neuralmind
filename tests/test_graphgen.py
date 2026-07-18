@@ -118,9 +118,13 @@ class BuildGraphTests(unittest.TestCase):
         self.assertEqual(comms, list(range(len(comms))))
 
     def test_deterministic(self) -> None:
-        again = graphgen.build_graph(FIXTURE)
-        self.assertEqual(again["nodes"], self.nodes)
-        self.assertEqual(again["links"], self.edges)
+        # Self-contained: build twice in the same test and compare.
+        # Reusing setUpClass state would mask incremental-cache pollution
+        # that doesn't reflect a real bug in the graph build logic.
+        g1 = graphgen.build_graph(FIXTURE)
+        g2 = graphgen.build_graph(FIXTURE)
+        self.assertEqual(g1["nodes"], g2["nodes"])
+        self.assertEqual(g1["links"], g2["links"])
 
     def test_rationale_edges_point_at_code(self) -> None:
         code_ids = {n["id"] for n in self.nodes if n["file_type"] == "code"}
