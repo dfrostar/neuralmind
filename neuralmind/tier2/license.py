@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import Literal
 
 # Ed25519 public key (32 bytes hex) — embedded issuer public key.
-# Replace with actual key in production. This is a TEST key.
-_ISSUER_PUBLIC_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
+# Generated 2026-07-19. Fingerprint: d23aeb5ae460fede
+_ISSUER_PUBLIC_KEY_HEX = "62a59c47bdef4c3b9dfeea6a74c90d42f966157f6d0969310ea7deb3bfcd365b"
 
 LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK"]
 
