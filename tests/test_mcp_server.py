@@ -300,16 +300,75 @@ class TestToolNextLikely:
         assert data.get("code") == "security_denied"
 
 
+class TestToolImpact:
+    """Tests for tool_impact() — the friendlier-named blast-radius handler."""
+
+    def test_handler_delegates_to_mind_impact(self, temp_project):
+        """tool_impact is a thin pass-through to NeuralMind.impact()."""
+        from neuralmind.mcp_server import tool_impact
+
+        with patch("neuralmind.mcp_server.get_mind") as mock_get:
+            mock_mind = MagicMock()
+            mock_mind.impact.return_value = {
+                "symbol": "hash_password",
+                "depth": 1,
+                "relations": ["calls", "implements", "imports_from", "inherits"],
+                "resolution": "exact",
+                "resolved_node": "node_2",
+                "dependents": [
+                    {"id": "node_1", "relation": "calls", "hop": 1, "depends_on": "node_2"}
+                ],
+                "count": 1,
+            }
+            mock_get.return_value = mock_mind
+
+            result = tool_impact(str(temp_project), "hash_password", depth=1)
+
+        assert result["resolution"] == "exact"
+        assert result["count"] == 1
+        mock_mind.impact.assert_called_once_with("hash_password", depth=1)
+
+    def test_dispatcher_routes_to_handler(self, temp_project):
+        """handle_tool_call routes neuralmind_impact to tool_impact.
+
+        Admin-only by default (not in the 'builder'/'reader' RBAC sets),
+        matching neuralmind_structural_neighbors/synapse_stats/next_likely.
+        """
+        with patch("neuralmind.mcp_server.tool_impact") as mock_tool:
+            mock_tool.return_value = {"symbol": "x", "resolution": "none", "dependents": []}
+            result = handle_tool_call(
+                "neuralmind_impact",
+                {
+                    "project_path": str(temp_project),
+                    "symbol": "x",
+                    "depth": 2,
+                    "role": "admin",
+                },
+            )
+            data = json.loads(result)
+            assert data == {"symbol": "x", "resolution": "none", "dependents": []}
+            mock_tool.assert_called_once_with(str(temp_project), "x", 2)
+
+    def test_dispatcher_denies_builder_role_by_default(self, temp_project):
+        """'builder' role can't call neuralmind_impact without explicit policy extension."""
+        result = handle_tool_call(
+            "neuralmind_impact",
+            {"project_path": str(temp_project), "symbol": "x"},
+        )
+        data = json.loads(result)
+        assert data.get("code") == "security_denied"
+
+
 class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 15 tools (7 retrieval + 4 v0.4 synapse +
+        """TOOLS should define 16 tools (7 retrieval + 4 v0.4 synapse +
         1 v0.11 directional-transition + 1 v0.38 feedback + 1 review +
-        1 v0.42 structural neighbors)."""
+        1 v0.42 structural neighbors + 1 v0.47 impact)."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 15
+        assert len(TOOLS) == 16
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -339,6 +398,8 @@ class TestToolDefinitions:
             "neuralmind_synaptic_neighbors",
             # v0.42.0 structural code-graph neighbors
             "neuralmind_structural_neighbors",
+            # v0.47.0 friendlier-named, richer-output blast-radius lookup
+            "neuralmind_impact",
             "neuralmind_synapse_stats",
             "neuralmind_synapse_decay",
             "neuralmind_export_synapse_memory",

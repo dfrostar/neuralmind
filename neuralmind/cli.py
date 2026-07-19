@@ -1348,6 +1348,37 @@ def cmd_next(args):
         print(f"  {prob * 100:5.1f}%  {to_node}")
 
 
+def cmd_impact(args):
+    """Reverse-dependency ("blast radius") lookup: what depends on a symbol.
+
+    Friendlier-named, richer-output sibling of `structural --blast-radius`
+    (see :func:`cmd_structural`) — same underlying structural index, but each
+    dependent row carries its hop and relation, not just its id.
+    """
+    from .core import create_mind
+
+    mind = create_mind(args.project_path, auto_build=True)
+    result = mind.impact(args.symbol, depth=args.depth)
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+
+    if result["resolution"] == "none":
+        print(f"No graph node matched '{args.symbol}'. Try `neuralmind build .` first.")
+        sys.exit(1)
+
+    tag = " (semantic match)" if result["resolution"] == "semantic" else ""
+    print(f"Impact of {result['resolved_node']}{tag} — depth {args.depth}:")
+    dependents = result["dependents"]
+    if not dependents:
+        print("  Nothing depends on it.")
+        return
+    labels = _structural_label(mind, [d["id"] for d in dependents])
+    for dep in dependents:
+        print(f"  h{dep['hop']}  {dep['relation']:14} {labels.get(dep['id'], dep['id'])}")
+    print(f"\n{result['count']} dependent(s).")
+
+
 def _emit_local_audit(
     mind: NeuralMind,
     category: str,
@@ -2618,6 +2649,25 @@ def main():
     )
     next_p.add_argument("--json", "-j", action="store_true")
     next_p.set_defaults(func=cmd_next)
+
+    # Impact — friendlier-named, richer-output blast-radius lookup (v0.47.0+)
+    impact_p = subparsers.add_parser(
+        "impact",
+        help="Reverse-dependency (blast-radius) lookup: what depends on a symbol",
+    )
+    impact_p.add_argument("project_path")
+    impact_p.add_argument(
+        "symbol",
+        help="Symbol (function/class/module label) or exact node id to trace dependents of",
+    )
+    impact_p.add_argument(
+        "--depth",
+        type=int,
+        default=1,
+        help="How many hops of transitive dependents to include (default: 1)",
+    )
+    impact_p.add_argument("--json", "-j", action="store_true")
+    impact_p.set_defaults(func=cmd_impact)
 
     # audit command group — SIEM export + integrity verify (B-Audit card)
     audit_p = subparsers.add_parser(

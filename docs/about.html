@@ -186,6 +186,19 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v0470">
+            <h2>What's New in v0.47.0 — Impact: blast radius under a name you'd actually reach for</h2>
+            <p><strong>A Reddit comparison against GitNexus flagged "no <code>impact</code> tool" as a gap. Not quite right — <code>structural --blast-radius</code> has answered "what depends on this?" since v0.42.0 — but the naming critique landed.</strong> Nobody finds a boolean flag on a differently-named command when they're looking for "impact analysis." <code>neuralmind impact &lt;symbol&gt; --depth N</code> is the same structural-index traversal under a name that matches the question.</p>
+            <h3>Richer output, same traversal</h3>
+            <p>Each dependent row now carries its <strong>hop</strong> (how many steps away) and its <strong>relation</strong> (<code>calls</code>/<code>inherits</code>/<code>imports_from</code>/<code>implements</code>) — not just a bare id, which is all <code>structural --blast-radius</code> returned before this release. <code>resolution</code> reports whether the symbol matched exactly or via the closest semantic hit.</p>
+            <h3>One traversal, not two</h3>
+            <p>Nothing about the underlying BFS changed. <code>structural --blast-radius</code> stays byte-identical — it's now a one-line wrapper over the same <code>blast_radius_detail()</code> this release adds, so there's exactly one "what depends on X" implementation, not two independently drifting ones.</p>
+            <div class="quote">A naming and discoverability release, not a new capability — and that's a more credible story than pretending it's a from-scratch build.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.47.0.md">Full v0.47.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/blast-radius-before-a-rename.md">Blast-radius-before-a-rename walkthrough &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v0450">
             <h2>What's New in v0.45.0 — The token receipt gets a price tag</h2>
             <p><strong><code>neuralmind savings</code> has always verified the 40-70x token claim against your own logged usage. v0.45.0 converts that receipt into the number stakeholders actually ask for: dollars.</strong> Run <code>neuralmind savings --cost</code> and the report gains a dollar-savings block — cost without NeuralMind, cost with it, the amount saved, and a daily/monthly projection — computed from the same opt-in event log the token report already reads.</p>
