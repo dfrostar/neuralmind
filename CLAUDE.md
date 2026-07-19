@@ -54,9 +54,11 @@ builds it.
 
 ## Internal docs — routed to the marketing repo
 
-Internal documentation (BRDs, TRDs, competitive analysis, release notes
-archive) lives in **`dfrostar/neuralmind-marketing`**, NOT in this repo.
-This repo (`dfrostar/neuralmind`) is pure code + public-facing docs.
+Pure internal strategy material (BRDs, TRDs, competitive analysis) lives in
+**`dfrostar/neuralmind-marketing`**, NOT in this repo. Anything that supports
+the public product or site — including release notes, which are canonical
+public changelog content the "Shipping a feature" checklist below requires
+at repo root — stays here.
 
 When a new document is authored, file it in the right repo:
 
@@ -64,7 +66,7 @@ When a new document is authored, file it in the right repo:
 |-----------|------------|
 | BRD / TRD / strategy doc | `dfrostar/neuralmind-marketing/internal/plans/` |
 | Competitive analysis / market research | `dfrostar/neuralmind-marketing/internal/` |
-| Release notes | `dfrostar/neuralmind-marketing/docs/RELEASE_NOTES_v*.md` |
+| Release notes | `dfrostar/neuralmind/RELEASE_NOTES_v*.md` (here — repo root, see the shipping checklist) |
 | CLI reference / wiki | `dfrostar/neuralmind/docs/wiki/` (here) |
 | Use-case walkthrough | `dfrostar/neuralmind/docs/use-cases/` (here) |
 | Marketing site page | `dfrostar/neuralmind/site/` (here) or `…-marketing/src/app/` |
