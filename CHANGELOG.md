@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.51.3](https://github.com/dfrostar/neuralmind/compare/v0.51.2...v0.51.3) (2026-07-19)
+
+
+### Bug Fixes
+
+* ruff format drift + sync manifest to 0.51.2 ([469b4c0](https://github.com/dfrostar/neuralmind/commit/469b4c021d40779a05dde2dd5f14f7a1add042c4))
+
 ## [0.49.5](https://github.com/dfrostar/neuralmind/compare/v0.49.4...v0.49.5) (2026-07-18)
 
 
