@@ -223,9 +223,9 @@ p = doc.add_paragraph()
 run = p.add_run(
     "The AI code intelligence market is projected to grow from "
     f"${MARKET['current_size_2025']}B in 2025 to ${MARKET['projected_2030']}B by 2030 "
-    f"(CAGR {MARKET['cagr']*100:.1f}%). With {MARKET['developer_adoption_2025']*100:.0f}% "
+    f"(CAGR {MARKET['cagr'] * 100:.1f}%). With {MARKET['developer_adoption_2025'] * 100:.0f}% "
     "of developers already using AI coding tools and Gartner forecasting "
-    f"{MARKET['gartner_2028_developer_adoption']*100:.0f}% adoption by 2028, the competitive "
+    f"{MARKET['gartner_2028_developer_adoption'] * 100:.0f}% adoption by 2028, the competitive "
     "landscape is rapidly consolidating around a few dominant players while open-source "
     "and local-first alternatives carve out differentiated positions."
 )
