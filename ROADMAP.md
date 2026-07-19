@@ -40,10 +40,9 @@ NeuralMind (product, public)          Autopilot (operator, private)
 See `docs/WAVE9-DECISIONS.md`, `docs/WAVE9-BRD.md`, `docs/WAVE9-TRD.md` in the autopilot repo.
 
 ### Remaining before v1.0:
-- **Operator CLI** — Manual license operations (`autopilot license issue/revoke/status`)
-- **Key rotation** — Multi-version keyring for license signing
-- **Clock-skew detection** — Persistent `last_validation` timestamp to prevent rollback attacks
-- **Webhook idempotency** — Deduplicate retried Stripe events
+- **Engine wiring** — Wire `LicensingManager` into `engine.run_tick()` so cron sweep has teeth (autopilot v0.6.1, Wave 10B)
+- **Clock-skew activation** — Inject `AntiTamper` into `tier2/license.py:validate()` (neuralmind v0.55.0, Wave 10B)
+- **Public ROADMAP sync** — Reflect Wave 10A + 10B in public docs
 
 ### Forward candidates (not yet started):
 - **Broker pattern** — Pluggable payment provider (Stripe primary, LemonSqueezy fallback — schema already provider-agnostic)
