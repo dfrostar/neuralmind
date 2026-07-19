@@ -74,6 +74,17 @@ DEFAULT_VIEWS: tuple[str, ...] = (
 # node's contract changes.
 BLAST_VIEWS: tuple[str, ...] = ("callers", "importers", "subclasses", "implementers")
 
+# Reverse view -> the raw relation reported on a blast-radius row (see
+# blast_radius_detail). Where two relations share a view pair ("imports_from"
+# and "imports" both -> "importers"), the more specific one is reported —
+# fidelity beyond "some kind of import" isn't tracked per-edge, only per-view.
+BLAST_VIEW_RELATION: dict[str, str] = {
+    "callers": "calls",
+    "subclasses": "inherits",
+    "implementers": "implements",
+    "importers": "imports_from",
+}
+
 # Per-view recall weight. Callers/callees dominate because signature and
 # behavior changes propagate along the call graph; importers are weakest
 # (module-level, coarse). Feeds the budget-neutral L3 expansion.
@@ -233,20 +244,24 @@ class StructuralIndex:
         ranked = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
         return ranked[:top_k]
 
-    def blast_radius(self, node_id: str, depth: int = 2) -> list[str]:
-        """Transitive reverse-dependency set of ``node_id`` (its blast radius).
+    def blast_radius_detail(self, node_id: str, depth: int = 2) -> list[dict]:
+        """Transitive reverse-dependency rows for ``node_id`` (its blast radius).
 
-        Breadth-first over :data:`BLAST_VIEWS` — everything that calls,
-        imports, subclasses, or implements the node, then everything that
-        depends on *those*, up to ``depth`` hops. Cycle-safe (visited set) and
-        hub-capped per node (a hub's dependents are truncated so one utility
-        can't explode the radius). Returns ids sorted, excluding the node.
+        Same breadth-first traversal as :meth:`blast_radius`, but returns one
+        row per dependent — ``{"id", "relation", "hop", "depends_on"}`` —
+        instead of a flat id list, so a caller can see *how* each dependent
+        depends on the node and how many hops away it is, not just that it
+        does. Nearest-hop-wins: BFS visits a node the first time via its
+        shortest path, so ``hop``/``depends_on`` always reflect that. Sorted
+        by ``(hop, id)``. Cycle-safe (visited set) and hub-capped per node (a
+        hub's dependents are truncated so one utility can't explode the
+        radius).
         """
         if depth < 1:
             return []
         visited: set[str] = {node_id}
         frontier: deque[tuple[str, int]] = deque([(node_id, 0)])
-        result: set[str] = set()
+        rows: dict[str, dict] = {}
         while frontier:
             current, hop = frontier.popleft()
             if hop >= depth:
@@ -258,13 +273,33 @@ class StructuralIndex:
                 dependents = sorted(members)
                 if len(dependents) > self.hub_degree:
                     dependents = dependents[: self.hub_degree]
+                relation = BLAST_VIEW_RELATION.get(view, view)
                 for dep in dependents:
                     if dep in visited:
                         continue
                     visited.add(dep)
-                    result.add(dep)
+                    rows[dep] = {
+                        "id": dep,
+                        "relation": relation,
+                        "hop": hop + 1,
+                        "depends_on": current,
+                    }
                     frontier.append((dep, hop + 1))
-        return sorted(result)
+        return sorted(rows.values(), key=lambda r: (r["hop"], r["id"]))
+
+    def blast_radius(self, node_id: str, depth: int = 2) -> list[str]:
+        """Transitive reverse-dependency set of ``node_id`` (its blast radius).
+
+        Breadth-first over :data:`BLAST_VIEWS` — everything that calls,
+        imports, subclasses, or implements the node, then everything that
+        depends on *those*, up to ``depth`` hops. Cycle-safe (visited set) and
+        hub-capped per node (a hub's dependents are truncated so one utility
+        can't explode the radius). Returns ids sorted, excluding the node.
+
+        Thin wrapper over :meth:`blast_radius_detail` for callers that only
+        need the id set, not per-dependent hop/relation attribution.
+        """
+        return sorted(row["id"] for row in self.blast_radius_detail(node_id, depth))
 
     # ----------------------------------------------------------------- #
     # Stats

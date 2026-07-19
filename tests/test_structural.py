@@ -175,12 +175,58 @@ def test_blast_radius_cycle_safe():
     assert out == ["b"]
 
 
+def test_blast_radius_detail_reports_hop_and_relation():
+    # c1 --calls--> mid --calls--> target ; importer --imports_from--> target
+    edges = [
+        _edge("mid", "target", "calls"),
+        _edge("c1", "mid", "calls"),
+        _edge("importer", "target", "imports_from"),
+    ]
+    idx = StructuralIndex().build_from_edges(edges)
+    rows = {row["id"]: row for row in idx.blast_radius_detail("target", depth=2)}
+
+    assert rows["mid"] == {"id": "mid", "relation": "calls", "hop": 1, "depends_on": "target"}
+    assert rows["importer"] == {
+        "id": "importer",
+        "relation": "imports_from",
+        "hop": 1,
+        "depends_on": "target",
+    }
+    assert rows["c1"] == {"id": "c1", "relation": "calls", "hop": 2, "depends_on": "mid"}
+
+
+def test_blast_radius_detail_nearest_hop_wins():
+    # target has two direct callers; one of them (mid) is itself a 2-hop
+    # dependent via a different path. mid must be recorded at hop 1, not 2.
+    edges = [
+        _edge("mid", "target", "calls"),
+        _edge("other", "target", "calls"),
+        _edge("mid", "other", "calls"),
+    ]
+    idx = StructuralIndex().build_from_edges(edges)
+    rows = {row["id"]: row for row in idx.blast_radius_detail("target", depth=2)}
+    assert rows["mid"]["hop"] == 1
+
+
+def test_blast_radius_is_a_thin_wrapper_over_detail():
+    edges = [
+        _edge("mid", "target", "calls"),
+        _edge("c1", "mid", "calls"),
+        _edge("importer", "target", "imports_from"),
+    ]
+    idx = StructuralIndex().build_from_edges(edges)
+    assert idx.blast_radius("target", depth=2) == sorted(
+        row["id"] for row in idx.blast_radius_detail("target", depth=2)
+    )
+
+
 def test_empty_index_is_falsy_and_safe():
     idx = StructuralIndex()
     assert not idx
     assert idx.neighbors("anything") == {}
     assert idx.recall(["anything"]) == []
     assert idx.blast_radius("anything") == []
+    assert idx.blast_radius_detail("anything") == []
 
 
 # --- real graph.json fixture: ids read verbatim, real relations present ----

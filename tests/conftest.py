@@ -85,11 +85,14 @@ def sample_graph() -> dict[str, Any]:
             },
         ],
         "edges": [
-            {"source": "node_1", "target": "node_2", "type": "calls"},
-            {"source": "node_1", "target": "node_3", "type": "uses"},
-            {"source": "node_4", "target": "node_5", "type": "uses"},
-            {"source": "node_6", "target": "node_1", "type": "calls"},
-            {"source": "node_6", "target": "node_4", "type": "calls"},
+            # "relation" is the canonical edge-kind key (graphgen.py/ir.py); "type"
+            # is kept alongside for any older consumer, but structural.py and the
+            # rest of production code read "relation".
+            {"source": "node_1", "target": "node_2", "type": "calls", "relation": "calls"},
+            {"source": "node_1", "target": "node_3", "type": "uses", "relation": "uses"},
+            {"source": "node_4", "target": "node_5", "type": "uses", "relation": "uses"},
+            {"source": "node_6", "target": "node_1", "type": "calls", "relation": "calls"},
+            {"source": "node_6", "target": "node_4", "type": "calls", "relation": "calls"},
         ],
         "communities": [
             {

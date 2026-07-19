@@ -1272,6 +1272,57 @@ with `neuralmind_synaptic_neighbors`.
 
 ---
 
+### impact *(v0.47.0+)*
+
+A friendlier-named, richer-output sibling of `structural --blast-radius` —
+same underlying structural index, same traversal, but each dependent row
+carries which **hop** and which **relation** (`calls`/`inherits`/
+`imports_from`/`implements`) connects it, not just its id. Use before
+renaming, re-signing, or deleting a symbol to see everything a change would
+touch, in one command instead of a boolean flag on a differently-named one.
+
+```bash
+neuralmind impact <symbol> [--depth N] [--project-path .] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `symbol` | Yes | Symbol name, natural-language description, or exact node id |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--depth` | `1` | How many hops of transitive dependents to include |
+| `--project-path` | `.` | Project root directory |
+| `--json`, `-j` | False | Output as JSON |
+
+#### Examples
+
+```bash
+neuralmind impact hash_password
+neuralmind impact "the login handler" --depth 2
+neuralmind impact UserService --json
+```
+
+Example output:
+
+```
+Impact of auth_handlers_authenticate_user (semantic match) — depth 2:
+  h1  calls          login_endpoint() — routes.py
+
+1 dependent(s).
+```
+
+`--json` returns `{symbol, depth, relations, resolution, resolved_node,
+dependents, count}`, where `resolution` is `"exact"` (symbol was a literal
+node id), `"semantic"` (resolved via the closest embedding match), or
+`"none"`. The equivalent MCP tool is `neuralmind_impact`.
+
+---
+
 ### last *(v0.10.0+)*
 
 Print the most recent Bash output the PostToolUse hook cached, so an
