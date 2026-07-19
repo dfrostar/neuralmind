@@ -2401,7 +2401,7 @@ def _version_string() -> str:
     base = f"neuralmind {__version__}"
     try:
         from neuralmind.tier2.config import load_config
-        from neuralmind.tier2.license import LicenseValidator, _ISSUER_PUBLIC_KEY_HEX
+        from neuralmind.tier2.license import _ISSUER_PUBLIC_KEY_HEX, LicenseValidator
 
         cfg = load_config()
         lic_path = Path(cfg.license_file)

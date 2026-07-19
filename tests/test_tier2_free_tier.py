@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-from neuralmind.tier2.config import Tier2Config, load_config, save_config
+from neuralmind.tier2.config import Tier2Config
 from neuralmind.tier2.license import (
-    LicenseInfo,
     LicenseValidator,
     issue_free_license,
     load_license,
@@ -109,14 +107,16 @@ class TestCorruptedLicenseFile:
 
     def test_unknown_tier_returns_invalid(self, tmp_license_path):
         tmp_license_path.write_text(
-            json.dumps({
-                "tier": "enterprise",  # not free or team
-                "seats": 100,
-                "issued_at": "2026-01-01T00:00:00Z",
-                "expires_at": "2099-01-01T00:00:00Z",
-                "issued_to": "big-corp",
-                "signature": "a" * 128,
-            }),
+            json.dumps(
+                {
+                    "tier": "enterprise",  # not free or team
+                    "seats": 100,
+                    "issued_at": "2026-01-01T00:00:00Z",
+                    "expires_at": "2099-01-01T00:00:00Z",
+                    "issued_to": "big-corp",
+                    "signature": "a" * 128,
+                }
+            ),
             encoding="utf-8",
         )
         validator = LicenseValidator("a" * 64, tmp_license_path)
@@ -127,14 +127,16 @@ class TestFreeTierSignatureMustBeSelfSigned:
     def test_free_with_wrong_signature_is_invalid(self, tmp_license_path):
         now = "2026-01-01T00:00:00Z"
         tmp_license_path.write_text(
-            json.dumps({
-                "tier": "free",
-                "seats": 1,
-                "issued_at": now,
-                "expires_at": "never",
-                "issued_to": "self",
-                "signature": "someone-else-signature",
-            }),
+            json.dumps(
+                {
+                    "tier": "free",
+                    "seats": 1,
+                    "issued_at": now,
+                    "expires_at": "never",
+                    "issued_to": "self",
+                    "signature": "someone-else-signature",
+                }
+            ),
             encoding="utf-8",
         )
         assert load_license(tmp_license_path) == "INVALID"
@@ -142,14 +144,16 @@ class TestFreeTierSignatureMustBeSelfSigned:
     def test_free_with_wrong_seats_is_invalid(self, tmp_license_path):
         now = "2026-01-01T00:00:00Z"
         tmp_license_path.write_text(
-            json.dumps({
-                "tier": "free",
-                "seats": 5,  # free must be 1
-                "issued_at": now,
-                "expires_at": "never",
-                "issued_to": "self",
-                "signature": "self-signed",
-            }),
+            json.dumps(
+                {
+                    "tier": "free",
+                    "seats": 5,  # free must be 1
+                    "issued_at": now,
+                    "expires_at": "never",
+                    "issued_to": "self",
+                    "signature": "self-signed",
+                }
+            ),
             encoding="utf-8",
         )
         assert load_license(tmp_license_path) == "INVALID"

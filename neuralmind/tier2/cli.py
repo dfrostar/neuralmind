@@ -370,7 +370,6 @@ def cmd_team_license(args) -> int:
 
 def os_get_actor_email() -> str:
     """Resolve actor email from env var."""
-    import os
 
     return os.environ.get("NEURALMIND_ACTOR_EMAIL", os.environ.get("NEURALMIND_ACTOR", "unknown"))
 

@@ -17,10 +17,10 @@ License JSON format:
 
 from __future__ import annotations
 
+import getpass
 import hashlib
 import json
 import platform
-import getpass
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,6 +36,7 @@ LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK"]
 @dataclass
 class LicenseInfo:
     """Immutable license data container."""
+
     tier: str
     seats: int
     issued_at: str
@@ -90,6 +91,7 @@ class LicenseValidator:
         """Verify Ed25519 signature (team tier). Returns False on any error."""
         try:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
             pub_bytes = bytes.fromhex(self.public_key_hex)
             pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
             msg_dict = {k: v for k, v in lic.raw.items() if k != "signature"}
