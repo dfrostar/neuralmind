@@ -26,7 +26,7 @@ class TestMetricsCollector(unittest.TestCase):
         self.assertFalse(summary)
 
     def test_summarize_empty_dir_returns_zero(self) -> None:
-        import os
+
         metrics_dir = self.project / ".neuralmind" / "metrics"
         metrics_dir.mkdir(parents=True)
         collector = MetricsCollector(self.project)
@@ -39,18 +39,20 @@ class TestMetricsCollector(unittest.TestCase):
         metrics_dir.mkdir(parents=True)
         day_file = metrics_dir / f"metrics_{time.strftime('%Y-%m-%d')}.jsonl"
         day_file.write_text(
-            json.dumps({
-                "event": "query",
-                "ts": time.time(),
-                "session_id": "s1",
-                "query": "test query",
-                "latency_ms": 150.0,
-                "retrieval_reuse_rate": 0.75,
-                "tool_calls": 3,
-                "tool_successes": 2,
-                "tokens_used": 1200,
-                "synapses_activated": 5,
-            })
+            json.dumps(
+                {
+                    "event": "query",
+                    "ts": time.time(),
+                    "session_id": "s1",
+                    "query": "test query",
+                    "latency_ms": 150.0,
+                    "retrieval_reuse_rate": 0.75,
+                    "tool_calls": 3,
+                    "tool_successes": 2,
+                    "tokens_used": 1200,
+                    "synapses_activated": 5,
+                }
+            )
             + "\n"
         )
 
@@ -71,17 +73,19 @@ class TestMetricsCollector(unittest.TestCase):
         old_day = time.strftime("%Y-%m-%d", time.gmtime(old_ts))
         day_file = metrics_dir / f"metrics_{old_day}.jsonl"
         day_file.write_text(
-            json.dumps({
-                "event": "query",
-                "ts": old_ts,
-                "session_id": "old",
-                "query": "old query",
-                "latency_ms": 200.0,
-                "tool_calls": 1,
-                "tool_successes": 1,
-                "tokens_used": 500,
-                "synapses_activated": 2,
-            })
+            json.dumps(
+                {
+                    "event": "query",
+                    "ts": old_ts,
+                    "session_id": "old",
+                    "query": "old query",
+                    "latency_ms": 200.0,
+                    "tool_calls": 1,
+                    "tool_successes": 1,
+                    "tokens_used": 500,
+                    "synapses_activated": 2,
+                }
+            )
             + "\n"
         )
 

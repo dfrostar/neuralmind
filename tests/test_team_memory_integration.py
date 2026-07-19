@@ -13,18 +13,16 @@ Stdlib-only (SQLite via SynapseStore) — runs without chromadb/embeddings.
 
 from __future__ import annotations
 
-import json
 import tempfile
 import time
 import unittest
 from pathlib import Path
 
 from neuralmind.contribution_scoring import (
-    QUALITY_THRESHOLD_HIGH,
     ContributionQualityScorer,
 )
 from neuralmind.merge_semantics import QualityWeightedMerger
-from neuralmind.peer_review import PeerReviewGate, AUTO_PROMOTE_THRESHOLD
+from neuralmind.peer_review import AUTO_PROMOTE_THRESHOLD, PeerReviewGate
 from neuralmind.synapses import (
     DEFAULT_NAMESPACE,
     SHARED_NAMESPACE,
@@ -87,10 +85,7 @@ class TeamMemoryIntegrationTests(unittest.TestCase):
         # At least one edge should score high enough to promote
         self.assertTrue(promote, "high-activation recent edge should classify as promote")
         self.assertTrue(
-            any(
-                {e.source, e.target} == {"auth/jwt.py", "auth/handlers.py"}
-                for e in promote
-            ),
+            any({e.source, e.target} == {"auth/jwt.py", "auth/handlers.py"} for e in promote),
             "auth pair should be in promote list",
         )
 
@@ -378,7 +373,9 @@ class TeamMemoryIntegrationTests(unittest.TestCase):
         post_weight = post_decay[0][2]
 
         self.assertLess(post_weight, pre_weight, "stale edge weight should decrease after decay")
-        self.assertLess(post_weight, pre_weight * 0.9, "weight should drop meaningfully (fast decay)")
+        self.assertLess(
+            post_weight, pre_weight * 0.9, "weight should drop meaningfully (fast decay)"
+        )
 
     # ------------------------------------------------------------------
     # Full chain: publish → score → gate → merge → staleness

@@ -13,7 +13,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-pytest.importorskip("chromadb", reason="tuner faithfulness tests need chromadb for neuralmind.embedder")
+pytest.importorskip(
+    "chromadb", reason="tuner faithfulness tests need chromadb for neuralmind.embedder"
+)
 
 from neuralmind.fixtures import FixtureQuery, load_fixture_queries, save_fixture_queries
 from neuralmind.tuner import PopulationTuner
