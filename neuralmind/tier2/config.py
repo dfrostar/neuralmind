@@ -1,6 +1,6 @@
 """config.py — Tier 2 YAML configuration schema and I/O.
 
-Tier 2 config lives at ~/.config/neuralmind/tier2.yaml by default.  All values
+Tier 2 config lives at ~/.config/neuralmind/tier2.yaml by default. All values
 are additive to the MIT product — no MIT paths are altered.
 """
 
@@ -90,25 +90,25 @@ def _from_dict(raw: dict[str, Any]) -> Tier2Config:
     gov_raw = raw.get("governance", {})
     sh_raw = raw.get("self_hosted", {})
     return Tier2Config(
-        tier=raw.get("tier", "team"),
-        license_file=raw.get("license_file", str(TIER2_CONFIG_DIR / "license.json")),
-        audit_db=raw.get("audit_db", str(TIER2_CONFIG_DIR / "audit.db")),
-        seats=int(raw.get("seats", 0)),
-        expires_at=raw.get("expires_at", ""),
-        issued_to=raw.get("issued_to", ""),
+        tier=str(raw.get("tier", "team")),
+        license_file=str(raw.get("license_file", str(TIER2_CONFIG_DIR / "license.json"))),
+        audit_db=str(raw.get("audit_db", str(TIER2_CONFIG_DIR / "audit.db"))),
+        seats=validate_seats(raw.get("seats", 0)),
+        expires_at=str(raw.get("expires_at", "")),
+        issued_to=str(raw.get("issued_to", "")),
         governance=GovernanceConfig(
             enabled=gov_raw.get("enabled", True),
-            publishing_scope=gov_raw.get("publishing_scope", "both"),
-            weight_threshold=float(gov_raw.get("weight_threshold", 0.1)),
-            auto_decay_half_life=float(gov_raw.get("auto_decay_half_life", 30.0)),
+            publishing_scope=validate_scope(gov_raw.get("publishing_scope", "both")),
+            weight_threshold=validate_threshold(gov_raw.get("weight_threshold", 0.1)),
+            auto_decay_half_life=validate_half_life(gov_raw.get("auto_decay_half_life", 30.0)),
             admin_emails=list(gov_raw.get("admin_emails", [])),
         ),
         self_hosted=SelfHostedConfig(
             enabled=sh_raw.get("enabled", False),
-            data_dir=sh_raw.get("data_dir", str(Path.home() / ".local" / "share" / "neuralmind")),
-            bind_address=sh_raw.get("bind_address", "127.0.0.1"),
-            port=int(sh_raw.get("port", 8765)),
-            offline_grace_days=int(sh_raw.get("offline_grace_days", 30)),
+            data_dir=validate_data_dir(sh_raw.get("data_dir", str(Path.home() / ".local" / "share" / "neuralmind"))),
+            bind_address=str(sh_raw.get("bind_address", "127.0.0.1")),
+            port=validate_port(sh_raw.get("port", 8765)),
+            offline_grace_days=validate_grace_days(sh_raw.get("offline_grace_days", 30)),
         ),
     )
 
@@ -145,3 +145,65 @@ def validate_half_life(value: float) -> float:
     if not isinstance(value, (int, float)) or value <= 0:
         raise ValueError(f"Invalid half_life: {value}. Must be > 0.")
     return float(value)
+
+
+def validate_port(value: int | str | None) -> int:
+    """Validate network port: 1 ≤ port ≤ 65535. Raises ValueError."""
+    if value is None:
+        return 8765
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid port: {value!r}. Must be an integer.")
+    if not (1 <= v <= 65535):
+        raise ValueError(f"Invalid port: {v}. Must be 1-65535.")
+    return v
+
+
+def validate_grace_days(value: int | str | None) -> int:
+    """Validate offline grace days: non-negative integer. Raises ValueError."""
+    if value is None:
+        return 30
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid offline_grace_days: {value!r}. Must be an integer.")
+    if v < 0:
+        raise ValueError(f"Invalid offline_grace_days: {v}. Must be >= 0.")
+    return v
+
+
+def validate_data_dir(value: str | Path | None) -> str:
+    """Validate data_dir: must be an absolute path within the user home directory."""
+    default = str(Path.home() / ".local" / "share" / "neuralmind")
+    if value is None or str(value).strip() == "":
+        return default
+    # Reject relative paths BEFORE resolve() — resolve() silently makes
+    # relative paths absolute, hiding user error.
+    if not Path(value).is_absolute():
+        raise ValueError(f"Invalid data_dir: {value!r}. Must be an absolute path.")
+    try:
+        resolved = Path(value).resolve()
+    except Exception:
+        raise ValueError(f"Invalid data_dir: {value!r}. Must be a valid path.")
+    home = Path.home().resolve()
+    try:
+        resolved.relative_to(home)
+    except ValueError:
+        raise ValueError(
+            f"Invalid data_dir: {value!r}. Must be within user home {home!s}."
+        )
+    return str(resolved)
+
+
+def validate_seats(value: int | str | None) -> int:
+    """Validate license seats: non-negative integer. Raises ValueError."""
+    if value is None:
+        return 0
+    try:
+        v = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"Invalid seats: {value!r}. Must be an integer.")
+    if v < 0:
+        raise ValueError(f"Invalid seats: {v}. Must be >= 0.")
+    return v
