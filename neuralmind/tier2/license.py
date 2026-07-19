@@ -1,26 +1,26 @@
-"""license.py — License validation for Tier 2.
+"""license.py — License validation for Tier 2 (Free + Team).
+
+Two license tiers:
+- "free": auto-issued on first run, self-signed, 1 seat, never expires
+- "team": paid, Ed25519-signed by issuer, N seats, expires_at enforced
 
 License JSON format:
 {
-  "tier": "team",
-  "seats": 15,
-  "issued_at": "2026-07-19T00:00:00Z",
-  "expires_at": "2027-07-19T00:00:00Z",
-  "issued_to": "acme-corp",
-  "signature": "ed25519_signature_hex"
+  "tier": "free" | "team",
+  "seats": 1 | 15,
+  "issued_at": "ISO timestamp",
+  "expires_at": "ISO timestamp",
+  "issued_to": "self" | "acme-corp",
+  "signature": "ed25519 hex sig (team) or 'self-signed' (free)"
 }
-
-Validation:
-- Signature verified via Ed25519 (from embedded public key).
-- Tier must be "team".
-- Expiry checked against system clock + offline grace.
-- Seat count read into config.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import platform
+import getpass
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,11 +30,12 @@ from typing import Literal
 # Replace with actual key in production. This is a TEST key.
 _ISSUER_PUBLIC_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
 
-LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK", "NO_LICENSE"]
+LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK"]
 
 
 @dataclass
 class LicenseInfo:
+    """Immutable license data container."""
     tier: str
     seats: int
     issued_at: str
@@ -55,10 +56,10 @@ class LicenseInfo:
 
 
 class LicenseValidator:
-    """Validate Team tier license files.
+    """Validate license files (free or team).
 
-    Falls back gracefully: missing license = NO_LICENSE (MIT path).
-    Invalid signature = INVALID without crashing.
+    Free tier: self-signed, no expiry, 1 seat
+    Team tier: Ed25519-signed, has expiry, N seats
     """
 
     def __init__(self, public_key_hex: str, license_path: Path):
@@ -67,6 +68,7 @@ class LicenseValidator:
         self._cached: LicenseInfo | None = None
 
     def _load_raw(self) -> LicenseInfo | None:
+        """Parse license.json. Returns None if missing or corrupt."""
         if not self.license_path.exists():
             return None
         try:
@@ -85,12 +87,9 @@ class LicenseValidator:
         )
 
     def _verify_signature(self, lic: LicenseInfo) -> bool:
-        """Verify Ed25519 signature. Returns False on any error."""
+        """Verify Ed25519 signature (team tier). Returns False on any error."""
         try:
-            from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-                Ed25519PublicKey,
-            )
-
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
             pub_bytes = bytes.fromhex(self.public_key_hex)
             pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
             msg_dict = {k: v for k, v in lic.raw.items() if k != "signature"}
@@ -102,7 +101,9 @@ class LicenseValidator:
             return False
 
     def _is_expired(self, lic: LicenseInfo) -> bool:
-        """True if expires_at has passed."""
+        """True if expires_at has passed. Free tier with expires_at='never' is never expired."""
+        if lic.expires_at == "never":
+            return False
         try:
             exp = datetime.fromisoformat(lic.expires_at.replace("Z", "+00:00"))
             return datetime.now(timezone.utc) > exp
@@ -112,25 +113,34 @@ class LicenseValidator:
     def validate(self) -> LicenseStatus:
         """Return license status string.
 
-        Status transitions:
-        NO_LICENSE — license file missing or unreadable.
-        INVALID — signature wrong, tier mismatch, or structural issue.
-        EXPIRED — past expires_at.
-        VALID — all checks pass.
+        Free tier: valid if self-signed, 1 seat, not expired (usually never)
+        Team tier: valid if Ed25519 signature verified, N seats, not expired
         """
         lic = self._load_raw()
         if lic is None:
-            return "NO_LICENSE"
-        if lic.tier != "team":
-            return "INVALID"
-        if lic.seats <= 0:
-            return "INVALID"
-        if not self._verify_signature(lic):
-            return "INVALID"
-        if self._is_expired(lic):
-            return "EXPIRED"
-        self._cached = lic
-        return "VALID"
+            return "INVALID"  # No license = invalid (caller should issue free)
+
+        if lic.tier == "free":
+            if lic.seats != 1:
+                return "INVALID"
+            if lic.signature != "self-signed":
+                return "INVALID"
+            if self._is_expired(lic):
+                return "EXPIRED"
+            self._cached = lic
+            return "VALID"
+
+        if lic.tier == "team":
+            if lic.seats <= 0:
+                return "INVALID"
+            if not self._verify_signature(lic):
+                return "INVALID"
+            if self._is_expired(lic):
+                return "EXPIRED"
+            self._cached = lic
+            return "VALID"
+
+        return "INVALID"
 
     def status_dict(self) -> dict:
         """Return a detailed status dict for display."""
@@ -158,12 +168,28 @@ def load_license(path: Path, public_key_hex: str = _ISSUER_PUBLIC_KEY_HEX) -> Li
     return LicenseValidator(public_key_hex, path).validate()
 
 
-def generate_device_fingerprint() -> str:
-    """Generate a stable(ish) device identifier from OS-provided machine-id.
+def issue_free_license(path: Path) -> LicenseInfo:
+    """Issue a free tier license. Overwrites any existing file."""
+    now = datetime.now(timezone.utc).isoformat()
+    lic = LicenseInfo(
+        tier="free",
+        seats=1,
+        issued_at=now,
+        expires_at="never",
+        issued_to="self",
+        signature="self-signed",
+        raw={},
+    )
+    # Populate raw for consistent serialization
+    lic.raw = lic.to_dict()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(lic.to_dict(), f, indent=2)
+    return lic
 
-    Falls back to hostname + user hash if /etc/machine-id is absent
-    (e.g., containers, Windows WSL).
-    """
+
+def generate_device_fingerprint() -> str:
+    """Generate a stable(ish) device identifier from OS-provided machine-id."""
     # Try /etc/machine-id (Linux systemd)
     machine_id_path = Path("/etc/machine-id")
     if machine_id_path.exists():
@@ -180,10 +206,6 @@ def generate_device_fingerprint() -> str:
         except OSError:
             pass
 
-    # Fallback: hostname+user+OS composite — NOT stable across OS reinstalls,
-    # but stable for the lifetime of this install.
-    import getpass
-    import platform
-
+    # Fallback: hostname+user+OS composite
     composite = f"{platform.node()}|{getpass.getuser()}|{platform.system()}"
     return hashlib.sha256(composite.encode("utf-8")).hexdigest()[:32]

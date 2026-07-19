@@ -47,14 +47,16 @@ class Tier2Config:
     tier: str = "team"
     license_file: str = str(TIER2_CONFIG_DIR / "license.json")
     audit_db: str = str(TIER2_CONFIG_DIR / "audit.db")
-    seats: int = 0  # license seat limit; 0 = no license
+    seats: int = 1  # license seat limit; 1 = free tier default
     expires_at: str = ""  # ISO date, from license
     issued_to: str = ""
     governance: GovernanceConfig = field(default_factory=GovernanceConfig)
     self_hosted: SelfHostedConfig = field(default_factory=SelfHostedConfig)
 
     def is_team_active(self) -> bool:
-        """True when license present and not expired."""
+        """True when license present and not expired. Free tier (expires_at='never') is always active."""
+        if self.expires_at == "never":
+            return True
         if not self.expires_at:
             return False
         from datetime import datetime, timezone
