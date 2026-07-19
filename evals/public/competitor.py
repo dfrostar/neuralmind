@@ -273,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"{res['name']}: {res.get('skipped')}")
     (out_dir / "results.json").write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {out_dir/'results.json'}")
+    print(f"wrote {out_dir / 'results.json'}")
     return 0
 
 

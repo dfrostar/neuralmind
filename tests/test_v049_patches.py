@@ -172,9 +172,9 @@ class TestCommunityIdCarryover:
 
         # a.py should keep its community ID
         if "a.py" in communities1 and "a.py" in communities2:
-            assert communities1["a.py"] == communities2["a.py"], (
-                f"a.py community changed: {communities1['a.py']} → {communities2['a.py']}"
-            )
+            assert (
+                communities1["a.py"] == communities2["a.py"]
+            ), f"a.py community changed: {communities1['a.py']} → {communities2['a.py']}"
 
     def test_new_file_gets_fresh_community_id(self, tmp_path: Path) -> None:
         """New files get a fresh community ID without disturbing existing ones."""

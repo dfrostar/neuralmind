@@ -126,9 +126,9 @@ def test_edge_locations_point_at_real_lines(fixture: str, queryfile: str) -> Non
         text = (FIXTURES / fixture / src).read_text().splitlines()[line_no - 1]
         if link["relation"] == "calls":
             callee = labels[link["target"]].rstrip("()")
-            assert re.search(rf"\b{re.escape(callee)}\s*\(", text), (
-                f"{fixture}:{src}:{line_no} is not a call to {callee}(): {text!r}"
-            )
+            assert re.search(
+                rf"\b{re.escape(callee)}\s*\(", text
+            ), f"{fixture}:{src}:{line_no} is not a call to {callee}(): {text!r}"
         elif link["relation"] == "imports_from":
             assert (
                 "import" in text
@@ -161,19 +161,19 @@ def test_query_sets_mirror_python_fixture_shape() -> None:
     for _fixture, queryfile in CASES:
         data = _load(FIXTURES / queryfile)
         by_id = {q["id"]: q for q in data["queries"]}
-        assert set(by_id) == set(py_by_id), (
-            f"{queryfile} query ids differ from Python fixture: {set(by_id) ^ set(py_by_id)}"
-        )
+        assert set(by_id) == set(
+            py_by_id
+        ), f"{queryfile} query ids differ from Python fixture: {set(by_id) ^ set(py_by_id)}"
         # Compare the seed history (the signal that matters); the sibling
         # `_comment` is human prose and may be worded per-language.
         assert (data.get("learning_seed") or {}).get("history") == (
             py.get("learning_seed") or {}
         ).get("history"), f"{queryfile} learning_seed history differs from the Python fixture"
         for qid, pq in py_by_id.items():
-            assert by_id[qid]["question"] == pq["question"], (
-                f"{queryfile}:{qid} question drifted from the Python fixture"
-            )
-            assert by_id[qid]["shape"] == pq["shape"], (
-                f"{queryfile}:{qid} shape drifted from the Python fixture"
-            )
+            assert (
+                by_id[qid]["question"] == pq["question"]
+            ), f"{queryfile}:{qid} question drifted from the Python fixture"
+            assert (
+                by_id[qid]["shape"] == pq["shape"]
+            ), f"{queryfile}:{qid} shape drifted from the Python fixture"
             assert by_id[qid]["expected_modules"], f"{queryfile}:{qid} has no expected_modules"

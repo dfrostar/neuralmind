@@ -72,7 +72,7 @@ def log_results(experiment_name, params, metrics):
     with open(RESULTS_FILE_PATH, "a") as f:
         param_str = str(params) if params != "baseline" else "baseline"
         f.write(
-            f'{experiment_name}\t{param_str}\t{metrics["time_sec"]}\t{metrics["memory_mb"]}\t{metrics["tokens"]}\n'
+            f"{experiment_name}\t{param_str}\t{metrics['time_sec']}\t{metrics['memory_mb']}\t{metrics['tokens']}\n"
         )
     print(f"Results logged to {RESULTS_FILE_PATH}")
 
