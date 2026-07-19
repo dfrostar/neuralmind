@@ -1243,7 +1243,14 @@ def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
 
-    checks = doctor.run_diagnostics(args.project_path)
+    base_checks = doctor.run_diagnostics(args.project_path)
+    # Tier 2 additional checks (license, self-hosted) — additive, never breaking.
+    extra = []
+    try:
+        extra = _tier2_doctor_checks(args)
+    except Exception:
+        pass  # fail-open — don't break doctor if tier2 import fails
+    checks = base_checks + extra
     status = doctor.overall_status(checks)
 
     if args.json:
@@ -1268,6 +1275,57 @@ def cmd_doctor(args):
             doctor.FAIL: "Setup incomplete — run the fixes above, then re-check.",
         }
         print(summary.get(status, ""))
+
+
+def _tier2_doctor_checks(args) -> list:
+    """Return extra Tier 2 doctor checks (license, governance, audit)."""
+    from neuralmind import doctor
+    checks: list = []
+    try:
+        from neuralmind.tier2 import cli as _tc  # noqa: F401
+    except ImportError:
+        return checks  # tier2 not installed
+
+    from neuralmind.tier2.config import load_config
+    from neuralmind.tier2.license import _ISSUER_PUBLIC_KEY_HEX, load_license
+
+    config = load_config(getattr(args, "config_path", None))
+    lic_path = Path(config.license_file)
+    if not lic_path.exists():
+        checks.append(doctor.Check(
+            "Tier 2 license",
+            doctor.WARN,
+            f"no license at {lic_path}",
+            fix="Run: neuralmind team license activate <key>",
+        ))
+    else:
+        status = load_license(lic_path, _ISSUER_PUBLIC_KEY_HEX)
+        if status == "VALID":
+            checks.append(doctor.Check(
+                "Tier 2 license", doctor.OK, f"valid, {config.seats} seats",
+            ))
+        else:
+            checks.append(doctor.Check(
+                "Tier 2 license", doctor.WARN, f"status: {status}",
+                fix="Run: neuralmind team license status",
+            ))
+
+    if config.self_hosted.enabled:
+        from neuralmind.tier2.self_hosted import check_data_dir_health
+        sh = check_data_dir_health(Path(config.self_hosted.data_dir))
+        if sh["writable"]:
+            checks.append(doctor.Check(
+                "Self-hosted data dir", doctor.OK,
+                f"{sh['path']} (mode {sh['mode']})",
+            ))
+        else:
+            checks.append(doctor.Check(
+                "Self-hosted data dir", doctor.FAIL,
+                sh.get("error", "unwritable"),
+                fix="Run: neuralmind team self-hosted init",
+            ))
+
+    return checks
 
     if status == doctor.FAIL:
         sys.exit(1)
@@ -2321,6 +2379,20 @@ fi
         sys.exit(1)
 
 
+def _version_string() -> str:
+    """Build `neuralmind --version` string with tier info."""
+    from . import __version__
+    base = f"neuralmind {__version__}"
+    try:
+        from neuralmind.tier2.config import load_config
+        cfg = load_config()
+        if cfg.is_team_active():
+            return f"{base} (Team, {cfg.seats} seats)"
+    except Exception:
+        pass
+    return base
+
+
 def main():
     # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
     # Unicode glyphs we print — and on the em-dash argparse prints in --help.
@@ -2339,7 +2411,7 @@ def main():
     )
     from . import __version__
 
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument("--version", action="version", version=_version_string())
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
@@ -2879,6 +2951,15 @@ def main():
         "change (re-parses just those files, re-embeds only their nodes)",
     )
     watch_p.set_defaults(func=cmd_watch)
+
+    # team command — Tier 2 Team administration (governance, seats, license, audit)
+    # Wired via tier2.cli.build_team_subparsers to keep tier2 code isolated.
+    try:
+        from neuralmind.tier2.cli import build_team_subparsers
+        build_team_subparsers(subparsers)
+    except ImportError:
+        # tier2 package not available — team commands silently absent
+        pass
 
     # serve command — local graph-view UI (Obsidian-style)
     serve_p = subparsers.add_parser(

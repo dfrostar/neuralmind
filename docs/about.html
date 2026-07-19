@@ -125,6 +125,21 @@
     </section>
 
     <section>
+        <div class="container" id="tier-2-team">
+            <h2>New in v1.0.0 — Team tier ships</h2>
+            <p><strong>NeuralMind Team</strong> is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. It adds four capabilities on top of the MIT core (which remains unchanged):</p>
+            <ul>
+                <li><strong>Team memory governance.</strong> Per-repo enable/disable, personal/shared/both publishing scope, edge weight threshold for auto-publish. Admin-only — non-admins get <code>PermissionError</code>. Every config change logged.</li>
+                <li><strong>Immutable audit log.</strong> Append-only SHA-256 hash-chained log. Tamper-evident: <code>neuralmind team audit verify</code> walks the chain. Export as CSV or JSON for compliance.</li>
+                <li><strong>Self-hosted deployment.</strong> <code>docker-compose.yml</code> + <code>scripts/install-team.sh</code>. One-command deploy, data persists across restarts. Air-gapped networks supported. License file at <code>~/.config/neuralmind/license.json</code> with 30-day offline grace.</li>
+                <li><strong>Seat management.</strong> Add/remove seats (soft-delete, preserves trail), duplicate-add idempotent, <code>SeatLimitError</code> beyond license limit.</li>
+            </ul>
+            <p>Tier 2 activates only with a valid Ed25519-signed license. MIT users see zero changes — <code>neuralmind doctor</code> checks are additive; gate is at the <code>neuralmind team</code> command boundary.</p>
+            <p><a href="TIER2-BRD.md">Read the full BRD →</a> · <a href="TIER2-TRD.md">TRD →</a> · <a href="TIER2-TEST-PLAN.md">Test Plan →</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-next">
             <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
             <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>

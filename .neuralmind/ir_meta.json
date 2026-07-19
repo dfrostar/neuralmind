@@ -5,7 +5,7 @@
   "source_schema_version": 1,
   "coverage": "coarse",
   "built_at_commit": "",
-  "created_at": "2026-07-18T23:54:33.019545+00:00",
+  "created_at": "2026-07-19T05:47:40.813653+00:00",
   "nodes": 8025,
   "edges": 13238,
   "clusters": 407,
@@ -127,5 +127,5 @@
       }
     ]
   },
-  "neuralmind_version": "0.50.0"
+  "neuralmind_version": "0.52.0"
 }

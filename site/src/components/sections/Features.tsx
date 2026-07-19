@@ -44,6 +44,12 @@ const featureList = [
         badge: 'v0.52.0',
     },
     {
+        icon: '👥',
+        title: 'Team Tier ($29/user/mo)',
+        desc: 'Governance, audit log, self-hosted deployment, and seat management for teams of 5–50. Append-only hash-chained audit + offline-capable license validation.',
+        badge: 'v1.0.0',
+    },
+    {
         icon: '🔒',
         title: '100% Local Engine',
         desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
