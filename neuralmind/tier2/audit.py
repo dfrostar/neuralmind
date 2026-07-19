@@ -9,11 +9,11 @@ record breaks the chain (recompute doesn't match).
 
 from __future__ import annotations
 
-import threading
 import hashlib
 import json
+import threading
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -21,8 +21,15 @@ GENESIS_HASH = hashlib.sha256(b"neuralmind-team-audit-v1").hexdigest()
 
 MAX_AUDIT_LINE_BYTES = 1_000_000  # Reject crafted DoS lines >1MB
 
-AuditAction = Literal["publish", "remove", "config_change", "seat_add", "seat_remove",
-                      "license_activate", "self_hosted_init"]
+AuditAction = Literal[
+    "publish",
+    "remove",
+    "config_change",
+    "seat_add",
+    "seat_remove",
+    "license_activate",
+    "self_hosted_init",
+]
 
 
 @dataclass
@@ -57,7 +64,7 @@ class AuditEntry:
         return d
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "AuditEntry":
+    def from_dict(cls, raw: dict[str, Any]) -> AuditEntry:
         return cls(
             actor=raw["actor"],
             action=raw["action"],
@@ -111,8 +118,13 @@ class AuditLog:
             return GENESIS_HASH
         return self._entries[-1].sha256
 
-    def log(self, actor: str, action: AuditAction, target: str = "",
-            details: dict[str, Any] | None = None) -> AuditEntry:
+    def log(
+        self,
+        actor: str,
+        action: AuditAction,
+        target: str = "",
+        details: dict[str, Any] | None = None,
+    ) -> AuditEntry:
         """Append an audit entry with the correct hash chain.
 
         Thread-safe: acquires an internal lock to prevent concurrent log()
@@ -157,8 +169,9 @@ class AuditLog:
             "total": len(self._entries),
         }
 
-    def export(self, since: float | None = None, until: float | None = None,
-               actor: str | None = None) -> list[AuditEntry]:
+    def export(
+        self, since: float | None = None, until: float | None = None, actor: str | None = None
+    ) -> list[AuditEntry]:
         """Export entries filtered by (optional) since/until unix seconds,
         plus optional actor substring (case-insensitive)."""
         results = []
@@ -167,18 +180,14 @@ class AuditLog:
                 continue
             if since is not None:
                 try:
-                    ts_epoch = datetime.fromisoformat(
-                        entry.ts.replace("Z", "+00:00")
-                    ).timestamp()
+                    ts_epoch = datetime.fromisoformat(entry.ts.replace("Z", "+00:00")).timestamp()
                     if ts_epoch < since:
                         continue
                 except ValueError:
                     continue
             if until is not None:
                 try:
-                    ts_epoch = datetime.fromisoformat(
-                        entry.ts.replace("Z", "+00:00")
-                    ).timestamp()
+                    ts_epoch = datetime.fromisoformat(entry.ts.replace("Z", "+00:00")).timestamp()
                     if ts_epoch > until:
                         continue
                 except ValueError:
@@ -193,21 +202,23 @@ class AuditLog:
     def export_csv(self, path: Path, **filters: Any) -> int:
         """Export to CSV. Returns count of rows written."""
         import csv
-        entries = self.export(**{k: v for k, v in filters.items()
-                                if k in ("since", "until", "actor")})
+
+        entries = self.export(
+            **{k: v for k, v in filters.items() if k in ("since", "until", "actor")}
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["ts", "actor", "action", "target", "prev_hash", "sha256"])
             for e in entries:
-                w.writerow([e.ts, e.actor, e.action, e.target,
-                            e.prev_hash, e.sha256])
+                w.writerow([e.ts, e.actor, e.action, e.target, e.prev_hash, e.sha256])
         return len(entries)
 
     def export_json(self, path: Path, **filters: Any) -> int:
         """Export to JSON array. Returns count of records written."""
-        entries = self.export(**{k: v for k, v in filters.items()
-                                if k in ("since", "until", "actor")})
+        entries = self.export(
+            **{k: v for k, v in filters.items() if k in ("since", "until", "actor")}
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("w", encoding="utf-8") as f:
             json.dump([e.to_dict() for e in entries], f, indent=2)

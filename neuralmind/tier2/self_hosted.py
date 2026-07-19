@@ -31,17 +31,38 @@ NEURALMIND_LICENSE_PATH_ENV = "NEURALMIND_LICENSE_PATH"
 # These are directories where writing NeuralMind data could damage the
 # system or expose sensitive files. /tmp, /usr, /var are intentionally
 # excluded — /var/lib/neuralmind and /tmp/neuralmind are legitimate.
-_RESERVED_PATHS = frozenset({
-    "/", "/bin", "/boot", "/dev", "/etc", "/lib", "/lib64", "/proc",
-    "/root", "/run", "/sbin", "/sys",
-})
+_RESERVED_PATHS = frozenset(
+    {
+        "/",
+        "/bin",
+        "/boot",
+        "/dev",
+        "/etc",
+        "/lib",
+        "/lib64",
+        "/proc",
+        "/root",
+        "/run",
+        "/sbin",
+        "/sys",
+    }
+)
 
 
 # Sensitive dot-directories under $HOME that must never be used as data_dir
 # (e.g., a crafted config pointing data_dir at ~/.ssh could corrupt keys).
-_SENSITIVE_HOME_CHILDREN = frozenset({
-    ".ssh", ".gnupg", ".aws", ".kube", ".docker", ".npm", ".pki", ".config",
-})
+_SENSITIVE_HOME_CHILDREN = frozenset(
+    {
+        ".ssh",
+        ".gnupg",
+        ".aws",
+        ".kube",
+        ".docker",
+        ".npm",
+        ".pki",
+        ".config",
+    }
+)
 
 
 def _is_resolved_path_safe(resolved: Path) -> bool:
@@ -96,6 +117,7 @@ def is_self_hosted() -> bool:
         return True
     # Check config file
     from .config import load_config
+
     try:
         cfg = load_config()
         return cfg.self_hosted.enabled
@@ -109,6 +131,7 @@ def get_data_dir() -> Path:
     if env_dir:
         return Path(env_dir)
     from .config import load_config
+
     try:
         cfg = load_config()
         return Path(cfg.self_hosted.data_dir)
@@ -253,6 +276,7 @@ def _resolve_license_path() -> Path:
     if env_path:
         return Path(env_path)
     from .config import load_config
+
     try:
         cfg = load_config()
         return Path(cfg.license_file)

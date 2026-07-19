@@ -13,17 +13,18 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
-from .. import __version__
 from .audit import AuditLog
-from .config import DEFAULT_CONFIG_PATH, Tier2Config, load_config, save_config
+from .config import TIER2_CONFIG_DIR, Tier2Config, load_config, save_config
 from .governance import TeamGovernance
 from .license import _ISSUER_PUBLIC_KEY_HEX, LicenseValidator, load_license
 from .seats import SeatLimitError, SeatManager
-from .self_hosted import (check_license_health, check_data_dir_health, get_data_dir,
-                         get_self_hosted_status, init_data_dir, is_self_hosted, _resolve_license_path)
-from .config import TIER2_CONFIG_DIR
+from .self_hosted import (
+    _resolve_license_path,
+    get_data_dir,
+    get_self_hosted_status,
+    init_data_dir,
+)
 
 
 def build_team_subparsers(subparsers) -> None:
@@ -33,7 +34,9 @@ def build_team_subparsers(subparsers) -> None:
 
     subparsers is the argparse._SubParsersAction from the main CLI.
     """
-    team = subparsers.add_parser("team", help="Team tier administration (governance, seats, license)")
+    team = subparsers.add_parser(
+        "team", help="Team tier administration (governance, seats, license)"
+    )
     team_sub = team.add_subparsers(dest="team_subcommand")
     team_sub.required = True
 
@@ -70,7 +73,7 @@ def build_team_subparsers(subparsers) -> None:
     exp_p = audit_sub.add_parser("export")
     exp_p.add_argument("--format", choices=["csv", "json"], required=True)
     exp_p.add_argument("--output", required=True)
-    ver_p = audit_sub.add_parser("verify")
+    audit_sub.add_parser("verify")
     audit_p.set_defaults(func=cmd_team_audit)
 
     # seats
@@ -107,9 +110,6 @@ def build_team_subparsers(subparsers) -> None:
     lic_p.set_defaults(func=cmd_team_license)
 
 
-
-
-
 def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, None]:
     """Load config + audit. If no license, print helpful message and return None."""
     config = load_config(getattr(args, "config_path", None))
@@ -120,13 +120,15 @@ def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, 
         return config, AuditLog(Path(config.audit_db))
 
     # Check license if present
-    from .license import _ISSUER_PUBLIC_KEY_HEX, load_license
+
     lic_status = load_license(Path(config.license_file), _ISSUER_PUBLIC_KEY_HEX)
     if lic_status not in ("VALID", "EXPIRED", "OFFLINE_OK"):
         print("NeuralMind Team tier requires a valid license.")
         print("Run `neuralmind team license activate <key>` first.")
         if test_env:
-            print("(NEURALMIND_TIER2_TEST=1 is set, but _ensure_tier2_activated still returned non-OK)")
+            print(
+                "(NEURALMIND_TIER2_TEST=1 is set, but _ensure_tier2_activated still returned non-OK)"
+            )
         return None, None
     return config, AuditLog(Path(config.audit_db))
 
@@ -139,13 +141,18 @@ def cmd_team_governance(args) -> int:
     gov = TeamGovernance(Path(config.audit_db), config, audit)
 
     if args.subcommand == "status":
-        print(json.dumps({
-            "enabled": config.governance.enabled,
-            "publishing_scope": config.governance.publishing_scope,
-            "weight_threshold": config.governance.weight_threshold,
-            "auto_decay_half_life": config.governance.auto_decay_half_life,
-            "admin_count": len(config.governance.admin_emails),
-        }, indent=2))
+        print(
+            json.dumps(
+                {
+                    "enabled": config.governance.enabled,
+                    "publishing_scope": config.governance.publishing_scope,
+                    "weight_threshold": config.governance.weight_threshold,
+                    "auto_decay_half_life": config.governance.auto_decay_half_life,
+                    "admin_count": len(config.governance.admin_emails),
+                },
+                indent=2,
+            )
+        )
         return 0
 
     if args.subcommand == "set-scope":
@@ -222,9 +229,8 @@ def cmd_team_audit(args) -> int:
         if result["ok"]:
             print(f"Audit log OK: {result['total']} entries verified")
             return 0
-        else:
-            print(f"Audit log TAMPERED at line {result['first_bad_line']}")
-            return 1
+        print(f"Audit log TAMPERED at line {result['first_bad_line']}")
+        return 1
 
     print(f"Unknown audit subcommand: {args.subcommand}")
     return 1
@@ -291,6 +297,7 @@ def cmd_team_self_hosted(args) -> int:
 
     if args.subcommand == "validate-license":
         from .license import _ISSUER_PUBLIC_KEY_HEX, load_license
+
         path = _resolve_license_path()
         status = load_license(path, _ISSUER_PUBLIC_KEY_HEX)
         print(f"License status: {status}")
@@ -301,7 +308,6 @@ def cmd_team_self_hosted(args) -> int:
 
 
 def cmd_team_license(args) -> int:
-    from .license import _ISSUER_PUBLIC_KEY_HEX, load_license, generate_device_fingerprint
 
     if args.subcommand == "status":
         config = load_config(getattr(args, "config_path", None))
@@ -315,7 +321,7 @@ def cmd_team_license(args) -> int:
         config = load_config(getattr(args, "config_path", None))
         path = Path(config.license_file)
         path.parent.mkdir(parents=True, exist_ok=True)
-        import textwrap
+
         lic_data = {
             "tier": "team",
             "seats": 15,
@@ -330,10 +336,9 @@ def cmd_team_license(args) -> int:
         status = validator.validate()
         if status in ("VALID", "OFFLINE_OK", "EXPIRED"):
             info = validator.status_dict()
-            lic_path = Path(config.license_file)
             # Load seats + expires into config
             validator2 = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, path)
-            lic_info = validator2._load_raw() if hasattr(validator2, '_load_raw') else None
+            lic_info = validator2._load_raw() if hasattr(validator2, "_load_raw") else None
             if lic_info:
                 config.seats = lic_info.seats
                 config.expires_at = lic_info.expires_at
@@ -351,11 +356,13 @@ def cmd_team_license(args) -> int:
 def os_get_actor_email() -> str:
     """Resolve actor email from env var."""
     import os
+
     return os.environ.get("NEURALMIND_ACTOR_EMAIL", os.environ.get("NEURALMIND_ACTOR", "unknown"))
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
+
     parser = argparse.ArgumentParser(prog="neuralmind team")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
@@ -394,8 +401,7 @@ def main(argv: list[str] | None = None) -> int:
     exp_p = audit_sub.add_parser("export")
     exp_p.add_argument("--format", choices=["csv", "json"], required=True)
     exp_p.add_argument("--output", required=True)
-    ver_p = audit_sub.add_parser("verify")
-    ver_p.set_defaults(func=cmd_team_audit)
+    audit_sub.add_parser("verify").set_defaults(func=cmd_team_audit)
     audit_p.set_defaults(func=cmd_team_audit)
 
     # --- seats ---

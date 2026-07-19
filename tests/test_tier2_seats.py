@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from neuralmind.tier2.seats import Seat, SeatLimitError, SeatManager
+from neuralmind.tier2.seats import SeatLimitError, SeatManager
 
 EMAIL1 = "alice" + "@" + "example" + "." + "org"
 EMAIL2 = "bob" + "@" + "example" + "." + "org"
