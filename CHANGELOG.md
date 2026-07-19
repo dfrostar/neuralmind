@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.53.0](https://github.com/dfrostar/neuralmind/compare/v0.52.0...v0.53.0) (2026-07-19)
+
+
+### Features
+
+* **tier2:** free tier auto-provisioning + upgrade path ([1202845](https://github.com/dfrostar/neuralmind/commit/1202845354bdbcebdcbad2ed7b3726c9bfd53c76))
+* **tier2:** Team tier 9/user/mo — governance, audit, license, seats, self-hosted ([2fb2fc2](https://github.com/dfrostar/neuralmind/commit/2fb2fc2e69a40cfc623f02a1f0c9ef9ed7312ea1))
+
+
+### Bug Fixes
+
+* **deepseek:** Tier 2 security + correctness patches across all 6 modules ([59bdfc3](https://github.com/dfrostar/neuralmind/commit/59bdfc37bb56c13e38f0d1a3af79517f4db4374f))
+
+
+### Documentation
+
+* fix benchmark release notes link to local file ([241d465](https://github.com/dfrostar/neuralmind/commit/241d465d6f0305578fb0ccc1d9e3bbb0abd1bce5))
+* restore archival release notes v0.3.2–v0.45.0 to repo root ([8e8ff48](https://github.com/dfrostar/neuralmind/commit/8e8ff48ff96940cd481bc0c530d9a21a052d6982))
+* Tier 2 (Team) — BRD, TRD, Test Plan, DeepSeek QA, Kickoff Prompt ([331d9f1](https://github.com/dfrostar/neuralmind/commit/331d9f1422e7f22ccdc5d7d798222d8a3141cd7d))
+* v0.52.0 public docs + SEO refresh — impact tool, wiki backfill, LinkedIn messaging ([13256e5](https://github.com/dfrostar/neuralmind/commit/13256e54545cf3b143dc7a12e6b767c6be9d8064))
+
 ## [0.52.0](https://github.com/dfrostar/neuralmind/compare/v0.51.3...v0.52.0) (2026-07-19)
 
 
