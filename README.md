@@ -18,6 +18,33 @@
 
 ---
 
+## v1.0.0 — Team tier ships (July 2026)
+
+> **NeuralMind Team** — $29/user/mo, annual, 5-50 seats. Governance, immutable audit log, self-hosted deployment, and seat management on top of the MIT core.
+
+| Feature | What |
+|---------|------|
+| `neuralmind team governance {status,set-scope,set-weight-threshold,set-governance-enabled,list-shared,remove-edge}` | Team memory publishing controls — per-repo enable/disable, personal/shared/both scope, edge weight threshold |
+| `neuralmind team audit {list,export,verify}` | Append-only SHA-256 hash-chained audit log — tamper-evident, exportable as CSV/JSON |
+| `neuralmind team seats {list,add,remove}` | Seat management with soft-delete, idempotent adds, license-limit enforcement |
+| `neuralmind team license {status,activate}` | Ed25519-signed license validation with 30-day offline grace |
+| `neuralmind team self-hosted {init,status,validate-license}` | Self-hosted data-dir initialization with secure permissions (0700) |
+| `docker-compose.yml` + `scripts/install-team.sh` | One-command self-hosted deploy; data persists across restarts |
+| `neuralmind doctor` | Tier 2 checks additive (license health, self-hosted data dir) — MIT doctor unchanged |
+| `neuralmind --version` | Shows `neuralmind 1.0.0 (Team, N seats)` when Tier 2 active |
+
+**Acceptance:** 46 Tier 2 unit + integration tests pass, both e2e scripts exit 0.
+
+| Tier | Price | Billing | Seats | Status |
+|------|-------|---------|-------|--------|
+| Free | $0 | n/a | 1 | always |
+| Team | $29/user/mo | Annual | 5-50 | **v1.0.0** |
+| Enterprise | $79/user/mo | Annual, min 50 | 51+ | future |
+
+**Read the full plan:** [TIER2-BRD.md](TIER2-BRD.md) · [TIER2-TRD.md](TIER2-TRD.md) · [TIER2-TEST-PLAN.md](TIER2-TEST-PLAN.md) · [Complete changelog](CHANGELOG.md)
+
+---
+
 ## v0.52.0 — The impact tool ships (July 2026)
 
 > v0.52.0 gives a capability we've had since v0.42.0 a name an agent would actually reach for. **What shipped in v0.52.0:**

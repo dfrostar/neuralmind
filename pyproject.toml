@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "0.52.0"
+version = "1.0.0"
 description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 40-70x cheaper code questions."
 readme = "README.md"
 license = "MIT"
@@ -255,9 +255,16 @@ keywords = [
     "dollar-savings",
     "llm-cost-tracking",
     "token-cost-calculator",
-    "impact-analysis",
+    "neuralmind-impact",
     "reverse-dependency-lookup",
-    "gitnexus-alternative"
+    "gitnexus-alternative",
+    "team-memory",
+    "team-memory-bundle",
+    "committed-team-memory",
+    "shareable-agent-memory",
+    "inherited-agent-memory",
+    "agent-onboarding-memory",
+    "memory-export-import"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -277,6 +284,9 @@ dependencies = [
     "pyyaml>=6.0",
     "toml>=0.10",
     "mcp>=1.27.2",
+    # Tier 2: license signing, encryption
+    "cryptography>=41.0",
+    "pydantic>=2.0",
     # Vector backend — platform-gated so a base `pip install neuralmind` always
     # resolves to prebuilt wheels (no Rust/C++ toolchain needed):
     #   * the ChromaDB-free TurboQuant/ONNX stack is the default WHERE turbovec
@@ -372,6 +382,8 @@ include = [
     "neuralmind/**/*.py",
     "neuralmind/demo_data/**",
     "neuralmind/web/**",
+    "scripts/**",
+    "docker-compose.yml",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

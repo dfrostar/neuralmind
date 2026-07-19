@@ -1,0 +1,23 @@
+version: "3.8"
+services:
+  neuralmind:
+    image: ghcr.io/dfrostar/neuralmind:1.0.0
+    volumes:
+      - neuralmind-data:/data
+      - ./license.json:/app/license.json:ro
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      - NEURALMIND_TIER=team
+      - NEURALMIND_SELF_HOSTED=true
+      - NEURALMIND_DATA_DIR=/data
+      - NEURALMIND_ACTOR_EMAIL=admin@localhost
+    healthcheck:
+      test: ["CMD", "neuralmind", "doctor"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  neuralmind-data:

@@ -30,6 +30,12 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v1.0.0 — Team tier ships
+
+NeuralMind Team is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. Adds team memory governance, immutable audit log (SHA-256 hash-chained append-only), self-hosted deployment (docker-compose, one-command install), and seat management on top of the MIT core. Ed25519-signed license validation with 30-day offline grace. Acceptance: 46 unit + integration tests.
+
+Full details: [RELEASE_NOTES_v1.0.0.md](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v1.0.0.md)
+
 ### v0.52.0 — Impact: blast radius under a name you'd actually reach for
 
 A Reddit comparison against GitNexus flagged "no `impact` tool" as a gap. Not quite right — `neuralmind structural --blast-radius` has answered "what depends on this?" since v0.42.0 — but the naming critique landed. v0.52.0 gives the same capability a name an agent (or a human) would actually reach for, plus richer output. Each dependent row now carries its **hop** and its **relation** (`calls`/`inherits`/`imports_from`/`implements`). The MCP tool is `neuralmind_impact()`. `structural --blast-radius` stays byte-identical — now a one-line wrapper over the same `blast_radius_detail()`. Honest scope: naming + discoverability, no new capability.

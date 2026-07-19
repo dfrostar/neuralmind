@@ -210,3 +210,67 @@ usage: neuralmind [-h] [--version]
                   {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
                   ...
 neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+error: Pulling is not possible because you have unmerged files.
+hint: Fix them up in the work tree, and then use 'git add/rm <file>'
+hint: as appropriate to mark resolution and make a commit.
+fatal: Exiting because of an unresolved conflict.
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,team,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,team,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
