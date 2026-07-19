@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -88,10 +87,10 @@ class LicenseValidator:
     def _verify_signature(self, lic: LicenseInfo) -> bool:
         """Verify Ed25519 signature. Returns False on any error."""
         try:
-            from cryptography.exceptions import InvalidSignature
             from cryptography.hazmat.primitives.asymmetric.ed25519 import (
                 Ed25519PublicKey,
             )
+
             pub_bytes = bytes.fromhex(self.public_key_hex)
             pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
             msg_dict = {k: v for k, v in lic.raw.items() if k != "signature"}
@@ -183,7 +182,8 @@ def generate_device_fingerprint() -> str:
 
     # Fallback: hostname+user+OS composite — NOT stable across OS reinstalls,
     # but stable for the lifetime of this install.
-    import platform
     import getpass
+    import platform
+
     composite = f"{platform.node()}|{getpass.getuser()}|{platform.system()}"
     return hashlib.sha256(composite.encode("utf-8")).hexdigest()[:32]

@@ -34,7 +34,7 @@ class Seat:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Seat":
+    def from_dict(cls, data: dict) -> Seat:
         return cls(
             email=data["email"],
             active=data.get("active", True),
@@ -109,9 +109,7 @@ class SeatManager:
             return self._seats[normalized]
 
         if not self.can_add_seat(license_limit):
-            raise SeatLimitError(
-                f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
-            )
+            raise SeatLimitError(f"Seat limit reached: {self.active_count() + 1}/{license_limit}")
         now = datetime.now(timezone.utc).isoformat()
         seat = Seat(email=normalized, active=True, added_at=now, last_active_at=now)
         self._seats[normalized] = seat

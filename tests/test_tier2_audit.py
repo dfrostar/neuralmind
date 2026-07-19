@@ -5,11 +5,10 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
-from neuralmind.tier2.audit import GENESIS_HASH, AuditEntry, AuditLog
+from neuralmind.tier2.audit import AuditLog
 
 
 class TestAuditLogBasics:

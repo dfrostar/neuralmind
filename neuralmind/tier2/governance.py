@@ -15,10 +15,9 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
 
-from .audit import AuditAction, AuditLog
-from .config import PublishingScope, Tier2Config, validate_scope
+from .audit import AuditLog
+from .config import Tier2Config, validate_scope
 
 
 @dataclass
@@ -53,8 +52,7 @@ class TeamGovernance:
             return GovernanceResult(False, "scope=personal only; shared publishing blocked")
 
         if edge_weight < threshold:
-            return GovernanceResult(False,
-                f"weight {edge_weight:.3f} < threshold {threshold:.3f}")
+            return GovernanceResult(False, f"weight {edge_weight:.3f} < threshold {threshold:.3f}")
 
         return GovernanceResult(True, "within governance bounds")
 
@@ -166,5 +164,9 @@ def content_fingerprint(edges: list[dict]) -> str:
 def json_edges_deterministic(edges: list[dict]) -> str:
     """Serialize edges to a stable JSON string."""
     import json
-    return json.dumps(sorted(edges, key=lambda e: json.dumps(e, sort_keys=True)),
-                     sort_keys=True, separators=(",", ":"))
+
+    return json.dumps(
+        sorted(edges, key=lambda e: json.dumps(e, sort_keys=True)),
+        sort_keys=True,
+        separators=(",", ":"),
+    )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -16,7 +16,9 @@ import yaml
 
 log = logging.getLogger(__name__)
 
-TIER2_CONFIG_DIR = Path(os.environ.get("NEURALMIND_CONFIG_DIR", Path.home() / ".config" / "neuralmind"))
+TIER2_CONFIG_DIR = Path(
+    os.environ.get("NEURALMIND_CONFIG_DIR", Path.home() / ".config" / "neuralmind")
+)
 DEFAULT_CONFIG_PATH = TIER2_CONFIG_DIR / "tier2.yaml"
 
 PublishingScope = Literal["personal", "shared", "both"]
@@ -56,6 +58,7 @@ class Tier2Config:
         if not self.expires_at:
             return False
         from datetime import datetime, timezone
+
         try:
             exp = datetime.fromisoformat(self.expires_at.replace("Z", "+00:00"))
             return datetime.now(timezone.utc) <= exp
@@ -67,7 +70,9 @@ def load_config(path: Path | None = None) -> Tier2Config:
     """Load Tier 2 config from YAML. Returns defaults if file missing."""
     p = Path(path) if path else DEFAULT_CONFIG_PATH
     if not p.exists():
-        return Tier2Config(license_file=str(p.with_name("license.json")), audit_db=str(p.with_name("audit.db")))
+        return Tier2Config(
+            license_file=str(p.with_name("license.json")), audit_db=str(p.with_name("audit.db"))
+        )
     try:
         with p.open(encoding="utf-8") as f:
             raw = yaml.safe_load(f) or {}
@@ -105,7 +110,9 @@ def _from_dict(raw: dict[str, Any]) -> Tier2Config:
         ),
         self_hosted=SelfHostedConfig(
             enabled=sh_raw.get("enabled", False),
-            data_dir=validate_data_dir(sh_raw.get("data_dir", str(Path.home() / ".local" / "share" / "neuralmind"))),
+            data_dir=validate_data_dir(
+                sh_raw.get("data_dir", str(Path.home() / ".local" / "share" / "neuralmind"))
+            ),
             bind_address=str(sh_raw.get("bind_address", "127.0.0.1")),
             port=validate_port(sh_raw.get("port", 8765)),
             offline_grace_days=validate_grace_days(sh_raw.get("offline_grace_days", 30)),
@@ -122,14 +129,16 @@ def _to_dict(config: Tier2Config) -> dict[str, Any]:
         "expires_at": config.expires_at,
         "issued_to": config.issued_to,
         "governance": asdict(config.governance),
-        "self_hosted": {**{k: v for k, v in asdict(config.self_hosted).items()}},
+        "self_hosted": dict(asdict(config.self_hosted).items()),
     }
 
 
 def validate_scope(scope: str) -> PublishingScope:
     """Validate publishing scope string. Raises ValueError on invalid."""
     if scope not in ("personal", "shared", "both"):
-        raise ValueError(f"Invalid publishing_scope: {scope!r}. Must be 'personal', 'shared', or 'both'.")
+        raise ValueError(
+            f"Invalid publishing_scope: {scope!r}. Must be 'personal', 'shared', or 'both'."
+        )
     return scope  # type: ignore[return-value]
 
 
@@ -153,8 +162,8 @@ def validate_port(value: int | str | None) -> int:
         return 8765
     try:
         v = int(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"Invalid port: {value!r}. Must be an integer.")
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"Invalid port: {value!r}. Must be an integer.") from err
     if not (1 <= v <= 65535):
         raise ValueError(f"Invalid port: {v}. Must be 1-65535.")
     return v
@@ -166,8 +175,8 @@ def validate_grace_days(value: int | str | None) -> int:
         return 30
     try:
         v = int(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"Invalid offline_grace_days: {value!r}. Must be an integer.")
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"Invalid offline_grace_days: {value!r}. Must be an integer.") from err
     if v < 0:
         raise ValueError(f"Invalid offline_grace_days: {v}. Must be >= 0.")
     return v
@@ -184,15 +193,15 @@ def validate_data_dir(value: str | Path | None) -> str:
         raise ValueError(f"Invalid data_dir: {value!r}. Must be an absolute path.")
     try:
         resolved = Path(value).resolve()
-    except Exception:
-        raise ValueError(f"Invalid data_dir: {value!r}. Must be a valid path.")
+    except Exception as err:
+        raise ValueError(f"Invalid data_dir: {value!r}. Must be a valid path.") from err
     home = Path.home().resolve()
     try:
         resolved.relative_to(home)
-    except ValueError:
+    except ValueError as err:
         raise ValueError(
             f"Invalid data_dir: {value!r}. Must be within user home {home!s}."
-        )
+        ) from err
     return str(resolved)
 
 
@@ -202,8 +211,8 @@ def validate_seats(value: int | str | None) -> int:
         return 0
     try:
         v = int(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"Invalid seats: {value!r}. Must be an integer.")
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"Invalid seats: {value!r}. Must be an integer.") from err
     if v < 0:
         raise ValueError(f"Invalid seats: {v}. Must be >= 0.")
     return v

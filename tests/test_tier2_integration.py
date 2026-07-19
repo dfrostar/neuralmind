@@ -5,18 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from neuralmind.tier2.audit import AuditLog, GENESIS_HASH
-from neuralmind.tier2.config import GovernanceConfig, Tier2Config, load_config
+from neuralmind.tier2.audit import AuditLog
+from neuralmind.tier2.config import Tier2Config
 from neuralmind.tier2.governance import TeamGovernance
-from neuralmind.tier2.license import LicenseValidator
-from neuralmind.tier2.license import _ISSUER_PUBLIC_KEY_HEX
+from neuralmind.tier2.license import _ISSUER_PUBLIC_KEY_HEX, LicenseValidator
 from neuralmind.tier2.self_hosted import (
-    _resolve_license_path,
     check_data_dir_health,
     check_license_health,
     init_data_dir,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

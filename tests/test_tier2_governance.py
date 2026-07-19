@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from neuralmind.tier2.audit import AuditLog
 from neuralmind.tier2.config import Tier2Config
-from neuralmind.tier2.governance import GovernanceResult, TeamGovernance
+from neuralmind.tier2.governance import TeamGovernance
 
 ADMIN_EMAIL = "alice" + "@" + "example" + "." + "org"
 NON_ADMIN_EMAIL = "bob" + "@" + "example" + "." + "org"
@@ -36,23 +35,31 @@ class TestGovernancePublishAllowed:
         result = governance.is_publishing_allowed("repo", 0.5)
         assert result.allowed is True
 
-    def test_governance_disable_publishing(self, governance: TeamGovernance, default_config: Tier2Config) -> None:
+    def test_governance_disable_publishing(
+        self, governance: TeamGovernance, default_config: Tier2Config
+    ) -> None:
         default_config.governance.enabled = False
         result = governance.is_publishing_allowed("repo", 0.5)
         assert result.allowed is True
         assert result.reason == "governance disabled; allowed"
 
-    def test_governance_scope_personal_only(self, governance: TeamGovernance, default_config: Tier2Config) -> None:
+    def test_governance_scope_personal_only(
+        self, governance: TeamGovernance, default_config: Tier2Config
+    ) -> None:
         default_config.governance.publishing_scope = "personal"
         result = governance.is_publishing_allowed("repo", 0.5)
         assert result.allowed is False
 
-    def test_governance_scope_shared_only(self, governance: TeamGovernance, default_config: Tier2Config) -> None:
+    def test_governance_scope_shared_only(
+        self, governance: TeamGovernance, default_config: Tier2Config
+    ) -> None:
         default_config.governance.publishing_scope = "shared"
         result = governance.is_publishing_allowed("repo", 0.5)
         assert result.allowed is True
 
-    def test_governance_weight_threshold(self, governance: TeamGovernance, default_config: Tier2Config) -> None:
+    def test_governance_weight_threshold(
+        self, governance: TeamGovernance, default_config: Tier2Config
+    ) -> None:
         default_config.governance.weight_threshold = 0.5
         result = governance.is_publishing_allowed("repo", 0.3)
         assert result.allowed is False

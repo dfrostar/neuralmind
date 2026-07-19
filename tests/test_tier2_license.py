@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -12,7 +11,6 @@ import pytest
 from neuralmind.tier2.license import (
     LicenseInfo,
     LicenseValidator,
-    load_license,
 )
 
 
@@ -60,7 +58,9 @@ class TestLicenseValidation:
         monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
         assert validator.validate() == "EXPIRED"
 
-    def test_license_invalid_signature(self, license_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_license_invalid_signature(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         future = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
         lic_path = license_dir / "license.json"
         self._write_license(lic_path, expires_at=future)
@@ -90,7 +90,9 @@ class TestLicenseValidation:
         )
         assert lic.seats == 5
 
-    def test_license_tier_mismatch(self, license_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_license_tier_mismatch(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         future = (datetime.now(timezone.utc) + timedelta(days=365)).isoformat()
         lic_path = license_dir / "license.json"
         self._write_license(lic_path, tier="enterprise", expires_at=future)
