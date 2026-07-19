@@ -1272,7 +1272,7 @@ with `neuralmind_synaptic_neighbors`.
 
 ---
 
-### impact *(v0.47.0+)*
+### impact *(v0.52.0+, originally v0.47.0)*
 
 A friendlier-named, richer-output sibling of `structural --blast-radius` —
 same underlying structural index, same traversal, but each dependent row

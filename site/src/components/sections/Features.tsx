@@ -38,6 +38,12 @@ const featureList = [
         badge: 'Auto-recover',
     },
     {
+        icon: '💥',
+        title: 'Impact Analysis (blast radius)',
+        desc: '`neuralmind impact <symbol> --depth N` surfaces every caller, importer, and subclass — with per-dependent hop + relation attribution. Same traversal as `structural --blast-radius`, now under a name that matches the question.',
+        badge: 'v0.52.0',
+    },
+    {
         icon: '🔒',
         title: '100% Local Engine',
         desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
