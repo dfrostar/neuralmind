@@ -218,7 +218,7 @@ def build():
     add_para(
         doc,
         "The global AI code tools market was valued at $7.65 B in 2025 and is projected to reach "
-        f"$22.2 B by 2030, representing a compound annual growth rate of {MARKET['cagr']*100:.1f}%. "
+        f"$22.2 B by 2030, representing a compound annual growth rate of {MARKET['cagr'] * 100:.1f}%. "
         "This growth is underpinned by near-universal developer adoption and the rapid integration of "
         "AI into every phase of the software development lifecycle.",
         size=11,
@@ -230,24 +230,28 @@ def build():
         [
             ["Market Size 2025", f"${MARKET['current_size_2025']} B", "Business Research Company"],
             ["Market Size 2030", f"${MARKET['projected_2030']} B", "Mordor Intelligence"],
-            ["CAGR", f"{MARKET['cagr']*100:.1f}%", "SNS Insider"],
-            ["Cloud Share 2025", f"{MARKET['cloud_share_2025']*100:.1f}%", "Mordor Intelligence"],
-            ["On-Prem CAGR", f"{MARKET['onprem_cagr']*100:.1f}%", "SNS Insider"],
+            ["CAGR", f"{MARKET['cagr'] * 100:.1f}%", "SNS Insider"],
+            ["Cloud Share 2025", f"{MARKET['cloud_share_2025'] * 100:.1f}%", "Mordor Intelligence"],
+            ["On-Prem CAGR", f"{MARKET['onprem_cagr'] * 100:.1f}%", "SNS Insider"],
             ["Enterprise AI 2024", f"${MARKET['enterprise_ai_2024']} B", "Gartner"],
             [
                 "Developer Adoption 2025",
-                f"{MARKET['developer_adoption_2025']*100:.0f}%",
+                f"{MARKET['developer_adoption_2025'] * 100:.0f}%",
                 "Industry surveys",
             ],
-            ["AI-Generated Code", f"{MARKET['code_generation_pct']*100:.0f}%", "GitHub / McKinsey"],
+            [
+                "AI-Generated Code",
+                f"{MARKET['code_generation_pct'] * 100:.0f}%",
+                "GitHub / McKinsey",
+            ],
             [
                 "Gartner 2028 Adoption",
-                f"{MARKET['gartner_2028_developer_adoption']*100:.0f}%",
+                f"{MARKET['gartner_2028_developer_adoption'] * 100:.0f}%",
                 "Gartner",
             ],
             [
                 "AI Project Cancellation 2027",
-                f"{MARKET['ai_project_cancellation_2027']*100:.0f}%",
+                f"{MARKET['ai_project_cancellation_2027'] * 100:.0f}%",
                 "Industry analysis",
             ],
         ],
@@ -420,7 +424,7 @@ def build():
         doc,
         ["Priority", "Item", "Impact", "Effort", "Rationale"],
         [
-            [f"P{i+1}", r["item"], r["impact"], r["effort"], r["rationale"]]
+            [f"P{i + 1}", r["item"], r["impact"], r["effort"], r["rationale"]]
             for i, r in enumerate(REFACTOR_PRIORITIES)
         ],
         header_color="C62828",
@@ -490,7 +494,7 @@ def build():
         ["Year", "Revenue", "Cost", "Net", "Users", "Notes"],
         [
             [
-                f"Year {i+1}",
+                f"Year {i + 1}",
                 f"${y['revenue']:,}",
                 f"${y['cost']:,}",
                 f"${y['revenue'] - y['cost']:,}",

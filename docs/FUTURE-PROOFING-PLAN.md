@@ -1,366 +1,567 @@
-# NeuralMind Future-Proofing Plan
+# NeuralMind Future-Proofing Plan — v2.0
 
-**Version:** 1.0  
-**Date:** April 2026  
-**Status:** In Development  
-**Owner:** NeuralMind Project
-
----
-
-## Executive Summary
-
-This plan ensures NeuralMind remains robust, scalable, and maintainable as the project grows. It covers documentation, version management, CI/CD, compliance, scaling, monitoring, and security.
-
-**Success Criteria:**
-- All critical updates tracked and tested
-- Audit compliance 100% achievable
-- Support for 10+ concurrent projects
-- <1% automation failure rate
-- Zero security incidents
+**Status:** Approved · **Date:** 2026-07-17 · **Author:** Hermes (architecture review) · **Approved by:** dfrostar
+**Reads alongside:** `ROADMAP.md`, `docs/HONEST-ASSESSMENT.md`, `docs/BUSINESS-CASE.md`
+**Supersedes:** `docs/FUTURE-PROOFING-PLAN.md` (v1.0, April 2026), `docs/plans/2026-06-10-future-proofing-prd-pack.md`
 
 ---
 
-## 1. Documentation Maintenance
+## 0. How to read this document
 
-**Goal:** Keep documentation current as NeuralMind evolves.
+Section 1 is the honest architecture audit — what's working, what's theater, and where
+the structural gaps are. Sections 2-8 are the seven build buckets, each with a current
+state, the gap, and the concrete build plan. Section 9 is the dependency-ordered
+sequence. Section 10 is the "why these decisions" rationale for the calls made on
+behalf of the maintainer.
 
-### 1.1 Documentation Versioning
-- [ ] Document breaking changes in CHANGELOG.md
-- [ ] Maintain separate docs for each major version (v0.3, v0.4, etc.)
-- [ ] Add version matrix showing feature availability
-- [ ] Create migration guides for version upgrades
-
-### 1.2 User Guides
-- [ ] Scheduling Guide — keep platform-specific commands current
-- [ ] MCP Integration Guide — document all available tools
-- [ ] Troubleshooting Guide — add common issues as they arise
-- [ ] Architecture Guide — document design decisions
-
-### 1.3 API & CLI Reference
-- [ ] Auto-generate CLI reference from `neuralmind --help`
-- [ ] Keep Python API docs synchronized with code
-- [ ] Document all configuration options
-- [ ] Add examples for common workflows
-
-**Owner:** Documentation Team  
-**Frequency:** Monthly review, update on release  
-**Priority:** High
+This plan is written at the same altitude as the public material: no overclaims, no
+dead code paths, no compliance theater. Anything deferred behind a decision gate is
+flagged. Anything recommended to *not* build is flagged too.
 
 ---
 
-## 2. Version Management & Dependency Updates
+## 1. Honest architecture audit
 
-**Goal:** Handle updates to graphify, NeuralMind, and dependencies safely.
+### What's genuinely working
 
-### 2.1 Dependency Tracking
-- [ ] Pin versions in requirements.txt and setup.py
-- [ ] Track graphify version compatibility
-- [ ] Document minimum Python version support
-- [ ] Create compatibility matrix (NeuralMind × graphify × Python)
+- **Synapse layer (associative memory).** Hebbian reinforcement + LTP + directional
+  transitions + half-life decay + hub normalization, namespace-isolated
+  (personal/shared/branch/ephemeral), SQLite-backed for zero-dependency installs.
+  Structural edge seeding gives day-one signal. This is differentiated — no open-source
+  code-memory tool has it. The code comment in `self_improve.py` is right: *"the
+  synapse layer is the product; the vector-RAG half is commodity."*
 
-### 2.2 Update Strategy
-- [ ] Test updates in isolated environment first
-- [ ] Run full benchmark suite before promoting updates
-- [ ] Document any breaking changes or new behavior
-- [ ] Provide rollback instructions for each update
+- **Ten-language tree-sitter extraction.** Python, TypeScript, Go, Rust, Java, C, C++,
+  C#, Ruby, PHP behind one seam. `pip install neuralmind && neuralmind build` works
+  with no graphify install. Measured parity with graphify on Python, structural
+  symbol-coverage check on the others.
 
-### 2.2.1 Freshness Verification
-- [ ] Run [`neuralmind eval`](wiki/CLI-Reference.md#eval-v0140) against the committed reference fixture after each NeuralMind upgrade to verify faithfulness stays at or above baseline parity
-- [ ] Treat eval regressions as release blockers for context-compression or memory-surface changes
-- [ ] Record the eval result alongside benchmark and upgrade notes so retrieval freshness is auditable over time
+- **Local-first posture.** MIT-licensed, stdlib daemon, token-guarded loopback HTTP,
+  no phone-home, optional memory logging behind a consent sentinel. Air-gapped
+  install walkthrough. This is the moat vs. Copilot/Cursor native memory.
 
-### 2.3 Security Updates
-- [ ] Monitor for security advisories (dependabot, snyk)
-- [ ] Fast-track critical security patches
-- [ ] Test security updates same-day
-- [ ] Communicate security updates to users
+- **Honesty infrastructure.** `HONEST-ASSESSMENT.md` documents where it isn't worth
+  installing. Public benchmark vs. `codebase-memory-mcp`. Privacy-claims CI guard.
+  This protects trust — a competitive advantage.
 
-**Owner:** Release Team  
-**Frequency:** Bi-weekly dependency check  
-**Priority:** Critical
+- **Audit trail.** Tamper-evident hash chain, per-actor, SIEM-exportable. Shipped.
 
----
+### What's theater (structure without function)
 
-## 3. CI/CD & Automated Testing
+- **IR (Intermediate Representation).** PRD 1 built a versioned canonical IR with
+  migration seams, round-trip-faithful adapters, and a 4-shipit rollout. Phase 1 shipped
+  (hidden adapter, legacy default — `ir.py` exists, `.neuralmind/index_ir.json` is
+  written on every build). Phases 2-4 never happened. Nothing in the retrieval stack
+  *reads* the IR. The embedder still consumes `graph.json` directly. The IR is archival
+  output, not a live contract. Verdict: architectural swagger without migration.
 
-**Goal:** Catch regressions early and track performance.
+- **Self-improvement engine.** `self_improve.py` tunes one parameter (`l2_recall_k`)
+  via a hand-tuned hysteretic dead band reading `re_query_rate`. Line 66-68 of that file
+  flags its own weakness: *"Provisional thresholds...unvalidated guesses. Phase 3
+  (eval-driven tuning) will replace this with a real fitness function."* Phase 3 never
+  happened. The tuner is a thermostat with no thermometer.
 
-### 3.1 Benchmark Automation
-- [ ] Add `neuralmind benchmark .` to GitHub Actions
-- [ ] Track token reduction ratio over 30 days
-- [ ] Alert if reduction ratio drops >10%
-- [ ] Compare new commits against baseline
+- **Empty quality harness.** `neuralmind benchmark --judge` shipped in v0.34. The
+  `bench/public/judge/` directory is still empty. Token reduction is the only CI-gated
+  metric. No faithfulness measurement, no nDCG, no MRR, no per-language eval.
 
-### 3.2 Test Coverage
-- [ ] Unit tests for all core modules
-- [ ] Integration tests for MCP server
-- [ ] Performance tests for large codebases (100K+ LOC)
-- [ ] Compatibility tests across Python versions
+### Hard gaps (structural, not incremental)
 
-### 3.3 Linting & Code Quality
-- [ ] Run ruff/black on all commits
-- [ ] Enforce type hints (mypy)
-- [ ] SonarQube analysis for code smells
-- [ ] Coverage target: >80%
+1. **Retrieval is single-vector + BM25 RRF.** The field moved to late-interaction
+   models (ColBERTv2, SPLADE, Wholembed v3) and cross-encoder reranking. RRF is a good
+   first-stage approximation; the reranking stage is absent.
 
-### 3.4 Pre-Release Validation
-- [ ] Run full test suite before tagging
-- [ ] Generate new benchmarks for release notes
-- [ ] Test on Windows, macOS, Linux
-- [ ] Verify all documentation links
+2. **No reasoning trace memory.** The synapse layer records *that* nodes co-activated,
+   not *why*, *what strategy worked*, or *what failed*. The 2026 state of practice
+   (Cognee graph-native memory, Mem0 v3 reasoning traces, the "immutable
+   run-log-as-RL-at-the-database-layer" pattern from the agent-memory landscape) is
+   structured memory with outcome tracking. You have co-activation without outcome.
 
-**Owner:** DevOps Team  
-**Frequency:** Continuous (per commit)  
-**Priority:** High
+3. **Team memory is a static one-way bundle.** No merge semantics when contributors
+   disagree, no contribution-quality scoring, no decay-on-conflict, no peer-review
+   gate. The onboarding-lift eval (E1.5) that was supposed to *gate* the shared-memory
+   build was measured, then the shared-memory build shipped as a one-way import, not
+   the two-layer model the eval was designed to validate. The E1.5 loop is open.
 
----
+4. **Tree-sitter-only precision.** No SCIP/LSP for compiler-accurate edges. Dynamic
+   imports (Python `importlib`, JS `require(variable)`) produce no structural edges.
+   Communities are balanced-per-file, not real architectural modularity.
 
-## 4. Compliance & Audit Trail (Enterprise)
+5. **MCP transport is stdio only.** The 2026 MCP standard is Streamable HTTP with OAuth
+   2.1 session management. stdio locks you to single-client local usage.
 
-**Goal:** Maintain NIST AI RMF compliance and audit trustworthiness.
-
-### 4.1 Audit Report Standards
-- [ ] Define required fields for audit reports (GOVERN, MAP, MEASURE, MANAGE)
-- [ ] Establish report retention policy (7 years)
-- [ ] Create audit report signing mechanism
-- [ ] Implement tamper-detection for audit logs
-
-### 4.2 Query Logging
-- [ ] Log all queries with timestamp, user, result
-- [ ] Track which code entities were retrieved
-- [ ] Store model metadata (embedding version, backend)
-- [ ] Enable export for SIEM integration
-
-### 4.3 Compliance Documentation
-- [ ] Create SOC 2 compliance guide
-- [ ] Document GDPR/HIPAA data handling
-- [ ] Establish audit trail lifecycle policy
-- [ ] Create compliance checklist for enterprises
-
-### 4.4 Monitoring & Alerting
-- [ ] Alert on unusual query patterns
-- [ ] Track audit report generation success rate
-- [ ] Monitor storage usage for audit logs
-- [ ] Create compliance dashboard
-
-### 4.5 Human Review Gate for Agent-Generated Patches
-- [ ] Keep agent tasks narrowly scoped so automated changes stay reviewable and bounded
-- [ ] Require manual human review of every agent-generated patch before merge to production
-- [ ] Run `neuralmind review .` as the required pre-PR check so likely co-break files and missed edits are surfaced before a reviewer signs off
-- [ ] Document exceptions policy explicitly: no autonomous fast-path around the review gate for production-critical changes
-
-**Owner:** Compliance/Security Team  
-**Frequency:** Quarterly audit  
-**Priority:** Critical for enterprise
+6. **No tool-use metrics pipeline.** Query latency, retrieval reuse rate, tool-call
+  success rate, per-query cost — none are logged continuously. The daemon has a health
+  endpoint but no observability feed.
 
 ---
 
-## 5. Scaling for Large Codebases
+## 2. Bucket A — Memory Layer Deepening (the product)
 
-**Goal:** Support 1M+ node projects and 10+ concurrent projects.
+> The synapse layer is differentiated. Invest here first and deepest.
 
-### 5.1 Performance Optimization
-- [ ] Profile build time for large codebases
-- [ ] Optimize embedding batch size
-- [ ] Implement incremental indexing (already done)
-- [ ] Add caching for frequently queried entities
+### Current state
+- Hebbian synapses + directional transitions in SQLite (`synapses.db`)
+- Half-life decay: fixed per-namespace constants (30d personal, 60d shared, 1d ephemeral)
+- Hub normalization, LTP threshold, structural edge seeding
+- Namespaces: personal, shared, branch:<name>, ephemeral
+- Self-improvement: 1-param tuner
 
-### 5.2 Embedding Backend Options
-- [ ] Validate ChromaDB for 1M+ vectors
-- [ ] Test PostgreSQL pgvector integration
-- [ ] Benchmark LanceDB for edge deployments
-- [ ] Document backend selection criteria
+### Gap
+- No reasoning trace memory (outcome signals)
+- No entity resolution (team memory can't merge)
+- Decay rates are not learned per-edge
+- No offline consolidation ("sleep") phase
 
-### 5.3 Memory & Storage
-- [ ] Document memory requirements by codebase size
-- [ ] Implement streaming for large graphs
-- [ ] Add compression for stored indexes
-- [ ] Monitor disk usage trends
+### Build plan
 
-### 5.4 Distributed Indexing
-- [ ] Define NeuralMind's distributed retrieval interface contract so the memory/retrieval layer can plug into external orchestration frameworks without depending on any one runtime (see PRD 9 in `docs/plans/2026-06-10-future-proofing-prd-pack.md`)
-- [ ] Evaluate Apache Spark/Dask integration
-- [ ] Document multi-machine deployment
-- [ ] Test with organization-scale codebases
+**A1. Reasoning trace store.** Add an immutable `reasoning_traces` table to
+`synapses.db`: (session_id, timestamp, query_fingerprint, strategy, tools_used,
+outcome, success_signal). Powers "the agent learned what works." Queryable by
+the synapse recall path so retrieval can favor nodes from successful past strategies.
+Schema-versioned alongside the existing meta table. Fail-open: traces are observational,
+never load-bearing.
 
-**Owner:** Performance Engineering  
-**Frequency:** Quarterly performance review  
-**Priority:** High (for enterprise)
+**A2. Entity resolution layer.** When merging team memory or importing bundles,
+resolve synapse node identity by structural-anchor + normalized-label, not exact
+ID match (the existing `normalize_namespace` + `norm_label` seam is the start).
+Required for any real merge semantics. Thresholds: >=0.95 cosine auto-merge,
+>0.85 human-review flag (the "Apple company vs. Apple fruit" disambiguation the
+agent-memory literature flags as the #1 graph-corruption source).
 
----
+**A3. Learned per-edge decay.** Replace fixed `HALF_LIFE_DAYS` with a scalar adapted
+per edge from its reinforcement frequency and recency distribution. Edges that
+survive repeated reinforcement get longer half-lives; edges that are rarely
+reinforced decay faster. Bounded to [HALF_LIFE_MIN, HALF_LIFE_MAX] to prevent
+pathology. The tuner (Bucket C) learns the bounds, not the individual rates.
 
-## 6. Monitoring & Observability
-
-**Goal:** Proactively detect and prevent issues.
-
-### 6.1 Scheduled Task Monitoring
-- [ ] Track auto-discovery task success rate
-- [ ] Alert on task failures within 1 hour
-- [ ] Log all task executions with timing
-- [ ] Create dashboard for task health
-
-### 6.2 Index Health Monitoring
-- [ ] Track index staleness (warn if >7 days old)
-- [ ] Monitor node/edge growth trends
-- [ ] Detect duplicate or orphaned nodes
-- [ ] Alert on index corruption
-
-### 6.2.1 Weekly Maintenance
-- [ ] Treat `SYNAPSE_MEMORY.md` as a derived memory artifact that can drift as the codebase changes
-- [ ] Run `neuralmind build .` at least weekly, and after significant code changes, to rebuild the graph/index and refresh the memory the agent loads on session start
-- [ ] Make the weekly rebuild part of scheduled maintenance so the graph view, retrieval state, and persisted memory stay aligned with the current repository
-
-### 6.3 Query Quality Metrics
-- [ ] Track query latency (p50, p95, p99)
-- [ ] Measure retrieval relevance (user feedback)
-- [ ] Monitor learning pattern effectiveness
-- [ ] Alert on degraded retrieval quality
-
-### 6.4 Observability Infrastructure
-- [ ] Structured logging (JSON format)
-- [ ] Centralized log aggregation
-- [ ] Metrics export (Prometheus format)
-- [ ] Distributed tracing for complex queries
-
-**Owner:** SRE/Platform Team  
-**Frequency:** Continuous  
-**Priority:** High
+**A4. Sleep consolidation.** A scheduled daemon pass (weekly, configurable) that:
+prunes redundant edges, promotes LTP edges that survived decay, emits a consolidated
+team-baseline bundle, detects stale team edges (no reinforcement in N days).
+This is the "offline memory reorganization" that the agent-memory literature shows
+reduces retrieval noise by 30-50% in long-running knowledge graphs.
 
 ---
 
-## 7. Security Hardening
+## 3. Bucket B — Retrieval Quality Upgrade (the commodity, with a moat)
 
-**Goal:** Protect code, queries, and audit trails.
+> Single-vector + BM25 RRF was state of the art in 2024. Close the gap to 2026.
 
-### 7.1 MCP Server Security
-- [ ] Implement role-based access control (RBAC)
-- [ ] Rate limiting (per-user, per-minute)
-- [ ] Query content filtering (block secrets)
-- [ ] Audit logging for all MCP calls
+### Current state
+- TurboVec/ONNX (default) + ChromaDB fallback, single-vector dense retrieval
+- RRF merge with BM25 when the backend supports it
+- L0-L3 manual progressive disclosure, hardcoded layer budgets
+- Synapse-boosted L2, structural L3 expansion
 
-### 7.2 Data Protection
-- [ ] Encrypt index at rest
-- [ ] Encrypt queries in transit (TLS)
-- [ ] Implement key rotation policy
-- [ ] Support FIPS 140-2 backends
+### Gap
+- No learned sparse / late-interaction retrieval
+- No cross-encoder reranking
+- IR written but not consumed
+- Layer budgets are hand-tuned constants
 
-### 7.3 Access Control
-- [ ] Enforce API authentication
-- [ ] Implement project-level permissions
-- [ ] Audit trail for permission changes
-- [ ] Support SAML/OAuth for enterprises
+### Build plan
 
-### 7.4 Secret Management
-- [ ] Detect and block API keys in indexed code
-- [ ] Implement secret scanning in audit reports
-- [ ] Alert on secret exposure
-- [ ] Document secret handling policy
+**B1. IR-as-primary-contract migration (finish PRD 1).** Make the embedder read
+`.neuralmind/index_ir.json` instead of `graphify-out/graph.json`. The IR adapter
+(`ir.py`, already round-trip-faithful) becomes the canonical path. Legacy
+`graph.json` loading retained for one minor release, then deprecated. Closes the
+ghost-contract gap.
 
-**Owner:** Security Team  
-**Frequency:** Quarterly security review  
-**Priority:** Critical
+**B2. Learned sparse retrieval.** SPLADE-style expansion over the existing BM25
+index. A lightweight expansion model (distilled from MiniLM, ONNX-compatible) maps
+each chunk to a sparse weighted token vector. Queried via the same RRF path.
+Approximation cost: one extra forward pass per chunk at index time, ~5% storage
+uplift. Skip full ColBERT (per-token embeddings for thousands of code chunks are
+too storage-heavy for local-first; learned sparse is the right trade).
 
----
+**B3. Cross-encoder reranking.** A distilled cross-encoder (ms-marco-MiniLM,
+ONNX-compatible) reranks the top-20 candidates from the RRF+learned-sparse first
+stage before L2/L3 fusion. Typically a 5-15% precision lift for a weekend build.
+Optional via `NEURALMIND_RERANK=1`, with a latency budget cap
+(`NEURALMIND_RERANK_MAX_MS`) to keep it off the hot path on slow machines.
 
-## 8. Community & Ecosystem
-
-**Goal:** Build a sustainable, healthy community.
-
-### 8.1 User Feedback Loop
-- [ ] Monthly community survey
-- [ ] Track GitHub issue trends
-- [ ] Respond to issues within 48 hours
-- [ ] Publish monthly status update
-
-### 8.2 Contribution Guidelines
-- [ ] Document contribution process
-- [ ] Create issue templates (bug, feature, question)
-- [ ] Establish code review standards
-- [ ] Recognize top contributors
-
-### 8.3 External Integration
-- [ ] Support plugins/extensions
-- [ ] Publish API stability guarantees
-- [ ] Create SDK for popular languages
-- [ ] Build partner ecosystem
-
-### 8.4 Educational Resources
-- [ ] Create video tutorials
-- [ ] Write blog posts on best practices
-- [ ] Host community Office Hours
-- [ ] Publish case studies
-
-**Owner:** Developer Relations  
-**Frequency:** Monthly  
-**Priority:** Medium
+**B4. Hierarchical summarization for L0-L3.** RAPTOR-style recursive summarization
+at each layer, replacing the hand-tuned `L0_MAX_TOKENS`/`L1_MAX_TOKENS`/etc.
+constants with a learned depth selector. Couples with B1 (IR is the contract for
+stored summaries). Deferred in the sequence (needs B1 + D to validate).
 
 ---
 
-## Implementation Roadmap
+## 4. Bucket C — Self-Improvement Engine v2 (autonomous local evolution)
 
-### Q2 2026 (Now)
-- [x] Create future-proofing plan
-- [ ] Set up GitHub Project for tracking
-- [ ] Implement CI/CD benchmark tracking
-- [ ] Document version management policy
+> The moat. No open-source code-memory tool tunes itself against a real fitness
+> function. Population-based evolutionary optimization in the daemon is the
+> differentiator that keeps the product current without a research team.
 
-### Q3 2026
-- [ ] Add automated security scanning
-- [ ] Implement MCP RBAC
-- [ ] Create compliance checklist
-- [ ] Performance optimization pass
+### Current state
+- `self_improve.py`: tunes `l2_recall_k` only (one parameter)
+- Signal: `re_query_rate` (weak, noisy — acknowledged in code)
+- Hand-tuned hysteretic dead band, no eval feedback
+- Gated behind `NEURALMIND_SELECTOR_AUTOTUNE=1`
 
-### Q4 2026
-- [ ] Beta test PostgreSQL backend
-- [ ] Establish SLA targets
-- [ ] Create enterprise deployment guide
-- [ ] Launch community contribution program
+### Gap
+- One parameter is a thermostat, not an engine
+- No fitness function (can't optimize what you don't measure)
+- No population search (2026 research: evolutionary optimization 2-3x gains)
+- No online learning loop
 
-### Q1 2027
-- [ ] Multi-language SDK support
-- [ ] Advanced monitoring dashboard
-- [ ] Security audit (external)
-- [ ] v1.0 release preparation
+### Build plan
 
----
+**C1. Multi-objective fitness function.** The tuner's North Star. Three axes,
+combined via a weighted product (so a zero on any axis dominates):
+- *Retrieval quality*: faithfulness delta (from D, the quality harness) — the
+  "does the agent answer better" signal.
+- *Efficiency*: token-cost reduction — the "does it cost less" signal.
+- *Session health*: re-query-rate + transition-margin — the "does the agent stop
+  repeating itself" signal.
+Weights are operator-configurable (`NEURALMIND_FITNESS_WEIGHTS="0.5,0.3,0.2"`),
+persisted in the synapse meta table, tunable per project.
 
-## Success Metrics
+**C2. Expanded parameter space.** Move beyond l2_recall_k. Candidates:
+`SYNAPSE_BOOST_WEIGHT`, `STRUCTURAL_BOOST_WEIGHT`, `SPREAD_DEPTH`,
+`L0/L1/L2/L3_MAX_TOKENS`, `STRUCTURAL_HUB_DEGREE`, `decay rate bounds`,
+community sensitivity. ~8-12 knobs. Each bounded per the existing clamp constants
+in `context_selector.py` and `synapses.py`. The tuner never proposes values the
+components would reject.
 
-| Metric | Target | Tracking |
-|--------|--------|----------|
-| Test Coverage | >80% | CI/CD dashboard |
-| Benchmark Regression | <10% drop | Monthly report |
-| Issue Response Time | <48hrs | GitHub metrics |
-| Security Incidents | 0 | Security log |
-| Task Success Rate | >99% | Monitoring dashboard |
-| Documentation Coverage | 100% | Automated checker |
-| Community Issues Resolved | >80% | GitHub analytics |
+**C3. Population-based search (evolutionary).** Local-first, runs in the daemon.
+Population size 10-20 candidate configs. Each generation:
+- Sample candidate configs from a bounded space (Gaussian perturbation around
+  the current best, with uniform-exploration probability 0.15).
+- Evaluate each against (C1) fitness on the project's real query traces from
+  the last N sessions (the `reasoning_traces` table from A1 feeds this).
+- Select top-k, mutate, repeat for a bounded number of generations.
+- Promote the winner if fitness exceeds the incumbent by a hysteresis margin.
+Cost: the daemon runs this offline (weekly, configurable), not on the query hot
+path. No cloud dependency. Evaluation data is the user's own query history.
 
----
-
-## Risk Mitigation
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|-----------|
-| Breaking API changes | Medium | High | Strict versioning, migration guides |
-| Performance regression | Low | High | Continuous benchmarking |
-| Security vulnerability | Low | Critical | Quarterly security audit |
-| Large codebase failure | Low | High | Load testing, scaling research |
-| Community adoption plateau | Medium | Medium | Regular feature releases, ecosystem |
-
----
-
-## Review Schedule
-
-- **Monthly:** Check progress on current quarter items
-- **Quarterly:** Review metrics, adjust priorities
-- **Annually:** Full plan review and update
+**C4. CI-gated promotion.** Tuned configs are validated against the eval harness
+(D) before promotion. Rollback on regression. The daemon proposes; the harness
+disposes. Prevents the "tuner degrades real quality while optimizing a proxy"
+pathology that the current `re_query_rate`-only signal is vulnerable to.
 
 ---
 
-**Next Steps:**
-1. Create GitHub issues for each section (1-8)
-2. Set up GitHub Project with milestone tracking
-3. Assign owners to each area
-4. Establish baseline metrics
-5. Begin Q2 implementation
+## 5. Bucket D — Quality Harness Completion (measure what matters)
+
+> You can't improve what you don't measure. The `--judge` arm has shipped with an
+> empty directory for three months. Close this loop.
+
+### Current state
+- Token reduction benchmark: CI-gated, regression-tracked. Working.
+- Retrieval quality: top-k hit rate on Python fixture only.
+- `--judge` harness: shipped (v0.34), `bench/public/judge/` empty.
+- `probe`: label-free self-test, works but limited signal.
+
+### Gap
+- No faithfulness, context-precision, answer-relevance measurement
+- No nDCG / MRR / hit-rate@k
+- No per-language eval beyond Python
+- Empty judge directory reduces the feature to a stub
+
+### Build plan
+
+**D1. RAGAS-axis offline judge (zero LLM cost).** Following the v0.13 eval design
+principle ("ship a real offline heuristic judge as the default; make the API judge
+strictly opt-in"):
+- *Context precision*: embedding-cosine between retrieved chunks and query.
+- *Context recall*: embedding-cosine between gold facts and retrieved chunks.
+- *Faithfulness*: token-overlap + contradiction heuristic (negation detection,
+  entity consistency) between the generated answer and the retrieved context.
+- *Answer relevance*: embedding-cosine between the answer and the query.
+All four run with zero network. Reported per-query, aggregated per-build, CI-gated
+against regression.
+
+**D2. Retrieval metrics.** MRR, nDCG@k, hit-rate@k, precision@k over the fixture
+query set. Fixed k values per benchmark (5, 10, 20). CI-gated. Visible in
+`neuralmind benchmark --quality` output.
+
+**D3. Populate bench/public/judge/.** Run the opt-in LLM-judged arm
+(`neuralmind benchmark --public --judge`, requires `ANTHROPIC_API_KEY`) on the
+maintainer's projects, commit the transcripts. This removes the single biggest
+credibility gap in the public eval story. Deferred behind D1 (offline judge runs
+in CI with no cost; the LLM-judged arm is opt-in and costs tokens).
+
+**D4. Per-language fixtures.** TypeScript, Go, Rust, Java fixtures with real
+query + gold-fact sets, mirroring the Python one (which already exists). Required
+to make "Python-strong, polyglot-weaker" visible and tracked (the current
+`HONEST-ASSESSMENT.md` caveat becomes a tracked metric instead of a disclosure).
+
+---
+
+## 6. Bucket E — Team Memory as Product (enterprise wedge)
+
+> The onboarding-lift story is the highest-value enterprise pitch. Close the E1.5
+> loop honestly: measure lift, score contributions, gate on review.
+
+### Current state
+- Committed team bundle (`.neuralmind-team-memory.json`)
+- One-way import into `shared` namespace on first build or SessionStart
+- No merge semantics, no quality scoring, no decay-on-conflict
+
+### Gap
+- Static bundle, not a living merge
+- No contribution-quality signal
+- E1.5 eval shipped but its findings weren't fed back into the merge design
+- No peer review, no staleness detection
+
+### Build plan
+
+**E1. Contribution-quality scoring.** Weight team-memory contributions by the
+contributor's measured onboarding lift: did their bundle actually improve
+new-agent faithfulness/recall in the E1.5 eval? High contributors' edges get
+higher initial weight in `shared`; low contributors' edges start low and rely
+on their own reinforcement to persist. Closes the E1.5 loop honestly.
+
+**E2. Merge semantics with decay-on-conflict.** When two contributors' bundles
+disagree on the same edge, weight by contribution-quality score, decay the loser.
+Required: entity resolution (A2). Without it, same edge from different ID schemes
+isn't recognized as conflict. This is the difference between "team brain" and
+"muddy average."
+
+**E3. Peer review gate.** Team-baseline contributions require human review before
+commit. Simple mechanism: GitHub PR on the bundle file, with the E1.5 eval delta
+in the PR comment (generated by D). Not a new tool — existing GitHub workflow.
+
+**E4. Staleness detection.** Flag team-baseline edges that haven't been reinforced
+by any team member's actual usage in N days (configurable, default 60). Couples
+with A4 (sleep consolidation prushes stale team edges during the weekly pass).
+
+---
+
+## 7. Bucket F — Daemon + MCP Production Hardening
+
+> Infrastructure. Not glamorous, but required for multi-client usage and the
+> self-improvement engine's continuous operation.
+
+### Current state
+- stdlib HTTP daemon (PRD 5 Phase 1 — experimental)
+- Per-project locking, JobManager, discovery file, token auth
+- MCP server over stdio only
+- `/healthz` endpoint, systemd/launchd/Windows Task Scheduler templates
+
+### Gap
+- MCP transport is stdio (single-client local only)
+- Experimental daemon, no shared memory model across MCP clients
+- No tool-use metrics pipeline
+- No backpressure / circuit breakers
+
+### Build plan
+
+**F1. Streamable HTTP transport for MCP.** Follow the 2026 MCP spec
+(Streamable HTTP sessions, OAuth 2.1). Enables remote usage, multi-client
+sessions, web-based clients. Stdio retained as fallback for local CLI.
+
+**F2. Shared daemon memory model.** MCP clients connect to the daemon, share
+the warm `NeuralMind` instance + synapse store + selector cache. Eliminates
+cold-start per client. Required: per-client access scoping (a client project
+can't read another client's synapse data unless explicitly shared).
+
+**F3. Tool-use metrics pipeline.** Continuous logging: per-query latency,
+retrieval reuse rate, tool-call success rate, per-query token cost, synapse
+activation counts. Feeds the fitness function (C1) and the team-memory quality
+scoring (E1). Structured JSONL to `.neuralmind/metrics/`, bounded retention.
+
+**F4. Backpressure + circuit breakers.** Concurrent build/query/watch on the
+same project degrades gracefully: queue with bounded depth, fail fast on
+overload, recover automatically. The existing `ProjectRegistry` + per-project
+lock is the start; add queue depth signaling and a circuit-breaker state
+machine (closed → open → half-open) on the daemon.
+
+---
+
+## 8. Bucket G — Graph Generation Precision
+
+> The commodity half. Raise it to the 2026 state of practice without turning it
+> into the product.
+
+### Current state
+- 10 languages via tree-sitter
+- Graphify-compatible `graph.json` output
+- Balanced per-file communities (stand-in for modularity)
+- Incremental re-embedding (unchanged files skipped)
+
+### Gap
+- No SCIP/LSP for compiler-accurate edges
+- Dynamic imports (Python `importlib`, JS `require(variable)`) produce no edges
+- No real modularity clustering
+- No incremental re-extraction (only re-embedding)
+
+### Build plan
+
+**G1. Cross-file import resolution for dynamic languages.** Static analysis over
+the AST + string-literal heuristic (resolve `importlib.import_module("foo")` and
+`require(variable)` when the argument is a string literal or a bounded set of
+literals). Closes the "phantom edge" gap. For literals: deterministic. For
+variables: flagged as low-confidence (`confidence_score < 0.5`), surfaced but
+down-weighted in retrieval.
+
+**G2. SCIP precision pass (the v0.17 stretch that never happened).** For
+languages with SCIP support (Go, Rust, Java, C/C++), use `scip-index` at build
+time for compiler-accurate edges. Falls back to tree-sitter where SCIP is
+unavailable. Gated behind `NEURALMIND_SCIP=1` (opt-in until measured parity).
+
+**G3. Real modularity clustering.** Replace balanced-per-file communities with
+a graph modularity algorithm (Louvain/Leiden) over the structural edge set.
+Communities match architectural boundaries, not file boundaries. This is the
+difference between "cluster 3 is utils.py" and "cluster 3 is the auth module."
+Required: the structural edge set must be good enough (G1 + G2 first).
+
+**G4. Incremental re-extraction.** Currently only re-embedding is incremental.
+Re-extract symbols from changed files + their dependents (using the structural
+index's reverse edges — `structural.py` already indexes `callers`/`importers`)
+on each build. Skips the full-tree reparse that makes large-repo builds slow.
+
+---
+
+## 9. Sequence & dependency order
+
+```
+            ┌─────────────────────────────────────┐
+            │           WAVE 1 (parallel)         │
+            │  D  Quality harness (RAGAS + MRR)   │
+            │  B1 IR-as-primary-contract          │
+            │  G1 Dynamic import resolution       │
+            └──────────┬──────────────┬───────────┘
+                       │              │
+            ┌──────────▼──────┐  ┌───▼──────────────┐
+            │   WAVE 2        │  │   WAVE 2         │
+            │ A1 Reasoning    │  │ G2 SCIP precision │
+            │   traces        │  │                  │
+            │ A2 Entity       │  │                  │
+            │   resolution    │  │                  │
+            │ B2 Learned       │  │                  │
+            │   sparse         │  │                  │
+            │ B3 Cross-encoder │  │                  │
+            │   reranking      │  │                  │
+            │ C1 Fitness fn    │  │                  │
+            │   (needs D)      │  │                  │
+            └──────────┬──────┘  └───┬──────────────┘
+                       │              │
+            ┌──────────▼──────────────▼───────────┐
+            │           WAVE 3                     │
+            │  C2 Expanded parameter space          │
+            │  C3 Population-based search (evo)     │
+            │  A3 Learned per-edge decay             │
+            │  A4 Sleep consolidation                │
+            │  B4 Hierarchical summarization (needs  │
+            │     B1 + D)                            │
+            │  F1 Streamable HTTP MCP                │
+            │  F2 Shared daemon memory               │
+            └──────────────┬───────────────────────┘
+                           │
+            ┌──────────────▼───────────────────────┐
+            │           WAVE 4                      │
+            │  C4 CI-gated tuner promotion           │
+            │  G3 Modularity clustering (needs G1+2)│
+            │  G4 Incremental re-extraction          │
+            │  E1 Contribution-quality scoring       │
+            │  E2 Merge semantics (needs A2)         │
+            │  E3 Peer review gate                   │
+            │  E4 Staleness detection (needs A4)     │
+            │  F3 Tool-use metrics pipeline          │
+            │  F4 Backpressure + circuit breakers    │
+            │  D3 Populate judge transcripts         │
+            │  D4 Per-language fixtures              │
+            └───────────────────────────────────────┘
+```
+
+Critical path: **D → C1 → C2/C3 → A3/A4 → E1/E2/E4**. The quality harness feeds the
+fitness function; the fitness function drives the tuner; the tuner learns decay
+and consolidation; the consolidation feeds team-memory quality. Everything that
+*makes the product smarter* flows through this path. The retrieval upgrades
+(B2/B3/B4) and graph precision (G1-G4) are force multipliers — they make the
+tuner's job easier — but the critical path is the learning loop.
+
+Parallelizable in Wave 1: D, B1, G1 can all start concurrently (different modules,
+no cross-deps). Staff D first because it unlocks C1 which unlocks everything
+that makes the product adaptive.
+
+---
+
+## 10. Decisions made on behalf of the maintainer (with rationale)
+
+These are the calls that shape the plan. Push back on any of them.
+
+### C — Self-improvement is deep, not narrow
+
+The maintainer said they need "a level of self improvement and evolution at the
+local level to keep it current." Full population-based evolutionary optimization
+is recommended, not a fixed-point tuner with a real fitness function.
+Rationale: a single-point tuner with a real fitness function is just a better
+thermostat. The 2026 research consensus (Microsoft Copilot Tuning Research, Imbue's
+Darwinian Evolver at 2-3x, OpenAI self-evolving agents, Amazon constrained policy
+optimization) is that *searching the population* of configs — not hill-climbing one
+— is what produces genuine capability gains. The daemon runs this offline on the
+user's own query traces, so it's local-first and private. The risk is search cost;
+I'm bounding population (10-20) and generations (5-10) and requiring CI-gated
+promotion (C4) to prevent regression. This is the moat.
+
+### B — Learned sparse + cross-encoder, not full ColBERT
+
+Full ColBERT (per-token embeddings for every chunk) is storage-prohibitive for
+local-first. Learned sparse (SPLADE-style expansion) approximates the late-
+interaction signal at ~5% storage cost. Cross-encoder reranking on the top-20
+candidates captures 80% of the late-interaction benefit for a weekend build. IR
+migration (B1) is the prerequisite — no point reranking against a ghost contract.
+
+### G — SCIP only where it's supported, Louvain/Leiden modularity
+
+SCIP precision for Go/Rust/Java/C++ is real; SCIP for Python/TS/Ruby is not, so
+tree-sitter stays the default there. Modularity clustering (Louvain/Leiden)
+over the structural edge set produces architecturally-meaningful communities
+(the auth module, the data layer), which is what L2 is *supposed* to surface.
+This replaces the current balanced-per-file clustering, which is a workaround, not
+a solution.
+
+### F — Streamable HTTP, shared memory, bounded metrics
+
+Streamable HTTP is the 2026 MCP standard. Not adopting it locks the product into
+single-client local usage. Shared memory in the daemon is required for the
+self-improvement engine to observe cross-client query patterns. Metrics pipeline
+(log-structured, bounded retention) is the cheap observability that feeds every
+other bucket.
+
+### NOT building (and why)
+
+- **Hosted SaaS.** Explicitly out of scope per ROADMAP. The moat is local-first.
+- **Cross-repo / org-wide search.** That's Sourcegraph Cody's niche.
+- **Inline completion.** Copilot's niche.
+- **ColBERT full multi-vector.** Storage-prohibitive for local-first; learned
+  sparse approximates most of the benefit.
+- **LLM-judged offline judge.** The v0.13 principle holds: zero-cost offline
+  judge is the default, LLM judge is opt-in. The empty `--judge` directory is
+  filled last (D3), after D1/D2 provide the CI gate at zero cost.
+
+---
+
+## 11. Success criteria
+
+| Criterion | Target | Measurement |
+|---|---|---|
+| Retrieval quality (with-synapse vs without) | Faithfulness delta >= +10pts | `neuralmind eval --quality` (D1) |
+| Retrieval discrimination | MRR >= 0.65 on fixture query set | `neuralmind benchmark --quality` (D2) |
+| Token cost | Maintain <= current reduction ratio | Existing CI benchmark gate |
+| Self-improvement efficacy | Tuner improves fitness >= 15% over default in 4 weeks | `neuralmind savings --tuner` (C3) |
+| Team onboarding lift | New-agent faithfulness + >= 15% with team baseline | E1.5 eval, rerun post-E1 (E1) |
+| Graph precision | Structural edge recall + >= 20% with SCIP (G languages) | `evals/parity` per-language check |
+| MCP transport | Streamable HTTP serves >= 3 concurrent clients | `neuralmind serve --http` integration test |
+
+---
+
+## 12. What this plan explicitly does NOT assume
+
+- It does not assume headcount. Every bucket is scoped for a solo maintainer.
+- It does not assume a hosted backend. All fitness evaluation, tuner search,
+  sleep consolidation, and team-memory merge are local-first.
+- It does not assume the IR migration succeeds. B1 is plan A; the legacy
+  `graph.json` path is retained for one minor release regardless.
+- It does not assume SCIP is available everywhere. Tree-sitter stays the default
+  for languages without SCIP support.
+
+---
+
+*This plan is a living document. Open an issue to propose a new bucket, re-sequence,
+or argue for re-prioritization. The superseded plans
+(`docs/FUTURE-PROOFING-PLAN.md` v1.0, `docs/plans/2026-06-10-future-proofing-prd-pack.md`)
+are archived to `docs/archive/`.*

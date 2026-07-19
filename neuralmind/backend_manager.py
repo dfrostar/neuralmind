@@ -12,12 +12,10 @@ from .embedding_backend import EmbeddingBackend
 from .in_memory_backend import InMemoryEmbeddingBackend
 
 DEFAULT_BACKEND_CONFIG: dict[str, Any] = {
-    # The default is "auto" — prefer the ChromaDB-free turbovec backend when its
-    # deps are importable, else fall back to chroma. Since v0.29.0 the turbovec
-    # stack is a *base* dependency, so a default install resolves to turbovec
-    # out of the box. An explicit `backend:` in neuralmind-backend.yaml (or a
-    # backend= argument) always wins.
-    "backend": "auto",
+    # Hard-default to turbovec as of v0.46.0 — the ChromaDB-free path. "auto"
+    # is accepted as an alias for turbovec for backward compatibility.
+    # Selecting chroma/graph explicitly triggers a deprecation warning.
+    "backend": "turbovec",
     "db_path": None,
     "hybrid_context": False,
     "security": {},
@@ -41,20 +39,29 @@ def turbovec_available() -> bool:
 def resolve_backend(backend: str | None) -> str:
     """Resolve the ``auto`` default (or ``None``) to a concrete backend name.
 
-    The shipped default is ``auto``: prefer turbovec when its deps are installed
-    (the ChromaDB-free path — base deps since v0.29.0, so this is the normal
-    default), otherwise fall back to ``graph`` (the ChromaDB-backed
-    ``GraphEmbedder``, now an opt-in ``[chromadb]`` extra). Any explicit,
-    concrete backend name is normalised (lowercased/trimmed) and returned
-    unchanged — so opting into chroma via ``backend: graph`` is always honoured.
+    The shipped default is ``turbovec``: the ChromaDB-free path (base deps
+    since v0.29.0). ``auto``, ``None``, and blanks are all accepted as aliases
+    for turbovec for backward compatibility. ``graph`` / ``chroma`` /
+    ``chromadb`` are deprecated and trigger a deprecation warning — they still
+    work when the ``[chromadb]`` extra is installed.
     """
-    # None, "", or a non-string (e.g. `backend: null` in YAML) all mean "auto".
+    # None, "", or a non-string (e.g. `backend: null` in YAML) all mean turbovec.
     if not isinstance(backend, str) or not backend.strip():
-        name = "auto"
-    else:
-        name = backend.strip().lower()
+        return "turbovec"
+    name = backend.strip().lower()
     if name == "auto":
-        return "turbovec" if turbovec_available() else "graph"
+        return "turbovec"
+    if name in {"graph", "chroma", "chromadb"}:
+        import warnings
+
+        warnings.warn(
+            f"the '{name}' backend (ChromaDB) is deprecated as of v0.46.0. "
+            "Use the default turbovec backend (no config needed) or install "
+            "`pip install neuralmind[chromadb]` if you need ChromaDB.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return name
     return name
 
 

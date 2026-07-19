@@ -1,5 +1,112 @@
 # Changelog
 
+## [0.51.3](https://github.com/dfrostar/neuralmind/compare/v0.51.2...v0.51.3) (2026-07-19)
+
+
+### Bug Fixes
+
+* ruff format drift + sync manifest to 0.51.2 ([469b4c0](https://github.com/dfrostar/neuralmind/commit/469b4c021d40779a05dde2dd5f14f7a1add042c4))
+
+## [0.49.5](https://github.com/dfrostar/neuralmind/compare/v0.49.4...v0.49.5) (2026-07-18)
+
+
+### Bug Fixes
+
+* **lint:** reapply ruff N806 fixes post-PR367 merge ([06ee806](https://github.com/dfrostar/neuralmind/commit/06ee806cc92ecd3488a037d3105f2370cb27dabb))
+
+## [0.49.4](https://github.com/dfrostar/neuralmind/compare/v0.49.3...v0.49.4) (2026-07-18)
+
+
+### Bug Fixes
+
+* **ci:** complete lint sweep — all ruff errors patched ([e96b805](https://github.com/dfrostar/neuralmind/commit/e96b805f12e6886cb7a4701a7967437e5fc28931))
+
+## [0.49.3](https://github.com/dfrostar/neuralmind/compare/v0.49.2...v0.49.3) (2026-07-18)
+
+
+### Bug Fixes
+
+* **ci:** complete lint sweep — all ruff errors patched ([e96b805](https://github.com/dfrostar/neuralmind/commit/e96b805f12e6886cb7a4701a7967437e5fc28931))
+* **ci:** lint cleanup + tests package breakage ([76c8668](https://github.com/dfrostar/neuralmind/commit/76c8668924a0f501a54651fba9b80b2d293679d9))
+* **ci:** patch stale test assertions post-wave4 cleanup ([5a13c16](https://github.com/dfrostar/neuralmind/commit/5a13c163c6d100e9aedf8c82504173266bdc84e6))
+* **ci:** restore CI green — lint + test infra patches ([e19e631](https://github.com/dfrostar/neuralmind/commit/e19e631dfc636b240028dd3e7054cdedea971d3c))
+
+## [0.48.0](https://github.com/dfrostar/neuralmind/compare/v0.47.1...v0.48.0) (2026-07-17)
+
+
+### Features — Wave 4 completes NeuralMind v2.0
+
+> **v2.0 is complete.** Four waves, 26 workstreams, 7 buckets. The future-proofing plan v2.0 is fully implemented.
+
+* **CI-gated tuner promotion (C4)**: wraps the population tuner (C3) with a fixture-evaluated promotion gate — runs `neuralmind benchmark --tuner-ci`, promotes only if fitness beats incumbent by hysteresis margin
+* **Modularity clustering (G3)**: Louvain clustering over structural edges replaces balanced-per-file communities; `detect_structural_communities()` returns architecturally-boundary communities for L2
+* **Incremental re-extraction (G4)**: `IncrementalExtractor` tracks file content hashes; builds re-extract symbols and callers/importers from changed files only
+* **Contribution-quality scoring (E1)**: `ContributionQualityScorer` scores edges by reinforcement frequency + recency − conflict rate; gates promotion to `shared` namespace
+* **Quality-weighted merge semantics (E2)**: `QualityWeightedMerger` resolves conflicting edges from two contributors by quality score instead of last-write-wins
+* **Peer review gate (E3)**: `PeerReviewGate` auto-promotes high-quality edges, flags marginal ones for review, rejects very-low-quality edges
+* **Team staleness detection (E4)**: `TeamStalenessDetector` applies accelerated decay to team edges with no reinforcement in N days (30/14 day thresholds)
+* **Tool-use metrics pipeline (F3)**: `MetricsCollector` logs per-query latency, retrieval reuse rate, tool success rate, token cost to bounded JSONL files under `.neuralmind/metrics/`
+* **Backpressure + circuit breakers (F4)**: `ProjectBackpressure`, `CircuitBreaker`, `ProjectLock` for graceful degradation under concurrent daemon/query/watch
+* **Judge transcripts (D3)**: populated `bench/public/judge/` with fixture queries and reference answers for offline `--judge` evaluation
+* **Per-language fixtures (D4)**: registered C#, Ruby, PHP suites in `evals/quality/runner.py` — 10-language golden-query coverage (128 queries across 10 fixtures)
+
+
+### Writes
+
+* **New modules**: `neuralmind/ci_tuner.py`, `neuralmind/modularity.py`, `neuralmind/incremental_extract.py`, `neuralmind/contribution_scoring.py`, `neuralmind/merge_semantics.py`, `neuralmind/peer_review.py`, `neuralmind/team_staleness.py`, `neuralmind/metrics_pipeline.py`, `neuralmind/backpressure.py`, `neuralmind/judge_transcripts.py`
+
+
+### Tests
+
+* 38 new tests across 8 test files; all 1374 tests pass
+
+## [0.47.1](https://github.com/dfrostar/neuralmind/compare/v0.47.0...v0.47.1) (2026-07-17)
+
+
+### Bug Fixes
+
+* **ci**: black formatting drift across 16 files — no logic changes, purely formatting. Re-releases v0.47.0 content with clean lint gate.
+
+## [0.47.0](https://github.com/dfrostar/neuralmind/compare/v0.46.2...v0.47.0) (2026-07-17)
+
+
+### Features
+
+* **quality harness (D)**: RAGAS-axis offline judge at `neuralmind/ragas.py` — faithfulness, context precision, context recall, answer relevance. Faithfulness is stdlib-only and CI-gated; cosine columns use injectable `embed_fn` for model-free CI ([7948edc](https://github.com/dfrostar/neuralmind/commit/7948edc))
+* **quality harness (D)**: nDCG@k and hit-rate@k metrics added to `neuralmind/quality.py` alongside MRR, answerability, precision/recall — per-language fixtures for 7 languages registered in `evals/quality/runner.py`
+* **IR migration (B1)**: embedder now reads `.neuralmind/index_ir.json` as the canonical source with `graphify-out/graph.json` mtime-fallback. The IR is no longer write-only archival — it's the live read path. All three backends (GraphEmbedder, TurboVecEmbedder, InMemoryEmbeddingBackend) + `core.py` + `server.py` updated
+* **dynamic import resolution (G1)**: `add_edge` gains `confidence_score` param; Python/TS/Ruby dynamic import resolvers emit deterministic edges for string-literal imports (confidence 1.0), variable-const lookups (0.8), and synthetic `ext__` nodes for unresolvable dynamics (0.2). `SCHEMA_VERSION` 1→2
+
+### Tests
+
+* 14 IR migration tests in `tests/test_ir_load.py`; 12 dynamic import tests in `tests/test_graphgen.py`; 11 new RAGAS + nDCG + hit-rate tests in `tests/test_quality_harness.py`
+
+## [0.46.2](https://github.com/dfrostar/neuralmind/compare/v0.46.0...v0.46.2) (2026-07-17)
+
+
+### Bug Fixes
+
+* **mcp_server.py**: run MCP tool handler via `asyncio.to_thread()` to keep the asyncio event loop free during SQLite lock contention — prevents MCP timeout hangs when two `neuralmind-mcp` processes target the same project ([a8c2063](https://github.com/dfrostar/neuralmind/commit/a8c2063))
+* **synapses.py**: raise SQLite busy timeout from 5s to 30s so transient write contention resolves without failing writes under concurrent access
+
+
+### Tests
+
+* **test_mcp_server.py**: verify SynapseStore busy timeout is 30s — regression guard for #363
+
+## [0.46.0](https://github.com/dfrostar/neuralmind/compare/v0.45.0...v0.46.0) (2026-07-17)
+
+
+### Features
+
+* **synapse:** seed synapses from structural graph edges — `seed_from_structural()` persists weighted code-to-code synapses derived from the structural_edges table on every build, so the learned-association layer starts with real architectural signal instead of waiting weeks for co-activation to accumulate. Seeded edges land in `shared` namespace (60-day half-life), weights are log-scaled by call_count and capped at 0.60. Wired into `core.py build()` after `persist_structural_edges()` with fail-open pattern. ([2049bbb](https://github.com/dfrostar/neuralmind/commit/2049bbb))
+
+
+### Documentation
+
+* audit fixes for v0.46.0 release — archive stale NEXT-RELEASE-PLAN.md (v0.13→v0.16, project at v0.45), bump ROADMAP.md banner to v0.45.0, correct README synapse A/B claim (+12pts → +11.6pts, 71.7%→83.3%), remove unverifiable +6.5pts claim, fix HONEST-ASSESSMENT.md install instructions (graphifyy optional since v0.15) ([4f73a15](https://github.com/dfrostar/neuralmind/commit/4f73a15))
+* fix stale `test_doctor.py` assertions — `test_backend_check_reports_auto_resolution` and `test_backend_check_treats_null_config_as_auto` expected "graph" in detail but v0.29+ resolves auto to turbovec; updated to match `doctor._check_backend` actual output
+
 ## [0.45.0](https://github.com/dfrostar/neuralmind/compare/v0.44.0...v0.45.0) (2026-07-16)
 
 

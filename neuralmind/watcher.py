@@ -58,7 +58,12 @@ def _is_ignored(path: Path, project_root: Path, ignores: Iterable[str]) -> bool:
     except ValueError:
         return True
     parts = set(rel.parts)
-    return any(token in parts for token in ignores)
+    if any(token in parts for token in ignores):
+        return True
+    # Also skip generated type declarations (*.d.ts) — these are build
+    # artifacts, not source the developer controls, and co-activating on
+    # them creates phantom synapse edges.
+    return path.name.endswith(".d.ts")
 
 
 class FileActivityWatcher:

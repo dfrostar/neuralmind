@@ -1765,6 +1765,12 @@ baseline as the token report, priced on **input** tokens only — retrieval
 decides which input tokens ship, so output pricing never enters the math.
 Prices are a 2026-07 snapshot (`MODEL_PRICING_PER_MTOK` in `neuralmind/memory.py`).
 
+Only the *with-NeuralMind* cost is measured from logged tokens; *without-NM*
+(and therefore *saved* / *projected*) is estimated from the fixed baseline, so
+those figures are marked `(est)` in the human output. The JSON `dollar_savings`
+block makes this machine-readable too: `estimated: true`, a `basis` string, and
+`baseline_tokens_per_query`.
+
 Memory logging must be enabled (answer yes when first prompted, or set `NEURALMIND_MEMORY=1`).
 
 ---

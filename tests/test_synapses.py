@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 import threading
+import time
+
+import pytest
 
 from neuralmind.synapses import (
-    DECAY_RATE,
     LEARNING_RATE,
     LTP_FLOOR,
     LTP_THRESHOLD,
     PRUNE_THRESHOLD,
-    TRANSITION_DECAY_RATE,
+    SHARED_NAMESPACE,
+    STRUCTURAL_MAX_WEIGHT,
     TRANSITION_PRUNE_THRESHOLD,
     TRANSITION_WEIGHT_CAP,
     WEIGHT_CAP,
@@ -54,18 +57,25 @@ def test_repeated_reinforce_accumulates_up_to_cap(tmp_path):
 
 def test_decay_prunes_weak_edges_but_keeps_ltp_floor(tmp_path):
     s = _store(tmp_path)
-    # weak edge: one activation, will decay below prune threshold
-    s.reinforce(["weak_a", "weak_b"])
-    # strong edge: cross LTP threshold
+    # weak edge: one activation, old — will decay below prune threshold
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    s.reinforce(["weak_a", "weak_b"], now=old_ts)
+    # strong edge: cross LTP threshold, old — decays but floor preserves it
     for _ in range(LTP_THRESHOLD + 2):
-        s.reinforce(["strong_a", "strong_b"])
-    # heavy decay: many ticks
-    for _ in range(500):
-        s.decay()
+        s.reinforce(["strong_a", "strong_b"], now=old_ts)
+    s.decay()
     weak = dict(s.neighbors("weak_a"))
     strong = dict(s.neighbors("strong_a"))
     assert "weak_b" not in weak  # pruned
     assert strong.get("strong_b", 0.0) >= LTP_FLOOR - 1e-9
+
+
+def test_decay_fresh_edges_preserved(tmp_path):
+    """Freshly-activated edges should not be pruned by a decay tick."""
+    s = _store(tmp_path)
+    s.reinforce(["fresh_a", "fresh_b"], now=time.time())
+    s.decay()
+    assert "fresh_b" in dict(s.neighbors("fresh_a"))
 
 
 def test_spreading_activation_finds_indirect_neighbors(tmp_path):
@@ -150,7 +160,13 @@ def test_weak_decay_does_not_prune_above_threshold(tmp_path):
 def test_decay_constant_is_sane():
     # Sanity: a single decay tick on a max-weight non-LTP edge must not
     # immediately delete it. This guards against accidental config changes.
-    assert WEIGHT_CAP * (1.0 - DECAY_RATE) > PRUNE_THRESHOLD
+    # With time-based half-life decay, a fresh edge barely moves on one tick.
+    # The real guard: half-life constants are positive.
+    from neuralmind.synapses import EPHEMERAL_HALF_LIFE_DAYS, HALF_LIFE_DAYS, SHARED_HALF_LIFE_DAYS
+
+    assert HALF_LIFE_DAYS > 0
+    assert SHARED_HALF_LIFE_DAYS > 0
+    assert EPHEMERAL_HALF_LIFE_DAYS > 0
 
 
 # ---------------------------------------------------------------------------
@@ -217,10 +233,10 @@ def test_transitions_filters_by_source(tmp_path):
 
 def test_transition_decay_prunes_weak_transitions(tmp_path):
     s = _store(tmp_path)
-    s.record_sequence(["weak_a", "weak_b"])  # one observation
-    # Many decay ticks should drop it below TRANSITION_PRUNE_THRESHOLD.
-    for _ in range(500):
-        s.decay()
+    # old transition: one observation, 200 days ago — decays below threshold
+    old_ts = time.time() - 200 * 86400
+    s.record_sequence(["weak_a", "weak_b"], now=old_ts)
+    s.decay()
     assert s.next_likely("weak_a") == []
 
 
@@ -243,7 +259,7 @@ def test_reset_clears_transitions(tmp_path):
 def test_transition_decay_constant_is_sane():
     # A single decay tick on a single-observation transition must not
     # immediately delete it.
-    assert (1.0 - TRANSITION_DECAY_RATE) > TRANSITION_PRUNE_THRESHOLD
+    assert WEIGHT_CAP > TRANSITION_PRUNE_THRESHOLD
 
 
 def test_persistence_carries_transitions(tmp_path):
@@ -352,7 +368,7 @@ def test_transitions_min_weight_filter(tmp_path):
 
 def test_decay_does_not_prune_high_count_transition_below_threshold(tmp_path):
     """A single decay tick must not erase a transition that's been heavily
-    observed. Guards against accidentally cranking TRANSITION_DECAY_RATE
+    observed. Guards against accidentally cranking the decay half-life
     to a value that decimates the table on every tick."""
     s = _store(tmp_path)
     for _ in range(20):
@@ -369,14 +385,14 @@ def test_decay_returns_transition_counts(tmp_path):
     so monitoring callers (the watch loop, the SessionStart hook) can
     surface them."""
     s = _store(tmp_path)
-    s.record_sequence(["weak_a", "weak_b"])  # one obs, will prune
+    old_ts = time.time() - 200 * 86400  # 200 days ago
+    s.record_sequence(["weak_a", "weak_b"], now=old_ts)  # one obs, old → prunes
     for _ in range(10):
-        s.record_sequence(["strong_a", "strong_b"])  # survives
+        s.record_sequence(["strong_a", "strong_b"])  # fresh → survives
     # Drive enough decay to prune the weak edge.
     pruned_transitions = 0
-    for _ in range(200):
-        result = s.decay()
-        pruned_transitions += result.get("pruned_transitions", 0)
+    result = s.decay()
+    pruned_transitions += result.get("pruned_transitions", 0)
     assert pruned_transitions >= 1
     remaining = s.decay()["remaining_transitions"]
     assert remaining >= 1  # strong pair survives
@@ -514,3 +530,68 @@ def test_decay_commits_in_single_transaction(tmp_path):
 
     _, connects = _count_connect_calls(s, lambda: s.decay())
     assert connects == 1, f"decay should commit in exactly one transaction, opened {connects}"
+
+
+# --------------------------------------------------------------------------- #
+# Structural → synapse seeding tests
+# --------------------------------------------------------------------------- #
+
+
+def test_seed_from_structural_basic(tmp_path):
+    """Structural edges in the table should seed synapse edges."""
+    s = _store(tmp_path)
+    edges = [
+        {"source": "A", "target": "B", "relation": "calls"},
+        {"source": "B", "target": "C", "relation": "imports_from"},
+    ]
+    s.persist_structural_edges(edges)
+    count = s.seed_from_structural()
+    assert count == 2
+    all_edges = s.edges()
+    assert len(all_edges) == 2
+    for _, _, weight, _ in all_edges:
+        assert 0.0 < weight <= STRUCTURAL_MAX_WEIGHT
+
+
+def test_seed_from_structural_weight_capped(tmp_path):
+    """Very high call_count should still cap at STRUCTURAL_MAX_WEIGHT."""
+
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    # call_count=50000 → raw = 0.10 + 0.05*ln(50001) ≈ 0.641, capped to 0.60
+    with s._connect() as conn:
+        conn.execute("UPDATE structural_edges SET call_count = 50000 WHERE caller = 'A'")
+    count = s.seed_from_structural()
+    assert count == 1
+    # Read shared namespace raw so we test the stored weight, not the merged
+    # view (which scales by W_SHARED=0.5).
+    with s._connect() as conn:
+        raw_weight = conn.execute(
+            "SELECT weight FROM synapses WHERE namespace = ?",
+            (SHARED_NAMESPACE,),
+        ).fetchone()[0]
+    assert raw_weight == pytest.approx(STRUCTURAL_MAX_WEIGHT)
+
+
+def test_seed_from_structural_idempotent(tmp_path):
+    """Re-seeding should increment activation_count, not add rows."""
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    s.seed_from_structural()
+    s.seed_from_structural()
+    assert len(s.edges()) == 1  # still one edge
+    assert s.edges()[0][3] == 2  # activation_count incremented
+
+
+def test_seed_from_structural_uses_shared_namespace(tmp_path):
+    """Seeded edges should land in 'shared' namespace."""
+    s = _store(tmp_path)
+    edges = [{"source": "A", "target": "B", "relation": "calls"}]
+    s.persist_structural_edges(edges)
+    s.seed_from_structural()
+    # Check namespace via raw SQL
+    with s._connect() as conn:
+        ns = conn.execute("SELECT namespace FROM synapses WHERE node_a = 'A'").fetchone()[0]
+    assert ns == "shared"

@@ -84,6 +84,25 @@ def test_watcher_skips_ignored_paths(tmp_path):
     assert not any(str(junk) == p for p in flat)
 
 
+def test_watcher_skips_dts_files(tmp_path):
+    """*.d.ts files are build artifacts — edits must not co-activate."""
+    assert _is_ignored(tmp_path / "src" / "app.d.ts", tmp_path, DEFAULT_IGNORES) is True
+    # Regular .ts is NOT ignored
+    assert _is_ignored(tmp_path / "src" / "app.ts", tmp_path, DEFAULT_IGNORES) is False
+
+
+def test_watcher_skips_node_modules_nested(tmp_path):
+    """node_modules nested at any depth is ignored."""
+    assert (
+        _is_ignored(
+            tmp_path / "frontend" / "node_modules" / "lodash" / "index.js",
+            tmp_path,
+            DEFAULT_IGNORES,
+        )
+        is True
+    )
+
+
 def test_stop_is_idempotent(tmp_path):
     w = FileActivityWatcher(tmp_path, lambda paths: None, debounce=0.3, poll_interval=0.4)
     w.start()

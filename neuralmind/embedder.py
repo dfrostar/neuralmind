@@ -112,24 +112,37 @@ class GraphEmbedder(EmbeddingBackend):
             )
         return self._collection
 
-    def load_graph(self) -> bool:
-        """
-        Load graph.json from graphify output.
-
-        Returns:
-            True if loaded successfully, False otherwise
-        """
+    def _prefer_ir_over_graph(self) -> bool:
+        """True when the persisted IR is present and not stale vs graph.json."""
+        if not self.ir_path.exists():
+            return False
         if not self.graph_path.exists():
-            print(f"Graph not found: {self.graph_path}")
+            return True
+        try:
+            return self.ir_path.stat().st_mtime >= self.graph_path.stat().st_mtime
+        except OSError:
             return False
 
-        with open(self.graph_path) as f:
-            self.graph = json.load(f)
+    def load_graph(self) -> bool:
+        from . import ir as ir_mod
 
+        if self._prefer_ir_over_graph():
+            try:
+                ir_data = json.loads(self.ir_path.read_text(encoding="utf-8"))
+                index_ir = ir_mod.IndexIR.from_dict(ir_data)
+                self.graph = ir_mod.to_graph_json(index_ir)
+            except (json.JSONDecodeError, ir_mod.IRError, KeyError, ValueError):
+                if not self.graph_path.exists():
+                    return False
+                with self.graph_path.open(encoding="utf-8") as f:
+                    self.graph = json.load(f)
+        else:
+            if not self.graph_path.exists():
+                return False
+            with self.graph_path.open(encoding="utf-8") as f:
+                self.graph = json.load(f)
         self.nodes = self.graph.get("nodes", [])
         self.edges = self.graph.get("edges", self.graph.get("links", []))
-
-        print(f"Loaded graph: {len(self.nodes)} nodes, {len(self.edges)} edges")
         return True
 
     def _node_to_text(self, node: dict) -> str:

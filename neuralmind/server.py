@@ -35,6 +35,7 @@ from .event_log import (
     default_log_path,
     event_log_enabled,
 )
+from .metrics_pipeline import MetricsCollector
 
 WEB_DIR = Path(__file__).parent / "web"
 
@@ -333,6 +334,15 @@ class _Handler(BaseHTTPRequestHandler):
             )
         elif route == "/api/events":
             self._stream_events(new_cookie)
+        elif route == "/api/metrics":
+            days = parse_qs(parsed.query).get("days", ["7"])[0]
+            try:
+                days = max(1, min(int(days), 365))
+            except ValueError:
+                days = 7
+            collector = MetricsCollector(type(self).mind.project_path)
+            summary = collector.summarize(days=days, event_type="query")
+            self._send_json({"days": days, **summary}, set_cookie=new_cookie)
         elif route == "/api/queries":
             raw_n = (parse_qs(parsed.query).get("n") or ["20"])[0]
             try:
@@ -484,6 +494,9 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     Without this the build call surfaces a terse "Could not load graph
     from ..." message that doesn't tell first-time users what to do.
     """
+    # Accept either the IR or a legacy graph.json as evidence of a build
+    if (project_path / ".neuralmind" / "index_ir.json").exists():
+        return
     graph_path = project_path / "graphify-out" / "graph.json"
     if graph_path.exists():
         return

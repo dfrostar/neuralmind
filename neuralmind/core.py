@@ -389,7 +389,7 @@ class NeuralMind:
             )
             return {
                 "success": False,
-                "error": f"Could not load graph from {self.embedder.graph_path}",
+                "error": f"No index found (tried {self.embedder.ir_path} and {self.embedder.graph_path})",
                 "duration_seconds": 0,
             }
 
@@ -402,6 +402,11 @@ class NeuralMind:
         # build-path parallel of the SessionStart hook, so Cursor/Cline/generic
         # MCP agents (which don't run Claude Code hooks) inherit it too.
         self._maybe_inherit_team_memory()
+
+        # Wave 3 C3 integration: run the population tuner if its schedule gate
+        # fires (weekly by default). Runs after team memory so the incumbent
+        # config is current. Gated on NEURALMIND_TUNER_ENABLED=1.
+        self._maybe_run_tuner()
 
         # Convert the loaded graph into the canonical, versioned IR before
         # indexing (PRD 1 FR1). Validated and written to .neuralmind/; the
@@ -457,6 +462,34 @@ class NeuralMind:
         else:
             self._structural_index = None
 
+        # Persist structural edges to the synapse store so they survive
+        # rebuilds (the in-memory StructuralIndex is lost on process exit).
+        # Fail-open: persistence is non-critical observability.
+        # Access `self.synapses` (property) to lazy-init the store — `self._synapses`
+        # is None until first accessed.
+        _structural_edge_count = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    edges = getattr(self.embedder, "edges", None) or []
+                    _structural_edge_count = store.persist_structural_edges(edges)
+            except Exception:
+                pass
+
+        # Seed synapse weights from the structural graph so the learned
+        # association layer starts with real architectural signal instead of
+        # waiting weeks for co-activation to accumulate. Fail-open: seeding
+        # is non-critical — a failure here must not break the build.
+        _structural_synapse_count = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    _structural_synapse_count = store.seed_from_structural()
+            except Exception:
+                pass
+
         # Get final stats
         final_stats = self.embedder.get_stats()
 
@@ -475,6 +508,10 @@ class NeuralMind:
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
         }
+        if _structural_edge_count:
+            self._build_stats["structural_edges"] = _structural_edge_count
+        if _structural_synapse_count:
+            self._build_stats["structural_synapses"] = _structural_synapse_count
         if ir_summary is not None:
             self._build_stats["ir"] = ir_summary
 
@@ -529,6 +566,9 @@ class NeuralMind:
             issues = ir_mod.validate_ir(index_ir)
             summary = index_ir.summary()
             summary["validation"] = ir_mod.validation_summary(issues)
+            from neuralmind import __version__ as _nm_version  # lazy: avoids circular import
+
+            summary["neuralmind_version"] = _nm_version
 
             self.ir_path.parent.mkdir(parents=True, exist_ok=True)
             index_ir.write(self.ir_path)
@@ -573,6 +613,31 @@ class NeuralMind:
                         f"[neuralmind] inherited team memory → +{summary['synapses']} shared "
                         f"synapses, +{summary['transitions']} transitions "
                         "(set NEURALMIND_TEAM_MEMORY=0 to disable)"
+                    )
+        except Exception:
+            pass
+
+    def _maybe_run_tuner(self) -> None:
+        """Run the population tuner if its schedule gate fires.
+
+        Gated on ``NEURALMIND_TUNER_ENABLED=1``. Runs in the build hook so
+        it gets exercised on ``neuralmind build`` and ``neuralmind watch``
+        wake events. Fail-open: any tuner failure is logged and swallowed.
+        """
+        import os
+
+        if os.environ.get("NEURALMIND_TUNER_ENABLED") != "1":
+            return
+        try:
+            from .tuner import PopulationTuner
+
+            tuner = PopulationTuner(project_path=self.project_path)
+            if tuner.should_run():
+                result = tuner.run_generation()
+                if result is not None and result.promoted:
+                    print(
+                        f"[neuralmind] tuner promoted new config "
+                        f"(fitness {result.best_fitness:.4f})"
                     )
         except Exception:
             pass
@@ -681,8 +746,7 @@ class NeuralMind:
         out_dir.mkdir(parents=True, exist_ok=True)
         graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
         print(
-            "[neuralmind] generated code graph via the built-in tree-sitter "
-            f"backend → {graph_path}"
+            f"[neuralmind] generated code graph via the built-in tree-sitter backend → {graph_path}"
         )
 
     def update_files(self, paths) -> dict:
@@ -785,15 +849,16 @@ class NeuralMind:
         if not self._built or self.selector is None:
             result = self.build()
             if self.selector is None:
+                ir_path = self.project_path / ".neuralmind" / "index_ir.json"
                 graph_path = self.project_path / "graphify-out" / "graph.json"
-                if not graph_path.exists():
+                if not ir_path.exists() and not graph_path.exists():
                     raise GraphNotBuiltError(
-                        f"No code graph found at {graph_path}.\n"
+                        f"No code graph found at {ir_path} or {graph_path}.\n"
                         f"NeuralMind builds one automatically with its bundled "
                         f"tree-sitter backend — install the parser if it's missing:\n"
                         f"  pip install tree-sitter tree-sitter-python\n"
                         f"  neuralmind build {self.project_path}\n"
-                        f"(Or generate it with graphify: `graphify update {self.project_path}`.)"
+                        f"(Or generate it with graphify: `graphify update {self.project_path}.`)"
                     )
                 raise GraphNotBuiltError(
                     result.get("error", "Failed to build the NeuralMind index.")

@@ -240,7 +240,7 @@ for j in range(1, 6):
     if j == 1:
         set_formula(proj.cell(row=8, column=col), "0")
     else:
-        set_formula(proj.cell(row=8, column=col), f"=Inputs!B{18+j}", green=True)
+        set_formula(proj.cell(row=8, column=col), f"=Inputs!B{18 + j}", green=True)
 
 proj["A9"] = "Enterprise Deals"
 for j in range(1, 6):

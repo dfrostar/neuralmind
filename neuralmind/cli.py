@@ -11,9 +11,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from neuralmind import memory
+from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
+from neuralmind.metrics_pipeline import MetricsCollector
 
 
 def _force_utf8_io() -> None:
@@ -111,6 +112,31 @@ def _dry_run_scan(project_path: str) -> dict:
     }
 
 
+def _check_version_mismatch(project_path: str) -> str | None:
+    """Return a warning string if the project's ir_meta.json was built with
+    a different NeuralMind version than the running one, else None.
+
+    A missing file or a file without a version stamp (pre-v0.46.0 builds)
+    yields None — we only warn when there is a concrete mismatch, so users
+    who upgrade don't get false alarms on actively-built projects.
+    """
+    ir_meta_path = Path(project_path) / ".neuralmind" / "ir_meta.json"
+    if not ir_meta_path.exists():
+        return None
+    try:
+        meta = json.loads(ir_meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    stored = meta.get("neuralmind_version")
+    if stored and stored != __version__:
+        return (
+            f"This project was indexed with NeuralMind v{stored}.\n"
+            f"v{__version__} requires a one-time reindex.\n"
+            f"Run: neuralmind build --force"
+        )
+    return None
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
 
@@ -132,12 +158,14 @@ def cmd_build(args):
             )
             print(f"  Languages     : {langs}")
         print()
+
         print(f"  Estimated nodes       : {scan['est_nodes']:,}")
         print(f"  Est. full-codebase    : ~{scan['est_full_tokens']:,} tokens")
         print(f"  Est. wake-up context  : ~{scan['est_wakeup_tokens']:,} tokens")
         print(f"  Est. query context    : ~{scan['est_query_tokens']:,} tokens")
         print(f"  Est. token reduction  : ~{scan['est_reduction_ratio']}x per query")
         print()
+
         print("No index was built. Run `neuralmind build .` to activate these savings.")
         return
 
@@ -153,6 +181,14 @@ def cmd_build(args):
     if not path.is_dir():
         print(f"Build failed: project path is not a directory: {project_path}")
         sys.exit(1)
+
+    # Migration check: surface mismatched version before slow reindex
+    _migrate_warning = _check_version_mismatch(project_path)
+    if _migrate_warning:
+        print(
+            f"\n⚠  {_migrate_warning}\n",
+            file=sys.stderr,
+        )
 
     mind = NeuralMind(project_path)
     result = mind.build(force=force)
@@ -262,6 +298,15 @@ def _print_explain(result) -> None:
 
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+
+    # Migration check: warn on version mismatch before slow reindex
+    _migrate_warning = _check_version_mismatch(args.project_path or ".")
+    if _migrate_warning:
+        print(
+            f"\n⚠  {_migrate_warning}\n",
+            file=sys.stderr,
+        )
+
     trace = getattr(args, "trace", False) is True
     trace_verbose = getattr(args, "trace_verbose", False) is True
     relevance = getattr(args, "relevance", False) is True
@@ -457,6 +502,19 @@ def cmd_savings(args):
             query_tokens_saved=query_tokens_baseline - query_tokens_used,
             query_count=len(queries),
         )
+        # Make the estimate basis machine-readable (kept in the CLI so memory's
+        # public API stays untouched): only the with-NM cost is measured from
+        # logged tokens; without-NM — and therefore saved/projected — is
+        # estimated from the fixed per-query baseline.
+        dollar_info = {
+            **dollar_info,
+            "baseline_tokens_per_query": est_full,
+            "estimated": True,
+            "basis": (
+                "with-NM cost is measured from logged tokens; without-NM (and "
+                "saved/projected) is estimated from the fixed per-query baseline"
+            ),
+        }
 
     if args.json:
         out = {
@@ -490,14 +548,15 @@ def cmd_savings(args):
             f"  Dollar savings — {dollar_info['model']} "
             f"@ ${dollar_info['price_per_mtok']}/MTok input"
         )
-        print(f"    Cost without NM : ${dollar_info['baseline_cost_total']:>10,.2f}")
-        print(f"    Cost with NM    : ${dollar_info['actual_cost_total']:>10,.2f}")
-        print(f"    Saved           : ${dollar_info['saved_total']:>10,.2f}")
+        print(f"    Cost without NM (est): ${dollar_info['baseline_cost_total']:>10,.2f}")
+        print(f"    Cost with NM         : ${dollar_info['actual_cost_total']:>10,.2f}")
+        print(f"    Saved (est)          : ${dollar_info['saved_total']:>10,.2f}")
         print(
-            f"    Projected       : ${dollar_info['daily_saved']:,.2f}/day · "
+            f"    Projected (est)      : ${dollar_info['daily_saved']:,.2f}/day · "
             f"${dollar_info['monthly_saved']:,.2f}/month  "
             f"(at {dollar_info['queries_per_day']} queries/day)"
         )
+        print(f"    (without-NM estimated from {est_full:,} tok/query baseline)")
     if queries:
         print()
         print("  Most recent queries:")
@@ -778,7 +837,7 @@ def cmd_probe(args):
             f"Symbols the index couldn't retrieve from their own description ({data['blind_spot_total']} total):"
         )
         for spot in shown:
-            print(f"  - {spot['label']}  ({spot['source_file']})   query: \"{spot['query']}\"")
+            print(f'  - {spot["label"]}  ({spot["source_file"]})   query: "{spot["query"]}"')
         if data["blind_spot_total"] > len(shown):
             print(f"  … and {data['blind_spot_total'] - len(shown)} more (see --json)")
 
@@ -1073,6 +1132,52 @@ def cmd_stats(args):
                     f"  {ns}: {entry['edges']} edges (weight {entry['weight']:.2f}), "
                     f"{entry['transitions']} transitions"
                 )
+
+
+def cmd_metrics(args):
+    """Show aggregated metrics summary from .neuralmind/metrics/ JSONL files.
+
+    Wraps MetricsCollector.summarize() with CLI-friendly ASCII table output
+    and optional JSON export.
+    """
+    project_path = Path(getattr(args, "project_path", ".")).resolve()
+    days = getattr(args, "days", 7)
+    collector = MetricsCollector(project_path)
+    summary = collector.summarize(days=days, event_type="query")
+
+    if getattr(args, "json", False):
+        print(json.dumps(summary, indent=2))
+        return
+
+    if not summary or summary.get("n_events", 0) == 0:
+        print(f"No metrics data for {project_path.name} (last {days} days)")
+        print(f"Metrics dir: {collector.project_path}/.neuralmind/metrics/")
+        print("Run some queries to populate metrics.")
+        return
+
+    print(f"NeuralMind metrics — {project_path.name} (last {days} days)")
+    print()
+
+    queries = summary.get("queries", {})
+    builds = summary.get("builds", {})
+    print(f"{'Metric':<30} {'Value':>12}")
+    print("-" * 43)
+
+    if queries:
+        print(f"{'Queries':.<30} {queries.get('n_queries', 0):>12,}")
+        print(f"{'Mean latency (ms)':.<30} {queries.get('mean_latency_ms', 0):>12,.2f}")
+        print(f"{'Mean tokens/query':.<30} {queries.get('mean_tokens_used', 0):>12,.0f}")
+        print(f"{'Mean retrieval reuse':.<30} {queries.get('mean_retrieval_reuse_rate', 0):>12.4f}")
+        print(f"{'Mean synapses fired':.<30} {queries.get('mean_synapses_activated', 0):>12.1f}")
+        calls = queries.get("sum_tool_calls", 0)
+        successes = queries.get("sum_tool_successes", 0)
+        success_pct = (successes / calls * 100) if calls > 0 else 0.0
+        print(f"{'Tool success rate':.<30} {success_pct:>11.1f}%")
+        print(f"{'Total tool calls':.<30} {calls:>12,}")
+
+    if builds:
+        print(f"{'Builds':.<30} {builds.get('n_builds', 0):>12,}")
+        print(f"{'Mean build time (s)':.<30} {builds.get('mean_duration_s', 0):>12,.2f}")
 
 
 def cmd_validate(args):
@@ -2232,6 +2337,9 @@ def main():
             "Quick start: `neuralmind wakeup .` · docs: https://github.com/dfrostar/neuralmind"
         ),
     )
+    from . import __version__
+
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
@@ -2455,6 +2563,21 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    metrics_p = subparsers.add_parser(
+        "metrics",
+        help="Show aggregated metrics summary from .neuralmind/metrics/ JSONL files",
+    )
+    metrics_p.add_argument("project_path", nargs="?", default=".")
+    metrics_p.add_argument(
+        "--days",
+        "-d",
+        type=int,
+        default=7,
+        help="Window in days for metrics aggregation (default: 7)",
+    )
+    metrics_p.add_argument("--json", "-j", action="store_true")
+    metrics_p.set_defaults(func=cmd_metrics)
 
     validate_p = subparsers.add_parser(
         "validate",

@@ -21,6 +21,7 @@ Usage:
     uvx neuralmind-mcp
 """
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -828,7 +829,7 @@ async def run_mcp_server():
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict):
-        result = handle_tool_call(name, arguments)
+        result = await asyncio.to_thread(handle_tool_call, name, arguments)
         return [TextContent(type="text", text=result)]
 
     async with stdio_server() as (read_stream, write_stream):
@@ -836,10 +837,42 @@ async def run_mcp_server():
 
 
 def main():
-    """Main entry point."""
+    """Main entry point.
+
+    Transport selection (F1): if NEURALMIND_MCP_TRANSPORT=streamable_http
+    and deps are available, the Starlette app is served via uvicorn.
+    Otherwise falls back to stdio (byte-compatible).
+    """
     import asyncio
 
+    transport_raw = __import__("os").environ.get("NEURALMIND_MCP_TRANSPORT", "")
+    if transport_raw == "streamable_http":
+        from .mcp_http import select_transport
+
+        shared_memory = _get_shared_memory()
+        transport = select_transport(shared_memory)
+        if transport is not None:
+            app = transport.get_starlette_app()
+            if app is not None:
+                import uvicorn
+
+                uvicorn.run(app, host="127.0.0.1", port=8765)
+                return
     asyncio.run(run_mcp_server())
+
+
+# F2: Shared daemon memory registry (process-level).
+_shared_memory: Any = None
+
+
+def _get_shared_memory() -> Any:
+    """Get or create the shared daemon memory for this process."""
+    global _shared_memory
+    if _shared_memory is None:
+        from .daemon_memory import SharedDaemonMemory
+
+        _shared_memory = SharedDaemonMemory()
+    return _shared_memory
 
 
 if __name__ == "__main__":

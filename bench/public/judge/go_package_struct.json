@@ -1,0 +1,9 @@
+{
+  "query": "How is the Go project structured?",
+  "reference_answer": "The project follows standard Go layout with cmd/ for main packages and internal/ for library code. The root go.mod declares the module path.",
+  "source_files": [
+    "sample_project_go/cmd/main.go",
+    "sample_project_go/internal/service.go"
+  ],
+  "category": "architecture"
+}

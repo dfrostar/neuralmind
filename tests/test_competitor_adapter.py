@@ -103,7 +103,12 @@ class CompetitorAdapterTests(unittest.TestCase):
         competitor._cli = lambda *a, **k: inner  # noqa: ARG005
         try:
             r = competitor.run_competitor(
-                "basic-auth", "how is basic auth applied", ["auth.py"], "proj", repo, cache_dir=None  # type: ignore[arg-type]
+                "basic-auth",
+                "how is basic auth applied",
+                ["auth.py"],
+                "proj",
+                repo,
+                cache_dir=None,  # type: ignore[arg-type]
             )
         finally:
             competitor._cli = orig

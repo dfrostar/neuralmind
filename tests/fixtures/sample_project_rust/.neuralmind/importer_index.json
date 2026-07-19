@@ -1,0 +1,21 @@
+{
+  "src/auth/handlers.rs": [
+    "src/api/routes.rs"
+  ],
+  "src/auth/jwt_utils.rs": [
+    "src/auth/handlers.rs"
+  ],
+  "src/billing/stripe_client.rs": [
+    "src/api/routes.rs",
+    "src/billing/invoices.rs"
+  ],
+  "src/db/connection.rs": [
+    "src/api/routes.rs",
+    "src/auth/handlers.rs",
+    "src/users/crud.rs"
+  ],
+  "src/users/crud.rs": [
+    "src/auth/handlers.rs",
+    "src/billing/invoices.rs"
+  ]
+}
