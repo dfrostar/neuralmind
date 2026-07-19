@@ -331,10 +331,13 @@ def test_ephemeral_decays_much_faster_than_personal(tmp_path):
 
 def test_shared_namespace_is_stickier_than_personal(tmp_path):
     store = _store(tmp_path)
-    store.reinforce(["a", "b"], namespace=SHARED_NAMESPACE)
-    store.reinforce(["a", "b"], namespace=DEFAULT_NAMESPACE)
-    for _ in range(20):
-        store.decay()
+    t0 = time.time()
+    store.reinforce(["a", "b"], namespace=SHARED_NAMESPACE, now=t0)
+    store.reinforce(["a", "b"], namespace=DEFAULT_NAMESPACE, now=t0)
+    # Advance 20 days with an explicit timestamp so the difference is
+    # deterministic: shared half-life=60d → weight ≈ 0.119;
+    # personal half-life=30d → weight ≈ 0.094. Both above PRUNE_THRESHOLD.
+    store.decay(now=t0 + 20 * 86400.0)
     shared_w = dict(store.neighbors("a", namespaces=[SHARED_NAMESPACE]))["b"]
     personal_w = dict(store.neighbors("a", namespaces=[DEFAULT_NAMESPACE]))["b"]
     assert shared_w > personal_w > 0.0
