@@ -10,34 +10,45 @@ see [`docs/FUTURE-PROOFING-PLAN.md`](docs/FUTURE-PROOFING-PLAN.md). The
 nine-initiative durability arc, enterprise competition plan, and feature map
 of the next arc live there too.
 
-## Now — v0.48.0 (v2.0 complete)
+## Now — v0.54.0 (Wave 9 autopilot: license enforcement)
 
-Latest release **v0.48.0** is live on PyPI and GHCR — marks the
-completion of the v2.0 future-proofing plan (4 waves, 26 workstreams, 7 buckets).
-See [CHANGELOG.md](CHANGELOG.md) and [docs/FUTURE-PROOFING-PLAN.md](docs/FUTURE-PROOFING-PLAN.md).
+Latest release **v0.54.0** is live on PyPI and GHCR. Autopilot v0.5.0 private. NeuralMind now has a fully enforceable licensing system managed from the autopilot repo.
 
-**Remaining work is growth and execution, not core engineering:**
+**What's shipped (v0.52.0–v0.54.0):**
 
-- **Outreach — disclosed-maker only.** Copy is ready for Show HN, r/LocalLLaMA,
-  Hacker News. Standing rule: disclosed-maker only — no unaffiliated-user posts.
-- **GitHub-UI polish.** Repo About / Topics updated for v2.0 comparison terms
-  (codebase-memory, agent-memory, local-first, MCP). Release body for v0.48.0.
-- **Real-repo benchmark harvest.** Community submissions to bench/public/ —
-  two maintainer entries now; outside contributors' numbers are the single most
-  valuable input.
+- **Impact tool** (v0.52.0) — `neuralmind impact <symbol> --depth N` CLI + `neuralmind_impact` MCP tool. Reverse-dependency blast-radius lookup.
+- **Tier 2 Team tier** (v0.53.0) — $29/user/mo, governance, audit, seats, self-hosted deployment, Ed25519 license validation.
+- **Security hardening** (v0.54.0) — Real Ed25519 keypair, Privacy Policy, Stripe webhook signature verification.
+- **Autopilot Wave 9** (v0.5.0, private) — License lifecycle management: issuance, revocation, Stripe webhook integration, cron sweep for expiration, grace period notifications.
 
-## Next — forward candidates
+**Architecture — License enforcement:**
+```
+NeuralMind (product, public)          Autopilot (operator, private)
+┌────────────────────────┐            ┌──────────────────────────────────┐
+│ tier2/license.py       │  reads     │ licensing_manager.py             │
+│  - validate()          │◄───────────│  - issue_license()               │
+│  - status_dict()       │            │  - revoke_license()              │
+│  - issue_free()        │            │  - sweep_expired()               │
+│  - _is_expired()       │            │  - notify_expiring()             │
+│  - _verify_signature() │            │                                  │
+│                        │            │ stripe_webhooks.py               │
+│                        │            │  - Stripe signature verification │
+│                        │            │  - Event-driven revocation       │
+└────────────────────────┘            └──────────────────────────────────┘
+```
 
-Post-launch engineering candidates that are *not* yet shipped:
+See `docs/WAVE9-DECISIONS.md`, `docs/WAVE9-BRD.md`, `docs/WAVE9-TRD.md` in the autopilot repo.
 
-- **`neuralmind impact` blast-radius tool.** Reverse-edge traversal —
-  "what depends on this?" The forward graph is built at index time;
-  materialise the reverse index during `build` and expose it as an MCP
-  tool + CLI command. The one structural capability gap vs.
-  dependency-graph peers.
-- **Broader `install-mcp` targets.** Add Windsurf, Continue.dev, and
-  Zed — same MCP JSON config, only the destination path differs. Takes
-  supported agents from 4 → 7 with no logic changes.
+### Remaining before v1.0:
+- **Operator CLI** — Manual license operations (`autopilot license issue/revoke/status`)
+- **Key rotation** — Multi-version keyring for license signing
+- **Clock-skew detection** — Persistent `last_validation` timestamp to prevent rollback attacks
+- **Webhook idempotency** — Deduplicate retried Stripe events
+
+### Forward candidates (not yet started):
+- **Broker pattern** — Pluggable payment provider (Stripe primary, LemonSqueezy fallback — schema already provider-agnostic)
+- **Grace period per-license** — Currently global; per-customer configurability in schema
+- **Self-service portal** — Customer-facing license management (deferred: CLI-first)
 - **Cross-agent portable memory format.** Promote the directional
   "what you edit next" recall into a portable memory format that
   survives across agent runtimes.
