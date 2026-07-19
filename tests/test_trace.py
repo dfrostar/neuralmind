@@ -77,9 +77,7 @@ def test_record_synapse_boost_and_hits():
 def test_record_hit_synapse_boost():
     tr = RetrievalTrace(query="q")
     tr.record_hit_synapse_boost(["seed_a"], "node_low", energy=1.0, weighted=0.3)
-    tr.record_hit_synapse_boost(
-        ["seed_a"], "node_new", energy=0.5, weighted=0.15, recalled=True
-    )
+    tr.record_hit_synapse_boost(["seed_a"], "node_new", energy=0.5, weighted=0.15, recalled=True)
     d = tr.to_dict()
     events = [e for e in d["events"] if e["kind"] == "hit_synapse_boost"]
     assert len(events) == 2
