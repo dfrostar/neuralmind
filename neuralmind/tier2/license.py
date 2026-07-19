@@ -13,6 +13,25 @@ License JSON format:
   "issued_to": "self" | "acme-corp",
   "signature": "ed25519 hex sig (team) or 'self-signed' (free)"
 }
+
+Example:
+    >>> from pathlib import Path
+    >>> import tempfile
+    >>> from neuralmind.tier2.license import issue_free_license, load_license
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     p = Path(td) / "license.json"
+    ...     _ = issue_free_license(p)
+    ...     load_license(p)
+    'VALID'
+
+See Also:
+    - ``neuralmind.tier2.config`` — configures the license_file path
+    - ``neuralmind.tier2.governance`` — governance gating on license status
+    - ``tests/test_license.py`` — test cases and usage patterns
+    - ``docs/wiki/Architecture.md#license`` — high-level design
+
+Version:
+    0.55.0
 """
 
 from __future__ import annotations
@@ -24,18 +43,28 @@ import platform
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 # Ed25519 public key (32 bytes hex) — embedded issuer public key.
 # Generated 2026-07-19. Fingerprint: d23aeb5ae460fede
 _ISSUER_PUBLIC_KEY_HEX = "62a59c47bdef4c3b9dfeea6a74c90d42f966157f6d0969310ea7deb3bfcd365b"
 
-LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK"]
+LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK", "TAMPERED"]
 
 
 @dataclass
 class LicenseInfo:
-    """Immutable license data container."""
+    """Immutable license data container.
+
+    Args:
+        tier: License tier (``"free"`` or ``"team"``).
+        seats: Number of licensed seats.
+        issued_at: ISO timestamp of issuance.
+        expires_at: ISO timestamp of expiration, or ``"never"``.
+        issued_to: Recipient identifier.
+        signature: Ed25519 hex signature or ``"self-signed"``.
+        raw: The raw dictionary from which this info was parsed.
+    """
 
     tier: str
     seats: int
@@ -46,6 +75,11 @@ class LicenseInfo:
     raw: dict
 
     def to_dict(self) -> dict:
+        """Convert to a plain dict for serialization.
+
+        Returns:
+            Dictionary with tier, seats, issued_at, expires_at, issued_to, signature.
+        """
         return {
             "tier": self.tier,
             "seats": self.seats,
@@ -61,15 +95,33 @@ class LicenseValidator:
 
     Free tier: self-signed, no expiry, 1 seat
     Team tier: Ed25519-signed, has expiry, N seats
+
+    Args:
+        public_key_hex: Hex-encoded Ed25519 public key for signature verification.
+        license_path: Path to the license JSON file.
+        anti_tamper: Optional AntiTamper instance for clock-skew detection.
+            When provided, each validate() checks for timestamp regression
+            and records the validation event. When None, validation is
+            identical to pre-Wave 10B behavior.
     """
 
-    def __init__(self, public_key_hex: str, license_path: Path):
+    def __init__(
+        self,
+        public_key_hex: str,
+        license_path: Path,
+        anti_tamper: Any = None,
+    ):
         self.public_key_hex = public_key_hex
         self.license_path = Path(license_path)
         self._cached: LicenseInfo | None = None
+        self.anti_tamper = anti_tamper
 
     def _load_raw(self) -> LicenseInfo | None:
-        """Parse license.json. Returns None if missing or corrupt."""
+        """Parse license.json.
+
+        Returns:
+            A ``LicenseInfo`` instance, or None if the file is missing or corrupt.
+        """
         if not self.license_path.exists():
             return None
         try:
@@ -88,7 +140,14 @@ class LicenseValidator:
         )
 
     def _verify_signature(self, lic: LicenseInfo) -> bool:
-        """Verify Ed25519 signature (team tier). Returns False on any error."""
+        """Verify Ed25519 signature (team tier).
+
+        Args:
+            lic: The ``LicenseInfo`` to verify.
+
+        Returns:
+            True if the signature is valid, False on any error.
+        """
         try:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
@@ -103,7 +162,16 @@ class LicenseValidator:
             return False
 
     def _is_expired(self, lic: LicenseInfo) -> bool:
-        """True if expires_at has passed. Free tier with expires_at='never' is never expired."""
+        """True if expires_at has passed.
+
+        Free tier with ``expires_at="never"`` is never expired.
+
+        Args:
+            lic: The ``LicenseInfo`` to check.
+
+        Returns:
+            True if the license has expired, False otherwise.
+        """
         if lic.expires_at == "never":
             return False
         try:
@@ -117,35 +185,91 @@ class LicenseValidator:
 
         Free tier: valid if self-signed, 1 seat, not expired (usually never)
         Team tier: valid if Ed25519 signature verified, N seats, not expired
+
+        When an ``AntiTamper`` instance is injected via ``anti_tamper``,
+        this method also checks for timestamp regression (clock-skew attack)
+        and records the validation event for future regression checks.
+
+        Returns:
+            One of ``"VALID"``, ``"EXPIRED"``, ``"INVALID"``, ``"OFFLINE_OK"``,
+            or ``"TAMPERED"`` (only when ``anti_tamper`` is set and regression
+            is detected).
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.license import LicenseValidator, issue_free_license
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     p = Path(td) / "license.json"
+            ...     _ = issue_free_license(p)
+            ...     v = LicenseValidator("0" * 64, p)
+            ...     v.validate()
+            'VALID'
         """
         lic = self._load_raw()
         if lic is None:
             return "INVALID"  # No license = invalid (caller should issue free)
 
+        # Wave 10B: Anti-tamper check (clock-skew detection)
+        validated_at = datetime.now(timezone.utc).isoformat()
+        if self.anti_tamper is not None:
+            if self.anti_tamper.check_regression(
+                license_id=lic.raw.get("license_id", "unknown"),
+                validated_at=validated_at,
+                expires_at_claimed=lic.expires_at,
+            ):
+                return "TAMPERED"
+
+        status = "INVALID"
         if lic.tier == "free":
             if lic.seats != 1:
-                return "INVALID"
-            if lic.signature != "self-signed":
-                return "INVALID"
-            if self._is_expired(lic):
-                return "EXPIRED"
-            self._cached = lic
-            return "VALID"
-
-        if lic.tier == "team":
+                pass
+            elif lic.signature != "self-signed":
+                pass
+            elif self._is_expired(lic):
+                status = "EXPIRED"
+            else:
+                self._cached = lic
+                status = "VALID"
+        elif lic.tier == "team":
             if lic.seats <= 0:
-                return "INVALID"
-            if not self._verify_signature(lic):
-                return "INVALID"
-            if self._is_expired(lic):
-                return "EXPIRED"
-            self._cached = lic
-            return "VALID"
+                pass
+            elif not self._verify_signature(lic):
+                pass
+            elif self._is_expired(lic):
+                status = "EXPIRED"
+            else:
+                self._cached = lic
+                status = "VALID"
 
-        return "INVALID"
+        # Wave 10B: Record validation event (only on successful validation)
+        if status == "VALID" and self.anti_tamper is not None:
+            self.anti_tamper.record_validation(
+                license_id=lic.raw.get("license_id", "unknown"),
+                validated_at=validated_at,
+                expires_at_claimed=lic.expires_at,
+            )
+
+        return status
 
     def status_dict(self) -> dict:
-        """Return a detailed status dict for display."""
+        """Return a detailed status dict for display.
+
+        Returns:
+            A dict with keys: status, tier, seats, expires_at, issued_to.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.license import LicenseValidator, issue_free_license
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     p = Path(td) / "license.json"
+            ...     _ = issue_free_license(p)
+            ...     v = LicenseValidator("0" * 64, p)
+            ...     d = v.status_dict()
+            ...     d["status"]
+            'VALID'
+        """
         status = self.validate()
         lic = self._cached or self._load_raw()
         if lic is None:
@@ -166,12 +290,47 @@ class LicenseValidator:
 
 
 def load_license(path: Path, public_key_hex: str = _ISSUER_PUBLIC_KEY_HEX) -> LicenseStatus:
-    """Shorthand: load + validate a license file."""
+    """Shorthand: load + validate a license file.
+
+    Args:
+        path: Path to the license JSON file.
+        public_key_hex: Hex-encoded Ed25519 public key (defaults to issuer key).
+
+    Returns:
+        One of ``"VALID"``, ``"EXPIRED"``, ``"INVALID"``, or ``"OFFLINE_OK"``.
+
+    Example:
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> from neuralmind.tier2.license import issue_free_license, load_license
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     p = Path(td) / "license.json"
+        ...     _ = issue_free_license(p)
+        ...     load_license(p)
+        'VALID'
+    """
     return LicenseValidator(public_key_hex, path).validate()
 
 
 def issue_free_license(path: Path) -> LicenseInfo:
-    """Issue a free tier license. Overwrites any existing file."""
+    """Issue a free tier license. Overwrites any existing file.
+
+    Args:
+        path: Path to write the license JSON file.
+
+    Returns:
+        The newly created ``LicenseInfo`` instance.
+
+    Example:
+        >>> from pathlib import Path
+        >>> import tempfile
+        >>> from neuralmind.tier2.license import issue_free_license
+        >>> with tempfile.TemporaryDirectory() as td:
+        ...     p = Path(td) / "license.json"
+        ...     lic = issue_free_license(p)
+        ...     lic.tier
+        'free'
+    """
     now = datetime.now(timezone.utc).isoformat()
     lic = LicenseInfo(
         tier="free",
@@ -191,7 +350,17 @@ def issue_free_license(path: Path) -> LicenseInfo:
 
 
 def generate_device_fingerprint() -> str:
-    """Generate a stable(ish) device identifier from OS-provided machine-id."""
+    """Generate a stable(ish) device identifier from OS-provided machine-id.
+
+    Returns:
+        A 32-character hex string uniquely identifying this device.
+
+    Example:
+        >>> from neuralmind.tier2.license import generate_device_fingerprint
+        >>> fp = generate_device_fingerprint()
+        >>> len(fp)
+        32
+    """
     # Try /etc/machine-id (Linux systemd)
     machine_id_path = Path("/etc/machine-id")
     if machine_id_path.exists():
