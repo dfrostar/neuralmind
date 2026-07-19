@@ -7,6 +7,10 @@ import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+pytest.importorskip("chromadb", reason="v049 patch tests need neuralmind.embedder")
+
 from neuralmind import graphgen
 from neuralmind.fitness import FitnessInputs, _clamp, compute_fitness
 from neuralmind.incremental_extract import IncrementalExtractor
