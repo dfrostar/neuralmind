@@ -131,9 +131,7 @@ class TestQueryTrace:
         from neuralmind.mcp_server import tool_query
 
         trace_payload = {"query": "q", "verbose": False, "events": []}
-        with patch(
-            "neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)
-        ):
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)):
             out = tool_query("/proj", "q", trace=True)
         assert out["trace"] == trace_payload
 
@@ -156,9 +154,7 @@ class TestQueryTrace:
     def test_dispatch_threads_trace(self, temp_project):
         """handle_tool_call forwards trace/trace_verbose from arguments."""
         trace_payload = {"query": "q", "verbose": True, "events": []}
-        with patch(
-            "neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)
-        ):
+        with patch("neuralmind.mcp_server.get_mind", return_value=self._mock_mind(trace_payload)):
             raw = handle_tool_call(
                 "neuralmind_query",
                 {
