@@ -60,7 +60,7 @@ class TeamGovernance:
 
     def is_admin(self, email: str) -> bool:
         """True if email is configured as a team admin."""
-        if not self.config.governance.admin_emails:
+        if not email or not self.config.governance.admin_emails:
             return False
         return email.lower() in {e.lower() for e in self.config.governance.admin_emails}
 

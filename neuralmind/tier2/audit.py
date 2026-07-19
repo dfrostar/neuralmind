@@ -9,6 +9,7 @@ record breaks the chain (recompute doesn't match).
 
 from __future__ import annotations
 
+import threading
 import hashlib
 import json
 from dataclasses import dataclass
@@ -17,6 +18,8 @@ from pathlib import Path
 from typing import Any, Literal
 
 GENESIS_HASH = hashlib.sha256(b"neuralmind-team-audit-v1").hexdigest()
+
+MAX_AUDIT_LINE_BYTES = 1_000_000  # Reject crafted DoS lines >1MB
 
 AuditAction = Literal["publish", "remove", "config_change", "seat_add", "seat_remove",
                       "license_activate", "self_hosted_init"]
@@ -72,6 +75,7 @@ class AuditLog:
     def __init__(self, db_path: Path):
         self.db_path = Path(db_path)
         self._entries: list[AuditEntry] = []
+        self._lock = threading.Lock()
         self._load()
 
     def _load(self) -> None:
@@ -79,17 +83,22 @@ class AuditLog:
             self._entries = []
             return
         self._entries = []
-        with self.db_path.open(encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    obj = json.loads(line)
-                    if isinstance(obj, dict) and "sha256" in obj:
-                        self._entries.append(AuditEntry.from_dict(obj))
-                except (json.JSONDecodeError, KeyError):
-                    continue
+        try:
+            with self.db_path.open(encoding="utf-8") as f:
+                for raw_line in f:
+                    if len(raw_line) > MAX_AUDIT_LINE_BYTES:
+                        continue  # Skip crafted oversized lines (DoS guard)
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        if isinstance(obj, dict) and "sha256" in obj:
+                            self._entries.append(AuditEntry.from_dict(obj))
+                    except (json.JSONDecodeError, KeyError):
+                        continue
+        except (UnicodeDecodeError, OSError):
+            self._entries = []
 
     def _save_append(self, entry: AuditEntry) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -104,42 +113,49 @@ class AuditLog:
 
     def log(self, actor: str, action: AuditAction, target: str = "",
             details: dict[str, Any] | None = None) -> AuditEntry:
-        """Append an audit entry with the correct hash chain."""
-        now = datetime.now(timezone.utc).isoformat()
-        entry = AuditEntry(
-            actor=actor,
-            action=action,
-            target=target,
-            details=details or {},
-            ts=now,
-            prev_hash=self._last_hash(),
-        )
-        entry.sha256 = entry.compute_hash()
-        self._save_append(entry)
-        self._entries.append(entry)
-        return entry
+        """Append an audit entry with the correct hash chain.
+
+        Thread-safe: acquires an internal lock to prevent concurrent log()
+        calls from forking the chain on the same prev_hash.
+        """
+        with self._lock:
+            now = datetime.now(timezone.utc).isoformat()
+            entry = AuditEntry(
+                actor=actor,
+                action=action,
+                target=target,
+                details=details or {},
+                ts=now,
+                prev_hash=self._last_hash(),
+            )
+            entry.sha256 = entry.compute_hash()
+            self._save_append(entry)
+            self._entries.append(entry)
+            return entry
 
     def verify(self, fast: bool = False) -> dict[str, Any]:
         """Walk the hash chain, return {ok, first_bad_line, total}.
 
-        If fast=True, stop at the first bad line. Otherwise verify all entries
-        even after a failure (reports first bad, marks ok=False).
+        If fast=True, stop at the first bad line. Otherwise verify all
+        entries even after a failure (reports first bad, marks ok=False).
         """
         if not self._entries:
             return {"ok": True, "first_bad_line": None, "total": 0}
 
         prev = GENESIS_HASH
+        first_bad: int | None = None
         for i, entry in enumerate(self._entries, start=1):
-            if entry.prev_hash != prev:
-                return {"ok": False, "first_bad_line": i, "total": len(self._entries)}
-            expected = entry.compute_hash()
-            if entry.sha256 != expected:
-                return {"ok": False, "first_bad_line": i, "total": len(self._entries)}
+            if entry.prev_hash != prev or entry.sha256 != entry.compute_hash():
+                if first_bad is None:
+                    first_bad = i
+                if fast:
+                    return {"ok": False, "first_bad_line": first_bad, "total": len(self._entries)}
             prev = entry.sha256
-            if fast and not self._entries[i:i + 1]:
-                # cheap early-out — we are past the last; not used normally
-                pass
-        return {"ok": True, "first_bad_line": None, "total": len(self._entries)}
+        return {
+            "ok": first_bad is None,
+            "first_bad_line": first_bad,
+            "total": len(self._entries),
+        }
 
     def export(self, since: float | None = None, until: float | None = None,
                actor: str | None = None) -> list[AuditEntry]:

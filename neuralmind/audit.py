@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -77,9 +78,12 @@ class AuditEvent:
 class AuditTrail:
     """Append-only JSONL audit trail for a project with tamper-evident hash chain."""
 
+    MAX_AUDIT_LINE_BYTES = 1_000_000  # Reject crafted DoS lines >1MB
+
     def __init__(self, project_path: str | Path):
         self.project_path = Path(project_path).resolve()
         self.events_file = self.project_path / ".neuralmind" / AUDIT_FILE_NAME
+        self._lock = threading.Lock()
 
     def _last_sha256_from_file(self) -> str:
         """Read the last non-empty line's sha256, or '0'*64 if file is empty/legacy."""
@@ -89,8 +93,10 @@ class AuditTrail:
             # Read all lines; find last non-empty; extract sha256
             with self.events_file.open(encoding="utf-8") as f:
                 last = ""
-                for line in f:
-                    line = line.strip()
+                for raw_line in f:
+                    if len(raw_line) > self.MAX_AUDIT_LINE_BYTES:
+                        continue  # Skip crafted oversized lines (DoS guard)
+                    line = raw_line.strip()
                     if line:
                         last = line
             if not last:
@@ -100,7 +106,7 @@ class AuditTrail:
                 return obj.get("sha256") or "0" * 64
             except json.JSONDecodeError:
                 return "0" * 64
-        except OSError:
+        except (UnicodeDecodeError, OSError):
             return "0" * 64
 
     def append_event(
@@ -115,46 +121,52 @@ class AuditTrail:
         ip_address: str = "",
     ) -> dict[str, Any]:
         actor = _resolve_actor(actor)
-        prev_sha256 = self._last_sha256_from_file()
-        event = AuditEvent(
-            category=category,
-            action=action,
-            actor=actor,
-            status=status,
-            target=target,
-            details=details or {},
-            timestamp=datetime.now(timezone.utc).isoformat(),
-            actor_role=actor_role,
-            ip_address=ip_address,
-            prev_sha256=prev_sha256,
-            sha256="",
-        )
-        # SHA-256 of prev_hash + stable event serialization
-        payload_str = prev_sha256 + event.to_hashable_str()
-        event.sha256 = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        with self._lock:
+            prev_sha256 = self._last_sha256_from_file()
+            event = AuditEvent(
+                category=category,
+                action=action,
+                actor=actor,
+                status=status,
+                target=target,
+                details=details or {},
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                actor_role=actor_role,
+                ip_address=ip_address,
+                prev_sha256=prev_sha256,
+                sha256="",
+            )
+            # SHA-256 of prev_hash + stable event serialization
+            payload_str = prev_sha256 + event.to_hashable_str()
+            event.sha256 = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
-        payload = event.to_dict()
-        self.events_file.parent.mkdir(parents=True, exist_ok=True)
-        with self.events_file.open("a", encoding="utf-8") as file:
-            file.write(json.dumps(payload, sort_keys=True) + "\n")
-        return payload
+            payload = event.to_dict()
+            self.events_file.parent.mkdir(parents=True, exist_ok=True)
+            with self.events_file.open("a", encoding="utf-8") as file:
+                file.write(json.dumps(payload, sort_keys=True) + "\n")
+            return payload
 
     def read_events(self) -> list[dict[str, Any]]:
         if not self.events_file.exists():
             return []
-        events: list[dict[str, Any]] = []
-        with self.events_file.open(encoding="utf-8") as file:
-            for line in file:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    parsed = json.loads(line)
-                    if isinstance(parsed, dict):
-                        events.append(parsed)
-                except json.JSONDecodeError:
-                    continue
-        return events
+        try:
+            events: list[dict[str, Any]] = []
+            with self.events_file.open(encoding="utf-8") as file:
+                for raw_line in file:
+                    if len(raw_line) > self.MAX_AUDIT_LINE_BYTES:
+                        continue  # Skip crafted oversized lines (DoS guard)
+                    line = raw_line.strip()
+                    if not line:
+                        continue
+                    try:
+                        parsed = json.loads(line)
+                        if isinstance(parsed, dict):
+                            events.append(parsed)
+                    except json.JSONDecodeError:
+                        continue
+            return events
+        except (UnicodeDecodeError, OSError):
+            return []
 
     def verify(self) -> dict[str, Any]:
         """Walk the hash chain, return status.
@@ -255,7 +267,7 @@ class AuditTrail:
                 except ValueError:
                     continue
 
-        # Seed the new active file’s chain from the archived file’s final hash
+        # Seed the new active file's chain from the archived file's final hash
         if archive_path.exists():
             last_sha = "0" * 64
             with archive_path.open("rb") as af:
@@ -292,6 +304,7 @@ class AuditTrail:
 
     def export(
         self,
+        *,
         format: str = "jsonl",
         category: str | None = None,
         action: str | None = None,

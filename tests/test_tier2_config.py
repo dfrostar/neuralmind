@@ -14,7 +14,10 @@ from neuralmind.tier2.config import (
     Tier2Config,
     load_config,
     save_config,
+    validate_data_dir,
+    validate_grace_days,
     validate_half_life,
+    validate_port,
     validate_scope,
     validate_threshold,
 )
@@ -99,3 +102,54 @@ class TestTier2ConfigValidation:
     def test_config_negative_half_life(self) -> None:
         with pytest.raises(ValueError, match="Invalid half_life"):
             validate_half_life(-1)
+
+
+class TestTier2ConfigLoadValidation:
+    """Validators fire during _from_dict — crafted YAML is rejected."""
+
+    def test_invalid_scope_in_yaml_rejected(self, tmp_path: Path) -> None:
+        p = tmp_path / "tier2.yaml"
+        p.write_text("governance:\n  publishing_scope: telepathy\n")
+        with pytest.raises(ValueError, match="Invalid publishing_scope"):
+            load_config(p)
+
+    def test_invalid_threshold_in_yaml_rejected(self, tmp_path: Path) -> None:
+        p = tmp_path / "tier2.yaml"
+        p.write_text("governance:\n  weight_threshold: 99.0\n")
+        with pytest.raises(ValueError, match="Invalid weight_threshold"):
+            load_config(p)
+
+    def test_negative_half_life_in_yaml_rejected(self, tmp_path: Path) -> None:
+        p = tmp_path / "tier2.yaml"
+        p.write_text("governance:\n  auto_decay_half_life: -5\n")
+        with pytest.raises(ValueError, match="Invalid half_life"):
+            load_config(p)
+
+    def test_invalid_port_in_yaml_rejected(self, tmp_path: Path) -> None:
+        p = tmp_path / "tier2.yaml"
+        p.write_text("self_hosted:\n  port: 99999\n")
+        with pytest.raises(ValueError, match="Invalid port"):
+            load_config(p)
+
+    def test_negative_seats_in_yaml_rejected(self, tmp_path: Path) -> None:
+        p = tmp_path / "tier2.yaml"
+        p.write_text("seats: -3\n")
+        with pytest.raises(ValueError, match="Invalid seats"):
+            load_config(p)
+
+    def test_data_dir_non_absolute_rejected(self) -> None:
+        with pytest.raises(ValueError, match="Invalid data_dir"):
+            validate_data_dir("relative/path")
+
+    def test_data_dir_valid_absolute(self) -> None:
+        home = Path.home()
+        assert str(home / "foo") == validate_data_dir(str(home / "foo"))
+
+
+class TestSanityUnchanged:
+    """Existing invariants still hold after patch."""
+
+    def test_defaults_still_clean(self) -> None:
+        a = Tier2Config()
+        b = Tier2Config()
+        assert a.governance.admin_emails is not b.governance.admin_emails

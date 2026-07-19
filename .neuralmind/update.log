@@ -274,3 +274,7 @@ usage: neuralmind [-h] [--version]
                   {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,team,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
                   ...
 neuralmind: error: unrecognized arguments: --quiet
+usage: neuralmind [-h] [--version]
+                  {build,query,wakeup,savings,review,benchmark,probe,search,doctor,stats,metrics,validate,eval,learn,self-improve,next,impact,audit,memory,init-hook,skeleton,why,gaps,structural,watch,team,serve,daemon,demo,last,install-hooks,install-mcp,_hook}
+                  ...
+neuralmind: error: unrecognized arguments: --quiet
