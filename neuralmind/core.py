@@ -746,8 +746,7 @@ class NeuralMind:
         out_dir.mkdir(parents=True, exist_ok=True)
         graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
         print(
-            "[neuralmind] generated code graph via the built-in tree-sitter "
-            f"backend → {graph_path}"
+            f"[neuralmind] generated code graph via the built-in tree-sitter backend → {graph_path}"
         )
 
     def update_files(self, paths) -> dict:

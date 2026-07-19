@@ -339,7 +339,7 @@ def large_graph() -> dict[str, Any]:
             if i > 0:
                 edges.append(
                     {
-                        "source": f"node_{community_id}_{i-1}",
+                        "source": f"node_{community_id}_{i - 1}",
                         "target": node_id,
                         "type": "calls",
                     }

@@ -429,9 +429,9 @@ def test_concurrent_reinforce(tmp_path):
     # (a, b) is reinforced by both threads 5 times each => 10 LEARNING_RATE.
     a_neighbors = dict(s.neighbors("a"))
     expected_a_b = min(WEIGHT_CAP, 10 * LEARNING_RATE)
-    assert (
-        abs(a_neighbors["b"] - expected_a_b) < 1e-9
-    ), f"expected (a,b) weight {expected_a_b}, got {a_neighbors['b']}"
+    assert abs(a_neighbors["b"] - expected_a_b) < 1e-9, (
+        f"expected (a,b) weight {expected_a_b}, got {a_neighbors['b']}"
+    )
 
     # (a, c) is only in set1, reinforced 5 times.
     expected_a_c = min(WEIGHT_CAP, 5 * LEARNING_RATE)
@@ -468,9 +468,9 @@ def test_reinforce_writes_in_single_transaction(tmp_path):
     transaction so a partial failure can't leave counters ahead of edges."""
     s = _store(tmp_path)
     _, connects = _count_connect_calls(s, lambda: s.reinforce(["a", "b", "c"]))
-    assert (
-        connects == 1
-    ), f"reinforce should open exactly one connection/transaction, opened {connects}"
+    assert connects == 1, (
+        f"reinforce should open exactly one connection/transaction, opened {connects}"
+    )
 
 
 def test_reinforce_rolls_back_activations_on_synapse_failure(tmp_path):
