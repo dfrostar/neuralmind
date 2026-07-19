@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.52.0](https://github.com/dfrostar/neuralmind/compare/v0.51.3...v0.52.0) (2026-07-19)
+
+
+### Features
+
+* **v0.52.0:** impact tool — reverse-dependency blast-radius lookup ([63a0f3f](https://github.com/dfrostar/neuralmind/commit/63a0f3f4a7c536714cb59fec498ea9180f7e2b2e))
+
 ## [0.51.3](https://github.com/dfrostar/neuralmind/compare/v0.51.2...v0.51.3) (2026-07-19)
 
 
