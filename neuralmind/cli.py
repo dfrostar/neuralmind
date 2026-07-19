@@ -2401,10 +2401,15 @@ def _version_string() -> str:
     base = f"neuralmind {__version__}"
     try:
         from neuralmind.tier2.config import load_config
+        from neuralmind.tier2.license import LicenseValidator, _ISSUER_PUBLIC_KEY_HEX
 
         cfg = load_config()
-        if cfg.is_team_active():
-            return f"{base} (Team, {cfg.seats} seats)"
+        lic_path = Path(cfg.license_file)
+        if lic_path.exists():
+            validator = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, lic_path)
+            lic_info = validator._load_raw()
+            if lic_info and cfg.is_team_active():
+                return f"{base} ({lic_info.tier.title()}, {cfg.seats} seats)"
     except Exception:
         pass
     return base

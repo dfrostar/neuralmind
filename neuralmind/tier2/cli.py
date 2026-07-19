@@ -17,7 +17,7 @@ from pathlib import Path
 from .audit import AuditLog
 from .config import TIER2_CONFIG_DIR, Tier2Config, load_config, save_config
 from .governance import TeamGovernance
-from .license import _ISSUER_PUBLIC_KEY_HEX, LicenseValidator, load_license
+from .license import _ISSUER_PUBLIC_KEY_HEX, LicenseValidator, issue_free_license, load_license
 from .seats import SeatLimitError, SeatManager
 from .self_hosted import (
     _resolve_license_path,
@@ -111,25 +111,40 @@ def build_team_subparsers(subparsers) -> None:
 
 
 def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, None]:
-    """Load config + audit. If no license, print helpful message and return None."""
+    """Load config + audit. Auto-issues free license if none exists."""
     config = load_config(getattr(args, "config_path", None))
 
-    # Allow --no-license-check flag, env var test mode, or test-mode arg to bypass
-    test_env = os.environ.get("NEURALMIND_TIER2_TEST", "") == "1"
-    if getattr(args, "no_license_check", False) or test_env or getattr(args, "test_mode", False):
-        return config, AuditLog(Path(config.audit_db))
+    lic_path = Path(config.license_file)
 
-    # Check license if present
+    # Auto-issue free license if none exists
+    if not lic_path.exists():
+        try:
+            issue_free_license(lic_path)
+        except OSError as e:
+            print(f"Cannot create license file: {e}")
+            return None, None
 
-    lic_status = load_license(Path(config.license_file), _ISSUER_PUBLIC_KEY_HEX)
-    if lic_status not in ("VALID", "EXPIRED", "OFFLINE_OK"):
-        print("NeuralMind Team tier requires a valid license.")
-        print("Run `neuralmind team license activate <key>` first.")
-        if test_env:
-            print(
-                "(NEURALMIND_TIER2_TEST=1 is set, but _ensure_tier2_activated still returned non-OK)"
-            )
+    # Validate license (free or team)
+    lic_status = load_license(lic_path, _ISSUER_PUBLIC_KEY_HEX)
+    if lic_status == "INVALID":
+        print("License file is corrupted. Run `neuralmind team license activate <key>` to replace.")
         return None, None
+    if lic_status == "EXPIRED":
+        print("License has expired. Run `neuralmind team license activate <key>` to renew.")
+        return None, None
+
+    # Valid (free or team) — sync seats/expires from license into config
+    validator = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, lic_path)
+    lic_info = validator._load_raw()
+    if lic_info:
+        config.tier = lic_info.tier
+        config.seats = lic_info.seats
+        config.expires_at = lic_info.expires_at
+        config.issued_to = lic_info.issued_to
+        # For free tier, set a default admin so governance commands work
+        if lic_info.tier == "free" and not config.governance.admin_emails:
+            config.governance.admin_emails = ["self"]
+
     return config, AuditLog(Path(config.audit_db))
 
 
