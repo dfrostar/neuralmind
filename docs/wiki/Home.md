@@ -30,6 +30,52 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v0.52.0 — Impact: blast radius under a name you'd actually reach for
+
+A Reddit comparison against GitNexus flagged "no `impact` tool" as a gap. Not quite right — `neuralmind structural --blast-radius` has answered "what depends on this?" since v0.42.0 — but the naming critique landed. v0.52.0 gives the same capability a name an agent (or a human) would actually reach for, plus richer output. Each dependent row now carries its **hop** and its **relation** (`calls`/`inherits`/`imports_from`/`implements`). The MCP tool is `neuralmind_impact()`. `structural --blast-radius` stays byte-identical — now a one-line wrapper over the same `blast_radius_detail()`. Honest scope: naming + discoverability, no new capability.
+
+Full details: [v0.52.0 release notes](RELEASE_NOTES_v0.52.0.md) · [docs/use-cases/blast-radius-before-a-rename.md](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/blast-radius-before-a-rename.md)
+
+### v0.51.3 — Shipped
+
+CI green, GitHub Release published, GHCR published, PyPI verified at 0.51.3.
+
+Full details: [v0.51.3 release notes](RELEASE_NOTES_v0.51.3.md)
+
+### v0.50.0 — Metrics Dashboard + Team Memory Integration
+
+`neuralmind metrics --summary`, `--days`, `--json`, plus `/api/metrics` HTTP endpoint. Full team memory integration test (E1→E2→E3→E4 chain). Autopilot engine orchestrator + bug fixes (signals Page-Hinkley, self_play IDs, experiment_runner docstring).
+
+Full details: [v0.50.0 release notes](RELEASE_NOTES_v0.50.0.md)
+
+### v0.49.5 — DeepSeek Patches
+
+Applied DeepSeek QA patches: prune dangling edges, remove dead code, fix axis independence in tuner faithfulness.
+
+### v0.49.4 — DeepSeek QA
+
+DeepSeek code review of incremental wiring, tuner, and autopilot modules. One CRITICAL finding (concurrent build locking — needs `fcntl.flock()`), two WARNING findings patched.
+
+### v0.49.3 — Incremental Extraction Wiring
+
+Wired `IncrementalExtractor` into `build_graph()` — scope re-extraction to changed files + importers. Acceptance: 10K-line repo, 1 file changed → <10% of full-build wall-clock.
+
+### v0.49.2 — DeepSeek Wave 5 QA
+
+DeepSeek review of tuner v0.49.0 and graphgen incremental wiring. CRITICAL: NaN/Inf guard, `_clamp()` does NOT defend against NaN. WARNING: inverted time filter in `_get_param_changes`. Patched.
+
+### v0.49.0 — Tuner Faithfulness Gap
+
+Live A/B eval: configure the embedder per candidate, run ~20 fixture queries, measure real retrieval_quality (nDCG@5) and session_health (re-query-rate).
+
+### v0.48.0 — v2.0 Complete
+
+All four waves of the v2.0 future-proofing plan complete (26 workstreams, 7 buckets).
+
+### v0.47.0 — Impact Tool (original)
+
+Original impact tool release. Superseded by v0.52.0.
+
 ### v0.21.0 — ChromaDB-free retrieval
 
 The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**: Google Research's **TurboQuant** compressed index (8–16× smaller vectors) plus a bundled `OnnxMiniLMEmbedder` that produces vectors **byte-identical** to ChromaDB's (`all-MiniLM-L6-v2`; verified cosine 1.0). Retrieval stays at/above parity (fact recall 0.744 → 0.800). Enable with `backend: turbovec` in `neuralmind-backend.yaml` — see the [ChromaDB-free local](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) walkthrough. This retires the dependency behind the recurring **CVE-2026-45829** advisory; flipping the default is the staged next step. Full details: [v0.21.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.21.0.md).
