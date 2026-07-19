@@ -54,9 +54,9 @@ def test_get_query_context_makes_one_search(tmp_path):
     embedder = _CountingEmbedder()
     selector = ContextSelector(embedder, str(tmp_path))
     selector.get_query_context("How does authentication work?")
-    assert (
-        embedder.search_calls == 1
-    ), f"selector should issue exactly one search per query; saw {embedder.search_calls}"
+    assert embedder.search_calls == 1, (
+        f"selector should issue exactly one search per query; saw {embedder.search_calls}"
+    )
 
 
 def test_top_search_hits_surface_on_result(tmp_path):

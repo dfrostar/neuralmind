@@ -586,8 +586,7 @@ def serve(
         signal.signal(signal.SIGINT, _graceful)
 
     print(
-        f"[neuralmind] daemon listening on http://{info['host']}:{info['port']} "
-        f"(pid {os.getpid()})"
+        f"[neuralmind] daemon listening on http://{info['host']}:{info['port']} (pid {os.getpid()})"
     )
     try:
         httpd.serve_forever()

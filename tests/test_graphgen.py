@@ -1278,8 +1278,7 @@ class SchemaArtifactTests(unittest.TestCase):
 
     def test_sql_multiple_tables(self) -> None:
         ddl = (
-            "CREATE TABLE accounts (id INT);\n"
-            "CREATE TABLE transactions (id INT, amount DECIMAL);\n"
+            "CREATE TABLE accounts (id INT);\nCREATE TABLE transactions (id INT, amount DECIMAL);\n"
         )
         labels = self._labels("migrations.sql", ddl)
         self.assertIn("TABLE:accounts", labels)
