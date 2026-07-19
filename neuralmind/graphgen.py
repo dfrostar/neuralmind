@@ -348,7 +348,76 @@ class _GraphBuilder:
         )
 
 
-_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+
+
+def _add_doc_code_coupling(b: _GraphBuilder) -> None:
+    """Link document/file nodes to file-level code nodes in the same directory.
+
+    This is deliberately narrow to avoid 400K+ "everything describes everything"
+    noise edges that drown out real structural signals. A doc file in the same
+    directory as code is a strong signal that the doc explains that code.
+
+    Global cap: max 50 edges total. This keeps edges meaningful.
+
+    Fail-open: no crash if input is missing or empty.
+    """
+    max_edges = 50
+
+    # Only file-level document nodes (not heading nodes)
+    doc_file_nodes = {
+        dn["source_file"]: dn["id"]
+        for dn in b.nodes.values()
+        if dn.get("file_type") == "document"
+        and "__h" not in dn["id"]
+        and dn.get("source_file", "")
+    }
+
+    # Only file-level code nodes (id matches slug of source_file)
+    code_file_nodes: dict[str, str] = {}
+    for cn in b.nodes.values():
+        if cn.get("file_type") != "code":
+            continue
+        sf = cn.get("source_file", "")
+        expected_id = _slug(sf) if sf else ""
+        if sf and cn["id"] == expected_id and sf not in code_file_nodes:
+            code_file_nodes[sf] = cn["id"]
+
+    if not doc_file_nodes or not code_file_nodes:
+        return
+
+    # Group code files by dir
+    dir_to_code: dict[str, list[str]] = {}
+    for sf in code_file_nodes:
+        d = sf.rsplit("/", 1)[0] if "/" in sf else ""
+        if d:
+            dir_to_code.setdefault(d, []).append(sf)
+
+    edges_added = 0
+    seen_pairs: set[tuple[str, str]] = set()
+
+    for doc_path, dn_id in doc_file_nodes.items():
+        if edges_added >= max_edges:
+            break
+        doc_dir = doc_path.rsplit("/", 1)[0] if "/" in doc_path else ""
+        if not doc_dir:
+            continue
+
+        for code_sf in dir_to_code.get(doc_dir, []):
+            if edges_added >= max_edges:
+                break
+            pair = (doc_path, code_sf)
+            if pair not in seen_pairs:
+                seen_pairs.add(pair)
+                b.add_edge(
+                    "describes",
+                    dn_id,
+                    code_file_nodes[code_sf],
+                    doc_path, 1,
+                    confidence_score=0.8,
+                )
+                edges_added += 1
+
 
 
 def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
@@ -726,6 +795,13 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         extractor_ = _SCHEMA_EXTRACTORS.get(sa_path.suffix)
         if extractor_:
             extractor_(b, sa_path, rel)
+
+    # ---- doc-code coupling ----------------------------------------------
+    # Link document/file nodes to the code file nodes they describe.
+    # Must run AFTER markdown/schema extraction so the document nodes exist.
+    # This gives the query pipeline explicit "what does this doc explain?"
+    # edges alongside the existing soft vector similarity signal.
+    _add_doc_code_coupling(b)
 
     # ---- communities (per-file, balanced) --------------------------------- #
     # Carry over community IDs from existing graph so unchanged files keep

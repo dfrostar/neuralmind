@@ -181,6 +181,7 @@ def test_run_diagnostics_returns_all_checks(temp_project):
         "MCP server",
         "Claude Code hooks",
         "Query memory",
+        "Doc-code alignment",
     }
 
 
