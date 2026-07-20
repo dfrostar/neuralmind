@@ -113,11 +113,15 @@ def build_team_subparsers(subparsers) -> None:
 def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, None]:
     """Load config + audit. Auto-issues free license if none exists."""
     config = load_config(getattr(args, "config_path", None))
-
     lic_path = Path(config.license_file)
-
     # Auto-issue free license if none exists
     if not lic_path.exists():
+        # Guard: if config shows a paid tier was previously active, do not
+        # auto-issue a free license. Prevents deletion of the license file
+        # from resetting a paid tenant to free tier.
+        if config.seats > 1 or (config.tier == "team" and config.issued_to and config.issued_to != "self"):
+            print("License file missing. Run `neuralmind team license activate <key>` to re-activate.")
+            return None, None
         try:
             issue_free_license(lic_path)
         except OSError as e:
@@ -288,9 +292,6 @@ def cmd_team_seats(args) -> int:
         except SeatLimitError as e:
             print(f"Seat limit reached: {e}")
             return 1
-        except ValueError as e:
-            print(f"Invalid input: {e}")
-            return 1
 
     if args.subcommand == "remove":
         try:
@@ -356,8 +357,6 @@ def cmd_team_license(args) -> int:
             print(f"License file not found: {src_path}")
             return 1
         src_text = src_path.read_text(encoding="utf-8")
-        # Validate the signed License BEFORE installing
-        load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
         src_status = load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
         if src_status != "VALID":
             print(
@@ -368,7 +367,6 @@ def cmd_team_license(args) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(src_text, encoding="utf-8")
         validator = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, path)
-        info = validator.status_dict()
         lic_info = validator._load_raw()
         if lic_info:
             config.seats = lic_info.seats
@@ -401,8 +399,8 @@ def cmd_team_license(args) -> int:
                 exp = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
                 days = (exp - datetime.now(_tz.utc)).days
                 info["days_until_expiry"] = days
-        except Exception:
-            pass
+        except Exception as _e:
+            info["days_until_expiry"] = "unknown"
         print(json.dumps(info, indent=2, default=str))
         return 0
 
@@ -413,7 +411,8 @@ def cmd_team_license(args) -> int:
 def os_get_actor_email() -> str:
     """Resolve actor email from env var."""
 
-    return os.environ.get("NEURALMIND_ACTOR_EMAIL", os.environ.get("NEURALMIND_ACTOR", "unknown"))
+    email = os.environ.get("NEURALMIND_ACTOR_EMAIL") or os.environ.get("NEURALMIND_ACTOR") or ""
+    return email.strip() or "unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
