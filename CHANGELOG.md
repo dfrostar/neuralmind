@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.2.0](https://github.com/dfrostar/neuralmind/compare/v1.1.1...v1.2.0) (2026-07-20)
+
+
+### Features
+
+* **C4:** CI-gated tuner promotion via QualityHarness ([7e7ff98](https://github.com/dfrostar/neuralmind/commit/7e7ff989b2982d76bae82329c8bfe11cf099f873))
+* **D3:** judge transcripts loader + generator ([e232b15](https://github.com/dfrostar/neuralmind/commit/e232b152a39f40e714ff086cfab672e2e28d3748))
+* **E1:** contribution-quality scoring — ContributionQualityScorer + team_memory wiring ([2969e38](https://github.com/dfrostar/neuralmind/commit/2969e3873cbbbde136b5d3b55cc4dcdf24a9e527))
+* **E1:** contribution-quality scoring — ContributionQualityScorer + team_memory wiring ([c7d5a86](https://github.com/dfrostar/neuralmind/commit/c7d5a860a9201b029057c4cb4b933e8db1be6c95))
+* **E2:** quality-weighted merge semantics with decay-on-conflict ([43d4ef4](https://github.com/dfrostar/neuralmind/commit/43d4ef4c84e06b820ffb68a251029a5b4a1c2684))
+
+
+### Bug Fixes
+
+* **D3:** DeepSeek QA patches — 4 issues ([6de7ceb](https://github.com/dfrostar/neuralmind/commit/6de7ceb13277b40f153b465bca0d6d7f04c0f17f))
+* **wave12:** DeepSeek QA patches — 1 CRITICAL + 7 WARNING ([b82ab8d](https://github.com/dfrostar/neuralmind/commit/b82ab8d7467823126c162713ff0ce7b9e565a561))
+
+
+### Documentation
+
+* add upgrade check to session routine + Wave 4 prompt ([502cd41](https://github.com/dfrostar/neuralmind/commit/502cd411b5fbfa4193786ec3cb15d7ebc068a697))
+* **C4:** CI-gated tuner promotion design — QualityHarness gate ([0295db3](https://github.com/dfrostar/neuralmind/commit/0295db300fc3b03c20d99ff9edcc1be5b6e4fc40))
+* **PRD:** Session-scoped memory — namespaces for orchestrated agents ([a8c23b6](https://github.com/dfrostar/neuralmind/commit/a8c23b6decff63ef5a71bedf250981f8bb3a5016))
+* refresh benchmark chart [skip ci] ([aa226e0](https://github.com/dfrostar/neuralmind/commit/aa226e0edbe4193f5e84ed0af6a332d5f0949fb8))
+* update Wave 4 BRD/TRD/session prompt for C4 ship ([50ac2eb](https://github.com/dfrostar/neuralmind/commit/50ac2eb8fbe54db844e04a78eb6d4df6d8c07a86))
+* Wave 4 session prompt v5.0 — E1 next ([890bc2c](https://github.com/dfrostar/neuralmind/commit/890bc2c67cde191b5cf1775c91eb87f5c89a69a9))
+* **Wave 4:** BRD, TRD, session prompt, and standardized session routine ([f216a74](https://github.com/dfrostar/neuralmind/commit/f216a741f950e926cb86ccff4a011f9a4d54549c))
+
 ## [1.1.1](https://github.com/dfrostar/neuralmind/compare/v1.1.0...v1.1.1) (2026-07-20)
 
 
