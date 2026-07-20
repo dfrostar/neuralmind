@@ -28,6 +28,7 @@ from typing import Any
 from .contracts import (
     META_TUNER_FITNESS,
     META_TUNER_INCUMBENT,
+    META_TUNER_LAST_DECISION,
     META_TUNER_PROMOTED_AT,
     TUNABLE_PARAMS,
     clamp_value,
@@ -91,6 +92,7 @@ class PopulationTuner:
         hysteresis: float | None = None,
         uniform_explore_p: float | None = None,
         eval_days: float | None = None,
+        harness: Any = None,
     ):
         self.project_path = Path(project_path) if project_path is not None else None
         self.population_size = population_size or int(
@@ -102,6 +104,8 @@ class PopulationTuner:
             os.environ.get("NEURALMIND_TUNER_EXPLORE", 0.15)
         )
         self.eval_days = eval_days or float(os.environ.get("NEURALMIND_TUNER_EVAL_DAYS", 14.0))
+        self.harness = harness
+        self._last_decision: Any = None
         self._rng = random.Random()
         # Defensive coerce: truthy negative values pass through `or` and silently
         # invert the promotion gate (negative hysteresis), skip the loop
@@ -372,6 +376,68 @@ class PopulationTuner:
         """Promote candidate if fitness > incumbent * (1 + hysteresis)."""
         return fitness > incumbent_fitness * (1.0 + self.hysteresis)
 
+    def promote_with_harness(
+        self,
+        candidate_params: dict[str, float],
+        candidate_fitness: float,
+        incumbent_fitness: float,
+    ) -> Any:
+        """Validate candidate with harness before promoting.
+
+        Returns PromotionDecision with verdict + rationale.
+        Backward compatible: if harness is None, falls back to
+        hysteresis-only promotion.
+        """
+        from .quality_harness import PromotionDecision
+
+        if self.harness is None:
+            if self.promote_if_better(candidate_params, candidate_fitness, incumbent_fitness):
+                self._save_incumbent(candidate_params, candidate_fitness)
+                return PromotionDecision(
+                    verdict="promote",
+                    reason="harness disabled, hysteresis only",
+                    candidate_fitness=candidate_fitness,
+                    incumbent_fitness=incumbent_fitness,
+                    harness_verdict=None,
+                )
+            return PromotionDecision(
+                verdict="hold",
+                reason="below hysteresis",
+                candidate_fitness=candidate_fitness,
+                incumbent_fitness=incumbent_fitness,
+                harness_verdict=None,
+            )
+
+        verdict = self.harness.evaluate(candidate_params)
+        decision = self.harness.decide(
+            candidate_fitness, incumbent_fitness, verdict, self.hysteresis
+        )
+
+        if decision.verdict == "promote":
+            self._save_incumbent(candidate_params, verdict.fitness)
+        elif decision.verdict == "rollback":
+            pass  # incumbent stands
+        # hold: nothing
+
+        return decision
+
+    def _record_decision(self, decision: Any) -> None:
+        """Persist the last promotion decision to the synapse meta table."""
+        try:
+            store = self._store()
+            store.set_meta(
+                META_TUNER_LAST_DECISION,
+                json.dumps({
+                    "verdict": decision.verdict,
+                    "reason": decision.reason,
+                    "candidate_fitness": decision.candidate_fitness,
+                    "incumbent_fitness": decision.incumbent_fitness,
+                    "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                }),
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.warning("_record_decision failed: %s", exc)
+
     # ------------------------------------------------------------------- #
     # Runner
     # ------------------------------------------------------------------- #
@@ -414,7 +480,25 @@ class PopulationTuner:
                     gen_best_fitness = candidate_fitness
                     gen_best_params = candidate_map
 
-            if self.promote_if_better(gen_best_params, gen_best_fitness, incumbent_fitness):
+            # C4: if harness is present, validate candidate independently
+            # before promoting. The harness is the independent gate that
+            # prevents the tuner from promoting based on self-measurement.
+            if self.harness is not None:
+                decision = self.promote_with_harness(
+                    gen_best_params, gen_best_fitness, incumbent_fitness
+                )
+                self._last_decision = decision
+                self._record_decision(decision)
+                if decision.verdict == "promote":
+                    incumbent = gen_best_params
+                    incumbent_fitness = decision.harness_verdict.fitness if decision.harness_verdict else gen_best_fitness
+                    best_params = gen_best_params
+                    best_fitness = incumbent_fitness
+                    promoted = True
+                else:
+                    best_params = gen_best_params
+                    best_fitness = gen_best_fitness
+            elif self.promote_if_better(gen_best_params, gen_best_fitness, incumbent_fitness):
                 self._save_incumbent(gen_best_params, gen_best_fitness)
                 incumbent = gen_best_params
                 incumbent_fitness = gen_best_fitness
