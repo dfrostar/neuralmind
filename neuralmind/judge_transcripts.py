@@ -14,7 +14,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -102,8 +101,7 @@ def generate_transcript_from_benchmark(benchmark_path: Path) -> list[dict]:
             "query": q["question"],
             "reference_answer": reference_answer,
             "source_files": [
-                f"{data.get('fixture', '')}/{mod}"
-                for mod in q.get("expected_modules", [])
+                f"{data.get('fixture', '')}/{mod}" for mod in q.get("expected_modules", [])
             ],
             "category": q.get("category", "architecture"),
             "language": language,

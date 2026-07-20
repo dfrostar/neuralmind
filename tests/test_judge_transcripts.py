@@ -21,10 +21,15 @@ class TestLoadTranscript:
 
     def test_load_valid(self, tmp_path: Path):
         path = tmp_path / "test.json"
-        path.write_text(json.dumps({
-            "query": "How does auth work?",
-            "reference_answer": "Auth uses JWT tokens.",
-        }, indent=2))
+        path.write_text(
+            json.dumps(
+                {
+                    "query": "How does auth work?",
+                    "reference_answer": "Auth uses JWT tokens.",
+                },
+                indent=2,
+            )
+        )
         t = load_transcript(path)
         assert t["query"] == "How does auth work?"
         assert t["reference_answer"] == "Auth uses JWT tokens."
