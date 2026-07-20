@@ -368,9 +368,7 @@ def _add_doc_code_coupling(b: _GraphBuilder) -> None:
     doc_file_nodes = {
         dn["source_file"]: dn["id"]
         for dn in b.nodes.values()
-        if dn.get("file_type") == "document"
-        and "__h" not in dn["id"]
-        and dn.get("source_file", "")
+        if dn.get("file_type") == "document" and "__h" not in dn["id"] and dn.get("source_file", "")
     }
 
     # Only file-level code nodes (id matches slug of source_file)
@@ -413,11 +411,11 @@ def _add_doc_code_coupling(b: _GraphBuilder) -> None:
                     "describes",
                     dn_id,
                     code_file_nodes[code_sf],
-                    doc_path, 1,
+                    doc_path,
+                    1,
                     confidence_score=0.8,
                 )
                 edges_added += 1
-
 
 
 def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
