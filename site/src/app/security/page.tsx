@@ -1,16 +1,18 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
-import { getLatestRelease, GITHUB_URL } from '@/lib/release';
+import { getLatestRelease } from '@/lib/release';
 
+const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const COMPLIANCE_URL = `${GITHUB_URL}/blob/main/docs/COMPLIANCE-SUMMARY.md`;
 
 export default async function SecurityPage() {
     const rel = await getLatestRelease();
-    const version = rel.tag;                          // e.g. "v1.3.0"
+    const version = rel.tag;                          // e.g. "v0.42.1"
+    const versionNumber = version.replace(/^v/, '');  // e.g. "0.42.1"
     const releaseDate = rel.date;
     const releaseUrl = rel.htmlUrl;                   // GitHub release page (always exists)
-    const pypiUrl = rel.pypiUrl;                      // verified at build time
-    const sbomUrl = rel.sbomUrl;                      // direct download, or null if none yet
+    const pypiUrl = `https://pypi.org/project/neuralmind/${versionNumber}/`;
+    const sbomUrl = releaseUrl;                       // CycloneDX SBOM is attached to the release
     const tarballUrl = `${GITHUB_URL}/archive/refs/tags/${version}.tar.gz`;
 
     return (
@@ -52,24 +54,15 @@ export default async function SecurityPage() {
                     <h2 className="font-display text-2xl font-bold text-white mb-4">Software Bill of Materials</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
                         <p className="text-slate-300 mb-4">
-                            A CycloneDX SBOM is generated for every release.
+                            A CycloneDX SBOM is generated for every release and attached to the GitHub release.
                         </p>
-                        {sbomUrl ? (
-                            <a href={sbomUrl} target="_blank" rel="noopener noreferrer"
-                               className="inline-flex items-center gap-2 text-electric hover:text-electric-bright transition-colors font-mono text-sm">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Download SBOM (JSON) for {version} →
-                            </a>
-                        ) : (
-                            <p className="text-slate-400 text-sm">
-                                The SBOM for {version} is still being generated — it appears here
-                                shortly after each release. Meanwhile, see the{' '}
-                                <a href={`${GITHUB_URL}/actions/workflows/sbom.yml`} target="_blank" rel="noopener noreferrer"
-                                   className="text-electric hover:text-electric-bright">SBOM workflow →</a>
-                            </p>
-                        )}
+                        <a href={sbomUrl} target="_blank" rel="noopener noreferrer"
+                           className="inline-flex items-center gap-2 text-electric hover:text-electric-bright transition-colors font-mono text-sm">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Download SBOM (JSON) →
+                        </a>
                     </div>
                 </section>
 
