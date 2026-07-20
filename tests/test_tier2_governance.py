@@ -102,3 +102,8 @@ class TestGovernanceAdminActions:
     def test_governance_non_admin_cannot_modify(self, governance: TeamGovernance) -> None:
         with pytest.raises(PermissionError, match="Not a team admin"):
             governance.set_publishing_scope("shared", NON_ADMIN_EMAIL)
+
+    def test_governance_non_admin_cannot_publish(self, governance: TeamGovernance) -> None:
+        """Non-admin cannot publish — admin gate enforced."""
+        with pytest.raises(PermissionError, match="Not a team admin"):
+            governance.publish("repo", [{"weight": 0.8}], admin=NON_ADMIN_EMAIL)
