@@ -67,7 +67,17 @@ cd /home/dtfrost/neuralmind && PYTHONPATH=. python3 -m pytest tests/test_tier2_s
 cd /home/dtfrost/neuralmind && PYTHONPATH=. python3 -m pytest tests/ -q --tb=no
 ```
 
-### 1.4 Report State
+### 1.4 Upgrade Check
+```bash
+# Check if pip package is behind repo
+pip show neuralmind | grep Version
+cd /home/dtfrost/neuralmind && grep -m1 "__version__" neuralmind/__init__.py
+
+# If pip is behind:
+pip install --upgrade neuralmind
+```
+
+### 1.5 Report State
 - "Autopilot: v0.X, N/N tests green, last commit: <sha> <msg>"
 - "NeuralMind: v0.X, N/N tests green, last commit: <sha> <msg>"
 - Flag any discrepancies
