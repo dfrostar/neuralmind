@@ -1,132 +1,219 @@
 # Wave 4 — Business Requirements Document (BRD)
 
-**Date:** 2026-07-17
-**Source:** `docs/FUTURE-PROOFING-PLAN.md` §9 sequence
-**Previous waves:** 1 (D/B1/G1), 2 (C1/A1/A2/B2/B3/G2), 3 (C2/C3/A3/A4/B4/F1/F2)
+**Date:** 2026-07-21
+**Repos:** `dfrostar/neuralmind` (public), `dfrostar/neuralmind-autopilot` (PRIVATE)
+**Previous waves:** 1-3 (D, B1, G1, A1-A4, B2-B3, C1-C3, F1-F2)
+**NeuralMind release:** v1.1.0 → v1.2.0
+**Autopilot release:** v0.8.0 → v0.9.0
 
 ---
 
 ## 1. Business Problem
 
-Wave 3 completed the self-improvement engine (C2+C3), memory deepening (A3+A4), hierarchical summarization (B4), and daemon hardening (F1+F2). The tuner exists, but promotion is manual. Team memory exists, but merge is last-write-wins. Graph communities are file-based, not architecture-based. Re-extraction is full-tree.
+Wave 3 shipped the self-improvement engine's core: multi-objective fitness (C1), expanded parameter space (C2), and population-based evolutionary search (C3). The tuner runs in the daemon and proposes candidate configs — but **nothing promotes or rolls them back automatically**. The tuner is a brain with no hands: it can evaluate candidates but cannot ship them.
 
-v2.0 is **working but loosely coupled**. Wave 4 tightens every coupling point:
+Wave 4 closes the loop. Without it, the tuner's output is advisory — an operator must manually read the proposal, evaluate it, and apply it. The "self-improving product" claim is theater until the promotion path is CI-gated and automated.
 
-- Tuner proposes → promotes automatically with CI hysteresis (C4)
-- Structural edges drive real graph modularity (G3)
-- Re-extraction is incremental (G4)
-- Team contributions are quality-scored, merged, peer-reviewed, and staled (E1–E4)
-- Telemetry is continuous (F3)
-- Concurrency degrades gracefully (F4)
+Simultaneously, Wave 4 completes the quality harness (D3/D4), wires team-memory merge semantics (E1/E2/E3/E4), adds observability (F3/F4), and raises graph precision (G3/G4).
+
+---
 
 ## 2. Business Objectives
 
-| # | Objective | Success Metric |
-|---|-----------|---------------|
-| O1 | Tuner promotion is CI-gated | Candidate must beat incumbent by ≥5% hysteresis on fixture set |
-| O2 | Communities reflect architecture | Louvain modularity over structural edges, not per-file |
-| O3 | Large-repo builds are incremental | Only changed files + importers re-extracted |
-| O4 | Team-memory quality signal exists | Edge quality scores predict retrieval usefulness |
-| O5 | Conflicting edges merge rationally | Quality-weighted merge beats last-write-wins |
-| O6 | Stale team edges decay faster | 30-day threshold = ~1/32 weight (5× fast decay) |
-| O7 | Query latency is measurable | JSONL metrics with bounded retention |
-| O8 | Concurrent access degrades gracefully | Bounded queue depth + circuit breaker fail-fast |
-| O9 | Offline judge has real transcripts | bench/public/judge/ populated |
+| # | Objective | Success Metric | Claim Tier |
+|---|-----------|---------------|------------|
+| O1 | CI-gated tuner promotion (C4) | Tuner proposes → harness validates → auto-promote or auto-rollback, zero operator intervention | A |
+| O2 | Populate judge transcripts (D3) | `bench/public/judge/` has >= 3 project transcripts with real LLM-judged evaluations | C |
+| O3 | Per-language fixtures (D4) | TypeScript, Go, Rust, Java fixtures with gold-fact sets | C |
+| O4 | Contribution-quality scoring (E1) | Team-memory edges weighted by contributor's measured onboarding lift | B |
+| O5 | Merge semantics with decay-on-conflict (E2) | Conflicting edges resolved by quality score, loser decays | B |
+| O6 | Peer review gate (E3) | Team-baseline contributions require PR review before commit | C |
+| O7 | Staleness detection (E4) | Unreinforced team edges flagged after N days (default 60) | C |
+| O8 | Tool-use metrics pipeline (F3) | JSONL stream of latency/reuse/success/cost per query | B |
+| O9 | Backpressure + circuit breakers (F4) | Bounded queue depth, fail-fast on overload, auto-recovery | B |
+| O10 | Modularity clustering (G3) | Louvain/Leiden communities replace balanced-per-file | B |
+| O11 | Incremental re-extraction (G4) | Changed files + dependents re-extracted, not just re-embedded | B |
 
-## 3. Non-Goals
+---
 
-- Hosted SaaS / cloud-dependent tuning
-- Full ColBERT multi-vector retrieval
-- LLM-judged judge as default
-- Inline completion or general agent UX
-- Cross-repository / org-wide search
-
-## 4. Workstreams
-
-### C4 — CI-gated tuner promotion
-- Wraps `PopulationTuner` (C3) with fixture-evaluated promotion gate
-- `neuralmind benchmark --tuner-ci` CLI command
-- Hysteresis: candidate must beat incumbent by configurable margin (default 5%)
-- Fail-open: if eval fails, incumbent stands
-
-### G3 — Modularity clustering
-- Louvain method over structural edges (calls/imports/inherits)
-- Replaces balanced-per-file communities with architectural boundaries
-- Phase 1 (greedy) + Phase 2 (simplified aggregation)
-- Stdlib-only, deterministic output
-
-### G4 — Incremental re-extraction
-- Content-hash cache under `.neuralmind/extraction_cache.json`
-- Detects added/modified/deleted files via mtime + SHA-256
-- Resolves reverse edges (importers/callers) for transitive invalidation
-
-### E1 — Contribution-quality scoring
-- Three-axis scoring: reinforcement frequency (0.4), recency (0.35), conflict penalty (−0.25)
-- Edges above 0.70 promote; below 0.30 decay-fast
-- History-independent (scorable at any edge)
-
-### E2 — Merge semantics
-- Quality-weighted conflict resolution (replaces last-write-wins)
-- Tiebreaker: higher activation count
-- Fail-open: unresolved edges stay separate
-
-### E3 — Peer review gate
-- Three outcomes: auto-promote (≥0.75), review-required (0.15–0.75), reject (<0.15)
-- Actionable reviewer hints (which axis dragged the score down)
-- Fail-open: malformed edges skip
-
-### E4 — Staleness detection
-- Team-shared edges: 30-day stale threshold
-- Team-branch edges: 14-day stale threshold
-- Fast decay: weight × 2⁻⁵ (≈ 1/32)
-
-### F3 — Tool-use metrics pipeline
-- JSONL files under `.neuralmind/metrics/` (one per UTC day)
-- Per-query: latency, retrieval reuse rate, tool success, tokens, synapse activations
-- 30-day retention, 10 MB cap, truncate-to-half on overflow
-
-### F4 — Backpressure + circuit breakers
-- `CircuitBreaker`: closed → open → half-open state machine
-- `ProjectBackpressure`: bounded concurrent operations per project
-- `ProjectLock`: threading.Lock + backpressure slot acquisition
-
-### D3 — Judge transcripts
-- Populated `bench/public/judge/` with fixture query→answer→expected triples
-- Manifest-driven loading
-
-### D4 — Per-language fixtures
-- Registered C#, Ruby, PHP suites in `evals/quality/runner.py`
-- 10-language coverage, 128 golden queries total
-
-## 5. Stakeholders & Users
+## 3. Stakeholders & Users
 
 | Persona | Need | Pain Today |
 |---------|------|------------|
-| Individual developer | Local-first memory that learns | Tuner results are approximate, not promoted |
-| Team lead | Quality-gated shared memory | Last-write-wins creates noise |
-| Engineer scaling the system | Graceful degradation under load | Concurrent ops degrade ungracefully |
+| Operator (dfrostar) | Self-improving product that actually self-improves | Tuner proposals are manual — operator must read, evaluate, apply |
+| Tier 2 customer | Team memory that improves with usage | Team brain is a static bundle, not a living merge |
+| NeuralMind (product) | Discoverable quality metrics | Judge directory empty, no per-language eval |
+| Autopilot (operator) | Observability into daemon health | No metrics stream from daemon to operator |
+
+---
+
+## 4. Workstreams
+
+### A. C4 — CI-Gated Tuner Promotion (autopilot + neuralmind)
+
+**Files:**
+- `autopilot/experiment_runner.py` (EXTEND — add promotion/rollback verdict)
+- `autopilot/promotion_engine.py` (EXTEND — wire ship_callable to real config apply)
+- `neuralmind/neuralmind/tuner.py` (READ — understand current proposal output)
+
+**Requirements:**
+- Tuner proposes candidate config → harness (D1/D2) evaluates → fitness delta computed
+- If fitness delta >= hysteresis margin (default 0.05): auto-promote
+- If fitness delta < 0: auto-rollback to incumbent
+- Promotion is logged in tuner history table
+- Failure mode: harness unavailable → no promotion (fail-closed)
+- Backward compatible: `NEURALMIND_TUNER_AUTO_PROMOTE=0` disables
+
+### B. D3 — Populate Judge Transcripts (neuralmind)
+
+**Files:**
+- `bench/public/judge/` (CREATE — commit LLM-judged transcripts)
+- `neuralmind/benchmark.py` (READ — understand `--judge` arm)
+
+**Requirements:**
+- Run `neuralmind benchmark --public --judge` on >= 3 projects
+- Commit transcripts to `bench/public/judge/`
+- Document which projects, which LLM judge, which version
+
+### C. D4 — Per-Language Fixtures (neuralmind)
+
+**Files:**
+- `tests/fixtures/` (CREATE — TypeScript, Go, Rust, Java fixtures)
+- `neuralmind/eval.py` (READ — understand fixture format)
+
+**Requirements:**
+- Mirror Python fixture structure (query + gold-fact sets)
+- Each fixture: 10+ queries, gold facts, expected top-k nodes
+- CI-gated: `neuralmind eval --language <lang>` passes
+
+### D. E1 — Contribution-Quality Scoring (neuralmind)
+
+**Files:**
+- `neuralmind/team_memory.py` (EXTEND — add quality scoring)
+- `neuralmind/contribution_scoring.py` (CREATE — new module)
+
+**Requirements:**
+- Score each contributor by their bundle's measured onboarding lift
+- High contributors' edges get higher initial weight in `shared` namespace
+- Low contributors' edges start low, rely on reinforcement to persist
+
+### E. E2 — Merge Semantics with Decay-on-Conflict (neuralmind)
+
+**Files:**
+- `neuralmind/merge_semantics.py` (EXTEND — add conflict resolution)
+- `neuralmind/entity_resolution.py` (READ — A2 already shipped)
+
+**Requirements:**
+- When two bundles disagree on same edge: weight by contribution-quality score
+- Loser edge decays at accelerated rate
+- Requires entity resolution (A2) to recognize same edge across ID schemes
+
+### F. E3 — Peer Review Gate (neuralmind)
+
+**Files:**
+- `neuralmind/team_memory.py` (EXTEND — add review flag)
+
+**Requirements:**
+- Team-baseline contributions require human review before commit
+- Mechanism: GitHub PR on bundle file with E1.5 eval delta in PR comment
+- Not a new tool — existing GitHub workflow
+
+### G. E4 — Staleness Detection (neuralmind)
+
+**Files:**
+- `neuralmind/team_staleness.py` (EXTEND — add flagging)
+- `neuralmind/sleep.py` (READ — A4 already shipped)
+
+**Requirements:**
+- Flag team-baseline edges with no reinforcement in N days (default 60)
+- Couples with A4 sleep consolidation (prunes flagged edges)
+- Configurable: `NEURALMIND_STALENESS_DAYS`
+
+### H. F3 — Tool-Use Metrics Pipeline (neuralmind)
+
+**Files:**
+- `neuralmind/metrics_pipeline.py` (EXTEND — add continuous logging)
+- `neuralmind/daemon.py` (READ — understand daemon loop)
+
+**Requirements:**
+- Log per-query: latency, retrieval reuse rate, tool-call success, token cost
+- Structured JSONL to `.neuralmind/metrics/`
+- Bounded retention (default 30 days)
+- Feeds fitness function (C1) and team-memory quality scoring (E1)
+
+### I. F4 — Backpressure + Circuit Breakers (neuralmind)
+
+**Files:**
+- `neuralmind/daemon.py` (EXTEND — add queue depth + circuit state machine)
+
+**Requirements:**
+- Bounded queue depth for concurrent build/query/watch
+- Circuit breaker: closed → open → half-open state machine
+- Fail-fast on overload, auto-recovery after timeout
+
+### J. G3 — Modularity Clustering (neuralmind)
+
+**Files:**
+- `neuralmind/graphgen.py` (EXTEND — replace balanced-per-file with Louvain/Leiden)
+
+**Requirements:**
+- Louvain or Leiden algorithm over structural edge set
+- Communities match architectural boundaries (auth module, data layer)
+- Requires G1+G2 (dynamic import resolution + SCIP precision)
+
+### K. G4 — Incremental Re-extraction (neuralmind)
+
+**Files:**
+- `neuralmind/graphgen.py` (EXTEND — add re-extraction for changed files)
+- `neuralmind/incremental_extract.py` (READ — understand current incremental path)
+
+**Requirements:**
+- Re-extract symbols from changed files + their dependents
+- Uses structural index's reverse edges (`callers`/`importers`)
+- Skips full-tree reparse for large repos
+
+---
+
+## 5. Non-Goals
+
+- Hosted SaaS (out of scope per ROADMAP)
+- Cross-repo / org-wide search (Sourcegraph Cody's niche)
+- Inline completion (Copilot's niche)
+- Full ColBERT multi-vector (storage-prohibitive)
+- LLM-judged offline judge as default (opt-in only)
+
+---
 
 ## 6. Risks
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Louvain labeling non-deterministic | Low | Medium | Contiguous-integer relabeling at end |
-| Fast-decay over-aggressive | Low | Medium | Multiplier is reversible over multiple sleep passes |
-| Metrics directory disk growth | Low | Low | Bounded retention + rotation |
-| Backpressure deadlock | Very Low | High | Non-blocking acquire with timeout |
-
-## 7. Release Criteria
-
-- [x] C4: CI-gated promotion wired
-- [x] G3: Louvain modularity unit-tested (triangle, line, singleton)
-- [x] G4: Incremental extraction cache correctly skips unchanged files
-- [x] E1–E4: Coherent chain (score → merge → gate → staleness)
-- [x] F3: Metrics JSONL rotation + summarization
-- [x] F4: Circuit breaker state machine + backpressure bounds
-- [x] D3: Judge transcripts written
-- [x] D4: 10-language golden-suite coverage
-- [x] All tests pass (1374/1374)
+| Tuner promotion degrades real quality | Low | High | CI gate (D1/D2) blocks promotion on regression |
+| Louvain/Leiden produces unstable communities | Medium | Medium | Seed with current balanced-per-file as baseline |
+| Merge semantics create conflict loops | Low | Medium | Decay-on-conflict is one-directional (loser decays) |
+| Metrics pipeline adds latency | Low | Low | Async write, bounded retention |
+| Incremental re-extraction misses edges | Medium | High | Integration test: rename symbol, verify re-extraction |
 
 ---
 
-Signed-off-by: Hermes, from the v2.0 plan (BRD)
+## 7. Release Criteria
+
+- [ ] A: C4 — Tuner promotion auto-ships or auto-rolls-back based on harness verdict
+- [ ] B: D3 — `bench/public/judge/` has >= 3 project transcripts
+- [ ] C: D4 — TypeScript, Go, Rust, Java fixtures pass `neuralmind eval`
+- [ ] D: E1 — Contribution-quality scoring weights edges by onboarding lift
+- [ ] E: E2 — Merge semantics resolve conflicts by quality score
+- [ ] F: E3 — Peer review gate flags team-baseline contributions
+- [ ] G: E4 — Staleness detection flags unreinforced edges after N days
+- [ ] H: F3 — Metrics pipeline logs JSONL to `.neuralmind/metrics/`
+- [ ] I: F4 — Backpressure + circuit breakers prevent overload
+- [ ] J: G3 — Louvain/Leiden communities replace balanced-per-file
+- [ ] K: G4 — Incremental re-extraction skips unchanged files
+- [ ] L: All existing tests pass (130+ autopilot, 1500+ neuralmind)
+- [ ] M: ruff clean
+- [ ] N: Docs synced (BRD, TRD, Test Plan, Decisions)
+- [ ] O: ROADMAP.md updated
+
+---
+
+*BRD v1.0. Wave 4 — Close the Loop.*
