@@ -99,6 +99,7 @@ Same workflow. Apply all lessons:
 - [x] NeuralMind index rebuilt (fresh)
 - [x] CI green
 - [x] Release-please PR merged (1.1.0+)
+- [x] NeuralMind upgraded to latest (v1.1.1 — `pip install --upgrade neuralmind`)
 - [ ] DeepSeek QA on Wave 12 code (dispatched, pending results)
 - [ ] `neuralmind build` (run again after any code changes)
 
