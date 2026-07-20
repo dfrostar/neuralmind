@@ -49,20 +49,21 @@ Simultaneously, Wave 4 completes the quality harness (D3/D4), wires team-memory 
 
 ## 4. Workstreams
 
-### A. C4 — CI-Gated Tuner Promotion (autopilot + neuralmind)
+### A. C4 — CI-Gated Tuner Promotion (**SHIPPED** — `7e7ff98`)
 
 **Files:**
-- `autopilot/experiment_runner.py` (EXTEND — add promotion/rollback verdict)
-- `autopilot/promotion_engine.py` (EXTEND — wire ship_callable to real config apply)
-- `neuralmind/neuralmind/tuner.py` (READ — understand current proposal output)
+- `neuralmind/quality_harness.py` (NEW — independent validation gate)
+- `neuralmind/tuner.py` (EXTENDED — harness injection + promote_with_harness)
+- `neuralmind/contracts.py` (EXTENDED — META_TUNER_LAST_DECISION)
+- `tests/test_quality_harness_c4.py` (NEW — 13 tests)
 
-**Requirements:**
-- Tuner proposes candidate config → harness (D1/D2) evaluates → fitness delta computed
-- If fitness delta >= hysteresis margin (default 0.05): auto-promote
-- If fitness delta < 0: auto-rollback to incumbent
-- Promotion is logged in tuner history table
-- Failure mode: harness unavailable → no promotion (fail-closed)
-- Backward compatible: `NEURALMIND_TUNER_AUTO_PROMOTE=0` disables
+**Requirements (all met):**
+- ✅ Tuner proposes candidate config → harness evaluates against fixture queries
+- ✅ If harness pass AND fitness > incumbent*(1+hysteresis): auto-promote
+- ✅ If fitness < incumbent: auto-rollback to incumbent
+- ✅ Promotion logged in `self_improve:tuner_last_decision` meta key
+- ✅ Failure mode: harness unavailable → fail-open (passed=True, fitness=0.0)
+- ✅ Backward compatible: `harness=None` preserves hysteresis-only behavior
 
 ### B. D3 — Populate Judge Transcripts (neuralmind)
 

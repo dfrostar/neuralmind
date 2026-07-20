@@ -150,30 +150,35 @@ Cross-references:
 ### 3.1 C4 — CI-Gated Tuner Promotion
 
 ```python
-# autopilot/experiment_runner.py — extend run_experiment()
-def run_experiment(self, candidate: dict, baseline: dict) -> Verdict:
-    candidate_fitness = self._evaluate(candidate)
-    baseline_fitness = self._evaluate(baseline)
-    delta = candidate_fitness - baseline_fitness
+# neuralmind/quality_harness.py (NEW — independent validation gate)
+class QualityHarness:
+    def evaluate(self, candidate_params: dict) -> HarnessVerdict:
+        """Run retrieval against fixture queries, score with quality.py."""
+        # Lazy imports — stdlib-only at module level
+        # Fail-open: no fixtures/embedder → passed=True, fitness=0.0
 
-    if delta >= PROMOTION_MARGIN:  # default 0.05
-        return Verdict.SHIP
-    elif delta < 0:
-        return Verdict.ROLLBACK
-    else:
-        return Verdict.HOLD
+    def decide(self, candidate_fitness, incumbent_fitness, verdict, hysteresis) -> PromotionDecision:
+        Gate:
+          verdict.passed AND fitness > incumbent*(1+hysteresis)  → PROMOTE
+          fitness < incumbent                                     → ROLLBACK
+          otherwise                                                → HOLD
 
-# autopilot/promotion_engine.py — wire real callables
-def ship_or_rollback(verdict, candidate, incumbent):
-    if verdict == Verdict.SHIP:
-        apply_config(candidate)  # was no-op lambda
-        log.info(f"Promoted candidate: fitness delta={delta:.4f}")
-    elif verdict == Verdict.ROLLBACK:
-        restore_config(incumbent)
-        log.info(f"Rolled back to incumbent")
-    else:
-        log.info(f"Hold: candidate within hysteresis margin")
+# neuralmind/tuner.py — harness injection
+class PopulationTuner:
+    def __init__(self, ..., harness: QualityHarness | None = None):
+        self.harness = harness  # backward compatible: None = hysteresis only
+
+    def promote_with_harness(self, candidate_params, candidate_fitness, incumbent_fitness):
+        if self.harness is None:
+            return hysteresis_only_promotion(...)
+        verdict = self.harness.evaluate(candidate_params)
+        return self.harness.decide(...)
+
+    def _record_decision(self, decision):
+        # Persist to self_improve:tuner_last_decision for operator visibility
 ```
+
+**Tests:** `tests/test_quality_harness_c4.py` (13 tests, all passing).
 
 ### 3.2 D3 — Populate Judge Transcripts
 
@@ -369,7 +374,7 @@ See `docs/WAVE4-TEST-PLAN.md`.
 
 ## 7. Acceptance
 
-- [ ] C4: Tuner auto-promotes or auto-rolls-back based on harness verdict
+- [x] C4: Tuner auto-promotes or auto-rolls-back based on harness verdict (shipped `7e7ff98`)
 - [ ] D3: Judge transcripts committed for >= 3 projects
 - [ ] D4: Per-language fixtures pass eval
 - [ ] E1: Contribution-quality scoring weights edges
