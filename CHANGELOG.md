@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/dfrostar/neuralmind/compare/v1.1.0...v1.1.1) (2026-07-20)
+
+
+### Documentation
+
+* Wave 12 post-build assessment — retrieval quality, discoverability ([15e9a7c](https://github.com/dfrostar/neuralmind/commit/15e9a7c048ff84ef003ef6d8e23f93343adf12d9))
+* Wave 12 session prompt for Wave 4 kickoff ([bcc59f0](https://github.com/dfrostar/neuralmind/commit/bcc59f0f8c5a05a60ca684634050f4201e997e6a))
+
 ## [1.1.0](https://github.com/dfrostar/neuralmind/compare/v1.0.0...v1.1.0) (2026-07-20)
 
 
