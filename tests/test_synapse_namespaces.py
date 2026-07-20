@@ -331,10 +331,10 @@ def test_ephemeral_decays_much_faster_than_personal(tmp_path):
 
 def test_shared_namespace_is_stickier_than_personal(tmp_path):
     store = _store(tmp_path)
-    store.reinforce(["a", "b"], namespace=SHARED_NAMESPACE)
-    store.reinforce(["a", "b"], namespace=DEFAULT_NAMESPACE)
-    for _ in range(20):
-        store.decay()
+    old_ts = time.time() - 30 * 86400  # 30 days ago — deterministic age
+    store.reinforce(["a", "b"], namespace=SHARED_NAMESPACE, now=old_ts)
+    store.reinforce(["a", "b"], namespace=DEFAULT_NAMESPACE, now=old_ts)
+    store.decay()
     shared_w = dict(store.neighbors("a", namespaces=[SHARED_NAMESPACE]))["b"]
     personal_w = dict(store.neighbors("a", namespaces=[DEFAULT_NAMESPACE]))["b"]
     assert shared_w > personal_w > 0.0
