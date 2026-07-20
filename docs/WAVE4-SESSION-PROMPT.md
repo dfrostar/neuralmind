@@ -1,9 +1,9 @@
-# Next Session Prompt — NeuralMind Wave 4
+# Next Session Prompt — NeuralMind Wave 4 (C4 COMPLETE)
 
 **Date:** 2026-07-21
 **Autopilot:** v0.8.0 (Wave 12 shipped — private, not published)
-**NeuralMind:** v1.1.1 (Wave 12 tagged on GitHub)
-**Index:** rebuilt, fresh
+**NeuralMind:** v1.1.1 (Wave 12 tagged on GitHub, pip upgraded)
+**Index:** rebuilt, fresh (11,530 nodes, 593 communities, IR v1 valid)
 
 ---
 
@@ -15,17 +15,29 @@ Wave 12 sold the first real seat. The operator can now:
 - Documented customer handoff + webhook e2e ceremonies
 - Synced version state (repo/manifest/PyPI all at 1.1.0+)
 
-Tests: 130/130 autopilot, 40/40 neuralmind tier2 (2 expected skips). Full neuralmind suite also green.
+DeepSeek QA on Wave 12 (`seats.py` + `cli.py`): 1 CRITICAL + 7 WARNING patched.
+Tests: 130/130 autopilot, 40/40 tier2, full neuralmind suite all green.
 
 ---
 
-## Goal: Wave 4 — Close the Loop
+## C4 — IMPLEMENTED & COMMITTED (7e7ff98)
 
-Wave 4 has 11 workstreams across 6 buckets. Per FUTURE-PROOFING-PLAN §9 sequence, the self-improvement loop (C4) is first — it closes the tuner promotion path.
+`/home/dtfrost/neuralmind/quality_harness.py` — independent quality validation gate
+- `QualityHarness.evaluate()` — runs retrieval with candidate params against fixture queries, scores with quality.py
+- `QualityHarness.decide()` — promote/rollback/hold gate (harness pass + hysteresis beat)
+- Fail-open: no fixtures/embedder returns `passed=True` with `fitness=0.0`
+- Tuner wiring: `promote_with_harness()`, `_record_decision()` in `self_improve:tuner_last_decision`
+- Backward compatible: `harness=None` preserves hysteresis-only behavior
+- 13/13 new tests passing, ruff clean
+- DeepSeek QA dispatched (separate subagent, results pending)
+
+---
+
+## Wave 4 Sequence (After C4)
 
 | # | Item | Bucket | Depends on | Complexity |
 |---|------|--------|------------|------------|
-| 1 | C4 — CI-gated tuner promotion | Self-improvement | C3 + D | MEDIUM |
+| 1 | ~~C4 — CI-gated tuner promotion~~ | ~~Self-improvement~~ | C3 + D | **DONE** |
 | 2 | D3 — Populate judge transcripts | Quality harness | D1 | LOW |
 | 3 | D4 — Per-language fixtures | Quality harness | D1 | MEDIUM |
 | 4 | E1 — Contribution-quality scoring | Team memory | D | MEDIUM |
@@ -81,18 +93,6 @@ Same workflow. Apply all lessons:
 
 ---
 
-## Start Here
-
-1. Read `/home/dtfrost/neuralmind/docs/FUTURE-PROOFING-PLAN.md` §9 (sequence) and §10 (decisions) — confirm Wave 4 scope
-2. Read `/home/dtfrost/neuralmind/neuralmind/tuner.py` — understand current C3 population search (what C4 gates)
-3. Read `/home/dtfrost/neuralmind/neuralmind/experiment_runner.py` + `promotion_engine.py` — understand the CI gate pathway
-4. Read `/home/dtfrost/neuralmind/neuralmind/team_memory.py` — understand current bundle publish path
-5. Read `/home/dtfrost/neuralmind/neuralmind/graphgen.py` — understand current community assignment
-6. Run `PYTHONPATH=. python3 -m pytest tests/ -q` in both repos to confirm green state
-7. Plan Wave 4 items into a prioritized BRD/TRD sequence — recommend C4 first, then D3/D4, then E1/E2/E4, then F3/F4, then G3/G4
-
----
-
 ## Pre-Flight (Before This Session's Work)
 
 - [x] Wave 12 code committed and pushed
@@ -100,9 +100,30 @@ Same workflow. Apply all lessons:
 - [x] CI green
 - [x] Release-please PR merged (1.1.0+)
 - [x] NeuralMind upgraded to latest (v1.1.1 — `pip install --upgrade neuralmind`)
-- [ ] DeepSeek QA on Wave 12 code (dispatched, pending results)
-- [ ] `neuralmind build` (run again after any code changes)
+- [x] DeepSeek QA on Wave 12 code completed (all patched)
+- [x] C4 design approved
+- [x] C4 implementation complete + committed (7e7ff98) + pushed
+- [x] C4 tests green (13/13)
+- [ ] C4 DeepSeek QA (dispatched, separate subagent, results pending)
+- [ ] D3 — Populate judge transcripts
+- [ ] D4 — Per-language fixtures
 
 ---
 
-*Next session prompt v1.0. Wave 4 — Close the Loop.*
+## Start Here
+
+1. Read `/home/dtfrost/neuralmind/docs/FUTURE-PROOFING-PLAN.md` §9 (sequence) and §10 (decisions) — confirm D3/D4 scope
+2. Read `/home/dtfrost/neuralmind/neuralmind/ragas.py` — D1 judge (already built)
+3. Read `/home/dtfrost/neuralmind/neuralmind/quality.py` — D2 retrieval metrics (already built)
+4. Read `/home/dtfrost/neuralmind/neuralmind/fixtures.py` — fixture loader (already built)
+5. Read `/home/dtfrost/neuralmind/neuralmind/quality_harness.py` — C4 freshly shipped
+6. Check DeepSeek QA results on C4 (separate subagent dispatched, may already be in inbox)
+7. Plan D3 + D4 into a single BRD/TRD
+8. Implement D3 (judge transcripts) — LOW complexity, quick win
+9. Implement D4 (per-language fixtures) — MEDIUM complexity
+10. Run DeepSeek QA on D3/D4
+11. Commit, push, append to `WAVE4-BRD.md` + `WAVE4-TRD.md`
+
+---
+
+*Next session prompt v3.0. C4 COMPLETE. D3/D4 next.*
