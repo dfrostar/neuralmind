@@ -3,7 +3,10 @@
 Everything here is **measured and reproducible** — no hand-picked or hardcoded
 numbers. Every figure is produced by code in the repo and **gated in CI**, so it
 can't silently regress. Where a number is an estimate or a real-repo
-extrapolation, it says so.
+extrapolation, it says so. One labeled exception: the
+[field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
+one-repo, maintainer-measured case study — reproducible in method, not gated
+in CI.
 
 > Reproduce locally: `python -m tests.benchmark.run` (token reduction + learning
 > + synapse A/B), `python -m evals.faithfulness.runner --run` (answer quality),
@@ -114,6 +117,26 @@ numbers above are emitted live by the parity gate on every PR. Per-language *ans
 quality* (vs structural coverage) is still Python-first; see
 [Limits & Failure Modes](Limits-and-Failure-Modes#3-language-support-matrix).
 
+## Field report: a real-world rebuild (not CI-gated)
+
+Unlike everything above, this is a **field report**: the maintainer ran
+NeuralMind across a major internal rebuild of a private, mid-size TypeScript
+SaaS platform (~9,300 nodes) and recorded before/after numbers with the
+shipped CLI (`neuralmind stats` / `benchmark`, a timed `build --force`). One
+repo, one developer, anonymized — reproducible in *method* on your own
+codebase, but not a CI-gated claim.
+
+| Headline | Value |
+|---|---|
+| Avg token reduction (`neuralmind benchmark`) | **48.8×** (~1,033 tokens/query vs 50K+ naive) |
+| Personal synapse edges across the rebuild | **36 → 135** — the learning layer tracked the new code |
+| Shared edge weight | **+5.4%** (denser cross-links after a new shared layer) |
+| Full `--force` rebuild / incremental after | **326 s** / **~30 s** |
+
+Full table, interpretation, and a step-by-step recipe for the same
+before/after measurement on your own refactor:
+[Measure memory across a major refactor](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
+
 ## What we *don't* claim
 
 - The CI numbers come from a **deliberately tiny fixture** — they prove the
@@ -123,6 +146,9 @@ quality* (vs structural coverage) is still Python-first; see
   reference fixture, and the compression win only matters at scale.
 - The 40–70× figure is a real-repo range, not a fixed guarantee — your ratio
   depends on repo size and question shape.
+- The field report above is a single private-repo measurement by the
+  maintainer — treat it as an existence proof consistent with the 40–70×
+  range, not an independent benchmark.
 
 ## Reproduce every number
 

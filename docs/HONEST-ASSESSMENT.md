@@ -38,7 +38,7 @@ vs. generation, which varies wildly by workload. For a typical
 Claude Code session the realistic end-to-end savings is **3–10×**
 total cost, not 40–70×.
 
-The community-benchmark table is currently **two entries from the
+The community-benchmark table is currently **three entries from the
 maintainer's own projects**. Numbers from outside contributors are
 the single most valuable thing you can give back if NeuralMind ends
 up working for you.
@@ -110,7 +110,7 @@ If it makes 5 calls a day on a 5K-token repo, it doesn't.
 ## The community benchmark caveat
 
 The table in [README.md](../README.md#community-benchmarks) currently
-has **two entries**, both from repositories owned by the project
+has **three entries**, all from repositories owned by the project
 maintainer. This is honest disclosure, not a flaw — the project is
 new and outside benchmarks take time to accumulate. But it means:
 

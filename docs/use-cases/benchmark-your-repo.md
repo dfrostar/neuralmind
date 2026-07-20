@@ -231,6 +231,7 @@ A few things to check before giving up:
 
 - [Use case: Cost optimization](./cost-optimization.md) — baseline → measure → report template for stakeholders
 - [Use case: Claude Code user](./claude-code.md) — full two-phase workflow
+- [Use case: Measure memory across a major refactor](./measure-memory-across-a-refactor.md) — the before/after version of this benchmark, with a real-world field report
 - [Comparisons: vs long context windows](../comparisons/vs-long-context.md) — why 1M-token windows don't solve this
 
 ---
