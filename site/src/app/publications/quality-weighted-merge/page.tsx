@@ -5,16 +5,49 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '31aac0e';
 
 export const metadata = {
-    title: 'Quality-Weighted Merge with Conflict-Driven Decay — NeuralMind Publication',
-    description: 'A method for resolving conflicting assertions in a distributed edge-weight graph, wherein each edge carries a quality score computed from reinforcement frequency, recency of activation, and historical conflict rate, and wherein the loser of a conflict is excluded, forcing the graph toward consensus without central coordination.',
+    title: 'Quality-Weighted Merge with Conflict-Driven Decay — NeuralMind',
+    description: 'A method for resolving conflicting assertions in a distributed edge-weight graph. Each edge carries a quality score from reinforcement, recency, and conflict rate. The loser is excluded, forcing consensus.',
+    keywords: [
+        'defensive publication',
+        'prior art',
+        'edge-weight graph',
+        'conflict resolution',
+        'distributed consensus',
+        'team memory',
+        'Hebbian learning',
+        'synaptic merge',
+        'local-first',
+        'NeuralMind',
+    ],
     authors: [{ name: 'Darren Frost' }],
+    creator: 'Darren Frost',
+    publisher: 'NeuralMind',
+    metadataBase: new URL('https://neuralmind.uk'),
+    alternates: {
+        canonical: '/publications/quality-weighted-merge',
+    },
     openGraph: {
         title: 'Quality-Weighted Merge with Conflict-Driven Decay',
         description: 'A defensive publication establishing prior art for conflict resolution in local-first edge-weight graphs.',
         url: 'https://neuralmind.uk/publications/quality-weighted-merge',
         siteName: 'NeuralMind',
+        locale: 'en_US',
         type: 'article',
         publishedTime: '2026-07-22',
+        modifiedTime: '2026-07-22',
+        authors: ['Darren Frost'],
+        tags: ['defensive publication', 'prior art', 'edge-weight graph', 'conflict resolution', 'team memory'],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Quality-Weighted Merge with Conflict-Driven Decay',
+        description: 'A defensive publication establishing prior art for conflict resolution in local-first edge-weight graphs.',
+        images: ['https://neuralmind.uk/social-preview.png'],
+    },
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: { index: true, follow: true },
     },
 };
 
@@ -23,6 +56,41 @@ export default function PublicationPage() {
         <>
             <Navbar />
             <main className="max-w-4xl mx-auto px-4 md:px-6 py-16">
+                {/* JSON-LD Article Schema */}
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify({
+                            '@context': 'https://schema.org',
+                            '@type': 'Article',
+                            headline: 'Quality-Weighted Merge with Conflict-Driven Decay',
+                            description: 'A method for resolving conflicting assertions in a distributed edge-weight graph. Each edge carries a quality score from reinforcement, recency, and conflict rate.',
+                            author: {
+                                '@type': 'Person',
+                                name: 'Darren Frost',
+                                url: 'https://github.com/dfrostar',
+                            },
+                            publisher: {
+                                '@type': 'Organization',
+                                name: 'NeuralMind',
+                                url: 'https://neuralmind.uk',
+                            },
+                            datePublished: '2026-07-22',
+                            dateModified: '2026-07-22',
+                            mainEntityOfPage: {
+                                '@type': 'WebPage',
+                                '@id': 'https://neuralmind.uk/publications/quality-weighted-merge',
+                            },
+                            keywords: ['defensive publication', 'prior art', 'edge-weight graph', 'conflict resolution', 'team memory', 'Hebbian learning'],
+                            about: {
+                                '@type': 'SoftwareApplication',
+                                name: 'NeuralMind',
+                                url: 'https://github.com/dfrostar/neuralmind',
+                            },
+                        }),
+                    }}
+                />
+
                 {/* Header */}
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
