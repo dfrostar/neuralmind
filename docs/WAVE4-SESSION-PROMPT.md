@@ -1,8 +1,8 @@
-# Next Session Prompt — NeuralMind Wave 4 (E1+E2+E3+E4+F3+F4 COMPLETE, G3 NEXT)
+# Next Session Prompt — NeuralMind Wave 4 (E1+E2+E3+E4+F3+F4+G3 COMPLETE, G4 NEXT)
 
 **Date:** 2026-07-23
 **Autopilot:** v0.7.0 (running — systemd service live)
-**NeuralMind:** v1.6.0 (F4 shipped)
+**NeuralMind:** v1.7.0 (G3 shipped)
 **Index:** rebuilt, fresh — 11,530 nodes / 593 communities
 
 ---
@@ -20,6 +20,7 @@
 | E4 — Staleness detection | `3fe5a61` | ✅ DeepSeek QA'd |
 | F3 — Tool-use metrics pipeline | — | ✅ DeepSeek QA'd |
 | F4 — Backpressure + circuit breakers | — | ✅ DeepSeek QA'd |
+| G3 — Modularity clustering | `f49b535` | ✅ 1582 tests green, ruff clean |
 | Site — CFO/CTO business case | `1478b4a` | ✅ Live on neuralmind.uk |
 | CFO deck prompt | internal/cfo-deck-prompt.md | ✅ |
 
@@ -38,71 +39,34 @@
 | 7 | E4 — Staleness detection | Team memory | LOW | ✅ DONE |
 | 8 | F3 — Tool-use metrics pipeline | Daemon/MCP | MEDIUM | ✅ DONE |
 | 9 | F4 — Backpressure + circuit breakers | Daemon/MCP | MEDIUM | ✅ DONE |
-| 10 | G3 — Modularity clustering | Graph precision | HIGH | **NEXT** |
-| 11 | G4 — Incremental re-extraction | Graph precision | HIGH | |
+| 10 | G3 — Modularity clustering | Graph precision | HIGH | ✅ DONE |
+| 11 | G4 — Incremental re-extraction | Graph precision | HIGH | **NEXT** |
 
 ---
 
-## F4 — Backpressure + Circuit Breakers (Complete)
+## G3 — Modularity Clustering (Complete)
 
 **Files modified:**
-- `neuralmind/backpressure.py` — three-state machine (CLOSED → OPEN → HALF_OPEN) with env-configurable thresholds
-- `neuralmind/mcp_server.py` — `asyncio.Semaphore` wrapper on tool handlers
-- `neuralmind/daemon_client.py` — per-session failure tracking
-- `tests/test_f4_backpressure.py` — 7 tests (trip, recovery, concurrency cap, env config)
+- `neuralmind/modularity.py` — resolution param now applied in `_modularity_gain`; O(n·k) incremental community weight updates
+- `neuralmind/graphgen.py` — `_assign_communities(b, existing_graph)` wires Louvain over per-file structural edges; carries over community IDs from existing_graph for incremental stability; falls back to per-file grouping on collapse
+- `tests/test_modularity.py` — 11 tests (was 5, +6 new: resolution contrast, determinism, perf-bound)
 
-**Result:** All 51 daemon/backpressure tests pass. Ruff clean. DeepSeek QA'd.
+**Result:** 1582 tests pass. Ruff clean. QA report at `docs/G3-QA-REPORT.md`.
 
 **CLI commands:**
 ```
-neuralmind metrics show --breakers    # Show circuit breaker states
-neuralmind metrics show --concurrency  # Show current concurrency usage
+neuralmind build  # now uses Louvain modularity for community assignment
 ```
 
 ---
 
-## G3 — Modularity Clustering (Next)
-
-### What It Is
-Replace balanced-per-file clustering with Louvain/Leiden modularity optimization over structural edges. Communities match architectural boundaries (auth module, data layer) instead of file-level groupings.
-
-### Why Now
-G3 provides the community-quality signal for G4 (incremental re-extraction). Without accurate modularity, G4 re-extracts the wrong file sets. G3 is the last remaining graph-precision workstream.
-
-### Research Already Done
-See `docs/research/f4-g3-research-backlog.md`. Key findings:
-- **BUG ALREADY FOUND:** `modularity.py` accepts `resolution` parameter but ignores it in `_modularity_gain` — always runs at γ=1.0 regardless of caller input
-- **PERF ISSUE:** O(n²) nested loop in Phase 1 — should be O(n·k) with incremental community weight updates
-- No stdlib-only Louvain implementation exists — ours is original
-- Leiden provably better (connectivity guarantees) but requires `python-igraph` C dep
-- Current pure-Python Louvain is only stdlib option
-
-### Files to Read FIRST
-| File | Why |
-|------|-----|
-| `neuralmind/modularity.py` | Existing implementation — fix the resolution bug, optimize Phase 1 |
-| `neuralmind/graphgen.py` | `build_graph()` calls `_assign_communities()` — wiring point |
-| `neuralmind/structural.py` | Structural edges that feed Louvain |
-| `tests/test_modularity.py` | Existing tests — pass-through requirement |
-
-### G3 Acceptance
-- [ ] `resolution` parameter actually affects `_modularity_gain` result
-- [ ] Phase 1 runs in O(n·k) or better (not O(n²))
-- [ ] Deterministic output (seed or sorted tiebreaking)
-- [ ] Communities validated against known architecture (auth, data layer)
-- [ ] All existing modularity tests pass
-- [ ] ruff clean
-- [ ] DeepSeek QA dispatched
-
----
-
-## G4 — Incremental Re-Extraction (After G3)
+## G4 — Incremental Re-Extraction (Next)
 
 ### What It Is
 Re-extract symbols from changed files + their dependents. Uses structural index's reverse edges (`callers`/`importers`). Skips full-tree reparse for large repos.
 
 ### Research Already Done
-Same `docs/research/f4-g3-research-backlog.md`:
+See `docs/research/f4-g3-research-backlog.md`. Key findings:
 - **Community ID stability bug:** `build_graph()` unconditionally renumbers ALL communities on every call. Docstring claims unchanged files keep IDs — false. Patch: carry `comm_of_file` from existing graph.
 - **Dangling edge prune missing:** Incremental path preserves edges to non-existent nodes after a rename.
 
@@ -125,9 +89,8 @@ Same `docs/research/f4-g3-research-backlog.md`:
 ---
 
 ## Versioning
-
 - autopilot: v0.7.0 (running)
-- neuralmind: v1.6.0 (F4) → v1.7.0 (G3/G4)
+- neuralmind: v1.7.0 (G3) → v1.8.0 (G4)
 
 ---
 
@@ -153,21 +116,19 @@ Same `docs/research/f4-g3-research-backlog.md`:
 
 | Feature | Research needed? | Why |
 |---------|------------------|-----|
-| G3 — Modularity | **No** | Research done (`f4-g3-research-backlog.md`) |
-| G4 — Incremental | **No** | Research done (same doc) |
+| G4 — Incremental | **No** | Research done (`f4-g3-research-backlog.md`) |
 | All Wave 4 research complete | — | — |
 
 ---
 
 ## Start Here
 
-1. Read `neuralmind/modularity.py` — understand current implementation + resolution bug
-2. Read `neuralmind/graphgen.py` — understand `_assign_communities()` wiring
-3. Fix `resolution` parameter bug in `_modularity_gain`
-4. Optimize Phase 1 from O(n²) to O(n·k)
+1. Read `neuralmind/graphgen.py` — understand `build_graph()` + `IncrementalExtractor` wiring
+2. Read `neuralmind/incremental_extract.py` — understand `scan_files()` + `get_changed_with_dependents()`
+3. Patch community ID stability bug (carry `comm_of_file` from existing graph)
+4. Patch dangling edge prune (drop edges to non-existent nodes after rename)
 5. Write tests, run full suite, DeepSeek QA
-6. Move to G4 (incremental re-extraction)
-7. Update `WAVE4-SESSION-PROMPT.md` to v12.0 (G3+G4 → DONE)
+6. Update `WAVE4-SESSION-PROMPT.md` to v13.0 (G4 → DONE)
 
 ---
 
@@ -193,4 +154,4 @@ Same `docs/research/f4-g3-research-backlog.md`:
 
 ---
 
-*Next session prompt v11.0. E1+E2+E3+E4+F3+F4 COMPLETE. G3 — Modularity Clustering next.*
+*Next session prompt v12.0. E1+E2+E3+E4+F3+F4+G3 COMPLETE. G4 — Incremental Re-Extraction next.*
