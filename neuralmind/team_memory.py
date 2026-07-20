@@ -43,6 +43,7 @@ from .ir import (
     import_synapse_bundle,
 )
 from .merge_semantics import QualityWeightedMerger
+from .peer_review import PeerReviewGate
 from .synapses import DEFAULT_NAMESPACE, SHARED_NAMESPACE
 
 # Committed at the repo root, beside .gitignore — NOT inside the git-ignored
@@ -53,8 +54,45 @@ TEAM_BUNDLE_FILENAME = ".neuralmind-team-memory.json"
 # into ``shared`` — the idempotency gate so we import each bundle exactly once.
 _META_TEAM_HASH = "team_bundle_imported_hash"
 
+# Store ``meta`` key for the pending review queue — edges that need operator
+# approval before entering ``shared``. Value is a JSON list of dicts with
+# source, target, score, reason, reviewer_hint.
+_META_PENDING_REVIEW = "team_pending_review"
+
 # Keep the committed file compact: cap each list to the strongest associations.
 _TEAM_BUNDLE_CAP = 5000
+
+
+def _load_pending_review(store: Any) -> list[dict]:
+    """Load the pending review queue from the store's meta table."""
+    try:
+        raw = store.get_meta(_META_PENDING_REVIEW)
+        if raw:
+            return json.loads(raw)
+    except Exception:
+        pass
+    return []
+
+
+def _save_pending_review(store: Any, queue: list[dict]) -> None:
+    """Persist the pending review queue to the store's meta table."""
+    try:
+        store.set_meta(_META_PENDING_REVIEW, json.dumps(queue))
+    except Exception:
+        pass
+
+
+def _add_to_pending_review(store: Any, decision: Any) -> None:
+    """Add a review decision to the pending review queue."""
+    queue = _load_pending_review(store)
+    queue.append({
+        "source": decision.edge.source,
+        "target": decision.edge.target,
+        "score": round(decision.edge.score, 4),
+        "reason": decision.reason,
+        "reviewer_hint": decision.reviewer_hint,
+    })
+    _save_pending_review(store, queue)
 
 
 def team_bundle_path(project_path: str | Path) -> Path:
@@ -223,27 +261,87 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
                     if not conflict.contest:
                         winner = existing_index[key] if conflict.winner == "a" else edge
                         merged_edges.append(winner)
-                    # contest → skip, escalates to E3
+                    # contest → escalates to E3 as review_required
+                    else:
+                        merged_edges.append(edge)
                 else:
                     merged_edges.append(edge)
 
-            # Write merged edges through merger (handles decay on losers)
-            merge_result = merger.merge_to_store(
-                merged_edges,
-                store,
-                namespace=SHARED_NAMESPACE,
-                conflicts=conflicts,
+            # Run peer review gate on all surviving edges (E3)
+            gate = PeerReviewGate(scorer)
+            final_rows: list[tuple[str, str, float, int]] = []
+            promoted_count = 0
+            review_count = 0
+            rejected_count = 0
+            for edge in merged_edges:
+                decision = gate.decide(edge)
+                if decision.action == "auto_promote":
+                    final_rows.append(
+                        (edge.source, edge.target, edge.score, edge.activation_count)
+                    )
+                    promoted_count += 1
+                elif decision.action == "review_required":
+                    _add_to_pending_review(store, decision)
+                    review_count += 1
+                else:
+                    rejected_count += 1
+
+            written = (
+                store.import_edges(final_rows, namespace=SHARED_NAMESPACE)
+                if final_rows
+                else 0
             )
+
+            decayed_count = sum(
+                1
+                for c in conflicts
+                if c.resolved and c.winner == "b"
+            )
+
             result = {
                 "namespace": SHARED_NAMESPACE,
-                "synapses": merge_result["merged"],
-                "contest": merge_result["contest"],
-                "decayed": merge_result["decayed"],
+                "synapses": written,
+                "promoted": promoted_count,
+                "review_required": review_count,
+                "rejected": rejected_count,
+                "contest": sum(1 for c in conflicts if c.contest),
+                "decayed": decayed_count,
                 "transitions": 0,
             }
         else:
-            # Fresh clone — plain import
-            result = import_synapse_bundle(store, bundle, namespace=SHARED_NAMESPACE)
+            # Fresh clone — apply peer review gate before importing
+            incoming_scored = scorer.score_bundle(bundle)
+            gate = PeerReviewGate(scorer)
+            final_rows = []
+            review_count = 0
+            rejected_count = 0
+            for edge in incoming_scored:
+                decision = gate.decide(edge)
+                if decision.action == "auto_promote":
+                    final_rows.append(
+                        (edge.source, edge.target, edge.score, edge.activation_count)
+                    )
+                elif decision.action == "review_required":
+                    _add_to_pending_review(store, decision)
+                    review_count += 1
+                else:
+                    rejected_count += 1
+
+            written = (
+                store.import_edges(final_rows, namespace=SHARED_NAMESPACE)
+                if final_rows
+                else 0
+            )
+            result = {
+                "namespace": SHARED_NAMESPACE,
+                "synapses": written,
+                "promoted": written,
+                "review_required": review_count,
+                "rejected": rejected_count,
+                "contest": 0,
+                "decayed": 0,
+                "transitions": 0,
+            }
     except Exception:
         return None
     # Record the idempotency hash in its own try: a meta-write failure must not

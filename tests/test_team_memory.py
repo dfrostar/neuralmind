@@ -38,12 +38,13 @@ class TeamMemoryTests(unittest.TestCase):
         self._tmp.cleanup()
 
     def _seed(self, store: SynapseStore) -> None:
-        # Three co-edited modules → a triangle of personal synapses.
-        store.reinforce(
-            ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"],
-            strength=3.0,
-            namespace=DEFAULT_NAMESPACE,
-        )
+        # High-quality triangle — many recent activations so edges auto-promote through E3 gate.
+        for _ in range(30):
+            store.reinforce(
+                ["auth/handlers.py", "auth/jwt_utils.py", "users/crud.py"],
+                strength=5.0,
+                namespace=DEFAULT_NAMESPACE,
+            )
 
     def test_publish_writes_committed_bundle_at_root(self) -> None:
         store = _store(self.project)
@@ -76,7 +77,7 @@ class TeamMemoryTests(unittest.TestCase):
 
             result = maybe_import_team_memory(b_proj, b)
             self.assertIsNotNone(result)
-            self.assertGreater(result["synapses"], 0)
+            self.assertGreater(result["promoted"], 0)
 
             # Inherited edges land in `shared`, not `personal`.
             shared = b.edges(namespaces=[SHARED_NAMESPACE])
@@ -168,7 +169,7 @@ class TeamMemoryTests(unittest.TestCase):
             finally:
                 b.set_meta = original  # type: ignore[method-assign]
             self.assertIsNotNone(result)
-            self.assertGreater(result["synapses"], 0)
+            self.assertGreater(result["promoted"], 0)
             self.assertTrue(b.edges(namespaces=[SHARED_NAMESPACE]))
 
     def test_build_preserves_per_field_maxima(self) -> None:
