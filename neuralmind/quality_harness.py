@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,10 +28,10 @@ log = logging.getLogger(__name__)
 class HarnessVerdict:
     """Result of independent quality validation."""
 
-    fitness: float = 0.0              # scalar for comparison with incumbent
-    ragas_score: float = 0.0          # answerability proxy (relevance axis)
-    retrieval_score: float = 0.0      # MRR from quality.py
-    passed: bool = False              # all QualityThresholds met
+    fitness: float = 0.0  # scalar for comparison with incumbent
+    ragas_score: float = 0.0  # answerability proxy (relevance axis)
+    retrieval_score: float = 0.0  # MRR from quality.py
+    passed: bool = False  # all QualityThresholds met
     failures: list[str] = field(default_factory=list)
     per_query: list[dict] = field(default_factory=list)
 
@@ -39,10 +40,10 @@ class HarnessVerdict:
 class PromotionDecision:
     """Gate decision for a tuner candidate."""
 
-    verdict: str = "hold"                # "promote" | "rollback" | "hold"
-    reason: str = ""                     # human-readable rationale
-    candidate_fitness: float = 0.0       # tuner's self-measurement
-    incumbent_fitness: float = 0.0       # incumbent's fitness
+    verdict: str = "hold"  # "promote" | "rollback" | "hold"
+    reason: str = ""  # human-readable rationale
+    candidate_fitness: float = 0.0  # tuner's self-measurement
+    incumbent_fitness: float = 0.0  # incumbent's fitness
     harness_verdict: HarnessVerdict | None = None
 
 
@@ -86,8 +87,12 @@ class QualityHarness:
         if not fixtures:
             log.debug("QualityHarness: no fixtures available, fail-open")
             return HarnessVerdict(
-                fitness=0.0, ragas_score=0.0, retrieval_score=0.0,
-                passed=True, failures=[], per_query=[],
+                fitness=0.0,
+                ragas_score=0.0,
+                retrieval_score=0.0,
+                passed=True,
+                failures=[],
+                per_query=[],
             )
 
         # Lazy embedder load -- keeps this module importable without deps.
@@ -98,14 +103,22 @@ class QualityHarness:
             if not embedder.load_graph():
                 log.debug("QualityHarness: embedder graph load failed, fail-open")
                 return HarnessVerdict(
-                    fitness=0.0, ragas_score=0.0, retrieval_score=0.0,
-                    passed=True, failures=[], per_query=[],
+                    fitness=0.0,
+                    ragas_score=0.0,
+                    retrieval_score=0.0,
+                    passed=True,
+                    failures=[],
+                    per_query=[],
                 )
         except Exception as exc:  # noqa: BLE001 — lazy import may fail
             log.debug("QualityHarness: embedder unavailable: %s", exc)
             return HarnessVerdict(
-                fitness=0.0, ragas_score=0.0, retrieval_score=0.0,
-                passed=True, failures=[], per_query=[],
+                fitness=0.0,
+                ragas_score=0.0,
+                retrieval_score=0.0,
+                passed=True,
+                failures=[],
+                per_query=[],
             )
 
         # Run retrieval per fixture with the candidate's params applied.
@@ -131,8 +144,12 @@ class QualityHarness:
 
         if not per_query_results:
             return HarnessVerdict(
-                fitness=0.0, ragas_score=0.0, retrieval_score=0.0,
-                passed=True, failures=[], per_query=[],
+                fitness=0.0,
+                ragas_score=0.0,
+                retrieval_score=0.0,
+                passed=True,
+                failures=[],
+                per_query=[],
             )
 
         suite = aggregate("quality_harness", per_query_results)
@@ -144,7 +161,12 @@ class QualityHarness:
         retrieval_score = suite.mrr
         ragas_score = suite.answerability
         fitness = 0.6 * retrieval_score + 0.4 * ragas_score
-        fitness = max(0.0, min(1.0, fitness))
+        # NaN-safe clamp: max(0.0, min(1.0, nan)) returns 1.0 — wrong direction.
+        # Explicit isfinite check so NaN/Inf regressions don't promote.
+        if not math.isfinite(fitness):
+            fitness = 0.0
+        else:
+            fitness = max(0.0, min(1.0, fitness))
 
         return HarnessVerdict(
             fitness=fitness,
