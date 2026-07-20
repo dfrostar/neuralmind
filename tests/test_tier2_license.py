@@ -69,13 +69,76 @@ class TestLicenseValidation:
         monkeypatch.setattr(validator, "_verify_signature", lambda lic: False)
         assert validator.validate() == "INVALID"
 
-    @pytest.mark.skip(reason="offline_grace not implemented")
-    def test_license_offline_within_grace(self, license_dir: Path) -> None:
-        pass
+    def test_license_offline_within_grace(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Expired license with recent validation → OFFLINE_OK (dual-bound grace)."""
+        past = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lic_path = license_dir / "license.json"
+        self._write_license(lic_path, expires_at=past)
 
-    @pytest.mark.skip(reason="offline_grace not implemented")
-    def test_license_offline_beyond_grace(self, license_dir: Path) -> None:
-        pass
+        validator = LicenseValidator("a" * 64, lic_path)
+        monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
+
+        # Simulate recent validation (3 days ago — within grace)
+        sidecar = lic_path.with_suffix(".last_valid")
+        sidecar.write_text(
+            (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        )
+
+        assert validator.validate() == "OFFLINE_OK"
+
+    def test_license_offline_beyond_grace(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Expired license with old validation → EXPIRED (beyond grace window)."""
+        past = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lic_path = license_dir / "license.json"
+        self._write_license(lic_path, expires_at=past)
+
+        validator = LicenseValidator("a" * 64, lic_path)
+        monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
+
+        # Simulate old validation (45 days ago — beyond 30-day grace)
+        sidecar = lic_path.with_suffix(".last_valid")
+        sidecar.write_text(
+            (datetime.now(timezone.utc) - timedelta(days=45)).isoformat()
+        )
+
+        assert validator.validate() == "EXPIRED"
+
+    def test_license_offline_no_record(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Expired license with no prior validation record → EXPIRED (no grace)."""
+        past = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lic_path = license_dir / "license.json"
+        self._write_license(lic_path, expires_at=past)
+
+        validator = LicenseValidator("a" * 64, lic_path)
+        monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
+
+        # No sidecar — first validation ever after expiry
+        assert validator.validate() == "EXPIRED"
+
+    def test_license_offline_clock_skew_anti_tamper(
+        self, license_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Sidecar with future timestamp (clock-set-back) → treated as no record."""
+        past = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lic_path = license_dir / "license.json"
+        self._write_license(lic_path, expires_at=past)
+
+        validator = LicenseValidator("a" * 64, lic_path)
+        monkeypatch.setattr(validator, "_verify_signature", lambda lic: True)
+
+        # Sidecar claims a future date — clock was set back → reject
+        sidecar = lic_path.with_suffix(".last_valid")
+        sidecar.write_text(
+            (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+        )
+
+        assert validator.validate() == "EXPIRED"
 
     def test_license_seat_limit(self, license_dir: Path) -> None:
         # Verify LicenseInfo.seats reflects the license file value

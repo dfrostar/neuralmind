@@ -180,6 +180,67 @@ class LicenseValidator:
         except ValueError:
             return True
 
+    def _record_validation(self, lic: LicenseInfo, validated_at: str) -> None:
+        """Persist validation timestamp to sidecar for clock-skew anti-tamper.
+
+        Writes ``.last_valid`` next to the license file on every successful
+        validation. This enables dual-bound grace: a license cannot be
+        re-validated indefinitely after expiry via clock-set-back.
+        """
+        sidecar = self.license_path.with_suffix(".last_valid")
+        try:
+            sidecar.write_text(validated_at, encoding="utf-8")
+        except OSError:
+            pass  # Sidecar is best-effort; validation still succeeds
+
+    def _get_last_validation(self) -> float | None:
+        """Read last recorded validation timestamp.
+
+        Returns:
+            Unix timestamp of last successful validation, or None if absent.
+
+        Raises no errors — missing/corrupt sidecar returns None (treated as
+        "no prior validation" = first validation).
+        """
+        sidecar = self.license_path.with_suffix(".last_valid")
+        if not sidecar.exists():
+            return None
+        try:
+            ts = datetime.fromisoformat(sidecar.read_text(encoding="utf-8"))
+            # Reject future timestamps (clock-set-back anti-tamper)
+            now = datetime.now(timezone.utc)
+            if ts > now:
+                return None  # Clock was set back — untrustworthy
+            return ts.timestamp()
+        except (ValueError, OSError):
+            return None
+
+    def _is_within_grace(self, lic: LicenseInfo) -> bool:
+        """True if license is expired but within the dual-bound grace window.
+
+        Dual-bound = min(expires_at + grace_days, last_validation + grace_days).
+        Either bound alone is exploitable:
+        - expires_at + grace alone → clock-set-back extends indefinitely.
+        - last_validation + grace alone → long-dead license keeps extending.
+        """
+        if lic.expires_at == "never":
+            return False  # Never-expired licenses don't need grace
+        try:
+            exp = datetime.fromisoformat(lic.expires_at.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        now = datetime.now(timezone.utc)
+        last_val = self._get_last_validation()
+        if last_val is None:
+            return False  # No record — no grace
+        last_val_dt = datetime.fromtimestamp(last_val, tz=timezone.utc)
+        gd = getattr(self, "offline_grace_days", 30)
+        grace_deadline = min(
+            exp + __import__("datetime").timedelta(days=gd),
+            last_val_dt + __import__("datetime").timedelta(days=gd),
+        )
+        return now <= grace_deadline
+
     def validate(self) -> LicenseStatus:
         """Return license status string.
 
@@ -227,7 +288,10 @@ class LicenseValidator:
             elif lic.signature != "self-signed":
                 pass
             elif self._is_expired(lic):
-                status = "EXPIRED"
+                if self._is_within_grace(lic):
+                    status = "OFFLINE_OK"
+                else:
+                    status = "EXPIRED"
             else:
                 self._cached = lic
                 status = "VALID"
@@ -237,10 +301,17 @@ class LicenseValidator:
             elif not self._verify_signature(lic):
                 pass
             elif self._is_expired(lic):
-                status = "EXPIRED"
+                if self._is_within_grace(lic):
+                    status = "OFFLINE_OK"
+                else:
+                    status = "EXPIRED"
             else:
                 self._cached = lic
                 status = "VALID"
+
+        # Record validation for clock-skew anti-tamper (both free + team)
+        if status in ("VALID", "OFFLINE_OK"):
+            self._record_validation(lic, validated_at)
 
         # Wave 10B: Record validation event (only on successful validation)
         if status == "VALID" and self.anti_tamper is not None:
