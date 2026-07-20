@@ -107,6 +107,7 @@ def build_team_subparsers(subparsers) -> None:
     lic_sub.add_parser("status")
     act_p = lic_sub.add_parser("activate")
     act_p.add_argument("key")
+    lic_sub.add_parser("portal")
     lic_p.set_defaults(func=cmd_team_license)
 
 
@@ -335,33 +336,54 @@ def cmd_team_license(args) -> int:
     if args.subcommand == "activate":
         config = load_config(getattr(args, "config_path", None))
         path = Path(config.license_file)
+        # Read the signed license JSON from the provided path
+        src_path = Path(args.key)
+        if not src_path.exists():
+            print(f"License file not found: {src_path}")
+            return 1
+        src_text = src_path.read_text(encoding="utf-8")
+        # Validate the signed License BEFORE installing
+        load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
+        src_status = load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
+        if src_status != "VALID":
+            print(f"License validation failed: {src_status}. Run `autopilot license status --license-id <id>` to check.")
+            return 1
+        # Signature validated — install
         path.parent.mkdir(parents=True, exist_ok=True)
-
-        lic_data = {
-            "tier": "team",
-            "seats": 15,
-            "issued_at": datetime.now(timezone.utc).isoformat(),
-            "expires_at": "2027-07-19T00:00:00Z",
-            "issued_to": "test-activation",
-            "signature": "test-signature-placeholder-" + args.key[:16],
-        }
-        path.write_text(json.dumps(lic_data, indent=2), encoding="utf-8")
-        # Reload and extract
+        path.write_text(src_text, encoding="utf-8")
         validator = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, path)
-        status = validator.validate()
-        if status in ("VALID", "OFFLINE_OK", "EXPIRED"):
-            info = validator.status_dict()
-            # Load seats + expires into config
-            validator2 = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, path)
-            lic_info = validator2._load_raw() if hasattr(validator2, "_load_raw") else None
-            if lic_info:
-                config.seats = lic_info.seats
-                config.expires_at = lic_info.expires_at
-                config.issued_to = lic_info.issued_to
-            save_config(config)
-            print(f"License activated (status: {status})")
-        else:
-            print(f"License activation result: {status}")
+        info = validator.status_dict()
+        lic_info = validator._load_raw()
+        if lic_info:
+            config.seats = lic_info.seats
+            config.expires_at = lic_info.expires_at
+            config.issued_to = lic_info.issued_to
+            config.tier = lic_info.tier
+        save_config(config)
+        print(f"License activated: {lic_info.tier} tier, {lic_info.seats} seats, expires {lic_info.expires_at}")
+        return 0
+
+    if args.subcommand == "portal":
+        config = load_config(getattr(args, "config_path", None))
+        path = Path(config.license_file)
+        if not path.exists():
+            print(json.dumps({"error": "no_installed_license", "status": "UNLICENSED"}, indent=2))
+            return 0
+        validator = LicenseValidator(_ISSUER_PUBLIC_KEY_HEX, path)
+        info = validator.status_dict()
+        # Calculate days until expiry
+        try:
+            from datetime import datetime, timezone as _tz
+            expires_at = info.get("expires_at", "")
+            if expires_at == "never":
+                info["days_until_expiry"] = "never"
+            else:
+                exp = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                days = (exp - datetime.now(_tz.utc)).days
+                info["days_until_expiry"] = days
+        except Exception:
+            pass
+        print(json.dumps(info, indent=2, default=str))
         return 0
 
     print(f"Unknown license subcommand: {args.subcommand}")
@@ -449,6 +471,7 @@ def main(argv: list[str] | None = None) -> int:
     lic_sub.add_parser("status")
     act_p = lic_sub.add_parser("activate")
     act_p.add_argument("key")
+    lic_sub.add_parser("portal")
     lic_p.set_defaults(func=cmd_team_license)
 
     args = parser.parse_args(argv)
