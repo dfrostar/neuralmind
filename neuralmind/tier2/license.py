@@ -40,8 +40,9 @@ import getpass
 import hashlib
 import json
 import platform
+import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -184,12 +185,20 @@ class LicenseValidator:
         """Persist validation timestamp to sidecar for clock-skew anti-tamper.
 
         Writes ``.last_valid`` next to the license file on every successful
-        validation. This enables dual-bound grace: a license cannot be
-        re-validated indefinitely after expiry via clock-set-back.
+        validation. Uses atomic write (tempfile + rename) to prevent
+        partial-write corruption under concurrent multi-process access.
         """
         sidecar = self.license_path.with_suffix(".last_valid")
         try:
-            sidecar.write_text(validated_at, encoding="utf-8")
+            fd, tmp_path = tempfile.mkstemp(
+                dir=sidecar.parent, prefix=".last_valid-", suffix=".tmp"
+            )
+            try:
+                with open(fd, "w", encoding="utf-8") as f:
+                    f.write(validated_at)
+                Path(tmp_path).replace(sidecar)
+            except OSError:
+                Path(tmp_path).unlink(missing_ok=True)
         except OSError:
             pass  # Sidecar is best-effort; validation still succeeds
 
@@ -236,8 +245,8 @@ class LicenseValidator:
         last_val_dt = datetime.fromtimestamp(last_val, tz=timezone.utc)
         gd = getattr(self, "offline_grace_days", 30)
         grace_deadline = min(
-            exp + __import__("datetime").timedelta(days=gd),
-            last_val_dt + __import__("datetime").timedelta(days=gd),
+            exp + timedelta(days=gd),
+            last_val_dt + timedelta(days=gd),
         )
         return now <= grace_deadline
 

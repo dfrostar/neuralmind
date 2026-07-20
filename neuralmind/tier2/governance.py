@@ -306,25 +306,27 @@ class TeamGovernance:
                 details={"old": old, "new": enabled},
             )
 
-    def publish(self, repo: str, edges: list[dict], admin: str | None = None) -> dict:
+    def publish(self, repo: str, edges: list[dict], admin: str) -> dict:
         """Publish edges to shared namespace.
 
         Steps:
-        1. Gate: admin check (require_admin if admin provided).
-        2. Gate: weight threshold (fast-fail all-or-nothing).
-        3. Dedup: content-hash check to avoid duplicate traversal cost.
-        4. Audit: log the attempt.
+        1. Gate: admin check (raises PermissionError if not admin).
+        2. Gate: per-edge weight threshold (edges below threshold skipped).
+        3. Audit: log the attempt.
 
         Args:
             repo: The repository being published.
             edges: List of edge dictionaries (each must have a ``weight`` key).
-            admin: Optional admin email. If not provided, defaults to ``"system"``.
+            admin: Email of the admin performing the action. Required.
 
         Returns:
             A dict with keys:
                 - ``published`` (list): Edges that passed the threshold.
                 - ``skipped`` (list): Edges below the threshold.
                 - ``audit_id`` (str): SHA256 of the audit entry, or empty string.
+
+        Raises:
+            PermissionError: If ``admin`` is not a team admin.
 
         Example:
             >>> from pathlib import Path
@@ -341,8 +343,7 @@ class TeamGovernance:
             ...     len(result["published"])
             1
         """
-        if admin is not None:
-            self.require_admin(admin)
+        self.require_admin(admin)
         threshold = self.config.governance.weight_threshold
         published = []
         skipped = []
@@ -354,7 +355,7 @@ class TeamGovernance:
             published.append(edge)
 
         self.audit.log(
-            actor=admin or "system",
+            actor=admin,
             action="publish",
             target=repo,
             details={"count": len(published), "skipped": len(skipped)},
