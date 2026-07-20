@@ -261,3 +261,84 @@ class TestQualityWeightedMerger:
             result = merger.merge_to_store(edges, store)
             assert result["merged"] == 2
             assert result["contest"] == 0
+
+    def test_decay_weight_respects_conflict_rate(self):
+        """Higher conflict_rate → faster decay."""
+        clean = EdgeQuality(
+            source="a", target="b", namespace="shared",
+            score=0.8, reinforcement_score=0.8, recency_score=0.8,
+            conflict_rate=0.0, activation_count=50, age_days=1.0,
+            should_promote=True, should_decay=False,
+        )
+        chronic = EdgeQuality(
+            source="a", target="b", namespace="personal",
+            score=0.8, reinforcement_score=0.8, recency_score=0.8,
+            conflict_rate=1.0, activation_count=50, age_days=1.0,
+            should_promote=True, should_decay=False,
+        )
+        # Chronic loser decays faster (lower multiplier)
+        assert chronic.decay_weight() < clean.decay_weight()
+
+    def test_decay_weight_floor_at_001(self):
+        """decay_weight never returns below the hard floor of 0.01."""
+        eq = EdgeQuality(
+            source="a", target="b", namespace="shared",
+            score=0.01, reinforcement_score=0.01, recency_score=0.01,
+            conflict_rate=0.0, activation_count=1, age_days=100.0,
+            should_promote=False, should_decay=True,
+        )
+        # score * 0.5 = 0.005, but floor is 0.01
+        assert eq.decay_weight() == 0.01
+
+    def test_merge_bundles_ignores_transitions(self):
+        """Transitions are silently dropped in merge_bundles (v1 limitation)."""
+        scorer = ContributionQualityScorer()
+        merger = QualityWeightedMerger(scorer)
+
+        bundle_a = {
+            "synapses": [
+                {"source": "a", "target": "b", "weight": 1.0, "activation_count": 5,
+                 "created_at": time.time(), "last_activated": time.time()}
+            ],
+            "transitions": [
+                {"source": "x", "target": "y", "weight": 3.0, "count": 10}
+            ],
+        }
+        bundle_b = {
+            "synapses": [
+                {"source": "c", "target": "d", "weight": 2.0, "activation_count": 3,
+                 "created_at": time.time(), "last_activated": time.time()}
+            ],
+        }
+
+        merged, conflicts = merger.merge_bundles(bundle_a, bundle_b)
+        # 2 synapses merged, 0 conflicts (disjoint), transitions dropped
+        assert len(merged) == 2
+        assert len(conflicts) == 0
+
+    def test_merge_to_store_loser_decay_dead_path(self):
+        """With current team_memory wiring, losers are never passed to store, so decayed=0.
+
+        This documents the intentional design: merged_edges contains only
+        winners, so merge_to_store never applies decay in practice.
+        """
+        scorer = ContributionQualityScorer()
+        merger = QualityWeightedMerger(scorer)
+
+        hot = scorer.score_edge("a", "b", "shared", activation_count=50,
+                                created_at=time.time()-86400, last_activated=time.time())
+        cold = scorer.score_edge("a", "b", "personal", activation_count=1,
+                                 created_at=time.time()-86400*40,
+                                 last_activated=time.time()-86400*30)
+
+        conflict = merger.resolve_conflict(hot, cold)
+        assert conflict.winner == "a"
+        assert conflict.resolved
+
+        # Only winner goes to merge_to_store → decay never fires
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SynapseStore(Path(tmpdir)/"t.db", namespace=SHARED_NAMESPACE)
+            result = merger.merge_to_store([hot], store, conflicts=[conflict])
+            assert result["decayed"] == 0  # loser not in merged list
