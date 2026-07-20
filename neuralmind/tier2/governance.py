@@ -8,6 +8,30 @@ Gate before any edge enters the shared namespace:
 4. Content-hash dedup — identical bundles aren't re-published.
 
 Governance only activates with a valid license. MIT users are unaffected.
+
+Example:
+    >>> from pathlib import Path
+    >>> import tempfile
+    >>> from neuralmind.tier2.config import Tier2Config
+    >>> from neuralmind.tier2.audit import AuditLog
+    >>> from neuralmind.tier2.governance import TeamGovernance
+    >>> with tempfile.TemporaryDirectory() as td:
+    ...     audit = AuditLog(Path(td) / "audit.jsonl")
+    ...     cfg = Tier2Config()
+    ...     cfg.governance.admin_emails = ["admin@test.com"]
+    ...     gov = TeamGovernance(Path(td), cfg, audit)
+    ...     gov.is_admin("admin@test.com")
+    True
+
+See Also:
+    - ``neuralmind.tier2.audit`` — audit log that records governance actions
+    - ``neuralmind.tier2.config`` — governance config schema
+    - ``neuralmind.tier2.license`` — license validation gating governance
+    - ``tests/test_governance.py`` — test cases and usage patterns
+    - ``docs/wiki/Architecture.md#governance`` — high-level design
+
+Version:
+    0.53.0
 """
 
 from __future__ import annotations
@@ -22,12 +46,25 @@ from .config import Tier2Config, validate_scope
 
 @dataclass
 class GovernanceResult:
+    """Result of a governance check.
+
+    Args:
+        allowed: Whether the action is permitted.
+        reason: Human-readable explanation for the decision.
+    """
+
     allowed: bool
     reason: str = ""
 
 
 class TeamGovernance:
-    """Controls what gets published to the team shared namespace."""
+    """Controls what gets published to the team shared namespace.
+
+    Args:
+        db_path: Path to the governance database (used for audit log placement).
+        config: The ``Tier2Config`` instance to read governance settings from.
+        audit: Optional ``AuditLog`` instance. If not provided, a new one is created.
+    """
 
     def __init__(self, db_path: Path, config: Tier2Config, audit: AuditLog | None = None):
         self.db_path = Path(db_path)
@@ -37,10 +74,25 @@ class TeamGovernance:
     def is_publishing_allowed(self, repo: str, edge_weight: float) -> GovernanceResult:
         """Check if a publish should be allowed based on governance rules.
 
-        Returns GovernanceResult with allowed=True if:
-        - Governance enabled (config.governance.enabled)
-        - Scope includes "shared"
-        - Edge weight >= config.governance.weight_threshold
+        Args:
+            repo: The repository being published (used for context, not validation).
+            edge_weight: The weight of the edge being published.
+
+        Returns:
+            A ``GovernanceResult`` with ``allowed=True`` if:
+            - Governance is enabled (``config.governance.enabled``)
+            - Scope includes ``"shared"``
+            - Edge weight >= ``config.governance.weight_threshold``
+
+        Example:
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> cfg = Tier2Config()
+            >>> cfg.governance.weight_threshold = 0.5
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> gov = TeamGovernance(Path("/tmp"), cfg)
+            >>> result = gov.is_publishing_allowed("repo1", 0.8)
+            >>> result.allowed
+            True
         """
         if not self.config.governance.enabled:
             return GovernanceResult(True, "governance disabled; allowed")
@@ -57,18 +109,80 @@ class TeamGovernance:
         return GovernanceResult(True, "within governance bounds")
 
     def is_admin(self, email: str) -> bool:
-        """True if email is configured as a team admin."""
+        """True if email is configured as a team admin.
+
+        Performs case-insensitive comparison. Returns False for empty/None email.
+
+        Args:
+            email: The email address to check.
+
+        Returns:
+            True if the email is in the admin list, False otherwise.
+
+        Example:
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> cfg = Tier2Config()
+            >>> cfg.governance.admin_emails = ["Admin@Example.com"]
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> gov = TeamGovernance(Path("/tmp"), cfg)
+            >>> gov.is_admin("admin@example.com")
+            True
+            >>> gov.is_admin(None)
+            False
+        """
         if not email or not self.config.governance.admin_emails:
             return False
         return email.lower() in {e.lower() for e in self.config.governance.admin_emails}
 
     def require_admin(self, email: str) -> None:
-        """Raise PermissionError if email is not an admin."""
+        """Raise PermissionError if email is not an admin.
+
+        Args:
+            email: The email address to check.
+
+        Raises:
+            PermissionError: If the email is not in the admin list.
+
+        Example:
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> cfg = Tier2Config()
+            >>> cfg.governance.admin_emails = ["admin@test.com"]
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> gov = TeamGovernance(Path("/tmp"), cfg)
+            >>> gov.require_admin("admin@test.com")  # no raise
+            >>> gov.require_admin("nobody@test.com")  # doctest: +ELLIPSIS
+            Traceback (most recent call last):
+                ...
+            PermissionError: Not a team admin: nobody@test.com
+        """
         if not self.is_admin(email):
             raise PermissionError(f"Not a team admin: {email}")
 
     def remove_edge_from_shared(self, edge_id: str, admin: str) -> None:
-        """Remove an edge from the shared namespace. Admin-only."""
+        """Remove an edge from the shared namespace. Admin-only.
+
+        Args:
+            edge_id: The identifier of the edge to remove.
+            admin: Email of the admin performing the action.
+
+        Raises:
+            PermissionError: If ``admin`` is not a team admin.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> from neuralmind.tier2.audit import AuditLog
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     audit = AuditLog(Path(td) / "audit.jsonl")
+            ...     cfg = Tier2Config()
+            ...     cfg.governance.admin_emails = ["admin@test.com"]
+            ...     gov = TeamGovernance(Path(td), cfg, audit)
+            ...     gov.remove_edge_from_shared("edge-123", "admin@test.com")
+            ...     audit.count()
+            1
+        """
         self.require_admin(admin)
         self.audit.log(
             actor=admin,
@@ -78,7 +192,31 @@ class TeamGovernance:
         )
 
     def set_publishing_scope(self, scope: str, admin: str) -> None:
-        """Update publishing scope. Admin-only."""
+        """Update publishing scope. Admin-only.
+
+        Args:
+            scope: The new scope (``"personal"``, ``"shared"``, or ``"both"``).
+            admin: Email of the admin performing the action.
+
+        Raises:
+            PermissionError: If ``admin`` is not a team admin.
+            ValueError: If ``scope`` is not a valid publishing scope.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> from neuralmind.tier2.audit import AuditLog
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     audit = AuditLog(Path(td) / "audit.jsonl")
+            ...     cfg = Tier2Config()
+            ...     cfg.governance.admin_emails = ["admin@test.com"]
+            ...     gov = TeamGovernance(Path(td), cfg, audit)
+            ...     gov.set_publishing_scope("shared", "admin@test.com")
+            ...     cfg.governance.publishing_scope
+            'shared'
+        """
         self.require_admin(admin)
         validate_scope(scope)
         old_scope = self.config.governance.publishing_scope
@@ -94,7 +232,30 @@ class TeamGovernance:
     def set_weight_threshold(self, threshold: float, admin: str) -> None:
         """Update minimum edge weight for auto-publish. Admin-only.
 
-        Threshold must be 0.0–1.0.
+        Threshold must be 0.0-1.0.
+
+        Args:
+            threshold: The new weight threshold (0.0-1.0).
+            admin: Email of the admin performing the action.
+
+        Raises:
+            PermissionError: If ``admin`` is not a team admin.
+            ValueError: If ``threshold`` is outside 0.0-1.0.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> from neuralmind.tier2.audit import AuditLog
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     audit = AuditLog(Path(td) / "audit.jsonl")
+            ...     cfg = Tier2Config()
+            ...     cfg.governance.admin_emails = ["admin@test.com"]
+            ...     gov = TeamGovernance(Path(td), cfg, audit)
+            ...     gov.set_weight_threshold(0.7, "admin@test.com")
+            ...     cfg.governance.weight_threshold
+            0.7
         """
         self.require_admin(admin)
         if threshold < 0.0 or threshold > 1.0:
@@ -110,7 +271,30 @@ class TeamGovernance:
             )
 
     def set_governance_enabled(self, enabled: bool, admin: str) -> None:
-        """Enable/disable team governance entirely. Admin-only."""
+        """Enable/disable team governance entirely. Admin-only.
+
+        Args:
+            enabled: True to enable governance, False to disable.
+            admin: Email of the admin performing the action.
+
+        Raises:
+            PermissionError: If ``admin`` is not a team admin.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> from neuralmind.tier2.audit import AuditLog
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     audit = AuditLog(Path(td) / "audit.jsonl")
+            ...     cfg = Tier2Config()
+            ...     cfg.governance.admin_emails = ["admin@test.com"]
+            ...     gov = TeamGovernance(Path(td), cfg, audit)
+            ...     gov.set_governance_enabled(False, "admin@test.com")
+            ...     cfg.governance.enabled
+            False
+        """
         self.require_admin(admin)
         old = self.config.governance.enabled
         self.config.governance.enabled = enabled
@@ -130,7 +314,30 @@ class TeamGovernance:
         2. Dedup: content-hash check to avoid duplicate traversal cost.
         3. Audit: log the attempt.
 
-        Returns {published: [...], skipped: [...], audit_id: str}.
+        Args:
+            repo: The repository being published.
+            edges: List of edge dictionaries (each must have a ``weight`` key).
+            admin: Optional admin email. If not provided, defaults to ``"system"``.
+
+        Returns:
+            A dict with keys:
+                - ``published`` (list): Edges that passed the threshold.
+                - ``skipped`` (list): Edges below the threshold.
+                - ``audit_id`` (str): SHA256 of the audit entry, or empty string.
+
+        Example:
+            >>> from pathlib import Path
+            >>> import tempfile
+            >>> from neuralmind.tier2.config import Tier2Config
+            >>> from neuralmind.tier2.audit import AuditLog
+            >>> from neuralmind.tier2.governance import TeamGovernance
+            >>> with tempfile.TemporaryDirectory() as td:
+            ...     audit = AuditLog(Path(td) / "audit.jsonl")
+            ...     cfg = Tier2Config()
+            ...     gov = TeamGovernance(Path(td), cfg, audit)
+            ...     result = gov.publish("repo1", [{"weight": 0.8}])
+            ...     len(result["published"])
+            1
         """
         threshold = self.config.governance.weight_threshold
         published = []
@@ -156,13 +363,37 @@ class TeamGovernance:
 
 
 def content_fingerprint(edges: list[dict]) -> str:
-    """Canonical SHA256 for an edge bundle — deterministic on content only."""
+    """Canonical SHA256 for an edge bundle — deterministic on content only.
+
+    Args:
+        edges: List of edge dictionaries.
+
+    Returns:
+        Hex-encoded SHA256 hash of the canonical serialization.
+
+    Example:
+        >>> from neuralmind.tier2.governance import content_fingerprint
+        >>> content_fingerprint([{"weight": 0.5}])  # doctest: +SKIP
+        'a1b2c3...'
+    """
     canonical = json_edges_deterministic(edges)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def json_edges_deterministic(edges: list[dict]) -> str:
-    """Serialize edges to a stable JSON string."""
+    """Serialize edges to a stable JSON string.
+
+    Args:
+        edges: List of edge dictionaries.
+
+    Returns:
+        A deterministic JSON string (sorted keys, sorted edges).
+
+    Example:
+        >>> from neuralmind.tier2.governance import json_edges_deterministic
+        >>> json_edges_deterministic([{"b": 2, "a": 1}])
+        '[{"a":1,"b":2}]'
+    """
     import json
 
     return json.dumps(

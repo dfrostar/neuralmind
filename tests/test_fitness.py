@@ -92,6 +92,38 @@ class TestComputeFitness:
         score = compute_fitness(inputs)
         assert score.efficiency == 1.5
 
+    def test_nan_weight_rejected(self):
+        """NaN weights → score = 0 (not NaN)."""
+        score = compute_fitness(
+            FitnessInputs(0.5, 1.0, 0.5), weights=(float("nan"), 0.3, 0.2)
+        )
+        assert score.total == 0.0
+
+    def test_inf_weight_rejected(self):
+        """Inf weights → score = 0 (not Inf)."""
+        score = compute_fitness(
+            FitnessInputs(0.5, 1.0, 0.5), weights=(float("inf"), 0.3, 0.2)
+        )
+        assert score.total == 0.0
+
+    def test_negative_weight_rejected(self):
+        """Negative weights break product semantics → score = 0."""
+        score = compute_fitness(
+            FitnessInputs(0.5, 1.0, 0.5), weights=(-1.0, 0.5, 0.5)
+        )
+        assert score.total == 0.0
+
+    def test_nan_efficiency_rejected(self):
+        """NaN efficiency → score = 0 (not NaN)."""
+        score = compute_fitness(FitnessInputs(0.5, float("nan"), 0.5))
+        assert score.total == 0.0
+        assert score.efficiency == 0.0
+
+    def test_inf_efficiency_clamped_to_max(self):
+        """Inf efficiency → clamped to 10.0 (upper bound)."""
+        score = compute_fitness(FitnessInputs(0.5, float("inf"), 0.5))
+        assert score.efficiency == 10.0
+
 
 class TestGetSetWeights:
     def test_get_default(self, monkeypatch):
