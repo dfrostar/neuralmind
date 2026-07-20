@@ -108,10 +108,7 @@ class SeatManager:
             if self._seats[normalized].active:
                 return self._seats[normalized]  # idempotent
             # Reactivate
-            if (
-                tier != "free"
-                and self.active_count() >= license_limit
-            ):
+            if tier != "free" and self.active_count() >= license_limit:
                 raise SeatLimitError(
                     f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
                 )
