@@ -110,6 +110,9 @@ class QualityWeightedMerger:
         the higher-quality edge wins. Non-overlapping edges pass through
         with their score.
 
+        Note: target_namespace is reserved for future use. Current
+        implementation preserves each edge's original namespace.
+
         Returns: (merged_edges, conflicts_resolved)
         """
         scored_a = self.scorer.score_bundle(bundle_a)

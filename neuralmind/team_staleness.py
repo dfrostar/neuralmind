@@ -119,14 +119,15 @@ class TeamStalenessDetector:
                 for row in cur.fetchall():
                     node_a, node_b, ns, weight, last_act = row
                     days_since_last = (time.time() - last_act) / 86400.0
-                    age_days = days_since_last  # approximate age as staleness
+                    # Approximate edge age by staleness (synthetic lower bound);
+                    # true age requires created_at which is not projected here.
                     stale.append(
                         StaleEdge(
                             source=node_a,
                             target=node_b,
                             namespace=ns,
                             score=weight,
-                            age_days=age_days,
+                            age_days=days_since_last,
                             days_since_last=days_since_last,
                             is_stale=True,
                             fast_decay_eligible=True,
@@ -144,9 +145,12 @@ class TeamStalenessDetector:
         """
         Apply accelerated decay to a list of stale edges.
 
-        Decay is time-proportional: weight × 2^(−fast_decay × days_past_threshold / half_life).
-        After 1 day past stale: 2^(−5/30) ≈ 0.891
-        After 30 days past stale: 2^(−5) = 1/32 — matches intent
+        Constant daily decay: weight × 2^(−fast_decay / half_life) per pass.
+        For shared (half_life=30, fast_decay=5): 2^(−5/30) ≈ 0.891 per pass.
+        After 30 days of daily passes: ≈0.031 (5x faster than normal decay).
+
+        Using a constant per-pass factor (rather than growing days_past) avoids
+        compounding explosion that would otherwise zero out edges in ~5 days.
 
         Returns the number of edges updated. Fail-open: partial
         failures return the count of successful updates.
@@ -160,13 +164,11 @@ class TeamStalenessDetector:
                 for edge in stale_edges:
                     if not edge.fast_decay_eligible:
                         continue
-                    # Time-proportional decay: scales by days past threshold
-                    days_past = max(
-                        0.0, edge.days_since_last - self.stale_threshold(edge.namespace)
-                    )
+                    # Constant daily decay factor: 2^(-fast_decay / half_life)
+                    # This gives a fixed 5x acceleration per pass without
+                    # the compounding explosion from shrinking daily factors.
                     half_life_days = self.stale_threshold(edge.namespace)
-                    decay_exponent = self.fast_decay * days_past / max(1.0, half_life_days)
-                    decay_factor = 2.0 ** (-decay_exponent)
+                    decay_factor = 2.0 ** (-self.fast_decay / max(1.0, half_life_days))
                     conn.execute(
                         """UPDATE synapses SET weight = weight * ?
                            WHERE node_a = ? AND node_b = ? AND namespace = ?""",

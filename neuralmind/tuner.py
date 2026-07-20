@@ -255,9 +255,12 @@ class PopulationTuner:
             if not results:
                 re_queries += 1
 
-        retrieval_quality = successes / queries_attempted if queries_attempted else 0.0
+        # Denominator is total fixtures, not just non-throwing ones.
+        # Otherwise candidates that cause embedder failures on hard queries
+        # get inflated success rates (denominator shrinks).
+        retrieval_quality = successes / len(fixture_queries) if fixture_queries else 0.0
         session_health = (
-            max(0.0, min(1.0, 1.0 - re_queries / queries_attempted)) if queries_attempted else 1.0
+            max(0.0, min(1.0, 1.0 - re_queries / len(fixture_queries))) if fixture_queries else 1.0
         )
         efficiency = self._efficiency_ratio(params)
 
@@ -388,7 +391,10 @@ class PopulationTuner:
         incumbent_fitness = self._load_incumbent_fitness()
         if incumbent_fitness == 0.0:
             incumbent_fitness = self.evaluate_candidate(incumbent)
-            self._save_incumbent(incumbent, incumbent_fitness)
+            # Don't persist 0.0 — would wipe genuine stored fitness if
+            # eval failed transiently, causing spurious promotion next run.
+            if incumbent_fitness > 0.0:
+                self._save_incumbent(incumbent, incumbent_fitness)
 
         best_params = incumbent
         best_fitness = incumbent_fitness
