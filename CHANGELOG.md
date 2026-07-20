@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.1.0](https://github.com/dfrostar/neuralmind/compare/v1.0.0...v1.1.0) (2026-07-20)
+
+
+### Features
+
+* **license:** v0.55.0 — anti-tamper DI, TAMPERED status, clock-skew activation ([8bc2990](https://github.com/dfrostar/neuralmind/commit/8bc29907560fa6d27e813bf74017db60ef8a4cf7))
+* **security:** real Ed25519 keypair, Privacy Policy, Stripe webhook security, lessons learned ([01fc1f0](https://github.com/dfrostar/neuralmind/commit/01fc1f0c4db6b5d38f82bc8b014dcadf44577a8c))
+* **tier2:** free tier auto-provisioning + upgrade path ([1202845](https://github.com/dfrostar/neuralmind/commit/1202845354bdbcebdcbad2ed7b3726c9bfd53c76))
+* **v0.56.0:** team license portal + activate signature validation ([a61fee2](https://github.com/dfrostar/neuralmind/commit/a61fee219a01b5d12c9c4b36a45eba322a4cb24d))
+* **v0.57.0:** seat governance hardening + free-tier bypass ([4029895](https://github.com/dfrostar/neuralmind/commit/4029895887fa80e14c5e8beceaea5e3372733149))
+
+
+### Bug Fixes
+
+* DeepSeek QA patches — Waves 4-6 modules ([5d46e46](https://github.com/dfrostar/neuralmind/commit/5d46e463d204bccc994b81d2d110c21022c44257))
+* ruff N806 (MAX_EDGES→max_edges) + doctor test stale assertion ([2e51920](https://github.com/dfrostar/neuralmind/commit/2e519204810ad5cbd6cecc8c3713065cee21219b))
+* **test:** +Inf clamps to hi, not lo — assertion was wrong ([039dda2](https://github.com/dfrostar/neuralmind/commit/039dda2ab2ed64b5645de183f1b9a9f4f72b1ebb))
+
+
+### Documentation
+
+* add session prompts, Wave 6 docs, code standards, module template ([485bfeb](https://github.com/dfrostar/neuralmind/commit/485bfeba6e62e7b87919fdb2de185a5ab2eb4260))
+* roadmap v0.54.0 + Wave 9 license enforcement architecture ([9bcbc71](https://github.com/dfrostar/neuralmind/commit/9bcbc71f85eec8c7e4bd163fc355e68793bab117))
+* Wave 5-6 module docstring audit + governance arg docs ([d4c0584](https://github.com/dfrostar/neuralmind/commit/d4c0584d0a69c784f6c98d29554796e2a93febd9))
+
 ## [0.53.0](https://github.com/dfrostar/neuralmind/compare/v0.52.0...v0.53.0) (2026-07-19)
 
 
