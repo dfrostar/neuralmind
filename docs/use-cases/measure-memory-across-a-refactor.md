@@ -132,6 +132,7 @@ memory wasn't watching — check that hooks were installed *before* the work.
 
 ## Related
 
+- [Shareable single-page version](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/) — this field report on neuralmind.uk
 - [Use case: Does it work on your code? (5-minute benchmark)](./benchmark-your-repo.md) — the first-run version of this measurement
 - [Use case: Growing monorepo](./growing-monorepo.md) — keeping the index fresh with minimal effort
 - [Wiki: Brain-Like Learning Guide](../wiki/Learning-Guide.md) — how the synapse layer learns what this page measures
