@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/dfrostar/neuralmind/compare/v1.2.0...v1.3.0) (2026-07-20)
+
+
+### Features
+
+* **E3:** peer review gate wired into team memory import ([f1f4913](https://github.com/dfrostar/neuralmind/commit/f1f4913736944dc8e0a6415cd46039e616ec0fc6))
+
+
+### Documentation
+
+* fix DeepSeek doc sweep — 5 issues ([793884d](https://github.com/dfrostar/neuralmind/commit/793884d3ce023a37bb2f97f8485e07d520f42663))
+
 ## [1.2.0](https://github.com/dfrostar/neuralmind/compare/v1.1.1...v1.2.0) (2026-07-20)
 
 
