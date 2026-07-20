@@ -360,7 +360,9 @@ def cmd_team_license(args) -> int:
         load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
         src_status = load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
         if src_status != "VALID":
-            print(f"License validation failed: {src_status}. Run `autopilot license status --license-id <id>` to check.")
+            print(
+                f"License validation failed: {src_status}. Run `autopilot license status --license-id <id>` to check."
+            )
             return 1
         # Signature validated — install
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -374,7 +376,9 @@ def cmd_team_license(args) -> int:
             config.issued_to = lic_info.issued_to
             config.tier = lic_info.tier
         save_config(config)
-        print(f"License activated: {lic_info.tier} tier, {lic_info.seats} seats, expires {lic_info.expires_at}")
+        print(
+            f"License activated: {lic_info.tier} tier, {lic_info.seats} seats, expires {lic_info.expires_at}"
+        )
         return 0
 
     if args.subcommand == "portal":
@@ -389,6 +393,7 @@ def cmd_team_license(args) -> int:
         try:
             from datetime import datetime
             from datetime import timezone as _tz
+
             expires_at = info.get("expires_at", "")
             if expires_at == "never":
                 info["days_until_expiry"] = "never"

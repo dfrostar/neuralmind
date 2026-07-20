@@ -209,7 +209,7 @@ def _check_doc_code_alignment(project: Path) -> Check:
         return Check("Doc-code alignment", OK, "no document nodes to check")
 
     # Count document files
-    doc_files = set(n.get("source_file", "") for n in doc_nodes if n.get("source_file"))
+    doc_files = {n.get("source_file") for n in doc_nodes if n.get("source_file")}
     return Check(
         "Doc-code alignment",
         OK,

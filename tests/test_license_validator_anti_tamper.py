@@ -8,12 +8,8 @@ live there too.
 
 from __future__ import annotations
 
-import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 from neuralmind.tier2.license import LicenseValidator, issue_free_license
 
@@ -21,9 +17,7 @@ from neuralmind.tier2.license import LicenseValidator, issue_free_license
 class TestLicenseValidatorAntiTamper:
     """Verify LicenseValidator anti_tamper injection works."""
 
-    def test_anti_tamper_di_returns_tampered_on_regression(
-        self, tmp_path: Path
-    ) -> None:
+    def test_anti_tamper_di_returns_tampered_on_regression(self, tmp_path: Path) -> None:
         """When anti_tamper.check_regression() returns True, validate() returns TAMPERED."""
         lic_path = tmp_path / "license.json"
         issue_free_license(lic_path)
@@ -73,9 +67,7 @@ class TestLicenseValidatorAntiTamper:
         validator = LicenseValidator("0" * 64, lic_path, anti_tamper=None)
         assert validator.validate() == "VALID"
 
-    def test_anti_tamper_check_regression_not_called_when_none(
-        self, tmp_path: Path
-    ) -> None:
+    def test_anti_tamper_check_regression_not_called_when_none(self, tmp_path: Path) -> None:
         """If anti_tamper is None, check_regression is never called."""
         lic_path = tmp_path / "license.json"
         issue_free_license(lic_path)
