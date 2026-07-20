@@ -1708,7 +1708,9 @@ def cmd_memory(args):
         detector = TeamStalenessDetector()
         stale = detector.detect_stale_in_store(store, namespace=args.namespace or "shared")
         if args.json:
-            print(json.dumps({"stale": [e.to_dict() for e in stale], "count": len(stale)}, indent=2))
+            print(
+                json.dumps({"stale": [e.to_dict() for e in stale], "count": len(stale)}, indent=2)
+            )
             return
         if not stale:
             print("No stale edges detected.")
@@ -2978,7 +2980,9 @@ def main():
         help="Detect stale team edges past the reinforcement threshold",
     )
     mem_staleness_scan.add_argument("project_path", nargs="?", default=".")
-    mem_staleness_scan.add_argument("--namespace", default="shared", help="Namespace to scan (default: shared)")
+    mem_staleness_scan.add_argument(
+        "--namespace", default="shared", help="Namespace to scan (default: shared)"
+    )
     mem_staleness_scan.add_argument("--json", "-j", action="store_true")
     mem_staleness_scan.set_defaults(func=cmd_memory)
 
@@ -2987,7 +2991,9 @@ def main():
         help="Run a staleness pass: flag and decay stale team edges",
     )
     mem_staleness_run.add_argument("project_path", nargs="?", default=".")
-    mem_staleness_run.add_argument("--namespace", default="shared", help="Namespace to target (default: shared)")
+    mem_staleness_run.add_argument(
+        "--namespace", default="shared", help="Namespace to target (default: shared)"
+    )
     mem_staleness_run.add_argument("--json", "-j", action="store_true")
     mem_staleness_run.set_defaults(func=cmd_memory)
 
