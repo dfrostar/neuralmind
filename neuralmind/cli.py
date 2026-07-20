@@ -1702,6 +1702,36 @@ def cmd_memory(args):
         print(f"Rejected {args.source} → {args.target}, removed from review queue.")
         return
 
+    if args.memory_cmd == "staleness-scan":
+        from neuralmind.team_staleness import TeamStalenessDetector
+
+        detector = TeamStalenessDetector()
+        stale = detector.detect_stale_in_store(store, namespace=args.namespace or "shared")
+        if args.json:
+            print(json.dumps({"stale": [e.to_dict() for e in stale], "count": len(stale)}, indent=2))
+            return
+        if not stale:
+            print("No stale edges detected.")
+            return
+        print(f"Stale edges ({len(stale)}):")
+        for edge in stale:
+            print(
+                f"  [{edge.score:.3f}] {edge.source} → {edge.target} "
+                f"({edge.days_since_last:.0f}d / {edge.age_days:.0f}d)"
+            )
+        return
+
+    if args.memory_cmd == "staleness-run":
+        from neuralmind.team_staleness import TeamStalenessDetector
+
+        detector = TeamStalenessDetector()
+        updated, stale = detector.run_staleness_pass(store, namespace=args.namespace or "shared")
+        if args.json:
+            print(json.dumps({"updated": updated, "stale_count": len(stale)}, indent=2))
+            return
+        print(f"Staleness pass complete: {updated} edges decayed out of {len(stale)} stale.")
+        return
+
 
 def cmd_learn(args):
     """Deprecated no-op: the synapse layer learns automatically.
@@ -2942,6 +2972,24 @@ def main():
     mem_review_reject.add_argument("project_path", nargs="?", default=".")
     mem_review_reject.add_argument("--json", "-j", action="store_true")
     mem_review_reject.set_defaults(func=cmd_memory)
+
+    mem_staleness_scan = memory_sub.add_parser(
+        "staleness-scan",
+        help="Detect stale team edges past the reinforcement threshold",
+    )
+    mem_staleness_scan.add_argument("project_path", nargs="?", default=".")
+    mem_staleness_scan.add_argument("--namespace", default="shared", help="Namespace to scan (default: shared)")
+    mem_staleness_scan.add_argument("--json", "-j", action="store_true")
+    mem_staleness_scan.set_defaults(func=cmd_memory)
+
+    mem_staleness_run = memory_sub.add_parser(
+        "staleness-run",
+        help="Run a staleness pass: flag and decay stale team edges",
+    )
+    mem_staleness_run.add_argument("project_path", nargs="?", default=".")
+    mem_staleness_run.add_argument("--namespace", default="shared", help="Namespace to target (default: shared)")
+    mem_staleness_run.add_argument("--json", "-j", action="store_true")
+    mem_staleness_run.set_defaults(func=cmd_memory)
 
     # Init-hook command
     init_parser = subparsers.add_parser(
