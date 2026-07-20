@@ -45,6 +45,22 @@ class EdgeQuality:
     should_promote: bool
     should_decay: bool
 
+    def decay_weight(self, namespace: str = "shared", loser_penalty: float = 0.5) -> float:
+        """Return degraded weight when this edge loses a conflict.
+
+        Losing edges decay multiplicatively so the team converges
+        (doesn't fork). Chronic losers (very high conflict_rates) decay faster.
+
+        Args:
+            namespace: target namespace (reserved for future per-ns decay).
+            loser_penalty: base multiplier applied to loser's score.
+
+        Returns:
+            Degraded weight in [0.01, score].
+        """
+        adjusted = max(0.1, loser_penalty - self.conflict_rate * 0.3)
+        return round(max(0.01, self.score * adjusted), 4)
+
     def to_dict(self) -> dict:
         return {
             "source": self.source,
