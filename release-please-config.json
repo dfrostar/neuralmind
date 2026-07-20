@@ -5,7 +5,6 @@
     ".": {
       "release-type": "python",
       "changelog-path": "CHANGELOG.md",
-      "bump-minor-pre-major": true,
       "version-file": "neuralmind/__init__.py"
     }
   }
