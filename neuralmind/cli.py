@@ -1669,9 +1669,7 @@ def cmd_memory(args):
         pending = _load_pending_review(store)
         before = len(pending)
         remaining = [
-            e
-            for e in pending
-            if not (e["source"] == args.source and e["target"] == args.target)
+            e for e in pending if not (e["source"] == args.source and e["target"] == args.target)
         ]
         if len(remaining) == before:
             print(f"Edge {args.source} → {args.target} not found in pending review queue.")
@@ -1679,9 +1677,7 @@ def cmd_memory(args):
         _save_pending_review(store, remaining)
 
         # Promote to shared namespace
-        promoted = store.import_edges(
-            [(args.source, args.target, 1.0, 1)], namespace="shared"
-        )
+        promoted = store.import_edges([(args.source, args.target, 1.0, 1)], namespace="shared")
         if args.json:
             print(json.dumps({"approved": True, "promoted": promoted}, indent=2))
             return
@@ -1694,9 +1690,7 @@ def cmd_memory(args):
         pending = _load_pending_review(store)
         before = len(pending)
         remaining = [
-            e
-            for e in pending
-            if not (e["source"] == args.source and e["target"] == args.target)
+            e for e in pending if not (e["source"] == args.source and e["target"] == args.target)
         ]
         if len(remaining) == before:
             print(f"Edge {args.source} → {args.target} not found in pending review queue.")

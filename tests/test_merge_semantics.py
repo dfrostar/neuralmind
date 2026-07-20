@@ -265,16 +265,30 @@ class TestQualityWeightedMerger:
     def test_decay_weight_respects_conflict_rate(self):
         """Higher conflict_rate → faster decay."""
         clean = EdgeQuality(
-            source="a", target="b", namespace="shared",
-            score=0.8, reinforcement_score=0.8, recency_score=0.8,
-            conflict_rate=0.0, activation_count=50, age_days=1.0,
-            should_promote=True, should_decay=False,
+            source="a",
+            target="b",
+            namespace="shared",
+            score=0.8,
+            reinforcement_score=0.8,
+            recency_score=0.8,
+            conflict_rate=0.0,
+            activation_count=50,
+            age_days=1.0,
+            should_promote=True,
+            should_decay=False,
         )
         chronic = EdgeQuality(
-            source="a", target="b", namespace="personal",
-            score=0.8, reinforcement_score=0.8, recency_score=0.8,
-            conflict_rate=1.0, activation_count=50, age_days=1.0,
-            should_promote=True, should_decay=False,
+            source="a",
+            target="b",
+            namespace="personal",
+            score=0.8,
+            reinforcement_score=0.8,
+            recency_score=0.8,
+            conflict_rate=1.0,
+            activation_count=50,
+            age_days=1.0,
+            should_promote=True,
+            should_decay=False,
         )
         # Chronic loser decays faster (lower multiplier)
         assert chronic.decay_weight() < clean.decay_weight()
@@ -282,10 +296,17 @@ class TestQualityWeightedMerger:
     def test_decay_weight_floor_at_001(self):
         """decay_weight never returns below the hard floor of 0.01."""
         eq = EdgeQuality(
-            source="a", target="b", namespace="shared",
-            score=0.01, reinforcement_score=0.01, recency_score=0.01,
-            conflict_rate=0.0, activation_count=1, age_days=100.0,
-            should_promote=False, should_decay=True,
+            source="a",
+            target="b",
+            namespace="shared",
+            score=0.01,
+            reinforcement_score=0.01,
+            recency_score=0.01,
+            conflict_rate=0.0,
+            activation_count=1,
+            age_days=100.0,
+            should_promote=False,
+            should_decay=True,
         )
         # score * 0.5 = 0.005, but floor is 0.01
         assert eq.decay_weight() == 0.01
@@ -297,17 +318,27 @@ class TestQualityWeightedMerger:
 
         bundle_a = {
             "synapses": [
-                {"source": "a", "target": "b", "weight": 1.0, "activation_count": 5,
-                 "created_at": time.time(), "last_activated": time.time()}
+                {
+                    "source": "a",
+                    "target": "b",
+                    "weight": 1.0,
+                    "activation_count": 5,
+                    "created_at": time.time(),
+                    "last_activated": time.time(),
+                }
             ],
-            "transitions": [
-                {"source": "x", "target": "y", "weight": 3.0, "count": 10}
-            ],
+            "transitions": [{"source": "x", "target": "y", "weight": 3.0, "count": 10}],
         }
         bundle_b = {
             "synapses": [
-                {"source": "c", "target": "d", "weight": 2.0, "activation_count": 3,
-                 "created_at": time.time(), "last_activated": time.time()}
+                {
+                    "source": "c",
+                    "target": "d",
+                    "weight": 2.0,
+                    "activation_count": 3,
+                    "created_at": time.time(),
+                    "last_activated": time.time(),
+                }
             ],
         }
 
@@ -325,11 +356,22 @@ class TestQualityWeightedMerger:
         scorer = ContributionQualityScorer()
         merger = QualityWeightedMerger(scorer)
 
-        hot = scorer.score_edge("a", "b", "shared", activation_count=50,
-                                created_at=time.time()-86400, last_activated=time.time())
-        cold = scorer.score_edge("a", "b", "personal", activation_count=1,
-                                 created_at=time.time()-86400*40,
-                                 last_activated=time.time()-86400*30)
+        hot = scorer.score_edge(
+            "a",
+            "b",
+            "shared",
+            activation_count=50,
+            created_at=time.time() - 86400,
+            last_activated=time.time(),
+        )
+        cold = scorer.score_edge(
+            "a",
+            "b",
+            "personal",
+            activation_count=1,
+            created_at=time.time() - 86400 * 40,
+            last_activated=time.time() - 86400 * 30,
+        )
 
         conflict = merger.resolve_conflict(hot, cold)
         assert conflict.winner == "a"
@@ -338,7 +380,8 @@ class TestQualityWeightedMerger:
         # Only winner goes to merge_to_store → decay never fires
         import tempfile
         from pathlib import Path
+
         with tempfile.TemporaryDirectory() as tmpdir:
-            store = SynapseStore(Path(tmpdir)/"t.db", namespace=SHARED_NAMESPACE)
+            store = SynapseStore(Path(tmpdir) / "t.db", namespace=SHARED_NAMESPACE)
             result = merger.merge_to_store([hot], store, conflicts=[conflict])
             assert result["decayed"] == 0  # loser not in merged list
