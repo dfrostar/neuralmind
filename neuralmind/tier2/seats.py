@@ -46,8 +46,10 @@ class Seat:
 class SeatManager:
     """Seat management backed by a JSON file in the config dir.
 
-    Thread-safe for the single-admin CLI pattern. Concurrent writes are not a
-    concern in this deployment model.
+    NOT thread-safe. No file locking, no atomic writes. Intended for the
+    single-admin CLI where one process owns the file at a time. If the
+    deployment model changes (web server, concurrent CLI invocations),
+    add a ``threading.Lock`` and write-to-temp-then-rename.
     """
 
     def __init__(self, db_path: Path):
@@ -88,7 +90,7 @@ class SeatManager:
         return self.active_count() < license_limit
 
     def is_active_seat(self, email: str) -> bool:
-        s = self._seats.get(email.lower())
+        s = self._seats.get(email.strip().lower())
         return bool(s and s.active)
 
     def list_seats(self) -> list[Seat]:
@@ -101,7 +103,7 @@ class SeatManager:
 
         Free tier (tier="free") has no seat-limit enforcement.
         """
-        normalized = email.lower()
+        normalized = email.strip().lower()
         if normalized in self._seats:
             if self._seats[normalized].active:
                 return self._seats[normalized]  # idempotent
@@ -109,7 +111,6 @@ class SeatManager:
             if (
                 tier != "free"
                 and self.active_count() >= license_limit
-                and self._seats[normalized].active is False
             ):
                 raise SeatLimitError(
                     f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
@@ -132,9 +133,9 @@ class SeatManager:
 
         Returns the modified Seat.
         """
-        normalized = email.lower()
+        normalized = email.strip().lower()
         if normalized not in self._seats:
-            raise KeyError(f"Seat not found: {email}")
+            raise KeyError(f"Seat not found: {normalized}")
         self._seats[normalized].active = False
         self._seats[normalized].last_active_at = datetime.now(timezone.utc).isoformat()
         self._save()
