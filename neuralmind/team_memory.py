@@ -84,13 +84,15 @@ def _save_pending_review(store: Any, queue: list[dict]) -> None:
 def _add_to_pending_review(store: Any, decision: Any) -> None:
     """Add a review decision to the pending review queue."""
     queue = _load_pending_review(store)
-    queue.append({
-        "source": decision.edge.source,
-        "target": decision.edge.target,
-        "score": round(decision.edge.score, 4),
-        "reason": decision.reason,
-        "reviewer_hint": decision.reviewer_hint,
-    })
+    queue.append(
+        {
+            "source": decision.edge.source,
+            "target": decision.edge.target,
+            "score": round(decision.edge.score, 4),
+            "reason": decision.reason,
+            "reviewer_hint": decision.reviewer_hint,
+        }
+    )
     _save_pending_review(store, queue)
 
 
@@ -275,9 +277,7 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
             for edge in merged_edges:
                 decision = gate.decide(edge)
                 if decision.action == "auto_promote":
-                    final_rows.append(
-                        (edge.source, edge.target, edge.score, edge.activation_count)
-                    )
+                    final_rows.append((edge.source, edge.target, edge.score, edge.activation_count))
                     promoted_count += 1
                 elif decision.action == "review_required":
                     _add_to_pending_review(store, decision)
@@ -286,16 +286,10 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
                     rejected_count += 1
 
             written = (
-                store.import_edges(final_rows, namespace=SHARED_NAMESPACE)
-                if final_rows
-                else 0
+                store.import_edges(final_rows, namespace=SHARED_NAMESPACE) if final_rows else 0
             )
 
-            decayed_count = sum(
-                1
-                for c in conflicts
-                if c.resolved and c.winner == "b"
-            )
+            decayed_count = sum(1 for c in conflicts if c.resolved and c.winner == "b")
 
             result = {
                 "namespace": SHARED_NAMESPACE,
@@ -317,9 +311,7 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
             for edge in incoming_scored:
                 decision = gate.decide(edge)
                 if decision.action == "auto_promote":
-                    final_rows.append(
-                        (edge.source, edge.target, edge.score, edge.activation_count)
-                    )
+                    final_rows.append((edge.source, edge.target, edge.score, edge.activation_count))
                 elif decision.action == "review_required":
                     _add_to_pending_review(store, decision)
                     review_count += 1
@@ -327,9 +319,7 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
                     rejected_count += 1
 
             written = (
-                store.import_edges(final_rows, namespace=SHARED_NAMESPACE)
-                if final_rows
-                else 0
+                store.import_edges(final_rows, namespace=SHARED_NAMESPACE) if final_rows else 0
             )
             result = {
                 "namespace": SHARED_NAMESPACE,

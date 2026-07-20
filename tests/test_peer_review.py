@@ -3,7 +3,6 @@
 import time
 
 from neuralmind.contribution_scoring import (
-    QUALITY_THRESHOLD_HIGH,
     ContributionQualityScorer,
     EdgeQuality,
 )
@@ -32,9 +31,9 @@ class TestPeerReviewGate:
             conflict_count=0,
             total_comparisons=1,
         )
-        assert edge.score >= AUTO_PROMOTE_THRESHOLD, (
-            f"test precondition: score {edge.score} should be >= {AUTO_PROMOTE_THRESHOLD}"
-        )
+        assert (
+            edge.score >= AUTO_PROMOTE_THRESHOLD
+        ), f"test precondition: score {edge.score} should be >= {AUTO_PROMOTE_THRESHOLD}"
 
         decision = gate.decide(edge)
         assert decision.action == "auto_promote"
@@ -56,9 +55,9 @@ class TestPeerReviewGate:
             conflict_count=5,
             total_comparisons=5,
         )
-        assert edge.score < REJECT_THRESHOLD, (
-            f"test precondition: score {edge.score} should be < {REJECT_THRESHOLD}"
-        )
+        assert (
+            edge.score < REJECT_THRESHOLD
+        ), f"test precondition: score {edge.score} should be < {REJECT_THRESHOLD}"
 
         decision = gate.decide(edge)
         assert decision.action == "reject"
@@ -80,9 +79,9 @@ class TestPeerReviewGate:
             conflict_count=1,
             total_comparisons=3,
         )
-        assert REJECT_THRESHOLD <= edge.score < AUTO_PROMOTE_THRESHOLD, (
-            f"test precondition: score {edge.score} should be in [{REJECT_THRESHOLD}, {AUTO_PROMOTE_THRESHOLD})"
-        )
+        assert (
+            REJECT_THRESHOLD <= edge.score < AUTO_PROMOTE_THRESHOLD
+        ), f"test precondition: score {edge.score} should be in [{REJECT_THRESHOLD}, {AUTO_PROMOTE_THRESHOLD})"
 
         decision = gate.decide(edge)
         assert decision.action == "review_required"

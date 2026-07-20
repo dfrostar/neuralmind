@@ -155,6 +155,7 @@ class TestFreshCloneWithGate(unittest.TestCase):
         self.assertLess(edge.score, 0.15, f"score {edge.score} should be < 0.15")
 
         from neuralmind.peer_review import PeerReviewGate
+
         gate = PeerReviewGate(scorer)
         decision = gate.decide(edge)
         self.assertEqual(decision.action, "reject")
