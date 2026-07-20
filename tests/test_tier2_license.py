@@ -82,9 +82,7 @@ class TestLicenseValidation:
 
         # Simulate recent validation (3 days ago — within grace)
         sidecar = lic_path.with_suffix(".last_valid")
-        sidecar.write_text(
-            (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
-        )
+        sidecar.write_text((datetime.now(timezone.utc) - timedelta(days=3)).isoformat())
 
         assert validator.validate() == "OFFLINE_OK"
 
@@ -101,9 +99,7 @@ class TestLicenseValidation:
 
         # Simulate old validation (45 days ago — beyond 30-day grace)
         sidecar = lic_path.with_suffix(".last_valid")
-        sidecar.write_text(
-            (datetime.now(timezone.utc) - timedelta(days=45)).isoformat()
-        )
+        sidecar.write_text((datetime.now(timezone.utc) - timedelta(days=45)).isoformat())
 
         assert validator.validate() == "EXPIRED"
 
@@ -134,9 +130,7 @@ class TestLicenseValidation:
 
         # Sidecar claims a future date — clock was set back → reject
         sidecar = lic_path.with_suffix(".last_valid")
-        sidecar.write_text(
-            (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-        )
+        sidecar.write_text((datetime.now(timezone.utc) + timedelta(days=30)).isoformat())
 
         assert validator.validate() == "EXPIRED"
 
