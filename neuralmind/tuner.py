@@ -427,13 +427,15 @@ class PopulationTuner:
             store = self._store()
             store.set_meta(
                 META_TUNER_LAST_DECISION,
-                json.dumps({
-                    "verdict": decision.verdict,
-                    "reason": decision.reason,
-                    "candidate_fitness": decision.candidate_fitness,
-                    "incumbent_fitness": decision.incumbent_fitness,
-                    "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                }),
+                json.dumps(
+                    {
+                        "verdict": decision.verdict,
+                        "reason": decision.reason,
+                        "candidate_fitness": decision.candidate_fitness,
+                        "incumbent_fitness": decision.incumbent_fitness,
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    }
+                ),
             )
         except Exception as exc:  # noqa: BLE001
             log.warning("_record_decision failed: %s", exc)
@@ -491,7 +493,11 @@ class PopulationTuner:
                 self._record_decision(decision)
                 if decision.verdict == "promote":
                     incumbent = gen_best_params
-                    incumbent_fitness = decision.harness_verdict.fitness if decision.harness_verdict else gen_best_fitness
+                    incumbent_fitness = (
+                        decision.harness_verdict.fitness
+                        if decision.harness_verdict
+                        else gen_best_fitness
+                    )
                     best_params = gen_best_params
                     best_fitness = incumbent_fitness
                     promoted = True
