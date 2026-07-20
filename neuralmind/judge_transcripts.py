@@ -119,9 +119,7 @@ def generate_all_transcripts() -> dict[str, list[dict]]:
         transcripts = generate_transcript_from_benchmark(path)
         if transcripts:
             # Derive language from the data field, fall back to filename
-            language = transcripts[0].get("language") or path.stem.replace(
-                "benchmark_queries_", ""
-            )
+            language = transcripts[0].get("language") or path.stem.replace("benchmark_queries_", "")
             results[language] = transcripts
     return results
 
