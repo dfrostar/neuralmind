@@ -1642,6 +1642,73 @@ def cmd_memory(args):
         )
         return
 
+    if args.memory_cmd == "review-list":
+        from neuralmind.team_memory import _load_pending_review
+
+        pending = _load_pending_review(store)
+        if args.json:
+            print(json.dumps({"pending": pending, "count": len(pending)}, indent=2))
+            return
+        if not pending:
+            print("No edges pending review.")
+            return
+        print(f"Pending review ({len(pending)} edges):")
+        for entry in pending:
+            print(
+                f"  [{entry['score']:.3f}] {entry['source']} → {entry['target']} "
+                f"({entry['reviewer_hint']})"
+            )
+        return
+
+    if args.memory_cmd == "review-approve":
+        from neuralmind.team_memory import (
+            _META_PENDING_REVIEW,
+            _load_pending_review,
+            _save_pending_review,
+        )
+
+        pending = _load_pending_review(store)
+        before = len(pending)
+        remaining = [
+            e
+            for e in pending
+            if not (e["source"] == args.source and e["target"] == args.target)
+        ]
+        if len(remaining) == before:
+            print(f"Edge {args.source} → {args.target} not found in pending review queue.")
+            sys.exit(1)
+        _save_pending_review(store, remaining)
+
+        # Promote to shared namespace
+        promoted = store.import_edges(
+            [(args.source, args.target, 1.0, 1)], namespace="shared"
+        )
+        if args.json:
+            print(json.dumps({"approved": True, "promoted": promoted}, indent=2))
+            return
+        print(f"Approved {args.source} → {args.target}, promoted to shared namespace.")
+        return
+
+    if args.memory_cmd == "review-reject":
+        from neuralmind.team_memory import _load_pending_review, _save_pending_review
+
+        pending = _load_pending_review(store)
+        before = len(pending)
+        remaining = [
+            e
+            for e in pending
+            if not (e["source"] == args.source and e["target"] == args.target)
+        ]
+        if len(remaining) == before:
+            print(f"Edge {args.source} → {args.target} not found in pending review queue.")
+            sys.exit(1)
+        _save_pending_review(store, remaining)
+        if args.json:
+            print(json.dumps({"rejected": True}, indent=2))
+            return
+        print(f"Rejected {args.source} → {args.target}, removed from review queue.")
+        return
+
 
 def cmd_learn(args):
     """Deprecated no-op: the synapse layer learns automatically.
@@ -2854,6 +2921,34 @@ def main():
     mem_publish.add_argument("project_path", nargs="?", default=".")
     mem_publish.add_argument("--json", "-j", action="store_true")
     mem_publish.set_defaults(func=cmd_memory)
+
+    mem_review_list = memory_sub.add_parser(
+        "review-list",
+        help="Show edges pending operator review before entering the shared namespace",
+    )
+    mem_review_list.add_argument("project_path", nargs="?", default=".")
+    mem_review_list.add_argument("--json", "-j", action="store_true")
+    mem_review_list.set_defaults(func=cmd_memory)
+
+    mem_review_approve = memory_sub.add_parser(
+        "review-approve",
+        help="Approve an edge from the pending review queue, promoting it to shared",
+    )
+    mem_review_approve.add_argument("source", help="Edge source node")
+    mem_review_approve.add_argument("target", help="Edge target node")
+    mem_review_approve.add_argument("project_path", nargs="?", default=".")
+    mem_review_approve.add_argument("--json", "-j", action="store_true")
+    mem_review_approve.set_defaults(func=cmd_memory)
+
+    mem_review_reject = memory_sub.add_parser(
+        "review-reject",
+        help="Reject an edge from the pending review queue, dropping it",
+    )
+    mem_review_reject.add_argument("source", help="Edge source node")
+    mem_review_reject.add_argument("target", help="Edge target node")
+    mem_review_reject.add_argument("project_path", nargs="?", default=".")
+    mem_review_reject.add_argument("--json", "-j", action="store_true")
+    mem_review_reject.set_defaults(func=cmd_memory)
 
     # Init-hook command
     init_parser = subparsers.add_parser(
