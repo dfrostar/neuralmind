@@ -78,12 +78,15 @@ class TestQualityHarnessEvaluate:
         ]
 
         harness = QualityHarness(project_path=tmp_path)
-        with patch(
-            "neuralmind.fixtures.load_fixture_queries",
-            return_value=fixtures,
-        ), patch(
-            "neuralmind.embedder.GraphEmbedder",
-            return_value=mock_embedder,
+        with (
+            patch(
+                "neuralmind.fixtures.load_fixture_queries",
+                return_value=fixtures,
+            ),
+            patch(
+                "neuralmind.embedder.GraphEmbedder",
+                return_value=mock_embedder,
+            ),
         ):
             verdict = harness.evaluate({})
 
@@ -107,17 +110,33 @@ class TestQualityHarnessEvaluate:
 
         thresholds = QualityThresholds(min_mrr=0.99, min_answerability=0.99)
         harness = QualityHarness(project_path=tmp_path, thresholds=thresholds)
-        with patch(
-            "neuralmind.fixtures.load_fixture_queries",
-            return_value=fixtures,
-        ), patch(
-            "neuralmind.embedder.GraphEmbedder",
-            return_value=mock_embedder,
+        with (
+            patch(
+                "neuralmind.fixtures.load_fixture_queries",
+                return_value=fixtures,
+            ),
+            patch(
+                "neuralmind.embedder.GraphEmbedder",
+                return_value=mock_embedder,
+            ),
         ):
             verdict = harness.evaluate({})
 
         assert verdict.passed is False
         assert len(verdict.failures) > 0
+
+    def test_nan_fitness_clamps_to_zero(self):
+        """NaN from suite metrics must not promote (regression guard)."""
+        harness = QualityHarness(project_path=Path("/tmp"))
+        verdict = HarnessVerdict(fitness=float("nan"), passed=True, failures=[])
+        decision = harness.decide(
+            candidate_fitness=0.9,
+            incumbent_fitness=0.5,
+            harness_verdict=verdict,
+            hysteresis=0.05,
+        )
+        # NaN fitness should NOT promote — it should hold or rollback
+        assert decision.verdict != "promote"
 
 
 class TestQualityHarnessDecide:
@@ -161,9 +180,7 @@ class TestQualityHarnessDecide:
 
     def test_hold_when_harness_fails(self):
         harness = QualityHarness(project_path=Path("/tmp"))
-        verdict = HarnessVerdict(
-            fitness=0.8, passed=False, failures=["MRR 0.3 < floor 0.5"]
-        )
+        verdict = HarnessVerdict(fitness=0.8, passed=False, failures=["MRR 0.3 < floor 0.5"])
         decision = harness.decide(
             candidate_fitness=0.8,
             incumbent_fitness=0.5,
