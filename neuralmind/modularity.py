@@ -38,21 +38,21 @@ def _modularity_gain(
     node_community: dict[str, str],
     community_weights: dict[str, float],
     total_weight: float,
+    resolution: float = 1.0,
 ) -> float:
     """
     Compute modularity gain for moving `node` into `target_community`.
 
-    Louvain's ΔQ formula for moving node i from community C_i to C_j:
-        ΔQ = [k_i,in(C_j) - Σ_tot(C_j) * k_i / (2m)] / m
-            - [k_i,in(C_i) - (Σ_tot(C_i) - k_i) * k_i / (2m)] / m
+    Louvain's ΔQ formula for moving node i from community Ci to Cj:
+        ΔQ = (1/m) * [k_i,in(Cj) - γ·Σ_tot(Cj)·k_i/(2m)]
+            - (1/m) * [k_i,in(Ci) - γ·Σ_tot(Ci)·k_i/(2m)]
 
-    where:
-        k_i,in(X) = sum of edge weights from node to community X
-        Σ_tot(X) = sum of degrees in community X (excluding `node`)
-        k_i = degree of node
-        m = total edge weight in graph
+    γ (`resolution`) scales the null model:
+        γ < 1.0  → fewer/larger communities (under-partition)
+        γ = 1.0  → standard modularity (default)
+        γ > 1.0  → more/smaller communities (over-partition)
 
-    Positive gain means the move increases modularity.
+    Positive ΔQ means the move increases modularity.
     """
     if total_weight <= 0:
         return 0.0
@@ -66,10 +66,11 @@ def _modularity_gain(
     sigma_tot_target = community_weights.get(target_community, 0.0)
     sigma_tot_current = community_weights.get(node_community[node], 0.0)
     m = total_weight
+    two_m = 2.0 * m
     # ΔQ = gain from target community - loss from current community
-    gain_from_target = k_i_in_target - sigma_tot_target * k_i / (2.0 * m)
-    loss_from_current = k_i_in_current - sigma_tot_current * k_i / (2.0 * m)
-    return (gain_from_target - loss_from_current) / m
+    gain_from_target = (k_i_in_target - resolution * sigma_tot_target * k_i / two_m) / m
+    loss_from_current = (k_i_in_current - resolution * sigma_tot_current * k_i / two_m) / m
+    return gain_from_target - loss_from_current
 
 
 def louvain_clustering(
@@ -111,6 +112,13 @@ def louvain_clustering(
         return dict.fromkeys(nodes, 0)
 
     # Phase 1: greedy modularity optimization
+    # Pre-compute community_weights once, then update incrementally as nodes move.
+    community_weights: dict[str, float] = defaultdict(float)
+    for n in nodes:
+        c = node_community[n]
+        community_weights[c] += sum(adj.get(n, {}).values())
+    node_degree: dict[str, float] = {n: sum(adj.get(n, {}).values()) for n in nodes}
+
     changed = True
     iteration = 0
     while changed and iteration < max_iterations:
@@ -123,32 +131,24 @@ def louvain_clustering(
                 continue
 
             # Find best community (with modularity gain)
-            neighbor_communities = defaultdict(float)
+            neighbor_communities: dict[str, float] = defaultdict(float)
             for n, w in neighbors.items():
                 neighbor_communities[node_community[n]] += w
 
             best_gain = 0.0
             best_community = current_c
 
-            # Compute community weights (excluding current node from its own community)
-            community_weights = defaultdict(float)
-            for n in nodes:
-                if n == node:
-                    continue
-                c = node_community[n]
-                community_weights[c] += sum(adj.get(n, {}).values())
-
-            for neighbor_c in neighbor_communities:
+            k_i = node_degree[node]
+            for neighbor_c, w_to_neighbor_c in neighbor_communities.items():
                 if neighbor_c == current_c:
                     continue
-                gain = _modularity_gain(
-                    adj,
-                    node,
-                    neighbor_c,
-                    node_community,
-                    community_weights,
-                    total_weight,
-                )
+                sigma_target = community_weights.get(neighbor_c, 0.0)
+                sigma_current = community_weights.get(current_c, 0.0) - k_i
+                two_m = 2.0 * total_weight
+                gain_from_target = (w_to_neighbor_c - resolution * sigma_target * k_i / two_m) / total_weight
+                k_i_in_current = neighbor_communities.get(current_c, 0.0)
+                loss_from_current = (k_i_in_current - resolution * sigma_current * k_i / two_m) / total_weight
+                gain = gain_from_target - loss_from_current
                 if gain > best_gain:
                     best_gain = gain
                     best_community = neighbor_c
@@ -159,6 +159,10 @@ def louvain_clustering(
                 if not community_nodes[current_c]:
                     del community_nodes[current_c]
                 community_nodes[best_community].add(node)
+                # Incrementally update community weights
+                k_val = node_degree[node]
+                community_weights[current_c] -= k_val
+                community_weights[best_community] = community_weights.get(best_community, 0.0) + k_val
                 node_community[node] = best_community
                 changed = True
 

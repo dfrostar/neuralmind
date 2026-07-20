@@ -37,6 +37,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from neuralmind.modularity import louvain_clustering
+
 # Mirrors neuralmind.watcher.DEFAULT_IGNORES — directories we never descend.
 _DEFAULT_IGNORES: frozenset[str] = frozenset(
     {
@@ -619,21 +621,71 @@ _SCHEMA_EXTRACTORS: dict[str, Any] = {
 }
 
 
-def _assign_communities(b: _GraphBuilder) -> None:
-    """Assign each node a community keyed by its source file.
+def _assign_communities(b: _GraphBuilder, existing_graph: dict[str, Any] | None = None) -> None:
+    """Assign each node a community id via Louvain modularity over structural edges.
 
-    A deterministic stand-in for graphify's modularity clustering. Grouping a
-    file's symbols (+ its rationale/document children) into one community gives
-    balanced, feature-aligned clusters — which is what the context selector's
-    L1 summary and L2 "relevant areas" actually read. The previous
-    label-propagation pass collapsed almost every node into a single giant
-    community on these small, densely-connected code graphs, starving both
-    layers of signal; per-file grouping fixes that without networkx.
+    Carries over community IDs from `existing_graph` for incremental stability
+    (unchanged files keep their community byte-for-byte). Falls back to
+    per-file grouping if modularity clustering fails or yields a single
+    community (fail-open).
     """
-    files_sorted = sorted({n["source_file"] for n in b.nodes.values()})
-    comm_of_file = {f: i for i, f in enumerate(files_sorted)}
-    for node in b.nodes.values():
-        node["community"] = comm_of_file[node["source_file"]]
+    if not b.nodes:
+        return
+
+    source_files = sorted({n["source_file"] for n in b.nodes.values() if n.get("source_file")})
+    if not source_files:
+        for n in b.nodes.values():
+            n["community"] = 0
+        return
+
+    # Carry over community ids from the previous build
+    comm_of_file: dict[str, int] = {}
+    if existing_graph:
+        for n in existing_graph.get("nodes", []):
+            sf = n.get("source_file", "")
+            if sf and sf in set(source_files) and sf not in comm_of_file:
+                comm_of_file[sf] = n.get("community", 0)
+
+    # Build per-file adjacency from structural edges
+    adj: dict[str, dict[str, float]] = {f: {} for f in source_files}
+    for edge in b.edges:
+        rel = edge.get("relation", "")
+        if rel not in ("calls", "imports_from", "inherits", "contains"):
+            continue
+        src = b.nodes.get(edge.get("source", ""), {})
+        tgt = b.nodes.get(edge.get("target", ""), {})
+        sf_src = src.get("source_file", "")
+        sf_tgt = tgt.get("source_file", "")
+        if sf_src and sf_tgt and sf_src != sf_tgt:
+            w = float(edge.get("confidence_score", 1.0))
+            adj[sf_src][sf_tgt] = adj[sf_src].get(sf_tgt, 0.0) + w
+            adj[sf_tgt][sf_src] = adj[sf_tgt].get(sf_src, 0.0) + w
+
+    partition = louvain_clustering(adj)
+
+    # If Louvain collapsed everything or failed, fall back to per-file
+    unique_comms = set(partition.values()) if partition else set()
+    if len(unique_comms) <= 1:
+        next_comm = max(comm_of_file.values(), default=-1) + 1
+        for f in source_files:
+            if f not in comm_of_file:
+                comm_of_file[f] = next_comm
+                next_comm += 1
+    else:
+        # Use Louvain result, re-numbering to honor carried-over ids
+        next_comm = max(comm_of_file.values(), default=-1) + 1
+        seen: dict[int, int] = {}
+        for f in source_files:
+            if f in comm_of_file:
+                continue
+            raw = partition.get(f, 0)
+            if raw not in seen:
+                seen[raw] = next_comm
+                next_comm += 1
+            comm_of_file[f] = seen[raw]
+
+    for n in b.nodes.values():
+        n["community"] = comm_of_file.get(n.get("source_file", ""), 0)
 
 
 def _module_dotted(rel: str) -> str:
@@ -801,20 +853,10 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # edges alongside the existing soft vector similarity signal.
     _add_doc_code_coupling(b)
 
-    # ---- communities (per-file, balanced) --------------------------------- #
-    # Carry over community IDs from existing graph so unchanged files keep
+    # ---- communities (Louvain modularity over structural edges) -------- #
+    # Carries over community IDs from existing_graph so unchanged files keep
     # their numbers byte-for-byte (defeats the point of incremental otherwise).
-    comm_of_file: dict[str, int] = {}
-    if existing_graph:
-        for n in existing_graph.get("nodes", []):
-            comm_of_file.setdefault(n["source_file"], n["community"])
-    next_comm = max(comm_of_file.values(), default=-1) + 1
-    for n in b.nodes.values():
-        sf = n["source_file"]
-        if sf not in comm_of_file:
-            comm_of_file[sf] = next_comm
-            next_comm += 1
-        n["community"] = comm_of_file[sf]
+    _assign_communities(b, existing_graph)
 
     # --- Post-build cache update -----------------------------------------
     # Update content hashes for freshly extracted files so the next build
