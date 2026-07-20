@@ -16,6 +16,10 @@ const faqs = [
         a: 'NeuralMind itself makes no external calls — the graph, embeddings, and synapse store are all local, with zero telemetry. The only thing that leaves is the minimal context slice your AI agent (Claude Code, Cursor, etc.) sends to its own model on each query — which is exactly what NeuralMind shrinks 40–70× versus pasting whole files.',
     },
     {
+        q: 'What is the CI-gated tuner?',
+        a: 'NeuralMind runs a population-based evolutionary search over its own retrieval parameters. Candidate configs are evaluated against your fixture queries by an independent quality harness. Promotion requires both harness pass AND beating the incumbent by a hysteresis margin. The daemon proposes; the harness disposes.',
+    },
+    {
         q: 'What languages does it support?',
         a: 'Ten out-of-the-box: Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP. tree-sitter handles parsing.',
     },
