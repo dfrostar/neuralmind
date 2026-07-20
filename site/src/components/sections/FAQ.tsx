@@ -17,7 +17,15 @@ const faqs = [
     },
     {
         q: 'What is the CI-gated tuner?',
-        a: 'NeuralMind runs a population-based evolutionary search over its own retrieval parameters. Candidate configs are evaluated against your fixture queries by an independent quality harness. Promotion requires both harness pass AND beating the incumbent by a hysteresis margin. The daemon proposes; the harness disposes.',
+        a: 'A self-improvement engine landing in the next release: a population-based evolutionary search over NeuralMind\'s own retrieval parameters. Candidate configs are evaluated against your fixture queries by an independent quality harness. Promotion requires both harness pass AND beating the incumbent by a hysteresis margin. The daemon proposes; the harness disposes.',
+    },
+    {
+        q: 'Is NeuralMind free? What does the paid tier actually buy?',
+        a: 'The MIT core is free forever — including all of the token compression; the 40–70× savings cost nothing. A 1-seat free license auto-issues the first time you run a `neuralmind team` command, no signup. NeuralMind Team ($29/user/mo, annual, 5–50 seats) adds what engineering organizations need on top: admin-controlled memory governance, a tamper-evident hash-chained audit log, seat management, and self-hosted deployment. You are paying for compliance and control, not for the compression.',
+    },
+    {
+        q: 'What\'s the business case for a team?',
+        a: 'Two lines: the measured token reduction (free, verify it on your own repo in ~15 minutes), and modeled productivity recovery — engineers stop losing hours to context-limit thrashing and re-prompting. We publish the full model with its assumptions, and the free assessment runs it in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
     },
     {
         q: 'What languages does it support?',

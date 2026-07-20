@@ -6,7 +6,7 @@ const tags = ['Claude Code', 'Cursor', 'Cline', 'Continue', 'MCP'];
 const heroStats = [
     { label: 'Token Ratio', value: '40–70×', highlight: true },
     { label: 'Languages Indexed', value: '10', highlight: false },
-    { label: 'CI-Gated Tuner', value: 'C4', highlight: false },
+    { label: 'Gold-File Recall', value: '100%', highlight: false },
     { label: 'Impact Tool', value: 'Blast Radius', highlight: false },
 ];
 

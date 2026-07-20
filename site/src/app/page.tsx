@@ -1,6 +1,7 @@
 import Hero from '@/components/sections/Hero';
 import HowItWorks from '@/components/sections/HowItWorks';
 import Benchmarks from '@/components/sections/Benchmarks';
+import BusinessCase from '@/components/sections/BusinessCase';
 import Features from '@/components/sections/Features';
 import Assessment from '@/components/sections/Assessment';
 import FAQ from '@/components/sections/FAQ';
@@ -16,6 +17,7 @@ export default function Page() {
                 <Hero />
                 <HowItWorks />
                 <Benchmarks />
+                <BusinessCase />
                 <Features />
                 <Assessment />
                 <FAQ />
