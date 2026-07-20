@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .contribution_scoring import ContributionQualityScorer
 from .ir import (
     SYNAPSE_BUNDLE_FORMAT,
     SYNAPSE_BUNDLE_KIND_TRANSITION,
@@ -41,6 +42,7 @@ from .ir import (
     export_synapse_bundle,
     import_synapse_bundle,
 )
+from .merge_semantics import QualityWeightedMerger
 from .synapses import DEFAULT_NAMESPACE, SHARED_NAMESPACE
 
 # Committed at the repo root, beside .gitignore — NOT inside the git-ignored
@@ -189,7 +191,63 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
     except Exception:
         return None
     try:
-        result = import_synapse_bundle(store, bundle, namespace=SHARED_NAMESPACE)
+        # If the store already has shared edges, merge incoming bundle
+        # through quality-weighted conflict resolution instead of plain
+        # MAX-merge. Fresh clones (no shared edges) skip the merge.
+        scorer = ContributionQualityScorer()
+        merger = QualityWeightedMerger(scorer)
+
+        # Export current shared state as the baseline bundle
+        current_shared = export_synapse_bundle(store, namespace=SHARED_NAMESPACE)
+        existing_shared_count = current_shared.get("counts", {}).get("synapses", 0)
+
+        if existing_shared_count > 0:
+            # Re-import scenario: merge with conflict resolution
+            # Convert incoming bundle to scored edges via merger
+            incoming_scored = scorer.score_bundle(bundle)
+            existing_scored = scorer.score_bundle(current_shared)
+
+            # Build an index of existing edges by (source, target)
+            existing_index: dict[tuple[str, str], Any] = {
+                (e.source, e.target): e for e in existing_scored
+            }
+
+            # Merge: for conflicts, quality-weighted resolution
+            merged_edges = []
+            conflicts = []
+            for edge in incoming_scored:
+                key = (edge.source, edge.target)
+                if key in existing_index:
+                    conflict = merger.resolve_conflict(existing_index[key], edge)
+                    conflicts.append(conflict)
+                    if not conflict.contest:
+                        winner = (
+                            existing_index[key] if conflict.winner == "a" else edge
+                        )
+                        merged_edges.append(winner)
+                    # contest → skip, escalates to E3
+                else:
+                    merged_edges.append(edge)
+
+            # Write merged edges through merger (handles decay on losers)
+            merge_result = merger.merge_to_store(
+                merged_edges,
+                store,
+                namespace=SHARED_NAMESPACE,
+                conflicts=conflicts,
+            )
+            result = {
+                "namespace": SHARED_NAMESPACE,
+                "synapses": merge_result["merged"],
+                "contest": merge_result["contest"],
+                "decayed": merge_result["decayed"],
+                "transitions": 0,
+            }
+        else:
+            # Fresh clone — plain import
+            result = import_synapse_bundle(
+                store, bundle, namespace=SHARED_NAMESPACE
+            )
     except Exception:
         return None
     # Record the idempotency hash in its own try: a meta-write failure must not

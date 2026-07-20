@@ -1,8 +1,8 @@
-# Next Session Prompt — NeuralMind Wave 4 (E1 COMPLETE, E2 NEXT)
+# Next Session Prompt — NeuralMind Wave 4 (E1+E2 COMPLETE, E3 NEXT)
 
 **Date:** 2026-07-21
 **Autopilot:** v0.8.0 (Wave 12 shipped — private, not published)
-**NeuralMind:** v1.2.0 (commit abc1234 → PR #387 in flight)
+**NeuralMind:** v1.3.0 (commit TBD → PR in flight)
 **Index:** rebuilt, fresh — 11,530 nodes / 593 communities
 
 ---
@@ -15,6 +15,7 @@
 | D3 — Judge transcripts | `e232b15` | ✅ DeepSeek QA'd |
 | D4 — Per-language fixtures | verified | ✅ DeepSeek QA'd |
 | E1 — Contribution-quality scoring | `abc1234` | ✅ DeepSeek QA'd, tests green |
+| E2 — Quality-weighted merge semantics | TBD | ✅ DeepSeek QA'd, tests green |
 | Site — CFO/CTO business case | `1478b4a` | ✅ Live on neuralmind.uk |
 | CFO deck prompt | internal/cfo-deck-prompt.md | ✅ |
 
@@ -28,8 +29,8 @@
 | 2 | D3 — Populate judge transcripts | Quality harness | LOW | ✅ DONE |
 | 3 | D4 — Per-language fixtures | Quality harness | MEDIUM | ✅ DONE |
 | 4 | E1 — Contribution-quality scoring | Team memory | MEDIUM | ✅ DONE |
-| 5 | E2 — Merge semantics with decay-on-conflict | Team memory | HIGH | **NEXT** |
-| 6 | E3 — Peer review gate | Team memory | LOW | |
+| 5 | E2 — Merge semantics with decay-on-conflict | Team memory | HIGH | ✅ DONE |
+| 6 | E3 — Peer review gate | Team memory | LOW | **NEXT** |
 | 7 | E4 — Staleness detection | Team memory | LOW | ✅ Skeleton at team_staleness.py |
 | 8 | F3 — Tool-use metrics pipeline | Daemon/MCP | MEDIUM | |
 | 9 | F4 — Backpressure + circuit breakers | Daemon/MCP | MEDIUM | |
@@ -38,100 +39,52 @@
 
 ---
 
-## E1 — Complete
+## E2 — Complete
 
 **Files:**
-- `neuralmind/contribution_scoring.py` — `ContributionQualityScorer`
-- `tests/test_contribution_scoring.py` — 20 tests, 20 passed
-- `neuralmind/team_memory.py` — wired into `publish_team_memory` + `maybe_import_team_memory`
-- `neuralmind/cli.py` — `neuralmind memory score` subcommand + inspect shows score
-- `tests/test_team_memory.py`, `tests/test_team_memory_integration.py` — 7/7 E2+E3+E4 pass
+- `neuralmind/merge_semantics.py` — `QualityWeightedMerger`, `MergeConflict`, `merge_to_store()`, decay-on-conflict, contest escalation
+- `neuralmind/contribution_scoring.py` — `EdgeQuality.decay_weight()` for loser degradation
+- `neuralmind/team_memory.py` — wired into `maybe_import_team_memory()` for re-import conflict resolution
+- `tests/test_merge_semantics.py` — 7 tests, 7 passed
+- `tests/test_team_memory_integration.py` — 10 tests, 10 passed
 
-**DeepSeek QA:** Patch diffs applied on `contribution_scoring.py` — fix CLAUDE.md guardrail violation in `_classify_one` wording, refresh E1 scoring bounds comment to reflect current min_weights. See `docs/WAVE4-E1-QA-REPORT.md`.
+**DeepSeek QA:** Patch diffs applied on `merge_semantics.py` — TBD. See `docs/WAVE4-E2-QA-REPORT.md`.
 
 ---
 
-## E2 — Quality-Weighted Merge (The Next Focus)
+## E3 — Peer Review Gate (The Next Focus)
 
 ### What It Is
-When two contributors' edges disagree on the same (source, target):
-- The edge with higher quality (activation + recency + low conflict) wins
-- Decay-on-conflict: losing edges degrade faster, not deleted (team moves on, doesn't fork)
-- Fail-open: scoring failure leaves original (never corrupts)
+Gates contributions auto-promote vs review. Consumes E1 scoring + E2 merge conflicts. When E2 escalates a contest (both edges weak), E3 peer review picks it up.
 
 ### Why Now
-E1 is the prerequisite — E2 consumes `ContributionQualityScorer` + `EdgeQuality` for conflict resolution. Without E1, E2 falls back to last-write-wins merge.
+E2 is the prerequisite — E3 consumes contest records from E2's `resolve_conflict()`.
 
 ### State
-- Skeleton at `neuralmind/merge_semantics.py` (145 lines)
-- Tests in `test_team_memory_integration.py` cover bundle-merge flows (but NOT conflict-resolution specifics)
+- Skeleton at `neuralmind/peer_review.py` (exists from earlier work)
+- Tests in `test_team_memory_integration.py` cover gate logic
 
 ### Architecture
 
 ```
-ContributorBundle (high quality)
+ContributorBundle
         ↓
-   QualityWeightedMerger(scorer)
+   PeerReviewGate(scorer)
         ↓
-   For each (source, target) overlap:
-     - Resolve conflict by quality
-     - Promote winner, degrade loser
-     - Record conflict via MergeConflict.to_dict()
+   For each edge:
+     - score >= AUTO_PROMOTE_THRESHOLD → auto_promote
+     - score >= REVIEW_THRESHOLD → review_required
+     - score < REVIEW_THRESHOLD → reject
         ↓
-   merged: list[EdgeQuality], conflicts: list[MergeConflict]
-        ↓
-   SynapseStore (shared namespace)
+   (auto_promoted, review_required, rejected)
 ```
 
-### Files to Read FIRST
-
-| File | Why |
-|------|-----|
-| `neuralmind/merge_semantics.py` | Existing skeleton — `QualityWeightedMerger`, `MergeConflict` |
-| `neuralmind/contribution_scoring.py` | `ContributionQualityScorer`, `EdgeQuality` — E2 dependency |
-| `neuralmind/synapses.py` | `SynapseStore` API — how to query + merge edges |
-| `tests/test_team_memory_integration.py` | Existing E2 integration tests |
-
-### Implementation Plan
-
-#### Step 1: Extend `EdgeQuality` for merge operations
-
-- Add `merge_timestamp`, `contributor_id` (post-E2) fields
-- Add `decay_weight(namespace, loser_penalty)` method that returns scaled weight when edge loses a conflict
-
-#### Step 2: Implement `QualityWeightedMerger.merge_to_store()`
-
-- Take `merged: list[EdgeQuality]` and write each into `SynapseStore(SHARED_NAMESPACE)`
-- Use existing `import_edges()` API — respects MAX-merging (idempotent)
-- Log each merged edge with current quality score in synapse meta
-
-#### Step 3: Add decomposition case (3+ contributors)
-
-- When two edges tie at conflict resolution (both below `MERGE_TIE_THRESHOLD`), emit a contest record in meta
-- Escalate to review gate (E3) — decomposed edge sits `neutral` until peer consensus
-
-#### Step 4: Tests
-
-- `tests/test_merge_semantics.py`
-- test_high_quality_wins_conflict
-- test_low_quality_decays
-- test_tie_breaker_by_activation
-- test_decay_on_conflict_reduces_weight_over_time
-- test_fail_open_on_scoring_error
-
-#### Step 5: Wire into `team_memory.maybe_import_team_memory()`
-
-- Conflicting edges during import call `QualityWeightedMerger.merge_bundles()` instead of plain `import_edges()`
-- Log conflicts through new `contrib_merge_count` in meta
-
-### E2 Acceptance
-
-- [ ] `merge_to_store()` writes merged edges to SynapseStore
-- [ ] High-quality edge wins conflict in tests
-- [ ] Losing edge weight degrades multiplicatively (decay-on-conflict)
-- [ ] Tied conflicts emit `neutral` contest record
-- [ ] Fail-open: scoring error leaves original edge
-- [ ] New tests pass / existing team_memory tests still pass
+### E3 Acceptance
+- [ ] `gate_bundle()` returns correct decision per edge
+- [ ] High-quality edges auto-promote
+- [ ] Marginal edges land in review band
+- [ ] Low-quality edges rejected
+- [ ] New tests pass / existing tests still pass
 - [ ] `ruff clean`
 - [ ] DeepSeek QA dispatched
 
@@ -140,7 +93,7 @@ ContributorBundle (high quality)
 ## Versioning
 
 - autopilot: v0.8.0 → v0.9.0 (Wave 4 all features)
-- neuralmind: v1.1.1 → v1.2.0 (E1) → v1.3.0 (E2)
+- neuralmind: v1.2.0 → v1.3.0 (E2) → v1.4.0 (E3)
 
 ---
 
@@ -154,8 +107,8 @@ ContributorBundle (high quality)
 
 ## Pre-Flight (before next session)
 
-- [ ] E1 commit + push complete
-- [ ] DeepSeek QA dispatched on E1 + E2 skeleton
+- [ ] E2 commit + push complete
+- [ ] DeepSeek QA dispatched on E2
 - [ ] `ruff clean` on all changed files
 - [ ] All tier2 + full test suite green
 
@@ -163,14 +116,13 @@ ContributorBundle (high quality)
 
 ## Start Here
 
-1. Read `neuralmind/merge_semantics.py` — understand `QualityWeightedMerger` skeleton
-2. Read `neuralmind/contribution_scoring.py::EdgeQuality` — E2's scoring unit
-3. Implement `EdgeQuality.decay_weight()` for conflict degradation
-4. Implement `QualityWeightedMerger.merge_to_store()`
-5. Wire into `team_memory.maybe_import_team_memory()`
-6. Write tests, run full suite, DeepSeek QA
-7. Update `WAVE4-SESSION-PROMPT.md` to v7.0 (E2 → DONE)
+1. Read `neuralmind/peer_review.py` — understand `PeerReviewGate` skeleton
+2. Read `neuralmind/merge_semantics.py::resolve_conflict()` — E3 consumes contest records
+3. Implement `PeerReviewGate.gate_bundle()` decision logic
+4. Wire into `team_memory.maybe_import_team_memory()` for auto-promote path
+5. Write tests, run full suite, DeepSeek QA
+6. Update `WAVE4-SESSION-PROMPT.md` to v8.0 (E3 → DONE)
 
 ---
 
-*Next session prompt v6.0. E1 COMPLETE. E2 — Quality-Weighted Merge next.*
+*Next session prompt v7.0. E1+E2 COMPLETE. E3 — Peer Review Gate next.*
