@@ -169,7 +169,18 @@ class TestQualityWeightedMerger:
         assert scored == []  # malformed edge skipped
 
         # Merger handles empty scored list gracefully
-        bundle_a = {"synapses": [{"source": "a", "target": "b", "weight": 1.0, "activation_count": 1, "created_at": time.time(), "last_activated": time.time()}]}
+        bundle_a = {
+            "synapses": [
+                {
+                    "source": "a",
+                    "target": "b",
+                    "weight": 1.0,
+                    "activation_count": 1,
+                    "created_at": time.time(),
+                    "last_activated": time.time(),
+                }
+            ]
+        }
         bundle_b = {"synapses": [{"weight": 2.0, "activation_count": 5}]}  # malformed
 
         merged, conflicts = merger.merge_bundles(bundle_a, bundle_b)
@@ -222,6 +233,7 @@ class TestQualityWeightedMerger:
         # Create a temp store for testing
         import tempfile
         from pathlib import Path
+
         with tempfile.TemporaryDirectory() as tmpdir:
             db_path = Path(tmpdir) / "test.db"
             store = SynapseStore(db_path, namespace=SHARED_NAMESPACE)

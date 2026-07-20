@@ -221,9 +221,7 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
                     conflict = merger.resolve_conflict(existing_index[key], edge)
                     conflicts.append(conflict)
                     if not conflict.contest:
-                        winner = (
-                            existing_index[key] if conflict.winner == "a" else edge
-                        )
+                        winner = existing_index[key] if conflict.winner == "a" else edge
                         merged_edges.append(winner)
                     # contest → skip, escalates to E3
                 else:
@@ -245,9 +243,7 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
             }
         else:
             # Fresh clone — plain import
-            result = import_synapse_bundle(
-                store, bundle, namespace=SHARED_NAMESPACE
-            )
+            result = import_synapse_bundle(store, bundle, namespace=SHARED_NAMESPACE)
     except Exception:
         return None
     # Record the idempotency hash in its own try: a meta-write failure must not
