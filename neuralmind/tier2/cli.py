@@ -119,8 +119,12 @@ def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, 
         # Guard: if config shows a paid tier was previously active, do not
         # auto-issue a free license. Prevents deletion of the license file
         # from resetting a paid tenant to free tier.
-        if config.seats > 1 or (config.tier == "team" and config.issued_to and config.issued_to != "self"):
-            print("License file missing. Run `neuralmind team license activate <key>` to re-activate.")
+        if config.seats > 1 or (
+            config.tier == "team" and config.issued_to and config.issued_to != "self"
+        ):
+            print(
+                "License file missing. Run `neuralmind team license activate <key>` to re-activate."
+            )
             return None, None
         try:
             issue_free_license(lic_path)
