@@ -50,6 +50,12 @@ const featureList = [
         badge: 'v1.0.0',
     },
     {
+        icon: '⚙️',
+        title: 'CI-Gated Tuner',
+        desc: 'Population-based evolutionary search proposes configs. An independent quality harness validates against fixture queries before promotion. The daemon proposes; the harness disposes.',
+        badge: 'v1.2.0',
+    },
+    {
         icon: '🔒',
         title: '100% Local Engine',
         desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
