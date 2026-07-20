@@ -42,10 +42,9 @@ def _tok(text: str) -> set[str]:
 
 
 def cosine_similarity(set_a: set[str], set_b: set[str]) -> float:
-    """Jaccard-like overlap coefficient for token sets.
+    """Cosine similarity over binary token sets.
 
-    Pure-stdlib cosine over token sets: |A ∩ B| / sqrt(|A| * |B|).
-    Returns 0.0 when either set is empty.
+    |A ∩ B| / sqrt(|A| * |B|). Returns 0.0 when either set is empty.
     """
     if not set_a or not set_b:
         return 0.0

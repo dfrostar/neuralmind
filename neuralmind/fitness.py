@@ -43,16 +43,28 @@ DEFAULT_HYSTERESIS = 0.05
 def _parse_weights(raw: str | None) -> tuple[float, float, float]:
     """Parse a comma-separated weight string like "0.5,0.3,0.2" into a 3-tuple.
 
-    Falls back on DEFAULT_WEIGHTS when the env var is unset, malformed, or
-    doesn't normalize to a positive sum. Weights are normalized to sum to 1.0
-    so the product is comparable across configurations.
+    Falls back on DEFAULT_WEIGHTS when the env var is unset, malformed,
+    doesn't normalize to a positive sum, or contains NaN/Inf/negative
+    values. Weights are normalized to sum to 1.0 so the product is
+    comparable across configurations.
     """
     if not raw:
         return DEFAULT_WEIGHTS
-    try:
-        parts = [float(p.strip()) for p in raw.split(",") if p.strip()]
-    except (TypeError, ValueError):
-        return DEFAULT_WEIGHTS
+    parts: list[float] = []
+    for p in raw.split(","):
+        p = p.strip()
+        if not p:
+            continue
+        try:
+            v = float(p)
+        except (TypeError, ValueError):
+            return DEFAULT_WEIGHTS
+        # Reject NaN, Inf, and negative values — any of these would
+        # silently poison the fitness score (NaN propagates through
+        # log-sum-exp; negative weights break the product-form semantics).
+        if math.isnan(v) or math.isinf(v) or v < 0.0:
+            return DEFAULT_WEIGHTS
+        parts.append(v)
     if len(parts) != 3:
         return DEFAULT_WEIGHTS
     total = sum(parts)
@@ -131,8 +143,14 @@ class FitnessScore:
 
 
 def _clamp(value: float, lo: float = 0.0, hi: float | None = None) -> float:
-    """Clamp value to [lo, hi]. If hi is None, no upper bound. NaN/Inf → lo."""
-    if math.isnan(value) or math.isinf(value):
+    """Clamp value to [lo, hi]. If hi is None, no upper bound.
+
+    NaN → lo. +Inf → hi (or lo if no hi). -Inf → lo."""
+    if math.isnan(value):
+        return lo
+    if math.isinf(value):
+        if hi is not None and value > 0:
+            return hi
         return lo
     if value < lo:
         return lo
@@ -159,12 +177,28 @@ def compute_fitness(
     if weights is None:
         weights = DEFAULT_WEIGHTS
 
+    # Reject NaN/Inf/negative weights — NaN would propagate through log-sum-exp
+    # and silently poison the score (NaN comparisons are False everywhere,
+    # so the incumbent stays NaN forever, no future candidate can beat it).
+    # Negative weights break the product-form semantics (they flip the
+    # preference direction, letting low-scoring candidates beat high-scoring ones).
+    if any(math.isnan(w) or math.isinf(w) or w < 0.0 for w in weights):
+        return FitnessScore(
+            total=0.0,
+            retrieval_quality=_clamp(inputs.retrieval_quality, 0.0, 1.0),
+            efficiency=_clamp(inputs.efficiency, 0.0, 10.0),
+            session_health=_clamp(inputs.session_health, 0.0, 1.0),
+            weights=weights,
+            components={"rq_term": 0.0, "ef_term": 0.0, "sh_term": 0.0},
+        )
+
     # Clamp inputs: rq and sh are bounded [0, 1]. Efficiency > 1.0 is
-    # valid (reduction ratio 2.0 = half the tokens) and must NOT be clamped.
+    # valid (reduction ratio 2.0 = half the tokens) but bounded to [0, 10]
+    # to defend against float overflow from pathological inputs.
+    # Using _clamp (which catches NaN/Inf) rather than bare min/max —
+    # min(NaN, x) silently returns NaN and poisons the log-sum.
     rq = _clamp(inputs.retrieval_quality, 0.0, 1.0)
-    # Efficiency has no documented upper bound, but clamp to defend against
-    # float overflow from pathological efficiency_ratio values.
-    ef = min(inputs.efficiency, 10.0)
+    ef = _clamp(inputs.efficiency, 0.0, 10.0)
     sh = _clamp(inputs.session_health, 0.0, 1.0)
 
     # Weighted product in log space: avoids underflow with small weights.

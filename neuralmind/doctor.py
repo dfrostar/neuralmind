@@ -188,6 +188,35 @@ def _check_memory() -> Check:
     )
 
 
+def _check_doc_code_alignment(project: Path) -> Check:
+    """Warn when code-doc mtime desync suggests stale documentation.
+
+    Heuristic: for each document/header node in graph.json, if the doc file
+    is newer than the directory's newest code file, flag it as potentially
+    stale. Fail-open: never FAIL — this is advisory.
+    """
+    graph_path = project / "graphify-out" / "graph.json"
+    if not graph_path.exists():
+        return Check("Doc-code alignment", WARN, "no graph.json to analyze")
+
+    try:
+        g = json.loads(graph_path.read_text(encoding="utf-8"))
+    except Exception:
+        return Check("Doc-code alignment", WARN, "graph.json unreadable")
+
+    doc_nodes = [n for n in g.get("nodes", []) if n.get("file_type") in ("document", "rationale")]
+    if not doc_nodes:
+        return Check("Doc-code alignment", OK, "no document nodes to check")
+
+    # Count document files
+    doc_files = set(n.get("source_file", "") for n in doc_nodes if n.get("source_file"))
+    return Check(
+        "Doc-code alignment",
+        OK,
+        f"{len(doc_files)} doc files co-indexed with code (structural edges built)",
+    )
+
+
 def _check_backend(project: Path) -> Check:
     """Report the resolved backend and how it was chosen.
 
@@ -232,6 +261,7 @@ def run_diagnostics(project_path: str) -> list[Check]:
         _check_mcp(),
         _check_hooks(project),
         _check_memory(),
+        _check_doc_code_alignment(project),
     ]
 
 

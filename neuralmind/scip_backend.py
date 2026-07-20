@@ -38,8 +38,9 @@ class ScipBackend:
     construction and validates that the SCIP tool is importable.
     """
 
-    def __init__(self, config: ScipConfig | None = None):
+    def __init__(self, config: ScipConfig | None = None, project_path: str | Path | None = None):
         self.config = config or ScipConfig()
+        self._project_path = Path(project_path) if project_path is not None else Path(".")
         self._index = None
         self._available: bool | None = None
 
@@ -71,7 +72,7 @@ class ScipBackend:
             return self.config.index_path
         from . import precision
 
-        found = precision.find_scip_index(getattr(self, "_project_path", "."))
+        found = precision.find_scip_index(self._project_path)
         return str(found) if found else None
 
     def refine_graph(self, graph: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any] | None]:
@@ -119,7 +120,8 @@ def apply_scip_if_available(
     *,
     enabled: bool = False,
     index_path: str | None = None,
+    project_path: str | Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     """Convenience: apply SCIP precision pass if enabled."""
-    backend = ScipBackend(ScipConfig(enabled=enabled, index_path=index_path))
+    backend = ScipBackend(ScipConfig(enabled=enabled, index_path=index_path), project_path=project_path)
     return backend.refine_graph(graph)
