@@ -98,7 +98,6 @@ class DaemonSleep:
 
         try:
             from .synapses import SynapseStore, default_db_path
-
             self.store = SynapseStore(default_db_path(self.project_path))
         except Exception as exc:
             log.warning("DaemonSleep: cannot open store: %s", exc)
@@ -121,10 +120,10 @@ class DaemonSleep:
             log.warning("DaemonSleep: emit_team_bundle failed: %s", exc)
 
         try:
-            stale = self.detect_stale_edges()
+            stale = self._run_staleness_decay()
             stats.stale_team_edges = len(stale)
         except Exception as exc:
-            log.warning("DaemonSleep: detect_stale_edges failed: %s", exc)
+            log.warning("DaemonSleep: staleness decay failed: %s", exc)
 
         self.mark_run()
         return stats
@@ -226,6 +225,26 @@ class DaemonSleep:
                 (cutoff,),
             )
             return [f"{r[2]}:{r[0]}-{r[1]}" for r in cur.fetchall()]
+
+    def _run_staleness_decay(self) -> list:
+        """Apply E4 stale-edge decay via TeamStalenessDetector.
+
+        Runs staleness passes for shared and branch namespaces.
+        Returns list of all stale edges detected.
+        """
+        from .team_staleness import TeamStalenessDetector
+
+        total_stale = []
+        detector = TeamStalenessDetector()
+        for ns in ("shared", "branch:live"):
+            try:
+                _, stale = detector.run_staleness_pass(
+                    self.store, namespace=ns
+                )
+                total_stale.extend(stale)
+            except Exception as exc:
+                log.debug("staleness pass failed for %s: %s", ns, exc)
+        return total_stale
 
     def _store(self) -> Any:
         if self.project_path is None:

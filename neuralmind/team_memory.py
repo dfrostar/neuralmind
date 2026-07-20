@@ -44,6 +44,7 @@ from .ir import (
 from .merge_semantics import QualityWeightedMerger
 from .peer_review import PeerReviewGate
 from .synapses import DEFAULT_NAMESPACE, SHARED_NAMESPACE
+from .team_staleness import TeamStalenessDetector
 
 # Committed at the repo root, beside .gitignore — NOT inside the git-ignored
 # .neuralmind/ state dir, so it travels with `git clone` with no gitignore hack.
@@ -340,6 +341,17 @@ def maybe_import_team_memory(project_path: str | Path, store: Any) -> dict[str, 
         store.set_meta(_META_TEAM_HASH, content_hash)
     except Exception:
         pass
+
+    # E4 — Staleness pass: run after import so new edges aren't immediately
+    # flagged as stale. Detects team edges past the stale threshold and applies
+    # accelerated decay.
+    try:
+        staleness_detector = TeamStalenessDetector()
+        staled, _ = staleness_detector.run_staleness_pass(store, namespace=SHARED_NAMESPACE)
+        result["decayed"] = result.get("decayed", 0) + staled
+    except Exception:
+        pass  # fail-open: staleness must never break import
+
     result["content_hash"] = content_hash
     return result
 
