@@ -40,7 +40,6 @@ from .ir import (
     SYNAPSE_BUNDLE_KIND_TRANSITION,
     SYNAPSE_BUNDLE_VERSION,
     export_synapse_bundle,
-    import_synapse_bundle,
 )
 from .merge_semantics import QualityWeightedMerger
 from .peer_review import PeerReviewGate

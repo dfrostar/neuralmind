@@ -10,7 +10,6 @@ from neuralmind.contribution_scoring import ContributionQualityScorer
 from neuralmind.synapses import SHARED_NAMESPACE, SynapseStore, default_db_path
 from neuralmind.team_memory import (
     _META_PENDING_REVIEW,
-    build_team_bundle,
     maybe_import_team_memory,
     publish_team_memory,
 )
