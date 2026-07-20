@@ -98,6 +98,7 @@ class DaemonSleep:
 
         try:
             from .synapses import SynapseStore, default_db_path
+
             self.store = SynapseStore(default_db_path(self.project_path))
         except Exception as exc:
             log.warning("DaemonSleep: cannot open store: %s", exc)
@@ -238,9 +239,7 @@ class DaemonSleep:
         detector = TeamStalenessDetector()
         for ns in ("shared", "branch:live"):
             try:
-                _, stale = detector.run_staleness_pass(
-                    self.store, namespace=ns
-                )
+                _, stale = detector.run_staleness_pass(self.store, namespace=ns)
                 total_stale.extend(stale)
             except Exception as exc:
                 log.debug("staleness pass failed for %s: %s", ns, exc)
