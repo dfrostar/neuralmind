@@ -81,6 +81,7 @@ META_DECAY_RATE_MAX = "self_improve:decay_rate_max"
 META_TUNER_INCUMBENT = "self_improve:tuner_incumbent_config"
 META_TUNER_FITNESS = "self_improve:tuner_incumbent_fitness"
 META_TUNER_PROMOTED_AT = "self_improve:tuner_promoted_at"
+META_TUNER_LAST_DECISION = "self_improve:tuner_last_decision"
 
 
 # ----------------------------------------------------------------------- #
