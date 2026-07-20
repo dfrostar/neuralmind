@@ -310,9 +310,10 @@ class TeamGovernance:
         """Publish edges to shared namespace.
 
         Steps:
-        1. Gate: weight threshold (fast-fail all-or-nothing).
-        2. Dedup: content-hash check to avoid duplicate traversal cost.
-        3. Audit: log the attempt.
+        1. Gate: admin check (require_admin if admin provided).
+        2. Gate: weight threshold (fast-fail all-or-nothing).
+        3. Dedup: content-hash check to avoid duplicate traversal cost.
+        4. Audit: log the attempt.
 
         Args:
             repo: The repository being published.
@@ -334,11 +335,14 @@ class TeamGovernance:
             >>> with tempfile.TemporaryDirectory() as td:
             ...     audit = AuditLog(Path(td) / "audit.jsonl")
             ...     cfg = Tier2Config()
+            ...     cfg.governance.admin_emails = ["admin@test.com"]
             ...     gov = TeamGovernance(Path(td), cfg, audit)
-            ...     result = gov.publish("repo1", [{"weight": 0.8}])
+            ...     result = gov.publish("repo1", [{"weight": 0.8}], admin="admin@test.com")
             ...     len(result["published"])
             1
         """
+        if admin is not None:
+            self.require_admin(admin)
         threshold = self.config.governance.weight_threshold
         published = []
         skipped = []
