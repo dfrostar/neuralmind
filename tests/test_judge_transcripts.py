@@ -115,11 +115,11 @@ class TestGenerateAllTranscripts:
 
     def test_generates_multiple_languages(self):
         results = generate_all_transcripts()
-        # go, java, rust, ts have expected_facts → should generate
+        # go, java, rust, typescript have expected_facts → should generate
         assert "go" in results
         assert "java" in results
         assert "rust" in results
-        assert "ts" in results
+        assert "typescript" in results  # from data field, not filename
 
     def test_excludes_languages_without_facts(self):
         """Languages without expected_facts are excluded."""
