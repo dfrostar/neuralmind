@@ -3,9 +3,11 @@ E2 — Quality-weighted merge semantics for team memory.
 
 When two contributors' edges conflict, merge with quality-weighted
 resolution instead of last-write-wins. Higher-quality edges dominate.
-Decay-on-conflict: losing edges degrade faster, not deleted (team moves
-on, doesn't fork). When both edges are too weak to confidently resolve,
-decompose to a contest record (escalate to E3 peer review).
+Decay-on-conflict (reserved): losing edges would degrade faster, not be
+deleted (team moves on, doesn't fork). Currently no caller passes losers
+to merge_to_store(), so this path is unused. When both edges are too weak
+to confidently resolve, decompose to a contest record (escalate to E3
+peer review).
 
 Requires E1 (scoring) + A2 (entity resolution, done).
 Local-first. Stdlib-only. Fail-open.
@@ -229,8 +231,7 @@ class QualityWeightedMerger:
                 conflict = self.resolve_conflict(edge_a, index_b[key])
                 conflicts.append(conflict)
                 if conflict.contest:
-                    # Decompose: neither edge wins, escalate
-                    pass
+                    pass  # Decompose: neither edge wins, escalate to E3
                 else:
                     # Winner becomes the merged edge
                     winner_edge = edge_a if conflict.winner == "a" else index_b[key]
