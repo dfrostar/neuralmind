@@ -212,6 +212,10 @@ class QualityWeightedMerger:
         the higher-quality edge wins. Non-overlapping edges pass through
         with their score.
 
+        NOTE: transitions are silently dropped (v1 limitation). Only synapses
+        are scored and merged. Callers needing transition merge must handle
+        that separately.
+
         Returns: (merged_edges, conflicts_resolved)
         """
         scored_a = self.scorer.score_bundle(bundle_a)

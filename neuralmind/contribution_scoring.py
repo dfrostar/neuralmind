@@ -56,7 +56,9 @@ class EdgeQuality:
             loser_penalty: base multiplier applied to loser's score.
 
         Returns:
-            Degraded weight in [0.01, 0.5 * score].
+            Degraded weight in [0.01, score * max(0.1, loser_penalty - conflict_rate * 0.3)].
+            For typical scores (>= 0.2), the effective range is [0.01, 0.5 * score].
+            Very low scores (e.g., 0.01) may exceed 0.5 * score due to the 0.01 floor.
         """
         adjusted = max(0.1, loser_penalty - self.conflict_rate * 0.3)
         return round(max(0.01, self.score * adjusted), 4)
