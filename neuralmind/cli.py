@@ -1662,7 +1662,6 @@ def cmd_memory(args):
 
     if args.memory_cmd == "review-approve":
         from neuralmind.team_memory import (
-            _META_PENDING_REVIEW,
             _load_pending_review,
             _save_pending_review,
         )
