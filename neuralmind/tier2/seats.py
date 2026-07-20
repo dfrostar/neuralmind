@@ -78,8 +78,13 @@ class SeatManager:
     def active_count(self) -> int:
         return sum(1 for s in self._seats.values() if s.active)
 
-    def can_add_seat(self, license_limit: int) -> bool:
-        """True if active seats < license limit."""
+    def can_add_seat(self, license_limit: int, tier: str | None = None) -> bool:
+        """True if active seats < license limit.
+
+        Free tier (tier="free") has no seat-limit enforcement.
+        """
+        if tier == "free":
+            return True
         return self.active_count() < license_limit
 
     def is_active_seat(self, email: str) -> bool:
@@ -89,17 +94,19 @@ class SeatManager:
     def list_seats(self) -> list[Seat]:
         return sorted(self._seats.values(), key=lambda s: s.email)
 
-    def add_seat(self, email: str, license_limit: int) -> Seat:
+    def add_seat(self, email: str, license_limit: int, tier: str | None = None) -> Seat:
         """Add a new seat. Idempotent if email already exists.
 
         Raises SeatLimitError if beyond limit.
+
+        Free tier (tier="free") has no seat-limit enforcement.
         """
         normalized = email.lower()
         if normalized in self._seats:
             if self._seats[normalized].active:
                 return self._seats[normalized]  # idempotent
             # Reactivate
-            if self.active_count() >= license_limit and self._seats[normalized].active is False:
+            if tier != "free" and self.active_count() >= license_limit and self._seats[normalized].active is False:
                 raise SeatLimitError(
                     f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
                 )
@@ -108,7 +115,7 @@ class SeatManager:
             self._save()
             return self._seats[normalized]
 
-        if not self.can_add_seat(license_limit):
+        if not self.can_add_seat(license_limit, tier=tier):
             raise SeatLimitError(f"Seat limit reached: {self.active_count() + 1}/{license_limit}")
         now = datetime.now(timezone.utc).isoformat()
         seat = Seat(email=normalized, active=True, added_at=now, last_active_at=now)

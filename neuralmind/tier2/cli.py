@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from datetime import datetime, timezone
 from pathlib import Path
 
 from .audit import AuditLog
@@ -257,6 +256,7 @@ def cmd_team_seats(args) -> int:
     if config is None:
         return 1
 
+    gov = TeamGovernance(Path(config.audit_db), config, audit)
     seats_db = TIER2_CONFIG_DIR / "seats.json"
     sm = SeatManager(seats_db)
 
@@ -270,24 +270,38 @@ def cmd_team_seats(args) -> int:
                 print(f"  {s.email:40s} {status:10s} added={s.added_at}")
         return 0
 
+    admin = args.admin or os_get_actor_email()
+
+    # Every seat mutation requires admin authentication.
+    # Free-tier seats bypass the limit check (handled inside sm.add_seat),
+    # but admin authentication still applies for auditability.
     if args.subcommand == "add":
-        admin = args.admin or os_get_actor_email()
         try:
-            sm.add_seat(args.email, config.seats)
+            gov.require_admin(admin)
+            sm.add_seat(args.email, config.seats, tier=config.tier)
             audit.log(actor=admin, action="seat_add", target=args.email)
             print(f"Seat added: {args.email}")
             return 0
+        except PermissionError as e:
+            print(f"Permission denied: {e}")
+            return 1
         except SeatLimitError as e:
             print(f"Seat limit reached: {e}")
             return 1
+        except ValueError as e:
+            print(f"Invalid input: {e}")
+            return 1
 
     if args.subcommand == "remove":
-        admin = args.admin or os_get_actor_email()
         try:
+            gov.require_admin(admin)
             sm.remove_seat(args.email)
             audit.log(actor=admin, action="seat_remove", target=args.email)
             print(f"Seat removed: {args.email}")
             return 0
+        except PermissionError as e:
+            print(f"Permission denied: {e}")
+            return 1
         except KeyError:
             print(f"Seat not found: {args.email}")
             return 1
@@ -373,7 +387,8 @@ def cmd_team_license(args) -> int:
         info = validator.status_dict()
         # Calculate days until expiry
         try:
-            from datetime import datetime, timezone as _tz
+            from datetime import datetime
+            from datetime import timezone as _tz
             expires_at = info.get("expires_at", "")
             if expires_at == "never":
                 info["days_until_expiry"] = "never"
