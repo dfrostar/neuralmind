@@ -44,7 +44,7 @@ def load_all_transcripts() -> list[dict]:
             continue
         try:
             transcripts.append(load_transcript(path))
-        except ValueError as exc:
+        except (ValueError, json.JSONDecodeError, OSError) as exc:
             log.warning("Skipping %s: %s", path.name, exc)
     return transcripts
 
@@ -98,7 +98,7 @@ def generate_transcript_from_benchmark(benchmark_path: Path) -> list[dict]:
             continue
 
         transcript = {
-            "query": q["question"],
+            "query": q.get("question", ""),
             "reference_answer": reference_answer,
             "source_files": [
                 f"{data.get('fixture', '')}/{mod}" for mod in q.get("expected_modules", [])
@@ -116,9 +116,12 @@ def generate_all_transcripts() -> dict[str, list[dict]]:
     """Generate transcripts from all benchmark fixtures. Returns {language: [transcripts]}."""
     results = {}
     for path in sorted(BENCHMARK_DIR.glob("benchmark_queries_*.json")):
-        language = path.stem.replace("benchmark_queries_", "")
         transcripts = generate_transcript_from_benchmark(path)
         if transcripts:
+            # Derive language from the data field, fall back to filename
+            language = transcripts[0].get("language") or path.stem.replace(
+                "benchmark_queries_", ""
+            )
             results[language] = transcripts
     return results
 
@@ -170,13 +173,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.write:
         results = generate_all_transcripts()
         written = 0
+        skipped = 0
         for language, transcripts in sorted(results.items()):
             for t in transcripts:
                 qid = t.get("query_id") or f"q{written:03d}"
                 out = JUDGE_DIR / f"{language}_{qid}.json"
+                if out.exists():
+                    log.warning("Skipping existing: %s", out.name)
+                    skipped += 1
+                    continue
                 out.write_text(json.dumps(t, indent=2) + "\n", encoding="utf-8")
                 written += 1
-        print(f"Wrote {written} transcripts.")
+        print(f"Wrote {written}, skipped {skipped} existing.")
         return 0
 
     if args.generate:
