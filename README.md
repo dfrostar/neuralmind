@@ -1895,9 +1895,10 @@ Real-world numbers submitted by users. You submit only the numbers, not your cod
 | Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
 |---------|------|------:|-------:|----------:|----------:|-------|-----------|
 | cmmc20 | JavaScript | 241 | 341 | 739 | **65.6×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+| ts-saas-platform (anon) | TypeScript | 9,293 | 455 | 1,033 | **48.8×** | — | [@dfrostar](https://github.com/dfrostar) · 2026-07-20 |
 | mempalace | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
 
-_2 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + by-language charts._
+_3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + by-language charts._
 <!-- COMMUNITY-BENCHMARKS:END -->
 
 **Submit yours:**

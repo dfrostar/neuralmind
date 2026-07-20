@@ -38,7 +38,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/use-cases/</loc>
-    <lastmod>2026-07-15</lastmod>
+    <lastmod>2026-07-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -151,12 +151,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://docs.neuralmind.uk/use-cases/blast-radius-before-a-rename.html</loc>
-    <lastmod>2026-07-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://docs.neuralmind.uk/use-cases/branch-isolated-memory.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -193,12 +187,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://docs.neuralmind.uk/use-cases/blast-radius-before-a-rename.html</loc>
-    <lastmod>2026-07-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://docs.neuralmind.uk/use-cases/growing-monorepo.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -229,6 +217,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://docs.neuralmind.uk/use-cases/measure-memory-across-a-refactor.html</loc>
+    <lastmod>2026-07-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://docs.neuralmind.uk/wiki/API-Reference.html</loc>
     <lastmod>2026-07-13</lastmod>
     <changefreq>monthly</changefreq>
@@ -242,7 +236,7 @@
   </url>
   <url>
     <loc>https://docs.neuralmind.uk/wiki/Benchmarks.html</loc>
-    <lastmod>2026-07-13</lastmod>
+    <lastmod>2026-07-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

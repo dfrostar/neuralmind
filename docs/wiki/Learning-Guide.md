@@ -123,6 +123,11 @@ $ neuralmind query . "How does auth work?"
    File: middleware.py
 ```
 
+Real-world data point: across a major rebuild of a private ~9,300-node
+TypeScript SaaS platform, personal synapse edges grew **36 → 135** as the
+layer learned the new code's co-activations — see the
+[field report](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-memory-across-a-refactor.md).
+
 ### Step 5: Continuous Improvement
 
 There is no weekly `neuralmind learn` step to run. The synapse store
