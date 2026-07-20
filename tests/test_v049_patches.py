@@ -24,8 +24,8 @@ class TestClamp:
     def test_nan_returns_lo(self) -> None:
         assert _clamp(float("nan"), 0.0, 1.0) == 0.0
 
-    def test_inf_returns_lo(self) -> None:
-        assert _clamp(float("inf"), 0.0, 1.0) == 0.0
+    def test_inf_returns_hi(self) -> None:
+        assert _clamp(float("inf"), 0.0, 1.0) == 1.0
 
     def test_neg_inf_returns_lo(self) -> None:
         assert _clamp(float("-inf"), 0.0, 1.0) == 0.0
