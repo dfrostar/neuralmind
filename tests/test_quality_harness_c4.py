@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from neuralmind.quality import QualityThresholds
 from neuralmind.quality_harness import (
     HarnessVerdict,
@@ -13,6 +15,21 @@ from neuralmind.quality_harness import (
     QualityHarness,
 )
 from neuralmind.tuner import PopulationTuner
+
+# The two evaluate() tests below patch neuralmind.embedder.GraphEmbedder, which
+# only resolves when the optional [chromadb] extra is installed. The fail-open
+# tests above them must keep running everywhere — they cover the no-embedder path.
+try:
+    import neuralmind.embedder  # noqa: F401
+
+    _HAS_EMBEDDER = True
+except ImportError:
+    _HAS_EMBEDDER = False
+
+needs_embedder = pytest.mark.skipif(
+    not _HAS_EMBEDDER,
+    reason="needs neuralmind.embedder (optional [chromadb] extra)",
+)
 
 
 class TestHarnessVerdict:
@@ -61,6 +78,7 @@ class TestQualityHarnessEvaluate:
             assert verdict.passed is True
             assert verdict.fitness == 0.0
 
+    @needs_embedder
     def test_evaluate_with_fixtures_and_embedder(self, tmp_path: Path):
         """With fixtures and embedder, returns real verdict."""
         from neuralmind.fixtures import FixtureQuery
@@ -96,6 +114,7 @@ class TestQualityHarnessEvaluate:
         assert verdict.ragas_score > 0.0
         assert len(verdict.per_query) == 2
 
+    @needs_embedder
     def test_evaluate_with_custom_thresholds(self, tmp_path: Path):
         """Custom thresholds can cause failure."""
         from neuralmind.fixtures import FixtureQuery
