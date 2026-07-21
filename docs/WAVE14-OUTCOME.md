@@ -1,0 +1,6 @@
+{
+    "cli": {
+        "component": "neuralmind"
+    },
+    "packages": {}
+}

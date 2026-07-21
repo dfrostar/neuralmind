@@ -67,6 +67,12 @@ export default function Hero() {
                         </svg>
                         Source on GitHub
                     </a>
+                    <a
+                        href="/pricing"
+                        className="px-6 py-4 rounded-xl border border-electric/40 text-white hover:bg-electric/10 transition-all font-medium flex items-center gap-2"
+                    >
+                        For teams →
+                    </a>
                 </div>
 
                 {/* Stats */}

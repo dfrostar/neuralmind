@@ -32,6 +32,10 @@ const faqs = [
         a: 'Ten out-of-the-box: Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP. tree-sitter handles parsing.',
     },
     {
+        q: 'How does team memory work?',
+        a: 'A team\'s learned associations (which code goes with what) are committed to the repo as .neuralmind-team-memory.json. Every teammate\'s agent inherits it automatically on the next session — a new hire\'s agent starts already knowing "the auth handlers go with the JWT utils," instead of relearning from scratch. Zero manual steps, travels with git clone.',
+    },
+    {
         q: 'Why not just use Cursor / Windsurf / Aider memory?',
         a: 'They vendor-lock memory to their agent. NeuralMind is agent-agnostic. Memory persists across agent migrations, is inspectable, and belongs to you.',
     },

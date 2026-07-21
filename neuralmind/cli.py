@@ -15,6 +15,41 @@ from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.metrics_pipeline import MetricsCollector
+from neuralmind.onboarding import cmd_onboarding
+from neuralmind.tier2.config import TIER2_CONFIG_DIR
+from neuralmind.tier2.license import issue_free_license
+
+# Upgrade conversion state — tracks usage count for CTA trigger
+_UPGRADE_CTA_STATE_PATH = TIER2_CONFIG_DIR / ".cta_state.json"
+
+
+def _get_wakeup_count() -> int:
+    """Return cumulative wakeup/query count (for upgrade CTA gating)."""
+    if _UPGRADE_CTA_STATE_PATH.exists():
+        try:
+            data = json.loads(
+                _UPGRADE_CTA_STATE_PATH.read_text(encoding="utf-8")
+            )
+            return data.get("count", 0)
+        except (OSError, ValueError):
+            return 0
+    return 0
+
+
+def _increment_wakeup_count() -> int:
+    """Increment usage counter and return new value. Triggers CTA at 10."""
+    count = _get_wakeup_count() + 1
+    _UPGRADE_CTA_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _UPGRADE_CTA_STATE_PATH.write_text(
+        json.dumps({"count": count}), encoding="utf-8"
+    )
+    # Fire the CTA exactly once when we cross the threshold
+    if count == 10:
+        print(
+            "NeuralMind Team: $29/user/mo — shared memory, governance, seat management.\n"
+            "See neuralmind.uk/pricing or run `neuralmind onboarding`."
+        )
+    return count
 
 
 def _force_utf8_io() -> None:
@@ -298,6 +333,7 @@ def _print_explain(result) -> None:
 
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
+    _increment_wakeup_count()
 
     # Migration check: warn on version mismatch before slow reindex
     _migrate_warning = _check_version_mismatch(args.project_path or ".")
@@ -404,6 +440,18 @@ def _maybe_prompt_for_memory_opt_in():
 def cmd_wakeup(args):
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.wakeup()
+
+    # Auto-issue free license on first run
+    license_path = TIER2_CONFIG_DIR / "license.json"
+    if not license_path.exists():
+        issue_free_license(license_path)
+        print(
+            "✓ Free tier activated — run `neuralmind onboarding` to configure,\n"
+            "  `neuralmind team license status` to view."
+        )
+
+    _increment_wakeup_count()
+
     if args.json:
         output = {
             "type": "wakeup",
@@ -2805,6 +2853,18 @@ def main():
     )
     learn_p.add_argument("project_path", nargs="?", default=".")
     learn_p.set_defaults(func=cmd_learn)
+
+    # onboarding command — interactive setup wizard for team tier
+    onboarding_p = subparsers.add_parser(
+        "onboarding",
+        help="Interactive setup wizard: license, governance, admin, verification",
+    )
+    onboarding_p.add_argument(
+        "--quick",
+        action="store_true",
+        help="Skip all prompts, use defaults",
+    )
+    onboarding_p.set_defaults(func=cmd_onboarding)
 
     # Self-improvement engine — nested so future subsystems can attach here.
     self_improve_p = subparsers.add_parser(

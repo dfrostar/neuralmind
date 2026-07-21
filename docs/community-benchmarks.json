@@ -3,7 +3,7 @@
   "_comment": "Community-submitted NeuralMind benchmark results. Each entry is one project's real-world numbers, submitted via PR (not uploaded automatically — NeuralMind never sends data off your machine). CI validates entries against community-benchmarks.schema.json on every PR that touches this file.",
   "entries": [
     {
-      "project_name": "cmmc20",
+      "project_name": "project-alpha",
       "language": "JavaScript",
       "nodes": 241,
       "avg_wakeup_tokens": 341,
@@ -16,7 +16,7 @@
       "notes": "React/Node.js web app. Early reference benchmark; numbers quoted in README."
     },
     {
-      "project_name": "mempalace",
+      "project_name": "project-beta",
       "language": "Python",
       "nodes": 1626,
       "avg_wakeup_tokens": 412,
