@@ -101,5 +101,6 @@ def test_admin_required_no_optional_type():
 def test_os_get_actor_fallback(monkeypatch):
     """R08: os_get_actor_email returns env or ''."""
     from neuralmind.tier2.cli import os_get_actor_email
+
     monkeypatch.setenv("NEURALMIND_ACTOR_EMAIL", ADMIN)
     assert os_get_actor_email() == ADMIN

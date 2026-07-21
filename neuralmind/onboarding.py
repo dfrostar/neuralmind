@@ -33,6 +33,7 @@ from neuralmind.tier2.seats import SeatManager
 def _get_issuer_key() -> str:
     """Resolve Ed25519 issuer public key from env or tier2 default."""
     from neuralmind.tier2.license import _ISSUER_PUBLIC_KEY_HEX
+
     return os.environ.get("NEURALMIND_ISSUER_PUBLIC_KEY_HEX", _ISSUER_PUBLIC_KEY_HEX)
 
 

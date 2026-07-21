@@ -365,6 +365,7 @@ def cmd_team_seats_sync(args, config=None, audit=None) -> int:
         try:
             from datetime import datetime as _dt
             from datetime import timezone as _tz
+
             exp = _dt.fromisoformat(expires_at.replace("Z", "+00:00"))
             # Normalize naive expires_at to UTC so comparison with
             # UTC-aware now() never raises TypeError.
@@ -411,6 +412,7 @@ def cmd_team_seats_sync(args, config=None, audit=None) -> int:
 
     # Sync seats
     from . import config as _cfg_mod
+
     seats_db = _cfg_mod.TIER2_CONFIG_DIR / "seats.json"
     result = sync_seats(
         seats_db,

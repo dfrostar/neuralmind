@@ -128,9 +128,7 @@ class TestCorruptedLicenseFile:
 class TestCmdWakeupLicenseAutoIssue:
     def test_wakeup_creates_license_on_first_run(self, tmp_path, monkeypatch):
         """cmd_wakeup auto-issues a free license on first run."""
-        monkeypatch.setattr(
-            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False)
         # Patch create_mind so we don't need a real project
         mock_mind = MagicMock()
         mock_mind.wakeup.return_value = MagicMock(
@@ -138,9 +136,7 @@ class TestCmdWakeupLicenseAutoIssue:
             reduction_ratio=5.0,
             context="test context",
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False)
 
         license_path = tmp_path / "license.json"
         assert not license_path.exists()
@@ -154,18 +150,14 @@ class TestCmdWakeupLicenseAutoIssue:
 
     def test_wakeup_is_idempotent(self, tmp_path, monkeypatch):
         """Second cmd_wakeup does NOT overwrite or error."""
-        monkeypatch.setattr(
-            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False)
         mock_mind = MagicMock()
         mock_mind.wakeup.return_value = MagicMock(
             budget=MagicMock(total=100),
             reduction_ratio=5.0,
             context="test context",
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False)
 
         args = MagicMock(project_path=".")
         cmd_wakeup(args)
@@ -226,18 +218,14 @@ class TestUpgradeCTA:
             tmp_path / ".cta_state.json",
             raising=False,
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False)
         mock_mind = MagicMock()
         mock_mind.wakeup.return_value = MagicMock(
             budget=MagicMock(total=100),
             reduction_ratio=5.0,
             context="test context",
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False)
 
         args = MagicMock(project_path=".")
         for _ in range(9):
@@ -254,18 +242,14 @@ class TestUpgradeCTA:
             tmp_path / ".cta_state.json",
             raising=False,
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False)
         mock_mind = MagicMock()
         mock_mind.wakeup.return_value = MagicMock(
             budget=MagicMock(total=100),
             reduction_ratio=5.0,
             context="test context",
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False)
 
         args = MagicMock(project_path=".")
         for _ in range(10):
@@ -281,18 +265,14 @@ class TestUpgradeCTA:
             tmp_path / ".cta_state.json",
             raising=False,
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False)
         mock_mind = MagicMock()
         mock_mind.wakeup.return_value = MagicMock(
             budget=MagicMock(total=100),
             reduction_ratio=5.0,
             context="test context",
         )
-        monkeypatch.setattr(
-            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
-        )
+        monkeypatch.setattr("neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False)
 
         args = MagicMock(project_path=".")
         for _ in range(20):

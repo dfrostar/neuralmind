@@ -30,7 +30,11 @@ def _issue_manifest(seats, private_key_hex, expires_at="2027-07-23T10:00:00+00:0
         "signer_id": "autopilot",
         "customer_email": "customer",
         "seats": [
-            {"email": s["email"].strip().lower(), "role": s.get("role", "member"), "added_at": issued_at}
+            {
+                "email": s["email"].strip().lower(),
+                "role": s.get("role", "member"),
+                "added_at": issued_at,
+            }
             for s in seats
         ],
     }

@@ -27,9 +27,7 @@ def _get_wakeup_count() -> int:
     """Return cumulative wakeup/query count (for upgrade CTA gating)."""
     if _UPGRADE_CTA_STATE_PATH.exists():
         try:
-            data = json.loads(
-                _UPGRADE_CTA_STATE_PATH.read_text(encoding="utf-8")
-            )
+            data = json.loads(_UPGRADE_CTA_STATE_PATH.read_text(encoding="utf-8"))
             return data.get("count", 0)
         except (OSError, ValueError):
             return 0
@@ -40,9 +38,7 @@ def _increment_wakeup_count() -> int:
     """Increment usage counter and return new value. Triggers CTA at 10."""
     count = _get_wakeup_count() + 1
     _UPGRADE_CTA_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _UPGRADE_CTA_STATE_PATH.write_text(
-        json.dumps({"count": count}), encoding="utf-8"
-    )
+    _UPGRADE_CTA_STATE_PATH.write_text(json.dumps({"count": count}), encoding="utf-8")
     # Fire the CTA exactly once when we cross the threshold
     if count == 10:
         print(
