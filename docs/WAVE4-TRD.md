@@ -302,17 +302,30 @@ class CircuitBreaker:
         self.state = "open"
 ```
 
-### 3.10 G3 — Modularity Clustering
+### 3.10 G3 — Modularity Clustering (SHIPPED — `f49b535`, v1.4.0)
 
 ```python
-# neuralmind/louvain.py (NEW)
-def cluster(graph: Graph) -> dict[str, int]:
-    """Louvain modularity optimization. Returns {node_id: community_id}."""
-    # Use python-louvain or Leidenalg package
-    # Fallback: balanced-per-file if graph < 10 nodes
-    partition = community.best_partition(graph.to_networkx())
-    return partition
+# neuralmind/modularity.py (NEW — pure Python Louvain)
+def louvain_clustering(
+    adj: dict[str, dict[str, float]],
+    *,
+    resolution: float = 1.0,
+    max_iterations: int = 10,
+) -> dict[str, int]:
+    """Greedy Louvain: Phase 1 incremental-ΔQ gains (O(n·k)),
+    Phase 2 single-collapse recursion. Returns contiguous-integer
+    community IDs. Deterministic via sorted node iteration order."""
+
+# neuralmind/graphgen.py — wiring into build_graph()
+def _assign_communities(b: _GraphBuilder, existing_graph: dict | None = None) -> None:
+    """Per-file adjacency from structural edges → louvain_clustering().
+    Carries over community IDs from existing_graph for incremental stability.
+    Falls back to per-file grouping if Louvain collapses to ≤1 community."""
 ```
+
+Integration: `build_graph()` calls `_assign_communities(b, existing_graph)`. Community IDs are part of the node dict downstream consumers (embedder, synapse watcher) read — no schema change.
+
+**Not shipped (deferred to future work):** Leiden, multilevel Phase 2 repetition, community quality metric Q, optional `python-louvain` dependency.
 
 ### 3.11 G4 — Incremental Re-extraction
 
