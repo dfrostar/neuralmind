@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.4.0](https://github.com/dfrostar/neuralmind/compare/v1.3.0...v1.4.0) (2026-07-20)
+
+
+### Features
+
+* **E3:** peer review gate wired into team memory import ([485687f](https://github.com/dfrostar/neuralmind/commit/485687faf77ca8d63fa9d91f023e98e5efbaeaa3))
+* **E4:** staleness detection wired into team memory + sleep + CLI ([3fe5a61](https://github.com/dfrostar/neuralmind/commit/3fe5a610087c8b2bf98dae4dd5f96520ceb71ba7))
+
+
+### Bug Fixes
+
+* **ruff:** sort imports in tier2/license.py (I001) ([2a8a26a](https://github.com/dfrostar/neuralmind/commit/2a8a26a185775b13ba1240dcb9fc40b34b56edcc))
+* **Wave 12:** DeepSeek QA 3 CRITICAL + 2 WARNING patched ([b2ad291](https://github.com/dfrostar/neuralmind/commit/b2ad291fab664987ed008839b5da8001fa1c8ed6))
+* **Wave 12:** two CRITICAL DeepSeek findings actually patched now ([1d6384c](https://github.com/dfrostar/neuralmind/commit/1d6384cd78d45bed3d412048d8998a1b37a4a310))
+
+
+### Documentation
+
+* defensive publication — quality-weighted merge with conflict-driven decay ([31aac0e](https://github.com/dfrostar/neuralmind/commit/31aac0e7b39592ef249173ef97365e1d1e38851f))
+* marketing measurement framework + rebuild verification ([fb22089](https://github.com/dfrostar/neuralmind/commit/fb22089462e61b96d11bc7d42ef383888beb62bb))
+* Wave 12 DeepSeek QA final sweep report ([55f1195](https://github.com/dfrostar/neuralmind/commit/55f119588ee6e831d217072831c90a262ed719c4))
+* Wave 12 QA report — 3 CRITICAL + 9 WARNING patched ([fc100c5](https://github.com/dfrostar/neuralmind/commit/fc100c579a65e5b603565d50c51bb5b310c0effa))
+* Wave 4 session prompt v10.0 — F3 COMPLETE, F4 next ([e7eb973](https://github.com/dfrostar/neuralmind/commit/e7eb97340eafa1e5e94e7091bc4ccdd7cfa3dc3b))
+* Wave 4 session prompt v11.0 — F4 COMPLETE, G3 next ([4572f0f](https://github.com/dfrostar/neuralmind/commit/4572f0f4eeb8476f3c0099cf9b76bbfbad47a2e1))
+
 ## [1.3.0](https://github.com/dfrostar/neuralmind/compare/v1.2.0...v1.3.0) (2026-07-20)
 
 
