@@ -42,6 +42,16 @@ export default function Benchmarks() {
                     ))}
                 </div>
 
+                {/* Field report — hand-measured, deliberately outside the CI-gated tiles above */}
+                <p className="mt-8 text-center text-slate-400 text-sm">
+                    Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
+                    <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
+                    platform, through a major rebuild.{' '}
+                    <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright transition-colors">
+                        Read the field report →
+                    </a>
+                </p>
+
                 {/* Demo callout */}
                 <div className="mt-12 p-6 rounded-2xl border border-carbon-border bg-carbon-raised/50 flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>

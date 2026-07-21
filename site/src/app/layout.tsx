@@ -1,6 +1,6 @@
 import './globals.css';
 import { Inter, JetBrains_Mono, Fraunces } from 'next/font/google';
-import { getLatestRelease, type LatestRelease } from '@/lib/release';
+import { getLatestRelease } from '@/lib/release';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -87,9 +87,10 @@ export const metadata = {
     },
 };
 
-// Version and modification date come from the latest GitHub release at build
-// time — never hardcoded, so they can't drift out of sync with what shipped.
-const jsonLdFor = (rel: LatestRelease) => ({
+// softwareVersion/dateModified are resolved from the latest GitHub release at
+// build time — never hardcode a version here (it drifts out of sync with the
+// actual release, which is exactly the bug a pinned v0.42.0 once caused).
+const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
     '@context': 'https://schema.org',
     '@graph': [
         {
@@ -104,9 +105,9 @@ const jsonLdFor = (rel: LatestRelease) => ({
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
-            softwareVersion: rel.version,
+            softwareVersion,
             datePublished: '2025-05-01',
-            dateModified: rel.date,
+            dateModified,
             license: 'https://opensource.org/licenses/MIT',
             isAccessibleForFree: true,
             programmingLanguage: 'Python',
@@ -140,7 +141,8 @@ const jsonLdFor = (rel: LatestRelease) => ({
 });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-    const jsonLd = jsonLdFor(await getLatestRelease());
+    const rel = await getLatestRelease();
+    const jsonLd = buildJsonLd(rel.tag.replace(/^v/, ''), rel.date);
     return (
         <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}>
             <head>

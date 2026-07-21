@@ -27,6 +27,18 @@
       "submitted_by": "dfrostar",
       "verification_command": "neuralmind benchmark . --json",
       "notes": "Python backend; larger node count, modestly lower ratio — typical pattern on bigger repos."
+    },
+    {
+      "project_name": "ts-saas-platform (anon)",
+      "language": "TypeScript",
+      "nodes": 9293,
+      "avg_wakeup_tokens": 455,
+      "avg_query_tokens": 1033,
+      "avg_reduction_ratio": 48.8,
+      "date_submitted": "2026-07-20",
+      "submitted_by": "dfrostar",
+      "verification_command": "neuralmind benchmark . --json",
+      "notes": "Private mid-size TypeScript SaaS platform, anonymized. Measured after a major internal rebuild; personal synapse edges grew 36->135 across the change. Full case study: docs/use-cases/measure-memory-across-a-refactor.md"
     }
   ]
 }
