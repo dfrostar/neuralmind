@@ -47,6 +47,7 @@ AuditAction = Literal[
     "config_change",
     "seat_add",
     "seat_remove",
+    "seat_sync",
     "license_activate",
     "self_hosted_init",
 ]

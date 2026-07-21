@@ -27,7 +27,7 @@ Example:
 See Also:
     - ``neuralmind.tier2.config`` — configures the license_file path
     - ``neuralmind.tier2.governance`` — governance gating on license status
-    - ``tests/test_license.py`` — test cases and usage patterns
+    - ``tests/test_paid_seats.py`` — test cases and usage patterns
     - ``docs/wiki/Architecture.md#license`` — high-level design
 
 Version:
@@ -39,6 +39,11 @@ from __future__ import annotations
 import getpass
 import hashlib
 import json
+
+# Ed25519 public key (32 bytes hex) — embedded issuer public key.
+# Generated 2026-07-19. Fingerprint: d23aeb5ae460fede
+# Override via NEURALMIND_ISSUER_PUBLIC_KEY_HEX env var for testing/multi-tenant.
+import os as _os
 import platform
 import tempfile
 from dataclasses import dataclass
@@ -46,9 +51,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-# Ed25519 public key (32 bytes hex) — embedded issuer public key.
-# Generated 2026-07-19. Fingerprint: d23aeb5ae460fede
-_ISSUER_PUBLIC_KEY_HEX = "62a59c47bdef4c3b9dfeea6a74c90d42f966157f6d0969310ea7deb3bfcd365b"
+_ISSUER_PUBLIC_KEY_HEX = (
+    _os.environ.get("NEURALMIND_ISSUER_PUBLIC_KEY_HEX")
+    or "62a59c47bdef4c3b9dfeea6a74c90d42f966157f6d0969310ea7deb3bfcd365b"
+)
 
 LicenseStatus = Literal["VALID", "EXPIRED", "INVALID", "OFFLINE_OK", "TAMPERED"]
 
@@ -292,9 +298,7 @@ class LicenseValidator:
 
         status = "INVALID"
         if lic.tier == "free":
-            if lic.seats != 1:
-                pass
-            elif lic.signature != "self-signed":
+            if lic.seats != 1 or lic.signature != "self-signed":
                 pass
             elif self._is_expired(lic):
                 if self._is_within_grace(lic):
@@ -305,9 +309,7 @@ class LicenseValidator:
                 self._cached = lic
                 status = "VALID"
         elif lic.tier == "team":
-            if lic.seats <= 0:
-                pass
-            elif not self._verify_signature(lic):
+            if lic.seats <= 0 or not self._verify_signature(lic):
                 pass
             elif self._is_expired(lic):
                 if self._is_within_grace(lic):

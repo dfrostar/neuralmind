@@ -24,7 +24,7 @@ class TestTier2ConfigDefaults:
 
     def test_config_default_values(self) -> None:
         cfg = Tier2Config()
-        assert cfg.tier == "team"
+        assert cfg.tier == "free"
         assert cfg.seats == 1
         assert cfg.governance.enabled is True
         assert cfg.governance.publishing_scope == "both"

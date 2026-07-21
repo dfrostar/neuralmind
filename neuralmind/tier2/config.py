@@ -92,7 +92,7 @@ class Tier2Config:
         self_hosted: Nested self-hosted config.
     """
 
-    tier: str = "team"
+    tier: str = "free"
     license_file: str = str(TIER2_CONFIG_DIR / "license.json")
     audit_db: str = str(TIER2_CONFIG_DIR / "audit.db")
     seats: int = 1  # license seat limit; 1 = free tier default

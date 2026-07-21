@@ -391,3 +391,33 @@ def _release_chroma_file_handles():
         # Segment objects may hold the last reference to an open index
         # file; make their finalizers run before directory teardown.
         gc.collect()
+
+
+@pytest.fixture
+def temp_seat_env(tmp_path, monkeypatch):
+    """Wave 13: fresh seat governance environment per test.
+
+    Generates a new Ed25519 keypair, overrides
+    ``NEURALMIND_ISSUER_PUBLIC_KEY_HEX`` env var, and uses ``tmp_path``
+    for all dirs. No real keys, no network, no residual state.
+    """
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    priv = Ed25519PrivateKey.generate()
+    pub = priv.public_key()
+    pub_hex = pub.public_bytes_raw().hex()
+    priv_hex = priv.private_bytes_raw().hex()
+
+    monkeypatch.setenv("NEURALMIND_ISSUER_PUBLIC_KEY_HEX", pub_hex)
+    monkeypatch.setenv("NEURALMIND_ACTOR_EMAIL", "admin")
+    monkeypatch.setenv("NEURALMIND_ADMIN_EMAIL", "admin")
+
+    from neuralmind.tier2 import config as _config
+    monkeypatch.setattr(_config, "TIER2_CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(_config, "DEFAULT_CONFIG_PATH", tmp_path / "tier2.yaml")
+
+    yield {
+        "public_key_hex": pub_hex,
+        "private_key_hex": priv_hex,
+        "config_dir": tmp_path,
+    }

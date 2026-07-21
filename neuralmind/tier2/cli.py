@@ -87,6 +87,9 @@ def build_team_subparsers(subparsers) -> None:
     seats_rm_p = seats_sub.add_parser("remove")
     seats_rm_p.add_argument("email")
     seats_rm_p.add_argument("--admin")
+    seats_sync_p = seats_sub.add_parser("sync", help="Sync seats from signed manifest")
+    seats_sync_p.add_argument("manifest", help="Path to signed manifest JSON")
+    seats_sync_p.add_argument("--admin")
     seats_p.set_defaults(func=cmd_team_seats)
 
     # self-hosted
@@ -111,17 +114,24 @@ def build_team_subparsers(subparsers) -> None:
 
 
 def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, None]:
-    """Load config + audit. Auto-issues free license if none exists."""
+    """Load config + audit. Auto-issues free license if none exists (R09 gate).
+
+    R09 fix: Before any free-tier auto-issue, check config.tier.
+    If "team" or "enterprise", print error and return failure instead of
+    silently regenerating a free-tier license.
+    """
     config = load_config(getattr(args, "config_path", None))
     lic_path = Path(config.license_file)
-    # Auto-issue free license if none exists
+    # R09 gate: paid-tier customers must NOT auto-downgrade to free
     if not lic_path.exists():
-        # Guard: if config shows a paid tier was previously active, do not
-        # auto-issue a free license. Prevents deletion of the license file
-        # from resetting a paid tenant to free tier.
-        if config.seats > 1 or (
-            config.tier == "team" and config.issued_to and config.issued_to != "self"
-        ):
+        if config.tier in ("team", "enterprise"):
+            print(
+                "License file missing. Run `neuralmind team license activate <key>` to re-activate."
+            )
+            return None, None
+        # Also guard: if config shows a paid tier was previously active
+        # (seats > 1 indicates paid tier allocation)
+        if config.seats > 1:
             print(
                 "License file missing. Run `neuralmind team license activate <key>` to re-activate."
             )
@@ -133,7 +143,8 @@ def _ensure_tier2_activated(args) -> tuple[Tier2Config, AuditLog] | tuple[None, 
             return None, None
 
     # Validate license (free or team)
-    lic_status = load_license(lic_path, _ISSUER_PUBLIC_KEY_HEX)
+    issuer_key = os.environ.get("NEURALMIND_ISSUER_PUBLIC_KEY_HEX", _ISSUER_PUBLIC_KEY_HEX)
+    lic_status = load_license(lic_path, issuer_key)
     if lic_status == "INVALID":
         print("License file is corrupted. Run `neuralmind team license activate <key>` to replace.")
         return None, None
@@ -280,6 +291,10 @@ def cmd_team_seats(args) -> int:
 
     admin = args.admin or os_get_actor_email()
 
+    # Wave 13: seat sync from signed manifest
+    if args.subcommand == "sync":
+        return cmd_team_seats_sync(args, config=config, audit=audit)
+
     # Every seat mutation requires admin authentication.
     # Free-tier seats bypass the limit check (handled inside sm.add_seat),
     # but admin authentication still applies for auditability.
@@ -312,6 +327,114 @@ def cmd_team_seats(args) -> int:
             return 1
 
     print(f"Unknown seats subcommand: {args.subcommand}")
+    return 1
+
+
+def cmd_team_seats_sync(args, config=None, audit=None) -> int:
+    """Sync local seats from a signed manifest (Wave 13 / R02).
+
+    Usage:
+        neuralmind team seats sync <manifest.json> --admin <EMAIL>
+
+    Returns:
+        0 on full success, 1 on hard failure, 2 on partial sync.
+    """
+    from .seats import sync_seats, verify_manifest_signature
+
+    # File existence check
+    manifest_path = Path(args.manifest)
+    if not manifest_path.exists():
+        print(f"ERROR: Manifest not found: {manifest_path}")
+        return 1
+
+    # JSON parse
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"ERROR: Malformed JSON in manifest: {e}")
+        return 1
+
+    # Version check
+    if manifest.get("version") != 1:
+        print(f"ERROR: Unsupported manifest version: {manifest.get('version')}")
+        return 1
+
+    # Expiry check
+    expires_at = manifest.get("expires_at", "")
+    if expires_at:
+        try:
+            from datetime import datetime as _dt
+            from datetime import timezone as _tz
+            exp = _dt.fromisoformat(expires_at.replace("Z", "+00:00"))
+            # Normalize naive expires_at to UTC so comparison with
+            # UTC-aware now() never raises TypeError.
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=_tz.utc)
+            if _dt.now(_tz.utc) > exp:
+                print(f"ERROR: Manifest expired at {expires_at}")
+                return 1
+        except ValueError:
+            pass
+
+    # Signature verification - read key at call time for testability
+    issuer_key = os.environ.get(
+        "NEURALMIND_ISSUER_PUBLIC_KEY_HEX",
+        _ISSUER_PUBLIC_KEY_HEX,
+    )
+    if not verify_manifest_signature(manifest, issuer_key):
+        print("ERROR: Manifest signature invalid — rejected.")
+        return 1
+
+    # Admin identity
+    admin = args.admin or os_get_actor_email()
+    if not admin:
+        print("ERROR: No admin identity available. Set --admin or $NEURALMIND_ADMIN_EMAIL.")
+        return 1
+
+    # Load config if not already loaded
+    if config is None:
+        config, audit = _ensure_tier2_activated(args)
+        if config is None:
+            return 1
+    else:
+        # config is provided; construct audit log only if caller omitted it.
+        # (The previous and-chain redundantly re-loaded config.)
+        if audit is None:
+            audit = AuditLog(Path(config.audit_db))
+
+    gov = TeamGovernance(Path(config.audit_db), config, audit)
+    try:
+        gov.require_admin(admin)
+    except PermissionError as e:
+        print(f"Permission denied: {e}")
+        return 1
+
+    # Sync seats
+    from . import config as _cfg_mod
+    seats_db = _cfg_mod.TIER2_CONFIG_DIR / "seats.json"
+    result = sync_seats(
+        seats_db,
+        manifest,
+        license_limit=config.seats,
+        tier=config.tier,
+        admin=admin,
+    )
+
+    # Audit log top-level sync event
+    audit.log(
+        actor=admin,
+        action="seat_sync",
+        target=f"sync:{manifest.get('manifest_id', 'unknown')}",
+        details={"added": result.get("added", []), "failed": result.get("failed", [])},
+    )
+
+    print(json.dumps(result, indent=2))
+
+    status = result.get("status")
+    if status == "ok":
+        return 0
+    if status == "partial":
+        return 2
     return 1
 
 

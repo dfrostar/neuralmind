@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 
+from neuralmind.cli import cmd_wakeup
 from neuralmind.tier2.config import Tier2Config
 from neuralmind.tier2.license import (
     LicenseValidator,
@@ -123,6 +125,63 @@ class TestCorruptedLicenseFile:
         assert validator.validate() == "INVALID"
 
 
+class TestCmdWakeupLicenseAutoIssue:
+    def test_wakeup_creates_license_on_first_run(self, tmp_path, monkeypatch):
+        """cmd_wakeup auto-issues a free license on first run."""
+        monkeypatch.setattr(
+            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
+        )
+        # Patch create_mind so we don't need a real project
+        mock_mind = MagicMock()
+        mock_mind.wakeup.return_value = MagicMock(
+            budget=MagicMock(total=100),
+            reduction_ratio=5.0,
+            context="test context",
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
+        )
+
+        license_path = tmp_path / "license.json"
+        assert not license_path.exists()
+
+        args = MagicMock(project_path=".")
+        cmd_wakeup(args)
+
+        assert license_path.exists()
+        data = json.loads(license_path.read_text(encoding="utf-8"))
+        assert data["tier"] == "free"
+
+    def test_wakeup_is_idempotent(self, tmp_path, monkeypatch):
+        """Second cmd_wakeup does NOT overwrite or error."""
+        monkeypatch.setattr(
+            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
+        )
+        mock_mind = MagicMock()
+        mock_mind.wakeup.return_value = MagicMock(
+            budget=MagicMock(total=100),
+            reduction_ratio=5.0,
+            context="test context",
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
+        )
+
+        args = MagicMock(project_path=".")
+        cmd_wakeup(args)
+
+        license_path = tmp_path / "license.json"
+        first_mtime = license_path.stat().st_mtime
+        first_data = json.loads(license_path.read_text(encoding="utf-8"))
+
+        cmd_wakeup(args)
+
+        second_mtime = license_path.stat().st_mtime
+        second_data = json.loads(license_path.read_text(encoding="utf-8"))
+        assert second_mtime == first_mtime  # not overwritten
+        assert second_data == first_data
+
+
 class TestFreeTierSignatureMustBeSelfSigned:
     def test_free_with_wrong_signature_is_invalid(self, tmp_license_path):
         now = "2026-01-01T00:00:00Z"
@@ -157,3 +216,88 @@ class TestFreeTierSignatureMustBeSelfSigned:
             encoding="utf-8",
         )
         assert load_license(tmp_license_path) == "INVALID"
+
+
+class TestUpgradeCTA:
+    def test_cta_not_shown_before_10_calls(self, tmp_path, monkeypatch):
+        """CTA should NOT appear before the 10th wakeup/query call."""
+        monkeypatch.setattr(
+            "neuralmind.cli._UPGRADE_CTA_STATE_PATH",
+            tmp_path / ".cta_state.json",
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
+        )
+        mock_mind = MagicMock()
+        mock_mind.wakeup.return_value = MagicMock(
+            budget=MagicMock(total=100),
+            reduction_ratio=5.0,
+            context="test context",
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
+        )
+
+        args = MagicMock(project_path=".")
+        for _ in range(9):
+            cmd_wakeup(args)
+
+        from neuralmind.cli import _get_wakeup_count
+
+        assert _get_wakeup_count() == 9
+
+    def test_cta_shown_at_10th_call(self, tmp_path, monkeypatch, capsys):
+        """CTA should appear on the 10th call."""
+        monkeypatch.setattr(
+            "neuralmind.cli._UPGRADE_CTA_STATE_PATH",
+            tmp_path / ".cta_state.json",
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
+        )
+        mock_mind = MagicMock()
+        mock_mind.wakeup.return_value = MagicMock(
+            budget=MagicMock(total=100),
+            reduction_ratio=5.0,
+            context="test context",
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
+        )
+
+        args = MagicMock(project_path=".")
+        for _ in range(10):
+            cmd_wakeup(args)
+
+        captured = capsys.readouterr()
+        assert "$29/user/mo" in captured.out
+
+    def test_cta_only_once(self, tmp_path, monkeypatch, capsys):
+        """CTA should fire exactly once, not repeatedly."""
+        monkeypatch.setattr(
+            "neuralmind.cli._UPGRADE_CTA_STATE_PATH",
+            tmp_path / ".cta_state.json",
+            raising=False,
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.TIER2_CONFIG_DIR", tmp_path, raising=False
+        )
+        mock_mind = MagicMock()
+        mock_mind.wakeup.return_value = MagicMock(
+            budget=MagicMock(total=100),
+            reduction_ratio=5.0,
+            context="test context",
+        )
+        monkeypatch.setattr(
+            "neuralmind.cli.create_mind", lambda *a, **kw: mock_mind, raising=False
+        )
+
+        args = MagicMock(project_path=".")
+        for _ in range(20):
+            cmd_wakeup(args)
+
+        captured = capsys.readouterr()
+        # CTA should appear exactly once
+        assert captured.out.count("$29/user/mo") == 1

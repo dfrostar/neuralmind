@@ -133,8 +133,8 @@ Community-submitted benchmarks on the
 
 | Project | Lang | Nodes | Reduction | Tokens/query |
 |---|---|---:|---:|---:|
-| cmmc20 | JavaScript | 241 | 65.6× | 739 |
-| mempalace | Python | 1,626 | 46.0× | 891 |
+| project-alpha | JavaScript | 241 | 65.6× | 739 |
+| project-beta | Python | 1,626 | 46.0× | 891 |
 
 **Caveat (also in the [Honest Assessment](HONEST-ASSESSMENT.md)):**
 n=2 is too few to claim statistical significance. Both repos belong
