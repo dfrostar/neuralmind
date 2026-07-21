@@ -152,15 +152,23 @@ Simultaneously, Wave 4 completes the quality harness (D3/D4), wires team-memory 
 - Circuit breaker: closed → open → half-open state machine
 - Fail-fast on overload, auto-recovery after timeout
 
-### J. G3 — Modularity Clustering (neuralmind)
+### J. G3 — Modularity Clustering (SHIPPED — v1.4.0)
 
 **Files:**
-- `neuralmind/graphgen.py` (EXTEND — replace balanced-per-file with Louvain/Leiden)
+- `neuralmind/modularity.py` (NEW — pure Python Louvain)
+- `neuralmind/graphgen.py` (`_assign_communities` wiring)
 
-**Requirements:**
-- Louvain or Leiden algorithm over structural edge set
-- Communities match architectural boundaries (auth module, data layer)
-- Requires G1+G2 (dynamic import resolution + SCIP precision)
+**Requirements (all met):**
+- [x] Louvain algorithm over structural edge set (O(n·k) Phase 1)
+- [x] Resolution parameter applied in ΔQ gain formula
+- [x] Communities match architectural boundaries (measured on test project)
+- [x] Requires G1+G2 (dynamic import resolution + SCIP precision)
+- [x] Deterministic output (sorted node iteration, no hash/random)
+- [x] Incremental stability (unchanged files carry community ID byte-for-byte)
+- [x] Fail-open (collapses to per-file grouping on ≤1 community output)
+- [x] All existing tests pass (1582+)
+- [x] ruff clean
+- [x] DeepSeek QA: CLEAN (0 CRITICAL, 3 WARNINGs patched)
 
 ### K. G4 — Incremental Re-extraction (neuralmind)
 
@@ -208,7 +216,7 @@ Simultaneously, Wave 4 completes the quality harness (D3/D4), wires team-memory 
 - [ ] G: E4 — Staleness detection flags unreinforced edges after N days
 - [ ] H: F3 — Metrics pipeline logs JSONL to `.neuralmind/metrics/`
 - [ ] I: F4 — Backpressure + circuit breakers prevent overload
-- [ ] J: G3 — Louvain/Leiden communities replace balanced-per-file
+- [x] J: G3 — Louvain communities replace balanced-per-file (`f49b535`, v1.4.0)
 - [ ] K: G4 — Incremental re-extraction skips unchanged files
 - [ ] L: All existing tests pass (130+ autopilot, 1500+ neuralmind)
 - [ ] M: ruff clean
