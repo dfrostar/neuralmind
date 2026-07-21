@@ -61,3 +61,16 @@ jobs:
           gh workflow run docker-publish.yml \
             --repo "${{ github.repository }}" \
             -f tag="${{ steps.release.outputs.tag_name }}"
+
+      # sbom.yml has the same push:tags blind spot as the two workflows above:
+      # release-please's GITHUB_TOKEN-created tag never fires it, so SBOMs only
+      # ever ran on manual dispatch. Dispatch it here so every release gets an
+      # SBOM (published to site/public/sbom/ and linked from /security).
+      - name: Dispatch SBOM generation for the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run sbom.yml \
+            --repo "${{ github.repository }}" \
+            -f tag="${{ steps.release.outputs.tag_name }}"

@@ -55,6 +55,12 @@ jobs:
         run: npm ci
 
       - name: Build static export
+        env:
+          # The build fetches the latest release from the GitHub API (see
+          # site/src/lib/release.ts). Unauthenticated calls from shared
+          # runners get rate-limited, which would silently render the
+          # fallback version — the token keeps the fetch reliable.
+          GITHUB_TOKEN: ${{ github.token }}
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
