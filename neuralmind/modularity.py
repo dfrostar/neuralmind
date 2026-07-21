@@ -103,9 +103,13 @@ def louvain_clustering(
                 sigma_target = community_weights.get(neighbor_c, 0.0)
                 sigma_current = community_weights.get(current_c, 0.0) - k_i
                 two_m = 2.0 * total_weight
-                gain_from_target = (w_to_neighbor_c - resolution * sigma_target * k_i / two_m) / total_weight
+                gain_from_target = (
+                    w_to_neighbor_c - resolution * sigma_target * k_i / two_m
+                ) / total_weight
                 k_i_in_current = neighbor_communities.get(current_c, 0.0)
-                loss_from_current = (k_i_in_current - resolution * sigma_current * k_i / two_m) / total_weight
+                loss_from_current = (
+                    k_i_in_current - resolution * sigma_current * k_i / two_m
+                ) / total_weight
                 gain = gain_from_target - loss_from_current
                 if gain > best_gain:
                     best_gain = gain
@@ -120,7 +124,9 @@ def louvain_clustering(
                 # Incrementally update community weights
                 k_val = node_degree[node]
                 community_weights[current_c] -= k_val
-                community_weights[best_community] = community_weights.get(best_community, 0.0) + k_val
+                community_weights[best_community] = (
+                    community_weights.get(best_community, 0.0) + k_val
+                )
                 node_community[node] = best_community
                 changed = True
 

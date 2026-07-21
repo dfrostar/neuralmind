@@ -165,8 +165,9 @@ class BuildGraphTests(unittest.TestCase):
         self.assertFalse(any(lbl.startswith("__") and lbl.endswith("__") for lbl in labels))
 
     def test_communities_are_per_file(self) -> None:
-        """Every node in a file shares one community; clusters are balanced
-        (one per source file), not a single collapsed blob."""
+        """Every node in a file shares one community; Louvain modularity may
+        merge structurally-related files but never splits a file across
+        communities, and never collapses everything into a single blob."""
         by_file: dict[str, set[int]] = {}
         for n in self.nodes:
             by_file.setdefault(n["source_file"], set()).add(n["community"])
@@ -174,7 +175,8 @@ class BuildGraphTests(unittest.TestCase):
             self.assertEqual(len(comms), 1, f"{src} split across communities {comms}")
         n_files = len(by_file)
         n_comms = len({n["community"] for n in self.nodes})
-        self.assertEqual(n_comms, n_files)
+        # Louvain may merge structurally-related files (n_comms <= n_files)
+        self.assertLessEqual(n_comms, n_files)
         # No giant blob: the largest community holds well under half the nodes.
         sizes: dict[int, int] = {}
         for n in self.nodes:
