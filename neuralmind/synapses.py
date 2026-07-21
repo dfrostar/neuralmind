@@ -602,7 +602,9 @@ class SynapseStore:
                         from .learned_decay import update_learned_half_life
 
                         for a, b in pairs:
-                            update_learned_half_life(store=self, node_a=a, node_b=b, conn=conn)
+                            update_learned_half_life(
+                                store=self, node_a=a, node_b=b, namespace=ns, conn=conn
+                            )
                     except Exception:
                         pass
                 conn.execute("COMMIT")
