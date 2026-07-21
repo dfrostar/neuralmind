@@ -45,6 +45,23 @@
 
 ---
 
+## v1.4.0 — Louvain modularity clustering (July 2026)
+
+> `build_graph` now groups files by architectural dependency, not by path. Louvain modularity over structural edges (imports/calls/inherits) replaces balanced-per-file community assignment. **Deterministic, fail-open, incremental-stable.**
+
+| Item | What |
+|------|------|
+| `neuralmind build` | Per-file adjacency from structural edges → Louvain Phase 1 (O(n·k)) → Phase 2 collapse → contiguous community IDs |
+| Resolution | `_modularity_gain` applies γ·Σ·k/(2m) — γ=1.0 default, tunable for larger graphs |
+| Incremental stability | Unchanged files carry their `community` ID byte-for-byte across builds |
+| Fail-open | Output collapses to per-file grouping when Louvain returns ≤1 community — no crash on tiny/degenerate projects |
+
+**Measured on a 7-file test project:** 7 per-file communities → 4 architectural-layer communities (`auth`, `users`, `core`, `docs`).
+
+**What's NOT shipping:** Leiden algorithm (requires python-igraph C dep), multilevel Phase 2 repetition, community quality metric Q. All documented in `docs/specs/G3-TRD.md` §8 as future work.
+
+---
+
 ## v0.52.0 — The impact tool ships (July 2026)
 
 > v0.52.0 gives a capability we've had since v0.42.0 a name an agent would actually reach for. **What shipped in v0.52.0:**
