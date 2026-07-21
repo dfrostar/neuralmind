@@ -31,48 +31,6 @@ def _build_adjacency(
     return adj
 
 
-def _modularity_gain(
-    adj: dict[str, dict[str, float]],
-    node: str,
-    target_community: str,
-    node_community: dict[str, str],
-    community_weights: dict[str, float],
-    total_weight: float,
-    resolution: float = 1.0,
-) -> float:
-    """
-    Compute modularity gain for moving `node` into `target_community`.
-
-    Louvain's ΔQ formula for moving node i from community Ci to Cj:
-        ΔQ = (1/m) * [k_i,in(Cj) - γ·Σ_tot(Cj)·k_i/(2m)]
-            - (1/m) * [k_i,in(Ci) - γ·Σ_tot(Ci)·k_i/(2m)]
-
-    γ (`resolution`) scales the null model:
-        γ < 1.0  → fewer/larger communities (under-partition)
-        γ = 1.0  → standard modularity (default)
-        γ > 1.0  → more/smaller communities (over-partition)
-
-    Positive ΔQ means the move increases modularity.
-    """
-    if total_weight <= 0:
-        return 0.0
-    k_i = sum(adj.get(node, {}).values())
-    k_i_in_target = sum(
-        w for n, w in adj.get(node, {}).items() if node_community.get(n) == target_community
-    )
-    k_i_in_current = sum(
-        w for n, w in adj.get(node, {}).items() if node_community.get(n) == node_community[node]
-    )
-    sigma_tot_target = community_weights.get(target_community, 0.0)
-    sigma_tot_current = community_weights.get(node_community[node], 0.0)
-    m = total_weight
-    two_m = 2.0 * m
-    # ΔQ = gain from target community - loss from current community
-    gain_from_target = (k_i_in_target - resolution * sigma_tot_target * k_i / two_m) / m
-    loss_from_current = (k_i_in_current - resolution * sigma_tot_current * k_i / two_m) / m
-    return gain_from_target - loss_from_current
-
-
 def louvain_clustering(
     adj: dict[str, dict[str, float]],
     *,
@@ -172,18 +130,24 @@ def louvain_clustering(
     new_nodes = sorted(community_nodes.keys())
     if len(new_nodes) < len(nodes):
         # Build coarse adjacency
+        # Iterate each undirected edge once to avoid double-count.
         new_adj: dict[str, dict[str, float]] = {c: defaultdict(float) for c in new_nodes}
+        seen: set[frozenset[str]] = set()
         for n, neighbors in adj.items():
             c_n = node_community[n]
             for m, w in neighbors.items():
+                key = frozenset((n, m))
+                if key in seen:
+                    continue
+                seen.add(key)
                 c_m = node_community[m]
                 if c_n == c_m:
-                    # Intra-community edge: becomes self-loop in coarse graph.
-                    # Without this, the coarse graph loses intra-weight,
-                    # inflating inter-community ΔQ and over-merging.
+                    # Intra-community edge → self-loop (each undirected edge contributes w once)
                     new_adj[c_n][c_n] = new_adj[c_n].get(c_n, 0.0) + w
                 else:
+                    # Inter-community edge → symmetric entry (coarse graph is undirected)
                     new_adj[c_n][c_m] = new_adj[c_n].get(c_m, 0.0) + w
+                    new_adj[c_m][c_n] = new_adj[c_m].get(c_n, 0.0) + w
 
         # Recurse on coarse graph
         coarse_communities = louvain_clustering(
@@ -197,7 +161,8 @@ def louvain_clustering(
         result = {}
         for n in nodes:
             c_n = node_community[n]
-            coarse_c = coarse_communities.get(c_n) or c_n
+            mapped = coarse_communities.get(c_n)
+            coarse_c = mapped if mapped is not None else c_n
             result[n] = coarse_to_int.get(coarse_c, 0)
         return result
 
@@ -239,5 +204,6 @@ def detect_structural_communities(
         adj = _build_adjacency(nodes, edges)
         return louvain_clustering(adj)
     except Exception:
-        # Fail-open: return all-same community
-        return {n.get("id", str(i)): 0 for i, n in enumerate(graph.get("nodes", []))}
+        # Fail-open: return all-same community. Handle graph=None or missing 'nodes'.
+        fallback_nodes = graph.get("nodes", []) if isinstance(graph, dict) else []
+        return {n.get("id", str(i)): 0 for i, n in enumerate(fallback_nodes)}
