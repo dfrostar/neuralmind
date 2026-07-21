@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from neuralmind.graphgen import _DEFAULT_IGNORES as _GG_IGNORES
+
 CACHE_FILE = ".neuralmind/extraction_cache.json"
 IMPORTER_INDEX_FILE = ".neuralmind/importer_index.json"
 
@@ -119,24 +121,8 @@ class IncrementalExtractor:
                 try:
                     rel = str(f.relative_to(root))
                     parts = Path(rel).parts
-                    # Skip common non-source dirs + _DEFAULT_IGNORES
-                    if any(p.startswith((".", "__")) for p in parts):
-                        continue
-                    # Also skip if any part is in the global ignores set
-                    if any(
-                        p
-                        in (
-                            "node_modules",
-                            "graphify-out",
-                            "__pycache__",
-                            ".venv",
-                            "venv",
-                            "target",
-                            "build",
-                            "dist",
-                        )
-                        for p in parts
-                    ):
+                    # Skip dot-prefixed / dunder dirs and canonical ignores
+                    if any(p.startswith((".", "__")) or p in _GG_IGNORES for p in parts):
                         continue
                     stat = f.stat()
                     current_files[rel] = stat.st_mtime
@@ -255,6 +241,8 @@ def build_importer_index_from_graph(graph: dict[str, Any]) -> dict[str, list[str
     # Invert structural edges: for each edge where target is in file B,
     # register the source's file as an importer of B
     reverse_relations = {"imports_from", "calls", "inherits", "contains"}
+    # rationale_for (rationale→symbol) and describes (doc→code) are NOT
+    # reversed — their direction is annotation→target, not dependency.
     for edge in graph.get("links", []):
         rel = edge.get("relation", "")
         if rel not in reverse_relations:
