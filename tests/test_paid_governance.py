@@ -25,9 +25,9 @@ def test_no_admin_bypass_anywhere():
         sig = inspect.signature(obj)
         for pname, param in sig.parameters.items():
             if pname == "admin":
-                assert param.default is not inspect.Parameter.empty or param.default is not None, (
-                    f"{name}: admin param has None default"
-                )
+                assert (
+                    param.default is not inspect.Parameter.empty or param.default is not None
+                ), f"{name}: admin param has None default"
 
 
 def test_seat_mutation_audited(tmp_path):
@@ -74,6 +74,7 @@ def test_audit_hash_chain_intact(tmp_path):
 def test_free_tier_but_admin_required():
     """R08: even free tier requires admin for mutations (no admin=None bypass)."""
     import tempfile
+
     td = Path(tempfile.mkdtemp())
     config = Tier2Config()
     config.governance.admin_emails = [_ADMIN]
@@ -102,6 +103,7 @@ def test_r09_no_auto_downgrade(tmp_path):
     config.license_file = str(tmp_path / "license.json")
     config.audit_db = str(tmp_path / "audit.jsonl")
     from neuralmind.tier2.config import save_config
+
     save_config(config, config_path)
 
     lic_path = Path(config.license_file)

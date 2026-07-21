@@ -413,6 +413,7 @@ def temp_seat_env(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_ADMIN_EMAIL", "admin")
 
     from neuralmind.tier2 import config as _config
+
     monkeypatch.setattr(_config, "TIER2_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(_config, "DEFAULT_CONFIG_PATH", tmp_path / "tier2.yaml")
 

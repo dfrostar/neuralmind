@@ -15,8 +15,13 @@ _SEAT1 = "seat1"
 _SEAT2 = "seat2"
 
 
-def _make_signed_manifest(path, seats=None, expires_at="2027-07-23T10:00:00+00:00",
-                          signer_id="autopilot", customer="customer"):
+def _make_signed_manifest(
+    path,
+    seats=None,
+    expires_at="2027-07-23T10:00:00+00:00",
+    signer_id="autopilot",
+    customer="customer",
+):
     """Generate a signed seat manifest using autopilot-style signing."""
     import uuid
     from datetime import datetime, timezone
