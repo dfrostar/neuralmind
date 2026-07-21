@@ -90,6 +90,40 @@ jobs:
             echo "::warning title=SBOM upload failed::Release ${TAG} may be immutable. SBOM preserved as workflow artifact below."
           fi
 
+      - name: Publish SBOM to the site
+        run: |
+          set -euo pipefail
+          TAG="${RELEASE_TAG}"
+          ASSET="neuralmind-${TAG}.sbom.json"
+
+          # Published Releases on this repo are immutable, so the upload above
+          # fails permanently for releases created by release-please. Serve the
+          # SBOM from neuralmind.uk instead: commit it to site/public/sbom/ on
+          # main. That push touches site/**, which triggers deploy-site.yml,
+          # and /security links the served copy when no release asset exists.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B sbom-publish origin/main
+          mkdir -p site/public/sbom
+          cp "${ASSET}" "site/public/sbom/${ASSET}"
+          git add "site/public/sbom/${ASSET}"
+          if git diff --cached --quiet; then
+            echo "SBOM for ${TAG} already published — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(sbom): publish ${ASSET} to the site"
+          for attempt in 1 2 3; do
+            if git push origin sbom-publish:main; then
+              exit 0
+            fi
+            echo "Push rejected (main moved) — rebasing and retrying (${attempt}/3)"
+            git fetch origin main
+            git rebase origin/main
+            sleep $((attempt * 5))
+          done
+          echo "::warning title=SBOM site publish failed::Could not push ${ASSET} to main after retries. Re-run this workflow to retry."
+
       - name: Upload SBOM as workflow artifact (fallback if release attach fails)
         uses: actions/upload-artifact@v7
         with:

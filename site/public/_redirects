@@ -7,3 +7,8 @@
 /use-cases/*        https://docs.neuralmind.uk/use-cases/:splat       301
 /about.html         https://docs.neuralmind.uk/about.html            301
 /COMPLIANCE-SUMMARY https://docs.neuralmind.uk/COMPLIANCE-SUMMARY    301
+
+# Team-tier one-command install, advertised in release notes as
+# `curl -fsSL https://neuralmind.uk/install-team.sh | bash`. Redirect to the
+# canonical script in the repo so there's no copy to drift (curl -L follows).
+/install-team.sh    https://raw.githubusercontent.com/dfrostar/neuralmind/main/scripts/install-team.sh  302

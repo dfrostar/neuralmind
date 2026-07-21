@@ -11,6 +11,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# lib/ above targets Python packaging output; the site's source lib is real code.
+!site/src/lib/
 lib64/
 parts/
 sdist/

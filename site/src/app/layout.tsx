@@ -1,5 +1,6 @@
 import './globals.css';
 import { Inter, JetBrains_Mono, Fraunces } from 'next/font/google';
+import { getLatestRelease, type LatestRelease } from '@/lib/release';
 
 const inter = Inter({
     subsets: ['latin'],
@@ -86,7 +87,9 @@ export const metadata = {
     },
 };
 
-const jsonLd = {
+// Version and modification date come from the latest GitHub release at build
+// time — never hardcoded, so they can't drift out of sync with what shipped.
+const jsonLdFor = (rel: LatestRelease) => ({
     '@context': 'https://schema.org',
     '@graph': [
         {
@@ -101,9 +104,9 @@ const jsonLd = {
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
-            softwareVersion: '0.42.0',
+            softwareVersion: rel.version,
             datePublished: '2025-05-01',
-            dateModified: '2026-07-13',
+            dateModified: rel.date,
             license: 'https://opensource.org/licenses/MIT',
             isAccessibleForFree: true,
             programmingLanguage: 'Python',
@@ -134,9 +137,10 @@ const jsonLd = {
             inLanguage: 'en',
         },
     ],
-};
+});
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+    const jsonLd = jsonLdFor(await getLatestRelease());
     return (
         <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}>
             <head>
