@@ -30,6 +30,14 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v1.4.0 — Louvain modularity clustering
+
+`build_graph` now assigns communities via Louvain modularity over structural code-dependency edges. Previous versions assigned one community per file — every file in `src/auth/` was its own community even if it imported heavily from `src/users/`. v1.4.0 groups them: files with many inter-edges collapse into one community, isolated files (docs, configs) stay separate.
+
+Stdlib-only pure-Python Louvain, O(n·k), deterministic output. 
+
+Acceptance: 1582+ tests pass, `bench/` repos verify expected community counts.
+
 ### v1.0.0 — Team tier ships
 
 NeuralMind Team is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. Adds team memory governance, immutable audit log (SHA-256 hash-chained append-only), self-hosted deployment (docker-compose, one-command install), and seat management on top of the MIT core. Ed25519-signed license validation with 30-day offline grace. Acceptance: 46 unit + integration tests.
