@@ -23,6 +23,7 @@ class TestIncrementalExtractor:
         extractor = IncrementalExtractor(str(tmp_path))
         extractor.update_cache(["a.py"], tmp_path)
         import time
+
         time.sleep(0.1)
         test_file.write_text("def bar(): pass")
         added, modified, deleted = extractor.scan_files(tmp_path, suffixes=frozenset({".py"}))
@@ -77,9 +78,7 @@ class TestImporterIndex:
         }
         index = build_importer_index_from_graph(graph)
         # Same-file edges should not appear
-        assert not any(
-            "a.py" in getters for getters in index.values()
-        )
+        assert not any("a.py" in getters for getters in index.values())
 
     def test_build_importer_index_ignores_unknown_relations(self):
         graph = {
@@ -112,6 +111,7 @@ class TestImporterIndex:
         extractor.update_cache(["a.py", "b.py"], tmp_path)
         # Modify a.py
         import time
+
         time.sleep(0.1)
         (tmp_path / "a.py").write_text("z")
         result = extractor.get_changed_with_dependents(
