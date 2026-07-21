@@ -777,12 +777,18 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
                 deleted_files.add(sf)
                 continue
             unchanged_nodes.append(dict(node))
+        # Collect surviving node IDs for dangling-edge prune
+        surviving_ids = {n["id"] for n in unchanged_nodes}
         for edge in existing_graph.get("links", []):
             src_file = edge.get("source_file", "")
             # Preserve edges from unchanged files; re-derive edges for changed files
             if src_file in changed_set:
                 continue
-            # Also drop edges pointing into deleted files
+            # Drop edges pointing into deleted nodes (dangling edge prune)
+            if edge.get("source") not in surviving_ids:
+                continue
+            if edge.get("target") not in surviving_ids:
+                continue
             unchanged_edges.append(dict(edge))
     else:
         # No cache or no existing graph → full extraction, all files re-extracted
