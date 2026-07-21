@@ -2,7 +2,7 @@
 
 **Date:** 2026-07-23
 **Autopilot:** v0.7.0 (running — systemd service live)
-**NeuralMind:** v1.7.0 (G3 shipped)
+**NeuralMind:** v1.4.0 (G3 shipped + DeepSeek QA clean)
 **Index:** rebuilt, fresh — 11,530 nodes / 593 communities
 
 ---
@@ -20,7 +20,7 @@
 | E4 — Staleness detection | `3fe5a61` | ✅ DeepSeek QA'd |
 | F3 — Tool-use metrics pipeline | — | ✅ DeepSeek QA'd |
 | F4 — Backpressure + circuit breakers | — | ✅ DeepSeek QA'd |
-| G3 — Modularity clustering | `f49b535` | ✅ 1582 tests green, ruff clean |
+| G3 — Modularity clustering | `c7523d6` | ✅ 1582 tests green, ruff clean, DeepSeek QA: 0 CRITICAL, 3 WARNINGs patched, v1.4.0 released, public copy live |
 | Site — CFO/CTO business case | `1478b4a` | ✅ Live on neuralmind.uk |
 | CFO deck prompt | internal/cfo-deck-prompt.md | ✅ |
 
@@ -41,22 +41,6 @@
 | 9 | F4 — Backpressure + circuit breakers | Daemon/MCP | MEDIUM | ✅ DONE |
 | 10 | G3 — Modularity clustering | Graph precision | HIGH | ✅ DONE |
 | 11 | G4 — Incremental re-extraction | Graph precision | HIGH | **NEXT** |
-
----
-
-## G3 — Modularity Clustering (Complete)
-
-**Files modified:**
-- `neuralmind/modularity.py` — resolution param now applied in `_modularity_gain`; O(n·k) incremental community weight updates
-- `neuralmind/graphgen.py` — `_assign_communities(b, existing_graph)` wires Louvain over per-file structural edges; carries over community IDs from existing_graph for incremental stability; falls back to per-file grouping on collapse
-- `tests/test_modularity.py` — 11 tests (was 5, +6 new: resolution contrast, determinism, perf-bound)
-
-**Result:** 1582 tests pass. Ruff clean. QA report at `docs/G3-QA-REPORT.md`.
-
-**CLI commands:**
-```
-neuralmind build  # now uses Louvain modularity for community assignment
-```
 
 ---
 
@@ -88,9 +72,14 @@ See `docs/research/f4-g3-research-backlog.md`. Key findings:
 
 ---
 
-## Versioning
-- autopilot: v0.7.0 (running)
-- neuralmind: v1.7.0 (G3) → v1.8.0 (G4)
+## Conventions (Honest, KISS/DRY, No Overclaim)
+
+- **Claim tiers:** Every BRD/TRD claim classified A/B/C/D.
+- **Honest framing:** Document what's NOT done yet.
+- **Private repo discipline:** Autopilot stays private.
+- **No phone-home:** All operations local.
+- **Fresh verification:** Run `pytest` before claiming done.
+- **After 'approved'/'go':** work is done — don't re-summarize; move to next action.
 
 ---
 
@@ -112,34 +101,9 @@ See `docs/research/f4-g3-research-backlog.md`. Key findings:
 
 ---
 
-## Research Required?
-
-| Feature | Research needed? | Why |
-|---------|------------------|-----|
-| G4 — Incremental | **No** | Research done (`f4-g3-research-backlog.md`) |
-| All Wave 4 research complete | — | — |
-
----
-
-## Start Here
-
-1. Read `neuralmind/graphgen.py` — understand `build_graph()` + `IncrementalExtractor` wiring
-2. Read `neuralmind/incremental_extract.py` — understand `scan_files()` + `get_changed_with_dependents()`
-3. Patch community ID stability bug (carry `comm_of_file` from existing graph)
-4. Patch dangling edge prune (drop edges to non-existent nodes after rename)
-5. Write tests, run full suite, DeepSeek QA
-6. Update `WAVE4-SESSION-PROMPT.md` to v13.0 (G4 → DONE)
-
----
-
-## Conventions (Honest, KISS/DRY, No Overclaim)
-
-- **Claim tiers:** Every BRD/TRD claim classified A/B/C/D.
-- **Honest framing:** Document what's NOT done yet.
-- **Private repo discipline:** Autopilot stays private.
-- **No phone-home:** All operations local.
-- **Fresh verification:** Run `pytest` before claiming done.
-- **After 'approved'/'go':** work is done — don't re-summarize; move to next action.
+## Versioning
+- autopilot: v0.7.0 (running)
+- neuralmind: v1.4.0 (G3) → v1.5.0 (G4)
 
 ---
 
@@ -151,7 +115,19 @@ See `docs/research/f4-g3-research-backlog.md`. Key findings:
 4. `tier2-dual-tier-license` — product-side validation patterns
 5. `optional-heavy-dependency` — optional SDK integration pattern
 6. `git-repo-cleanup` — pre-release hygiene checklist
+7. `neuralmind-modularity` — Louvain clustering API + pitfalls (new, G3)
+8. `neuralmind-graphgen` — community assignment + G3 integration pitfalls
 
 ---
 
-*Next session prompt v12.0. E1+E2+E3+E4+F3+F4+G3 COMPLETE. G4 — Incremental Re-Extraction next.*
+## Release Status
+
+- Code: merged to `main` (`c7523d6`)
+- Public-facing: README.md, wiki Home, RELEASE_NOTES_v1.4.0.md all live with v1.4.0 content
+- PyPI: publish triggered via CI on `main` push (will resolve when tag lands)
+- Tag `v1.4.0`: remote rule violations blocking direct tag push — release-please flow needed
+- DeepSeek QA: CLEAN (0 CRITICAL, 3 WARNINGs — all patched inline in `8e1a15f`)
+
+---
+
+*Next session prompt v13.0. E1+E2+E3+E4+F3+F4+G3 COMPLETE. G4 — Incremental Re-Extraction next.*
