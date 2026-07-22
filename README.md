@@ -14,7 +14,22 @@
 > - Receives PostToolUse compression automatically (Bash output → errors + signals)
 > - Queries your codebase in ~800 tokens instead of ~50,000
 >
-> If you don't use Claude Code, configure: `neuralmind install-mcp --all`
+> If you don't use Claude Code, Codex, Cursor, or Cline — configure: `neuralmind install-mcp --all`
+
+---
+
+## v1.7.0 — Free tier auto-provision + upgrade funnel (July 2026)
+
+> Free tier now auto-provisions on first `wakeup`. `pip install neuralmind && neuralmind wakeup .` writes the license on first run — zero signup wall, zero "team" default breaking free onboarding.
+
+| Item | What |
+|------|------|
+| Free tier auto-provision | `cmd_wakeup` checks for `~/.config/neuralmind/license.json`; if missing, calls `issue_free_license()` and prints activation message |
+| Default tier changed | `Tier2Config.tier` default flipped from `"team"` to `"free"` — fresh `tier2.yaml` no longer triggers downgrade guard |
+| Upgrade CTA | Counter in `_increment_wakeup_count()` fires one-liner Team CTA at call 10 ( NeuralMind Team: $29/user/mo — shared memory, governance, seat management ) |
+| Tests | 21/21 tier2 tests pass, 191/191 total across `test_tier2_*.py` + `test_config.py` + `test_license_validator_anti_tamper.py` |
+
+**Acceptance:** Free license created on first `wakeup`, idempotent on repeat calls, CTA fires exactly once at call 10.
 
 ---
 
@@ -158,7 +173,7 @@ raw tokens; that's in the benchmark table.
 >
 > **v0.20.0** — **Measure the onboarding lift.** `neuralmind eval --onboarding` turns NeuralMind's headline differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its first queries than a cold agent with none? The headline is the **top-k module hit-rate lift** (a deterministic +6.5 points on the reference fixture), with fact-recall + grounding as honest secondaries; **budget-neutral by design**, gated in CI at lift ≥ 0. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.20.0.md)
 >
-> **v0.19.0** — **One-command MCP setup.** `neuralmind install-mcp --all` auto-detects your installed agents — **Claude Code, Cursor, Cline, Claude Desktop** — and registers NeuralMind's MCP server with each (non-destructive merge, idempotent). The agent then onboards onto your codebase through NeuralMind's tools instead of grepping cold. Distribution is half the moat; the learned synapse layer (usage memory) is the other half. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.19.0.md)
+> **v0.19.0** — **One-command MCP setup.** `neuralmind install-mcp --all` auto-detects your installed agents — **Claude Code, Codex, Cursor, Cline, Claude Desktop** — and registers NeuralMind's MCP server with each (non-destructive merge, idempotent). The agent then onboards onto your codebase through NeuralMind's tools instead of grepping cold. Distribution is half the moat; the learned synapse layer (usage memory) is the other half. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.19.0.md)
 >
 > **v0.18.0** — **Incremental updates.** Re-index just the file you edited, not the whole repo: `neuralmind watch --reindex` re-parses each changed file and re-embeds **only its nodes** (unchanged files stay byte-for-byte identical, so the embedder skips them). Your index stays fresh as you type. [Release notes](https://github.com/dfrostar/neuralmind-marketing/blob/main/docs/RELEASE_NOTES_v0.18.0.md)
 >

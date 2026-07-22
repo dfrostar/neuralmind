@@ -30,6 +30,17 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v1.7.0 — Free tier auto-provision + upgrade funnel (July 2026)
+
+Free tier now auto-provisions on first `wakeup`. `pip install neuralmind && neuralmind wakeup .` writes the license on first run — zero signup wall, zero "team" default breaking free onboarding.
+
+- **Free tier auto-provision:** `cmd_wakeup` checks for `~/.config/neuralmind/license.json`; if missing, calls `issue_free_license()` and prints activation message
+- **Default tier changed:** `Tier2Config.tier` default flipped from `"team"` to `"free"` — fresh `tier2.yaml` no longer triggers downgrade guard
+- **Upgrade CTA:** Counter fires one-liner Team CTA at call 10 (NeuralMind Team: $29/user/mo — shared memory, governance, seat management)
+- **Tests:** 21/21 tier2 tests pass, 191/191 total across tier2 + config + license-validator suites
+
+Acceptance: free license created on first `wakeup`, idempotent on repeat calls, CTA fires exactly once at call 10.
+
 ### v1.4.0 — Louvain modularity clustering
 
 `build_graph` now assigns communities via Louvain modularity over structural code-dependency edges. Previous versions assigned one community per file — every file in `src/auth/` was its own community even if it imported heavily from `src/users/`. v1.4.0 groups them: files with many inter-edges collapse into one community, isolated files (docs, configs) stay separate.

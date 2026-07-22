@@ -20,8 +20,12 @@ const faqs = [
         a: 'A self-improvement engine landing in the next release: a population-based evolutionary search over NeuralMind\'s own retrieval parameters. Candidate configs are evaluated against your fixture queries by an independent quality harness. Promotion requires both harness pass AND beating the incumbent by a hysteresis margin. The daemon proposes; the harness disposes.',
     },
     {
+        q: 'What does "free tier auto-provision" mean?',
+        a: 'When you run `neuralmind wakeup .` for the first time, NeuralMind checks if a license file exists at `~/.config/neuralmind/license.json`. If not, it auto-issues a free license (tier="free", seats=1, expires="never") — no signup, no payment, no account. Your identity is created on first meaningful action.',
+    },
+    {
         q: 'Is NeuralMind free? What does the paid tier actually buy?',
-        a: 'The MIT core is free forever — including all of the token compression; the 40–70× savings cost nothing. A 1-seat free license auto-issues the first time you run a `neuralmind team` command, no signup. NeuralMind Team ($29/user/mo, annual, 5–50 seats) adds what engineering organizations need on top: admin-controlled memory governance, a tamper-evident hash-chained audit log, seat management, and self-hosted deployment. You are paying for compliance and control, not for the compression.',
+        a: 'The MIT core is free forever — including all of the token compression; the 40–70× savings cost nothing. A 1-seat free license auto-issues the first time you run `neuralmind wakeup .`, no signup. NeuralMind Team ($29/user/mo, annual, 5–50 seats) adds what engineering organizations need on top: admin-controlled memory governance, a tamper-evident hash-chained audit log, seat management, and self-hosted deployment. You are paying for compliance and control, not for the compression.',
     },
     {
         q: 'What\'s the business case for a team?',
