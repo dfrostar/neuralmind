@@ -448,6 +448,8 @@ def cmd_wakeup(args):
 
     _increment_wakeup_count()
 
+    _maybe_prompt_for_memory_opt_in()
+
     if args.json:
         output = {
             "type": "wakeup",

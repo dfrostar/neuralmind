@@ -30,7 +30,8 @@ Complete command-line interface documentation for NeuralMind.
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
   - [savings](#savings-v0400)
-  - [review](#review-v0400)
+  - [review](#review-v0390)
+  - [onboarding](#onboarding-v170)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -1905,6 +1906,52 @@ Consider whether your change also needs to touch them.
 ```
 
 Requires the synapse graph to have accumulated edges. Cold graphs (first few sessions) return empty results. Also available as the `neuralmind_review` MCP tool.
+
+*Wiki reference: [Tier2-Operator-Guide](Tier2-Operator-Guide.md) · [Upgrade-Guide](Upgrade-Guide.md)*
+
+---
+
+### onboarding *(v1.7.0+)*
+
+Walk a new operator through license activation, governance defaults, admin email setup, team seat audit, and verification. The entry point for strangers who just ran `neuralmind wakeup .` and want to configure their project.
+
+```bash
+neuralmind onboarding              # interactive mode — walks all 5 steps
+neuralmind onboarding --quick      # skip all prompts, defaults only
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--quick` | `false` | Skip all prompts, apply defaults (1-seat free, scope=both, threshold=0.1) |
+
+#### What it walks through
+
+1. **License activation** — checks for `license.json`. If missing, auto-issues free tier (or activates Team license if provided).
+2. **Governance defaults** — sets `publishing_scope` (`personal`/`shared`/`both`) and `weight_threshold` (0.0–1.0).
+3. **Admin email setup** — adds admin emails for governance notifications.
+4. **Team seat audit** — lists current seats (`neuralmind team seats list`).
+5. **Verification** — prints license status + governance state.
+
+#### Sample Output
+
+```bash
+$ neuralmind onboarding --quick
+
+✓ Free tier activated (1 seat, never expires)
+✓ Governance: scope=both, threshold=0.1
+✓ Admin: (none — free tier)
+✓ Seats: 1/1 (free)
+
+Run `neuralmind team license status` to view.
+```
+
+#### Honest scope
+
+- Free tier: `onboarding --quick` configures governance but doesn't issue paid license
+- Team tier: requires `neuralmind team license activate <file>` before seat management works
+- Onboarding doesn't install hooks or build the index — see `neuralmind install-hooks` and `neuralmind build`
 
 ---
 
