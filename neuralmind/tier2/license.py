@@ -414,6 +414,7 @@ def issue_free_license(path: Path) -> LicenseInfo:
         'free'
     """
     import tempfile
+
     now = datetime.now(timezone.utc).isoformat()
     lic = LicenseInfo(
         tier="free",
