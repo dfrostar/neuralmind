@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.0](https://github.com/dfrostar/neuralmind/compare/v1.5.0...v1.6.0) (2026-07-22)
+
+
+### Features
+
+* **v1.7.0:** free-tier auto-provision on wakeup + upgrade CTA + default tier fix ([891f806](https://github.com/dfrostar/neuralmind/commit/891f806f1155d5db61f7d83deecc9c89127477d6))
+
+
+### Documentation
+
+* organize v1.7.0 marketing campaign folder ([652d6a2](https://github.com/dfrostar/neuralmind/commit/652d6a284014b82f164f5124c17ac6e84370b71e))
+* publish real-world rebuild field report (48.8×, synapse edges 36→135) ([#390](https://github.com/dfrostar/neuralmind/issues/390)) ([98692e4](https://github.com/dfrostar/neuralmind/commit/98692e4f9c197a388a1e6ac8fda7ab8d4d1d9582))
+* **v1.7.0:** marketing index + release notes + sitemap ([7461284](https://github.com/dfrostar/neuralmind/commit/7461284843e284355ffc00380b7117c27b9b895e))
+* **v1.7.0:** marketing kit + LinkedIn about refresh + Codex outreach ([d551b3a](https://github.com/dfrostar/neuralmind/commit/d551b3a2966fb3db633ef4f8c799bbd778217348))
+
 ## [1.5.0](https://github.com/dfrostar/neuralmind/compare/v1.4.0...v1.5.0) (2026-07-21)
 
 
