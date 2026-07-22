@@ -436,21 +436,24 @@ def _maybe_prompt_for_memory_opt_in():
 def cmd_wakeup(args):
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.wakeup()
+    is_json = args.json
 
     # Auto-issue free license on first run
     license_path = TIER2_CONFIG_DIR / "license.json"
     if not license_path.exists():
         issue_free_license(license_path)
-        print(
-            "✓ Free tier activated — run `neuralmind onboarding` to configure,\n"
-            "  `neuralmind team license status` to view."
-        )
+        if not is_json:
+            print(
+                "✓ Free tier activated — run `neuralmind onboarding` to configure,\n"
+                "  `neuralmind team license status` to view."
+            )
 
     _increment_wakeup_count()
 
-    _maybe_prompt_for_memory_opt_in()
+    if not is_json:
+        _maybe_prompt_for_memory_opt_in()
 
-    if args.json:
+    if is_json:
         output = {
             "type": "wakeup",
             "tokens": result.budget.total,

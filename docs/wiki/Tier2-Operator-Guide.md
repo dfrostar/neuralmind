@@ -117,7 +117,7 @@ neuralmind team self-hosted validate-license
 | "Downgrade guard triggered" | Fresh `tier2.yaml` should have `tier: free` (v1.7.0+). If not, delete and re-`wakeup` |
 | "Seat limit exceeded" | `neuralmind team seats remove <email>` to free a seat |
 | "Audit log empty" | Audit events only fire on Team-tier governance/seat operations |
-| "Self-hosted data dir permission denied" | `neuralmind team self-hosted init` sets 0700 permisssions |
+| "Self-hosted data dir permission denied" | `neuralmind team self-hosted init` sets 0700 permissions |
 
 ---
 
