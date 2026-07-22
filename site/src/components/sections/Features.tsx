@@ -38,6 +38,12 @@ const featureList = [
         badge: 'Auto-recover',
     },
     {
+        icon: '🆓',
+        title: 'Free Tier — Auto-Provisioned',
+        desc: '`pip install neuralmind && neuralmind wakeup .` writes the license on first run. Zero signup wall. Default tier is "free", identity auto-issued.',
+        badge: 'v1.7.0',
+    },
+    {
         icon: '💥',
         title: 'Impact Analysis (blast radius)',
         desc: '`neuralmind impact <symbol> --depth N` surfaces every caller, importer, and subclass — with per-dependent hop + relation attribution. Same traversal as `structural --blast-radius`, now under a name that matches the question.',
