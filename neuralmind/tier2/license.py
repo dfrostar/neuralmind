@@ -413,6 +413,7 @@ def issue_free_license(path: Path) -> LicenseInfo:
         ...     lic.tier
         'free'
     """
+    import tempfile
     now = datetime.now(timezone.utc).isoformat()
     lic = LicenseInfo(
         tier="free",
@@ -426,8 +427,20 @@ def issue_free_license(path: Path) -> LicenseInfo:
     # Populate raw for consistent serialization
     lic.raw = lic.to_dict()
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(lic.to_dict(), f, indent=2)
+    # Atomic write: create temp file + rename to avoid partial-write corruption
+    # under concurrent access.
+    fd, tmp_path = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
+    try:
+        with open(fd, "w", encoding="utf-8") as f:
+            json.dump(lic.to_dict(), f, indent=2)
+        Path(tmp_path).replace(path)
+    except Exception:
+        # Clean up temp file on failure
+        try:
+            Path(tmp_path).unlink()
+        except OSError:
+            pass
+        raise
     return lic
 
 

@@ -1913,7 +1913,7 @@ Requires the synapse graph to have accumulated edges. Cold graphs (first few ses
 
 ### onboarding *(v1.7.0+)*
 
-Walk a new operator through license activation, governance defaults, admin email setup, team seat audit, and verification. The entry point for strangers who just ran `neuralmind wakeup .` and want to configure their project.
+Walk a new operator through license activation, governance defaults, admin email setup, and verification. The entry point for strangers who just ran `neuralmind wakeup .` and want to configure their project.
 
 ```bash
 neuralmind onboarding              # interactive mode — walks all 5 steps
