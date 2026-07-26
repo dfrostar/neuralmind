@@ -24,9 +24,9 @@ Establish NeuralMind's commercial presence and CFO consulting motion — from Li
 
 | File | What | Location |
 |------|------|----------|
-| LICENSE-COMMERCIAL.md | MIT-free tier + $15/user/mo enterprise + restrictions | `/home/dtfrost/neuralmind/LICENSE-COMMERCIAL.md` |
-| LICENSE-COMMERCIAL.docx | Same, formatted for Word (39KB, verified valid) | `/home/dtfrost/neuralmind/LICENSE-COMMERCIAL.docx` |
-| CONSULTING_AGREEMENT_TEMPLATE.md | $35K/$55K/$85K tiers, IP split, NDA, payment terms | `/home/dtfrost/neuralmind/contracts/CONSULTING_AGREEMENT_TEMPLATE.md` |
+|| 25 || LICENSE-COMMERCIAL.md | MIT-free tier + $29/user/mo Team tier + restrictions | `/home/dtfrost5/neuralmind/LICENSE-COMMERCIAL.md` |
+| LICENSE-COMMERCIAL.docx | Same, formatted for Word (39KB, verified valid) | `/home/dtfrost5/neuralmind/LICENSE-COMMERCIAL.docx` |
+| CONSULTING_AGREEMENT_TEMPLATE.md | $35K/$55K/$85K tiers, IP split, NDA, payment terms | `/home/dtfrost5/neuralmind/contracts/CONSULTING_AGREEMENT_TEMPLATE.md` |
 
 ### Marketing + Sales
 
@@ -80,11 +80,11 @@ Establish NeuralMind's commercial presence and CFO consulting motion — from Li
 | Revenue Stream | Price | Timeline |
 |----------------|-------|----------|
 | OSS (PyPI) | Free | Now |
-| Enterprise license | $15/user/mo or $85K/yr site | Q3 2026 |
+| Team tier | $29/user/mo, annual, 5-50 seats | **Shipped v1.0.0** |
+| Autopilot (self-improving operator) | Included with Team | **Shipped v0.10.1** |
 | CFO Assessment | $35K one-time | Now (consulting) |
 | CFO Pilot | $55K one-time | Now (consulting) |
-| Year 2 target | $45K current → add $200K-$500K via consulting | 2027 |
 
 ---
 
-## Status: 🔴 ACTIVE — In Motion
+## Status: ✅ SHIPPED — Team + Autopilot live

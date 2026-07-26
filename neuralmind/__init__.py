@@ -108,8 +108,8 @@ from .team_memory import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "1.7.0"
-# NOTE: ``GraphEmbedder`` is intentionally NOT in ``__all__``. It is the
+__version__ = "1.7.1"
+__version_info__ = (1, 7, 1)
 # ChromaDB backend (lazy-exposed via ``__getattr__`` below), and ChromaDB is an
 # opt-in extra as of v0.29.0. Listing it in ``__all__`` would make
 # ``from neuralmind import *`` resolve the lazy attribute and import ChromaDB,

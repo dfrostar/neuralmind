@@ -18,6 +18,19 @@
 
 ---
 
+## v1.7.1 — Schema hotfix + autopilot integration (July 2026)
+
+| Item | What |
+|------|------|
+| Synapse schema fix | `_init_schema()` now adds `half_life_days` + `learned_at` columns BEFORE `CREATE TABLE` — fixes `sqlite3.OperationalError` on existing databases |
+| Path migration | All scripts and configs migrated to `/home/dtfrost5/` |
+| Autopilot v0.10.1 | Self-improving operator loop runs every 15 min via systemd; architecture-complete, signal-unproven |
+| Tests | 120 autopilot tests + 42 synapse tests pass |
+
+**Acceptance:** Tick completes without error on existing databases.
+
+---
+
 ## v1.7.0 — Free tier auto-provision + upgrade funnel (July 2026)
 
 > Free tier now auto-provisions on first `wakeup`. `pip install neuralmind && neuralmind wakeup .` writes the license on first run — zero signup wall, zero "team" default breaking free onboarding.
