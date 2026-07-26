@@ -30,6 +30,10 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v1.7.1 — Schema hotfix + autopilot integration (July 2026)
+
+Synapse schema fix adds `half_life_days` + `learned_at` columns before `CREATE TABLE` to fix `sqlite3.OperationalError` on existing databases. Autopilot v0.10.1 ships with self-improving loop (15-min systemd tick). Path migration from `/home/dtfrost/` to `/home/dtfrost5/`.
+
 ### v1.7.0 — Free tier auto-provision + upgrade funnel (July 2026)
 
 Free tier now auto-provisions on first `wakeup`. `pip install neuralmind && neuralmind wakeup .` writes the license on first run — zero signup wall, zero "team" default breaking free onboarding.

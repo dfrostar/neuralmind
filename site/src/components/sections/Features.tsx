@@ -59,7 +59,7 @@ const featureList = [
         icon: '⚙️',
         title: 'CI-Gated Tuner',
         desc: 'Population-based evolutionary search proposes configs. An independent quality harness validates against fixture queries before promotion. The daemon proposes; the harness disposes.',
-        badge: 'In development',
+        badge: 'v0.10.1, architecture-complete',
     },
     {
         icon: '🔒',

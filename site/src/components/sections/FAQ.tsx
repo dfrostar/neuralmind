@@ -17,7 +17,7 @@ const faqs = [
     },
     {
         q: 'What is the CI-gated tuner?',
-        a: 'A self-improvement engine landing in the next release: a population-based evolutionary search over NeuralMind\'s own retrieval parameters. Candidate configs are evaluated against your fixture queries by an independent quality harness. Promotion requires both harness pass AND beating the incumbent by a hysteresis margin. The daemon proposes; the harness disposes.',
+        a: 'Autopilot — shipped as v0.10.1: a population-based evolutionary search proposes configs; an independent quality harness validates against fixture queries before promotion. Architecture-complete, signal-unproven (no real production promotions yet). Promotion requires harness pass AND beating incumbent by hysteresis margin.',
     },
     {
         q: 'What does "free tier auto-provision" mean?',
