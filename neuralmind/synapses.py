@@ -372,14 +372,17 @@ class SynapseStore:
             ):
                 self._migrate_v0_to_v1(conn)
                 return
-            conn.executescript(SCHEMA)
-            self._stamp_schema_version(conn)
             # Additive A3 columns: half_life_days + learned_at (nullable,
             # backfilled as NULL so existing rows use the namespace default).
-            if not self._has_column(conn, "synapses", "half_life_days"):
-                conn.execute("ALTER TABLE synapses ADD COLUMN half_life_days REAL")
-            if not self._has_column(conn, "synapses", "learned_at"):
-                conn.execute("ALTER TABLE synapses ADD COLUMN learned_at REAL")
+            # MUST run BEFORE executescript(SCHEMA) — SCHEMA contains
+            # CREATE INDEX on half_life_days which fails if column missing.
+            if self._table_exists(conn, "synapses"):
+                if not self._has_column(conn, "synapses", "half_life_days"):
+                    conn.execute("ALTER TABLE synapses ADD COLUMN half_life_days REAL")
+                if not self._has_column(conn, "synapses", "learned_at"):
+                    conn.execute("ALTER TABLE synapses ADD COLUMN learned_at REAL")
+            conn.executescript(SCHEMA)
+            self._stamp_schema_version(conn)
 
     @staticmethod
     def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
