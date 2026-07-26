@@ -424,21 +424,31 @@ def render_markdown(report: OnboardingReport) -> str:
     lines = [
         "## NeuralMind onboarding-lift eval",
         "",
-        f"**Fixture:** `{report.fixture}` — {report.n_queries} queries, "
-        f"{report.seed_sessions} committed team co-edit sessions.",
+        (
+            f"**Fixture:** `{report.fixture}` — {report.n_queries} queries, "
+            f"{report.seed_sessions} committed team co-edit sessions."
+        ),
         "",
-        f"- **Onboarding lift: {lift_pts:+.1f} points** top-k module hit-rate "
-        f"(onboarded {report.onboarded_mean_hit_rate * 100:.1f}% vs "
-        f"cold {report.cold_mean_hit_rate * 100:.1f}% of expected modules in the "
-        f"ranked top-{RETRIEVAL_TOP_K})",
-        f"- Fact-recall lift: {recall_pts:+.1f} points (secondary — onboarded "
-        f"{report.onboarded_mean_recall * 100:.1f}% vs cold "
-        f"{report.cold_mean_recall * 100:.1f}%; recall trades fact-density for "
-        f"co-edited hubs at a fixed budget)",
-        f"- Full-context grounding lift: {ground_pts:+.1f} points (secondary — "
-        f"saturates when every expected module already fits the window)",
-        f"- Token budget: `{report.onboarded_total_tokens:,}` onboarded / "
-        f"`{report.cold_total_tokens:,}` cold (recall is budget-neutral by design)",
+        (
+            f"- **Onboarding lift: {lift_pts:+.1f} points** top-k module hit-rate "
+            f"(onboarded {report.onboarded_mean_hit_rate * 100:.1f}% vs "
+            f"cold {report.cold_mean_hit_rate * 100:.1f}% of expected modules in the "
+            f"ranked top-{RETRIEVAL_TOP_K})"
+        ),
+        (
+            f"- Fact-recall lift: {recall_pts:+.1f} points (secondary — onboarded "
+            f"{report.onboarded_mean_recall * 100:.1f}% vs cold "
+            f"{report.cold_mean_recall * 100:.1f}%; recall trades fact-density for "
+            f"co-edited hubs at a fixed budget)"
+        ),
+        (
+            f"- Full-context grounding lift: {ground_pts:+.1f} points (secondary — "
+            f"saturates when every expected module already fits the window)"
+        ),
+        (
+            f"- Token budget: `{report.onboarded_total_tokens:,}` onboarded / "
+            f"`{report.cold_total_tokens:,}` cold (recall is budget-neutral by design)"
+        ),
         "",
         "| Query | Cold hit | Onb hit | Δ | Cold rec | Onb rec |",
         "|-------|---------:|--------:|--:|---------:|--------:|",
@@ -451,13 +461,15 @@ def render_markdown(report: OnboardingReport) -> str:
         )
     lines += [
         "",
-        "Onboarding lift = the top-k module hit-rate gain when an agent inherits "
-        "a committed team synapse memory (recall on) vs a cold agent that never "
-        "had it (recall off), over the same gold queries at the same token "
-        "budget. A positive lift is the learned-memory differentiator: "
-        "associative recall surfaces co-edited modules into the ranked top-"
-        f"{RETRIEVAL_TOP_K} that a purely textual search leaves out — the same "
-        "signal as the self-benchmark's Phase-3 A/B.",
+        (
+            "Onboarding lift = the top-k module hit-rate gain when an agent inherits "
+            "a committed team synapse memory (recall on) vs a cold agent that never "
+            "had it (recall off), over the same gold queries at the same token "
+            "budget. A positive lift is the learned-memory differentiator: "
+            "associative recall surfaces co-edited modules into the ranked top-"
+            f"{RETRIEVAL_TOP_K} that a purely textual search leaves out — the same "
+            "signal as the self-benchmark's Phase-3 A/B."
+        ),
         "",
     ]
     return "\n".join(lines)

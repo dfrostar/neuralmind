@@ -469,13 +469,17 @@ def write_report(
         "### Phase 2 — Synapse recall A/B (same warm graph, recall off vs on)",
         "",
         f"- Synapse edges after seeding co-editing sessions: `{synapse_edges}`",
-        f"- Top-k hit rate: **{_fmt_pct(synapse_off.avg_hit_rate)}** off → "
-        f"**{_fmt_pct(synapse_on.avg_hit_rate)}** on "
-        f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.1f} points)",
-        f"- Reduction ratio: **{synapse_off.avg_reduction:.1f}×** off → "
-        f"**{synapse_on.avg_reduction:.1f}×** on "
-        f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
-        "budget-neutral by design)",
+        (
+            f"- Top-k hit rate: **{_fmt_pct(synapse_off.avg_hit_rate)}** off → "
+            f"**{_fmt_pct(synapse_on.avg_hit_rate)}** on "
+            f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.1f} points)"
+        ),
+        (
+            f"- Reduction ratio: **{synapse_off.avg_reduction:.1f}×** off → "
+            f"**{synapse_on.avg_reduction:.1f}×** on "
+            f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
+            "budget-neutral by design)"
+        ),
         "",
         "The Hebbian synapse layer is now the single learning measurement (the old",
         "`learned_patterns` reranker was removed). The hit-rate delta shows associative recall",
