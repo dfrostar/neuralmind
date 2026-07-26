@@ -101,8 +101,10 @@ def compute_verdict(parity: dict, headline: dict, both_ok: bool) -> tuple[str, s
     if parity_good and not perf_regressions:
         return (
             "🟢 yes",
-            f"turbovec is at parity (Jaccard@k {jacc:.2f}, recall {recall:.2f}) with no "
-            "performance regression — safe to adopt for this workload.",
+            (
+                f"turbovec is at parity (Jaccard@k {jacc:.2f}, recall {recall:.2f}) with no "
+                "performance regression — safe to adopt for this workload."
+            ),
         )
     if parity_good and perf_regressions:
         return (
@@ -114,13 +116,17 @@ def compute_verdict(parity: dict, headline: dict, both_ok: bool) -> tuple[str, s
     if parity_marginal:
         return (
             "🟡 cautiously yes",
-            f"parity is marginal (Jaccard@k {jacc:.2f}, recall {recall:.2f}); "
-            "validate against the gold-set eval before relying on it.",
+            (
+                f"parity is marginal (Jaccard@k {jacc:.2f}, recall {recall:.2f}); "
+                "validate against the gold-set eval before relying on it."
+            ),
         )
     return (
         "🛑 not yet",
-        f"parity is below tolerance (Jaccard@k {jacc:.2f}, recall {recall:.2f}); "
-        "results diverge too much from chroma for this workload.",
+        (
+            f"parity is below tolerance (Jaccard@k {jacc:.2f}, recall {recall:.2f}); "
+            "results diverge too much from chroma for this workload."
+        ),
     )
 
 

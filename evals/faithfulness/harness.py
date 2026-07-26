@@ -319,16 +319,24 @@ def render_markdown(report: EvalReport) -> str:
         "",
         f"**Fixture:** `{report.fixture}` — {report.n_queries} queries.",
         "",
-        f"- **Faithfulness delta: {delta_pts:+.1f} points** "
-        f"(NeuralMind {report.nm_mean_recall * 100:.1f}% vs "
-        f"naive {report.naive_mean_recall * 100:.1f}% expected-fact recall, "
-        "at a matched token budget)",
-        f"- Grounding rate: **{report.nm_mean_grounding * 100:.1f}%** "
-        f"(naive {report.naive_mean_grounding * 100:.1f}%)",
-        f"- Contradiction rate: **{report.nm_mean_contradiction * 100:.1f}%** "
-        "(lower is better; 0% = no gold-fact conflicts detected)",
-        f"- Token budget: `{report.nm_total_tokens:,}` NeuralMind / "
-        f"`{report.naive_total_tokens:,}` naive (matched per query)",
+        (
+            f"- **Faithfulness delta: {delta_pts:+.1f} points** "
+            f"(NeuralMind {report.nm_mean_recall * 100:.1f}% vs "
+            f"naive {report.naive_mean_recall * 100:.1f}% expected-fact recall, "
+            "at a matched token budget)"
+        ),
+        (
+            f"- Grounding rate: **{report.nm_mean_grounding * 100:.1f}%** "
+            f"(naive {report.naive_mean_grounding * 100:.1f}%)"
+        ),
+        (
+            f"- Contradiction rate: **{report.nm_mean_contradiction * 100:.1f}%** "
+            "(lower is better; 0% = no gold-fact conflicts detected)"
+        ),
+        (
+            f"- Token budget: `{report.nm_total_tokens:,}` NeuralMind / "
+            f"`{report.naive_total_tokens:,}` naive (matched per query)"
+        ),
         "",
         "| Query | NM recall | Naive recall | Δ | Grounding | Contra | Tokens |",
         "|-------|----------:|-------------:|--:|----------:|-------:|-------:|",
@@ -341,11 +349,13 @@ def render_markdown(report: EvalReport) -> str:
         )
     lines += [
         "",
-        "Faithfulness = expected-fact recall of the answer; the deterministic "
-        "offline judge scores whether the *selected context* contains each gold "
-        "fact. The baseline is naive truncation to the same per-query token "
-        "budget, so a positive delta means smart selection beats dumb "
-        "truncation at equal cost.",
+        (
+            "Faithfulness = expected-fact recall of the answer; the deterministic "
+            "offline judge scores whether the *selected context* contains each gold "
+            "fact. The baseline is naive truncation to the same per-query token "
+            "budget, so a positive delta means smart selection beats dumb "
+            "truncation at equal cost."
+        ),
         "",
     ]
     return "\n".join(lines)

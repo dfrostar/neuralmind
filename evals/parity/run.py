@@ -277,8 +277,10 @@ def render_markdown(
     lines = [
         "## Backend parity gate — graphify vs built-in tree-sitter",
         "",
-        f"**{status}** — the built-in backend must stay within tolerance of "
-        "graphify on the reference fixture.",
+        (
+            f"**{status}** — the built-in backend must stay within tolerance of "
+            "graphify on the reference fixture."
+        ),
         "",
         "| Metric | graphify | built-in |",
         "|--------|---------:|---------:|",
@@ -296,13 +298,17 @@ def render_markdown(
         lines.append(f"- {mark} **{c.name}** — {c.detail}")
     lines += [
         "",
-        f"Tolerances: reduction within {REDUCTION_TOLERANCE:.0%} "
-        f"(floor {REDUCTION_FLOOR:.1f}×), faithfulness within "
-        f"{FAITHFULNESS_TOLERANCE:.2f} (floor {FAITHFULNESS_FLOOR:+.2f}). "
-        "Override via `NEURALMIND_PARITY_*` env vars.",
+        (
+            f"Tolerances: reduction within {REDUCTION_TOLERANCE:.0%} "
+            f"(floor {REDUCTION_FLOOR:.1f}×), faithfulness within "
+            f"{FAITHFULNESS_TOLERANCE:.2f} (floor {FAITHFULNESS_FLOOR:+.2f}). "
+            "Override via `NEURALMIND_PARITY_*` env vars."
+        ),
         "",
-        "_Automated by `evals/parity/run.py` — reproduce locally with "
-        "`python -m evals.parity.run`._",
+        (
+            "_Automated by `evals/parity/run.py` — reproduce locally with "
+            "`python -m evals.parity.run`._"
+        ),
         "",
     ]
     return "\n".join(lines)
@@ -403,8 +409,10 @@ def render_language_markdown(coverages: list[LanguageCoverage], checks: list[Gat
         lines.append(f"- {mark} **{c.name}** — {c.detail}")
     lines += [
         "",
-        f"Coverage floor: {SYMBOL_COVERAGE_FLOOR:.0%} of graphify's per-language "
-        "symbols (no gold-fact set exists for TS/Go, so parity is structural).",
+        (
+            f"Coverage floor: {SYMBOL_COVERAGE_FLOOR:.0%} of graphify's per-language "
+            "symbols (no gold-fact set exists for TS/Go, so parity is structural)."
+        ),
         "",
     ]
     return "\n".join(lines)
@@ -482,9 +490,11 @@ def render_precision_markdown(checks: list[GateCheck]) -> str:
         lines.append(f"- {mark} **{c.name}** — {c.detail}")
     lines += [
         "",
-        "Off by default (`NEURALMIND_PRECISION`); proven on "
-        "`tests/fixtures/scip_precision` to replace a heuristic call edge with "
-        "the compiler-accurate one a SCIP index resolves.",
+        (
+            "Off by default (`NEURALMIND_PRECISION`); proven on "
+            "`tests/fixtures/scip_precision` to replace a heuristic call edge with "
+            "the compiler-accurate one a SCIP index resolves."
+        ),
         "",
     ]
     return "\n".join(lines)

@@ -53,16 +53,20 @@ PUBLISHED_GLOBS = (
 FORBIDDEN = [
     (
         re.compile(r"\b(code|logic|data)\s+never\s+leaves?\b", re.IGNORECASE),
-        "Absolute privacy claim — the agent still egresses its chosen slice. "
-        "Say what NeuralMind itself does: 'makes no network calls of its own'.",
+        (
+            "Absolute privacy claim — the agent still egresses its chosen slice. "
+            "Say what NeuralMind itself does: 'makes no network calls of its own'."
+        ),
     ),
     (
         re.compile(
             r"\bnever\s+leaves?\s+(your|the)\s+(machine|infrastructure|environment|network|organi[sz]ation)\b",
             re.IGNORECASE,
         ),
-        "Absolute privacy claim about the whole workflow — inaccurate. "
-        "Scope the claim to NeuralMind's own behavior.",
+        (
+            "Absolute privacy claim about the whole workflow — inaccurate. "
+            "Scope the claim to NeuralMind's own behavior."
+        ),
     ),
     (
         re.compile(r"\bno\s+data\s+leaves?\s+your\b", re.IGNORECASE),
@@ -70,8 +74,10 @@ FORBIDDEN = [
     ),
     (
         re.compile(r"\bnothing\s+leaves?\s+your\b", re.IGNORECASE),
-        "Absolute privacy claim about the whole workflow — inaccurate. "
-        "Scope the claim to NeuralMind's own behavior.",
+        (
+            "Absolute privacy claim about the whole workflow — inaccurate. "
+            "Scope the claim to NeuralMind's own behavior."
+        ),
     ),
     (
         re.compile(r"\b(zero|no)\s+(data\s+)?exfiltration\b", re.IGNORECASE),
@@ -79,8 +85,10 @@ FORBIDDEN = [
     ),
     (
         re.compile(r"\bexfiltration\s+risk\b", re.IGNORECASE),
-        "Implies the workflow can't exfiltrate — it can (the agent egresses). "
-        "Describe NeuralMind's own zero network surface instead.",
+        (
+            "Implies the workflow can't exfiltrate — it can (the agent egresses). "
+            "Describe NeuralMind's own zero network surface instead."
+        ),
     ),
     (
         re.compile(r"\b(zero|no)\s+(data\s+)?egress\b", re.IGNORECASE),
