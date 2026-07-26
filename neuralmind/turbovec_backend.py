@@ -273,9 +273,9 @@ class TurboVecEmbedder(EmbeddingBackend):
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
-        pending: list[tuple[str, int, str, dict, str, bool]] = (
-            []
-        )  # (node_id, uid, text, meta, hash, is_update)
+        pending: list[
+            tuple[str, int, str, dict, str, bool]
+        ] = []  # (node_id, uid, text, meta, hash, is_update)
         next_uid = self._next_uid()
 
         for node in self.nodes:
