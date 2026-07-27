@@ -528,3 +528,87 @@ class TestIntegration:
             seen_structures.add(v.structure)
 
         assert len(seen_structures) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Subprocess integration test (W-2)
+# ---------------------------------------------------------------------------
+
+
+class TestSubprocessIntegration:
+    """Integration tests that actually run the ``neuralmind query`` subprocess."""
+
+    def test_run_query_subprocess(self, tmp_project: Path) -> None:
+        """``_run_query`` should execute the real ``neuralmind query`` CLI.
+
+        This test exercises the subprocess path (no ``query_fn`` injection).
+        It builds the index first, then runs a query and verifies that
+        the result is a list of file paths (possibly empty on a minimal
+        fixture, but the subprocess path is verified).
+        """
+        # Build the index first so the query has data to work with
+        import subprocess
+        import sys
+
+        build_result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "neuralmind.cli",
+                "build",
+                str(tmp_project),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        assert build_result.returncode == 0, f"build failed: {build_result.stderr}"
+
+        spot = BlindSpot(name="handleCSVExport", file_path="src/export.ts", line=1)
+        # No query_fn — forces subprocess path
+        evolver = DocEvolver(
+            project_path=tmp_project,
+            blind_spots=[spot],
+            population_size=2,
+            generations=1,
+        )
+
+        # Run the actual subprocess query
+        files = evolver._run_query("handle csv export")
+        # Should return a list (may be empty on minimal fixture, but no error)
+        assert isinstance(files, list)
+        # All returned items should be strings with a path separator
+        for f in files:
+            assert isinstance(f, str)
+            assert "/" in f
+
+    def test_sanitize_query_rejects_reserved_words(self) -> None:
+        """_sanitize_query should reject queries that are only reserved words."""
+        from neuralmind.doc_evolver import _sanitize_query
+
+        # Reserved-word-only queries should raise
+        with pytest.raises(ValueError, match="reserved words"):
+            _sanitize_query("exec")
+
+        with pytest.raises(ValueError, match="reserved words"):
+            _sanitize_query("import")
+
+        with pytest.raises(ValueError, match="reserved words"):
+            _sanitize_query("eval compile")
+
+    def test_sanitize_query_escapes_reserved_words(self) -> None:
+        """_sanitize_query should escape reserved words mixed with normal words."""
+        from neuralmind.doc_evolver import _sanitize_query
+
+        # Mixed query: reserved word gets prefixed
+        result = _sanitize_query("handle exec process")
+        assert "_exec" in result
+        assert "handle" in result
+        assert "process" in result
+
+    def test_sanitize_query_passes_normal(self) -> None:
+        """_sanitize_query should pass through normal queries unchanged."""
+        from neuralmind.doc_evolver import _sanitize_query
+
+        assert _sanitize_query("handle csv export") == "handle csv export"
+        assert _sanitize_query("parse json input") == "parse json input"
