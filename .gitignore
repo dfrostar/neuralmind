@@ -80,3 +80,6 @@ evals/parity/parity_report.md
 .env
 .env
 .env
+
+# Claude Code personal dev config (hooks, settings)
+.claude/
