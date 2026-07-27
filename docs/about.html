@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 40–70× token savings, and a 100% local ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -197,6 +197,28 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v172">
+            <h2>What's New in v1.7.2 — DocEvolver: evolutionary JSDoc for retrieval fitness</h2>
+            <p><strong>Undocumented code is invisible to retrieval.</strong> An agent searching for "handle csv export" comes up empty when the method has no JSDoc — the embedding text is just the method name, which ranks low against natural language. <code>neuralmind optimize-docs .</code> finds undocumented methods, generates JSDoc variants using four mutation strategies (<code>LENGTH</code>, <code>STRUCTURE</code>, <code>KEYWORD_DENSITY</code>, <code>POSITION</code>), and evolves them against a retrieval fitness function — the same Recall@1 metric <code>neuralmind probe</code> uses.</p>
+            <h3>How it works</h3>
+            <ol>
+                <li><strong>Sample</strong> — generate N JSDoc variants per undocumented method via mutation strategies.</li>
+                <li><strong>Evaluate</strong> — patch each variant into the source, run a natural-language query, score Recall@1 = 1/rank of the correct file.</li>
+                <li><strong>Promote</strong> — the best variant beats the incumbent by a hysteresis margin (0.05), then mutates around it for the next generation.</li>
+                <li><strong>Patch</strong> — after G generations, the winning JSDoc is written back to the source file.</li>
+            </ol>
+            <h3>Also in v1.7.2</h3>
+            <ul>
+                <li><strong>Self-review JSDoc</strong> — 13 modules + 30 methods documented across the NeuralMind codebase.</li>
+                <li><strong>synapses.py bugfix</strong> — restored missing <code>namespace</code> parameter.</li>
+                <li><strong>Hooks installed</strong> — Claude Code lifecycle hooks registered.</li>
+            </ul>
+            <div class="quote">Documentation that proves itself against your own index — not a style guide, a fitness function.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v1.7.2.md">Full v1.7.2 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/doc-evolver-optimize-docs.md">DocEvolver walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Architecture.html#doc-evolver-v0530">Architecture &rarr;</a></p>
         </div>
     </section>
 

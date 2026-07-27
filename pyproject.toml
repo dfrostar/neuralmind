@@ -264,7 +264,10 @@ keywords = [
     "shareable-agent-memory",
     "inherited-agent-memory",
     "agent-onboarding-memory",
-    "memory-export-import"
+    "memory-export-import",
+    "doc-evolver",
+    "jsdoc-optimization",
+    "evolutionary-documentation"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

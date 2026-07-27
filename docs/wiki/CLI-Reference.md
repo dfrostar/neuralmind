@@ -32,6 +32,7 @@ Complete command-line interface documentation for NeuralMind.
   - [savings](#savings-v0400)
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
+  - [optimize-docs](#optimize-docs-v172)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -1952,6 +1953,81 @@ Run `neuralmind team license status` to view.
 - Free tier: `onboarding --quick` configures governance but doesn't issue paid license
 - Team tier: requires `neuralmind team license activate <file>` before seat management works
 - Onboarding doesn't install hooks or build the index — see `neuralmind install-hooks` and `neuralmind build`
+
+---
+
+### optimize-docs *(v1.7.2+)*
+
+Run the **DocEvolver** — an evolutionary JSDoc optimizer that finds undocumented methods, generates JSDoc variants using mutation strategies, and evolves them against a retrieval fitness function (Recall@1).
+
+```bash
+neuralmind optimize-docs <project_path> [OPTIONS]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--blind-spots` | — | Path to a JSON file of pre-computed blind spots (from `neuralmind probe --json`) |
+| `--generations` | `5` | Number of evolution generations (G) |
+| `--population` | `8` | Population size per generation |
+| `--hysteresis` | `0.05` | Minimum fitness improvement required to promote a variant |
+| `--dry-run` | False | Report only — no file modifications |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Run full audit + evolution on a project
+neuralmind optimize-docs .
+
+# Dry-run (report only, no file changes)
+neuralmind optimize-docs . --dry-run
+
+# With pre-computed blind spots from probe
+neuralmind probe . --json > spots.json
+neuralmind optimize-docs . --blind-spots spots.json
+
+# Custom evolution parameters
+neuralmind optimize-docs . --population 10 --generations 8 --hysteresis 0.03
+
+# Machine-readable output
+neuralmind optimize-docs . --json
+```
+
+#### How it works
+
+1. **Sample** — generates N JSDoc variants per undocumented method via four mutation strategies: `LENGTH` (1/3/5-line), `STRUCTURE` (Args/Returns vs prose-only vs mixed), `KEYWORD_DENSITY` (method-name synonyms vs generic description), `POSITION` (above vs inline for arrow functions).
+2. **Evaluate** — patches each variant into the source, runs a natural-language query, and scores Recall@1 = 1/rank of the correct file.
+3. **Promote** — the best variant beats the incumbent by the hysteresis margin, then mutates around it for the next generation.
+4. **Patch** — after G generations, the winning JSDoc is written back to the source file.
+
+#### Sample Output
+
+```bash
+$ neuralmind optimize-docs . --dry-run
+
+DocEvolver — my-project
+============================================================
+Blind spots found: 12 undocumented methods
+  - handle_csv_export()  (utils/csv.py)
+  - parse_headers()      (utils/csv.py)
+  - validate_schema()    (models/base.py)
+  ...
+
+Run without --dry-run to evolve JSDoc for these methods.
+```
+
+#### Files
+
+- [`neuralmind/doc_evolver.py`](../../neuralmind/doc_evolver.py) — main module (1181 lines)
+- [`tests/test_doc_evolver.py`](../../tests/test_doc_evolver.py) — 44 tests
 
 ---
 
