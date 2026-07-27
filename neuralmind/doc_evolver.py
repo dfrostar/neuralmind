@@ -886,6 +886,12 @@ class DocEvolver:
         patched_content = "\n".join(patched_lines) + "\n"
 
         # Write patched content to actual source file, rebuild index, query, restore
+        # Use atomic file ops: backup first, restore via os.replace() to prevent
+        # data corruption if the process is killed (SIGKILL, OOM) between write and finally.
+        import shutil
+
+        backup_path = file_path.with_suffix(file_path.suffix + ".bak")
+        shutil.copy2(file_path, backup_path)
         try:
             file_path.write_text(patched_content, encoding="utf-8")
 
@@ -919,8 +925,8 @@ class DocEvolver:
             return 0.0
 
         finally:
-            # Always restore original content
-            file_path.write_text(original_content, encoding="utf-8")
+            # Always restore original content atomically from backup
+            backup_path.replace(file_path)
 
     def _run_query(self, query: str) -> list[str]:
         """Run a retrieval query and return ranked source files.
@@ -954,27 +960,31 @@ class DocEvolver:
 
             # Parse file paths from markdown search results
             # Pattern: "File: path/to/file.ext" or "**file** (score: N)\n   Type: code\n   File: path"
+            # Use permissive regex that captures paths with spaces by requiring
+            # the path to end with a recognized code extension.
+            code_exts = (
+                ".ts",
+                ".tsx",
+                ".py",
+                ".js",
+                ".jsx",
+                ".go",
+                ".rs",
+                ".java",
+                ".cs",
+                ".cpp",
+                ".c",
+                ".rb",
+                ".php",
+            )
+            file_pattern = re.compile(
+                r"File:\s+([^\s,\n]+?\.(?:" + "|".join(ext.lstrip(".") for ext in code_exts) + "))"
+            )
             files = []
-            for match in re.finditer(r"File:\s+([^\s,\n]+)", context):
+            for match in file_pattern.finditer(context):
                 f = match.group(1).strip()
-                # Filter out non-file references
-                if "/" in f or f.endswith(
-                    (
-                        ".ts",
-                        ".tsx",
-                        ".py",
-                        ".js",
-                        ".jsx",
-                        ".go",
-                        ".rs",
-                        ".java",
-                        ".cs",
-                        ".cpp",
-                        ".c",
-                        ".rb",
-                        ".php",
-                    )
-                ):
+                # Filter: require BOTH path separator AND recognized code extension
+                if "/" in f and f.endswith(code_exts):
                     files.append(f)
             return files
 
