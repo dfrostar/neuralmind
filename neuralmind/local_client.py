@@ -1,3 +1,17 @@
+"""local_client.py — Ollama local-model client for NeuralMind.
+
+Thin httpx wrapper around a local Ollama server for the optional
+local-model query path (CONFIG["local_models"]). Returns user-friendly
+error strings on failure so the caller never needs to handle exceptions.
+
+See Also:
+    - ``neuralmind/config.py`` — provides the endpoint/model config
+    - ``tests/test_local_client.py`` — test cases
+
+Version:
+    0.53.0
+"""
+
 import httpx
 
 from .config import CONFIG

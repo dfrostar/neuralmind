@@ -18,9 +18,11 @@ from pathlib import Path
 
 
 class CircuitState(Enum):
-    CLOSED = "closed"  # Normal operation
-    OPEN = "open"  # Failing fast, reject requests
-    HALF_OPEN = "half_open"  # Testing recovery with limited traffic
+    """Circuit-breaker states: CLOSED (normal), OPEN (failing fast), HALF_OPEN (testing)."""
+
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
 
 
 @dataclass
@@ -57,6 +59,13 @@ class CircuitBreaker:
         failure_threshold: int = 3,
         recovery_timeout: float = 30.0,
     ):
+        """Create a circuit breaker.
+
+        Args:
+            name: Human-readable name for logging.
+            failure_threshold: Consecutive failures before opening.
+            recovery_timeout: Seconds before OPEN → HALF_OPEN attempt.
+        """
         self.name = name
         self.failure_threshold = failure_threshold
         self.recovery_timeout = recovery_timeout
@@ -161,6 +170,12 @@ class ProjectBackpressure:
             return cls._instances[key]
 
     def __init__(self, project_key: str, max_concurrent: int = 2):
+        """Create a backpressure limiter for a project.
+
+        Args:
+            project_key: Resolved project path string.
+            max_concurrent: Maximum simultaneous operations.
+        """
         self.project_key = project_key
         self.max_concurrent = max_concurrent
         self._count = 0
@@ -206,13 +221,16 @@ class ProjectBackpressure:
 
     @property
     def active(self) -> int:
+        """Current number of in-flight operations."""
         return self._count
 
     @property
     def rejected(self) -> int:
+        """Total requests rejected because the queue was full."""
         return self._rejected_count
 
     def stats(self) -> dict:
+        """Return backpressure stats as a dict."""
         return {
             "project": self.project_key,
             "active": self._count,
@@ -235,6 +253,12 @@ class ProjectLock:
         project_path: str | Path,
         backpressure: ProjectBackpressure | None = None,
     ):
+        """Create a per-project lock.
+
+        Args:
+            project_path: The project to lock.
+            backpressure: Optional backpressure instance to integrate with.
+        """
         self.project_path = Path(project_path)
         self.backpressure = backpressure or ProjectBackpressure.for_project(project_path)
         self._lock = threading.Lock()

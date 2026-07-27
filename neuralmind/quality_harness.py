@@ -1,15 +1,25 @@
-# neuralmind/quality_harness.py — CI-gated tuner promotion (PRD 2 C4).
-#
-# The tuner (C3) evaluates its own candidates and would promote autonomously
-# if fitness > incumbent * 1.05. This is self-measurement with no independent
-# validation. QualityHarness is the independent gate: it runs retrieval with
-# the candidate's params against fixture queries, scores with quality.py and
-# ragas.py, and returns a verdict. Promotion requires harness pass AND
-# hysteresis beat.
-#
-# Fail-open: if fixtures or embedder are unavailable, the harness returns
-# passed=True with fitness=0.0 (the candidate simply won't be promoted over
-# a valid incumbent -- safe fail-open).
+"""quality_harness.py — CI-gated tuner promotion (C4).
+
+The tuner (C3) evaluates its own candidates and would promote autonomously
+if fitness > incumbent * 1.05. This is self-measurement with no independent
+validation. QualityHarness is the independent gate: it runs retrieval with
+the candidate's params against fixture queries, scores with quality.py and
+ragas.py, and returns a verdict. Promotion requires harness pass AND
+hysteresis beat.
+
+Fail-open: if fixtures or embedder are unavailable, the harness returns
+passed=True with fitness=0.0 (the candidate simply won't be promoted over
+a valid incumbent -- safe fail-open).
+
+See Also:
+    - ``neuralmind/tuner.py`` — the candidate generator (C3)
+    - ``neuralmind/quality.py`` — per-query scoring functions
+    - ``neuralmind/ragas.py`` — RAGAS-axis offline judge
+    - ``tests/test_quality_harness.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

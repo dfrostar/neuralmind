@@ -21,7 +21,14 @@ class DaemonUnavailableError(Exception):
 
 
 class DaemonClient:
+    """Thin HTTP client for the NeuralMind daemon."""
+
     def __init__(self, info: dict) -> None:
+        """Create a client from a discovery-info dict.
+
+        Args:
+            info: Dict with host/port/token keys from read_discovery().
+        """
         self.host = info.get("host", "127.0.0.1")
         self.port = int(info["port"])
         self.token = info.get("token")
@@ -31,6 +38,20 @@ class DaemonClient:
     def _request(
         self, method: str, route: str, body: dict | None = None, timeout: float = 30.0
     ) -> dict:
+        """Send an HTTP request to the daemon.
+
+        Args:
+            method: HTTP method string.
+            route: URL path (e.g., "/health").
+            body: Optional JSON body dict.
+            timeout: Seconds before timeout.
+
+        Returns:
+            Parsed JSON response dict.
+
+        Raises:
+            DaemonUnavailableError: on 401/403.
+        """
         url = f"{self.base}{route}"
         data = json.dumps(body).encode("utf-8") if body is not None else None
         req = urllib.request.Request(url, data=data, method=method)
@@ -126,4 +147,9 @@ def connect(*, ping: bool = True) -> DaemonClient | None:
 
 
 def is_running() -> bool:
+    """Check if a live daemon is reachable.
+
+    Returns:
+        True if discovery file exists AND daemon responds to ping.
+    """
     return connect(ping=True) is not None

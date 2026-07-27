@@ -192,6 +192,8 @@ def _resolve_open_target(mind: NeuralMind, node_id: str) -> tuple[Path | None, i
 
 
 class _Handler(BaseHTTPRequestHandler):
+    """HTTP request handler for the NeuralMind graph-view server."""
+
     # Set by serve() before the server starts; shared across threads.
     mind: NeuralMind | None = None
     auth_token: str | None = None  # None disables auth

@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
+from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
@@ -2393,6 +2394,121 @@ def cmd_hook(args):
     sys.exit(run_hook(args.action))
 
 
+def cmd_optimize_docs(args):
+    """`neuralmind optimize-docs` — evolve JSDoc for undocumented methods.
+
+    Runs an AST audit to find undocumented public methods (or accepts a
+    pre-computed blind spot list), then uses DocEvolver to generate and
+    evolve JSDoc variants that maximize retrieval fitness. The winning
+    variant is patched back into the source files.
+
+    Scoring: Recall@1 — the reciprocal of the rank of the correct source
+    file when querying with a natural-language description of the method.
+    A method with JSDoc that ranks #1 scores 1.0, #2 scores 0.5, #3 scores
+    0.33, etc.
+    """
+    project_path = Path(args.project_path or ".").resolve()
+
+    if not project_path.exists():
+        print(f"Path does not exist: {project_path}", file=sys.stderr)
+        sys.exit(1)
+
+    # Load or audit blind spots
+    if args.blind_spots:
+        try:
+            raw = json.loads(Path(args.blind_spots).read_text(encoding="utf-8"))
+            blind_spots = [
+                BlindSpot(
+                    name=s.get("name", ""),
+                    file_path=s.get("file_path", s.get("source_file", "")),
+                    line=s.get("line", 1),
+                    method_type=s.get("method_type", "function"),
+                    params=s.get("params", []),
+                )
+                for s in raw
+            ]
+        except (OSError, ValueError) as exc:
+            print(f"Could not read blind spots file: {exc}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        from neuralmind.doc_evolver import audit_blind_spots
+        blind_spots = audit_blind_spots(project_path)
+
+    if not blind_spots:
+        if args.json:
+            print(json.dumps({"status": "no_blind_spots", "project": str(project_path)}))
+        else:
+            print(f"No undocumented methods found in {project_path.name}.")
+            print("Run `neuralmind build .` first to ensure the index is up to date.")
+        return
+
+    if args.json:
+        print(json.dumps({"status": "starting", "blind_spots": len(blind_spots)}))
+    else:
+        print(f"DocEvolver — {len(blind_spots)} undocumented method(s) in {project_path.name}")
+        print(f"  Pop={args.population or 5}, Gen={args.generations or 5}, Hyst={args.hysteresis or 0.05}")
+        print("=" * 60)
+
+    # Build evolver
+    evolver = DocEvolver(
+        project_path=project_path,
+        blind_spots=blind_spots,
+        population_size=args.population,
+        generations=args.generations,
+        hysteresis=args.hysteresis,
+    )
+
+    # Run evolution
+    results = evolver.evolve()
+
+    # Report results
+    total_fitness = sum(r.best_fitness for r in results)
+    avg_fitness = total_fitness / len(results) if results else 0.0
+    promoted_count = sum(1 for r in results if r.promoted)
+
+    if args.json:
+        output = {
+            "results": [
+                {
+                    "name": r.name,
+                    "file": r.file_path,
+                    "line": r.line,
+                    "fitness": round(r.best_fitness, 4),
+                    "promoted": r.promoted,
+                    "variant": r.best_variant.text if r.best_variant else None,
+                }
+                for r in results
+            ],
+            "summary": {
+                "total": len(results),
+                "promoted": promoted_count,
+                "avg_fitness": round(avg_fitness, 4),
+            },
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        for r in results:
+            status = "PROMOTED" if r.promoted else "no improvement"
+            print(f"  {r.name:30s} {r.file_path:30s} fit={r.best_fitness:.3f} [{status}]")
+            if r.best_variant and not args.dry_run:
+                print(f"    JSDoc: {r.best_variant.text.splitlines()[0]} ...")
+        print("=" * 60)
+        print(f"  Average fitness: {avg_fitness:.3f}  ({promoted_count}/{len(results)} promoted)")
+
+    # Patch winners (unless dry-run)
+    if not args.dry_run:
+        modified = evolver.patch_winners(results)
+        if args.json:
+            print(json.dumps({"patched_files": modified}))
+        else:
+            if modified:
+                print(f"\nPatched JSDoc into {len(modified)} file(s):")
+                for f in modified:
+                    print(f"  ✓ {f}")
+            else:
+                print("\nNo files were patched (no winning variants found).")
+
+
 def cmd_gaps(args):
     """Find endpoints tested only in mock mode — the coverage that lies.
 
@@ -3350,6 +3466,48 @@ def main():
         ],
     )
     hook_p.set_defaults(func=cmd_hook)
+
+    # optimize-docs command — evolve JSDoc for undocumented methods
+    opt_docs_p = subparsers.add_parser(
+        "optimize-docs",
+        help="Evolve JSDoc for undocumented methods to maximize retrieval fitness",
+    )
+    opt_docs_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    opt_docs_p.add_argument(
+        "--blind-spots",
+        default=None,
+        help="Path to pre-computed blind spot list (JSON format)",
+    )
+    opt_docs_p.add_argument(
+        "--generations",
+        type=int,
+        default=None,
+        help="Max generations per blind spot (default: 5)",
+    )
+    opt_docs_p.add_argument(
+        "--population",
+        type=int,
+        default=None,
+        help="Population size per generation (default: 5)",
+    )
+    opt_docs_p.add_argument(
+        "--hysteresis",
+        type=float,
+        default=None,
+        help="Promotion hysteresis margin (default: 0.05)",
+    )
+    opt_docs_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be evolved without patching source files",
+    )
+    opt_docs_p.add_argument("--json", "-j", action="store_true")
+    opt_docs_p.set_defaults(func=cmd_optimize_docs)
 
     args = parser.parse_args()
     if args.command is None:

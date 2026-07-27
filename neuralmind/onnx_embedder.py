@@ -59,10 +59,20 @@ class OnnxMiniLMEmbedder:
     dim = 384
 
     def __init__(self, model_dir: str | os.PathLike[str] | None = None):
+        """Create an ONNX MiniLM embedder.
+
+        Args:
+            model_dir: Optional explicit path to the model folder.
+        """
         self._explicit_dir = Path(model_dir) if model_dir else None
 
     # ---------------------------------------------------------------- model dir
     def _resolve_model_dir(self) -> Path:
+        """Locate the ONNX model folder (env → cache → chroma cache → download).
+
+        Returns:
+            Path to folder containing model.onnx + tokenizer.json.
+        """
         env = os.environ.get("NEURALMIND_ONNX_MODEL_DIR")
         for cand in (
             self._explicit_dir,
@@ -77,6 +87,14 @@ class OnnxMiniLMEmbedder:
         return _NM_CACHE
 
     def _download_into(self, dest_onnx_dir: Path) -> None:
+        """Download + verify + extract the ONNX archive into dest_onnx_dir.
+
+        Args:
+            dest_onnx_dir: Target folder for extracted model.onnx.
+
+        Raises:
+            ValueError: If SHA256 mismatch (corrupted/tampered).
+        """
         # The archive extracts to an ``onnx/`` folder; download+extract one level up.
         root = dest_onnx_dir.parent
         root.mkdir(parents=True, exist_ok=True)
@@ -150,4 +168,12 @@ class OnnxMiniLMEmbedder:
         return np.concatenate(out)
 
     def __call__(self, texts: list[str]) -> list[list[float]]:
+        """Embed texts and return as a list of float lists.
+
+        Args:
+            texts: Input strings to embed.
+
+        Returns:
+            List of 384-dim unit-normalized vectors.
+        """
         return self.embed(texts).tolist()

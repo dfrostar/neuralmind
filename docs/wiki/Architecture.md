@@ -17,6 +17,7 @@ Deep dive into NeuralMind's 4-layer progressive disclosure system and technical 
 - [Embedding Strategy](#embedding-strategy)
 - [Community Detection](#community-detection)
 - [Performance Optimization](#performance-optimization)
+- [DocEvolver (v0.53.0)](#doc-evolver-v0530)
 
 ---
 
@@ -979,3 +980,78 @@ one budget holds (see [Limits & Failure Modes](Limits-and-Failure-Modes)).
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
 - [Release Notes v0.4.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes
 - [Release Notes v0.38.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md) - Hybrid search + feedback loop
+
+---
+
+## DocEvolver (v0.53.0)
+
+NeuralMind indexes markdown and JSDoc. Well-documented code is discoverable
+code. The DocEvolver closes the feedback loop: it finds methods that lack
+documentation (blind spots), generates JSDoc variants using mutation
+strategies, and evolves them against a retrieval fitness function — the
+same Recall@1 metric the probe uses.
+
+### How it works
+
+For each undocumented method, the evolver:
+
+1. **Samples** — generates N JSDoc variants via four mutation strategies:
+   `LENGTH` (1/3/5-line), `STRUCTURE` (Args/Returns vs prose-only vs mixed),
+   `KEYWORD_DENSITY` (method-name synonyms vs generic description),
+   `POSITION` (above vs inline for arrow functions).
+2. **Evaluates** — patches each variant into the source, runs a
+   natural-language query (``neuralmind query . "handle csv export"``), and
+   scores Recall@1 = 1/rank of the correct file.
+3. **Promotes** — the best variant beats the incumbent by a hysteresis
+   margin (0.05), then mutates around it for the next generation.
+4. **Patches** — after G generations, the winning JSDoc is written back to
+   the source file.
+
+### Population dynamics
+
+```
+Generation 0:  ***** (random variants, fitness ~0.3-0.5)
+Generation 1:  ****O (one promoted, fitness ~0.6)
+Generation 2:  ***OO (mutations around the winner, fitness ~0.7)
+...
+Generation N:  OOOOO (converged, fitness ≥ 0.7)
+```
+
+### Fitness function
+
+```
+fitness(variant) = 1 / rank_of_correct_file(query="humanized method name")
+```
+
+Score: 1.0 (rank #1), 0.5 (rank #2), 0.33 (rank #3), 0.0 (not found).
+
+### Usage
+
+```bash
+# Run full audit + evolution on a project
+neuralmind optimize-docs .
+
+# Dry-run (report only, no file changes)
+neuralmind optimize-docs . --dry-run
+
+# With pre-computed blind spots
+neuralmind probe . --json > spots.json
+neuralmind optimize-docs . --blind-spots spots.json
+
+# Custom evolution parameters
+neuralmind optimize-docs . --population 10 --generations 8 --hysteresis 0.03
+```
+
+### Files
+
+- [`neuralmind/doc_evolver.py`](../../neuralmind/doc_evolver.py) — main module
+- [`tests/test_doc_evolver.py`](../../tests/test_doc_evolver.py) — test suite
+
+### Why this matters
+
+Undocumented code is invisible to retrieval. An agent searching for
+"handle csv export" comes up empty when the method has no JSDoc — the
+embedding text is just the method name, which ranks low against natural
+language. DocEvolver turns undocumented methods into discoverable ones by
+finding the JSDoc that maximizes retrieval fitness, measured against the
+same index the agent actually uses.

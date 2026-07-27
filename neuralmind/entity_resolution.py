@@ -73,6 +73,15 @@ class EntityKey:
 
     @classmethod
     def from_label(cls, label: str, anchor: str | None = None) -> EntityKey:
+        """Build an EntityKey from a raw label string.
+
+        Args:
+            label: The node label (e.g., "auth.handle()").
+            anchor: Optional structural anchor for disambiguation.
+
+        Returns:
+            A normalized EntityKey for resolution.
+        """
         return cls(
             raw_label=label,
             norm=norm_label(label),
@@ -116,6 +125,12 @@ class EntityResolver:
         auto_merge_threshold: float = AUTO_MERGE_THRESHOLD,
         review_threshold: float = REVIEW_FLAG_THRESHOLD,
     ):
+        """Create an EntityResolver.
+
+        Args:
+            auto_merge_threshold: Cosine similarity for auto-merge (>=).
+            review_threshold: Cosine similarity for review flag (>=).
+        """
         self.auto_merge_threshold = auto_merge_threshold
         self.review_threshold = review_threshold
         # (norm_label, structural_anchor) → (entity_id, EntityKey) for registered entities.
@@ -195,6 +210,7 @@ class EntityResolver:
         return [self.resolve(label) for label in labels]
 
     def stats(self) -> dict:
+        """Return resolver stats: registered count + thresholds."""
         return {
             "registered_entities": len(self._entities),
             "auto_merge_threshold": self.auto_merge_threshold,

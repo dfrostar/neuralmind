@@ -345,7 +345,13 @@ class SynapseStore:
     :mod:`neuralmind.namespaces`); the store itself is git-agnostic.
     """
 
-    def __init__(self, db_path: str | Path, namespace: str | None = None):
+    def __init__(self, db_path: str | Path | None = None, namespace: str | None = None):
+        """Create a SynapseStore.
+
+        Args:
+            db_path: Path to the SQLite DB file (or None for default).
+            namespace: Optional namespace for the synapse store.
+        """
         self.db_path = Path(db_path)
         self.namespace = normalize_namespace(namespace) if namespace else DEFAULT_NAMESPACE
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

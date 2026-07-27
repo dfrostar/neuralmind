@@ -1,3 +1,24 @@
+"""config.py — project-level configuration loader for NeuralMind.
+
+Reads user overrides from ``~/.config/neuralmind/config.toml`` (or
+``$XDG_CONFIG_HOME/neuralmind/config.toml``) and merges them over the
+built-in DEFAULT_CONFIG. Used by the local-Ollama client and the
+embedding backend to resolve provider/endpoints without env-var juggling.
+
+Example:
+    >>> from neuralmind.config import load_config
+    >>> cfg = load_config()
+    >>> cfg["local_models"]["endpoint"]
+    'http://localhost:11434'
+
+See Also:
+    - ``neuralmind/local_client.py`` — consumer for the local-model section
+    - ``neuralmind/embedder.py`` — consumer for the api provider section
+
+Version:
+    0.53.0
+"""
+
 import os
 from pathlib import Path
 from typing import Any

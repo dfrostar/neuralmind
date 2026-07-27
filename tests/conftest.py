@@ -422,3 +422,32 @@ def temp_seat_env(tmp_path, monkeypatch):
         "private_key_hex": priv_hex,
         "config_dir": tmp_path,
     }
+
+
+@pytest.fixture
+def doc_evolver_project(tmp_path) -> Path:
+    """Create a small project with undocumented methods for DocEvolver tests.
+
+    Contains three undocumented functions in a TypeScript source file,
+    providing a fixture for testing the evolutionary JSDoc optimizer.
+    """
+    project = tmp_path / "project"
+    project.mkdir()
+    src = project / "src"
+    src.mkdir()
+
+    source_file = src / "export.ts"
+    source_file.write_text(
+        "function handleCSVExport(data) {\n"
+        "  return data.map(row => row.join(',')).join('\\n');\n"
+        "}\n"
+        "\n"
+        "function parseJSONInput(raw) {\n"
+        "  return JSON.parse(raw);\n"
+        "}\n"
+        "\n"
+        "const formatReportOutput = (report) => {\n"
+        "  return report.toString();\n"
+        "};\n"
+    )
+    return project

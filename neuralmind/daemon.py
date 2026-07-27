@@ -227,6 +227,8 @@ JOB_ERROR = "error"
 
 @dataclass
 class Job:
+    """A background job tracked by the daemon."""
+
     id: str
     kind: str
     project: str
@@ -303,6 +305,8 @@ class JobManager:
 
 @dataclass
 class DaemonContext:
+    """Per-request context for the daemon (auth, trace metadata)."""
+
     registry: ProjectRegistry
     jobs: JobManager
     version: str = ""
@@ -310,7 +314,15 @@ class DaemonContext:
 
 
 class DaemonError(Exception):
-    def __init__(self, status: int, message: str) -> None:
+    """Raised when the daemon rejects a request."""
+
+    def __init__(self, status: int, message: str):
+        """Create a daemon error.
+
+        Args:
+            status: HTTP status code to return.
+            message: Human-readable error message.
+        """
         super().__init__(message)
         self.status = status
         self.message = message

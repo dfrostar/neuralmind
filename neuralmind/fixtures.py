@@ -1,8 +1,17 @@
-# neuralmind/fixtures.py — Fixture query loader for tuner live eval (T1).
-#
-# Provides deterministic fixture queries the tuner uses to measure
-# real retrieval_quality and session_health per candidate. Part of
-# Wave 5 — closing the tuner faithfulness gap.
+"""fixtures.py — Fixture query loader for tuner live eval (T1).
+
+Provides deterministic fixture queries the tuner uses to measure
+real retrieval_quality and session_health per candidate. Part of
+Wave 5 — closing the tuner faithfulness gap.
+
+See Also:
+    - ``neuralmind/tuner.py`` — primary consumer (live A/B eval)
+    - ``neuralmind/fitness.py`` — scores candidates against fixtures
+    - ``tests/test_fixtures.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

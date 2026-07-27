@@ -57,6 +57,12 @@ class BM25Index:
     _VERSION = 1
 
     def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
+        """Create an empty BM25 index.
+
+        Args:
+            k1: Term-frequency saturation (higher = slower saturation).
+            b: Document-length normalization (0=none, 1=full).
+        """
         self.k1 = k1
         self.b = b
 
