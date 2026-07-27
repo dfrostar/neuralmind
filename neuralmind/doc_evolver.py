@@ -29,12 +29,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import random
 import re
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -53,10 +51,21 @@ HYSTERESIS = 0.05
 
 # Query reserved words that should be rejected or escaped to prevent
 # matching unrelated documents during evolution (W-3: query injection).
-QUERY_RESERVED_WORDS = frozenset({
-    "exec", "import", "eval", "compile", "__import__", "globals", "locals",
-    "getattr", "setattr", "delattr", "execfile",
-})
+QUERY_RESERVED_WORDS = frozenset(
+    {
+        "exec",
+        "import",
+        "eval",
+        "compile",
+        "__import__",
+        "globals",
+        "locals",
+        "getattr",
+        "setattr",
+        "delattr",
+        "execfile",
+    }
+)
 
 
 def _sanitize_query(query: str) -> str:
@@ -80,10 +89,7 @@ def _sanitize_query(query: str) -> str:
         raise ValueError("query string is empty")
     # If every word is a reserved word, reject the query
     if all(w.lower() in QUERY_RESERVED_WORDS for w in words):
-        raise ValueError(
-            f"query '{query}' consists only of reserved words; "
-            f"refusing to execute"
-        )
+        raise ValueError(f"query '{query}' consists only of reserved words; refusing to execute")
     # Escape individual reserved words by prefixing with underscore
     sanitized = []
     for w in words:
@@ -996,7 +1002,15 @@ class DocEvolver:
         # Shell out to neuralmind query
         try:
             result = subprocess.run(
-                [sys.executable, "-m", "neuralmind.cli", "query", str(self.project_path), query, "--json"],
+                [
+                    sys.executable,
+                    "-m",
+                    "neuralmind.cli",
+                    "query",
+                    str(self.project_path),
+                    query,
+                    "--json",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=60,
