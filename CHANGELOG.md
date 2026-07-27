@@ -1,5 +1,30 @@
 # Changelog
 
+## [1.6.0](https://github.com/dfrostar/neuralmind/compare/v1.5.0...v1.6.0) (2026-07-27)
+
+
+### Features
+
+* add DocEvolver for data-driven JSDoc optimization + self-review fixes ([41d407f](https://github.com/dfrostar/neuralmind/commit/41d407ff1295192237b56ffc817bb5e3f781d25c))
+* **v1.7.0:** free-tier auto-provision on wakeup + upgrade CTA + default tier fix ([891f806](https://github.com/dfrostar/neuralmind/commit/891f806f1155d5db61f7d83deecc9c89127477d6))
+
+
+### Bug Fixes
+
+* add .nojekyll to disable GitHub Pages Jekyll build ([20947f7](https://github.com/dfrostar/neuralmind/commit/20947f7ba2a0fffb9c930a2d00cec6260a3c2388))
+* **format:** ruff format turbovec_backend.py ([77015c4](https://github.com/dfrostar/neuralmind/commit/77015c4234c5de67f126a4ceebd1533fe4931699))
+* schema migration — add half_life_days BEFORE CREATE INDEX ([c2cbce8](https://github.com/dfrostar/neuralmind/commit/c2cbce82e602c76b2fa4c940c3602842a5acb29e))
+* **v1.7.0:** DeepSeek QA — --json contamination + atomic license write ([88f6e29](https://github.com/dfrostar/neuralmind/commit/88f6e295a951847e3205bbcb20f1d04144d6fa6d))
+
+
+### Documentation
+
+* organize v1.7.0 marketing campaign folder ([652d6a2](https://github.com/dfrostar/neuralmind/commit/652d6a284014b82f164f5124c17ac6e84370b71e))
+* publish real-world rebuild field report (48.8×, synapse edges 36→135) ([#390](https://github.com/dfrostar/neuralmind/issues/390)) ([98692e4](https://github.com/dfrostar/neuralmind/commit/98692e4f9c197a388a1e6ac8fda7ab8d4d1d9582))
+* **v1.7.0:** marketing index + release notes + sitemap ([7461284](https://github.com/dfrostar/neuralmind/commit/7461284843e284355ffc00380b7117c27b9b895e))
+* **v1.7.0:** marketing kit + LinkedIn about refresh + Codex outreach ([d551b3a](https://github.com/dfrostar/neuralmind/commit/d551b3a2966fb3db633ef4f8c799bbd778217348))
+* **v1.7.0:** Phase 2 — Tier2 Operator Guide, Upgrade Guide, onboarding CLI ref, wakeup memory opt-in ([bea7dd3](https://github.com/dfrostar/neuralmind/commit/bea7dd36c644f3e48538c56c26799a932a850593))
+
 ## [1.5.0](https://github.com/dfrostar/neuralmind/compare/v1.4.0...v1.5.0) (2026-07-21)
 
 
