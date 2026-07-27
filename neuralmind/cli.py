@@ -2420,7 +2420,7 @@ def cmd_optimize_docs(args):
             blind_spots = [
                 BlindSpot(
                     name=s.get("name", ""),
-                    file_path=s.get("file_path", s.get("source_file", "")),
+                    file_path=s.get("file_path", s.get("file", s.get("source_file", ""))),
                     line=s.get("line", 1),
                     method_type=s.get("method_type", "function"),
                     params=s.get("params", []),
