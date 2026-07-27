@@ -51,6 +51,49 @@ MAX_GENERATIONS = 5
 POPULATION_SIZE = 5
 HYSTERESIS = 0.05
 
+# Query reserved words that should be rejected or escaped to prevent
+# matching unrelated documents during evolution (W-3: query injection).
+QUERY_RESERVED_WORDS = frozenset({
+    "exec", "import", "eval", "compile", "__import__", "globals", "locals",
+    "getattr", "setattr", "delattr", "execfile",
+})
+
+
+def _sanitize_query(query: str) -> str:
+    """Sanitize a query string to prevent reserved-word injection.
+
+    Rejects queries that consist solely of reserved words (e.g. a method
+    named ``exec`` or ``import`` would produce a query string that matches
+    unrelated documents).
+
+    Args:
+        query: The raw query string.
+
+    Returns:
+        The sanitized query string.
+
+    Raises:
+        ValueError: If the query is empty or consists only of reserved words.
+    """
+    words = query.strip().split()
+    if not words:
+        raise ValueError("query string is empty")
+    # If every word is a reserved word, reject the query
+    if all(w.lower() in QUERY_RESERVED_WORDS for w in words):
+        raise ValueError(
+            f"query '{query}' consists only of reserved words; "
+            f"refusing to execute"
+        )
+    # Escape individual reserved words by prefixing with underscore
+    sanitized = []
+    for w in words:
+        if w.lower() in QUERY_RESERVED_WORDS:
+            sanitized.append(f"_{w}")
+        else:
+            sanitized.append(w)
+    return " ".join(sanitized)
+
+
 # Mutation strategy weights for sampling
 MUTATION_WEIGHTS = {
     "LENGTH": 0.3,
@@ -713,6 +756,10 @@ class DocEvolver:
         promoted = False
 
         for _gen in range(self.generations):
+            # W-1: Early exit if we've already achieved perfect fitness
+            if incumbent_fitness >= 1.0:
+                break
+
             gen_best_variant = incumbent_variant
             gen_best_fitness = incumbent_fitness
 
@@ -942,6 +989,9 @@ class DocEvolver:
         """
         if self.query_fn is not None:
             return self.query_fn(str(self.project_path), query)
+
+        # Sanitize query to prevent reserved-word injection (W-3)
+        query = _sanitize_query(query)
 
         # Shell out to neuralmind query
         try:
