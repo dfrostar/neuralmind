@@ -7,7 +7,6 @@ full evolution loop, and fail-open behavior.
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -23,8 +22,8 @@ from neuralmind.doc_evolver import (
     _detect_method_type,
     _extract_params,
     _get_synonyms,
-    audit_blind_spots,
     _scan_file_for_blind_spots,
+    audit_blind_spots,
 )
 
 # ---------------------------------------------------------------------------
