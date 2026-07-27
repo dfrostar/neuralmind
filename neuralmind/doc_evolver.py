@@ -290,7 +290,7 @@ def _extract_params(source_line: str) -> list[str]:
         # Handle default values
         param = param.split("=")[0].strip()
         # Handle destructuring
-        if param.startswith("{") or param.startswith("["):
+        if param.startswith(("{", "[")):
             continue
         # Handle type annotations (TypeScript)
         param = param.split(":")[0].strip()
@@ -710,7 +710,7 @@ class DocEvolver:
         best_fitness = incumbent_fitness
         promoted = False
 
-        for gen in range(self.generations):
+        for _gen in range(self.generations):
             gen_best_variant = incumbent_variant
             gen_best_fitness = incumbent_fitness
 
@@ -1003,7 +1003,7 @@ class DocEvolver:
 
         try:
             lines = file_path.read_text(encoding="utf-8").splitlines()
-            for i, line in enumerate(lines):
+            for _i, line in enumerate(lines):
                 if spot.name in line:
                     method_type = _detect_method_type(line)
                     params = _extract_params(line)
@@ -1032,10 +1032,7 @@ class DocEvolver:
         content = file_path.read_text(encoding="utf-8")
         lines = content.splitlines()
 
-        # Find the method line
-        name = variant.lines[0] if variant.lines else ""
-        # We need the method name — reconstruct from the variant
-        # Actually, we need to find the method by line number
+        # Find the method by line number
         insert_idx = self._find_method_line_by_number(lines, line)
         if insert_idx is None:
             raise ValueError(f"could not locate method at line {line}")
@@ -1166,7 +1163,7 @@ def _scan_file_for_blind_spots(content: str, file_path: str) -> list[BlindSpot]:
                 if stripped.endswith("*/"):
                     has_jsdoc = True
                     break
-                elif stripped and not stripped.startswith("//"):
+                if stripped and not stripped.startswith("//"):
                     break
 
             if has_jsdoc:
