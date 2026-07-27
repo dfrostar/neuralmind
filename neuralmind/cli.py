@@ -2432,6 +2432,7 @@ def cmd_optimize_docs(args):
             sys.exit(1)
     else:
         from neuralmind.doc_evolver import audit_blind_spots
+
         blind_spots = audit_blind_spots(project_path)
 
     if not blind_spots:
@@ -2446,7 +2447,9 @@ def cmd_optimize_docs(args):
         print(json.dumps({"status": "starting", "blind_spots": len(blind_spots)}))
     else:
         print(f"DocEvolver — {len(blind_spots)} undocumented method(s) in {project_path.name}")
-        print(f"  Pop={args.population or 5}, Gen={args.generations or 5}, Hyst={args.hysteresis or 0.05}")
+        print(
+            f"  Pop={args.population or 5}, Gen={args.generations or 5}, Hyst={args.hysteresis or 0.05}"
+        )
         print("=" * 60)
 
     # Build evolver

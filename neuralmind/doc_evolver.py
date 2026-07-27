@@ -59,16 +59,16 @@ MUTATION_WEIGHTS = {
 
 # JSDoc length variants
 LENGTH_VARIANTS = {
-    "short": 1,   # 1-line
+    "short": 1,  # 1-line
     "medium": 3,  # 3-line
-    "long": 5,    # 5-line
+    "long": 5,  # 5-line
 }
 
 # JSDoc structure variants
 STRUCTURE_VARIANTS = [
-    "args_returns",   # Args/Returns/Raises
-    "prose_only",     # prose-only
-    "mixed",          # mixed
+    "args_returns",  # Args/Returns/Raises
+    "prose_only",  # prose-only
+    "mixed",  # mixed
 ]
 
 
@@ -355,9 +355,7 @@ class JSDocGenerator:
             position = self._rng.choice(["above", "inline"])
 
         # Generate lines based on structure and length
-        lines = self._build_lines(
-            name, params or [], n_lines, structure, keyword_density
-        )
+        lines = self._build_lines(name, params or [], n_lines, structure, keyword_density)
 
         return JSDocVariant(
             strategy=strategy,
@@ -435,9 +433,7 @@ class JSDocGenerator:
 
         return lines
 
-    def _build_description(
-        self, words: str, synonyms: list[str], keyword_density: str
-    ) -> str:
+    def _build_description(self, words: str, synonyms: list[str], keyword_density: str) -> str:
         """Build a one-line description for the method.
 
         Args:
@@ -528,9 +524,7 @@ class JSDocGenerator:
             else self._rng.choice(list(LENGTH_VARIANTS.keys()))
         )
         structure = (
-            variant.structure
-            if self._rng.random() < 0.5
-            else self._rng.choice(STRUCTURE_VARIANTS)
+            variant.structure if self._rng.random() < 0.5 else self._rng.choice(STRUCTURE_VARIANTS)
         )
         keyword_density = (
             variant.keyword_density
@@ -620,7 +614,9 @@ class DocEvolver:
             log.warning("hysteresis must be positive, got %r — using default 0.05", self.hysteresis)
             self.hysteresis = 0.05
         if self.population_size <= 0:
-            log.warning("population_size must be positive, got %r — using default 5", self.population_size)
+            log.warning(
+                "population_size must be positive, got %r — using default 5", self.population_size
+            )
             self.population_size = POPULATION_SIZE
         if self.generations <= 0:
             log.warning("generations must be positive, got %r — using default 5", self.generations)
@@ -707,9 +703,7 @@ class DocEvolver:
                     source_params = detected[1]
 
         # Generate initial population
-        incumbent_variant = self._generator.generate(
-            spot.name, source_params, source_method_type
-        )
+        incumbent_variant = self._generator.generate(spot.name, source_params, source_method_type)
         incumbent_fitness = self._evaluate_candidate(spot, incumbent_variant)
 
         best_variant = incumbent_variant if incumbent_fitness > 0 else None
@@ -902,6 +896,7 @@ class DocEvolver:
 
             # Restore original content (we used temp file, so nothing to restore)
             import os
+
             os.unlink(tmp_path)
 
             # Score by rank of correct file
@@ -956,9 +951,7 @@ class DocEvolver:
             log.warning("query execution failed: %s", exc)
             return []
 
-    def _find_method_line(
-        self, lines: list[str], spot: BlindSpot
-    ) -> int | None:
+    def _find_method_line(self, lines: list[str], spot: BlindSpot) -> int | None:
         """Find the line index where JSDoc should be inserted.
 
         Searches around the expected line number for the method signature.
@@ -1024,9 +1017,7 @@ class DocEvolver:
     # Patching
     # ------------------------------------------------------------------- #
 
-    def _patch_file(
-        self, file_path: Path, line: int, variant: JSDocVariant
-    ) -> None:
+    def _patch_file(self, file_path: Path, line: int, variant: JSDocVariant) -> None:
         """Patch a JSDoc variant into a source file.
 
         Args:
@@ -1060,9 +1051,7 @@ class DocEvolver:
 
         file_path.write_text(new_content, encoding="utf-8")
 
-    def _find_method_line_by_number(
-        self, lines: list[str], line: int
-    ) -> int | None:
+    def _find_method_line_by_number(self, lines: list[str], line: int) -> int | None:
         """Find the 0-based line index for a 1-based line number.
 
         Args:
@@ -1100,8 +1089,17 @@ def audit_blind_spots(project_path: str | Path) -> list[BlindSpot]:
     spots: list[BlindSpot] = []
 
     skip_dirs = {
-        "node_modules", ".git", "dist", "build", ".next", "coverage",
-        "__pycache__", ".venv", "venv", ".neuralmind", "graphify-out",
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        ".next",
+        "coverage",
+        "__pycache__",
+        ".venv",
+        "venv",
+        ".neuralmind",
+        "graphify-out",
     }
 
     source_extensions = {".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs"}
@@ -1122,9 +1120,7 @@ def audit_blind_spots(project_path: str | Path) -> list[BlindSpot]:
     return spots
 
 
-def _scan_file_for_blind_spots(
-    content: str, file_path: str
-) -> list[BlindSpot]:
+def _scan_file_for_blind_spots(content: str, file_path: str) -> list[BlindSpot]:
     """Scan a single file for undocumented methods.
 
     Args:
@@ -1142,7 +1138,9 @@ def _scan_file_for_blind_spots(
         # function name(...) or export function name(...)
         re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\("),
         # const name = (...) => or const name = function(...)
-        re.compile(r"^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:async\s+)?(?:\(|function\b)"),
+        re.compile(
+            r"^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(?:async\s+)?(?:\(|function\b)"
+        ),
         # class method: name(...) {
         re.compile(r"^\s*(?:async\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\)\s*\{"),
     ]
