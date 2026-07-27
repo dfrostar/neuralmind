@@ -1,17 +1,27 @@
-# tuner.py — population-based evolutionary search (PRD 2 C3).
-#
-# Critical path. The tuner is the moat: it makes the product
-# self-improving at the local level without a research team.
-#
-# Local-first: runs in the daemon, offline (weekly, configurable).
-# Population 10-20, bounded generations (5-10), Gaussian perturbation
-# around current best + uniform-exploration probability 0.15.
-# Evaluation uses C1 fitness (``neuralmind/fitness.py``) against real
-# query traces from ``reasoning_traces`` (A1). CI-gated promotion with
-# hysteresis margin.
-#
-# Fail-open: if fitness eval fails, the incumbent stands; no partial
-# promotion; unknown parameter names are logged and skipped, never crash.
+"""tuner.py — population-based evolutionary search (C3).
+
+Critical path. The tuner is the moat: it makes the product
+self-improving at the local level without a research team.
+
+Local-first: runs in the daemon, offline (weekly, configurable).
+Population 10-20, bounded generations (5-10), Gaussian perturbation
+around current best + uniform-exploration probability 0.15.
+Evaluation uses C1 fitness (``neuralmind/fitness.py``) against real
+query traces from ``reasoning_traces`` (A1). CI-gated promotion with
+hysteresis margin.
+
+Fail-open: if fitness eval fails, the incumbent stands; no partial
+promotion; unknown parameter names are logged and skipped, never crash.
+
+See Also:
+    - ``neuralmind/fitness.py`` — multi-objective fitness function (C1)
+    - ``neuralmind/tuning.py`` — parameter registry (C2)
+    - ``neuralmind/quality_harness.py`` — independent validation gate (C4)
+    - ``tests/test_tuner.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

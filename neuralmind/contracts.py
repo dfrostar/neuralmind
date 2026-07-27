@@ -1,12 +1,21 @@
-# neuralmind/contracts.py — shared definitions for Wave 3
-#
-# Frozen after Wave 3a spike. Consumed by every Wave 3 workstream:
-#   C2/C3 (tuning parameter registry)
-#   A3 (learned per-edge decay bounds/meta keys)
-#   A4 (sleep consolidation meta keys)
-#   F2 (shared daemon memory scopes)
-#
-# Local-first, stdlib-only. No heavy deps.
+"""contracts.py — shared definitions for the self-improvement engine.
+
+Frozen after Wave 3a spike. Consumed by every Wave 3 workstream:
+  C2/C3 (tuning parameter registry)
+  A3 (learned per-edge decay bounds/meta keys)
+  A4 (sleep consolidation meta keys)
+  F2 (shared daemon memory scopes)
+
+Local-first, stdlib-only. No heavy deps.
+
+See Also:
+    - ``neuralmind/tuning.py`` — populates the TUNABLE_PARAMS registry
+    - ``neuralmind/learned_decay.py`` — uses the decay meta keys
+    - ``neuralmind/sleep.py`` — uses the sleep meta keys
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

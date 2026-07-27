@@ -1,11 +1,20 @@
-# learned_decay.py — per-edge half-life rates adapted from reinforcement history (PRD 2 A3).
-#
-# Replaces fixed HALF_LIFE_DAYS scalars with per-edge rates. Bounded to
-# [DECAY_RATE_MIN, DECAY_RATE_MAX]. The C3 tuner learns the bounds;
-# this module adapts individual edges based on reinforcement frequency
-# and recency.
-#
-# Pure, stdlib-only, fail-open.
+"""learned_decay.py — per-edge half-life rates adapted from reinforcement history (A3).
+
+Replaces fixed HALF_LIFE_DAYS scalars with per-edge rates. Bounded to
+[DECAY_RATE_MIN, DECAY_RATE_MAX]. The C3 tuner learns the bounds;
+this module adapts individual edges based on reinforcement frequency
+and recency.
+
+Pure, stdlib-only, fail-open.
+
+See Also:
+    - ``neuralmind/contracts.py`` — decay meta key constants
+    - ``neuralmind/synapses.py`` — stores per-edge half_life_days
+    - ``tests/test_learned_decay.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

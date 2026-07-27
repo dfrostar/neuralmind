@@ -1,12 +1,21 @@
-# daemon_memory.py — shared warm daemon memory across MCP clients (PRD 2 F2).
-#
-# MCP clients connect to the daemon and share the warm NeuralMind instance
-# + synapse store + selector cache. Per-client access scoping ensures one
-# client cannot read another's synapses. The second MCP client starts
-# <=1s after the first (vs. full cold-start).
-#
-# Fail-open: if shared state is unavailable, fall back to cold-start.
-# Pure stdlib at module level.
+"""daemon_memory.py — shared warm daemon memory across MCP clients (F2).
+
+MCP clients connect to the daemon and share the warm NeuralMind instance
++ synapse store + selector cache. Per-client access scoping ensures one
+client cannot read another's synapses. The second MCP client starts
+<=1s after the first (vs. full cold-start).
+
+Fail-open: if shared state is unavailable, fall back to cold-start.
+Pure stdlib at module level.
+
+See Also:
+    - ``neuralmind/daemon.py`` — ProjectRegistry owns the warm instances
+    - ``neuralmind/mcp_server.py`` — registers clients on connect
+    - ``tests/test_daemon_memory.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

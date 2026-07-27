@@ -1,12 +1,21 @@
-# tuning.py — expanded parameter space for the self-improvement engine (PRD 2 C2).
-#
-# Maps every knob the tuner can optimize into a ``TuneableParam`` and
-# registers them in ``neuralmind/contracts.py``. The tuner (C3), the
-# context selector, the decay module, and the CLI all read from this
-# registry — no hardcoded constants scattered across modules.
-#
-# Pure, stdlib-only, fail-open: unknown parameter names are logged and
-# skipped, never crash.
+"""tuning.py — expanded parameter space for the self-improvement engine (C2).
+
+Maps every knob the tuner can optimize into a ``TuneableParam`` and
+registers them in ``neuralmind/contracts.py``. The tuner (C3), the
+context selector, the decay module, and the CLI all read from this
+registry — no hardcoded constants scattered across modules.
+
+Pure, stdlib-only, fail-open: unknown parameter names are logged and
+skipped, never crash.
+
+See Also:
+    - ``neuralmind/contracts.py`` — TuneableParam dataclass + registry
+    - ``neuralmind/tuner.py`` — consumer (C3)
+    - ``tests/test_tuning.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

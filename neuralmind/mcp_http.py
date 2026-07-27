@@ -1,13 +1,22 @@
-# mcp_http.py — Streamable HTTP MCP transport (PRD 2 F1).
-#
-# Implements the 2026 MCP spec (Streamable HTTP sessions, OAuth 2.1).
-# Stdio transport is retained as fallback for local CLI.
-#
-# Gated behind NEURALMIND_MCP_TRANSPORT=streamable_http. Default: stdio
-# (byte-compatible). Multi-client sessions (>=3 concurrent).
-#
-# Pure stdlib at module level; heavy deps (starlette, mcp) are imported
-# lazily so test/CI contexts without them still import cleanly.
+"""mcp_http.py — Streamable HTTP MCP transport (F1).
+
+Implements the 2026 MCP spec (Streamable HTTP sessions, OAuth 2.1).
+Stdio transport is retained as fallback for local CLI.
+
+Gated behind NEURALMIND_MCP_TRANSPORT=streamable_http. Default: stdio
+(byte-compatible). Multi-client sessions (>=3 concurrent).
+
+Pure stdlib at module level; heavy deps (starlette, mcp) are imported
+lazily so test/CI contexts without them still import cleanly.
+
+See Also:
+    - ``neuralmind/mcp_server.py`` — stdio MCP server
+    - ``neuralmind/mcp_security.py`` — RBAC + rate limiting
+    - ``tests/test_mcp_http.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

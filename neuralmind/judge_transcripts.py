@@ -1,13 +1,22 @@
-# neuralmind/judge_transcripts.py — judge transcript loader + generator (PRD 2 D3).
-#
-# D3 closes the "empty bench/public/judge/ directory" gap. This module:
-# 1. Loads + validates existing judge transcripts
-# 2. Generates new offline transcripts from the benchmark_queries fixtures
-#    (no API cost — derives reference answers from expected_facts)
-# 3. Provides a CLI: python -m neuralmind.judge_transcripts --generate
-#
-# The offline transcripts complement the opt-in LLM-judged arm
-# (neuralmind benchmark --public --judge, requires ANTHROPIC_API_KEY).
+"""judge_transcripts.py — judge transcript loader + generator (PRD 2 D3).
+
+D3 closes the "empty bench/public/judge/" directory" gap. This module:
+1. Loads + validates existing judge transcripts
+2. Generates new offline transcripts from the benchmark_queries fixtures
+   (no API cost — derives reference answers from expected_facts)
+3. Provides a CLI: python -m neuralmind.judge_transcripts --generate
+
+The offline transcripts complement the opt-in LLM-judged arm
+(neuralmind benchmark --public --judge, requires ANTHROPIC_API_KEY).
+
+See Also:
+    - ``evals/faithfulness/runner.py`` — online judge counterpart
+    - ``neuralmind/benchmark_turbovec.py`` — invokes judge on results
+    - ``tests/test_judge_transcripts.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

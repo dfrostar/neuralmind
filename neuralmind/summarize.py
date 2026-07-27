@@ -1,13 +1,22 @@
-# summarize.py — RAPTOR-style hierarchical summarization for L0-L3 (PRD 2 B4).
-#
-# Replaces hand-tuned ``L0_MAX_TOKENS`` / ``L1_MAX_TOKENS`` constants with
-# a learned depth selector. RAPTOR-style recursive summarization at each
-# layer, operating within the IR contract (B1). Gated behind
-# ``NEURALMIND_SUMMARIZE=1``; falls back to hand-tuned constants when
-# disabled or when the embed_fn is unavailable. Layer budgets remain
-# byte-compatible with the existing context selector.
-#
-# Pure, stdlib-only, fail-open.
+"""summarize.py — RAPTOR-style hierarchical summarization for L0-L3 (B4).
+
+Replaces hand-tuned ``L0_MAX_TOKENS`` / ``L1_MAX_TOKENS`` constants with
+a learned depth selector. RAPTOR-style recursive summarization at each
+layer, operating within the IR contract (B1). Gated behind
+``NEURALMIND_SUMMARIZE=1``; falls back to hand-tuned constants when
+disabled or when the embed_fn is unavailable. Layer budgets remain
+byte-compatible with the existing context selector.
+
+Pure, stdlib-only, fail-open.
+
+See Also:
+    - ``neuralmind/context_selector.py`` — consumes SummaryResult
+    - ``neuralmind/tuning.py`` — depth selector param definitions
+    - ``tests/test_summarize.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

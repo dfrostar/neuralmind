@@ -1,13 +1,22 @@
-# sleep.py — offline daemon sleep pass for memory consolidation (PRD 2 A4).
-#
-# Scheduled (weekly, configurable via NEURALMIND_SLEEP_INTERVAL_DAYS):
-# - Prune redundant edges (below PRUNE_THRESHOLD, no reinforcement in N days)
-# - Promote LTP edges that survived decay
-# - Emit consolidated team-baseline bundle
-# - Detect stale team edges (no reinforcement in N days)
-#
-# Runs offline, fail-open: any error during a sub-step is logged and
-# other sub-steps continue; never blocks query/build/search.
+"""sleep.py — offline daemon sleep pass for memory consolidation (A4).
+
+Scheduled (weekly, configurable via NEURALMIND_SLEEP_INTERVAL_DAYS):
+- Prune redundant edges (below PRUNE_THRESHOLD, no reinforcement in N days)
+- Promote LTP edges that survived decay
+- Emit consolidated team-baseline bundle
+- Detect stale team edges (no reinforcement in N days)
+
+Runs offline, fail-open: any error during a sub-step is logged and
+other sub-steps continue; never blocks query/build/search.
+
+See Also:
+    - ``neuralmind/contracts.py`` — sleep meta key constants
+    - ``neuralmind/learned_decay.py`` — decay integration in sleep
+    - ``tests/test_sleep.py`` — test cases
+
+Version:
+    0.53.0
+"""
 
 from __future__ import annotations
 

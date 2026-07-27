@@ -40,6 +40,8 @@ def _resolve_actor(explicit: str | None = None) -> str:
 
 @dataclass
 class AuditEvent:
+    """A single auditable event with actor, action, and resource."""
+
     category: str
     action: str
     actor: str
