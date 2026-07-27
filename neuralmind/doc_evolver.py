@@ -33,6 +33,7 @@ import os
 import random
 import re
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from enum import Enum
@@ -595,7 +596,7 @@ class DocEvolver:
         if not blind_spots:
             raise ValueError("blind_spots must not be empty")
 
-        self.project_path = Path(project_path)
+        self.project_path = Path(project_path).resolve()
         self.blind_spots = blind_spots
         self.population_size = population_size or int(
             __import__("os").environ.get("NEURALMIND_DOC_EVOLVER_POPULATION", POPULATION_SIZE)
@@ -854,6 +855,9 @@ class DocEvolver:
     def _evaluate_candidate(self, spot: BlindSpot, variant: JSDocVariant) -> float:
         """Score a variant by patching, querying, and measuring Recall@1.
 
+        Patches the JSDoc into the actual source file, rebuilds the index,
+        runs a retrieval query, then restores the original content.
+
         Args:
             spot: The blind spot.
             variant: The JSDoc variant.
@@ -881,24 +885,26 @@ class DocEvolver:
         patched_lines = lines[:insert_line] + jsdoc_lines + lines[insert_line:]
         patched_content = "\n".join(patched_lines) + "\n"
 
-        # Write patched content to a temp file and query
+        # Write patched content to actual source file, rebuild index, query, restore
         try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", suffix=".ts", delete=False, encoding="utf-8"
-            ) as tmp:
-                tmp.write(patched_content)
-                tmp_path = tmp.name
+            file_path.write_text(patched_content, encoding="utf-8")
+
+            # Rebuild index with patched content
+            build_result = subprocess.run(
+                [sys.executable, "-m", "neuralmind.cli", "build", str(self.project_path)],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if build_result.returncode != 0:
+                log.warning("neuralmind build failed: %s", build_result.stderr)
+                return 0.0
 
             # Build query from method name
             query = _camel_to_words(spot.name)
 
             # Run query
             ranked_files = self._run_query(query)
-
-            # Restore original content (we used temp file, so nothing to restore)
-            import os
-
-            os.unlink(tmp_path)
 
             # Score by rank of correct file
             target_file = spot.file_path.replace("\\", "/")
@@ -911,6 +917,10 @@ class DocEvolver:
         except Exception as exc:
             log.warning("evaluation failed for %s: %s", spot.name, exc)
             return 0.0
+
+        finally:
+            # Always restore original content
+            file_path.write_text(original_content, encoding="utf-8")
 
     def _run_query(self, query: str) -> list[str]:
         """Run a retrieval query and return ranked source files.
@@ -929,13 +939,8 @@ class DocEvolver:
 
         # Shell out to neuralmind query
         try:
-            nm_path = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "..", "..", "bin", "neuralmind"
-            )
-            if not os.path.exists(nm_path):
-                nm_path = "neuralmind"
             result = subprocess.run(
-                [nm_path, "query", str(self.project_path), query, "--json"],
+                [sys.executable, "-m", "neuralmind.cli", "query", str(self.project_path), query, "--json"],
                 capture_output=True,
                 text=True,
                 timeout=60,
