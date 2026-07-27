@@ -27,7 +27,6 @@ from neuralmind.doc_evolver import (
     _scan_file_for_blind_spots,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -69,7 +68,9 @@ def blind_spots() -> list[BlindSpot]:
     return [
         BlindSpot(name="handleCSVExport", file_path="src/export.ts", line=1),
         BlindSpot(name="parseJSONInput", file_path="src/export.ts", line=5),
-        BlindSpot(name="formatReportOutput", file_path="src/export.ts", line=9, method_type="arrow"),
+        BlindSpot(
+            name="formatReportOutput", file_path="src/export.ts", line=9, method_type="arrow"
+        ),
     ]
 
 
@@ -223,10 +224,10 @@ class TestDocEvolverInit:
         with pytest.raises(ValueError, match="blind_spots must not be empty"):
             DocEvolver(project_path=tmp_project, blind_spots=[])
 
-    def test_init_negative_hysteresis_fallback(self, tmp_project: Path, blind_spots: list[BlindSpot]) -> None:
-        evolver = DocEvolver(
-            project_path=tmp_project, blind_spots=blind_spots, hysteresis=-0.1
-        )
+    def test_init_negative_hysteresis_fallback(
+        self, tmp_project: Path, blind_spots: list[BlindSpot]
+    ) -> None:
+        evolver = DocEvolver(project_path=tmp_project, blind_spots=blind_spots, hysteresis=-0.1)
         assert evolver.hysteresis == 0.05
 
 
