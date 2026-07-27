@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 import re
 import subprocess
@@ -928,8 +929,13 @@ class DocEvolver:
 
         # Shell out to neuralmind query
         try:
+            nm_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "..", "bin", "neuralmind"
+            )
+            if not os.path.exists(nm_path):
+                nm_path = "neuralmind"
             result = subprocess.run(
-                ["neuralmind", "query", str(self.project_path), query, "--json"],
+                [nm_path, "query", str(self.project_path), query, "--json"],
                 capture_output=True,
                 text=True,
                 timeout=60,
