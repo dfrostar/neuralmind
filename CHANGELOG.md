@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.8.0](https://github.com/dfrostar/neuralmind/compare/v1.7.1...v1.8.0) (2026-07-27)
+
+
+### Features
+
+* add DocEvolver for data-driven JSDoc optimization + self-review fixes ([41d407f](https://github.com/dfrostar/neuralmind/commit/41d407ff1295192237b56ffc817bb5e3f781d25c))
+
+
+### Bug Fixes
+
+* add .nojekyll to disable GitHub Pages Jekyll build ([20947f7](https://github.com/dfrostar/neuralmind/commit/20947f7ba2a0fffb9c930a2d00cec6260a3c2388))
+* add .nojekyll to docs/ to disable GitHub Pages Jekyll build ([221f1b8](https://github.com/dfrostar/neuralmind/commit/221f1b8c77b04b7302363a6c8e936ebab5427766))
+* add missing os import in doc_evolver ([ed9b2f8](https://github.com/dfrostar/neuralmind/commit/ed9b2f8e991468623b9cf0257a7ba914887264bc))
+* **format:** ruff format turbovec_backend.py ([77015c4](https://github.com/dfrostar/neuralmind/commit/77015c4234c5de67f126a4ceebd1533fe4931699))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([3c3e7c9](https://github.com/dfrostar/neuralmind/commit/3c3e7c953889093620e9c272b18a8a329e11e13a))
+* v1.7.2 release notes + public surface update ([663d708](https://github.com/dfrostar/neuralmind/commit/663d7085891ef556253121ebd24dc2f9323f5c31))
+
 ## [1.5.0](https://github.com/dfrostar/neuralmind/compare/v1.4.0...v1.5.0) (2026-07-21)
 
 
