@@ -915,7 +915,7 @@ class DocEvolver:
         """Run a retrieval query and return ranked source files.
 
         Uses the injected ``query_fn`` if provided (for testing), otherwise
-        shells out to ``neuralmind query``.
+        shells out to ``neuralmind query`` and parses the JSON output.
 
         Args:
             query: Natural-language query string.
@@ -939,12 +939,32 @@ class DocEvolver:
                 return []
 
             data = json.loads(result.stdout)
-            hits = data.get("trace", {}).get("l3_hits", [])
+            context = data.get("context", "")
+
+            # Parse file paths from markdown search results
+            # Pattern: "File: path/to/file.ext" or "**file** (score: N)\n   Type: code\n   File: path"
             files = []
-            for hit in hits:
-                src = hit.get("source_file", hit.get("file", ""))
-                if src:
-                    files.append(src)
+            for match in re.finditer(r"File:\s+([^\s,\n]+)", context):
+                f = match.group(1).strip()
+                # Filter out non-file references
+                if "/" in f or f.endswith(
+                    (
+                        ".ts",
+                        ".tsx",
+                        ".py",
+                        ".js",
+                        ".jsx",
+                        ".go",
+                        ".rs",
+                        ".java",
+                        ".cs",
+                        ".cpp",
+                        ".c",
+                        ".rb",
+                        ".php",
+                    )
+                ):
+                    files.append(f)
             return files
 
         except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as exc:
