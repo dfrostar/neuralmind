@@ -83,3 +83,4 @@ evals/parity/parity_report.md
 
 # Claude Code personal dev config (hooks, settings)
 .claude/
+**/.neuralmind/extraction_cache.json
