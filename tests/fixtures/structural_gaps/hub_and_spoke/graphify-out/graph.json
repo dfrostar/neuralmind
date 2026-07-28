@@ -1,0 +1,71 @@
+{
+  "nodes": [
+    {
+      "id": "hub",
+      "label": "Hub",
+      "community": 0
+    },
+    {
+      "id": "s1",
+      "label": "S1",
+      "community": 0
+    },
+    {
+      "id": "s2",
+      "label": "S2",
+      "community": 0
+    },
+    {
+      "id": "s3",
+      "label": "S3",
+      "community": 1
+    },
+    {
+      "id": "s4",
+      "label": "S4",
+      "community": 1
+    },
+    {
+      "id": "s5",
+      "label": "S5",
+      "community": 2
+    },
+    {
+      "id": "s6",
+      "label": "S6",
+      "community": 2
+    }
+  ],
+  "links": [
+    {
+      "source": "hub",
+      "target": "s1",
+      "relation": "calls"
+    },
+    {
+      "source": "hub",
+      "target": "s2",
+      "relation": "calls"
+    },
+    {
+      "source": "hub",
+      "target": "s3",
+      "relation": "calls"
+    },
+    {
+      "source": "hub",
+      "target": "s4",
+      "relation": "calls"
+    },
+    {
+      "source": "hub",
+      "target": "s5",
+      "relation": "calls"
+    },
+    {
+      "source": "hub",
+      "target": "s6",
+      "relation": "calls"
+    }
+  ]
+}

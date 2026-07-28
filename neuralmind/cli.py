@@ -2512,6 +2512,50 @@ def cmd_optimize_docs(args):
                 print("\nNo files were patched (no winning variants found).")
 
 
+def _cmd_gaps_structural(args):
+    """Run structural gap detection (G5) and output results."""
+    import json
+    import os
+
+    from .structural_gaps import detect_gaps, format_structural_gaps
+
+    project_path = getattr(args, "project_path", ".")
+    threshold = getattr(args, "threshold", 0.1)
+    top_k = getattr(args, "top_k", 10)
+    as_json = getattr(args, "json", False)
+
+    graph_path = os.path.join(project_path, "graphify-out", "graph.json")
+    if not os.path.exists(graph_path):
+        print("No graph found. Run `neuralmind build` first.")
+        return
+
+    with open(graph_path, encoding="utf-8") as f:
+        graph = json.load(f)
+
+    gaps = detect_gaps(graph, top_k=top_k, threshold=threshold)
+
+    if as_json:
+        output = {
+            "gaps": [
+                {
+                    "node_id": g.node_id,
+                    "node_name": g.node_name,
+                    "communities": list(g.communities),
+                    "betweenness": g.betweenness,
+                    "degree": g.degree,
+                    "gap_score": g.gap_score,
+                    "suggested_connections": list(g.suggested_connections),
+                }
+                for g in gaps
+            ],
+            "total_nodes": len(graph.get("nodes", [])),
+            "total_edges": len(graph.get("links", [])),
+        }
+        print(json.dumps(output, indent=2))
+    else:
+        print(format_structural_gaps(gaps))
+
+
 def cmd_gaps(args):
     """Find endpoints tested only in mock mode — the coverage that lies.
 
@@ -2519,7 +2563,15 @@ def cmd_gaps(args):
     test files for the routes they exercise, then classifies each endpoint
     as live-covered / mock-only / untested. Phase 1 heuristics (Express +
     Jest); an endpoint "green" only under a mocked store is the P2003 shape.
+
+    With ``--structural``, uses graph-topological gap detection (G5) to
+    identify cross-community bridge nodes and structural blind spots.
     """
+    structural = getattr(args, "structural", False)
+    if structural:
+        _cmd_gaps_structural(args)
+        return
+
     import os
 
     from .gaps import classify, extract_routes, extract_test_refs, format_gaps
@@ -3227,6 +3279,29 @@ def main():
         nargs="?",
         default=".",
         help="Project root to scan (default: current directory)",
+    )
+    gaps_p.add_argument(
+        "--structural",
+        action="store_true",
+        help="Use structural gap detection (betweenness centrality + bridge analysis)",
+    )
+    gaps_p.add_argument(
+        "--threshold",
+        type=float,
+        default=0.1,
+        help="Betweenness threshold for structural gaps (default: 0.1)",
+    )
+    gaps_p.add_argument(
+        "--top-k",
+        type=int,
+        default=10,
+        help="Max results for structural gaps (default: 10)",
+    )
+    gaps_p.add_argument(
+        "--json",
+        "-j",
+        action="store_true",
+        help="Output in JSON format",
     )
     gaps_p.set_defaults(func=cmd_gaps)
 
