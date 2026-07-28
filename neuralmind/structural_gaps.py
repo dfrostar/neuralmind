@@ -108,7 +108,7 @@ def compute_betweenness(
     """Compute betweenness centrality via Brandes algorithm (weighted).
 
     Runs Dijkstra from every node (O(VE + V² log V) for weighted graphs).
-    For graphs larger than MAX_BETWEENNESS_NODES, samples k ≈ min(V, 1000)
+    For graphs larger than MAX_BETWEENNESS_NODES, samples k = min(V, 100)
     source nodes uniformly and scales the result back.
 
     Args:
@@ -219,9 +219,6 @@ def find_bridge_candidates(
     betweenness = compute_betweenness(graph, normalized=True)
     nodes, adj = _build_adjacency(graph)
 
-    if not adj:
-        return []
-
     # Hub filter: median degree × 2
     degrees = [len(neighbors) for neighbors in adj.values() if neighbors]
     if not degrees:
@@ -282,12 +279,16 @@ class Gap:
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Gap):
             return NotImplemented
-        return self.gap_score < other.gap_score
+        if self.gap_score != other.gap_score:
+            return self.gap_score < other.gap_score
+        return self.node_id < other.node_id
 
     def __gt__(self, other: object) -> bool:
         if not isinstance(other, Gap):
             return NotImplemented
-        return self.gap_score > other.gap_score
+        if self.gap_score != other.gap_score:
+            return self.gap_score > other.gap_score
+        return self.node_id > other.node_id
 
     def __le__(self, other: object) -> bool:
         if not isinstance(other, Gap):
@@ -342,7 +343,9 @@ def detect_gaps(
                     weight_adj[node][neighbor] = 1.0 / dist if dist > 0 else 1.0
             communities = louvain_clustering(weight_adj)
         except ImportError:
-            pass
+            pass  # Louvain not installed; proceed without communities
+        except Exception:
+            pass  # Louvain failed; proceed without communities
 
     betweenness = compute_betweenness(graph, normalized=True)
     bridge_candidates = find_bridge_candidates(graph, communities, threshold=threshold)
