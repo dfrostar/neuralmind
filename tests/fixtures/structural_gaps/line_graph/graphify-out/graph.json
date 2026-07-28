@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "a",
+      "label": "A",
+      "community": 0
+    },
+    {
+      "id": "b",
+      "label": "B",
+      "community": 0
+    },
+    {
+      "id": "c",
+      "label": "C",
+      "community": 1
+    },
+    {
+      "id": "d",
+      "label": "D",
+      "community": 1
+    }
+  ],
+  "links": [
+    {
+      "source": "a",
+      "target": "b",
+      "relation": "calls"
+    },
+    {
+      "source": "b",
+      "target": "c",
+      "relation": "calls"
+    },
+    {
+      "source": "c",
+      "target": "d",
+      "relation": "calls"
+    }
+  ]
+}

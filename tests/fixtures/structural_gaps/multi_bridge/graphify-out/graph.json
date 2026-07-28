@@ -1,0 +1,126 @@
+{
+  "nodes": [
+    {
+      "id": "c0_a",
+      "label": "C0_A",
+      "community": 0
+    },
+    {
+      "id": "c0_b",
+      "label": "C0_B",
+      "community": 0
+    },
+    {
+      "id": "c1_a",
+      "label": "C1_A",
+      "community": 1
+    },
+    {
+      "id": "c1_b",
+      "label": "C1_B",
+      "community": 1
+    },
+    {
+      "id": "c2_a",
+      "label": "C2_A",
+      "community": 2
+    },
+    {
+      "id": "c2_b",
+      "label": "C2_B",
+      "community": 2
+    },
+    {
+      "id": "b1",
+      "label": "B1",
+      "community": 0
+    },
+    {
+      "id": "b2",
+      "label": "B2",
+      "community": 0
+    },
+    {
+      "id": "b3",
+      "label": "B3",
+      "community": 1
+    },
+    {
+      "id": "b4",
+      "label": "B4",
+      "community": 1
+    },
+    {
+      "id": "b5",
+      "label": "B5",
+      "community": 2
+    }
+  ],
+  "links": [
+    {
+      "source": "c0_a",
+      "target": "c0_b",
+      "relation": "calls"
+    },
+    {
+      "source": "c1_a",
+      "target": "c1_b",
+      "relation": "calls"
+    },
+    {
+      "source": "c2_a",
+      "target": "c2_b",
+      "relation": "calls"
+    },
+    {
+      "source": "c0_a",
+      "target": "b1",
+      "relation": "calls"
+    },
+    {
+      "source": "b1",
+      "target": "c1_a",
+      "relation": "calls"
+    },
+    {
+      "source": "c0_b",
+      "target": "b2",
+      "relation": "calls"
+    },
+    {
+      "source": "b2",
+      "target": "c2_a",
+      "relation": "calls"
+    },
+    {
+      "source": "c1_b",
+      "target": "b3",
+      "relation": "calls"
+    },
+    {
+      "source": "b3",
+      "target": "c2_b",
+      "relation": "calls"
+    },
+    {
+      "source": "c1_a",
+      "target": "b4",
+      "relation": "calls"
+    },
+    {
+      "source": "b4",
+      "target": "c2_a",
+      "relation": "calls"
+    },
+    {
+      "source": "c0_a",
+      "target": "b5",
+      "relation": "calls"
+    },
+    {
+      "source": "b5",
+      "target": "c2_b",
+      "relation": "calls"
+    }
+  ]
+}

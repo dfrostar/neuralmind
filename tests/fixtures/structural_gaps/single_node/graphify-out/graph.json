@@ -1,0 +1,10 @@
+{
+  "nodes": [
+    {
+      "id": "solo",
+      "label": "Solo",
+      "community": 0
+    }
+  ],
+  "links": []
+}

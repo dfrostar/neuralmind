@@ -404,6 +404,66 @@ def tool_review(
     }
 
 
+def tool_structural_gaps(
+    project_path: str,
+    threshold: float = 0.1,
+    top_k: int = 10,
+) -> dict[str, Any]:
+    """Detect structural gaps in a codebase using betweenness centrality.
+
+    Reads graph.json, computes betweenness centrality via Brandes algorithm,
+    identifies cross-community bridge nodes, and scores gaps as
+    ``betweenness × (1 / (degree + 1))``.
+
+    Args:
+        project_path: Path to the project root directory.
+        threshold: Minimum betweenness for bridge candidates (default: 0.1).
+        top_k: Maximum number of gaps to return (default: 10).
+
+    Returns:
+        Dict with ``gaps`` (list of gap dicts), ``total_nodes``, ``total_edges``,
+        and ``num_communities``.
+    """
+    import json
+    import os
+
+    from neuralmind.structural_gaps import detect_gaps
+
+    graph_path = os.path.join(project_path, "graphify-out", "graph.json")
+    if not os.path.exists(graph_path):
+        return {"error": "No graph found. Run `neuralmind build` first.", "gaps": []}
+
+    with open(graph_path, encoding="utf-8") as f:
+        graph = json.load(f)
+
+    gaps = detect_gaps(graph, top_k=top_k, threshold=threshold)
+
+    # Count distinct communities
+    communities = set()
+    for node in graph.get("nodes", []):
+        c = node.get("community")
+        if c is not None:
+            communities.add(c)
+
+    return {
+        "gaps": [
+            {
+                "node_id": g.node_id,
+                "node_name": g.node_name,
+                "communities": list(g.communities),
+                "betweenness": g.betweenness,
+                "degree": g.degree,
+                "gap_score": g.gap_score,
+                "suggested_connections": list(g.suggested_connections),
+            }
+            for g in gaps
+        ],
+        "total_nodes": len(graph.get("nodes", [])),
+        "total_edges": len(graph.get("links", [])),
+        "num_communities": len(communities),
+    }
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -735,6 +795,30 @@ TOOLS = [
             "required": ["project_path", "changed_files"],
         },
     },
+    {
+        "name": "neuralmind_structural_gaps",
+        "description": "Detect structural gaps using betweenness centrality. Identifies cross-community bridge nodes and structural blind spots in the codebase.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "threshold": {
+                    "type": "number",
+                    "description": "Minimum betweenness for bridge candidates (default: 0.1)",
+                    "default": 0.1,
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum number of gaps to return (default: 10)",
+                    "default": 10,
+                },
+            },
+            "required": ["project_path"],
+        },
+    },
 ]
 
 
@@ -781,6 +865,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_review": lambda args: tool_review(
             args["project_path"],
             args["changed_files"],
+            args.get("top_k", 10),
+        ),
+        "neuralmind_structural_gaps": lambda args: tool_structural_gaps(
+            args["project_path"],
+            args.get("threshold", 0.1),
             args.get("top_k", 10),
         ),
         "neuralmind_feedback": lambda args: tool_feedback(

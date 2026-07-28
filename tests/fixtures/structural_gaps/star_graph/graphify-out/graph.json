@@ -1,0 +1,61 @@
+{
+  "nodes": [
+    {
+      "id": "center",
+      "label": "Center",
+      "community": 0
+    },
+    {
+      "id": "leaf1",
+      "label": "Leaf1",
+      "community": 1
+    },
+    {
+      "id": "leaf2",
+      "label": "Leaf2",
+      "community": 1
+    },
+    {
+      "id": "leaf3",
+      "label": "Leaf3",
+      "community": 2
+    },
+    {
+      "id": "leaf4",
+      "label": "Leaf4",
+      "community": 2
+    },
+    {
+      "id": "leaf5",
+      "label": "Leaf5",
+      "community": 2
+    }
+  ],
+  "links": [
+    {
+      "source": "center",
+      "target": "leaf1",
+      "relation": "calls"
+    },
+    {
+      "source": "center",
+      "target": "leaf2",
+      "relation": "calls"
+    },
+    {
+      "source": "center",
+      "target": "leaf3",
+      "relation": "calls"
+    },
+    {
+      "source": "center",
+      "target": "leaf4",
+      "relation": "calls"
+    },
+    {
+      "source": "center",
+      "target": "leaf5",
+      "relation": "calls"
+    }
+  ]
+}
