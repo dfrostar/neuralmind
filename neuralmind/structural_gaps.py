@@ -35,10 +35,10 @@ from dataclasses import dataclass
 from typing import Any
 
 # Default betweenness threshold for bridge candidates
-GAP_THRESHOLD_DEFAULT = 0.1
+GAP_THRESHOLD_DEFAULT = 0.005
 
 # Maximum graph size before switching to approximate betweenness
-MAX_BETWEENNESS_NODES = 5000
+MAX_BETWEENNESS_NODES = 2000
 
 # Edge type weights by relation (from TRD §3).
 # Higher weight = stronger relationship = shorter path distance.
@@ -108,7 +108,8 @@ def compute_betweenness(
     """Compute betweenness centrality via Brandes algorithm (weighted).
 
     Runs Dijkstra from every node (O(VE + V² log V) for weighted graphs).
-    Falls back to uniform weights when the ``weight`` field is missing.
+    For graphs larger than MAX_BETWEENNESS_NODES, samples k ≈ min(V, 1000)
+    source nodes uniformly and scales the result back.
 
     Args:
         graph: graph.json dict with ``nodes`` and ``links``.
@@ -126,7 +127,18 @@ def compute_betweenness(
 
     betweenness: dict[str, float] = dict.fromkeys(nodes, 0.0)
 
-    for s in nodes:
+    # Determine source nodes: full computation for small graphs,
+    # sampled approximation for large ones.
+    if n <= MAX_BETWEENNESS_NODES:
+        sources = nodes
+    else:
+        # Uniform sampling with deterministic seed for reproducibility
+        import random
+        rng = random.Random(42)
+        k = min(n, 100)  # k-approximate betweenness
+        sources = rng.sample(nodes, k)
+
+    for s in sources:
         # --- Forward phase: Dijkstra from s ---
         dist: dict[str, float] = dict.fromkeys(nodes, math.inf)
         dist[s] = 0.0
@@ -163,6 +175,12 @@ def compute_betweenness(
                 if sigma[w_node] > 0:
                     delta[v] += (sigma[v] / sigma[w_node]) * (1.0 + delta[w_node])
             betweenness[w_node] += delta[w_node]
+
+    # Scale up from sample to population
+    if n > MAX_BETWEENNESS_NODES:
+        scale_up = n / len(sources)
+        for node in betweenness:
+            betweenness[node] *= scale_up
 
     # Normalize: star-graph centre → 1.0
     if normalized and n > 2:
