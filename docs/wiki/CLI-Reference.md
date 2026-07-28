@@ -1852,6 +1852,50 @@ Live-covered:
   GET  /health                  ✅
 ```
 
+### gaps --structural *(v1.9.0+)*
+
+Identify structural gaps in your codebase — missing bridges between communities that should be connected but aren't. Built on Brandes' betweenness centrality algorithm over the structural graph.
+
+```bash
+neuralmind gaps --structural [OPTIONS]
+```
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--top-k` | `20` | Maximum number of gaps to report |
+| `--threshold` | `0.0` | Minimum gap score to include (0.0 = include all) |
+| `--community` | None | Filter to specific community ID |
+| `--json`, `-j` | False | Emit structured JSON output |
+
+#### Examples
+
+```bash
+# Find top 20 structural gaps
+neuralmind gaps --structural
+
+# Find gaps with score > 0.5, JSON output
+neuralmind gaps --structural --threshold 0.5 --json
+
+# Gaps in a specific community
+neuralmind gaps --structural --community 3
+```
+
+#### Sample Output
+
+```
+## NeuralMind — Structural Gaps (G5)
+
+Rank  Score    Node                                   Communities
+────  ──────   ─────────────────────────────────────  ────────────
+1     0.87     src/auth/token.py                      2, 5
+2     0.72     src/models/user.py                     1, 3
+3     0.65     src/utils/validation.py                2, 4
+```
+
+The equivalent MCP tool is `neuralmind_structural_gaps`.
+
 ### review *(v0.39.0+)*
 
 Warn about likely co-breakage before a commit or when reviewing a diff.

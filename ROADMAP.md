@@ -3,64 +3,45 @@
 A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome.
 
-## Now — v1.9.0 (structural gap detection, payment broker, per-license grace)
+## Now — v1.9.0 (structural gap detection)
 
-Latest release **v1.8.0** is live on PyPI and GHCR. v1.9.0 in active
-development (G5 committed, payment broker + per-license grace in progress).
+**Latest release v1.9.0** shipped to PyPI and GHCR (2026-07-28).
 
-**What's shipped since v1.0.0 (the open-core launch):**
+**What shipped:**
+- **G5 structural gap detection** — Brandes betweenness, cross-community bridges, gap scoring, CLI (`neuralmind gaps --structural`), MCP tool (`neuralmind_structural_gaps`). 43 tests.
+- **DeepSeek QA patches** — gap ordering, Louvain fallback, dead code, docstrings.
+- **DocEvolver failure-path tests** — 4 new tests.
+- **CI** — Node 18→22, GitHub Pages decommissioned, SBOM publish.
 
-- **v1.0.0** — Open-core launch: MIT tier (free), Tier 2 paid
-  (SSO, RBAC, multi-team sync), Ed25519 license validation, dual-bound
-  grace window, clock-skew anti-tamper, governance hardening, audit
-  log hash chain, self-hosted deployment. All security issues from
-  DeepSeek QA patched.
-- **v1.1.0** — Bug fixes: license-file deletion no longer resets paid
-  tier to free, admin parameter required (not optional) on all
-  governance mutations, atomic writes for validation sidecars.
-- **v1.2.0** — C4 Quality Harness: independent gate, NaN-safe clamp,
-  fail-open direction, backward compatibility.
-- **v1.3.0–v1.6.0** — Incremental extraction hardening, D3 judge
-  transcripts, documentation drift fixes, marketing surface audit.
-- **v1.7.0** — Louvain modularity rewrite: resolution parameter,
-  O(·k) community weight updates, Phase 2 self-loop weight
-  preservation, falsy label fallback, dead code removal. DocEvolver
-  for data-driven JSDoc optimization. Marketing audit + version bump.
-- **v1.7.1** — .nojekyll for GitHub Pages, ruff formatting, ISC004 fix.
-- **v1.7.2** — Release notes + public surface update.
-- **v1.8.0** — DeepSeek QA patches (3 CRITICAL + WARNING), ruff bump
-  0.15.18→0.16.0, SBOM publish to site, marketing chart refresh.
-- **v1.9.0 (partial)** — G5 structural gap detection: InfraNodus-style
-  betweenness centrality via Brandes algorithm, cross-community bridge
-  detection, gap scoring (`betweenness × 1/(degree+1)`), CLI
-  (`neuralmind gaps --structural`), MCP tool. 43 tests green.
-  (Committed, not yet on PyPI.)
+---
 
-**Recent CI/deep-work (not yet versioned):**
+## Next (v1.10.0 — near term)
 
-- GitHub Pages decommissioned — marketing site served via Cloudflare
-  Pages (eliminates the only failing CI job).
-- Test matrix bumped Node 18→22 (fixes ESM module error in jsdom/vitest).
-- Extraction_cache.json gitignore cleanup (test fixture timestamps).
-- SOC 2 readiness package: BRD, TRD, Test Plan, 7 policies committed.
+- **Self-benchmark stability** — flaky chromadb embedding nondeterminism in CI.
+- **Retrieval quality benchmarks** — top-k accuracy and answer faithfulness on public query set.
+- **Broker pattern** — pluggable payment provider (Stripe primary, LemonSqueezy fallback).
+- **Grace period per-license** — configurability beyond global constant.
 
-### Remaining before v1.9.0 ships to PyPI:
-- **Self-benchmark stability** — flaky chromadb embedding nondeterminism
-  in CI; pin or widen the pass/fail band.
-- **Test coverage for DocEvolver failure path** — rollback behavior
-  untested.
-- **G5 release notes** — `RELEASE_NOTES_v1.9.0.md` draft.
-- **Marketing surface audit** — 9 surfaces (README, wiki, site, LinkedIn).
+---
 
-### In-progress for v1.9.0 (after G5):
-- **Broker pattern** — Pluggable payment provider (Stripe primary,
-  LemonSqueezy fallback).
-- **Grace period per-license** — Currently global; per-customer
-  configurability.
-- **Retrieval quality benchmarks beyond reduction** — Top-k accuracy
-  and answer faithfulness on a public query set.
+## Track D — Adjacent Products
 
-## Shipped — v0.13 → v1.0.0
+### Book Content QA System (v1.9.x)
+
+A second indexer type targeting book/markdown content instead of code. Reuses NeuralMind's turbovec backend, embedding pipeline, and hybrid search infrastructure.
+
+| Module | Target | Query Type |
+|--------|--------|------------|
+| `neuralmind/code_graph/` | Code repos | "Find the function that handles X" |
+| `neuralmind/content_qa/` | Book markdown | "What does the book say about Y?" |
+
+**First use-case:** *The Peptide Patient's Guide* (~27,000 words, 8 chapters, 96 claims).
+
+**Status:** Draft docs in Downloads (BRD/TRD/PRD/requirements, 2026-07-29). Implementation begins after v1.10.0.
+
+---
+
+## Shipped — v0.13 → v1.9.0
 
 ### The long arc (v0.13 → v0.54.0)
 
@@ -94,16 +75,29 @@ development (G5 committed, payment broker + per-license grace in progress).
 
 See above — the public launch of the MIT + paid tier architecture.
 
-## Next (v1.9.0 — near term)
+### Shipped releases (v1.0.0 → v1.9.0)
 
-- **Broker pattern** — Pluggable payment provider (Stripe primary,
-  LemonSqueezy fallback).
-- **Grace period per-license** — Currently global; per-customer
-  configurability.
-- **Retrieval quality benchmarks beyond reduction** — Top-k accuracy
-  and answer faithfulness on a public query set.
-- **More languages in fixture suite** — TypeScript, Go, Rust, Java,
-  C/C++ currently covered; add JS/JSX first.
+- **v1.0.0** — Open-core launch: MIT tier (free), Tier 2 paid
+  (SSO, RBAC, multi-team sync), Ed25519 license validation, dual-bound
+  grace window, clock-skew anti-tamper, governance hardening, audit
+  log hash chain, self-hosted deployment.
+- **v1.1.0** — Bug fixes: license-file deletion no longer resets paid
+  tier to free, admin parameter required on all governance mutations,
+  atomic writes for validation sidecars.
+- **v1.2.0** — C4 Quality Harness: independent gate, NaN-safe clamp,
+  fail-open direction, backward compatibility.
+- **v1.3.0–v1.6.0** — Incremental extraction hardening, D3 judge
+  transcripts, documentation drift fixes, marketing surface audit.
+- **v1.7.0** — Louvain modularity rewrite, DocEvolver for data-driven
+  JSDoc optimization. Marketing audit + version bump.
+- **v1.7.1** — .nojekyll for GitHub Pages, ruff formatting, ISC004 fix.
+- **v1.7.2** — Release notes + public surface update.
+- **v1.8.0** — DeepSeek QA patches, ruff bump, SBOM publish to site,
+  marketing chart refresh.
+- **v1.9.0** — G5 structural gap detection (Brandes betweenness,
+  cross-community bridge detection, gap scoring, CLI, MCP tool).
+  43 tests. DeepSeek QA patches. DocEvolver failure-path tests.
+  Node 18→22. GitHub Pages decommissioned.
 
 ## Next (~1–2 quarters)
 

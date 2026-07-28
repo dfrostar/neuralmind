@@ -531,6 +531,149 @@ class TestIntegration:
 
 
 # ---------------------------------------------------------------------------
+# Failure path tests (rollback, evolution failure, patch failure)
+# ---------------------------------------------------------------------------
+
+
+class TestFailurePaths:
+    """Test rollback, evolution failure, and patch failure paths."""
+
+    def test_evolution_failure_returns_empty_result(
+        self, tmp_project: Path, blind_spots: list[BlindSpot]
+    ) -> None:
+        """When _evolve_one raises, evolve() should return a failed EvolveResult."""
+        evolver = DocEvolver(
+            project_path=tmp_project,
+            blind_spots=blind_spots[:1],
+            population_size=3,
+            generations=2,
+        )
+
+        # Force evolution to fail by making _evolve_one raise
+        original = evolver._evolve_one
+
+        def failing_evolve(spot):
+            raise RuntimeError("simulated evolution failure")
+
+        evolver._evolve_one = failing_evolve  # type: ignore[assignment]
+
+        results = evolver.evolve()
+
+        # Restore
+        evolver._evolve_one = original  # type: ignore[assignment]
+
+        assert len(results) == 1
+        assert results[0].best_variant is None
+        assert results[0].best_fitness == 0.0
+        assert results[0].generations_run == 0
+        assert results[0].promoted is False
+
+    def test_patch_winners_handles_missing_file(
+        self, tmp_project: Path
+    ) -> None:
+        """patch_winners should skip results for files that don't exist."""
+        # Create a result pointing to a non-existent file
+        result = EvolveResult(
+            name="nonexistent",
+            file_path="src/does_not_exist.ts",
+            line=1,
+            best_fitness=0.9,
+            best_variant=JSDocVariant(
+                strategy=MutationStrategy.LENGTH,
+                lines=["/** Test */"],
+            ),
+            generations_run=3,
+            promoted=True,
+        )
+
+        # Need at least one blind spot to satisfy __init__
+        dummy_spot = BlindSpot(
+            name="handleCSVExport",
+            file_path="src/export.ts",
+            line=1,
+        )
+
+        evolver = DocEvolver(
+            project_path=tmp_project,
+            blind_spots=[dummy_spot],
+        )
+
+        # Should not raise, should return empty list (file doesn't exist)
+        modified = evolver.patch_winners([result])
+        assert modified == []
+
+    def test_patch_winners_handles_write_failure(
+        self, tmp_project: Path, monkeypatch
+    ) -> None:
+        """patch_winners should catch write failures and continue."""
+        # Create a result pointing to a real file
+        result = EvolveResult(
+            name="handleCSVExport",
+            file_path="src/export.ts",
+            line=1,
+            best_fitness=0.9,
+            best_variant=JSDocVariant(
+                strategy=MutationStrategy.STRUCTURE,
+                lines=["/** Test */"],
+            ),
+            generations_run=3,
+            promoted=True,
+        )
+
+        # Need at least one blind spot to satisfy __init__
+        dummy_spot = BlindSpot(
+            name="handleCSVExport",
+            file_path="src/export.ts",
+            line=1,
+        )
+
+        evolver = DocEvolver(
+            project_path=tmp_project,
+            blind_spots=[dummy_spot],
+        )
+
+        # Monkeypatch _patch_file to raise
+        def failing_patch(file_path, line, variant):
+            raise OSError("disk full")
+
+        monkeypatch.setattr(evolver, "_patch_file", failing_patch)
+
+        # Should not raise, should return empty list
+        modified = evolver.patch_winners([result])
+        assert modified == []
+
+    def test_evaluate_candidate_restores_backup_on_failure(
+        self, tmp_project: Path, blind_spots: list[BlindSpot]
+    ) -> None:
+        """_evaluate_candidate should restore backup file even if build/query fails."""
+        evolver = DocEvolver(
+            project_path=tmp_project,
+            blind_spots=blind_spots[:1],
+            population_size=3,
+            generations=1,
+        )
+
+        # Read original content
+        source_file = tmp_project / blind_spots[0].file_path
+        original_content = source_file.read_text()
+
+        # Force query to fail
+        evolver.query_fn = lambda p, q: (_ for _ in ()).throw(RuntimeError("query failed"))
+
+        variant = JSDocVariant(
+            strategy=MutationStrategy.LENGTH,
+            lines=["/** Test */"],
+        )
+        fitness = evolver._evaluate_candidate(blind_spots[0], variant)
+
+        # Fitness should be 0.0 on failure
+        assert fitness == 0.0
+
+        # File should be restored to original content
+        assert source_file.read_text() == original_content
+
+
+# ---------------------------------------------------------------------------
 # Subprocess integration test (W-2)
 # ---------------------------------------------------------------------------
 

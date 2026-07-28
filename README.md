@@ -18,16 +18,17 @@
 
 ---
 
-## v1.7.2 — DocEvolver: evolutionary JSDoc for retrieval fitness (July 2026)
+## v1.9.0 — G5 Structural Gap Detection (July 2026)
 
-> `neuralmind optimize-docs .` finds undocumented methods, generates JSDoc variants, and evolves them against a retrieval fitness function — the same Recall@1 metric `probe` uses. Documentation that proves itself against your own index.
+> `neuralmind gaps --structural` identifies structural gaps in your codebase — missing bridges between communities that should be connected but aren't. Built on Brandes' betweenness centrality algorithm.
 
 | Item | What |
 |------|------|
-| DocEvolver | `neuralmind optimize-docs` — evolutionary JSDoc optimizer (1181 lines, 44 tests) |
-| Self-review JSDoc | 13 modules + 30 methods documented |
-| synapses.py bugfix | Restored missing `namespace` parameter |
-| Hooks | Claude Code lifecycle hooks installed |
+| G5 Gap Detection | Brandes betweenness centrality, cross-community bridge detection, gap scoring |
+| CLI | `neuralmind gaps --structural` (top-N, community filter, JSON output) |
+| MCP Tool | `neuralmind_structural_gaps` |
+| Tests | 43 tests (exact + approximate betweenness, Louvain resolution, edge cases) |
+| DocEvolver | 4 new failure-path tests (rollback, evolution failure, patch failure) |
 
 **Acceptance:** 44/44 doc_evolver tests pass, `optimize-docs --dry-run` is non-destructive, `--blind-spots` consumes probe JSON.
 
