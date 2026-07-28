@@ -134,6 +134,7 @@ def compute_betweenness(
     else:
         # Uniform sampling with deterministic seed for reproducibility
         import random
+
         rng = random.Random(42)
         k = min(n, 100)  # k-approximate betweenness
         sources = rng.sample(nodes, k)
@@ -409,7 +410,7 @@ def format_structural_gaps(gaps: list[Gap]) -> str:
     for each structural gap found.
     """
     if not gaps:
-        return "## Structural Gaps — betweenness × inverse-degree\n\n" "No structural gaps found."
+        return "## Structural Gaps — betweenness × inverse-degree\n\nNo structural gaps found."
 
     lines = ["## Structural Gaps — betweenness × inverse-degree", ""]
 
