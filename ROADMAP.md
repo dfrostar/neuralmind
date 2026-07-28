@@ -3,7 +3,7 @@
 A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome.
 
-## Now — v1.8.0 (security hardening, code quality, marketing site)
+## Now — v1.8.0 (security hardening, compliance, code quality)
 
 Latest release **v1.8.0** is live on PyPI and GHCR. All CI green
 (pages-build-deployment removed — GitHub Pages decommissioned in favor
@@ -38,15 +38,19 @@ of Cloudflare Pages for the marketing site).
   Pages (eliminates the only failing CI job).
 - Test matrix bumped Node 18→22 (fixes ESM module error in jsdom/vitest).
 - Extraction_cache.json gitignore cleanup (test fixture timestamps).
+- SOC 2 readiness package: BRD, TRD, Test Plan, 7 policies committed.
 
 ### Remaining before v1.9.0:
-
 - **Self-benchmark stability** — flaky chromadb embedding nondeterminism
   in CI; pin or widen the pass/fail band.
 - **Marketing site pages-build-deployment** — REMOVED (decommissioned
   GitHub Pages). Cloudflare Pages deploy is the canonical path.
 - **Test coverage for DocEvolver failure path** — rollback behavior
   untested.
+- **G5 — Structural gap detection** — InfraNodus-style betweenness
+  centrality + bridge detection over the structural graph. Reads
+  graph.json, identifies cross-community gaps, surfaces via
+  `neuralmind gaps --structural` + MCP tool.
 
 ## Shipped — v0.13 → v1.0.0
 
