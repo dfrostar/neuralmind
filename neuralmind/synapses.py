@@ -52,6 +52,7 @@ Design:
 
 from __future__ import annotations
 
+import json
 import math
 import sqlite3
 import time
@@ -171,9 +172,9 @@ NAMESPACE_HALF_LIVES: dict[str, float] = {
 # Below LEARNING_RATE (0.15) for single-observation edges but grows for hot
 # call paths. Below LTP_FLOOR (0.20) so structural edges can be pruned if
 # they decay long enough without a rebuild.
-STRUCTURAL_BASE_WEIGHT = 0.10
-STRUCTURAL_LOG_SCALE = 0.05
-STRUCTURAL_MAX_WEIGHT = 0.60
+STRUCTURAL_BASE_WEIGHT = 0.18
+STRUCTURAL_LOG_SCALE = 0.06
+STRUCTURAL_MAX_WEIGHT = 0.70
 
 SCHEMA = f"""
 CREATE TABLE IF NOT EXISTS synapses (
@@ -235,6 +236,19 @@ CREATE INDEX IF NOT EXISTS idx_se_caller ON structural_edges(caller);
 CREATE INDEX IF NOT EXISTS idx_se_callee ON structural_edges(callee);
 CREATE INDEX IF NOT EXISTS idx_se_type ON structural_edges(edge_type);
 CREATE INDEX IF NOT EXISTS idx_se_last_seen ON structural_edges(last_seen);
+
+CREATE TABLE IF NOT EXISTS type_edges (
+    source_node TEXT NOT NULL,
+    target_node TEXT NOT NULL,
+    return_type TEXT,
+    is_optional INTEGER NOT NULL DEFAULT 0,
+    confidence REAL NOT NULL DEFAULT 0.0,
+    inferred_by TEXT NOT NULL DEFAULT 'stdlib',
+    inferred_at REAL NOT NULL,
+    PRIMARY KEY (source_node, target_node)
+);
+CREATE INDEX IF NOT EXISTS idx_type_opt ON type_edges(is_optional);
+CREATE INDEX IF NOT EXISTS idx_type_conf ON type_edges(confidence);
 """
 
 # Index names from the v0 (pre-namespace) schema. ALTER TABLE ... RENAME
@@ -1015,8 +1029,262 @@ class SynapseStore:
         return len(rows)
 
     # ----------------------------------------------------------------- #
-    # Structural → synapse seeding (TRD §2.3–2.5)
+    # Type edges — inferred return types for calls edges (BRD §4.1, TRD §3)
     # ----------------------------------------------------------------- #
+
+    def persist_type_edges(
+        self,
+        type_edges: list[tuple],
+        now: float | None = None,
+    ) -> int:
+        """Persist inferred return type metadata for calls edges.
+
+        Each tuple is ``(source_node, target_node, return_type, is_optional,
+        confidence, inferred_by, inferred_at)``.
+
+        Idempotent: re-running on the same (source, target) updates the row.
+
+        Returns the number of rows upserted.
+        """
+        if not type_edges:
+            return 0
+        ts = now if now is not None else time.time()
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO type_edges(
+                        source_node, target_node, return_type,
+                        is_optional, confidence, inferred_by, inferred_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(source_node, target_node) DO UPDATE SET
+                        return_type = excluded.return_type,
+                        is_optional = excluded.is_optional,
+                        confidence = excluded.confidence,
+                        inferred_by = excluded.inferred_by,
+                        inferred_at = excluded.inferred_at
+                    """,
+                    type_edges,
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(type_edges)
+
+    # ----------------------------------------------------------------- #
+    # Cold-start synapse mitigation: import bundle + doc seeding
+    # ----------------------------------------------------------------- #
+
+    def seed_from_bundle(
+        self,
+        bundle_path: str | Path,
+        now: float | None = None,
+    ) -> int:
+        """Seed synapses from a reference bundle (curated architectural priors).
+
+        A bundle is a JSON file mapping (node_a, node_b) → weight, typically
+        exported from a mature project via ``neuralmind export --synapses``.
+        Used for cold-start onboarding when no edit history exists.
+
+        Seeded edges land in ``shared`` namespace with high confidence.
+        """
+        bundle_path = Path(bundle_path)
+        if not bundle_path.exists():
+            return 0
+        ts = now if now is not None else time.time()
+        try:
+            raw = json.loads(bundle_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return 0
+
+        synapses = raw.get("synapses", [])
+        if not synapses:
+            return 0
+
+        rows = []
+        for entry in synapses:
+            a = entry.get("node_a", "")
+            b = entry.get("node_b", "")
+            w = entry.get("weight", STRUCTURAL_BASE_WEIGHT)
+            if not a or not b or a == b:
+                continue
+            pair = _canonical(str(a), str(b))
+            if pair is None:
+                continue
+            clamped = max(0.0, min(float(w), WEIGHT_CAP))
+            rows.append((pair[0], pair[1], SHARED_NAMESPACE, clamped, 1, ts, ts))
+
+        if not rows:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO synapses(
+                        node_a, node_b, namespace, weight, activation_count,
+                        last_activated, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                        weight = MAX(synapses.weight, excluded.weight),
+                        activation_count = MAX(
+                            synapses.activation_count, excluded.activation_count
+                        ),
+                        last_activated = excluded.last_activated
+                    """,
+                    rows,
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(rows)
+
+    def seed_from_documentation(
+        self,
+        docs_root: str | Path,
+        now: float | None = None,
+    ) -> int:
+        """Use an LLM to extract architectural relationships from prose.
+
+        Parses README.md, docs/architecture.md, and docstrings to identify
+        relationships not yet in the structural graph. These become synapse
+        edges at moderate weight (0.25-0.40).
+
+        Requires ``NEURALMIND_LLM_SEED=1`` and a configured LLM provider.
+        Fail-open: if the LLM call fails, returns 0.
+        """
+        import os
+
+        if os.environ.get("NEURALMIND_LLM_SEED") != "1":
+            return 0
+
+        if not os.environ.get("ANTHROPIC_API_KEY"):
+            return 0
+
+        docs_root = Path(docs_root)
+        if not docs_root.exists():
+            return 0
+
+        # Read README.md or docs/architecture.md
+        candidates = [
+            docs_root / "README.md",
+            docs_root / "docs" / "architecture.md",
+        ]
+        doc_text = ""
+        for c in candidates:
+            if c.exists():
+                try:
+                    doc_text += c.read_text(encoding="utf-8", errors="replace")
+                except OSError:
+                    pass
+
+        if not doc_text.strip():
+            return 0
+
+        # Try LLM extraction — fail-open on any error
+        try:
+            relations = self._llm_extract_relations(doc_text)
+        except Exception:
+            return 0
+
+        if not relations:
+            return 0
+
+        ts = now if now is not None else time.time()
+        rows = []
+        for a, b, w in relations:
+            if not a or not b or a == b:
+                continue
+            pair = _canonical(str(a), str(b))
+            if pair is None:
+                continue
+            clamped = max(0.0, min(float(w), 0.40))
+            rows.append((pair[0], pair[1], SHARED_NAMESPACE, clamped, 1, ts, ts))
+
+        if not rows:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    INSERT INTO synapses(
+                        node_a, node_b, namespace, weight, activation_count,
+                        last_activated, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                        weight = MAX(synapses.weight, excluded.weight),
+                        activation_count = MAX(
+                            synapses.activation_count, excluded.activation_count
+                        ),
+                        last_activated = excluded.last_activated
+                    """,
+                    rows,
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(rows)
+
+    def _llm_extract_relations(self, doc_text: str) -> list[tuple[str, str, float]]:
+        """Extract architectural relationships from doc text via LLM.
+
+        Returns list of (node_a, node_b, weight) tuples. Fail-open.
+        """
+        try:
+            import anthropic
+        except ImportError:
+            return []
+
+        try:
+            client = anthropic.Anthropic()
+        except Exception:
+            return []
+
+        prompt = (
+            "Extract architectural relationships from the following documentation. "
+            "For each relationship where A calls/delegates-to/uses B, output one line:\n"
+            "  node_a,node_b,weight\n"
+            "where weight is between 0.25 and 0.40. "
+            "Only output relationships explicitly stated in the text. "
+            "Output nothing if no clear relationships are described.\n\n"
+            f"Documentation:\n{doc_text[:8000]}"
+        )
+
+        try:
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=500,
+                messages=[{"role": "user", "content": prompt}],
+            )
+        except Exception:
+            return []
+
+        text = ""
+        for block in message.content:
+            if hasattr(block, "text"):
+                text += block.text
+
+        relations = []
+        for line in text.strip().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(",")
+            if len(parts) >= 2:
+                a = parts[0].strip()
+                b = parts[1].strip()
+                w = float(parts[2].strip()) if len(parts) >= 3 else 0.30
+                if a and b:
+                    relations.append((a, b, w))
+
+        return relations
 
     def _canonical_synapse_row(
         self,

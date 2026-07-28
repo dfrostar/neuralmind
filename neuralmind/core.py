@@ -477,6 +477,24 @@ class NeuralMind:
             except Exception:
                 pass
 
+        # Type verification pass — augment structural graph with type metadata.
+        # Fail-open: type inference is observability, not a gate on the build.
+        _type_risk_count = 0
+        if self.enable_synapses:
+            try:
+                from . import type_verifier
+
+                tv = type_verifier.TypeVerifier(self.project_path)
+                graph = getattr(self.embedder, "graph", None)
+                if graph:
+                    tv.augment_graph(graph)
+                    tv._last_graph = graph
+                    store = self.synapses
+                    if store is not None:
+                        tv.persist_type_edges(store)
+            except Exception:
+                pass  # fail-open
+
         # Seed synapse weights from the structural graph so the learned
         # association layer starts with real architectural signal instead of
         # waiting weeks for co-activation to accumulate. Fail-open: seeding
@@ -487,6 +505,10 @@ class NeuralMind:
                 store = self.synapses
                 if store is not None:
                     _structural_synapse_count = store.seed_from_structural()
+                    # Bootstrap bundle seeding if --bootstrap flag provided
+                    bundle_path = getattr(self, "_bootstrap_bundle_path", None)
+                    if bundle_path is not None:
+                        store.seed_from_bundle(bundle_path)
             except Exception:
                 pass
 
