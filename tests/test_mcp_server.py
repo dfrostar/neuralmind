@@ -363,12 +363,13 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 16 tools (7 retrieval + 4 v0.4 synapse +
+        """TOOLS should define 17 tools (7 retrieval + 4 v0.4 synapse +
         1 v0.11 directional-transition + 1 v0.38 feedback + 1 review +
-        1 v0.42 structural neighbors + 1 v0.47 impact)."""
+        1 v0.42 structural neighbors + 1 v0.47 impact +
+        1 v0.51 structural gaps)."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 16
+        assert len(TOOLS) == 17
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -398,6 +399,8 @@ class TestToolDefinitions:
             "neuralmind_synaptic_neighbors",
             # v0.42.0 structural code-graph neighbors
             "neuralmind_structural_neighbors",
+            # v0.51.0 structural gaps — bridge analysis + betweenness centrality
+            "neuralmind_structural_gaps",
             # v0.47.0 friendlier-named, richer-output blast-radius lookup
             "neuralmind_impact",
             "neuralmind_synapse_stats",
