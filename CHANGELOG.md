@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.9.0](https://github.com/dfrostar/neuralmind/compare/v1.8.0...v1.9.0) (2026-07-28)
+
+
+### Features
+
+* G5 structural gap detection — betweenness centrality + bridge analysis ([638a72e](https://github.com/dfrostar/neuralmind/commit/638a72eefede04dca8d0b68c2918187ae978dbfc))
+
+
+### Bug Fixes
+
+* G5 performance — approximate betweenness for large graphs ([85e242f](https://github.com/dfrostar/neuralmind/commit/85e242f277dba52de02003f4f5d97dd6928595d1))
+* **g5:** deepseek qa patches — Gap ordering, Louvain fallback, dead code, docstring ([acf14e2](https://github.com/dfrostar/neuralmind/commit/acf14e29f77c7542e5f025fd94f75dfab387b289))
+* **test:** update MCP tool count to 17 for neuralmind_structural_gaps ([438aec6](https://github.com/dfrostar/neuralmind/commit/438aec649c70e6f9f25e597b0e45bb802be26f35))
+
+
+### Documentation
+
+* G5 — complete 6-docs-per-wave gate ([9b88c4b](https://github.com/dfrostar/neuralmind/commit/9b88c4ba89a6e1f81358c4955e429c4063752a65))
+* G5 structural gap detection — BRD + TRD + test plan ([34f0650](https://github.com/dfrostar/neuralmind/commit/34f06500a2705270c013df33e61da81abe085d57))
+* rewrite ROADMAP.md — mark shipped through v1.8.0, delete stale items, add near-term next ([dc1c08a](https://github.com/dfrostar/neuralmind/commit/dc1c08af2b63621b42835d8610355aa727bccfa4))
+* SOC 2 readiness package — BRD, TRD, Test Plan, 7 policies, .gitignore fix ([214ea87](https://github.com/dfrostar/neuralmind/commit/214ea87024ed697ebb3075f00c83a4c9533e9ff3))
+* v1.9.0 roadmap update + session prompt ([64a3fb4](https://github.com/dfrostar/neuralmind/commit/64a3fb4a4d1c4782006c46e35cab3aee849708a1))
+
 ## [1.8.0](https://github.com/dfrostar/neuralmind/compare/v1.7.1...v1.8.0) (2026-07-27)
 
 
