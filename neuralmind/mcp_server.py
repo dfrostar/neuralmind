@@ -464,6 +464,80 @@ def tool_structural_gaps(
     }
 
 
+def neuralmind_type_risks(
+    project_path: str,
+    min_severity: str = "warn",
+) -> list[dict[str, Any]]:
+    """Detect type-related risks in the codebase for compliance review.
+
+    Runs the type verifier pass over the project graph and returns any
+    Optional/None-return risks found.
+
+    Args:
+        project_path: Path to the project root directory.
+        min_severity: Minimum severity to report ("info", "warn", "high").
+
+    Returns:
+        List of risk dicts with caller_id, callee_id, risk_type, severity,
+        detail, and callee_returns.
+    """
+    from neuralmind import type_verifier
+    from neuralmind.core import NeuralMind
+
+    mind = NeuralMind(project_path)
+    if not mind._built:
+        try:
+            mind.build()
+        except Exception:
+            return []
+
+    graph = getattr(mind.embedder, "graph", None)
+    if not graph:
+        return []
+
+    tv = type_verifier.TypeVerifier(project_path)
+    tv.augment_graph(graph)
+    risks = tv.detect_type_risks(graph)
+
+    severity_order = {"info": 0, "warn": 1, "high": 2}
+    min_level = severity_order.get(min_severity, 0)
+    filtered = [r for r in risks if severity_order.get(r.severity, 0) >= min_level]
+
+    return [
+        {
+            "caller_id": r.caller_id,
+            "callee_id": r.callee_id,
+            "risk_type": r.risk_type,
+            "severity": r.severity,
+            "detail": r.detail,
+            "callee_returns": r.callee_returns,
+        }
+        for r in filtered
+    ]
+
+
+def neuralmind_bootstrap_synapses(
+    project_path: str,
+    bundle_path: str,
+) -> int:
+    """Bootstrap synapse weights from a reference bundle for cold-start.
+
+    Reads a JSON bundle of synapse edges and seeds them into the shared
+    namespace. Used for cold-start onboarding when no edit history exists.
+
+    Args:
+        project_path: Path to the project root directory.
+        bundle_path: Path to the synapse bundle JSON file.
+
+    Returns:
+        Number of synapses seeded.
+    """
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    store = SynapseStore(default_db_path(project_path))
+    return store.seed_from_bundle(bundle_path)
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -819,6 +893,44 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_type_risks",
+        "description": "Detect type-related risks in the codebase for compliance review. Identifies functions that return Optional types without None guards.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "min_severity": {
+                    "type": "string",
+                    "enum": ["info", "warn", "high"],
+                    "description": "Minimum severity to report (default: warn)",
+                    "default": "warn",
+                },
+            },
+            "required": ["project_path"],
+        },
+    },
+    {
+        "name": "neuralmind_bootstrap_synapses",
+        "description": "Bootstrap synapse weights from a reference bundle for cold-start. Seeds architectural priors from a JSON export of a mature project.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "bundle_path": {
+                    "type": "string",
+                    "description": "Path to the synapse bundle JSON file",
+                },
+            },
+            "required": ["project_path", "bundle_path"],
+        },
+    },
 ]
 
 
@@ -877,6 +989,14 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["node_id"],
             args["signal"],
             args.get("context_node_ids"),
+        ),
+        "neuralmind_type_risks": lambda args: neuralmind_type_risks(
+            args["project_path"],
+            args.get("min_severity", "warn"),
+        ),
+        "neuralmind_bootstrap_synapses": lambda args: neuralmind_bootstrap_synapses(
+            args["project_path"],
+            args["bundle_path"],
         ),
     }
 

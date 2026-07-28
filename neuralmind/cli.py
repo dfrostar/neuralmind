@@ -223,6 +223,9 @@ def cmd_build(args):
         )
 
     mind = NeuralMind(project_path)
+    # Wire --bootstrap into the NeuralMind instance
+    if getattr(args, "bootstrap", None):
+        mind._bootstrap_bundle_path = args.bootstrap
     result = mind.build(force=force)
     if result.get("success"):
         print("Build successful!")
@@ -2394,6 +2397,71 @@ def cmd_hook(args):
     sys.exit(run_hook(args.action))
 
 
+def cmd_risks(args):
+    """Show type-risk signals from static type verification.
+
+    Runs the type verifier over the project graph and reports any
+    Optional/None-return risks for compliance review.
+    """
+    project_path = Path(args.project_path or ".").resolve()
+    if not project_path.exists():
+        print(f"Error: project path does not exist: {project_path}", file=sys.stderr)
+        sys.exit(1)
+
+    min_severity = getattr(args, "min_severity", "info")
+    severity_order = {"info": 0, "warn": 1, "high": 2}
+
+    try:
+        from neuralmind import type_verifier
+
+        # Load graph from embedder or generate
+        mind = create_mind(str(project_path), auto_build=False)
+        if not mind._built:
+            mind.build()
+
+        graph = getattr(mind.embedder, "graph", None)
+        if not graph:
+            if args.json:
+                print(json.dumps({"risks": [], "message": "no graph"}))
+            else:
+                print("No graph available. Run `neuralmind build` first.")
+            return
+
+        tv = type_verifier.TypeVerifier(project_path)
+        tv.augment_graph(graph)
+        risks = tv.detect_type_risks(graph)
+
+        # Filter by severity
+        min_level = severity_order.get(min_severity, 0)
+        filtered = [r for r in risks if severity_order.get(r.severity, 0) >= min_level]
+
+        if args.json:
+            output = {
+                "risks": [
+                    {
+                        "caller_id": r.caller_id,
+                        "callee_id": r.callee_id,
+                        "risk_type": r.risk_type,
+                        "severity": r.severity,
+                        "detail": r.detail,
+                        "callee_returns": r.callee_returns,
+                    }
+                    for r in filtered
+                ],
+                "total": len(filtered),
+            }
+            print(json.dumps(output, indent=2))
+        else:
+            report = type_verifier.format_type_risks(filtered)
+            print(report)
+    except Exception as e:
+        if args.json:
+            print(json.dumps({"error": str(e)}))
+        else:
+            print(f"Error running type verification: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def cmd_optimize_docs(args):
     """`neuralmind optimize-docs` — evolve JSDoc for undocumented methods.
 
@@ -2750,6 +2818,11 @@ def main():
     build_p = subparsers.add_parser("build", help="Build neural knowledge base")
     build_p.add_argument("project_path", nargs="?", default=".")
     build_p.add_argument("--force", "-f", action="store_true")
+    build_p.add_argument(
+        "--bootstrap",
+        default=None,
+        help="Path to a synapse bundle JSON for cold-start seeding",
+    )
     build_p.add_argument(
         "--dry-run",
         dest="dry_run",
@@ -3586,6 +3659,32 @@ def main():
     )
     opt_docs_p.add_argument("--json", "-j", action="store_true")
     opt_docs_p.set_defaults(func=cmd_optimize_docs)
+
+    # risks command — type-risk compliance report
+    risks_p = subparsers.add_parser(
+        "risks",
+        help="Show type-risk signals from static type verification (compliance)",
+    )
+    risks_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    risks_p.add_argument(
+        "--type",
+        action="store_true",
+        default=True,
+        help="Show type-related risks (default)",
+    )
+    risks_p.add_argument(
+        "--min-severity",
+        choices=["info", "warn", "high"],
+        default="info",
+        help="Minimum severity to report (default: info)",
+    )
+    risks_p.add_argument("--json", "-j", action="store_true")
+    risks_p.set_defaults(func=cmd_risks)
 
     args = parser.parse_args()
     if args.command is None:
