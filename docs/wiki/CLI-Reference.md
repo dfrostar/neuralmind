@@ -986,7 +986,7 @@ rate while the synapse layer alone adds +11.6 points.
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale
 and migration notes, see the
-[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md).
+[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.25.0.md).
 
 ---
 
@@ -1038,7 +1038,7 @@ decay tick); the tuned value is then threaded into the selector at build time so
 ordinary queries (CLI or MCP) use the adapted recall depth. With the flag unset
 the hot path does **zero** extra I/O and the selector keeps its hard-coded
 default. The tuner is single-step, windowed, hysteretic, clamped, and fail-open;
-see the [v0.26.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.26.0.md)
+see the [v0.26.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.26.0.md)
 and `evals/self_improvement/PLAN.md` for the full design.
 
 ---
