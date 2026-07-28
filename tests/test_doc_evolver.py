@@ -568,9 +568,7 @@ class TestFailurePaths:
         assert results[0].generations_run == 0
         assert results[0].promoted is False
 
-    def test_patch_winners_handles_missing_file(
-        self, tmp_project: Path
-    ) -> None:
+    def test_patch_winners_handles_missing_file(self, tmp_project: Path) -> None:
         """patch_winners should skip results for files that don't exist."""
         # Create a result pointing to a non-existent file
         result = EvolveResult(
@@ -602,9 +600,7 @@ class TestFailurePaths:
         modified = evolver.patch_winners([result])
         assert modified == []
 
-    def test_patch_winners_handles_write_failure(
-        self, tmp_project: Path, monkeypatch
-    ) -> None:
+    def test_patch_winners_handles_write_failure(self, tmp_project: Path, monkeypatch) -> None:
         """patch_winners should catch write failures and continue."""
         # Create a result pointing to a real file
         result = EvolveResult(
