@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1](https://github.com/dfrostar/neuralmind/compare/v1.9.0...v1.9.1) (2026-07-28)
+
+
+### Documentation
+
+* add Book Content QA System draft docs (BRD/TRD/PRD/requirements/dev prompt) ([0269181](https://github.com/dfrostar/neuralmind/commit/02691819b95dd2091c14a782aeb52f4cb30daca1))
+* v1.9.0 post-release cleanup — release notes, README banner, CLI reference, ROADMAP, __version_info__, DocEvolver failure-path tests ([c37e688](https://github.com/dfrostar/neuralmind/commit/c37e68849b2c7797d963f459b1a9889e21a3cc61))
+
 ## [1.9.0](https://github.com/dfrostar/neuralmind/compare/v1.8.0...v1.9.0) (2026-07-28)
 
 
