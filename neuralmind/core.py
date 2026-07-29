@@ -337,7 +337,7 @@ class NeuralMind:
             # Find node IDs for the code in this file
             file_node_ids: list[str] = []
             try:
-                for node in (getattr(self.embedder, "nodes", None) or []):
+                for node in getattr(self.embedder, "nodes", None) or []:
                     if node.get("source_file", "") == fp or str(
                         node.get("source_file", "")
                     ).startswith(str(Path(fp).relative_to(self.project_path))):
@@ -357,9 +357,7 @@ class NeuralMind:
 
                 # Reinforce each code node against the compliance control
                 try:
-                    self.synapses.reinforce(
-                        file_node_ids + [syn_key], strength=0.8
-                    )
+                    self.synapses.reinforce(file_node_ids + [syn_key], strength=0.8)
                 except Exception:
                     pass
 

@@ -17,15 +17,9 @@ User stories:
 from __future__ import annotations
 
 import csv
-import io
 import json
-import os
-import tempfile
 from datetime import datetime
 from pathlib import Path
-
-from neuralmind.compliance_matcher import compliance_synapse_key
-
 
 # --------------------------------------------------------------------------- #
 # CSV Export
@@ -224,9 +218,7 @@ def _export_graph_csv(mind, output_path, nodes_list, synapses) -> dict:
                 "source_file": node.get("source_file", ""),
                 "source_location": node.get("source_location", ""),
                 "community": node.get("community", -1),
-                "compliance_matches": json.dumps(
-                    node.get("compliance_matches", [])
-                ),
+                "compliance_matches": json.dumps(node.get("compliance_matches", [])),
             }
         )
 
@@ -272,10 +264,7 @@ def _find_weasyprint() -> bool:
 def _html_escape(text: str) -> str:
     """Basic HTML escaping for embedding in reports."""
     return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
     )
 
 
@@ -342,7 +331,9 @@ def _render_ssp_report(mind, embedder, nodes_list, synapses) -> str:
     html_parts.append('<div class="summary-box">')
     html_parts.append(f"<p><strong>Total Nodes:</strong> {len(nodes_list)}</p>")
     html_parts.append(f"<p><strong>Controls Mapped:</strong> {len(control_map)}</p>")
-    html_parts.append(f"<p><strong>Synapse Store:</strong> {'Enabled' if synapses is not None else 'Disabled'}</p>")
+    html_parts.append(
+        f"<p><strong>Synapse Store:</strong> {'Enabled' if synapses is not None else 'Disabled'}</p>"
+    )
     html_parts.append("</div>")
 
     if not control_map:
@@ -399,10 +390,7 @@ def export_pdf(
 
     if not _find_weasyprint():
         return {
-            "error": (
-                "PDF export requires weasyprint. "
-                "Install: pip install weasyprint"
-            ),
+            "error": ("PDF export requires weasyprint. Install: pip install weasyprint"),
         }
 
     import weasyprint
@@ -440,9 +428,7 @@ def export_pdf(
 def run_export(args, mind=None):
     """Run export from CLI args. Returns export result dict."""
     fmt = getattr(args, "format", "csv")
-    output_path = getattr(
-        args, "output", f"neuralmind_export.{'csv' if fmt == 'csv' else 'pdf'}"
-    )
+    output_path = getattr(args, "output", f"neuralmind_export.{'csv' if fmt == 'csv' else 'pdf'}")
     controls = getattr(args, "controls", False)
     nodes = getattr(args, "nodes", False)
     report_type = getattr(args, "report", "ssp")

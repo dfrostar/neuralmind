@@ -344,8 +344,8 @@ def tool_compliance_report(project_path: str, format: str = "json") -> dict[str,
     from pathlib import Path
 
     from neuralmind.compliance_matcher import (
-        find_compliance_annotations_in_file,
         compliance_synapse_key,
+        find_compliance_annotations_in_file,
     )
 
     mind = get_mind(project_path, auto_build=False)
@@ -963,7 +963,10 @@ TOOLS = [
         "inputSchema": {
             "type": "object",
             "properties": {
-                "project_path": {"type": "string", "description": "Path to the project root directory"},
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
                 "format": {
                     "type": "string",
                     "enum": ["json", "markdown"],

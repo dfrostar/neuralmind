@@ -13,12 +13,10 @@ User story:
 
 from __future__ import annotations
 
-import json
 import subprocess
 from pathlib import Path
 
 from neuralmind.compliance_matcher import (
-    find_compliance_annotations,
     find_compliance_annotations_in_file,
 )
 
@@ -27,20 +25,19 @@ def _get_diff_files(project_path: str | Path, base: str = "HEAD") -> list[str]:
     """Get list of files changed in the current diff vs ``base``."""
     # Validate base to prevent command injection via git ref
     import re as _re
+
     if not _re.match(r"^[a-zA-Z0-9_./^\-~@]+$", base):
         return []
     try:
         cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
         result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
-        files = [f.strip() for f in result.splitlines() if f.strip()]
-        return files
+        return [f.strip() for f in result.splitlines() if f.strip()]
     except subprocess.CalledProcessError:
         # Try staged changes
         try:
             cmd = ["git", "-C", str(project_path), "diff", "--cached", "--name-only"]
             result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
-            files = [f.strip() for f in result.splitlines() if f.strip()]
-            return files
+            return [f.strip() for f in result.splitlines() if f.strip()]
         except Exception:
             return []
     except Exception:
@@ -88,7 +85,6 @@ def run_ci_check(
         Dict with findings, warnings, and counts.
     """
     project_path = Path(project_path)
-    frameworks = _detect_framework(framework)
 
     changed_files = _get_diff_files(project_path, base=base)
 
@@ -127,9 +123,7 @@ def run_ci_check(
     # Build warning messages
     warnings: list[str] = []
     for ctrl_id in sorted(affected_controls):
-        matching_files = [
-            f["file"] for f in findings if f["control_id"] == ctrl_id
-        ]
+        matching_files = [f["file"] for f in findings if f["control_id"] == ctrl_id]
         if matching_files:
             warnings.append(
                 f"PR touches {', '.join(matching_files)} ({ctrl_id}). "
@@ -174,7 +168,7 @@ def format_ci_output(result: dict) -> str:
     lines = []
 
     # Header
-    lines.append(f"NeuralMind CI Compliance Check")
+    lines.append("NeuralMind CI Compliance Check")
     lines.append(f"Framework: {result.get('framework', 'all').upper()}")
     lines.append(f"Base ref: {result.get('base', 'HEAD')}")
     lines.append(f"Changed files: {result.get('changed_files', 0)}")
