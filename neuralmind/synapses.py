@@ -1048,7 +1048,6 @@ class SynapseStore:
         """
         if not type_edges:
             return 0
-        ts = now if now is not None else time.time()
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
