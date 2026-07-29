@@ -2332,9 +2332,7 @@ def cmd_init(args):
     print(f"NeuralMind setting up: {path.name}")
     print(f"  Files found  : {total_files}")
     if lang_counts:
-        langs = ", ".join(
-            f"{v} {k}" for k, v in sorted(lang_counts.items(), key=lambda kv: -kv[1])
-        )
+        langs = ", ".join(f"{v} {k}" for k, v in sorted(lang_counts.items(), key=lambda kv: -kv[1]))
         print(f"  Languages    : {langs}")
     print()
 
@@ -2375,16 +2373,12 @@ def cmd_init(args):
         else:
             lang_count = len(lang_counts)
             summary_line = (
-                f"NeuralMind active — {nodes_total} nodes"
-                f" across {lang_count} languages"
+                f"NeuralMind active — {nodes_total} nodes across {lang_count} languages"
             )
             func_class_summary = f"  Languages : {lang_count}"
     except Exception:
         lang_count = len(lang_counts)
-        summary_line = (
-            f"NeuralMind active — {nodes_total} nodes"
-            f" across {lang_count} languages"
-        )
+        summary_line = f"NeuralMind active — {nodes_total} nodes across {lang_count} languages"
         func_class_summary = f"  Languages : {lang_count}"
 
     print()
@@ -2499,17 +2493,27 @@ def cmd_compliance(args):
 
     for f in path.rglob("*"):
         if f.is_file() and f.suffix in {
-            ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs",
-            ".java", ".cs", ".rb", ".php", ".c", ".cpp", ".h",
+            ".py",
+            ".ts",
+            ".tsx",
+            ".js",
+            ".jsx",
+            ".go",
+            ".rs",
+            ".java",
+            ".cs",
+            ".rb",
+            ".php",
+            ".c",
+            ".cpp",
+            ".h",
         }:
             matches = find_compliance_annotations_in_file(f)
             if matches:
                 matches_total += len(matches)
                 for m in matches:
                     rel = f.relative_to(path)
-                    results.append(
-                        {"file": str(rel), **m}
-                    )
+                    results.append({"file": str(rel), **m})
 
     if getattr(args, "json", False):
         print(json.dumps(results, indent=2))
@@ -2519,8 +2523,8 @@ def cmd_compliance(args):
         print(f"No compliance annotations found in {path}.")
         print(
             "Tip: add annotations like:\n"
-            '  // CMMC AC.L2-3.1.1: Authorized Access Control\n'
-            '  # SOX ITGC-CM-001: Change approved via CAB\n'
+            "  // CMMC AC.L2-3.1.1: Authorized Access Control\n"
+            "  # SOX ITGC-CM-001: Change approved via CAB\n"
         )
         return
 
@@ -2552,14 +2556,14 @@ def cmd_ingest_cmmc(args):
         sys.exit(1)
     try:
         with open(registry_path, encoding="utf-8") as f:
-            registry = json.load(f)
+            json.load(f)
     except Exception as e:
         print(f"Error: failed to read registry: {e}")
         sys.exit(1)
 
     print(f"Ingesting CMMC practices from {Path(registry_path).name}...")
     mind = create_mind(str(project_path), auto_build=True)
-    result = mind.ingest_cmmc(str(path))
+    result = mind.ingest_cmmc(str(registry_path))
 
     if not result.get("success"):
         print(f"Ingestion failed: {result.get('error', 'Unknown error')}")
@@ -2570,8 +2574,10 @@ def cmd_ingest_cmmc(args):
 
     print(f"✅ Ingested {node_count} CMMC practices into the code graph")
     if stats:
-        print(f"   Added: {stats.get('added', 0)}, Updated: {stats.get('updated', 0)}, "
-              f"Skipped: {stats.get('skipped', 0)}")
+        print(
+            f"   Added: {stats.get('added', 0)}, Updated: {stats.get('updated', 0)}, "
+            f"Skipped: {stats.get('skipped', 0)}"
+        )
 
     print()
     print("Try: neuralmind query 'What is AC.L2-3.1.1?'")
