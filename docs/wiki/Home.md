@@ -1,6 +1,6 @@
 # 🧠 NeuralMind Wiki
 
-**Reduce Claude, GPT, and Gemini token costs 40–70× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.
+**Reduce Claude, GPT, and Gemini token costs 12–50× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -29,6 +29,27 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 **[Benchmarks](Benchmarks)** page.
 
 ## What's New
+
+### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
+
+> **12–50× typical savings** — updated from the 40–70× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+
+New compliance capabilities for regulated teams, plus a one-command project init.
+
+| Feature | What |
+|---------|------|
+| `neuralmind init` | One-command project setup — auto-detects structure, installs hooks, builds index, all at once |
+| Compliance annotation detection | Scans code for `# Compliance:` / `// Compliance:` annotations — flags each against CMMC 2.0 / NIST SP 800-171 controls |
+| CMMC content ingestion | `neuralmind ingest-cmmc` imports CMMC 2.0 assessment guides + POA&M templates into the doc index |
+| Audit export | `neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission |
+| CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health |
+| MCP tool | `neuralmind_compliance_report` — live compliance stance via any MCP-compatible agent |
+| Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) |
+
+**Claim tiering:**
+- 44× avg vs 30K naive baseline — **Tier C** (self-measured, reproducible via `neuralmind benchmark .`)
+- 12–25× vs realistic 10K human baseline — **Tier C** (self-measured, same pipeline)
+- "Up to 50×+" for targeted queries — **Tier D** (hypothesized, depends on query shape)
 
 ### v1.7.1 — Schema hotfix + autopilot integration (July 2026)
 
