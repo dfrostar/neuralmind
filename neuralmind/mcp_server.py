@@ -321,6 +321,134 @@ def tool_feedback(
     }
 
 
+def tool_compliance_report(project_path: str, format: str = "json") -> dict[str, Any]:
+    """Generate a validated compliance saving report via the running daemon.
+
+    Scans the project for compliance annotations (CMMC, NIST, SOX, HIPAA,
+    ISO), cross-references against ingested practice content nodes, and
+    returns a structured report suitable for auditor evidence. Can be
+    called via MCP while the daemon is running — no CLI export needed.
+
+    Args:
+        project_path: path to the project root
+        format: ``json`` (default) returns structured data, ``markdown``
+            returns a human-readable report
+
+    Returns:
+        dict with: timestamp, compliance_annotations (list of matched
+        controls with source files/lines), practices_ingested (count),
+        evidence_map (control → code mapping), synapse_linked (boolean
+        indicating whether compliance annotations are synaptically linked)
+    """
+    import time
+    from pathlib import Path
+
+    from neuralmind.compliance_matcher import (
+        find_compliance_annotations_in_file,
+        compliance_synapse_key,
+    )
+
+    mind = get_mind(project_path, auto_build=False)
+    project_root = Path(project_path).resolve()
+
+    annotations = []
+    control_ids_found = set()
+
+    # Scan Python source files in the project for compliance annotations
+    for fpath in sorted(project_root.rglob("*.py")):
+        if ".neuralmind" in fpath.parts or "__pycache__" in fpath.parts:
+            continue
+        try:
+            results = find_compliance_annotations_in_file(str(fpath))
+            for r in results:
+                annotations.append(
+                    {
+                        "file": str(fpath.relative_to(project_root)),
+                        "line": r.get("line", 0),
+                        "control_id": r.get("control_id", ""),
+                        "framework": r.get("framework", ""),
+                        "text": r.get("text", ""),
+                    }
+                )
+                control_ids_found.add(r.get("control_id", ""))
+        except Exception:
+            continue
+
+    # Check which controls are synaptically linked to code nodes
+    synapse_store = mind.synapses
+    synapse_linked = False
+    linked_controls = []
+    if synapse_store is not None:
+        for ctrl_id in sorted(control_ids_found):
+            sk = compliance_synapse_key(ctrl_id)
+            try:
+                with synapse_store._connect() as conn:
+                    row = conn.execute(
+                        "SELECT COUNT(*) FROM synapses WHERE node_a = ? OR node_b = ?",
+                        (sk, sk),
+                    ).fetchone()
+                    if row and row[0] > 0:
+                        synapse_linked = True
+                        linked_controls.append({"control_id": ctrl_id, "edge_count": row[0]})
+            except Exception:
+                continue
+
+    # Check CMMC practice ingestion via content nodes
+    try:
+        import sqlite3
+
+        meta_path = project_root / ".neuralmind" / "neuralmind.db"
+        practices_ingested = 0
+        if meta_path.exists():
+            conn = sqlite3.connect(str(meta_path))
+            row = conn.execute(
+                "SELECT COUNT(*) FROM meta WHERE key LIKE 'cmmc_practice:%'"
+            ).fetchone()
+            practices_ingested = row[0] if row else 0
+            conn.close()
+    except Exception:
+        practices_ingested = 0
+
+    report = {
+        "timestamp": time.time(),
+        "project": project_root.name,
+        "compliance_annotations": annotations,
+        "total_annotations": len(annotations),
+        "unique_controls": len(control_ids_found),
+        "practices_ingested": practices_ingested,
+        "synapse_linked": synapse_linked,
+        "linked_controls": linked_controls,
+        "evidence_map": {
+            c: [a["file"] for a in annotations if a["control_id"] == c]
+            for c in sorted(control_ids_found)
+        },
+    }
+
+    if format == "markdown":
+        lines = [
+            f"# Compliance Saving Report — {project_root.name}",
+            f"**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
+            "",
+            "## Summary",
+            f"- **Total compliance annotations found:** {len(annotations)}",
+            f"- **Unique controls referenced:** {len(control_ids_found)}",
+            f"- **CMMC practices ingested:** {practices_ingested}",
+            f"- **Synapse-linked controls:** {len(linked_controls) if synapse_linked else 0}",
+            "",
+        ]
+        for ctrl in sorted(control_ids_found):
+            files = [a for a in annotations if a["control_id"] == ctrl]
+            lines.append(f"### {ctrl}")
+            for f in files[:10]:
+                lines.append(f"- `{f['file']}:{f['line']}` — {f['text'][:80]}")
+            if len(files) > 10:
+                lines.append(f"- *... and {len(files) - 10} more*")
+            lines.append("")
+        report["markdown"] = "\n".join(lines)
+
+    return report
+
+
 def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     """Render the synapse store as markdown for Claude Code auto-memory.
 
@@ -819,6 +947,29 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_compliance_report",
+        "description": (
+            "Generate a validated compliance saving report from the running "
+            "daemon. Scans the project for compliance annotations (CMMC, NIST, "
+            "SOX, HIPAA, ISO), cross-references against ingested practices, "
+            "and returns an auditor-ready evidence map with synapse linkage "
+            "information. No CLI export needed — call directly via MCP."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {"type": "string", "description": "Path to the project root directory"},
+                "format": {
+                    "type": "string",
+                    "enum": ["json", "markdown"],
+                    "default": "json",
+                    "description": "Output format — json (structured) or markdown (human-readable)",
+                },
+            },
+            "required": ["project_path"],
+        },
+    },
 ]
 
 
@@ -877,6 +1028,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["node_id"],
             args["signal"],
             args.get("context_node_ids"),
+        ),
+        "neuralmind_compliance_report": lambda args: tool_compliance_report(
+            args["project_path"],
+            args.get("format", "json"),
         ),
     }
 
