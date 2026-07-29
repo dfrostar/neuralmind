@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 const heroStats = [
-    { label: 'Token Ratio', value: '40–70×', highlight: true },
+    { label: 'Token Ratio', value: '12–50×', highlight: true },
     { label: 'Languages Indexed', value: '10', highlight: false },
     { label: 'Gold-File Recall', value: '100%', highlight: false },
     { label: 'Free Tier', value: 'Auto-provisioned', highlight: false },
@@ -46,7 +46,7 @@ export default function Hero() {
                 {/* Subhead */}
                 <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
                     Persistent neural memory for AI agents. Local-first synapse layer that cuts token costs{' '}
-                    <span className="text-white font-semibold">40–70×</span>.
+                    <span className="text-white font-semibold">12–50×</span>.
                     Built-in install doctor, Obsidian-style graph view, and honest benchmarks — measured, not marketed.
                 </p>
 

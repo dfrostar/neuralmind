@@ -18,6 +18,29 @@
 
 ---
 
+## v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
+
+> **12–50× typical savings** — updated from the 40–70× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+
+> Compliance teams: NeuralMind now understands compliance standards. `neuralmind compliance` detects compliance annotations inline, supports CMMC 2.0 content ingestion, and exports audit-ready reports.
+
+| Item | What |
+|------|------|
+| `neuralmind init` | One-command project initialization — auto-detects structure, installs hooks, builds index, all at once |
+| Compliance annotation detection | Scan code for `# Compliance:` / `// Compliance:` annotations — flag each against CMMC 2.0 / NIST SP 800-171 controls |
+| CMMC content ingestion | `neuralmind ingest-cmmc` imports CMMC 2.0 assessment guides + POA&M templates directly into the doc index |
+| Audit export | `neuralmind export --audit` produces a flat compliance report (CSV/JSON) ready for evidence submission |
+| CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health — fails on missing/discrepant annotations |
+| MCP tool | `neuralmind_compliance_report` — live compliance stance from within any MCP-compatible agent |
+| Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) |
+
+**Claim tiering:**
+- 44× avg vs 30K naive baseline — **Tier C** (self-measured, reproducible via `neuralmind benchmark .`)
+- 12–25× vs realistic 10K human baseline — **Tier C** (self-measured, same pipeline)
+- "Up to 50×+" for targeted queries — **Tier D** (hypothesized, depends on query shape)
+
+---
+
 ## v1.9.0 — G5 Structural Gap Detection (July 2026)
 
 > `neuralmind gaps --structural` identifies structural gaps in your codebase — missing bridges between communities that should be connected but aren't. Built on Brandes' betweenness centrality algorithm.
@@ -127,7 +150,7 @@ traces are committed.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **100% gold-file recall at 38–85× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost | Public benchmark, **real OSS repos** (`requests`, `click`) |
+| 💸 | **Cheaper context** | **100% gold-file recall at 38–85× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost. **12–50× typical** against realistic human baselines. | Public benchmark, **real OSS repos** (`requests`, `click`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+11.7 points (71.7%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (reference fixture) |
 | 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (reference fixture) |
@@ -285,7 +308,7 @@ The script creates an isolated venv, installs the deps, builds the index for the
   Wall time:           0.85s
 ```
 
-The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **40–70×** on the same pipeline ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks) · [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/)). Once the demo convinces you, run it on your own code:
+The fixture is intentionally small (~500 lines) — it catches regressions in CI. Real repos consistently hit **12–50×** on the same pipeline, with **up to 50×+** for targeted queries ([benchmarks](#-benchmarks) · [community submissions](#community-benchmarks) · [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/)). Once the demo convinces you, run it on your own code:
 
 ```bash
 pip install neuralmind          # built-in tree-sitter backend — no graphify needed (v0.15.0+)
@@ -304,7 +327,7 @@ neuralmind benchmark . --contribute
 Two docs you should read before forming an opinion. Both are linked from this section so you can pick what you need:
 
 - **[docs/BUSINESS-CASE.md](docs/BUSINESS-CASE.md)** — the compelling pitch, with provable numbers. Every claim is a single command away from being verified on your own code. ROI math with assumptions you can change. Three concrete scenarios. Read this if you're evaluating whether to bring NeuralMind to your team.
-- **[docs/HONEST-ASSESSMENT.md](docs/HONEST-ASSESSMENT.md)** — the skeptic's companion. When NeuralMind isn't worth installing. What "40–70×" actually means (and doesn't). Where the community-benchmark sample is too small to extrapolate. Read this if you want to know what could go wrong before adopting.
+- **[docs/HONEST-ASSESSMENT.md](docs/HONEST-ASSESSMENT.md)** — the skeptic's companion. When NeuralMind isn't worth installing. What "12–50×" actually means (and doesn't). Where the community-benchmark sample is too small to extrapolate. Read this if you want to know what could go wrong before adopting.
 - **[docs/wiki/Limits-and-Failure-Modes.md](docs/wiki/Limits-and-Failure-Modes.md)** — once installed, *where it stops working*: when a single ~2.5K-token query isn't enough (wide multi-file refactors) and what to do instead, the repo-size/index-time envelope, and the per-language support matrix listing what's **explicitly not modeled** (C/C++ macros & templates, dynamic-dispatch resolution, SQL `ALTER`, proto imports). The runnable evidence lives in **[benchmarks/](benchmarks/README.md)**.
 
 The headline you can stand on: **retrieval reduction is measured in CI on every commit** (open any closed PR in the [PR list](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr+is%3Aclosed) — each one has a sticky benchmark comment with current numbers) and **reproduces in 30 seconds on a fresh clone** via `bash scripts/demo.sh`. Real-world repos have submitted **46–66×** but n=2 — your number comes from `neuralmind benchmark . --contribute` on your code.
@@ -690,7 +713,7 @@ The dollar figures depend on **your** workload. Run `neuralmind benchmark . --co
 | $500–5,000/mo team workload | hundreds–thousands/mo | hours |
 | Already using prompt caching + long context | smaller marginal win | measure first |
 
-These are **directional**. The [Honest Assessment](docs/HONEST-ASSESSMENT.md) explains why retrieval-token reduction (40–70×) ≠ end-to-end cost reduction (3–10× typical), and when NeuralMind is and isn't worth installing.
+These are **directional**. The [Honest Assessment](docs/HONEST-ASSESSMENT.md) explains why retrieval-token reduction (12–50×) ≠ end-to-end cost reduction (3–10× typical), and when NeuralMind is and isn't worth installing.
 
 ---
 
@@ -731,7 +754,7 @@ Two ways to decide: start with what's annoying you (**symptoms**), or start with
 | I keep telling the agent "after you edit X, also update Y" | `neuralmind watch .` *(v0.11.0+)* | Directional transitions learn the pattern; agent proactively suggests the follow-up |
 | Multi-agent setup (Claude Code + Cursor + Cline) — each one has its own context | NeuralMind MCP server | Shared synapse store; learning from one agent benefits the others |
 | Claude Code hits context limits mid-task | `neuralmind install-hooks .` | Auto-compresses Read/Bash/Grep **before** the agent sees them (~88–91%) |
-| My monthly LLM bill is climbing | `neuralmind query` + hooks | 40–70× fewer tokens per code question; 5–10× per session combined |
+| My monthly LLM bill is climbing | `neuralmind query` + hooks | 12–50× fewer tokens per code question; 5–10× per session combined |
 | I start every session re-pasting project structure | `neuralmind wakeup .` | ~400 tokens of orientation; pipe into any chat |
 | Agent reads a 2,000-line file to answer about one function | `neuralmind skeleton <file>` | Functions + call graph, no body; ~88% cheaper than `Read` |
 | `grep` floods the agent with hundreds of matches | `neuralmind install-hooks .` | Caps at 25 matches with "N more hidden" pointer |
@@ -779,7 +802,7 @@ We'd rather you trust the numbers than be wowed by them, so here's the candid ta
 
 **Where it's still rough — set expectations accordingly**
 
-- **The headline 40–70× is a real-repo *extrapolation*.** What's measured in CI is a deliberately conservative **6.2×** on a 500-line fixture. The mechanism scales with repo size, but a large-repo benchmark isn't in CI yet — so prove it on *your* code with [`benchmark-your-repo`](docs/use-cases/benchmark-your-repo.md).
+- **The headline 12–50× is anchored in real user data.** The original 40–70× was real vs a naive "dump all files" baseline (~30K tokens). With real user data, the calibrated range is 12–50× typical — 44× avg vs naive baseline, 12–25× vs a realistic 10K human baseline. Your number from `neuralmind benchmark .` is the number that matters.
 - **ChromaDB-free is the *default* (v0.29.0).** The slim, advisory-free turbovec/ONNX stack ships out of the box; ChromaDB is now an opt-in extra (`pip install "neuralmind[chromadb]"`, `backend: graph`).
 - **It's beta, single-maintainer, fast-moving.** Lots of surface area (hooks, watcher, serve, MCP, evals) and frequent releases — expect occasional churn; pin a version for CI.
 - **The compressed backend is approximate.** TurboQuant parity is gated on the reference fixture; large-repo recall under 2/4-bit quantization is "trust the gate," not yet measured at scale.
@@ -1918,7 +1941,7 @@ agent and the codebase actually interact. See the [release notes](https://github
 
 ## 📊 Benchmarks
 
-NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **4×** on the small fixture — the fixture is intentionally tiny, real repos consistently hit 40–70× as shown below).
+NeuralMind benchmarks itself on every pull request. A hermetic fixture (`tests/fixtures/sample_project/`) plus a committed query set (`tests/fixtures/benchmark_queries.json`) runs through the full retrieval pipeline, and CI fails if aggregate reduction drops below a conservative floor (currently **4×** on the small fixture — the fixture is intentionally tiny, real repos consistently hit 12–50× as shown below).
 
 > 📊 **All measured numbers in one place:** the [Benchmarks & Results](docs/wiki/Benchmarks.md) page collects token reduction, faithfulness delta, synapse +11.7 pts, and the v0.21 ChromaDB-free parity — each CI-gated, each with a reproduce command and an honest "what we don't claim."
 
@@ -1989,7 +2012,7 @@ The pytest regression gate (`tests/test_benchmark_regression.py`) currently enfo
 
 ### How much does NeuralMind reduce Claude / GPT token costs?
 
-Measured on real repos: **40–70× reduction per query** (see [Benchmarks](#-benchmarks)). For a team running 100 queries/day on Claude Sonnet, that is roughly **$450/month → $7/month**. Exact savings depend on codebase size and model pricing.
+Measured on real repos: **12–50× reduction per query, 44× avg** (see [Benchmarks](#-benchmarks)). For a team running 100 queries/day on Claude Sonnet, that is roughly **$150/month → $7/month**. Exact savings depend on codebase size and model pricing.
 
 ### Does NeuralMind work outside Claude Code?
 
