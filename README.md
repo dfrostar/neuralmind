@@ -90,6 +90,7 @@ neuralmind impact MyClass --depth 2   # blast radius: callers, importers, subcla
 
 neuralmind install-hooks .  # Claude Code: automatic PostToolUse compression
 neuralmind serve .          # Obsidian-style graph view in your browser
+neuralmind savings . --cost # measured token savings, priced for your model
 neuralmind doctor           # verify the install end to end
 ```
 
