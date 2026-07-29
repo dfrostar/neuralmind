@@ -37,7 +37,10 @@ runs:
   steps:
     - name: Install NeuralMind
       shell: bash
-      run: pip install neuralmind
+      # Install the checked-out source, not the PyPI release — this action
+      # drives CLI surface (init, ci-check) that ships ahead of the released
+      # package, and CI should test the code in the PR anyway.
+      run: pip install .
 
     - name: Build index
       shell: bash
