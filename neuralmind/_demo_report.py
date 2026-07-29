@@ -151,7 +151,7 @@ def run_demo_report(
     print(_hr())
     print()
     print(" The fixture is intentionally small (~500 lines).")
-    print(" Real repos consistently hit 40–70× on the same pipeline.")
+    print(" Real repos consistently hit 12–50× on the same pipeline.")
     print()
     print(" Try it on YOUR code:")
     print("   pip install neuralmind")
