@@ -471,24 +471,33 @@ def cmd_wakeup(args):
 def cmd_savings(args):
     """Show cumulative token savings from the local query event log.
 
-    Reads the per-project (or global) memory JSONL to compute how many tokens
-    NeuralMind has saved across all logged queries. This lets you verify the
-    40-70x claim against your own real usage rather than trusting the demo.
+    Reads the audit_events.jsonl (and fallback to memory query_events.jsonl)
+    to compute how many tokens NeuralMind has saved across all logged queries.
+    This lets you verify the savings claim against your own real usage.
     """
     project_path = Path(getattr(args, "project_path", ".")).resolve()
 
+    # Primary source: audit_events.jsonl (always written)
+    audit_file = project_path / ".neuralmind" / "audit_events.jsonl"
+    # Fallback: memory query_events.jsonl (opt-in memory logging)
     proj_file = memory.project_query_events_file(project_path)
     global_file = memory.global_query_events_file()
 
     use_global = getattr(args, "global_", False)
-    events_file = global_file if use_global else proj_file
+    # Prefer audit log (always exists if queries have been run), fall back to memory log
+    if audit_file.exists() and not use_global:
+        events_file = audit_file
+    elif use_global:
+        events_file = global_file
+    else:
+        events_file = proj_file
 
     if not events_file.exists():
         if args.json:
             print(json.dumps({"error": "no event log found", "path": str(events_file)}))
         else:
             print(f"No savings log found at {events_file}")
-            print("Enable memory logging (answer yes when prompted) and run some queries first.")
+            print("Run some queries first to generate audit data.")
         return
 
     est_full = 50_000  # NeuralMind's internal reference baseline per query
@@ -504,20 +513,48 @@ def cmd_savings(args):
                     rec = json.loads(line)
                 except ValueError:
                     continue
-                rs = rec.get("retrieval_summary", {})
-                tokens = rs.get("tokens", 0)
-                ratio = rs.get("reduction_ratio", 0.0)
-                if rec.get("event_type") == "wakeup":
-                    wakeups.append({"tokens": tokens, "ratio": ratio})
+
+                # Handle two event log formats:
+                # 1. audit_events.jsonl: {category, action, details: {tokens, search_hits, ...}}
+                # 2. query_events.jsonl: {event_type, retrieval_summary: {tokens, reduction_ratio}, ...}
+                if "details" in rec and "action" in rec:
+                    # Audit log format
+                    details = rec.get("details", {})
+                    tokens = details.get("tokens", 0)
+                    search_hits = details.get("search_hits", 0)
+                    # Audit log doesn't store reduction_ratio directly; estimate from tokens
+                    if tokens > 0:
+                        ratio = est_full / tokens
+                    else:
+                        ratio = 0.0
+                    if rec.get("action") == "wakeup":
+                        wakeups.append({"tokens": tokens, "ratio": ratio})
+                    else:
+                        queries.append(
+                            {
+                                "query": details.get("question", ""),
+                                "tokens": tokens,
+                                "ratio": ratio,
+                                "ts": rec.get("timestamp", ""),
+                                "search_hits": search_hits,
+                            }
+                        )
                 else:
-                    queries.append(
-                        {
-                            "query": rec.get("query", ""),
-                            "tokens": tokens,
-                            "ratio": ratio,
-                            "ts": rec.get("timestamp", ""),
-                        }
-                    )
+                    # Memory query_events.jsonl format
+                    rs = rec.get("retrieval_summary", {})
+                    tokens = rs.get("tokens", 0)
+                    ratio = rs.get("reduction_ratio", 0.0)
+                    if rec.get("event_type") == "wakeup":
+                        wakeups.append({"tokens": tokens, "ratio": ratio})
+                    else:
+                        queries.append(
+                            {
+                                "query": rec.get("query", ""),
+                                "tokens": tokens,
+                                "ratio": ratio,
+                                "ts": rec.get("timestamp", ""),
+                            }
+                        )
     except OSError as exc:
         print(f"Could not read {events_file}: {exc}", file=sys.stderr)
         sys.exit(1)
