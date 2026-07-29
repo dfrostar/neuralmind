@@ -183,6 +183,98 @@ class GraphEmbedder(EmbeddingBackend):
 
         return "\n".join(parts)
 
+    def _content_to_text(self, content_node: dict) -> str:
+        """Convert a content node (non-code) to searchable text representation.
+
+        Content nodes carry a ``content_text`` field that is richer than
+        what ``_node_to_text`` produces (full compliance descriptions,
+        framework guides, etc). This method prefers that field but falls
+        back to ``_node_to_text`` for compatibility.
+        """
+        content_text = content_node.get("content_text", "")
+        if content_text:
+            return content_text
+        return self._node_to_text(content_node)
+
+    def embed_content(self, content_nodes: list[dict], force: bool = False) -> dict[str, int]:
+        """Embed non-code content nodes (compliance practices, docs, etc.).
+
+        Same semantics as ``embed_nodes()`` but accepts a list of
+        content node dicts (from ContentNode.to_graph_node()) and
+        appends them to the existing graph for embedding.
+
+        Args:
+            content_nodes: List of content node dicts to embed
+            force: If True, re-embed all nodes even if unchanged
+
+        Returns:
+            Dict with counts: {"added": N, "updated": N, "skipped": N}
+        """
+        stats = {"added": 0, "updated": 0, "skipped": 0}
+        batch_ids = []
+        batch_docs = []
+        batch_metas = []
+
+        for node in content_nodes:
+            node_id = str(node.get("id", node.get("label", "")))
+            if not node_id:
+                continue
+
+            text = self._content_to_text(node)
+            meta = self._content_node_metadata(node)
+            meta["content_hash"] = self._content_hash(text)
+            meta["embedded_at"] = datetime.now().isoformat()
+
+            # Check if we need to update
+            try:
+                existing = self.collection.get(ids=[node_id], include=["metadatas", "documents"])
+                existing_ids = existing.get("ids", [])
+
+                if existing_ids:
+                    if not force:
+                        existing_meta = (existing.get("metadatas") or [{}])[0]
+                        existing_doc = (existing.get("documents") or [""])[0]
+                        old_hash = (
+                            existing_meta.get("content_hash", "")
+                            if isinstance(existing_meta, dict)
+                            else ""
+                        )
+                        if old_hash == meta["content_hash"] or existing_doc == text:
+                            stats["skipped"] += 1
+                            continue
+                    stats["updated"] += 1
+                else:
+                    stats["added"] += 1
+            except Exception:
+                stats["added"] += 1
+
+            batch_ids.append(node_id)
+            batch_docs.append(text)
+            batch_metas.append(meta)
+
+            # Process in batches of 100
+            if len(batch_ids) >= 100:
+                self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
+                batch_ids, batch_docs, batch_metas = [], [], []
+
+        # Final batch
+        if batch_ids:
+            self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
+
+        # Rebuild BM25 to include new content
+        self.build_bm25_index()
+        return stats
+
+    def _content_node_metadata(self, node: dict) -> dict[str, Any]:
+        """Extract metadata from a content node for filtering."""
+        meta = self._node_metadata(node)
+        # Preserve compliance-specific metadata
+        node_meta = node.get("metadata", {}) or {}
+        for key in ("practice_id", "title", "domain", "framework"):
+            if key in node_meta:
+                meta[key] = str(node_meta[key])
+        return meta
+
     def _node_metadata(self, node: dict) -> dict[str, Any]:
         """
         Extract metadata from node for filtering.

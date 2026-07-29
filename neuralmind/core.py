@@ -308,6 +308,72 @@ class NeuralMind:
         """
         return synapse_feedback.deactivate_files(self, file_paths)
 
+    def detect_compliance(self, file_paths: list[str]) -> list[dict]:
+        """Scan ``file_paths`` for compliance annotations and reinforce synapse
+        edges between code nodes and referenced controls.
+
+        Returns a list of detected annotations::
+
+            [
+                {"file": "...", "control_id": "AC.L2-3.1.1",
+                 "framework": "CMMC", "label": "..."},
+                ...
+            ]
+        """
+        from neuralmind.compliance_matcher import (
+            compliance_synapse_key,
+            find_compliance_annotations_in_file,
+        )
+
+        results: list[dict] = []
+        if self.synapses is None:
+            return results
+
+        for fp in file_paths:
+            matches = find_compliance_annotations_in_file(fp)
+            if not matches:
+                continue
+
+            # Find node IDs for the code in this file
+            file_node_ids: list[str] = []
+            try:
+                for node in (getattr(self.embedder, "nodes", None) or []):
+                    if node.get("source_file", "") == fp or str(
+                        node.get("source_file", "")
+                    ).startswith(str(Path(fp).relative_to(self.project_path))):
+                        nid = node.get("id")
+                        if nid:
+                            file_node_ids.append(str(nid))
+            except Exception:
+                pass
+
+            if not file_node_ids:
+                continue
+
+            for match in matches:
+                ctrl_id = match["control_id"]
+                framework = match["framework"]
+                syn_key = compliance_synapse_key(ctrl_id, framework)
+
+                # Reinforce each code node against the compliance control
+                try:
+                    self.synapses.reinforce(
+                        file_node_ids + [syn_key], strength=0.8
+                    )
+                except Exception:
+                    pass
+
+                results.append(
+                    {
+                        "file": fp,
+                        "control_id": ctrl_id,
+                        "framework": framework,
+                        "label": match["label"],
+                    }
+                )
+
+        return results
+
     def _emit_audit(
         self,
         category: str,
@@ -594,6 +660,74 @@ class NeuralMind:
         the CLI share one backend-free implementation.
         """
         return validate_project(self.project_path, write=write)
+
+    def ingest_cmmc(self, registry_path: str | Path) -> dict:
+        """Ingest the CMMC practice registry as first-class content nodes.
+
+        Reads the JSON registry at ``registry_path`` (110 CMMC Level 2
+        practices with id, title, description, guide, domain), converts
+        each to a ``ContentNode``, and embeds it alongside the code
+        graph.
+
+        After ingestion, ``neuralmind query \"What is AC.L2-3.1.1?\"``
+        returns the practice alongside relevant code.
+
+        Returns a dict with node_count and embed stats, or an error dict.
+        """
+        from neuralmind.content_node import ContentNode
+
+        registry_path = Path(registry_path)
+        if not registry_path.exists():
+            return {"error": f"Registry file not found: {registry_path}"}
+
+        try:
+            practices = json.loads(registry_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError) as exc:
+            return {"error": f"Failed to parse registry: {exc}"}
+
+        if not isinstance(practices, list):
+            # Could be a dict with a practices key
+            if isinstance(practices, dict):
+                practices = practices.get("practices", practices.get("controls", [practices]))
+
+        content_nodes = []
+        for p in practices:
+            node = ContentNode.from_cmmc_practice(p)
+            content_nodes.append(node.to_graph_node())
+
+        # Build if not already built
+        if not self._built:
+            result = self.build()
+            if not result.get("success"):
+                return {"error": f"Build required before ingestion: {result.get('error')}"}
+
+        # Embed the content nodes
+        stats = self.embedder.embed_content(content_nodes)
+
+        # Sync content nodes into the embedder's node list so BM25 sees them
+        existing_ids = {n.get("id", "") for n in self.embedder.nodes}
+        for cn in content_nodes:
+            cid = cn.get("id", "")
+            if cid not in existing_ids:
+                self.embedder.nodes.append(cn)
+
+        self._emit_audit(
+            category="content_ingestion",
+            action="ingest_cmmc",
+            status="success",
+            target=self.project_path.name,
+            details={
+                "node_count": len(content_nodes),
+                "embed_stats": stats,
+            },
+        )
+
+        return {
+            "success": True,
+            "node_count": len(content_nodes),
+            "embed_stats": stats,
+            "registry": registry_path.name,
+        }
 
     def _maybe_inherit_team_memory(self) -> None:
         """Import the committed team-memory bundle once into ``shared`` (PRD:

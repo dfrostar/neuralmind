@@ -1,0 +1,118 @@
+name: "NeuralMind CI Compliance Check"
+description: "Detect code changes affecting compliance controls in PRs"
+author: "NeuralMind"
+
+inputs:
+  project-path:
+    description: "Path to the project root"
+    required: false
+    default: "."
+  framework:
+    description: "Compliance framework to check (cmmc, nist, sox, hipaa, or all)"
+    required: false
+    default: "all"
+  diff:
+    description: "Git ref to diff against"
+    required: false
+    default: "HEAD"
+  fail-on-warning:
+    description: "Fail the workflow when compliance warnings exist"
+    required: false
+    default: "false"
+  github-token:
+    description: "GitHub token for PR comment posting"
+    required: false
+    default: ""
+
+outputs:
+  affected-controls:
+    description: "Comma-separated list of affected control IDs"
+  has-warnings:
+    description: "'true' if compliance warnings were generated"
+  summary:
+    description: "Human-readable summary of findings"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install NeuralMind
+      shell: bash
+      run: pip install neuralmind
+
+    - name: Build index
+      shell: bash
+      working-directory: ${{ inputs.project-path }}
+      run: neuralmind init --no-watch
+
+    - name: Run CI compliance check
+      id: ci-check
+      shell: bash
+      working-directory: ${{ inputs.project-path }}
+      run: |
+        FRAMEWORK="${{ inputs.framework }}"
+        DIFF="${{ inputs.diff }}"
+        FAIL="${{ inputs.fail-on-warning }}"
+
+        ARGS="ci-check --framework $FRAMEWORK --diff $DIFF --json"
+        if [ "$FAIL" = "true" ]; then
+          ARGS="$ARGS --fail-on-warning"
+        fi
+
+        neuralmind $ARGS > /tmp/nm_ci_output.json 2>&1 ||
+          echo "neuralmind exit code: $?"
+
+        python3 ${{ github.action_path }}/parse_output.py >> $GITHUB_OUTPUT
+
+    - name: Post PR comment
+      if: ${{ inputs.github-token != '' }}
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('fs');
+          const output = fs.readFileSync('/tmp/nm_ci_output.json', 'utf8');
+          let body;
+          try {
+            const data = JSON.parse(output);
+            let lines = ['## NeuralMind CI Compliance Check'];
+            lines.push('');
+            lines.push('**Framework:** ' + (data.framework || 'all'));
+            lines.push('**Changed files:** ' + (data.changed_files || 0));
+            lines.push('**Files with annotations:** ' + (data.files_with_compliance_annotations || 0));
+            lines.push('');
+
+            if (data.warnings && data.warnings.length > 0) {
+              lines.push('### Warnings');
+              lines.push('');
+              data.warnings.forEach(function(w) { lines.push('- ' + w); });
+              lines.push('');
+            }
+
+            if (data.findings && data.findings.length > 0) {
+              lines.push('### Findings');
+              lines.push('');
+              data.findings.forEach(function(f) {
+                var label = f.label || '';
+                var ctrl = f.control_id || '';
+                var fw = f.framework || '';
+                var file = f.file || '';
+                lines.push('- **' + fw + '** `' + ctrl + '` - ' + label + ' (' + file + ')');
+              });
+              lines.push('');
+            }
+
+            if (data.summary) {
+              lines.push('**Summary:** ' + data.summary);
+            }
+
+            body = lines.join('\n');
+          } catch (e) {
+            body = '## NeuralMind CI Compliance Check\n\nCould not parse output.\n\n```\n' + output + '\n```';
+          }
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
