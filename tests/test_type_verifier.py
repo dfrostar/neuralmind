@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 
 from neuralmind.type_verifier import (
-    TypeVerifier,
     TypeInfo,
     TypeRisk,
-    format_type_risks,
+    TypeVerifier,
     _is_optional_type,
+    format_type_risks,
 )
 
 
@@ -23,8 +22,7 @@ def tmp_project(tmp_path):
     project_dir.mkdir()
 
     src = project_dir / "module_a.py"
-    src.write_text(
-        textwrap.dedent("""
+    src.write_text(textwrap.dedent("""
             from typing import Optional, Union, List
 
             def get_user(id: int) -> Optional[str]:
@@ -50,12 +48,10 @@ def tmp_project(tmp_path):
                 if x > 0:
                     return x
                 return None
-        """)
-    )
+        """))
 
     caller = project_dir / "module_b.py"
-    caller.write_text(
-        textwrap.dedent("""
+    caller.write_text(textwrap.dedent("""
             from module_a import get_user, fetch_all, no_annotation
 
             def process():
@@ -63,8 +59,7 @@ def tmp_project(tmp_path):
                 items = fetch_all()
                 result = no_annotation("x")
                 return user
-        """)
-    )
+        """))
 
     return project_dir
 
@@ -299,7 +294,11 @@ def test_all_optional_returns_flagged(tmp_project):
     graph = {
         "type_edges": [
             ("caller", "module_a.py::get_user", TypeInfo("Optional[str]", True, 1.0, "stdlib")),
-            ("caller", "module_a.py::union_none", TypeInfo("Union[int, None]", True, 1.0, "stdlib")),
+            (
+                "caller",
+                "module_a.py::union_none",
+                TypeInfo("Union[int, None]", True, 1.0, "stdlib"),
+            ),
             ("caller", "module_a.py::pipe_none", TypeInfo("int | None", True, 1.0, "stdlib")),
         ]
     }

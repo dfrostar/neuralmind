@@ -17,7 +17,6 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -189,9 +188,9 @@ class TypeVerifier:
 
         type_edges: list[tuple[str, str, TypeInfo]] = []
         calls_edges = [
-            e for e in edges
-            if e.get("relation") in ("calls", "call")
-            or e.get("label") in ("calls", "call")
+            e
+            for e in edges
+            if e.get("relation") in ("calls", "call") or e.get("label") in ("calls", "call")
         ]
 
         for edge in calls_edges:
@@ -264,10 +263,9 @@ class TypeVerifier:
         ``store`` must be a ``SynapseStore`` instance with a ``persist_type_edges``
         method. Returns the number of rows upserted.
         """
-        type_edges = []
+        # We don't have source/target from cache alone; use graph type_edges
         for _k, info_or_tuple in self._cache.items():
             if info_or_tuple is not None and isinstance(info_or_tuple, TypeInfo):
-                # We don't have source/target from cache alone; use graph type_edges
                 pass
 
         # Get from graph if available
@@ -282,15 +280,17 @@ class TypeVerifier:
         ts = time.time()
         rows = []
         for source_node, target_node, type_info in raw_edges:
-            rows.append((
-                str(source_node),
-                str(target_node),
-                type_info.return_type,
-                1 if type_info.is_optional else 0,
-                type_info.confidence,
-                type_info.inferred_by,
-                ts,
-            ))
+            rows.append(
+                (
+                    str(source_node),
+                    str(target_node),
+                    type_info.return_type,
+                    1 if type_info.is_optional else 0,
+                    type_info.confidence,
+                    type_info.inferred_by,
+                    ts,
+                )
+            )
 
         if not rows:
             return 0
