@@ -2273,6 +2273,308 @@ def cmd_demo(args):
             shutil.rmtree(workdir, ignore_errors=True)
 
 
+def cmd_init(args):
+    """One-command NeuralMind setup: scan → build graph → create embeddings → start watcher."""
+
+    project_path = args.project_path or "."
+    path = Path(project_path).resolve()
+
+    if not path.is_dir():
+        print(f"init failed: not a directory: {project_path}")
+        sys.exit(1)
+
+    # 1. Auto-detect languages (same scan as _dry_run_scan)
+    scan = _dry_run_scan(project_path)
+    lang_counts = scan.get("languages", {})
+    total_files = scan.get("total_files", 0)
+
+    if total_files == 0:
+        print(f"No supported code files found in {project_path}.")
+        sys.exit(1)
+
+    print(f"NeuralMind setting up: {path.name}")
+    print(f"  Files found  : {total_files}")
+    if lang_counts:
+        langs = ", ".join(
+            f"{v} {k}" for k, v in sorted(lang_counts.items(), key=lambda kv: -kv[1])
+        )
+        print(f"  Languages    : {langs}")
+    print()
+
+    # 2. Build graph + create embeddings
+    print("Building graph and creating embeddings...")
+    mind = NeuralMind(str(path))
+    result = mind.build(force=bool(getattr(args, "force", False)))
+    if not result.get("success"):
+        print(f"init failed: {result.get('error', 'Unknown error')}")
+        sys.exit(1)
+
+    nodes_total = result.get("nodes_total", 0)
+    duration = result.get("duration_seconds", 0)
+
+    # 3. Derive function/class count from embedder if available
+    func_class_summary = ""
+    try:
+        if mind.embedder and hasattr(mind.embedder, "nodes") and mind.embedder.nodes:
+            func_count = sum(
+                1
+                for n in mind.embedder.nodes
+                if n.get("type") in ("function", "method", "class", "constructor")
+            )
+            class_count = sum(1 for n in mind.embedder.nodes if n.get("type") == "class")
+            file_count = sum(1 for n in mind.embedder.nodes if n.get("file_type") == "code")
+            lang_count = len(lang_counts)
+            func_class_summary = (
+                f"  Functions : {func_count}\n"
+                f"  Classes   : {class_count}\n"
+                f"  Files     : {file_count}\n"
+                f"  Languages : {lang_count}"
+            )
+            summary_line = (
+                f"NeuralMind active — {nodes_total} nodes"
+                f" ({func_count} functions, {class_count} classes)"
+                f" across {lang_count} languages"
+            )
+        else:
+            lang_count = len(lang_counts)
+            summary_line = (
+                f"NeuralMind active — {nodes_total} nodes"
+                f" across {lang_count} languages"
+            )
+            func_class_summary = f"  Languages : {lang_count}"
+    except Exception:
+        lang_count = len(lang_counts)
+        summary_line = (
+            f"NeuralMind active — {nodes_total} nodes"
+            f" across {lang_count} languages"
+        )
+        func_class_summary = f"  Languages : {lang_count}"
+
+    print()
+    print(summary_line)
+    if func_class_summary:
+        print(func_class_summary)
+    print(f"  Duration  : {duration}s")
+    print()
+
+    # 4. Optional watcher start
+    watch = getattr(args, "watch", True) and not getattr(args, "no_watch", False)
+    if watch:
+        print("Starting file watcher (edits trigger synapse co-activation)...")
+        try:
+            from neuralmind.watcher import FileActivityWatcher
+
+            if mind.synapses is None:
+                print("  watcher skipped: synapses disabled for this instance")
+            else:
+                import signal
+                import threading
+
+                def on_batch(paths: list[str]) -> None:
+                    try:
+                        mind.activate_files(paths)
+                    except Exception:
+                        pass
+
+                watcher = FileActivityWatcher(
+                    str(path),
+                    on_batch,
+                    debounce=0.75,
+                )
+                watcher.start()
+                print(f"  File watcher running on {path} (synapses enabled)")
+                print("  Press Ctrl-C to stop the watcher (graph + embeddings persist).")
+
+                def _wait() -> None:
+                    try:
+                        signal.pause()
+                    except KeyboardInterrupt:
+                        pass
+
+                wait_thread = threading.Thread(target=_wait, daemon=True)
+                wait_thread.start()
+        except ImportError:
+            print("  file watcher unavailable (watcher module not installed)")
+        except Exception as exc:
+            print(f"  file watcher failed to start: {exc}")
+    else:
+        print("File watcher not started (--no-watch).")
+        print("Run `neuralmind watch` later to enable live synapse learning.")
+
+    if getattr(args, "json", False):
+        print(json.dumps(result, indent=2))
+
+    return  # 0 implied
+
+
+def cmd_compliance(args):
+    """Scan files for compliance annotations and report findings."""
+    project_path = args.project_path or "."
+    path = Path(project_path).resolve()
+
+    use_watch = getattr(args, "watch", False)
+
+    # Scan files for compliance annotations
+    from neuralmind.compliance_matcher import find_compliance_annotations_in_file
+
+    if use_watch:
+        # Watch mode: run a watcher that checks every file change
+        print(f"Watching {path} for compliance annotations...")
+        print("Edit a file with CMMC/NIST/SOX/HIPAA annotations and watch them appear.")
+        print("Press Ctrl-C to stop.")
+        print()
+
+        mind = create_mind(str(path), auto_build=True)
+        from neuralmind.watcher import FileActivityWatcher
+
+        if mind.synapses is not None:
+
+            def on_change(paths: list[str]) -> None:
+                detections = mind.detect_compliance(paths)
+                for d in detections:
+                    print(
+                        f"  [compliance] {d['framework']} {d['control_id']} "
+                        f"— {d['label']}  ({d['file']})"
+                    )
+                if detections:
+                    print(f"  -> {len(detections)} compliance synapses reinforced")
+
+            watcher = FileActivityWatcher(
+                str(path),
+                on_change,
+                debounce=0.75,
+            )
+            watcher.start()
+            try:
+                import signal
+
+                signal.pause()
+            except KeyboardInterrupt:
+                watcher.stop()
+        else:
+            print("Synapses disabled — compliance detection requires synapses.")
+            sys.exit(1)
+        return
+
+    # One-shot scan mode
+    matches_total = 0
+    results: list[dict] = []
+
+    for f in path.rglob("*"):
+        if f.is_file() and f.suffix in {
+            ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs",
+            ".java", ".cs", ".rb", ".php", ".c", ".cpp", ".h",
+        }:
+            matches = find_compliance_annotations_in_file(f)
+            if matches:
+                matches_total += len(matches)
+                for m in matches:
+                    rel = f.relative_to(path)
+                    results.append(
+                        {"file": str(rel), **m}
+                    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(results, indent=2))
+        return
+
+    if not results:
+        print(f"No compliance annotations found in {path}.")
+        print(
+            "Tip: add annotations like:\n"
+            '  // CMMC AC.L2-3.1.1: Authorized Access Control\n'
+            '  # SOX ITGC-CM-001: Change approved via CAB\n'
+        )
+        return
+
+    print(f"Found {matches_total} compliance annotations across {path.name}:\n")
+    for r in results:
+        print(f"  [{r['framework']:>10}] {r['control_id']}")
+        print(f"             {r['label']}")
+        print(f"             {r['file']}")
+        print()
+
+
+def cmd_ingest_cmmc(args):
+    """Ingest CMMC practice registry as first-class content nodes."""
+    project_path = args.project_path or "."
+    registry_path = args.registry
+
+    if not registry_path:
+        # Default to the canonical path
+        candidate = Path("/home/dtfrost5/cmmc_practices_registry.json")
+        if candidate.exists():
+            registry_path = str(candidate)
+        else:
+            print("Error: --registry path is required.")
+            print("Usage: neuralmind ingest-cmmc --registry /path/to/registry.json")
+            sys.exit(1)
+
+    path = Path(registry_path)
+    if not path.exists():
+        print(f"Error: registry file not found: {registry_path}")
+        sys.exit(1)
+
+    print(f"Ingesting CMMC practices from {path.name}...")
+    mind = create_mind(str(project_path), auto_build=True)
+    result = mind.ingest_cmmc(str(path))
+
+    if not result.get("success"):
+        print(f"Ingestion failed: {result.get('error', 'Unknown error')}")
+        sys.exit(1)
+
+    node_count = result.get("node_count", 0)
+    stats = result.get("embed_stats", {})
+
+    print(f"✅ Ingested {node_count} CMMC practices into the code graph")
+    if stats:
+        print(f"   Added: {stats.get('added', 0)}, Updated: {stats.get('updated', 0)}, "
+              f"Skipped: {stats.get('skipped', 0)}")
+
+    print()
+    print("Try: neuralmind query 'What is AC.L2-3.1.1?'")
+
+
+def cmd_export(args):
+    """Export NeuralMind state for audit (CSV or PDF)."""
+    from neuralmind.export import run_export
+
+    result = run_export(args)
+    if result.get("error"):
+        print(f"Export failed: {result['error']}")
+        sys.exit(1)
+
+    if getattr(args, "json", False):
+        import json as _json
+
+        print(_json.dumps(result, indent=2))
+
+
+def cmd_ci_check(args):
+    """Run CI compliance check on the project."""
+    from neuralmind.ci_check import format_ci_output, run_ci_check
+
+    project_path = getattr(args, "project_path", ".")
+    base = getattr(args, "diff", "HEAD")
+    framework = getattr(args, "framework", "all")
+
+    result = run_ci_check(
+        project_path,
+        framework=framework,
+        base=base,
+        json_output=bool(getattr(args, "json", False)),
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(result, indent=2))
+    else:
+        print(format_ci_output(result))
+
+    # Non-zero exit when warnings exist (optionally fail the build)
+    if getattr(args, "fail_on_warning", False) and result.get("warnings"):
+        sys.exit(1)
+
+
 def cmd_last(args):
     """Print the most recent cached bash output (recovery without re-running).
 
@@ -3229,6 +3531,24 @@ def main():
     mem_staleness_run.add_argument("--json", "-j", action="store_true")
     mem_staleness_run.set_defaults(func=cmd_memory)
 
+    # Ingest CMMC command — load compliance practices into the graph
+    ingest_cmmc_p = subparsers.add_parser(
+        "ingest-cmmc",
+        help="Ingest CMMC practice registry as first-class content nodes in the code graph",
+    )
+    ingest_cmmc_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    ingest_cmmc_p.add_argument(
+        "--registry",
+        default=None,
+        help="Path to CMMC practices registry JSON file",
+    )
+    ingest_cmmc_p.set_defaults(func=cmd_ingest_cmmc)
+
     # Init-hook command
     init_parser = subparsers.add_parser(
         "init-hook", help="Initialize Git post-commit hook for auto-updates"
@@ -3241,6 +3561,107 @@ def main():
         help="Path to the project (defaults to current directory)",
     )
     init_parser.set_defaults(func=cmd_init_hook)
+
+    # init command — one-command setup: scan → build graph → embed → watch
+    init_p = subparsers.add_parser(
+        "init",
+        help="One-command NeuralMind setup: scan languages, build graph, "
+        "create embeddings, and optionally start the file watcher",
+    )
+    init_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    init_p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force rebuild, regenerating all embeddings",
+    )
+    init_p.add_argument(
+        "--no-watch",
+        action="store_true",
+        help="Skip launching the file watcher after setup",
+    )
+    init_p.add_argument(
+        "--json",
+        "-j",
+        action="store_true",
+        help="Output build stats as JSON",
+    )
+    init_p.set_defaults(func=cmd_init)
+
+    # Export command — auditor-ready CSV or PDF reports
+    export_p = subparsers.add_parser(
+        "export",
+        help="Export NeuralMind state as auditor-ready CSV or PDF",
+    )
+    export_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    export_p.add_argument(
+        "--format",
+        choices=["csv", "pdf"],
+        default="csv",
+        help="Export format (default: csv)",
+    )
+    export_p.add_argument(
+        "--output",
+        default=None,
+        help="Output file path (default: neuralmind_export.csv or neuralmind_export.pdf)",
+    )
+    export_p.add_argument(
+        "--controls",
+        action="store_true",
+        help="Export compliance-control-to-code mappings (CSV only)",
+    )
+    export_p.add_argument(
+        "--nodes",
+        action="store_true",
+        help="Export all nodes with metadata (CSV only)",
+    )
+    export_p.add_argument(
+        "--report",
+        choices=["ssp"],
+        default="ssp",
+        help="Report type for PDF export (default: ssp)",
+    )
+    export_p.add_argument("--json", "-j", action="store_true")
+    export_p.set_defaults(func=cmd_export)
+
+    # CI check command — compliance-aware diff analysis for pipelines
+    ci_p = subparsers.add_parser(
+        "ci-check",
+        help="Run compliance-aware CI check against a git diff",
+    )
+    ci_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    ci_p.add_argument(
+        "--framework",
+        default="all",
+        help="Compliance framework to check (cmmc, nist, sox, hipaa, or all)",
+    )
+    ci_p.add_argument(
+        "--diff",
+        default="HEAD",
+        help="Git ref to diff against (default: HEAD for uncommitted changes)",
+    )
+    ci_p.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="Exit with non-zero status when compliance warnings exist",
+    )
+    ci_p.add_argument("--json", "-j", action="store_true")
+    ci_p.set_defaults(func=cmd_ci_check)
 
     # Skeleton command — graph-backed compact view of a file
     skel_p = subparsers.add_parser(
@@ -3304,6 +3725,25 @@ def main():
         help="Output in JSON format",
     )
     gaps_p.set_defaults(func=cmd_gaps)
+
+    # Compliance command — detect annotations and reinforce synapses
+    comp_p = subparsers.add_parser(
+        "compliance",
+        help="Scan for compliance annotations (CMMC, NIST, SOX, HIPAA) in code comments",
+    )
+    comp_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root (default: current directory)",
+    )
+    comp_p.add_argument(
+        "--watch",
+        action="store_true",
+        help="Watch mode: live-detect annotations as files change and reinforce synapses",
+    )
+    comp_p.add_argument("--json", "-j", action="store_true")
+    comp_p.set_defaults(func=cmd_compliance)
 
     # Structural command — typed structural neighbors (calls/inherits/imports)
     struct_p = subparsers.add_parser(
