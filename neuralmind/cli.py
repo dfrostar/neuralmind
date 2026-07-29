@@ -2372,9 +2372,7 @@ def cmd_init(args):
             )
         else:
             lang_count = len(lang_counts)
-            summary_line = (
-                f"NeuralMind active — {nodes_total} nodes across {lang_count} languages"
-            )
+            summary_line = f"NeuralMind active — {nodes_total} nodes across {lang_count} languages"
             func_class_summary = f"  Languages : {lang_count}"
     except Exception:
         lang_count = len(lang_counts)
