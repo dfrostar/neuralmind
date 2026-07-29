@@ -364,10 +364,10 @@ def tool_compliance_report(project_path: str, format: str = "json") -> dict[str,
                 annotations.append(
                     {
                         "file": str(fpath.relative_to(project_root)),
-                        "line": r.get("line", 0),
+                        "line": r.get("span", (0, 0))[0],
                         "control_id": r.get("control_id", ""),
                         "framework": r.get("framework", ""),
-                        "text": r.get("text", ""),
+                        "text": r.get("match_text", ""),
                     }
                 )
                 control_ids_found.add(r.get("control_id", ""))
@@ -380,7 +380,11 @@ def tool_compliance_report(project_path: str, format: str = "json") -> dict[str,
     linked_controls = []
     if synapse_store is not None:
         for ctrl_id in sorted(control_ids_found):
-            sk = compliance_synapse_key(ctrl_id)
+            # Find the framework for this control_id from annotations
+            framework = next(
+                (a["framework"] for a in annotations if a["control_id"] == ctrl_id), "UNKNOWN"
+            )
+            sk = compliance_synapse_key(ctrl_id, framework)
             try:
                 with synapse_store._connect() as conn:
                     row = conn.execute(

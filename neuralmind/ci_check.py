@@ -25,6 +25,10 @@ from neuralmind.compliance_matcher import (
 
 def _get_diff_files(project_path: str | Path, base: str = "HEAD") -> list[str]:
     """Get list of files changed in the current diff vs ``base``."""
+    # Validate base to prevent command injection via git ref
+    import re as _re
+    if not _re.match(r"^[a-zA-Z0-9_./^\-~@]+$", base):
+        return []
     try:
         cmd = ["git", "-C", str(project_path), "diff", "--name-only", base]
         result = subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True)
@@ -51,7 +55,18 @@ def _detect_framework(framework_arg: str) -> list[str]:
     framework = (framework_arg or "").upper().strip()
     if framework == "ALL" or not framework:
         return ["CMMC", "NIST", "SOX ITGC", "HIPAA", "ISO 27001"]
-    return [framework]
+    # Map user input to registered pattern names
+    framework_map = {
+        "CMMC": "CMMC",
+        "NIST": "NIST",
+        "SOX": "SOX ITGC",
+        "SOX ITGC": "SOX ITGC",
+        "HIPAA": "HIPAA",
+        "ISO": "ISO 27001",
+        "ISO 27001": "ISO 27001",
+    }
+    mapped = framework_map.get(framework)
+    return [mapped] if mapped else [framework]
 
 
 def run_ci_check(

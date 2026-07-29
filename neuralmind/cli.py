@@ -2538,21 +2538,26 @@ def cmd_ingest_cmmc(args):
     registry_path = args.registry
 
     if not registry_path:
-        # Default to the canonical path
-        candidate = Path("/home/dtfrost5/cmmc_practices_registry.json")
-        if candidate.exists():
-            registry_path = str(candidate)
+        # Default: check NEURALMIND_CMMC_REGISTRY env var, then error
+        env_path = os.environ.get("NEURALMIND_CMMC_REGISTRY")
+        if env_path and Path(env_path).exists():
+            registry_path = env_path
         else:
             print("Error: --registry path is required.")
             print("Usage: neuralmind ingest-cmmc --registry /path/to/registry.json")
+            print("Or set NEURALMIND_CMMC_REGISTRY env var.")
             sys.exit(1)
-
-    path = Path(registry_path)
-    if not path.exists():
+    if not registry_path or not Path(registry_path).exists():
         print(f"Error: registry file not found: {registry_path}")
         sys.exit(1)
+    try:
+        with open(registry_path, encoding="utf-8") as f:
+            registry = json.load(f)
+    except Exception as e:
+        print(f"Error: failed to read registry: {e}")
+        sys.exit(1)
 
-    print(f"Ingesting CMMC practices from {path.name}...")
+    print(f"Ingesting CMMC practices from {Path(registry_path).name}...")
     mind = create_mind(str(project_path), auto_build=True)
     result = mind.ingest_cmmc(str(path))
 
