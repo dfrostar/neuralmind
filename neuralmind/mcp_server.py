@@ -614,7 +614,7 @@ TOOLS = [
     },
     {
         "name": "neuralmind_query",
-        "description": "Get optimized context for answering a question about a codebase. Achieves 40-70x token reduction by only loading relevant code clusters.",
+        "description": "Get optimized context for answering a question about a codebase. Achieves 12-50x typical token reduction by only loading relevant code clusters.",
         "inputSchema": {
             "type": "object",
             "properties": {

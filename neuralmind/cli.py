@@ -271,7 +271,7 @@ def _print_explain(result) -> None:
 
     Shows token savings, which synapse pairs fired, which communities were
     loaded, and how many nodes were brought in via spreading activation.
-    The goal is to make the 40-70x claim verifiable at a glance.
+    The goal is to make the token savings claim verifiable at a glance.
     """
     print("-" * 60)
     print("Why this context?")
@@ -3079,7 +3079,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "NeuralMind — reduce Claude/GPT/Gemini token costs 40-70x on code questions. "
+            "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
             "Local semantic codebase index + MCP server + PostToolUse compression hooks "
             "for Claude Code, Cursor, Cline, and Continue."
         ),
@@ -3142,7 +3142,7 @@ def main():
     savings_p = subparsers.add_parser(
         "savings",
         help="Show cumulative token savings from the local query event log — "
-        "verifies the 40-70x claim against your own real usage.",
+        "verifies the 12-50x claim against your own real usage.",
     )
     savings_p.add_argument("project_path", nargs="?", default=".")
     savings_p.add_argument(
