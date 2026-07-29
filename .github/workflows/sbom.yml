@@ -28,7 +28,8 @@ jobs:
     name: Generate + attach SBOM
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # to upload to the GitHub Release
+      contents: write   # to upload to the GitHub Release + push the site copy
+      actions: write    # to dispatch deploy-site.yml after publishing
     steps:
       - uses: actions/checkout@v7
         with:
@@ -123,6 +124,17 @@ jobs:
             sleep $((attempt * 5))
           done
           echo "::warning title=SBOM site publish failed::Could not push ${ASSET} to main after retries. Re-run this workflow to retry."
+
+      # The push above is made with GITHUB_TOKEN, which cannot fire
+      # deploy-site.yml's push trigger (the standard workflow-from-workflow
+      # suppression). Dispatch the deploy explicitly — dispatch events are
+      # exempt — so the site picks up the new SBOM without waiting for an
+      # unrelated site change to come along.
+      - name: Dispatch site deploy so the SBOM goes live
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run deploy-site.yml --repo "${GITHUB_REPOSITORY}"
 
       - name: Upload SBOM as workflow artifact (fallback if release attach fails)
         uses: actions/upload-artifact@v7

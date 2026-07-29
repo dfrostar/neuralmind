@@ -76,4 +76,4 @@ The agent can call this automatically after editing a file, get the co-break can
 - [Blast radius before a rename](blast-radius-before-a-rename.md) — the static-graph complement: every caller/importer/subclass a change would touch (v0.42.0+)
 - [`neuralmind query --explain`](claude-code.md#understand-why-a-retrieval-answered-the-way-it-did-v0400) — understand why a specific retrieval answered the way it did
 - [`neuralmind savings`](claude-code.md#track-cumulative-savings-v0400-requires-neuralmind_memory1) — track cumulative token savings across sessions
-- [Full v0.39.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.39.0.md)
+- [Full v0.39.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.39.0.md)

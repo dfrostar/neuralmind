@@ -128,4 +128,4 @@ This fires exactly once. To re-trigger: `neuralmind onboarding` directly.
 
 ---
 
-*Wiki v1.0. Phase 2 doc (WAVE15). Next review: after Enterprise tier ships.*
+*Wiki v1.0. Next review: after Enterprise tier ships.*

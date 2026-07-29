@@ -13,7 +13,7 @@ const navLinks = [
     { href: '/publications', label: 'Research' },
     { href: '/#features', label: 'Features' },
     { href: '/pricing', label: 'Pricing' },
-    { href: '/team', label: 'Team' },
+    { href: '/team', label: 'Teams' },
     { href: '/#assessment', label: 'Assessment' },
     { href: '/#faq', label: 'FAQ' },
 ];

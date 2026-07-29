@@ -162,6 +162,23 @@ def tool_benchmark(project_path: str) -> dict[str, Any]:
     return mind.benchmark()
 
 
+def tool_savings(
+    project_path: str,
+    cost: bool = False,
+    model: str | None = None,
+    queries_per_day: int = 100,
+) -> dict[str, Any]:
+    """Report cumulative measured token savings from the query event log."""
+    from neuralmind.savings import compute_savings
+
+    return compute_savings(
+        project_path,
+        cost=cost,
+        model=model,
+        queries_per_day=queries_per_day,
+    )
+
+
 def tool_skeleton(project_path: str, file_path: str) -> dict[str, Any]:
     """Return a graph-backed skeleton of a file (functions + rationales + call graph)."""
     mind = get_mind(project_path)
@@ -704,6 +721,36 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_savings",
+        "description": (
+            "Report cumulative measured token savings from the project's query "
+            "event log — how many tokens NeuralMind has actually saved across "
+            "logged queries and wakeups, with an optional dollar estimate."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "cost": {
+                    "type": "boolean",
+                    "description": "Also estimate dollar savings priced on input tokens",
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Pricing model for the cost estimate (e.g. claude-opus-4-8)",
+                },
+                "queries_per_day": {
+                    "type": "integer",
+                    "description": "Assumed queries/day for the monthly projection (default 100)",
+                },
+            },
+            "required": ["project_path"],
+        },
+    },
+    {
         "name": "neuralmind_skeleton",
         "description": (
             "Return a compact graph-backed view of a file (functions, rationales, "
@@ -993,6 +1040,12 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
+        "neuralmind_savings": lambda args: tool_savings(
+            args["project_path"],
+            args.get("cost", False),
+            args.get("model"),
+            args.get("queries_per_day", 100),
+        ),
         "neuralmind_skeleton": lambda args: tool_skeleton(args["project_path"], args["file_path"]),
         "neuralmind_synaptic_neighbors": lambda args: tool_synaptic_neighbors(
             args["project_path"],
