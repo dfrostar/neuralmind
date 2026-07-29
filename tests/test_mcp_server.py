@@ -366,7 +366,7 @@ class TestToolDefinitions:
         """TOOLS should define 18 tools: previous 17 + neuralmind_compliance_report."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 18
+        assert len(TOOLS) == 19
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -391,6 +391,7 @@ class TestToolDefinitions:
             "neuralmind_build",
             "neuralmind_stats",
             "neuralmind_benchmark",
+            "neuralmind_savings",
             "neuralmind_skeleton",
             # v0.4.0 synapse layer
             "neuralmind_synaptic_neighbors",

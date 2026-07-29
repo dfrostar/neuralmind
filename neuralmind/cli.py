@@ -474,161 +474,62 @@ def cmd_savings(args):
     Reads the audit_events.jsonl (and fallback to memory query_events.jsonl)
     to compute how many tokens NeuralMind has saved across all logged queries.
     This lets you verify the savings claim against your own real usage.
+
+    The aggregation lives in neuralmind.savings.compute_savings so the MCP
+    server and daemon can serve the same report.
     """
+    from neuralmind.savings import BASELINE_TOKENS_PER_QUERY, compute_savings
+
     project_path = Path(getattr(args, "project_path", ".")).resolve()
-
-    # Primary source: audit_events.jsonl (always written)
-    audit_file = project_path / ".neuralmind" / "audit_events.jsonl"
-    # Fallback: memory query_events.jsonl (opt-in memory logging)
-    proj_file = memory.project_query_events_file(project_path)
-    global_file = memory.global_query_events_file()
-
     use_global = getattr(args, "global_", False)
-    # Prefer audit log (always exists if queries have been run), fall back to memory log
-    if audit_file.exists() and not use_global:
-        events_file = audit_file
-    elif use_global:
-        events_file = global_file
-    else:
-        events_file = proj_file
 
-    if not events_file.exists():
+    report = compute_savings(
+        project_path,
+        use_global=use_global,
+        cost=getattr(args, "cost", False),
+        model=getattr(args, "model", None),
+        queries_per_day=getattr(args, "queries_per_day", 100),
+    )
+
+    error = report.get("error")
+    if error:
+        if error.startswith("could not read"):
+            print(error[0].upper() + error[1:], file=sys.stderr)
+            sys.exit(1)
+        # "no event log found" falls through to the friendly hint below.
         if args.json:
-            print(json.dumps({"error": "no event log found", "path": str(events_file)}))
+            print(json.dumps(report))
         else:
-            print(f"No savings log found at {events_file}")
+            print(f"No savings log found at {report['path']}")
             print("Run some queries first to generate audit data.")
         return
 
-    est_full = 50_000  # NeuralMind's internal reference baseline per query
-    queries = []
-    wakeups = []
-    try:
-        with events_file.open(encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    rec = json.loads(line)
-                except ValueError:
-                    continue
-
-                # Handle two event log formats:
-                # 1. audit_events.jsonl: {category, action, details: {tokens, search_hits, ...}}
-                # 2. query_events.jsonl: {event_type, retrieval_summary: {tokens, reduction_ratio}, ...}
-                if "details" in rec and "action" in rec:
-                    # Audit log format
-                    details = rec.get("details", {})
-                    tokens = details.get("tokens", 0)
-                    search_hits = details.get("search_hits", 0)
-                    # Audit log doesn't store reduction_ratio directly; estimate from tokens
-                    if tokens > 0:
-                        ratio = est_full / tokens
-                    else:
-                        ratio = 0.0
-                    if rec.get("action") == "wakeup":
-                        wakeups.append({"tokens": tokens, "ratio": ratio})
-                    else:
-                        queries.append(
-                            {
-                                "query": details.get("question", ""),
-                                "tokens": tokens,
-                                "ratio": ratio,
-                                "ts": rec.get("timestamp", ""),
-                                "search_hits": search_hits,
-                            }
-                        )
-                else:
-                    # Memory query_events.jsonl format
-                    rs = rec.get("retrieval_summary", {})
-                    tokens = rs.get("tokens", 0)
-                    ratio = rs.get("reduction_ratio", 0.0)
-                    if rec.get("event_type") == "wakeup":
-                        wakeups.append({"tokens": tokens, "ratio": ratio})
-                    else:
-                        queries.append(
-                            {
-                                "query": rec.get("query", ""),
-                                "tokens": tokens,
-                                "ratio": ratio,
-                                "ts": rec.get("timestamp", ""),
-                            }
-                        )
-    except OSError as exc:
-        print(f"Could not read {events_file}: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    total_events = len(queries) + len(wakeups)
-    if total_events == 0:
+    if "total_queries" not in report:
+        # Zero events logged.
         if args.json:
             print(json.dumps({"queries": 0, "total_tokens_saved": 0}))
         else:
             print("No events logged yet. Run some queries to start tracking savings.")
         return
 
-    total_tokens_used = sum(e["tokens"] for e in queries + wakeups)
-    total_full_cost = total_events * est_full
-    total_saved = total_full_cost - total_tokens_used
-    avg_ratio = sum(e["ratio"] for e in queries) / len(queries) if queries else 0.0
-
-    dollar_info = None
-    if getattr(args, "cost", False):
-        # --queries-per-day is a *query* volume assumption; scale it by the
-        # per-query average, not the per-event one, so a log with wakeups
-        # mixed in doesn't dilute the projection (wakeups log ~0 tokens
-        # saved, so counting them in the average understates $/day).
-        query_tokens_used = sum(e["tokens"] for e in queries)
-        query_tokens_baseline = len(queries) * est_full
-        dollar_info = memory.estimate_dollar_savings(
-            tokens_used=total_tokens_used,
-            tokens_baseline=total_full_cost,
-            events=total_events,
-            model=getattr(args, "model", None) or memory.DEFAULT_PRICING_MODEL,
-            queries_per_day=getattr(args, "queries_per_day", 100),
-            query_tokens_saved=query_tokens_baseline - query_tokens_used,
-            query_count=len(queries),
-        )
-        # Make the estimate basis machine-readable (kept in the CLI so memory's
-        # public API stays untouched): only the with-NM cost is measured from
-        # logged tokens; without-NM — and therefore saved/projected — is
-        # estimated from the fixed per-query baseline.
-        dollar_info = {
-            **dollar_info,
-            "baseline_tokens_per_query": est_full,
-            "estimated": True,
-            "basis": (
-                "with-NM cost is measured from logged tokens; without-NM (and "
-                "saved/projected) is estimated from the fixed per-query baseline"
-            ),
-        }
-
     if args.json:
-        out = {
-            "project": project_path.name,
-            "log": str(events_file),
-            "total_queries": len(queries),
-            "total_wakeups": len(wakeups),
-            "total_tokens_used": total_tokens_used,
-            "est_total_full_cost": total_full_cost,
-            "total_tokens_saved": total_saved,
-            "avg_reduction_ratio": round(avg_ratio, 1),
-        }
-        if dollar_info:
-            out["dollar_savings"] = dollar_info
-        print(json.dumps(out, indent=2))
+        print(json.dumps(report, indent=2))
         return
 
-    scope = "global" if use_global else project_path.name
-    print(f"NeuralMind token savings — {scope}")
+    est_full = BASELINE_TOKENS_PER_QUERY
+    dollar_info = report.get("dollar_savings")
+    print(f"NeuralMind token savings — {report['scope']}")
     print()
-    print(f"  Queries logged    : {len(queries)}")
-    print(f"  Wakeups logged    : {len(wakeups)}")
-    print(f"  Avg reduction     : {avg_ratio:.1f}x")
+    print(f"  Queries logged    : {report['total_queries']}")
+    print(f"  Wakeups logged    : {report['total_wakeups']}")
+    print(f"  Avg reduction     : {report['avg_reduction_ratio']:.1f}x")
     print()
-    print(f"  Tokens actually used : {total_tokens_used:>10,}")
-    print(f"  Est. cost without NM : {total_full_cost:>10,}  (at {est_full:,} tokens/query)")
-    print(f"  Tokens saved         : {total_saved:>10,}")
+    print(f"  Tokens actually used : {report['total_tokens_used']:>10,}")
+    print(
+        f"  Est. cost without NM : {report['est_total_full_cost']:>10,}  "
+        f"(at {est_full:,} tokens/query)"
+    )
+    print(f"  Tokens saved         : {report['total_tokens_saved']:>10,}")
     if dollar_info:
         print()
         print(
@@ -644,10 +545,11 @@ def cmd_savings(args):
             f"(at {dollar_info['queries_per_day']} queries/day)"
         )
         print(f"    (without-NM estimated from {est_full:,} tok/query baseline)")
-    if queries:
+    recent = report.get("recent_queries") or []
+    if recent:
         print()
         print("  Most recent queries:")
-        for q in queries[-5:]:
+        for q in recent:
             ratio_str = f"{q['ratio']:.1f}x" if q["ratio"] else "?"
             ts = q["ts"][:10] if q["ts"] else ""
             label = q["query"][:55] + "…" if len(q["query"]) > 55 else q["query"]
