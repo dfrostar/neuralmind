@@ -37,10 +37,14 @@ runs:
   steps:
     - name: Install NeuralMind
       shell: bash
-      # Install the checked-out source, not the PyPI release — this action
-      # drives CLI surface (init, ci-check) that ships ahead of the released
-      # package, and CI should test the code in the PR anyway.
-      run: pip install .
+      # Install the source this action ships with, not the PyPI release —
+      # the action drives CLI surface (init, ci-check) that can ship ahead
+      # of the released package. github.action_path resolves to this
+      # directory inside the action's own checkout, so external consumers
+      # get the pinned NeuralMind version instead of accidentally
+      # `pip install`-ing their own repository from GITHUB_WORKSPACE; for
+      # this repo's workflow it resolves to the PR checkout as before.
+      run: pip install "${{ github.action_path }}/../../.."
 
     - name: Build index
       shell: bash
