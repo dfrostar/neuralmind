@@ -70,7 +70,10 @@ jobs:
       # as every workflow above — a GITHUB_TOKEN-created release can't fire it,
       # so the site never redeployed on release and /security drifted stale
       # (it showed v1.7.0 while v1.9.1 was current). Dispatch it explicitly so
-      # every release rebuilds the site with the new version.
+      # every release rebuilds the site with the new version. This is stage 1
+      # of a two-stage deploy: sbom.yml dispatches a second deploy once the
+      # SBOM is published so /security's download link goes live too — don't
+      # deduplicate them (concurrency in deploy-site.yml handles overlap).
       - name: Dispatch site deploy for the new release
         if: ${{ steps.release.outputs.release_created }}
         env:
