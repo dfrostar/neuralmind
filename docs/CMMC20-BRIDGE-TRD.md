@@ -1,1 +1,0 @@
-/home/dtfrost5/neuralmind/docs/specs/compliance/2026-07-29-CMMC20-BRIDGE-TRD.md
