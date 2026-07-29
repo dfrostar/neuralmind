@@ -228,7 +228,7 @@ jobs:
             fi
           else
             echo "Release ${TAG} does not exist — creating with artifacts attached."
-            NOTES_FILE="RELEASE_NOTES_${TAG}.md"
+            NOTES_FILE="docs/releases/RELEASE_NOTES_${TAG}.md"
             if [ -f "${NOTES_FILE}" ]; then
               gh release create "${TAG}" dist/* \
                 --repo "${GITHUB_REPOSITORY}" \

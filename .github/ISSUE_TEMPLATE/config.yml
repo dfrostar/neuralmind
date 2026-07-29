@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / getting started help
+    url: https://docs.neuralmind.uk/wiki/Home
+    about: Setup guide, CLI reference, troubleshooting, and FAQ.
+  - name: Security vulnerability
+    url: https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md
+    about: Please report vulnerabilities privately — not as public issues.
+  - name: Team tier support
+    url: https://github.com/dfrostar/neuralmind/blob/main/SUPPORT.md
+    about: Licensed customers — see SUPPORT.md for the priority channel.

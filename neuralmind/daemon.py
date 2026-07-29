@@ -362,6 +362,15 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
         if method == "GET" and route == "/stats":
             project = (qs.get("project") or [""])[0] or _require(body, "project")
             return 200, _stats(ctx, project)
+        if method == "GET" and route == "/savings":
+            project = (qs.get("project") or [""])[0] or _require(body, "project")
+            return 200, _savings(
+                ctx,
+                project,
+                (qs.get("cost") or ["0"])[0] in ("1", "true"),
+                (qs.get("model") or [None])[0],
+                int((qs.get("queries_per_day") or ["100"])[0]),
+            )
         if method == "POST" and route == "/query":
             return 200, _query(
                 ctx,
@@ -447,6 +456,13 @@ def _stats(ctx: DaemonContext, project: str) -> dict:
     mind = ctx.registry.get(project)
     with ctx.registry.lock_for(project):
         return mind.get_stats()
+
+
+def _savings(ctx: DaemonContext, project: str, cost: bool, model: str | None, qpd: int) -> dict:
+    # Reads the on-disk event log; no index or registry lock needed.
+    from neuralmind.savings import compute_savings
+
+    return compute_savings(project, cost=cost, model=model, queries_per_day=qpd)
 
 
 def _build(ctx: DaemonContext, project: str, force: bool, sync: bool) -> tuple[int, dict]:
