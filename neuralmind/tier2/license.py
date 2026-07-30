@@ -105,20 +105,21 @@ class LicenseValidator:
 
     Args:
         public_key_hex: Hex-encoded Ed25519 public key for signature verification.
+            Can be a single key or a list of keys for rotation support.
         license_path: Path to the license JSON file.
         anti_tamper: Optional AntiTamper instance for clock-skew detection.
-            When provided, each validate() checks for timestamp regression
-            and records the validation event. When None, validation is
-            identical to pre-Wave 10B behavior.
     """
 
     def __init__(
         self,
-        public_key_hex: str,
+        public_key_hex: str | list[str],
         license_path: Path,
         anti_tamper: Any = None,
     ):
-        self.public_key_hex = public_key_hex
+        if isinstance(public_key_hex, str):
+            self._public_keys = [public_key_hex]
+        else:
+            self._public_keys = list(public_key_hex)
         self.license_path = Path(license_path)
         self._cached: LicenseInfo | None = None
         self.anti_tamper = anti_tamper
@@ -147,40 +148,29 @@ class LicenseValidator:
         )
 
     def _verify_signature(self, lic: LicenseInfo) -> bool:
-        """Verify Ed25519 signature (team tier).
-
-        Args:
-            lic: The ``LicenseInfo`` to verify.
-
-        Returns:
-            True if the signature is valid, False on any error.
-        """
+        """Verify Ed25519 signature against any valid public key."""
         try:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
-            pub_bytes = bytes.fromhex(self.public_key_hex)
-            pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
+            sig = lic.signature
+            if not sig or sig == "self-signed":
+                return False
+            sig_bytes = bytes.fromhex(sig)
             msg_dict = {k: v for k, v in lic.raw.items() if k != "signature"}
             msg = json.dumps(msg_dict, sort_keys=True, separators=(",", ":"))
-            sig_bytes = bytes.fromhex(lic.signature)
-            pub_key.verify(sig_bytes, msg.encode("utf-8"))
-            return True
+            for pk_hex in self._public_keys:
+                pub_bytes = bytes.fromhex(pk_hex)
+                pub_key = Ed25519PublicKey.from_public_bytes(pub_bytes)
+                try:
+                    pub_key.verify(sig_bytes, msg.encode("utf-8"))
+                    return True
+                except Exception:
+                    continue
+            return False
         except Exception:
             return False
 
     def _is_expired(self, lic: LicenseInfo) -> bool:
-        """True if expires_at has passed.
-
-        Free tier with ``expires_at="never"`` is never expired.
-
-        Args:
-            lic: The ``LicenseInfo`` to check.
-
-        Returns:
-            True if the license has expired, False otherwise.
-        """
-        if lic.expires_at == "never":
-            return False
+        """True if expires_at has passed."""
         try:
             exp = datetime.fromisoformat(lic.expires_at.replace("Z", "+00:00"))
             return datetime.now(timezone.utc) > exp

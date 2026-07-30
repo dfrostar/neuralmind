@@ -24,12 +24,19 @@ class LicenseOperations:
         private_key_hex: str,
         storage_path: Path,
     ):
-        self.private_key = private_key_hex
+        # Store key as bytearray for secure wiping (M1 fix)
+        self._private_key_bytes = bytearray.fromhex(private_key_hex)
         self.storage = Path(storage_path)
         self.storage.mkdir(parents=True, exist_ok=True)
         self.customers_path = self.storage / "customers.yaml"
         self.partners_path = self.storage / "partners.yaml"
         self.audit_path = self.storage / "audit_log.jsonl"
+
+    def __del__(self):
+        # Securely wipe private key from memory on destruction
+        if hasattr(self, '_private_key_bytes'):
+            for i in range(len(self._private_key_bytes)):
+                self._private_key_bytes[i] = 0
 
     def _load_customers(self) -> dict:
         if not self.customers_path.exists():
@@ -99,23 +106,17 @@ class LicenseOperations:
     def _sign_license(self, data: dict) -> str:
         """Sign license data with Ed25519 private key."""
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-        priv_bytes = bytes.fromhex(self.private_key)
-        priv_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
+        priv_key = Ed25519PrivateKey.from_private_bytes(bytes(self._private_key_bytes))
         msg = json.dumps(data, sort_keys=True, separators=(",", ":"))
         sig = priv_key.sign(msg.encode("utf-8"))
         return sig.hex()
 
     def _verify_existing_signature(self, lic_data: dict) -> bool:
         """Verify the signature on an existing license file."""
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-            Ed25519PrivateKey,
-        )
-
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
         try:
             # Derive public key from private key for verification
-            priv_bytes = bytes.fromhex(self.private_key)
-            priv_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
+            priv_key = Ed25519PrivateKey.from_private_bytes(bytes(self._private_key_bytes))
             pub_key = priv_key.public_key()
             sig = lic_data.get("signature", "")
             if not sig or sig == "self-signed":
