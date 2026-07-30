@@ -40,7 +40,13 @@ class LicenseOperations:
             return {"customers": {}}
         import yaml
         with open(self.customers_path) as f:
-            return yaml.safe_load(f) or {"customers": {}}
+            data = yaml.safe_load(f)
+        # H2 fix: YAML safe_load can return non-dict types (list, string, number)
+        if not isinstance(data, dict):
+            return {"customers": {}}
+        if "customers" not in data:
+            data["customers"] = {}
+        return data
 
     def _save_customers(self, data: dict) -> None:
         import yaml
@@ -73,8 +79,16 @@ class LicenseOperations:
 
     def _log_audit(self, action: str, **kwargs) -> None:
         entry = {"timestamp": _now_iso(), "action": action, **kwargs}
+        # Sanitize all string values to prevent JSONL injection
+        sanitized = {}
+        for k, v in entry.items():
+            if isinstance(v, str):
+                # Replace newlines and control chars to prevent line injection
+                sanitized[k] = v.replace("\n", " ").replace("\r", " ")
+            else:
+                sanitized[k] = v
         with open(self.audit_path, "a") as f:
-            f.write(json.dumps(entry) + "\n")
+            f.write(json.dumps(sanitized, ensure_ascii=True) + "\n")
 
     def _generate_license_id(self) -> str:
         return f"lic_{uuid.uuid4().hex[:12]}"
@@ -90,6 +104,25 @@ class LicenseOperations:
         msg = json.dumps(data, sort_keys=True, separators=(",", ":"))
         sig = priv_key.sign(msg.encode("utf-8"))
         return sig.hex()
+
+    def _verify_existing_signature(self, lic_data: dict) -> bool:
+        """Verify the signature on an existing license file."""
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
+        try:
+            # Derive public key from private key for verification
+            priv_bytes = bytes.fromhex(self.private_key)
+            priv_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
+            pub_key = priv_key.public_key()
+            sig = lic_data.get("signature", "")
+            if not sig or sig == "self-signed":
+                return False
+            msg_dict = {k: v for k, v in lic_data.items() if k != "signature"}
+            msg = json.dumps(msg_dict, sort_keys=True, separators=(",", ":"))
+            sig_bytes = bytes.fromhex(sig)
+            pub_key.verify(sig_bytes, msg.encode("utf-8"))
+            return True
+        except Exception:
+            return False
 
     def issue_team_license(
         self,
@@ -200,7 +233,11 @@ class LicenseOperations:
         old_expires = datetime.fromisoformat(cust["expires_at"])
         new_expires = old_expires + timedelta(days=30 * term_months)
 
-        # Update license file
+        # H4 fix: Do not revive revoked licenses
+        if cust.get("status") == "revoked":
+            raise ValueError(f"License for {customer_name} is revoked. Issue a new license instead of renewing.")
+
+        # Update license file — verify existing signature before re-signing
         lic_data = {}
         safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
         license_path = self.storage / f"{safe_name}.json"
@@ -209,6 +246,9 @@ class LicenseOperations:
         if license_path.exists():
             with open(license_path) as f:
                 lic_data = json.load(f)
+            # Verify existing signature before re-signing (C2 fix)
+            if not self._verify_existing_signature(lic_data):
+                raise ValueError("License file has been tampered with: signature invalid")
             lic_data["expires_at"] = new_expires.isoformat()
             signature = self._sign_license({k: v for k, v in lic_data.items() if k != "signature"})
             lic_data["signature"] = signature
@@ -253,7 +293,7 @@ class LicenseOperations:
         now = datetime.now(timezone.utc)
         lic_data = {}
 
-        # Update license file — sanitize customer_name to prevent path traversal
+        # Update license file — verify existing signature before re-signing (C2 fix)
         safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
         license_path = self.storage / f"{safe_name}.json"
         if not str(license_path.resolve()).startswith(str(self.storage.resolve())):
@@ -261,6 +301,9 @@ class LicenseOperations:
         if license_path.exists():
             with open(license_path) as f:
                 lic_data = json.load(f)
+            # Verify existing signature before re-signing
+            if not self._verify_existing_signature(lic_data):
+                raise ValueError("License file has been tampered with: signature invalid")
             lic_data["expires_at"] = now.isoformat()
             signature = self._sign_license({k: v for k, v in lic_data.items() if k != "signature"})
             lic_data["signature"] = signature

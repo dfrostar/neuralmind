@@ -175,16 +175,12 @@ class TestPathTraversal:
 
 
 class TestRenewRevoked:
-    def test_renew_revoked_license(self, ops):
-        """Renewing a revoked license should NOT set status to active."""
+    def test_renew_revoked_license_blocked(self, ops):
+        """Renewing a revoked license should be blocked (H4 fix)."""
         ops.issue_team_license("Acme", 5, 12)
         ops.revoke_license("Acme", "non-payment")
-        # DeepSeek found: renew unconditionally sets status to active
-        # This test documents current behavior
-        lic = ops.renew_license("Acme", 12)
-        # Current behavior: status is set to active (may be a bug)
-        # TODO: Add status check after renew to prevent this
-        assert lic.expires_at > lic.issued_at
+        with pytest.raises(ValueError, match="revoked"):
+            ops.renew_license("Acme", 12)
 
     def test_add_partner_invalid_commission(self, temp_storage):
         """Reject invalid commission."""
