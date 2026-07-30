@@ -112,7 +112,11 @@ class LicenseOperations:
 
     def _verify_existing_signature(self, lic_data: dict) -> bool:
         """Verify the signature on an existing license file."""
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PublicKey,
+            Ed25519PrivateKey,
+        )
+
         try:
             # Derive public key from private key for verification
             priv_bytes = bytes.fromhex(self.private_key)
@@ -240,7 +244,9 @@ class LicenseOperations:
 
         # H4 fix: Do not revive revoked licenses
         if cust.get("status") == "revoked":
-            raise ValueError(f"License for {customer_name} is revoked. Issue a new license instead of renewing.")
+            raise ValueError(
+                f"License for {customer_name} is revoked. Issue a new license instead of renewing."
+            )
 
         # Update license file — verify existing signature before re-signing
         lic_data = {}
