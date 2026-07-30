@@ -752,7 +752,7 @@ were never equivalent:
 The reranker only ever re-ordered the L3 hits the synapse layer already
 sees as activation seeds, so its ordering was both redundant and
 discarded. The synapse layer is now the single learning system. See the
-[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md)
+[v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.25.0.md)
 for the full evidence.
 
 ---
@@ -978,8 +978,8 @@ one budget holds (see [Limits & Failure Modes](Limits-and-Failure-Modes)).
 - [API Reference](API-Reference.md) - Python API documentation
 - [CLI Reference](CLI-Reference.md) - Command-line interface
 - [Integration Guide](Integration-Guide.md) - MCP and tool integrations
-- [Release Notes v0.4.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes
-- [Release Notes v0.38.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.38.0.md) - Hybrid search + feedback loop
+- [Release Notes v0.4.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.4.0.md) - Synapse layer launch notes
+- [Release Notes v0.38.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.38.0.md) - Hybrid search + feedback loop
 
 ---
 

@@ -328,7 +328,7 @@ What this means for you:
 - The L3 output **no longer prints `(+X.XX boost)` reranker labels**;
   synapse-recall labels are unchanged.
 
-See the [v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.25.0.md)
+See the [v0.25.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.25.0.md)
 for the full evidence and migration notes.
 
 ## What's Coming

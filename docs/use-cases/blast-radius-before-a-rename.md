@@ -116,4 +116,4 @@ It's **budget-neutral** — a pulled-in neighbor displaces the weakest vector hi
 ## See also
 
 - [Review before push](review-before-push.md) — the *learned-association* complement: co-break candidates from your edit history, not the static graph
-- [Full v0.42.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.42.0.md)
+- [Full v0.42.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.42.0.md)

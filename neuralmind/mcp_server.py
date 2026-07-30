@@ -162,6 +162,23 @@ def tool_benchmark(project_path: str) -> dict[str, Any]:
     return mind.benchmark()
 
 
+def tool_savings(
+    project_path: str,
+    cost: bool = False,
+    model: str | None = None,
+    queries_per_day: int = 100,
+) -> dict[str, Any]:
+    """Report cumulative measured token savings from the query event log."""
+    from neuralmind.savings import compute_savings
+
+    return compute_savings(
+        project_path,
+        cost=cost,
+        model=model,
+        queries_per_day=queries_per_day,
+    )
+
+
 def tool_skeleton(project_path: str, file_path: str) -> dict[str, Any]:
     """Return a graph-backed skeleton of a file (functions + rationales + call graph)."""
     mind = get_mind(project_path)
@@ -321,6 +338,138 @@ def tool_feedback(
     }
 
 
+def tool_compliance_report(project_path: str, format: str = "json") -> dict[str, Any]:
+    """Generate a validated compliance saving report via the running daemon.
+
+    Scans the project for compliance annotations (CMMC, NIST, SOX, HIPAA,
+    ISO), cross-references against ingested practice content nodes, and
+    returns a structured report suitable for auditor evidence. Can be
+    called via MCP while the daemon is running — no CLI export needed.
+
+    Args:
+        project_path: path to the project root
+        format: ``json`` (default) returns structured data, ``markdown``
+            returns a human-readable report
+
+    Returns:
+        dict with: timestamp, compliance_annotations (list of matched
+        controls with source files/lines), practices_ingested (count),
+        evidence_map (control → code mapping), synapse_linked (boolean
+        indicating whether compliance annotations are synaptically linked)
+    """
+    import time
+    from pathlib import Path
+
+    from neuralmind.compliance_matcher import (
+        compliance_synapse_key,
+        find_compliance_annotations_in_file,
+    )
+
+    mind = get_mind(project_path, auto_build=False)
+    project_root = Path(project_path).resolve()
+
+    annotations = []
+    control_ids_found = set()
+
+    # Scan Python source files in the project for compliance annotations
+    for fpath in sorted(project_root.rglob("*.py")):
+        if ".neuralmind" in fpath.parts or "__pycache__" in fpath.parts:
+            continue
+        try:
+            results = find_compliance_annotations_in_file(str(fpath))
+            for r in results:
+                annotations.append(
+                    {
+                        "file": str(fpath.relative_to(project_root)),
+                        "line": r.get("span", (0, 0))[0],
+                        "control_id": r.get("control_id", ""),
+                        "framework": r.get("framework", ""),
+                        "text": r.get("match_text", ""),
+                    }
+                )
+                control_ids_found.add(r.get("control_id", ""))
+        except Exception:
+            continue
+
+    # Check which controls are synaptically linked to code nodes
+    synapse_store = mind.synapses
+    synapse_linked = False
+    linked_controls = []
+    if synapse_store is not None:
+        for ctrl_id in sorted(control_ids_found):
+            # Find the framework for this control_id from annotations
+            framework = next(
+                (a["framework"] for a in annotations if a["control_id"] == ctrl_id), "UNKNOWN"
+            )
+            sk = compliance_synapse_key(ctrl_id, framework)
+            try:
+                with synapse_store._connect() as conn:
+                    row = conn.execute(
+                        "SELECT COUNT(*) FROM synapses WHERE node_a = ? OR node_b = ?",
+                        (sk, sk),
+                    ).fetchone()
+                    if row and row[0] > 0:
+                        synapse_linked = True
+                        linked_controls.append({"control_id": ctrl_id, "edge_count": row[0]})
+            except Exception:
+                continue
+
+    # Check CMMC practice ingestion via content nodes
+    try:
+        import sqlite3
+
+        meta_path = project_root / ".neuralmind" / "neuralmind.db"
+        practices_ingested = 0
+        if meta_path.exists():
+            conn = sqlite3.connect(str(meta_path))
+            row = conn.execute(
+                "SELECT COUNT(*) FROM meta WHERE key LIKE 'cmmc_practice:%'"
+            ).fetchone()
+            practices_ingested = row[0] if row else 0
+            conn.close()
+    except Exception:
+        practices_ingested = 0
+
+    report = {
+        "timestamp": time.time(),
+        "project": project_root.name,
+        "compliance_annotations": annotations,
+        "total_annotations": len(annotations),
+        "unique_controls": len(control_ids_found),
+        "practices_ingested": practices_ingested,
+        "synapse_linked": synapse_linked,
+        "linked_controls": linked_controls,
+        "evidence_map": {
+            c: [a["file"] for a in annotations if a["control_id"] == c]
+            for c in sorted(control_ids_found)
+        },
+    }
+
+    if format == "markdown":
+        lines = [
+            f"# Compliance Saving Report — {project_root.name}",
+            f"**Generated:** {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
+            "",
+            "## Summary",
+            f"- **Total compliance annotations found:** {len(annotations)}",
+            f"- **Unique controls referenced:** {len(control_ids_found)}",
+            f"- **CMMC practices ingested:** {practices_ingested}",
+            f"- **Synapse-linked controls:** {len(linked_controls) if synapse_linked else 0}",
+            "",
+        ]
+        for ctrl in sorted(control_ids_found):
+            files = [a for a in annotations if a["control_id"] == ctrl]
+            lines.append(f"### {ctrl}")
+            for f in files[:10]:
+                lines.append(f"- `{f['file']}:{f['line']}` — {f['text'][:80]}")
+            if len(files) > 10:
+                lines.append(f"- *... and {len(files) - 10} more*")
+            lines.append("")
+        report["markdown"] = "\n".join(lines)
+
+    return report
+
+
 def tool_export_synapse_memory(project_path: str) -> dict[str, Any]:
     """Render the synapse store as markdown for Claude Code auto-memory.
 
@@ -464,80 +613,6 @@ def tool_structural_gaps(
     }
 
 
-def neuralmind_type_risks(
-    project_path: str,
-    min_severity: str = "warn",
-) -> list[dict[str, Any]]:
-    """Detect type-related risks in the codebase for compliance review.
-
-    Runs the type verifier pass over the project graph and returns any
-    Optional/None-return risks found.
-
-    Args:
-        project_path: Path to the project root directory.
-        min_severity: Minimum severity to report ("info", "warn", "high").
-
-    Returns:
-        List of risk dicts with caller_id, callee_id, risk_type, severity,
-        detail, and callee_returns.
-    """
-    from neuralmind import type_verifier
-    from neuralmind.core import NeuralMind
-
-    mind = NeuralMind(project_path)
-    if not mind._built:
-        try:
-            mind.build()
-        except Exception:
-            return []
-
-    graph = getattr(mind.embedder, "graph", None)
-    if not graph:
-        return []
-
-    tv = type_verifier.TypeVerifier(project_path)
-    tv.augment_graph(graph)
-    risks = tv.detect_type_risks(graph)
-
-    severity_order = {"info": 0, "warn": 1, "high": 2}
-    min_level = severity_order.get(min_severity, 0)
-    filtered = [r for r in risks if severity_order.get(r.severity, 0) >= min_level]
-
-    return [
-        {
-            "caller_id": r.caller_id,
-            "callee_id": r.callee_id,
-            "risk_type": r.risk_type,
-            "severity": r.severity,
-            "detail": r.detail,
-            "callee_returns": r.callee_returns,
-        }
-        for r in filtered
-    ]
-
-
-def neuralmind_bootstrap_synapses(
-    project_path: str,
-    bundle_path: str,
-) -> int:
-    """Bootstrap synapse weights from a reference bundle for cold-start.
-
-    Reads a JSON bundle of synapse edges and seeds them into the shared
-    namespace. Used for cold-start onboarding when no edit history exists.
-
-    Args:
-        project_path: Path to the project root directory.
-        bundle_path: Path to the synapse bundle JSON file.
-
-    Returns:
-        Number of synapses seeded.
-    """
-    from neuralmind.synapses import SynapseStore, default_db_path
-
-    store = SynapseStore(default_db_path(project_path))
-    return store.seed_from_bundle(bundle_path)
-
-
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -556,7 +631,7 @@ TOOLS = [
     },
     {
         "name": "neuralmind_query",
-        "description": "Get optimized context for answering a question about a codebase. Achieves 40-70x token reduction by only loading relevant code clusters.",
+        "description": "Get optimized context for answering a question about a codebase. Achieves 12-50x typical token reduction by only loading relevant code clusters.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -641,6 +716,36 @@ TOOLS = [
                     "type": "string",
                     "description": "Path to the project root directory",
                 }
+            },
+            "required": ["project_path"],
+        },
+    },
+    {
+        "name": "neuralmind_savings",
+        "description": (
+            "Report cumulative measured token savings from the project's query "
+            "event log — how many tokens NeuralMind has actually saved across "
+            "logged queries and wakeups, with an optional dollar estimate."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "cost": {
+                    "type": "boolean",
+                    "description": "Also estimate dollar savings priced on input tokens",
+                },
+                "model": {
+                    "type": "string",
+                    "description": "Pricing model for the cost estimate (e.g. claude-opus-4-8)",
+                },
+                "queries_per_day": {
+                    "type": "integer",
+                    "description": "Assumed queries/day for the monthly projection (default 100)",
+                },
             },
             "required": ["project_path"],
         },
@@ -894,8 +999,14 @@ TOOLS = [
         },
     },
     {
-        "name": "neuralmind_type_risks",
-        "description": "Detect type-related risks in the codebase for compliance review. Identifies functions that return Optional types without None guards.",
+        "name": "neuralmind_compliance_report",
+        "description": (
+            "Generate a validated compliance saving report from the running "
+            "daemon. Scans the project for compliance annotations (CMMC, NIST, "
+            "SOX, HIPAA, ISO), cross-references against ingested practices, "
+            "and returns an auditor-ready evidence map with synapse linkage "
+            "information. No CLI export needed — call directly via MCP."
+        ),
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -903,32 +1014,14 @@ TOOLS = [
                     "type": "string",
                     "description": "Path to the project root directory",
                 },
-                "min_severity": {
+                "format": {
                     "type": "string",
-                    "enum": ["info", "warn", "high"],
-                    "description": "Minimum severity to report (default: warn)",
-                    "default": "warn",
+                    "enum": ["json", "markdown"],
+                    "default": "json",
+                    "description": "Output format — json (structured) or markdown (human-readable)",
                 },
             },
             "required": ["project_path"],
-        },
-    },
-    {
-        "name": "neuralmind_bootstrap_synapses",
-        "description": "Bootstrap synapse weights from a reference bundle for cold-start. Seeds architectural priors from a JSON export of a mature project.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "project_path": {
-                    "type": "string",
-                    "description": "Path to the project root directory",
-                },
-                "bundle_path": {
-                    "type": "string",
-                    "description": "Path to the synapse bundle JSON file",
-                },
-            },
-            "required": ["project_path", "bundle_path"],
         },
     },
 ]
@@ -947,6 +1040,12 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
+        "neuralmind_savings": lambda args: tool_savings(
+            args["project_path"],
+            args.get("cost", False),
+            args.get("model"),
+            args.get("queries_per_day", 100),
+        ),
         "neuralmind_skeleton": lambda args: tool_skeleton(args["project_path"], args["file_path"]),
         "neuralmind_synaptic_neighbors": lambda args: tool_synaptic_neighbors(
             args["project_path"],
@@ -990,13 +1089,9 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["signal"],
             args.get("context_node_ids"),
         ),
-        "neuralmind_type_risks": lambda args: neuralmind_type_risks(
+        "neuralmind_compliance_report": lambda args: tool_compliance_report(
             args["project_path"],
-            args.get("min_severity", "warn"),
-        ),
-        "neuralmind_bootstrap_synapses": lambda args: neuralmind_bootstrap_synapses(
-            args["project_path"],
-            args["bundle_path"],
+            args.get("format", "json"),
         ),
     }
 

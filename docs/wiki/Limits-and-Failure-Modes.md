@@ -147,7 +147,7 @@ Source of truth for the parser: `_SUFFIX_LANG` in
 **Calls are heuristic by default** across all languages (best-effort, disclosed
 per release). For **compiler-accurate** `calls`/`inherits` edges on Python /
 TypeScript / Go, set `NEURALMIND_PRECISION=1` with a SCIP index (off by default,
-[v0.17.0](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md)).
+[v0.17.0](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.17.0.md)).
 
 ### Schema & document artifacts (no tree-sitter parse)
 

@@ -1332,7 +1332,36 @@ def _attach_comment_rationale(
         return
     line = comment_node.start_point[0] + 1
     rid = f"{target_id}__rationale"
-    b.add_node(rid, doc, "rationale", rel, line)
+
+    # Detect compliance annotations in the doc comment
+    compliance_annotations: list[dict] = []
+    try:
+        from neuralmind.compliance_matcher import find_compliance_annotations
+
+        compliance_annotations = find_compliance_annotations(doc)
+    except Exception:
+        pass
+
+    node_data: dict[str, Any] = {
+        "label": doc,
+        "file_type": "rationale",
+        "source_file": rel,
+        "source_location": f"L{max(line, 1)}",
+        "id": rid,
+        "community": -1,
+        "norm_label": doc.lower(),
+    }
+    if compliance_annotations:
+        node_data["compliance_matches"] = [
+            {
+                "framework": ca["framework"],
+                "control_id": ca["control_id"],
+                "label": ca["label"],
+            }
+            for ca in compliance_annotations
+        ]
+
+    b.nodes[rid] = node_data
     b.add_edge("rationale_for", rid, target_id, rel, line)
 
 

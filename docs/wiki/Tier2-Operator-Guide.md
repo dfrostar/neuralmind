@@ -131,4 +131,4 @@ For the honest boundary, see `docs/HONEST-ASSESSMENT.md`.
 
 ---
 
-*Wiki v1.0. Phase 2 doc (WAVE15). Next review: after SSO/SAML ships.*
+*Wiki v1.0. Next review: after SSO/SAML ships.*
