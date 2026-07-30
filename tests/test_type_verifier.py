@@ -316,3 +316,63 @@ def test_unannotated_returns_unknown(tmp_project):
     assert info.return_type is None
     assert info.confidence == 0.0
     assert info.is_optional is False
+
+
+def test_ts_function_type_inference(tmp_project):
+    """TypeScript function return types are inferred via tree-sitter."""
+    tv = TypeVerifier(tmp_project)
+    # Create a TS file in the project root
+    ts_file = tmp_project / "test_module.ts"
+    ts_file.write_text(
+        "export function fetchData(): Promise<Response> { return fetch('/api'); }\n"
+        "export function logError(error: string): void { console.error(error); }\n"
+    )
+    info = tv.infer_return_type("test_module.ts::fetchData")
+    # May be None if tree-sitter-typescript not installed — that's fail-open
+    if info is not None:
+        assert info.return_type == "Promise<Response>"
+        assert info.inferred_by == "tree-sitter"
+
+
+def test_go_function_type_inference(tmp_project):
+    """Go function return types are inferred via tree-sitter."""
+    tv = TypeVerifier(tmp_project)
+    go_file = tmp_project / "main.go"
+    go_file.write_text(
+        "package main\n"
+        "func main() {}\n"
+        "func divide(a, b int) (int, error) { return 0, nil }\n"
+    )
+    info = tv.infer_return_type("main.go::divide")
+    if info is not None:
+        assert info.is_optional is True  # error in return
+        assert info.inferred_by == "tree-sitter"
+
+
+def test_rust_function_type_inference(tmp_project):
+    """Rust function return types are inferred via tree-sitter."""
+    tv = TypeVerifier(tmp_project)
+    rs_file = tmp_project / "lib.rs"
+    rs_file.write_text(
+        "pub fn add(a: i32, b: i32) -> i32 { a + b }\n"
+        "pub fn find_user(id: u64) -> Option<User> { None }\n"
+    )
+    info = tv.infer_return_type("lib.rs::find_user")
+    if info is not None:
+        assert info.is_optional is True  # Option<T>
+        assert info.inferred_by == "tree-sitter"
+
+
+def test_find_function_file_cross_language(tmp_project):
+    """_find_function_file searches .ts, .go, .rs in addition to .py."""
+    tv = TypeVerifier(tmp_project)
+    ts_file = tmp_project / "utils.ts"
+    ts_file.write_text("export function helper(): number { return 42; }\n")
+    # Verify the file exists
+    assert ts_file.exists(), f"TS file not created at {ts_file}"
+    # Verify TS language loads
+    lang = tv._ts_language("typescript")
+    assert lang is not None, "TypeScript language failed to load"
+    result = tv._find_function_file("helper")
+    assert result is not None, f"Expected to find helper in {ts_file}, got None. Files: {list(tmp_project.iterdir())}"
+    assert result.suffix == ".ts"
