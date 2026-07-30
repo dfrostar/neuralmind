@@ -17,6 +17,10 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tree_sitter import Language
 
 
 @dataclass(frozen=True)
@@ -67,17 +71,26 @@ def _is_optional_type(type_str: str | None) -> bool:
 
 
 class TypeVerifier:
-    """Lightweight type inference pass using stdlib ``ast`` + optional mypy.
+    """Lightweight type inference pass using stdlib ``ast`` + tree-sitter.
 
     Parses Python files in the project to extract return type annotations
     without executing any code. Optional mypy integration is gated behind
     ``NEURALMIND_TYPE_CHECK=1``.
+
+    Cross-language support (TypeScript, Go, Rust) uses tree-sitter grammars
+    when available — same fail-open semantics as the Python path.
     """
+
+    # Language-specific optional type patterns
+    _TS_OPTIONAL = ("undefined", "null", "void", "never")
+    _GO_OPTIONAL = ("error", "pointer", "interface", "nil")
+    _RUST_OPTIONAL = ("Option<", "Result<", "None")
 
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
         self._cache: dict[str, TypeInfo | None] = {}  # node_id → TypeInfo
         self._use_mypy = os.environ.get("NEURALMIND_TYPE_CHECK") == "1"
+        self._ts_langs: dict[str, Language] = {}  # language name → tree-sitter Language
 
     def infer_return_type(self, node_id: str) -> TypeInfo | None:
         """Infer the return type for a graph node (function).
@@ -100,6 +113,104 @@ class TypeVerifier:
         self._cache[node_id] = info
         return info
 
+    def _ts_language(self, name: str) -> Language | None:
+        """Load a tree-sitter language grammar on demand (fail-open)."""
+        from tree_sitter import Language
+
+        if name in self._ts_langs:
+            return self._ts_langs[name]
+        try:
+            if name == "typescript":
+                import tree_sitter_typescript as ts
+                lang = Language(ts.language_typescript())
+            elif name == "go":
+                import tree_sitter_go as ts
+                lang = Language(ts.language())
+            elif name == "rust":
+                import tree_sitter_rust as ts
+                lang = Language(ts.language())
+            else:
+                return None
+            self._ts_langs[name] = lang
+            return lang
+        except Exception:
+            return None
+
+    def _ts_parse(self, source: str, lang: Language):
+        """Parse source with a tree-sitter language."""
+        import tree_sitter
+
+        parser = tree_sitter.Parser(lang)
+        tree = parser.parse(bytes(source, "utf8"))
+        return tree
+
+    def _infer_ts_return(self, node) -> TypeInfo | None:
+        """Infer return type from a TypeScript function node."""
+        # tree-sitter node types: function_declaration, method_definition, arrow_function
+        return_type = None
+        for child in node.children:
+            if child.type == "type_annotation":
+                return_type = child.text.decode("utf8").lstrip(":").strip()
+                break
+
+        # Check for void/undefined/never
+        if return_type in self._TS_OPTIONAL or return_type is None:
+            return TypeInfo(
+                return_type=return_type or "void",
+                is_optional=True,
+                confidence=0.8,
+                inferred_by="tree-sitter",
+            )
+        return TypeInfo(
+            return_type=return_type,
+            is_optional=False,
+            confidence=0.8,
+            inferred_by="tree-sitter",
+        )
+
+    def _infer_go_return(self, node) -> TypeInfo | None:
+        """Infer return type from a Go function node."""
+        # Go functions: func Name(params) returnType
+        for child in node.children:
+            if child.type == "result":
+                result_text = child.text.decode("utf8").strip()
+                is_opt = any(p in result_text for p in self._GO_OPTIONAL)
+                return TypeInfo(
+                    return_type=result_text or "error",
+                    is_optional=is_opt,
+                    confidence=0.7,
+                    inferred_by="tree-sitter",
+                )
+        # No return type → void
+        return TypeInfo(
+            return_type="void",
+            is_optional=True,
+            confidence=0.7,
+            inferred_by="tree-sitter",
+        )
+
+    def _infer_rust_return(self, node) -> TypeInfo | None:
+        """Infer return type from a Rust function node."""
+        # Rust: fn name() -> ReturnType { ... }
+        # tree-sitter uses generic_type for Option<T>, primitive_type for i32, etc.
+        for child in node.children:
+            if child.type in ("generic_type", "primitive_type", "type_identifier"):
+                type_text = child.text.decode("utf8").strip()
+                is_opt = any(type_text.startswith(p) for p in self._RUST_OPTIONAL)
+                return TypeInfo(
+                    return_type=type_text,
+                    is_optional=is_opt,
+                    confidence=0.9,
+                    inferred_by="tree-sitter",
+                )
+        # No return type → () unit type
+        return TypeInfo(
+            return_type="()",
+            is_optional=False,
+            confidence=0.7,
+            inferred_by="tree-sitter",
+        )
+
     def _do_infer(self, node_id: str) -> TypeInfo | None:
         # Parse node_id — supports "path/file.py::func_name" or bare "func_name"
         func_name: str
@@ -112,19 +223,30 @@ class TypeVerifier:
                 source_file = candidate
         else:
             func_name = node_id
-            # Search Python files for this function name
             source_file = self._find_function_file(func_name)
 
         if source_file is None or not source_file.exists():
             return None
 
+        # Cross-language type inference via tree-sitter
+        ext = source_file.suffix.lower()
+        if ext in (".ts", ".tsx"):
+            return self._do_ts_infer(func_name, source_file)
+        elif ext == ".go":
+            return self._do_go_infer(func_name, source_file)
+        elif ext == ".rs":
+            return self._do_rust_infer(func_name, source_file)
+        elif ext != ".py":
+            # Unknown extension — try tree-sitter with ext as language name
+            pass
+
+        # Default: Python via stdlib ast
         try:
             source = source_file.read_text(encoding="utf-8", errors="replace")
             tree = ast.parse(source)
         except (OSError, SyntaxError):
             return None
 
-        # Walk AST to find function definition
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if node.name == func_name:
@@ -137,20 +259,89 @@ class TypeVerifier:
                             confidence=1.0,
                             inferred_by="stdlib",
                         )
-                    # Function found but no return annotation → unknown
                     return TypeInfo(
                         return_type=None,
                         is_optional=False,
                         confidence=0.0,
                         inferred_by="stdlib",
                     )
-
         return None
 
+    def _do_ts_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
+        """TypeScript type inference via tree-sitter."""
+        lang = self._ts_language("typescript")
+        if lang is None:
+            return None
+        try:
+            source = source_file.read_text(encoding="utf-8", errors="replace")
+            tree = self._ts_parse(source, lang)
+        except (OSError, Exception):
+            return None
+
+        def walk(node):
+            if node.type in ("function_declaration", "method_definition", "arrow_function"):
+                for child in node.children:
+                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
+                        return self._infer_ts_return(node)
+            for child in node.children:
+                result = walk(child)
+                if result:
+                    return result
+            return None
+
+        return walk(tree.root_node)
+
+    def _do_go_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
+        """Go type inference via tree-sitter."""
+        lang = self._ts_language("go")
+        if lang is None:
+            return None
+        try:
+            source = source_file.read_text(encoding="utf-8", errors="replace")
+            tree = self._ts_parse(source, lang)
+        except (OSError, Exception):
+            return None
+
+        def walk(node):
+            if node.type == "function_declaration":
+                for child in node.children:
+                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
+                        return self._infer_go_return(node)
+            for child in node.children:
+                result = walk(child)
+                if result:
+                    return result
+            return None
+
+        return walk(tree.root_node)
+
+    def _do_rust_infer(self, func_name: str, source_file: Path) -> TypeInfo | None:
+        """Rust type inference via tree-sitter."""
+        lang = self._ts_language("rust")
+        if lang is None:
+            return None
+        try:
+            source = source_file.read_text(encoding="utf-8", errors="replace")
+            tree = self._ts_parse(source, lang)
+        except (OSError, Exception):
+            return None
+
+        def walk(node):
+            if node.type == "function_item":
+                for child in node.children:
+                    if child.type == "identifier" and child.text.decode("utf8") == func_name:
+                        return self._infer_rust_return(node)
+            for child in node.children:
+                result = walk(child)
+                if result:
+                    return result
+            return None
+
+        return walk(tree.root_node)
+
     def _find_function_file(self, func_name: str) -> Path | None:
-        """Search project for a Python file defining ``func_name``."""
+        """Search project for a file defining ``func_name`` (any supported language)."""
         for root, _dirs, files in os.walk(self.project_path):
-            # Skip hidden / build dirs
             parts = Path(root).parts
             if any(
                 p.startswith(".") or p in ("__pycache__", "node_modules", "venv", ".venv")
@@ -158,17 +349,45 @@ class TypeVerifier:
             ):
                 continue
             for fname in files:
-                if fname.endswith(".py"):
+                if fname.endswith((".py", ".ts", ".tsx", ".go", ".rs")):
                     fpath = Path(root) / fname
                     try:
                         source = fpath.read_text(encoding="utf-8", errors="replace")
-                        tree = ast.parse(source)
-                    except (OSError, SyntaxError):
+                        if fname.endswith(".py"):
+                            tree = ast.parse(source)
+                            for node in ast.walk(tree):
+                                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                    if node.name == func_name:
+                                        return fpath
+                        else:
+                            # Map file extension to language name
+                            ext = fpath.suffix.lower().lstrip(".")
+                            lang_name = ext
+                            if ext in ("ts", "tsx"):
+                                lang_name = "typescript"
+                            lang = self._ts_language(lang_name)
+                            if lang is None:
+                                continue
+                            ts_tree = self._ts_parse(source, lang)
+                            # Walk tree-sitter AST for function-like nodes
+                            found = None
+                            def walk_ts(node):
+                                nonlocal found
+                                if found is not None:
+                                    return
+                                if node.type in ("function_declaration", "method_definition", "arrow_function", "function_item"):
+                                    for child in node.children:
+                                        if child.type == "identifier" and child.text.decode("utf8") == func_name:
+                                            found = fpath
+                                            return
+                                    return  # Not this function, but don't recurse into its body
+                                for child in node.children:
+                                    walk_ts(child)
+                            walk_ts(ts_tree.root_node)
+                            if found is not None:
+                                return found
+                    except (OSError, SyntaxError, Exception):
                         continue
-                    for node in ast.walk(tree):
-                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            if node.name == func_name:
-                                return fpath
         return None
 
     def augment_graph(self, graph: dict) -> int:
