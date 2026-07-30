@@ -6,7 +6,7 @@ const cards = [
         title: 'The savings are free',
         accent: 'text-proton',
         points: [
-            'The 40–70× token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
+            'The 12–50× token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
             'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone.',
             'The bigger line is time: ~$1,650/mo per 50-dev team recovered from context-limit thrashing and re-prompting, at a $50/hr fully-loaded rate.',
             'The Team tier ($29/user/mo) buys governance, audit, and self-hosting — not the savings. Those ship free.',

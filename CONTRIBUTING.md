@@ -17,7 +17,9 @@ First off, thank you for considering contributing to NeuralMind! It's people lik
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code. Please report unacceptable behavior to the project maintainers.
+This project and everyone participating in it is governed by our
+[Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to
+uphold this code. Please report unacceptable behavior to hello@neuralmind.uk.
 
 ### Our Standards
 

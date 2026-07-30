@@ -58,7 +58,7 @@ Pure internal strategy material (BRDs, TRDs, competitive analysis) lives in
 **`dfrostar/neuralmind-marketing`**, NOT in this repo. Anything that supports
 the public product or site — including release notes, which are canonical
 public changelog content the "Shipping a feature" checklist below requires
-at repo root — stays here.
+in `docs/releases/` — stays here.
 
 When a new document is authored, file it in the right repo:
 
@@ -66,7 +66,7 @@ When a new document is authored, file it in the right repo:
 |-----------|------------|
 | BRD / TRD / strategy doc | `dfrostar/neuralmind-marketing/internal/plans/` |
 | Competitive analysis / market research | `dfrostar/neuralmind-marketing/internal/` |
-| Release notes | `dfrostar/neuralmind/RELEASE_NOTES_v*.md` (here — repo root, see the shipping checklist) |
+| Release notes | `dfrostar/neuralmind/docs/releases/RELEASE_NOTES_v*.md` (here — see the shipping checklist) |
 | CLI reference / wiki | `dfrostar/neuralmind/docs/wiki/` (here) |
 | Use-case walkthrough | `dfrostar/neuralmind/docs/use-cases/` (here) |
 | Marketing site page | `dfrostar/neuralmind/site/` (here) or `…-marketing/src/app/` |
@@ -94,7 +94,7 @@ shape). When a release introduces a new command, hook, env var, or
 agent-visible behavior:
 
 **Documentation (every surface):**
-- [ ] `RELEASE_NOTES_v<X.Y.Z>.md` at repo root — canonical notes
+- [ ] `docs/releases/RELEASE_NOTES_v<X.Y.Z>.md` — canonical notes
   with a "what the agent actually sees post-install" angle and a
   per-agent expectations table (Claude Code / Cursor / Cline /
   generic MCP) when the change affects integrations.

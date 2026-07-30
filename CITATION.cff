@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use NeuralMind in your research, please cite it as below."
+title: "NeuralMind: persistent memory and context compression for AI coding agents"
+type: software
+authors:
+  - family-names: Frost
+    given-names: Darren
+repository-code: "https://github.com/dfrostar/neuralmind"
+url: "https://neuralmind.uk"
+license: MIT
+keywords:
+  - AI coding agents
+  - agent memory
+  - context compression
+  - Hebbian learning
+  - code intelligence

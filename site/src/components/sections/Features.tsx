@@ -10,8 +10,8 @@ const featureList = [
     {
         icon: '🔄',
         title: 'Progressive L0–L3 Disclosure',
-        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 40–70× compression measured in CI.',
-        badge: '40–70×',
+        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 12–50× compression measured in CI.',
+        badge: '12–50×',
     },
     {
         icon: '🌐',
@@ -72,6 +72,30 @@ const featureList = [
         title: 'Post-Commit Auto-Rebuild',
         desc: '`neuralmind init-hook .` sets a git hook. Every commit incrementally updates the index in seconds.',
         badge: 'Set & forget',
+    },
+    {
+        icon: '🚀',
+        title: 'One-Command Project Init',
+        desc: '`neuralmind init` auto-detects project structure, installs hooks, builds the index — all at once. Your project is ready in seconds.',
+        badge: 'v2.0.0',
+    },
+    {
+        icon: '🛡️',
+        title: 'Compliance Annotation Engine',
+        desc: 'Scans code for `Compliance:` annotations, maps them to CMMC 2.0 / NIST SP 800-171 controls. Ingest CMMC assessment guides, export audit reports, gate CI on annotation health.',
+        badge: 'v2.0.0',
+    },
+    {
+        icon: '📤',
+        title: 'Audit Export & CI/CD Check',
+        desc: '`neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission. `neuralmind ci-check` gates builds on annotation health.',
+        badge: 'v2.0.0',
+    },
+    {
+        icon: '🤖',
+        title: 'Compliance Report MCP Tool',
+        desc: '`neuralmind_compliance_report` surfaces live compliance stance from any MCP-compatible agent. Ask "are we compliant on access control?" and get an answer grounded in real annotations.',
+        badge: 'v2.0.0',
     },
 ];
 

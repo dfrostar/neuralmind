@@ -3,8 +3,9 @@ scip_backend.py — SCIP precision pass backend (PRD 2 G2).
 
 For languages with SCIP support (Go, Rust, Java, C/C++), use `scip-index`
 at build time for compiler-accurate edges. Falls back to tree-sitter where
-SCIP is unavailable. Gated behind NEURALMIND_SCIP=1 (opt-in until measured
-parity).
+SCIP is unavailable. Gated behind NEURALMIND_PRECISION=1 (opt-in until
+measured parity). Note: uses the same env var as precision.py — the two
+share a single gate for consistency.
 
 This module wraps the existing precision.py module into a backend class
 that can be dispatched from graphgen.py. It provides the SCIPBackend class
@@ -22,7 +23,7 @@ from typing import Any
 class ScipConfig:
     """Configuration for the SCIP precision backend."""
 
-    # Enable SCIP precision (env NEURALMIND_SCIP=1).
+    # Enable SCIP precision (env NEURALMIND_PRECISION=1 — same gate as precision.py).
     enabled: bool = False
     # Path to the SCIP index file (auto-detected if None).
     index_path: str | None = None

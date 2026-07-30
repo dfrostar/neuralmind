@@ -311,7 +311,7 @@ neuralmind build .
 ```
 
 For compiler-accurate call/inheritance edges there's also the optional
-[SCIP precision pass](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.17.0.md)
+[SCIP precision pass](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.17.0.md)
 (`NEURALMIND_PRECISION=1`, v0.17.0+).
 
 ---
