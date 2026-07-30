@@ -339,9 +339,7 @@ def test_go_function_type_inference(tmp_project):
     tv = TypeVerifier(tmp_project)
     go_file = tmp_project / "main.go"
     go_file.write_text(
-        "package main\n"
-        "func main() {}\n"
-        "func divide(a, b int) (int, error) { return 0, nil }\n"
+        "package main\nfunc main() {}\nfunc divide(a, b int) (int, error) { return 0, nil }\n"
     )
     info = tv.infer_return_type("main.go::divide")
     if info is not None:
@@ -374,5 +372,7 @@ def test_find_function_file_cross_language(tmp_project):
     lang = tv._ts_language("typescript")
     assert lang is not None, "TypeScript language failed to load"
     result = tv._find_function_file("helper")
-    assert result is not None, f"Expected to find helper in {ts_file}, got None. Files: {list(tmp_project.iterdir())}"
+    assert (
+        result is not None
+    ), f"Expected to find helper in {ts_file}, got None. Files: {list(tmp_project.iterdir())}"
     assert result.suffix == ".ts"

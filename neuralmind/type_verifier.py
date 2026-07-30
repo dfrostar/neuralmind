@@ -122,12 +122,15 @@ class TypeVerifier:
         try:
             if name == "typescript":
                 import tree_sitter_typescript as ts
+
                 lang = Language(ts.language_typescript())
             elif name == "go":
                 import tree_sitter_go as ts
+
                 lang = Language(ts.language())
             elif name == "rust":
                 import tree_sitter_rust as ts
+
                 lang = Language(ts.language())
             else:
                 return None
@@ -141,8 +144,7 @@ class TypeVerifier:
         import tree_sitter
 
         parser = tree_sitter.Parser(lang)
-        tree = parser.parse(bytes(source, "utf8"))
-        return tree
+        return parser.parse(bytes(source, "utf8"))
 
     def _infer_ts_return(self, node) -> TypeInfo | None:
         """Infer return type from a TypeScript function node."""
@@ -232,11 +234,11 @@ class TypeVerifier:
         ext = source_file.suffix.lower()
         if ext in (".ts", ".tsx"):
             return self._do_ts_infer(func_name, source_file)
-        elif ext == ".go":
+        if ext == ".go":
             return self._do_go_infer(func_name, source_file)
-        elif ext == ".rs":
+        if ext == ".rs":
             return self._do_rust_infer(func_name, source_file)
-        elif ext != ".py":
+        if ext != ".py":
             # Unknown extension — try tree-sitter with ext as language name
             pass
 
@@ -371,18 +373,28 @@ class TypeVerifier:
                             ts_tree = self._ts_parse(source, lang)
                             # Walk tree-sitter AST for function-like nodes
                             found = None
-                            def walk_ts(node):
+
+                            def walk_ts(node, _fpath=fpath):
                                 nonlocal found
                                 if found is not None:
                                     return
-                                if node.type in ("function_declaration", "method_definition", "arrow_function", "function_item"):
+                                if node.type in (
+                                    "function_declaration",
+                                    "method_definition",
+                                    "arrow_function",
+                                    "function_item",
+                                ):
                                     for child in node.children:
-                                        if child.type == "identifier" and child.text.decode("utf8") == func_name:
-                                            found = fpath
+                                        if (
+                                            child.type == "identifier"
+                                            and child.text.decode("utf8") == func_name
+                                        ):
+                                            found = _fpath
                                             return
                                     return  # Not this function, but don't recurse into its body
                                 for child in node.children:
                                     walk_ts(child)
+
                             walk_ts(ts_tree.root_node)
                             if found is not None:
                                 return found
