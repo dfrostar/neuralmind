@@ -2715,6 +2715,7 @@ def cmd_risks(args):
 def cmd_license_issue(args):
     """Issue a new Team license."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     if not private_key:
@@ -2738,6 +2739,7 @@ def cmd_license_issue(args):
 def cmd_license_renew(args):
     """Renew an existing license."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     if not private_key:
@@ -2752,6 +2754,7 @@ def cmd_license_renew(args):
 def cmd_license_revoke(args):
     """Revoke a license."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     if not private_key:
@@ -2766,6 +2769,7 @@ def cmd_license_revoke(args):
 def cmd_license_status(args):
     """Show license status."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     ops = LicenseOperations(private_key, storage_path)
@@ -2777,17 +2781,21 @@ def cmd_license_status(args):
 def cmd_license_list(args):
     """List all licenses."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     ops = LicenseOperations(private_key, storage_path)
     licenses = ops.list_customer_licenses(args.partner)
     for lic in licenses:
-        print(f"{lic['customer']}: {lic['status']} ({lic['seats']} seats, expires {lic['expires_at']})")
+        print(
+            f"{lic['customer']}: {lic['status']} ({lic['seats']} seats, expires {lic['expires_at']})"
+        )
 
 
 def cmd_partner_add(args):
     """Add a new partner."""
     from neuralmind.tier2.operations import PartnerOperations
+
     storage_path = Path.home() / ".neuralmind"
     ops = PartnerOperations(storage_path, storage_path / "audit_log.jsonl")
     partner = ops.add_partner(args.name, args.commission, args.email)
@@ -2797,6 +2805,7 @@ def cmd_partner_add(args):
 def cmd_partner_list(args):
     """List all partners."""
     from neuralmind.tier2.operations import PartnerOperations
+
     storage_path = Path.home() / ".neuralmind"
     ops = PartnerOperations(storage_path, storage_path / "audit_log.jsonl")
     for p in ops.list_partners():
@@ -2806,6 +2815,7 @@ def cmd_partner_list(args):
 def cmd_partner_licenses(args):
     """List partner's licenses."""
     from neuralmind.tier2.operations import LicenseOperations
+
     storage_path = Path.home() / ".neuralmind"
     private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
     ops = LicenseOperations(private_key, storage_path)
@@ -4185,14 +4195,18 @@ def main():
     issue_lp = license_sub.add_parser("issue", help="Issue a new Team license")
     issue_lp.add_argument("--customer", required=True, help="Customer name")
     issue_lp.add_argument("--seats", type=int, required=True, help="Number of seats")
-    issue_lp.add_argument("--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months")
+    issue_lp.add_argument(
+        "--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months"
+    )
     issue_lp.add_argument("--partner", default=None, help="Partner ID")
     issue_lp.add_argument("--output", default=None, help="Output path for license file")
     issue_lp.set_defaults(func=cmd_license_issue)
 
     renew_lp = license_sub.add_parser("renew", help="Renew an existing license")
     renew_lp.add_argument("--customer", required=True, help="Customer name")
-    renew_lp.add_argument("--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months")
+    renew_lp.add_argument(
+        "--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months"
+    )
     renew_lp.set_defaults(func=cmd_license_renew)
 
     revoke_lp = license_sub.add_parser("revoke", help="Revoke a license")

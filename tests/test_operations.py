@@ -22,6 +22,7 @@ def temp_storage(tmp_path):
 def private_key():
     """Generate a test Ed25519 private key."""
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
     priv = Ed25519PrivateKey.generate()
     return priv.private_bytes_raw().hex()
 
@@ -103,6 +104,7 @@ class TestRevokeLicense:
         lic = ops.revoke_license("Acme", "non-payment")
         # Expires at should be very close to now
         from datetime import datetime, timezone
+
         exp = datetime.fromisoformat(lic.expires_at)
         now = datetime.now(timezone.utc)
         assert (now - exp).total_seconds() < 5
