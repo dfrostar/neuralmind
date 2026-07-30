@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.1](https://github.com/dfrostar/neuralmind/compare/v1.10.0...v1.10.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* **type-verifier:** support both 'edges' and 'links' graph formats, extract func names from labels ([f0a1ad2](https://github.com/dfrostar/neuralmind/commit/f0a1ad251213360cb29c085d86a7feb55bcf7611))
+* **type-verifier:** thread-pool, AST cache, any severity, func index, persist batch ([6314504](https://github.com/dfrostar/neuralmind/commit/631450478b139a77a1f04fe3db3a499a719e57fd))
+
 ## [1.10.0](https://github.com/dfrostar/neuralmind/compare/v1.9.1...v1.10.0) (2026-07-30)
 
 
