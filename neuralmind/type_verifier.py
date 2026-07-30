@@ -127,7 +127,7 @@ class TypeVerifier:
                             ts_tree = self._ts_parse(source, lang)
 
                             # Walk tree-sitter AST for function-like nodes
-                            def walk_ts(node):
+                            def walk_ts(node, _fpath=fpath):
                                 if node.type in (
                                     "function_declaration",
                                     "method_definition",
@@ -137,10 +137,10 @@ class TypeVerifier:
                                 ):
                                     for child in node.children:
                                         if child.type == "identifier":
-                                            self._func_index[child.text.decode("utf8")] = fpath
+                                            self._func_index[child.text.decode("utf8")] = _fpath
                                             break
                                 for child in node.children:
-                                    walk_ts(child)
+                                    walk_ts(child, _fpath)
 
                             walk_ts(ts_tree.root_node)
                     except (OSError, SyntaxError, Exception):
@@ -545,9 +545,7 @@ class TypeVerifier:
                         callee_id=callee_id,
                         risk_type="any_fallthrough",
                         severity="warn",
-                        detail=(
-                            f"{callee_id} returns 'any' — " "type safety lost at this boundary"
-                        ),
+                        detail=(f"{callee_id} returns 'any' — type safety lost at this boundary"),
                         callee_returns="any",
                     )
                 )
