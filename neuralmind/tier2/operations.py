@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
-import secrets
 import tempfile
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 from . import license
-from .pricing import load_pricing, calculate_price
+from .pricing import calculate_price, load_pricing
 
 
 def _now_iso() -> str:
@@ -113,7 +109,6 @@ class LicenseOperations:
     def _verify_existing_signature(self, lic_data: dict) -> bool:
         """Verify the signature on an existing license file."""
         from cryptography.hazmat.primitives.asymmetric.ed25519 import (
-            Ed25519PublicKey,
             Ed25519PrivateKey,
         )
 
@@ -479,4 +474,3 @@ class PartnerOperations:
     def get_partner_licenses(self, partner_id: str) -> list[dict]:
         """Get all licenses issued through a partner."""
         # Delegate to LicenseOperations
-        ...
