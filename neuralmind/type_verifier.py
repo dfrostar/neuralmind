@@ -403,19 +403,17 @@ class TypeVerifier:
         return None
 
     def augment_graph(self, graph: dict) -> int:
-        """Walk calls edges in ``graph`` and annotate with type metadata.
-
-        Modifies the graph dict in-place, adding a ``type_edges`` list of
-        ``(source_node, target_node, TypeInfo)`` tuples.
-
-        Returns the number of type edges successfully inferred.
-        """
+        """Walk calls edges in ``graph`` and annotate with type metadata."""
         if not graph:
             return 0
 
-        edges = graph.get("edges", [])
+        # Support both 'edges' (IR format) and 'links' (embedder format)
+        edges = graph.get("edges", graph.get("links", []))
         if not edges:
             return 0
+
+        # Build node lookup for extracting function names
+        node_map = {n.get("id"): n for n in graph.get("nodes", [])}
 
         type_edges: list[tuple[str, str, TypeInfo]] = []
         calls_edges = [
@@ -430,7 +428,23 @@ class TypeVerifier:
             if not callee:
                 continue
 
-            type_info = self.infer_return_type(callee)
+            # Extract function name from node label (e.g., "funcName()" -> "funcName")
+            callee_node = node_map.get(callee, {})
+            callee_label = callee_node.get("label", callee)
+            # Strip trailing () or [] from label
+            func_name = callee_label.rstrip("()[]").split(".")[-1]
+
+            # Build source_file::func_name for precise lookup
+            source_file = callee_node.get("source_file", "")
+            # If callee is already in "path::func_name" format, use it directly
+            if "::" in callee:
+                lookup = callee
+            elif source_file:
+                lookup = f"{source_file}::{func_name}"
+            else:
+                lookup = func_name
+
+            type_info = self.infer_return_type(lookup)
             if type_info is not None:
                 type_edges.append((caller, callee, type_info))
 
