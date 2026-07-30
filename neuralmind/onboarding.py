@@ -155,10 +155,9 @@ def _cmd_onboarding_eula(args) -> int:
             json.dump(acceptance, f, indent=2)
         print("✓ EULA accepted.")
         return 0
-    else:
-        print("✗ You must accept the EULA to continue.")
-        print("  To decline, exit and use the free tier instead.")
-        return 1
+    print("✗ You must accept the EULA to continue.")
+    print("  To decline, exit and use the free tier instead.")
+    return 1
 
 
 def _cmd_onboarding_governance(args) -> int:
