@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.10.0](https://github.com/dfrostar/neuralmind/compare/v1.9.1...v1.10.0) (2026-07-30)
+
+
+### Features
+
+* neuralmind_compliance_report MCP tool for live validated saving reports ([6739513](https://github.com/dfrostar/neuralmind/commit/6739513efab5fcde06c7fe61665f70130a963970))
+* **savings:** serve the savings report from the MCP server and daemon ([ca3463e](https://github.com/dfrostar/neuralmind/commit/ca3463e2944927b8c0042f6f4df32aca0b8a87fb))
+* **type-verifier:** add cross-language type inference (TypeScript, Go, Rust) ([125ae58](https://github.com/dfrostar/neuralmind/commit/125ae58286b2a0a7077d0fce119266dd95fc3523))
+* **type-verifier:** add static type verification layer and cold-start synapse hardening ([f87dabc](https://github.com/dfrostar/neuralmind/commit/f87dabcbd91f3f7df019df71e6c86008e027f078))
+* v2.0 sprint — Wave 1-3 features (G1, G2, G4, G5, G7) ([4b53f2d](https://github.com/dfrostar/neuralmind/commit/4b53f2d4e12231641d1fa96cec79b7655b9f769c))
+
+
+### Bug Fixes
+
+* 3 critical bugs from code review before v2.0.0 ([d86c9d2](https://github.com/dfrostar/neuralmind/commit/d86c9d2f7b8c808ab2edcc5dd9c5235fef559a89))
+* align SCIP env var between scip_backend.py and precision.py ([b5b291a](https://github.com/dfrostar/neuralmind/commit/b5b291aaf1528c4f7c2119b6fc0e7b9f2f23ca6f))
+* **ci:** address Codex review — action install path, SBOM-to-site deploy, stray release notes ([42332f8](https://github.com/dfrostar/neuralmind/commit/42332f8a4506b9f9704ec1166cb19d22f963ab08))
+* **ci:** compliance-check action must install the checked-out source ([e4b0535](https://github.com/dfrostar/neuralmind/commit/e4b0535f7528cb2a8eff36974e070d448447fad0))
+* **ci:** let compliance-check post its PR comment, and never fail on it ([8245083](https://github.com/dfrostar/neuralmind/commit/8245083b4427df933672065e0d82183fa82955d2))
+* **docs-site:** remove docs/.nojekyll — it disabled the wiki entirely ([705d261](https://github.com/dfrostar/neuralmind/commit/705d26178346b84bb2d7360000d5967c1f8efb13))
+* neuralmind savings now reads audit_events.jsonl (always written) ([08ef7d3](https://github.com/dfrostar/neuralmind/commit/08ef7d3a56d7494a0b6a8e3ce4eb1b1f68670e90))
+* **site:** current version on every release + verified PyPI/SBOM links again ([757c4ea](https://github.com/dfrostar/neuralmind/commit/757c4ea317ffd3e6934b7eb1cbfc1a879a462e31))
+* **site:** nav label 'Team' -&gt; 'Teams' ([b5f3ad0](https://github.com/dfrostar/neuralmind/commit/b5f3ad0126f028b24234eabbff5b44626a31ec46))
+
+
+### Reverts
+
+* remove CMMC bridge docs from NeuralMind repo — belongs in separate track (CMMC 2.0 + LLM) ([d6452d3](https://github.com/dfrostar/neuralmind/commit/d6452d3de62562b0ebee4fa7f77d59ad9416070c))
+
+
+### Documentation
+
+* add release notes for v1.9.1 (type intelligence & synapse hardening) ([2b61178](https://github.com/dfrostar/neuralmind/commit/2b61178292f2fb182e4ca0699f8368f545270b14))
+* **readme:** surface the savings report command in quick start ([3bdf552](https://github.com/dfrostar/neuralmind/commit/3bdf552677e445462799b39bde326d58176460ca))
+* rewrite README to 214 lines, add community files, fix stale versions ([2b062bf](https://github.com/dfrostar/neuralmind/commit/2b062bfce3c690434c89a114d53f79e4c4cfb95f))
+* rewrite Reranker TRD to match actual rerank.py code ([9e2633b](https://github.com/dfrostar/neuralmind/commit/9e2633b8f24ce293b20f7ac49b6a2b17512c6f31))
+
 ## [1.9.1](https://github.com/dfrostar/neuralmind/compare/v1.9.0...v1.9.1) (2026-07-28)
 
 
