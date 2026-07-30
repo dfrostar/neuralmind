@@ -131,10 +131,14 @@ class LicenseOperations:
         signature = self._sign_license(license_data)
         license_data["signature"] = signature
 
-        # Write license file
+        # Write license file — sanitize customer_name to prevent path traversal
         if output_path is None:
-            output_path = self.storage / f"{customer_name.lower().replace(' ', '-')}.json"
+            safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
+            output_path = self.storage / f"{safe_name}.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Verify the resolved path is still inside storage
+        if not str(output_path.resolve()).startswith(str(self.storage.resolve())):
+            raise ValueError("Invalid customer name: path traversal detected")
         fd, tmp = tempfile.mkstemp(dir=output_path.parent, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -198,7 +202,10 @@ class LicenseOperations:
 
         # Update license file
         lic_data = {}
-        license_path = self.storage / f"{customer_name.lower().replace(' ', '-')}.json"
+        safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
+        license_path = self.storage / f"{safe_name}.json"
+        if not str(license_path.resolve()).startswith(str(self.storage.resolve())):
+            raise ValueError("Invalid customer name: path traversal detected")
         if license_path.exists():
             with open(license_path) as f:
                 lic_data = json.load(f)
@@ -246,8 +253,11 @@ class LicenseOperations:
         now = datetime.now(timezone.utc)
         lic_data = {}
 
-        # Update license file
-        license_path = self.storage / f"{customer_name.lower().replace(' ', '-')}.json"
+        # Update license file — sanitize customer_name to prevent path traversal
+        safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
+        license_path = self.storage / f"{safe_name}.json"
+        if not str(license_path.resolve()).startswith(str(self.storage.resolve())):
+            raise ValueError("Invalid customer name: path traversal detected")
         if license_path.exists():
             with open(license_path) as f:
                 lic_data = json.load(f)

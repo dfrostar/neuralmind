@@ -2712,6 +2712,107 @@ def cmd_risks(args):
         sys.exit(1)
 
 
+def cmd_license_issue(args):
+    """Issue a new Team license."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    if not private_key:
+        print("Error: NEURALMIND_ISSUER_PRIVATE_KEY_HEX not set", file=sys.stderr)
+        sys.exit(1)
+    ops = LicenseOperations(private_key, storage_path)
+    output_path = Path(args.output) if args.output else None
+    lic = ops.issue_team_license(
+        customer_name=args.customer,
+        seats=args.seats,
+        term_months=args.term,
+        partner_id=args.partner,
+        output_path=output_path,
+    )
+    print(f"License issued: {lic.raw.get('license_id')}")
+    print(f"Customer: {lic.issued_to}")
+    print(f"Seats: {lic.seats}")
+    print(f"Expires: {lic.expires_at}")
+
+
+def cmd_license_renew(args):
+    """Renew an existing license."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    if not private_key:
+        print("Error: NEURALMIND_ISSUER_PRIVATE_KEY_HEX not set", file=sys.stderr)
+        sys.exit(1)
+    ops = LicenseOperations(private_key, storage_path)
+    lic = ops.renew_license(args.customer, args.term)
+    print(f"License renewed: {lic.raw.get('license_id')}")
+    print(f"New expiry: {lic.expires_at}")
+
+
+def cmd_license_revoke(args):
+    """Revoke a license."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    if not private_key:
+        print("Error: NEURALMIND_ISSUER_PRIVATE_KEY_HEX not set", file=sys.stderr)
+        sys.exit(1)
+    ops = LicenseOperations(private_key, storage_path)
+    lic = ops.revoke_license(args.customer, args.reason)
+    print(f"License revoked: {lic.raw.get('license_id')}")
+    print(f"Reason: {args.reason}")
+
+
+def cmd_license_status(args):
+    """Show license status."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    ops = LicenseOperations(private_key, storage_path)
+    status = ops.get_license_status(args.customer)
+    for k, v in status.items():
+        print(f"{k}: {v}")
+
+
+def cmd_license_list(args):
+    """List all licenses."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    ops = LicenseOperations(private_key, storage_path)
+    licenses = ops.list_customer_licenses(args.partner)
+    for lic in licenses:
+        print(f"{lic['customer']}: {lic['status']} ({lic['seats']} seats, expires {lic['expires_at']})")
+
+
+def cmd_partner_add(args):
+    """Add a new partner."""
+    from neuralmind.tier2.operations import PartnerOperations
+    storage_path = Path.home() / ".neuralmind"
+    ops = PartnerOperations(storage_path, storage_path / "audit_log.jsonl")
+    partner = ops.add_partner(args.name, args.commission, args.email)
+    print(f"Partner added: {partner['partner_id']}")
+
+
+def cmd_partner_list(args):
+    """List all partners."""
+    from neuralmind.tier2.operations import PartnerOperations
+    storage_path = Path.home() / ".neuralmind"
+    ops = PartnerOperations(storage_path, storage_path / "audit_log.jsonl")
+    for p in ops.list_partners():
+        print(f"{p['partner_id']}: {p['name']} ({p['commission_percent']}%)")
+
+
+def cmd_partner_licenses(args):
+    """List partner's licenses."""
+    from neuralmind.tier2.operations import LicenseOperations
+    storage_path = Path.home() / ".neuralmind"
+    private_key = os.environ.get("NEURALMIND_ISSUER_PRIVATE_KEY_HEX", "")
+    ops = LicenseOperations(private_key, storage_path)
+    for lic in ops.list_customer_licenses(args.partner):
+        print(f"{lic['customer']}: {lic['status']}")
+
+
 def cmd_optimize_docs(args):
     """`neuralmind optimize-docs` — evolve JSDoc for undocumented methods.
 
@@ -4073,6 +4174,59 @@ def main():
     )
     risks_p.add_argument("--json", "-j", action="store_true")
     risks_p.set_defaults(func=cmd_risks)
+
+    # license command — issue, renew, revoke, status
+    license_p = subparsers.add_parser(
+        "license",
+        help="Manage Team licenses (issue, renew, revoke, status)",
+    )
+    license_sub = license_p.add_subparsers(dest="license_command")
+
+    issue_lp = license_sub.add_parser("issue", help="Issue a new Team license")
+    issue_lp.add_argument("--customer", required=True, help="Customer name")
+    issue_lp.add_argument("--seats", type=int, required=True, help="Number of seats")
+    issue_lp.add_argument("--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months")
+    issue_lp.add_argument("--partner", default=None, help="Partner ID")
+    issue_lp.add_argument("--output", default=None, help="Output path for license file")
+    issue_lp.set_defaults(func=cmd_license_issue)
+
+    renew_lp = license_sub.add_parser("renew", help="Renew an existing license")
+    renew_lp.add_argument("--customer", required=True, help="Customer name")
+    renew_lp.add_argument("--term", type=int, required=True, choices=[1, 3, 6, 12, 24, 36], help="Term in months")
+    renew_lp.set_defaults(func=cmd_license_renew)
+
+    revoke_lp = license_sub.add_parser("revoke", help="Revoke a license")
+    revoke_lp.add_argument("--customer", required=True, help="Customer name")
+    revoke_lp.add_argument("--reason", required=True, help="Revocation reason")
+    revoke_lp.set_defaults(func=cmd_license_revoke)
+
+    status_lp = license_sub.add_parser("status", help="Show license status")
+    status_lp.add_argument("--customer", required=True, help="Customer name")
+    status_lp.set_defaults(func=cmd_license_status)
+
+    list_lp = license_sub.add_parser("list", help="List all licenses")
+    list_lp.add_argument("--partner", default=None, help="Filter by partner ID")
+    list_lp.set_defaults(func=cmd_license_list)
+
+    # partner command — add, list, licenses
+    partner_p = subparsers.add_parser(
+        "partner",
+        help="Manage partners (resellers)",
+    )
+    partner_sub = partner_p.add_subparsers(dest="partner_command")
+
+    add_pp = partner_sub.add_parser("add", help="Add a new partner")
+    add_pp.add_argument("--name", required=True, help="Partner name")
+    add_pp.add_argument("--commission", type=float, required=True, help="Commission percent (0-50)")
+    add_pp.add_argument("--email", required=True, help="Contact email")
+    add_pp.set_defaults(func=cmd_partner_add)
+
+    list_pp = partner_sub.add_parser("list", help="List all partners")
+    list_pp.set_defaults(func=cmd_partner_list)
+
+    plic_pp = partner_sub.add_parser("licenses", help="List partner's licenses")
+    plic_pp.add_argument("--partner", required=True, help="Partner ID")
+    plic_pp.set_defaults(func=cmd_partner_licenses)
 
     args = parser.parse_args()
     if args.command is None:
