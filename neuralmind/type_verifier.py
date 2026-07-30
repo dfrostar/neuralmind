@@ -15,6 +15,7 @@ import ast
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -61,7 +62,6 @@ def _is_optional_type(type_str: str | None) -> bool:
     if not type_str:
         return False
     stripped = type_str.strip()
-    # Explicit `None` alone is not optional — it's a definite None return
     if stripped == "None":
         return False
     for pat in _OPTIONAL_PATTERNS:
@@ -81,27 +81,71 @@ class TypeVerifier:
     when available — same fail-open semantics as the Python path.
     """
 
-    # Language-specific optional type patterns
     _TS_OPTIONAL = ("undefined", "null", "void", "never")
     _GO_OPTIONAL = ("error", "pointer", "interface", "nil")
     _RUST_OPTIONAL = ("Option<", "Result<", "None")
 
     def __init__(self, project_path: str | Path) -> None:
         self.project_path = Path(project_path)
-        self._cache: dict[str, TypeInfo | None] = {}  # node_id → TypeInfo
+        self._cache: dict[str, TypeInfo | None] = {}
+        self._ast_cache: dict[str, ast.AST] = {}  # file_path -> parsed AST
+        self._ts_langs: dict[str, Language] = {}
         self._use_mypy = os.environ.get("NEURALMIND_TYPE_CHECK") == "1"
-        self._ts_langs: dict[str, Language] = {}  # language name → tree-sitter Language
+        self._module_map: dict[str, str] = {}  # module_name -> file_path
+        self._last_graph: dict | None = None
+        self._func_index: dict[str, Path] = {}  # func_name -> file_path (lazy-built)
+
+    def _build_func_index(self) -> None:
+        """Build a function→file index for fast lookup. Called lazily."""
+        if self._func_index:
+            return
+        for root, _dirs, files in os.walk(self.project_path):
+            parts = Path(root).parts
+            if any(
+                p.startswith(".") or p in ("__pycache__", "node_modules", "venv", ".venv")
+                for p in parts
+            ):
+                continue
+            for fname in files:
+                if fname.endswith((".py", ".ts", ".tsx", ".go", ".rs")):
+                    fpath = Path(root) / fname
+                    try:
+                        source = fpath.read_text(encoding="utf-8", errors="replace")
+                        if fname.endswith(".py"):
+                            tree = ast.parse(source)
+                            for node in ast.walk(tree):
+                                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                    self._func_index[node.name] = fpath
+                        else:
+                            ext = fpath.suffix.lower().lstrip(".")
+                            lang_name = ext
+                            if ext in ("ts", "tsx"):
+                                lang_name = "typescript"
+                            lang = self._ts_language(lang_name)
+                            if lang is None:
+                                continue
+                            ts_tree = self._ts_parse(source, lang)
+                            # Walk tree-sitter AST for function-like nodes
+                            def walk_ts(node):
+                                if node.type in (
+                                    "function_declaration",
+                                    "method_definition",
+                                    "arrow_function",
+                                    "function_item",
+                                    "method_declaration",
+                                ):
+                                    for child in node.children:
+                                        if child.type == "identifier":
+                                            self._func_index[child.text.decode("utf8")] = fpath
+                                            break
+                                for child in node.children:
+                                    walk_ts(child)
+                            walk_ts(ts_tree.root_node)
+                    except (OSError, SyntaxError, Exception):
+                        continue
 
     def infer_return_type(self, node_id: str) -> TypeInfo | None:
-        """Infer the return type for a graph node (function).
-
-        Args:
-            node_id: Graph node id, typically ``path/to/file.py::func_name``
-                or just ``func_name``.
-
-        Returns:
-            ``TypeInfo`` on success, ``None`` if unparseable/unannotated.
-        """
+        """Infer the return type for a graph node (function)."""
         if node_id in self._cache:
             return self._cache[node_id]
 
@@ -113,6 +157,19 @@ class TypeVerifier:
         self._cache[node_id] = info
         return info
 
+    def _get_ast(self, source_file: Path) -> ast.AST | None:
+        """Get parsed AST for a file, using cache."""
+        key = str(source_file)
+        if key in self._ast_cache:
+            return self._ast_cache[key]
+        try:
+            source = source_file.read_text(encoding="utf-8", errors="replace")
+            tree = ast.parse(source)
+            self._ast_cache[key] = tree
+            return tree
+        except (OSError, SyntaxError):
+            return None
+
     def _ts_language(self, name: str) -> Language | None:
         """Load a tree-sitter language grammar on demand (fail-open)."""
         from tree_sitter import Language
@@ -122,15 +179,12 @@ class TypeVerifier:
         try:
             if name == "typescript":
                 import tree_sitter_typescript as ts
-
                 lang = Language(ts.language_typescript())
             elif name == "go":
                 import tree_sitter_go as ts
-
                 lang = Language(ts.language())
             elif name == "rust":
                 import tree_sitter_rust as ts
-
                 lang = Language(ts.language())
             else:
                 return None
@@ -142,20 +196,17 @@ class TypeVerifier:
     def _ts_parse(self, source: str, lang: Language):
         """Parse source with a tree-sitter language."""
         import tree_sitter
-
         parser = tree_sitter.Parser(lang)
         return parser.parse(bytes(source, "utf8"))
 
     def _infer_ts_return(self, node) -> TypeInfo | None:
         """Infer return type from a TypeScript function node."""
-        # tree-sitter node types: function_declaration, method_definition, arrow_function
         return_type = None
         for child in node.children:
             if child.type == "type_annotation":
                 return_type = child.text.decode("utf8").lstrip(":").strip()
                 break
 
-        # Check for void/undefined/never
         if return_type in self._TS_OPTIONAL or return_type is None:
             return TypeInfo(
                 return_type=return_type or "void",
@@ -172,7 +223,7 @@ class TypeVerifier:
 
     def _infer_go_return(self, node) -> TypeInfo | None:
         """Infer return type from a Go function node."""
-        # Go functions: func Name(params) returnType
+        # Check for method receivers: func (r *Receiver) Method() Type
         for child in node.children:
             if child.type == "result":
                 result_text = child.text.decode("utf8").strip()
@@ -192,12 +243,37 @@ class TypeVerifier:
         )
 
     def _infer_rust_return(self, node) -> TypeInfo | None:
-        """Infer return type from a Rust function node."""
-        # Rust: fn name() -> ReturnType { ... }
-        # tree-sitter uses generic_type for Option<T>, primitive_type for i32, etc.
+        """Infer return type from a Rust function node.
+        
+        Tree-sitter versions vary:
+        - Older: function_item -> [..., return_type -> [->, generic_type], ...]
+        - Newer: function_item -> [..., ->, generic_type, ...]
+        """
         for child in node.children:
+            # Newer tree-sitter: generic_type/primitive_type is direct child
             if child.type in ("generic_type", "primitive_type", "type_identifier"):
                 type_text = child.text.decode("utf8").strip()
+                is_opt = any(type_text.startswith(p) for p in self._RUST_OPTIONAL)
+                return TypeInfo(
+                    return_type=type_text,
+                    is_optional=is_opt,
+                    confidence=0.9,
+                    inferred_by="tree-sitter",
+                )
+            # Older tree-sitter: wrapped in return_type node
+            if child.type == "return_type":
+                for type_child in child.children:
+                    if type_child.type in ("generic_type", "primitive_type", "type_identifier"):
+                        type_text = type_child.text.decode("utf8").strip()
+                        is_opt = any(type_text.startswith(p) for p in self._RUST_OPTIONAL)
+                        return TypeInfo(
+                            return_type=type_text,
+                            is_optional=is_opt,
+                            confidence=0.9,
+                            inferred_by="tree-sitter",
+                        )
+                # Fallback: use entire return_type text
+                type_text = child.text.decode("utf8").lstrip("->").strip()
                 is_opt = any(type_text.startswith(p) for p in self._RUST_OPTIONAL)
                 return TypeInfo(
                     return_type=type_text,
@@ -214,7 +290,6 @@ class TypeVerifier:
         )
 
     def _do_infer(self, node_id: str) -> TypeInfo | None:
-        # Parse node_id — supports "path/file.py::func_name" or bare "func_name"
         func_name: str
         source_file: Path | None = None
 
@@ -230,7 +305,6 @@ class TypeVerifier:
         if source_file is None or not source_file.exists():
             return None
 
-        # Cross-language type inference via tree-sitter
         ext = source_file.suffix.lower()
         if ext in (".ts", ".tsx"):
             return self._do_ts_infer(func_name, source_file)
@@ -238,15 +312,10 @@ class TypeVerifier:
             return self._do_go_infer(func_name, source_file)
         if ext == ".rs":
             return self._do_rust_infer(func_name, source_file)
-        if ext != ".py":
-            # Unknown extension — try tree-sitter with ext as language name
-            pass
 
         # Default: Python via stdlib ast
-        try:
-            source = source_file.read_text(encoding="utf-8", errors="replace")
-            tree = ast.parse(source)
-        except (OSError, SyntaxError):
+        tree = self._get_ast(source_file)
+        if tree is None:
             return None
 
         for node in ast.walk(tree):
@@ -342,101 +411,51 @@ class TypeVerifier:
         return walk(tree.root_node)
 
     def _find_function_file(self, func_name: str) -> Path | None:
-        """Search project for a file defining ``func_name`` (any supported language)."""
-        for root, _dirs, files in os.walk(self.project_path):
-            parts = Path(root).parts
-            if any(
-                p.startswith(".") or p in ("__pycache__", "node_modules", "venv", ".venv")
-                for p in parts
-            ):
-                continue
-            for fname in files:
-                if fname.endswith((".py", ".ts", ".tsx", ".go", ".rs")):
-                    fpath = Path(root) / fname
-                    try:
-                        source = fpath.read_text(encoding="utf-8", errors="replace")
-                        if fname.endswith(".py"):
-                            tree = ast.parse(source)
-                            for node in ast.walk(tree):
-                                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                                    if node.name == func_name:
-                                        return fpath
-                        else:
-                            # Map file extension to language name
-                            ext = fpath.suffix.lower().lstrip(".")
-                            lang_name = ext
-                            if ext in ("ts", "tsx"):
-                                lang_name = "typescript"
-                            lang = self._ts_language(lang_name)
-                            if lang is None:
-                                continue
-                            ts_tree = self._ts_parse(source, lang)
-                            # Walk tree-sitter AST for function-like nodes
-                            found = None
+        """Search project for a file defining ``func_name`` (any supported language).
 
-                            def walk_ts(node, _fpath=fpath):
-                                nonlocal found
-                                if found is not None:
-                                    return
-                                if node.type in (
-                                    "function_declaration",
-                                    "method_definition",
-                                    "arrow_function",
-                                    "function_item",
-                                ):
-                                    for child in node.children:
-                                        if (
-                                            child.type == "identifier"
-                                            and child.text.decode("utf8") == func_name
-                                        ):
-                                            found = _fpath
-                                            return
-                                    return  # Not this function, but don't recurse into its body
-                                for child in node.children:
-                                    walk_ts(child)
-
-                            walk_ts(ts_tree.root_node)
-                            if found is not None:
-                                return found
-                    except (OSError, SyntaxError, Exception):
-                        continue
-        return None
+        Uses lazy-built function index for O(1) lookup after first call.
+        """
+        if not self._func_index:
+            self._build_func_index()
+        return self._func_index.get(func_name)
 
     def augment_graph(self, graph: dict) -> int:
-        """Walk calls edges in ``graph`` and annotate with type metadata."""
+        """Walk calls edges in ``graph`` and annotate with type metadata.
+
+        Uses thread pool for parallel type inference on large graphs.
+        """
         if not graph:
             return 0
 
-        # Support both 'edges' (IR format) and 'links' (embedder format)
         edges = graph.get("edges", graph.get("links", []))
         if not edges:
             return 0
 
-        # Build node lookup for extracting function names
         node_map = {n.get("id"): n for n in graph.get("nodes", [])}
 
-        type_edges: list[tuple[str, str, TypeInfo]] = []
         calls_edges = [
             e
             for e in edges
             if e.get("relation") in ("calls", "call") or e.get("label") in ("calls", "call")
         ]
 
+        if not calls_edges:
+            graph["type_edges"] = []
+            return 0
+
+        # Build lookup list for parallel processing
+        lookups = []
         for edge in calls_edges:
             callee = edge.get("target", edge.get("_tgt", ""))
             caller = edge.get("source", edge.get("_src", ""))
             if not callee:
                 continue
 
-            # Extract function name from node label (e.g., "funcName()" -> "funcName")
             callee_node = node_map.get(callee, {})
             callee_label = callee_node.get("label", callee)
-            # Strip trailing () or [] from label
             func_name = callee_label.rstrip("()[]").split(".")[-1]
-
-            # Build source_file::func_name for precise lookup
             source_file = callee_node.get("source_file", "")
-            # If callee is already in "path::func_name" format, use it directly
+
             if "::" in callee:
                 lookup = callee
             elif source_file:
@@ -444,18 +463,32 @@ class TypeVerifier:
             else:
                 lookup = func_name
 
-            type_info = self.infer_return_type(lookup)
-            if type_info is not None:
-                type_edges.append((caller, callee, type_info))
+            lookups.append((caller, callee, lookup))
+
+        # Parallel type inference
+        type_edges: list[tuple[str, str, TypeInfo]] = []
+        max_workers = min(8, len(lookups))
+
+        def process_item(item):
+            caller, callee, lookup = item
+            info = self.infer_return_type(lookup)
+            if info is not None:
+                return (caller, callee, info)
+            return None
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(process_item, item): item for item in lookups}
+            for future in as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    type_edges.append(result)
 
         graph["type_edges"] = type_edges
+        self._last_graph = graph
         return len(type_edges)
 
     def detect_type_risks(self, graph: dict) -> list[TypeRisk]:
-        """Score and rank type risks from annotated calls edges.
-
-        Returns a list of ``TypeRisk`` signals for compliance reporting.
-        """
+        """Score and rank type risks from annotated calls edges."""
         type_edges = graph.get("type_edges", [])
         risks: list[TypeRisk] = []
 
@@ -469,7 +502,7 @@ class TypeVerifier:
                         severity="warn",
                         detail=(
                             f"{callee_id} returns {type_info.return_type} "
-                            f"— caller may need None guard"
+                            "— caller may need None guard"
                         ),
                         callee_returns=type_info.return_type or "None",
                     )
@@ -494,58 +527,56 @@ class TypeVerifier:
                         severity="info",
                         detail=(
                             f"{callee_id} unannotated — type unknown. "
-                            f"Enable NEURALMIND_TYPE_CHECK=1 for inference"
+                            "Enable NEURALMIND_TYPE_CHECK=1 for inference"
                         ),
                         callee_returns="unknown",
+                    )
+                )
+            elif type_info.return_type == "any":
+                risks.append(
+                    TypeRisk(
+                        caller_id=caller_id,
+                        callee_id=callee_id,
+                        risk_type="any_fallthrough",
+                        severity="warn",
+                        detail=(
+                            f"{callee_id} returns 'any' — "
+                            "type safety lost at this boundary"
+                        ),
+                        callee_returns="any",
                     )
                 )
 
         return risks
 
     def persist_type_edges(self, store) -> int:
-        """Persist inferred type edges to the synapse store's ``type_edges`` table.
-
-        ``store`` must be a ``SynapseStore`` instance with a ``persist_type_edges``
-        method. Returns the number of rows upserted.
-        """
-        # We don't have source/target from cache alone; use graph type_edges
-        for _k, info_or_tuple in self._cache.items():
-            if info_or_tuple is not None and isinstance(info_or_tuple, TypeInfo):
-                pass
-
-        # Get from graph if available
-        graph = getattr(self, "_last_graph", None)
-        if graph is None:
+        """Persist type edges to the synapse store."""
+        if not self._last_graph:
             return 0
 
-        raw_edges = graph.get("type_edges", [])
-        if not raw_edges:
+        type_edges = self._last_graph.get("type_edges", [])
+        if not type_edges:
             return 0
 
-        ts = time.time()
-        rows = []
-        for source_node, target_node, type_info in raw_edges:
-            rows.append(
-                (
-                    str(source_node),
-                    str(target_node),
-                    type_info.return_type,
-                    1 if type_info.is_optional else 0,
-                    type_info.confidence,
-                    type_info.inferred_by,
-                    ts,
-                )
+        # Build tuples for batch insert: (source, target, return_type, is_optional, confidence, inferred_by, inferred_at)
+        now = time.time()
+        rows = [
+            (
+                caller,
+                callee,
+                type_info.return_type,
+                type_info.is_optional,
+                type_info.confidence,
+                type_info.inferred_by,
+                now,
             )
-
-        if not rows:
-            return 0
+            for caller, callee, type_info in type_edges
+        ]
 
         try:
-            if hasattr(store, "persist_type_edges"):
-                return store.persist_type_edges(rows)
+            return store.persist_type_edges(rows)
         except Exception:
-            pass
-        return 0
+            return 0
 
 
 def format_type_risks(risks: list[TypeRisk]) -> str:
