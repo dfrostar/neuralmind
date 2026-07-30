@@ -39,6 +39,7 @@ class LicenseOperations:
         if not self.customers_path.exists():
             return {"customers": {}}
         import yaml
+
         with open(self.customers_path) as f:
             data = yaml.safe_load(f)
         # H2 fix: YAML safe_load can return non-dict types (list, string, number)
@@ -50,6 +51,7 @@ class LicenseOperations:
 
     def _save_customers(self, data: dict) -> None:
         import yaml
+
         fd, tmp = tempfile.mkstemp(dir=self.storage, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -63,11 +65,13 @@ class LicenseOperations:
         if not self.partners_path.exists():
             return {"partners": {}}
         import yaml
+
         with open(self.partners_path) as f:
             return yaml.safe_load(f) or {"partners": {}}
 
     def _save_partners(self, data: dict) -> None:
         import yaml
+
         fd, tmp = tempfile.mkstemp(dir=self.storage, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -99,6 +103,7 @@ class LicenseOperations:
     def _sign_license(self, data: dict) -> str:
         """Sign license data with Ed25519 private key."""
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
         priv_bytes = bytes.fromhex(self.private_key)
         priv_key = Ed25519PrivateKey.from_private_bytes(priv_bytes)
         msg = json.dumps(data, sort_keys=True, separators=(",", ":"))
@@ -369,15 +374,17 @@ class LicenseOperations:
         for name, cust in customers.get("customers", {}).items():
             if partner_id and cust.get("partner_id") != partner_id:
                 continue
-            results.append({
-                "customer": name,
-                "license_id": cust.get("license_id"),
-                "tier": cust.get("tier"),
-                "seats": cust.get("seats"),
-                "status": cust.get("status"),
-                "expires_at": cust.get("expires_at"),
-                "total_paid": cust.get("total_paid"),
-            })
+            results.append(
+                {
+                    "customer": name,
+                    "license_id": cust.get("license_id"),
+                    "tier": cust.get("tier"),
+                    "seats": cust.get("seats"),
+                    "status": cust.get("status"),
+                    "expires_at": cust.get("expires_at"),
+                    "total_paid": cust.get("total_paid"),
+                }
+            )
         return results
 
 
@@ -394,11 +401,13 @@ class PartnerOperations:
         if not self.partners_path.exists():
             return {"partners": {}}
         import yaml
+
         with open(self.partners_path) as f:
             return yaml.safe_load(f) or {"partners": {}}
 
     def _save_partners(self, data: dict) -> None:
         import yaml
+
         fd, tmp = tempfile.mkstemp(dir=self.storage, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -452,11 +461,13 @@ class PartnerOperations:
         if partner_id not in partners["partners"]:
             raise ValueError(f"partner {partner_id!r} not found")
         partners["partners"][partner_id]["total_commission_earned"] += amount
-        partners["partners"][partner_id].setdefault("commissions", []).append({
-            "amount": amount,
-            "license_id": license_id,
-            "timestamp": _now_iso(),
-        })
+        partners["partners"][partner_id].setdefault("commissions", []).append(
+            {
+                "amount": amount,
+                "license_id": license_id,
+                "timestamp": _now_iso(),
+            }
+        )
         self._save_partners(partners)
 
     def get_partner_licenses(self, partner_id: str) -> list[dict]:
