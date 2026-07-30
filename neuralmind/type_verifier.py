@@ -125,6 +125,7 @@ class TypeVerifier:
                             if lang is None:
                                 continue
                             ts_tree = self._ts_parse(source, lang)
+
                             # Walk tree-sitter AST for function-like nodes
                             def walk_ts(node):
                                 if node.type in (
@@ -140,6 +141,7 @@ class TypeVerifier:
                                             break
                                 for child in node.children:
                                     walk_ts(child)
+
                             walk_ts(ts_tree.root_node)
                     except (OSError, SyntaxError, Exception):
                         continue
@@ -179,12 +181,15 @@ class TypeVerifier:
         try:
             if name == "typescript":
                 import tree_sitter_typescript as ts
+
                 lang = Language(ts.language_typescript())
             elif name == "go":
                 import tree_sitter_go as ts
+
                 lang = Language(ts.language())
             elif name == "rust":
                 import tree_sitter_rust as ts
+
                 lang = Language(ts.language())
             else:
                 return None
@@ -196,6 +201,7 @@ class TypeVerifier:
     def _ts_parse(self, source: str, lang: Language):
         """Parse source with a tree-sitter language."""
         import tree_sitter
+
         parser = tree_sitter.Parser(lang)
         return parser.parse(bytes(source, "utf8"))
 
@@ -244,7 +250,7 @@ class TypeVerifier:
 
     def _infer_rust_return(self, node) -> TypeInfo | None:
         """Infer return type from a Rust function node.
-        
+
         Tree-sitter versions vary:
         - Older: function_item -> [..., return_type -> [->, generic_type], ...]
         - Newer: function_item -> [..., ->, generic_type, ...]
@@ -540,8 +546,7 @@ class TypeVerifier:
                         risk_type="any_fallthrough",
                         severity="warn",
                         detail=(
-                            f"{callee_id} returns 'any' — "
-                            "type safety lost at this boundary"
+                            f"{callee_id} returns 'any' — " "type safety lost at this boundary"
                         ),
                         callee_returns="any",
                     )
