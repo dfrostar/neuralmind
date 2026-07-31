@@ -18,13 +18,16 @@ For a team spending **$500+/month on AI coding agent inference** on a
 **codebase larger than ~10K lines**, NeuralMind's tooling
 **measures a 12-50× reduction in retrieval-stage input tokens** on
 real-world repos (community benchmarks; n=2). On a typical agent
-workload this **translates to a derived 3–10× reduction in
+workload this **translates to a derived ~1.6–3× reduction in
 end-to-end LLM cost** — the smaller end-to-end figure is because
 retrieval is one cost slice among generation, conversation history,
-and tool results, not all of them. **One-time setup is ~15 min per
-developer**, with **no ongoing operational overhead once you opt
-into the git post-commit hook (`neuralmind init-hook .`)** which
-incrementally rebuilds the index.
+and tool results, not all of them. The honest ceiling for end-to-end
+reduction is ~3.2× (at mix factor 0.7, retrieval as 70% of input
+cost); reaching 10× would need a mix factor of ~0.92, outside every
+published parameter. **One-time setup is ~15 min per developer**,
+with **no ongoing operational overhead once you opt into the git
+post-commit hook (`neuralmind init-hook .`)** which incrementally
+rebuilds the index.
 
 The retrieval-stage reduction is **measured**. The end-to-end
 multiplier is **derived** from the
@@ -268,14 +271,16 @@ the team.
 
 **Without NeuralMind:** developers waste 15 min/day rephrasing
 prompts and manually paring context. At $50/hour fully loaded, that
-is **$1,650/month in lost engineering time** before any LLM cost.
+is **$4,125/month in lost engineering time** before any LLM cost.
+(15 devs × 15 min/day × 22 days × $50/hr = $4,125 — the earlier
+$1,650 figure was a math error, corrected 2026-07-31.)
 
 **With NeuralMind:** `install-hooks` auto-compresses Read/Bash/Grep
 output by ~88–91%. Context-limit failures drop to ~zero. LLM bill
 drops 1.5–3× alongside.
 
-**Combined value:** $1,650 productivity recovery + $200–400 LLM
-savings = **~$2,000/month** for a team of 15. ROI on 2 hours of
+**Combined value:** $4,125 productivity recovery + $200–400 LLM
+savings = **~$4,500/month** for a team of 15. ROI on 2 hours of
 setup: ≥10×.
 
 ### Scenario B — Solo dev with growing monorepo

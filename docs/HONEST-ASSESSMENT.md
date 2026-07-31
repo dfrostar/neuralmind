@@ -35,7 +35,7 @@ The headline "12-50×" reduction is real, but it's a reduction in
 **retrieval input tokens**, not a reduction in your total LLM bill.
 What you actually save depends on how much of your spend is retrieval
 vs. generation, which varies wildly by workload. For a typical
-Claude Code session the realistic end-to-end savings is **3–10×**
+Claude Code session the realistic end-to-end savings is **~1.6–3×**
 total cost, not 12-50×.
 
 The community-benchmark table is currently **three entries from the

@@ -122,6 +122,7 @@ def compute_savings(
         "est_total_full_cost": total_full_cost,
         "total_tokens_saved": total_saved,
         "avg_reduction_ratio": round(avg_ratio, 1),
+        "baseline_disclosure": "Reduction ratios are calculated against a hardcoded assumed baseline of 50,000 tokens per query (the 'full codebase' estimate), not a measured value. Real baselines vary by codebase size.",
         "recent_queries": queries[-5:],
     }
 

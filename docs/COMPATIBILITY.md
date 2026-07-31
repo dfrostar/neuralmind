@@ -1,42 +1,45 @@
 # NeuralMind Compatibility Matrix
 
-**Last Updated:** 2026-04-22  
-**Next Review:** 2026-05-22
+**Last Updated:** 2026-07-31  
+**Next Review:** 2026-10-31
 
 ---
 
 ## Version Compatibility
 
-| NeuralMind | Status | Python | graphify | chromadb | Release Date | Support Until |
-|------------|--------|--------|----------|----------|--------------|---------------|
-| v0.4.2 | ✅ Current | 3.10-3.13 | 1.2+ | 0.4.20+ | 2026-04-20 | 2026-10-20 |
-| v0.4.1 | ✅ Maintained | 3.10-3.13 | 1.2+ | 0.4.15+ | 2026-03-15 | 2026-09-15 |
-| v0.3.x | ⚠️ LTS | 3.10-3.12 | 1.1-1.2 | 0.4.0+ | 2025-10-01 | 2026-04-01 |
-| v0.2.x | ❌ EOL | 3.10-3.11 | 1.0-1.1 | 0.3.x | 2025-06-01 | 2025-10-01 |
-| v0.1.x | ❌ EOL | 3.10 | 0.9 | 0.2.x | 2025-01-01 | 2025-06-01 |
+| NeuralMind | Status | Python | Release Date | Support Until |
+|------------|--------|--------|--------------|---------------|
+| v1.10.1 | ✅ Current | 3.10-3.13 | 2026-07-30 | 2027-01-30 |
+| v1.10.0 | ✅ Maintained | 3.10-3.13 | 2026-07-28 | 2026-12-28 |
+| v1.9.x | ✅ Maintained | 3.10-3.13 | 2026-07-15 | 2026-10-15 |
+| v0.42.x | ⚠️ LTS | 3.10-3.13 | 2026-06-01 | 2026-12-01 |
+| v0.41.x | ⚠️ LTS | 3.10-3.13 | 2026-05-01 | 2026-11-01 |
+| v0.4.x | ❌ EOL | 3.10-3.13 | 2026-04-20 | 2026-07-20 |
+| v0.3.x | ❌ EOL | 3.10-3.12 | 2025-10-01 | 2026-04-01 |
+| v0.2.x | ❌ EOL | 3.10-3.11 | 2025-06-01 | 2025-10-01 |
 
 ---
 
 ## Platform Support
 
-| OS | Status | Tested Versions | Notes |
-|----|--------|-----------------|-------|
-| Linux | ✅ Full | Ubuntu 20.04+ | CI-verified on every PR (Python 3.10–3.12) |
-| macOS | ✅ Full | 11.0+ | CI-verified on every PR; x86 and Apple Silicon |
-| Windows | ✅ Full | 10, 11 | CI-verified on every PR (`windows-latest`, Python 3.12); Task Scheduler walkthrough included |
-| Docker | ✅ Full | Docker 20.10+ | Included in releases |
+| OS | Status | Notes |
+|----|--------|-------|
+| Linux | ✅ Full | CI-verified on every PR (Python 3.10–3.12) |
+| macOS | ✅ Full | CI-verified on every PR; x86 and Apple Silicon |
+| Windows | ✅ Full | CI-verified on every PR (`windows-latest`, Python 3.12) |
+| Docker | ✅ Full | Included in releases; multi-platform (linux/amd64 + linux/arm64) |
 
 ---
 
 ## Python Version Support
 
-| Python | Status | Until | Notes |
-|--------|--------|-------|-------|
-| 3.13 | ✅ Supported | 2025-10 | Latest, actively tested |
-| 3.12 | ✅ Supported | 2026-10 | Stable, recommended |
-| 3.11 | ✅ Supported | 2027-10 | Still widely used |
-| 3.10 | ✅ Supported | 2026-10 | Minimum version |
-| 3.9 | ❌ Unsupported | - | End of support Oct 2025 |
+| Python | Status | Notes |
+|--------|--------|-------|
+| 3.13 | ✅ Supported | Latest, actively tested |
+| 3.12 | ✅ Supported | Stable, recommended |
+| 3.11 | ✅ Supported | Still widely used |
+| 3.10 | ✅ Supported | Minimum version |
+| 3.9 | ❌ Unsupported | End of support Oct 2025 |
 
 ---
 
@@ -44,27 +47,12 @@
 
 | Backend | Min Version | Status | Use Case | Notes |
 |---------|------------|--------|----------|-------|
-| ChromaDB | 0.4.20 | ✅ Default | Local/Single-machine | Recommended for <100K nodes |
+| turbovec (default) | v0.29.0 | ✅ Default | Local/Single-machine | ChromaDB-free, quantized vectors, parity-gated |
+| ChromaDB | 0.4.20+ | ✅ Opt-in | Local/Single-machine | Legacy backend, still supported |
 | PostgreSQL pgvector | 0.1.0 | ⚠️ Experimental | Enterprise/Large-scale | 100K-10M nodes |
 | LanceDB | 0.1.0 | 🔬 Research | Edge/Offline | Still in beta |
 
----
-
-## Graphify Compatibility
-
-| graphify | NeuralMind Compat | Status | Breaking Changes |
-|----------|------------------|--------|------------------|
-| 1.2.0+ | v0.4.x | ✅ Current | None |
-| 1.1.x | v0.3.x, v0.4.x | ✅ Supported | Minor (query syntax) |
-| 1.0.x | v0.2.x, v0.3.x | ⚠️ Maintained | Graph format changed |
-| 0.9.x | v0.1.x | ❌ EOL | Major format change |
-
-**Installation:**
-```bash
-# Upgrade to latest
-git clone https://github.com/safishamsi/graphify.git
-cd graphify && git pull && pip install -e .
-```
+**Note:** Since v0.29.0, turbovec is the default backend. ChromaDB is opt-in via `pip install neuralmind[chromadb]`. The `neuralmind doctor` command shows the resolved backend.
 
 ---
 
@@ -72,22 +60,16 @@ cd graphify && git pull && pip install -e .
 
 | MCP Version | NeuralMind Compat | Status | Features |
 |------------|------------------|--------|----------|
-| 0.1.0+ | v0.4.x | ✅ Current | All tools |
-| - | v0.3.x | ❌ Not supported | Use CLI instead |
+| 0.1.0+ | v0.4.x+ | ✅ Current | All tools |
 
 ---
 
 ## Known Issues & Workarounds
 
-### Issue: ChromaDB 0.4.15-0.4.19 Memory Leak
-- **Affected:** NeuralMind v0.4.0-v0.4.1
-- **Status:** Fixed in v0.4.2 (updated to chromadb 0.4.20+)
-- **Workaround:** Upgrade to v0.4.2 or pin chromadb>=0.4.20
-
-### Issue: graphify 1.1.x Changes Query Format
-- **Affected:** NeuralMind v0.3.x with graphify 1.1.0+
-- **Status:** Handled in v0.4.0 (auto-converts)
-- **Workaround:** Use graphify 1.2.0+ or NeuralMind v0.4.0+
+### Issue: Test suite hangs on `test_e2e_seat_governance.py`
+- **Affected:** All versions
+- **Status:** Under investigation (pre-existing, not a regression)
+- **Workaround:** Run tests with `--ignore=tests/test_e2e_seat_governance.py` or use `pytest --timeout=30` to catch hangs
 
 ### Issue: Windows Task Scheduler + Python Venv
 - **Affected:** Auto-discovery on Windows with venv
@@ -103,6 +85,7 @@ cd graphify && git pull && pip install -e .
 | `--old-output` flag | v0.3.5 | v0.4.0 | `--json` or `--markdown` |
 | `graphify build` | v0.3.0 | v0.4.0 | `graphify update` |
 | Legacy MCP tools | v0.4.0 | v0.5.0 | New MCP server |
+| ChromaDB as default | v0.29.0 | v0.29.0 | turbovec (ChromaDB still opt-in) |
 
 ---
 
@@ -121,10 +104,9 @@ cd graphify && git pull && pip install -e .
 ## Upgrade Path
 
 ```
-v0.1.x → v0.2.x: Migration guide required
-v0.2.x → v0.3.x: Non-breaking, direct upgrade
-v0.3.x → v0.4.x: Recommended, minor adjustments
-v0.4.x → v0.5.0: Breaking changes (see MIGRATIONS.md)
+v0.4.x → v1.9.x: Recommended, minor adjustments
+v1.9.x → v1.10.x: Non-breaking, direct upgrade
+v1.10.x → v1.10.1: Patch release, direct upgrade
 ```
 
 ---
@@ -144,13 +126,10 @@ v0.4.x → v0.5.0: Breaking changes (see MIGRATIONS.md)
 
 ## Future Changes
 
-### Planned for v0.5.0 (Q3 2026)
-- Python 3.9 support dropped
-- MCP server redesigned (breaking API)
-- New embedding backend selector
+### Planned for v1.11.0 (Q3 2026)
+- None currently planned
 
-### Planned for v1.0.0 (Q1 2027)
+### Planned for v2.0.0 (TBD)
 - Stable API guarantee
 - Long-term support for 2 years
 - Commercial support options
-

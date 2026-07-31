@@ -49,7 +49,7 @@ the same checks that run on every PR.
 | 4 | **Backend parity** — turbovec vs ChromaDB + multi-language structural parity | `python -m evals.parity.run` | none | `evals/parity/` |
 | 5 | **Public benchmark** — cost *and* recall vs full-file / ripgrep / vector-RAG on **real pinned OSS repos** (`requests`, `click`) | `python -m evals.public.run` | network (clones repos) | [`bench/public/`](../bench/public/) |
 | 6 | **Competitor head-to-head** — scored retrieval ranking vs `codebase-memory-mcp 0.8.1` | `python -m evals.public.competitor` | `pip install codebase-memory-mcp==0.8.1` | [`bench/public/competitor/`](../bench/public/competitor/) |
-| 7 | **Latency / memory / disk** — turbovec vs chroma index size, search p50/p95, RSS | `python benchmark_turbovec.py --out results.json` | none | [`BENCHMARK_TURBOVEC.md`](../BENCHMARK_TURBOVEC.md) |
+| 7 | **Latency / memory / disk** — turbovec vs chroma index size, search p50/p95, RSS | `python benchmark_turbovec.py --out results.json` | none | [`bench/README.md`](../README.md) |
 | 8 | **Your own repo** — reduction ratio, tokens/query, est. monthly savings | `neuralmind benchmark .` | none | — |
 | 9 | **SWE-bench retrieval** — does NeuralMind surface the files a real fix edits? (gold-patch-file recall@k / MRR) | `python -m evals.swe_bench.runner --run` | `pip install datasets` + network | [`bench/swe_bench/`](../bench/swe_bench/REPRODUCE.md) (offline gate: `--selfcheck`) |
 

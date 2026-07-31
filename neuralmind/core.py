@@ -1495,6 +1495,7 @@ class NeuralMind:
             "avg_query_tokens": round(avg_tokens, 1),
             "avg_reduction_ratio": round(avg_reduction, 1),
             "estimated_full_codebase_tokens": 50000,
+            "baseline_disclosure": "The 'estimated_full_codebase_tokens' is a hardcoded assumed constant (50,000 tokens), not a measured value. Reduction ratios divide this assumed baseline by measured tokens.",
             "results": results,
             "summary": f"{avg_reduction:.1f}x average token reduction",
         }
