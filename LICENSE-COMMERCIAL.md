@@ -1,34 +1,38 @@
 # NeuralMind — Commercial License Agreement
 
-**Version 1.0 — Effective [Date]**
+**Version 1.1 — DRAFT TEMPLATE, not executed — Effective [Date]**
 
-This Commercial License Agreement ("Agreement") is entered into between **NeuralMind, Inc.** ("Licensor") and the entity agreeing to these terms ("Licensee").
+> Canonical commercial facts (entity, pricing, contact) live in
+> [`commercial-terms.json`](commercial-terms.json) and are CI-gated by
+> `scripts/check_commercial_terms.py`. This document must agree with that file.
+
+This Commercial License Agreement ("Agreement") is entered into between **Cheval-Volant LLC**, a Texas limited liability company doing business as **NeuralMind** ("Licensor"), and the entity agreeing to these terms ("Licensee").
 
 ---
 
 ## 1. Eligibility & Grant of Use
 
-This commercial license applies to **NeuralMind Enterprise** (the "Software") deployed in environments exceeding **five (5) users** or where enterprise features are used.
+This commercial license applies to the **NeuralMind Team and Enterprise tiers** (the "Software") deployed in environments of **five (5) or more users** or where paid-tier features are used.
 
 Subject to payment of applicable fees and compliance with this Agreement, Licensor grants Licensee a non-exclusive, non-transferable (except as a whole-entity transfer) right to:
 
 - Deploy the Software on Licensee's infrastructure
-- Access enterprise features: **SSO, RBAC, compliance-export module, air-gap binaries, audit-log rotation**
+- Access paid-tier features: **shared-memory governance, seat management, hash-chained audit log, compliance export, self-hosted deployment**
 - Receive **priority support** (SLA defined in Exhibit A)
 - Use accompanying documentation and updates during the term
 
-**Free tier remains available** for individuals, non-commercial use, and teams under five users via the standard MIT License included in the repository.
+**The MIT core remains free for everyone** — including all token compression and savings — and a 1-seat free-tier license auto-issues on first run (no signup, never expires).
 
 ---
 
 ## 2. Pricing & Payment
 
-| Model | Rate | Minimum |
-|-------|------|---------|
-| **Per-Seat** | $15 / user / month | 25 seats |
-| **Site License** | $85,000 / year | Unlimited seats |
+| Model | Rate | Seats |
+|-------|------|-------|
+| **Team (per-seat)** | $29 / user / month, annual contract | 5–50 |
+| **Enterprise** | Custom — [hello@neuralmind.uk](mailto:hello@neuralmind.uk) | Per agreement |
 
-Annual payment includes all updates, patches, and support during the term. Per-seat licenses are invoiced monthly in arrears.
+Annual payment includes all updates, patches, and support during the term.
 
 ---
 
@@ -82,7 +86,7 @@ Licensor shall defend Licensee against third-party claims that the Software infr
 
 ## 9. Governing Law & Dispute Resolution
 
-This Agreement is governed by the laws of the **State of Delaware**, without regard to conflict-of-law principles. Disputes shall be resolved by binding arbitration in Wilmington, Delaware, under the rules of the **American Arbitration Association**, with each party bearing its own costs unless the arbitrator awards otherwise.
+This Agreement is governed by the laws of the **State of Texas** *(Licensor's registered jurisdiction — confirm venue and arbitration seat with counsel before execution)*, without regard to conflict-of-law principles. Disputes shall be resolved by binding arbitration in Texas under the rules of the **American Arbitration Association**, with each party bearing its own costs unless the arbitrator awards otherwise.
 
 ---
 
@@ -97,4 +101,4 @@ This Agreement is governed by the laws of the **State of Delaware**, without reg
 
 *By using NeuralMind Enterprise features or signing an Order Form referencing this Agreement, Licensee agrees to these terms.*
 
-**NeuralMind, Inc.** — [contact@neuralmind.io](mailto:contact@neuralmind.io)
+**Cheval-Volant LLC d/b/a NeuralMind** — [hello@neuralmind.uk](mailto:hello@neuralmind.uk)

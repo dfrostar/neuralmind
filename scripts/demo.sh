@@ -63,7 +63,7 @@ if [[ ! -f "${FIXTURE}/graphify-out/graph.json" ]]; then
   ( cd "${FIXTURE}" && graphify update . >/dev/null )
 fi
 
-if [[ ! -d "${FIXTURE}/graphify-out/neuralmind_db" ]]; then
+if [[ ! -d "${FIXTURE}/graphify-out/neuralmind_db" && ! -d "${FIXTURE}/graphify-out/neuralmind_turbovec" ]]; then
   echo "[demo] building vector index (neuralmind build)"
   neuralmind build "${FIXTURE}" --force >/dev/null
 fi

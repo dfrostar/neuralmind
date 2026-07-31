@@ -9,7 +9,7 @@
 
 This License Agreement ("Agreement") is between:
 
-**Licensor:** NeuralMind ("Provider," "We," "Us")
+**Licensor:** Cheval-Volant LLC, a Texas limited liability company d/b/a NeuralMind ("Provider," "We," "Us")
 **Licensee:** The entity identified in the License File ("Customer," "You," "Your")
 
 ---
@@ -125,7 +125,7 @@ Upon termination, Customer must cease using the Software and destroy all copies.
 
 ## 11. Governing Law
 
-This Agreement is governed by the laws of the State of Delaware, USA, without regard to conflict of law principles.
+This Agreement is governed by the laws of the State of Texas, USA (Licensor’s registered jurisdiction — confirm venue with counsel before execution), without regard to conflict of law principles.
 
 ---
 

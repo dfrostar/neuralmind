@@ -85,6 +85,22 @@ this public repo. Both repos deploy to `neuralmind.uk`; only this one
   compression, `NEURALMIND_SYNAPSE_INJECT=0` skips prompt-time
   recall, `NEURALMIND_SYNAPSE_EXPORT=0` skips memory export.
 
+## Commercial terms — single source of truth
+
+**`commercial-terms.json` (repo root) is canon** for entity, pricing, and
+contact: Cheval-Volant LLC (d/b/a NeuralMind, Texas), $0 free / $29 per
+user/mo Team (5–50 seats, annual) / Enterprise custom,
+hello@neuralmind.uk. Never write a different price, entity name, or
+contact on any surface — site, legal docs, README, wiki, marketing. To
+change the terms, change the JSON first, then propagate. CI enforces
+this (`scripts/check_commercial_terms.py`, stdlib-only): any term on the
+JSON's `superseded_terms` list — the old draft entity, prices, contact,
+and governing law — fails the build anywhere outside `docs/releases/`
+and `CHANGELOG.md` (historical record, exempt). The
+JSON's `do_not_market` list mirrors the Tier2 operator guide — SSO/SAML
+and cross-machine sync are roadmap-only; no trial CTAs (no issuance
+mechanism exists).
+
 ## Shipping a feature — docs + SEO checklist
 
 Every user-facing change ships with documentation propagated across
