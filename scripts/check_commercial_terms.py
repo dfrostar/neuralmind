@@ -10,6 +10,7 @@ editing this script:
 
 Exit 0 = aligned. Exit 1 = drift, with a per-hit report.
 """
+
 from __future__ import annotations
 
 import json
@@ -79,8 +80,10 @@ def main() -> int:
         print(f"commercial-terms check FAILED ({len(failures)} hit(s)):")
         for f in failures:
             print(f"  - {f}")
-        print("\nCanonical facts live in commercial-terms.json — align the surface "
-              "(or, if the terms genuinely changed, update the JSON first).")
+        print(
+            "\nCanonical facts live in commercial-terms.json — align the surface "
+            "(or, if the terms genuinely changed, update the JSON first)."
+        )
         return 1
     print("commercial-terms check passed: all surfaces agree with commercial-terms.json")
     return 0
