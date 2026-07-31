@@ -56,14 +56,18 @@ def _ensure_built() -> None:
     graphify, which the wrapper script handles. Failing here with a clear
     pointer is friendlier than half-running and crashing inside chromadb.
     """
+    # The vector index lives under neuralmind_turbovec/ on the default
+    # turbovec backend, or neuralmind_db/ on the ChromaDB fallback —
+    # accept either so the demo works on both.
     db_dir = FIXTURE_DIR / "graphify-out" / "neuralmind_db"
+    turbovec_dir = FIXTURE_DIR / "graphify-out" / "neuralmind_turbovec"
     graph_path = FIXTURE_DIR / "graphify-out" / "graph.json"
     if not graph_path.exists():
         _die(
             "Knowledge graph missing.",
             "Run `bash scripts/demo.sh` once to install graphify and build the index.",
         )
-    if not db_dir.exists():
+    if not db_dir.exists() and not turbovec_dir.exists():
         _die(
             "Vector index not built yet.",
             f"Run `neuralmind build {FIXTURE_DIR} --force` and try again.",
