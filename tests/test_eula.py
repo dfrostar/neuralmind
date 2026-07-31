@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from neuralmind.onboarding import _cmd_onboarding_eula
 
@@ -42,10 +39,14 @@ class TestEULA:
         license_path = tmp_path / "license.json"
         eula_path = license_path.with_suffix(".eula_accepted")
         config_path.write_text(f"license_file: {license_path}\ntier: team\nseats: 5\n")
-        eula_path.write_text(json.dumps({
-            "accepted_at": "2026-01-01T00:00:00+00:00",
-            "agreement_version": "1.0",
-        }))
+        eula_path.write_text(
+            json.dumps(
+                {
+                    "accepted_at": "2026-01-01T00:00:00+00:00",
+                    "agreement_version": "1.0",
+                }
+            )
+        )
 
         result = _cmd_onboarding_eula(Args(str(config_path)))
         assert result == 0

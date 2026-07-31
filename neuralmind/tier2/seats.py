@@ -52,6 +52,7 @@ class SeatManager:
 
     def __init__(self, db_path: Path):
         import threading
+
         self.db_path = Path(db_path)
         self._lock = threading.Lock()
         self._seats: dict[str, Seat] = {}
@@ -112,14 +113,18 @@ class SeatManager:
                 if self._seats[normalized].active:
                     return self._seats[normalized]
                 if tier != "free" and self.active_count() >= license_limit:
-                    raise SeatLimitError(f"Seat limit reached: {self.active_count() + 1}/{license_limit}")
+                    raise SeatLimitError(
+                        f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
+                    )
                 self._seats[normalized].active = True
                 self._seats[normalized].last_active_at = datetime.now(timezone.utc).isoformat()
                 self._save()
                 return self._seats[normalized]
 
             if not self.can_add_seat(license_limit, tier=tier):
-                raise SeatLimitError(f"Seat limit reached: {self.active_count() + 1}/{license_limit}")
+                raise SeatLimitError(
+                    f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
+                )
             now = datetime.now(timezone.utc).isoformat()
             seat = Seat(email=normalized, active=True, added_at=now, last_active_at=now)
             self._seats[normalized] = seat
