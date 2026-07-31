@@ -2,7 +2,7 @@
 
 First-time setup for NeuralMind on any platform in under 5 minutes.
 
-NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and PostToolUse hooks that compress `Read`/`Bash`/`Grep` output before your agent sees it. Token reduction is **40–70× per query on real repos**, measured in CI on every commit.
+NeuralMind is persistent memory for AI coding agents: a 4-layer semantic index that answers code questions in ~800 tokens instead of 50,000+, a brain-like synapse layer that learns your codebase from how you actually use it, and PostToolUse hooks that compress `Read`/`Bash`/`Grep` output before your agent sees it. Token reduction is **12-50× per query on real repos**, measured in CI on every commit.
 
 See [Use Cases](Use-Cases) if you're unsure whether NeuralMind fits your workflow, or [Comparisons](Comparisons) for how it differs from Cursor `@codebase`, Copilot, Claude Projects, long context, and others.
 

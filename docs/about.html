@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 40–70× token savings, and a 100% local ten-language code graph.">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, and a 100% local ten-language code graph.">
     <meta name="keywords" content="NeuralMind, AI coding agent memory, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://docs.neuralmind.uk/about.html">
     <meta property="og:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
-    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 40–70× token savings, 100% local.">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
-    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 40–70× token savings, 100% local.">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
+    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
     <meta name="twitter:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-07-12",
-      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 40–70× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
+      "dateModified": "2026-07-31",
+      "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
       "about": "AI coding agents, semantic code intelligence, token optimization, multi-language code indexing",
@@ -35,7 +35,7 @@
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "0.42.0",
+        "softwareVersion": "1.10.1",
         "downloadUrl": "https://pypi.org/project/neuralmind/",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
@@ -67,51 +67,50 @@
             header h1 { font-size: 1.5rem; }
             h2 { font-size: 1.3rem; }
         }
-    </style>
 </head>
 <body>
-    <nav class="container" style="max-width: 100%; padding: 1rem 2rem;">
-        <div style="max-width: 900px; margin: 0 auto;">
-            <a href="./">🧠 NeuralMind</a>
-            <a href="wiki/Home">Docs</a>
-            <a href="about.html">About</a>
-        </div>
-    </nav>
-
     <header>
         <div class="container">
             <h1>About NeuralMind</h1>
-            <p>Open-source semantic code intelligence for AI agents. Built for cost efficiency, security, and compliance.</p>
+            <p>Semantic code intelligence with brain-like memory</p>
         </div>
     </header>
-
-    <section>
-        <div class="container" id="four-benefits">
-            <h2>More than token reduction — four data-backed benefits</h2>
-            <p>NeuralMind is not just "fewer tokens." Every claim below ships with a committed eval. The first two run on <strong>real, pinned OSS repos</strong> (<code>requests</code>, <code>click</code>) and are fully reproducible — <code>python -m evals.public.run</code>. The last two are measured A/Bs on the bundled <strong>reference fixture</strong>, so they're real but smaller-scope.</p>
-            <ul>
-                <li><strong>💸 Cheaper context.</strong> <strong>100% gold-file recall at 38–85× fewer tokens</strong> than pasting files — and beats <code>ripgrep</code> on <em>both</em> recall and cost. <em>(Public benchmark, real OSS repos.)</em></li>
-                <li><strong>🎯 Finds the <em>right</em> code, not just less of it.</strong> <strong>100% gold-file recall, MRR 0.96</strong> — ranks the correct file at the top; beats the incumbent <code>codebase-memory-mcp</code> on retrieval ranking (0.96 vs 0.23). <em>(Same public benchmark, real repos.)</em></li>
-                <li><strong>🧠 Learns how you work.</strong> A Hebbian <em>synapse</em> layer that learns co-edited files lifts top-k retrieval hit-rate <strong>+11.7 points (71.7%→83.3%), budget-neutral</strong> (no extra tokens). <em>(Synapse A/B eval — reference fixture, smaller scope.)</em></li>
-                <li><strong>🔬 Better-grounded answers.</strong> At a <em>matched</em> token budget, its context carries more of the gold facts than naive truncation: <strong>faithfulness +0.143, grounding 1.00</strong>. <em>(Faithfulness/parity gate — reference fixture, smaller scope.)</em></li>
-            </ul>
-            <p style="opacity:0.8;font-size:0.95rem;"><em>Honest scope: the cost and accuracy rows run on real, pinned OSS repos (fully reproducible — see the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">methodology</a>); the learning and grounding rows are committed A/Bs on the bundled reference fixture, so they're real but smaller-scope. We report where NeuralMind doesn't win too — a well-tuned vector RAG ties it on pure findability and is cheaper on raw tokens; that's in the benchmark table. The competitor comparison is pure retrieval ranking, not their LLM-agent loop.</em></p>
-        </div>
-    </section>
-
-    <section>
-        <div class="container" id="by-the-numbers">
-            <h2>By the numbers — measured, not claimed</h2>
-            <p>Every figure below is produced by code in the repo and <strong>gated in CI</strong>, so it can't silently regress. Where a number is a real-repo extrapolation or an estimate, it says so. Reproduce them all with <code>python -m tests.benchmark.run</code> and the <code>evals/</code> harnesses — details on the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Benchmarks.md">Benchmarks page</a>.</p>
-            <ul>
-                <li><strong>40–70× fewer tokens</strong> on code questions on real repositories — the agent gets the few entities that matter, not whole files. The CI self-benchmark measures a deliberately conservative <strong>6.2×</strong> on a tiny 500-line fixture (floor: 4×), because there's little to prune at that size; the mechanism scales with repo size.</li>
-                <li><strong>Better answers, not just shorter.</strong> At a <em>matched</em> token budget, NeuralMind's selected context carries more of the facts a correct answer needs than naive truncation: expected-fact recall <strong>0.717 vs 0.574 (+0.143)</strong>.</li>
-                <li><strong>A memory layer that measurably improves with use.</strong> The learned synapse layer lifts top-k retrieval hit-rate <strong>72% → 83% (+12 points)</strong>; inheriting a committed team memory gives a <strong>+6.5-point</strong> day-one onboarding lift — both budget-neutral.</li>
+    <nav>
+        <a href="https://docs.neuralmind.uk/wiki/Home">Wiki</a>
+        <a href="https://docs.neuralmind.uk/use-cases">Use Cases</a>
+        <a href="https://docs.neuralmind.uk/comparisons">Comparisons</a>
+    </nav>
+    <div class="container">
+        <section>
+            <h2>What is NeuralMind?</h2>
+            <p>NeuralMind is a semantic code intelligence layer for AI coding agents. It learns your codebase from how you actually use it — file co-edits, queries, tool calls — and uses that learned context to answer future code questions in ~800 tokens instead of 50,000+.</p>
+            <p>The 12-50× figure is a retrieval-stage range measured against a naive "dump all files" baseline (~30K tokens). Against a realistic 10K-token human baseline, the measured range is 12-25×. End-to-end bill reduction is typically 3-10×.</p>
+        </section>
+        <section>
+            <h2>How it works</h2>
+            <h3>Progressive context disclosure</h3>
+            <p>A 4-layer retrieval system that starts with the most relevant code entities and escalates only when needed. The result: 12-50× fewer tokens per code question compared to pasting raw source files.</p>
+            <h3>Hebbian synapse learning</h3>
+            <p>Every co-edit, query, and tool call strengthens associations between code nodes. The longer you use NeuralMind on a codebase, the better it gets at predicting what context you need.</p>
+            <h3>Tool-output compression</h3>
+            <p>PostToolUse hooks for Claude Code compress Read, Bash, and Grep output before the agent sees it — typically 88–91% smaller.</p>
+        </section>
+        <section>
+            <h2>Supply chain</h2>
+            <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, served from <a href="https://neuralmind.uk/sbom">neuralmind.uk/sbom</a>. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
+            <p>100% local. No cloud lock-in. No telemetry. MIT-licensed.</p>
+        </section>
+    </div>
+    <footer>
+        <p>© 2026 Darren Frost · MIT-licensed · <a href="https://github.com/dfrostar/neuralmind" style="color: #667eea;">View on GitHub</a></p>
+    </footer>
+</body>
+</html>
                 <li><strong>100% local engine.</strong> NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool; no telemetry by default.</li>
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>
-            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; 40–70× is a range, not a fixed guarantee. Point it at your own repo to see your ratio.</em></p>
+            <p style="opacity:0.8;font-size:0.95rem;"><em>What we don't claim: the CI numbers come from a tiny fixture (they prove the mechanism and catch regressions, not a real-repo ceiling); TurboQuant is an approximate index whose compression win matters at scale; 12-50× is a range, not a fixed guarantee. Point it at your own repo to see your ratio.</em></p>
         </div>
     </section>
 
@@ -120,7 +119,7 @@
             <h2>Who it's for — and who it isn't</h2>
             <p><strong>Reach for NeuralMind if</strong> you drive an AI coding agent (Claude Code, Cursor, Cline, Continue, or your own MCP/OpenRouter stack) over a non-trivial codebase, you want one shared memory across those agents, you're watching LLM spend on repo-level questions, or you work in a regulated/air-gapped setting that rules out SaaS code search.</p>
             <p><strong>You probably don't need it if</strong> your repo is under ~5K tokens (just paste it in), you don't use an agent, or you only want inline completions (use Copilot/Cursor directly).</p>
-            <p><strong>Set expectations honestly:</strong> the 40–70× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
+            <p><strong>Set expectations honestly:</strong> the 12-50× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
         </div>
     </section>
 
@@ -180,7 +179,7 @@
                         <td style="padding:0.5rem 1rem;"><strong>NeuralMind</strong></td>
                         <td style="padding:0.5rem 1rem;">Retrieval</td>
                         <td style="padding:0.5rem 1rem;">Hebbian synapse networks</td>
-                        <td style="padding:0.5rem 1rem;">40–70× fewer query tokens</td>
+                        <td style="padding:0.5rem 1rem;">12-50× fewer query tokens</td>
                     </tr>
                     <tr style="border-bottom:1px solid #eee;">
                         <td style="padding:0.5rem 1rem;"><a href="https://github.com/DietrichGebert/ponytail">Ponytail</a></td>
@@ -246,7 +245,7 @@
     <section>
         <div class="container" id="whats-new-v0450">
             <h2>What's New in v0.45.0 — The token receipt gets a price tag</h2>
-            <p><strong><code>neuralmind savings</code> has always verified the 40-70x token claim against your own logged usage. v0.45.0 converts that receipt into the number stakeholders actually ask for: dollars.</strong> Run <code>neuralmind savings --cost</code> and the report gains a dollar-savings block — cost without NeuralMind, cost with it, the amount saved, and a daily/monthly projection — computed from the same opt-in event log the token report already reads.</p>
+            <p><strong><code>neuralmind savings</code> has always verified the 12-50× token claim against your own logged usage. v0.45.0 converts that receipt into the number stakeholders actually ask for: dollars.</strong> Run <code>neuralmind savings --cost</code> and the report gains a dollar-savings block — cost without NeuralMind, cost with it, the amount saved, and a daily/monthly projection — computed from the same opt-in event log the token report already reads.</p>
             <h3>Input-token pricing, because that's what retrieval saves</h3>
             <p>NeuralMind is a retrieval layer: it decides which <em>context</em> tokens get shipped to the LLM. Its savings are input-token savings, so the built-in price table (<code>--model</code>) carries <strong>input</strong> $/MTok only — Claude Fable 5, Opus 4.8, Sonnet 5, Haiku 4.5, GPT-5.1/mini, Gemini 2.5 Pro/Flash, snapshot 2026-07. Output pricing never enters the math.</p>
             <h3>Deliberately boring math</h3>
@@ -491,7 +490,7 @@
     <section>
         <div class="container" id="whats-new-v0310">
             <h2>What's New in v0.31.0 — the honest public benchmark</h2>
-            <p><strong>NeuralMind's headline has always been "40–70× fewer tokens on code questions." v0.31 backs it with evidence built to survive hostile expert scrutiny.</strong> <code>neuralmind benchmark --public</code> runs a reproducible, no-cherry-picking comparison on <strong>real, pinned OSS repos</strong> (<code>requests</code> @<code>0e322af877</code>, <code>click</code> @<code>874ca2bc1c</code>), against strong baselines (full-file paste, ripgrep, a same-encoder vector RAG), reporting <strong>cost and correctness together</strong> &mdash; and it ships the forkable runner plus raw data so anyone reproduces it without trusting us. Run it from a <strong>source checkout</strong> (the <code>evals/public</code> harness ships in the repo, not the pip wheel).</p>
+            <p><strong>NeuralMind's headline has always been "12-50× fewer tokens on code questions." v0.31 backs it with evidence built to survive hostile expert scrutiny.</strong> <code>neuralmind benchmark --public</code> runs a reproducible, no-cherry-picking comparison on <strong>real, pinned OSS repos</strong> (<code>requests</code> @<code>0e322af877</code>, <code>click</code> @<code>874ca2bc1c</code>), against strong baselines (full-file paste, ripgrep, a same-encoder vector RAG), reporting <strong>cost and correctness together</strong> &mdash; and it ships the forkable runner plus raw data so anyone reproduces it without trusting us. Run it from a <strong>source checkout</strong> (the <code>evals/public</code> harness ships in the repo, not the pip wheel).</p>
             <h3>The result (reproduce it yourself)</h3>
             <p>Gold-file recall &mdash; an objective <strong>def-site</strong> oracle, no LLM judge &mdash; vs. context tokens (tiktoken <code>o200k_base</code>, deterministic):</p>
             <ul>
@@ -873,7 +872,7 @@
             <h3>What ships</h3>
             <ul>
                 <li><strong>GHCR auto-build.</strong> Every tagged release publishes <code>ghcr.io/dfrostar/neuralmind:vX.Y.Z</code> and <code>:latest</code>, multi-platform (<code>linux/amd64</code> + <code>linux/arm64</code>), non-root runtime, transitive deps pre-wheeled. <code>:latest</code> only moves for stable tags — pre-release tags like <code>v1.0.0-rc1</code> are excluded from the floating tag.</li>
-                <li><strong>SBOM</strong> (CycloneDX JSON) attached to every release as <code>neuralmind-vX.Y.Z.sbom.json</code> — ingestible by Grype, Trivy, Dependency-Track, and most enterprise SCA scanners.</li>
+                - **Phase 2 — Output Compression:** PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.
                 <li><strong>Air-gapped install walkthrough</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md">docs/use-cases/air-gapped.md</a>) — bundle-and-sneakernet for environments with no outbound network at install time.</li>
                 <li><strong>Compliance one-pager</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md">docs/COMPLIANCE-SUMMARY.md</a>) — NIST AI RMF + SOC 2 + GDPR claims consolidated for procurement review, with a "how to verify yourself" command for every claim.</li>
             </ul>
@@ -937,7 +936,7 @@
                 <li><strong>Local-graph depth slider</strong> — 1–3 hops via BFS from the focused node; defaults to 1 so existing behavior is unchanged.</li>
                 <li><strong>Replay-last-query overlay</strong> — re-highlight the L3 hits the agent most recently received. Closes the trust gap on retrieval in a 2-second visual.</li>
                 <li><strong>Edge tooltips + min-weight synapse slider</strong> — hover an edge to see relationship and weight; filter low-weight synapses.</li>
-                <li><strong>Docs refresh</strong> — ROADMAP, README hero, landing page, about page, and wiki all reframed around the graph view as a second pillar alongside the 40–70× reduction.</li>
+                <li><strong>Docs refresh</strong> — ROADMAP, README hero, landing page, about page, and wiki all reframed around the graph view as a second pillar alongside the 12-50× reduction.</li>
             </ul>
             <h3>The shared-brain unlock</h3>
             <p>The cross-process JSONL bridge means that if you run Claude Code, Cursor, OpenClaw, and Hermes-Agent against the same project — they reinforce the same synapse store, and the v0.6.0 graph view shows the <em>union</em> of their activity. Pre-v0.6.0, the synapse store was shared but the experience wasn't — three tools talking to a black box. Now the brain is visibly one brain. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/multi-agent.md">multi-agent walkthrough</a>.</p>
@@ -986,7 +985,7 @@
             <p><strong>Phase 2 — Output Compression:</strong> PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.</p>
             <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
             <p><strong>Phase 4 — Graph View <em>(v0.5.4, made live in v0.6.0)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. <strong>v0.6.0 adds a live activity feed</strong> — synapse and file events pulse on the canvas in real time, with a cross-process JSONL bridge that lets Claude Code, Cursor, OpenClaw, and Hermes-Agent all feed the same canvas. The brain stops being a black box — you can finally watch what it's learning, live.</p>
-            <p><strong>Result:</strong> 40–70× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 40–70% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
+            <p><strong>Result:</strong> 12-50× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 12–50% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
             <ul>
@@ -1077,7 +1076,7 @@
             <ul>
                 <li><strong>vs Cursor @codebase:</strong> Works with any LLM, local-first, NIST AI RMF compliant</li>
                 <li><strong>vs Claude Projects:</strong> Selects only relevant context instead of loading all files</li>
-                <li><strong>vs Long Context:</strong> 40–70× cheaper per code question than paying for 100K token windows</li>
+                <li><strong>vs Long Context:</strong> 12-50× cheaper per code question than paying for 100K token windows</li>
                 <li><strong>vs Prompt Caching:</strong> Makes prompts small instead of caching big ones</li>
             </ul>
 
@@ -1107,7 +1106,7 @@
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Efficient</strong>
-                    <p>Smart context reduces per-query tokens 40–70×. Lower costs, better answers.</p>
+                    <p>Smart context reduces per-query tokens 12-50×. Lower costs, better answers.</p>
                 </div>
                 <div style="padding: 1.5rem; border-left: 4px solid #667eea; background: #f9f9f9;">
                     <strong>Community Driven</strong>
@@ -1120,7 +1119,7 @@
     <section>
         <div class="container">
             <h2>Getting Started</h2>
-            <p>Ready to reduce your per-query token costs by 40–70×?</p>
+            <p>Ready to reduce your per-query token costs by 12-50×?</p>
             <ul>
                 <li><a href="wiki/Setup-Guide">Setup Guide</a> — 5-minute first-time setup</li>
                 <li><a href="wiki/Home">Full Documentation</a> — Learn all features</li>

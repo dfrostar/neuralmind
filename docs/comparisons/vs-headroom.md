@@ -10,7 +10,7 @@ description: "Honest comparison of NeuralMind and Headroom (chopratejas/headroom
 > agent and the model (60–95%, their measurement). NeuralMind stops most
 > of those tokens from being fetched in the first place — semantic
 > retrieval answers code questions in ~800 tokens instead of 50,000+
-> (40–70× on the retrieval side, CI-gated) — and additionally compresses
+> (12-50× on the retrieval side, CI-gated) — and additionally compresses
 > the tool outputs that do flow (~88–91%), while remembering your codebase
 > across sessions. They overlap on tool-output compression, and they
 > compose. If you only want compression, Headroom is the more general and
@@ -102,7 +102,7 @@ sessions. Nothing in either tool conflicts with the other.
   150+ releases at the time of writing) and its compression scope is a
   strict superset of NeuralMind's. If compression is the whole job,
   there is no contest — use Headroom.
-- NeuralMind's 40–70× headline is retrieval-input reduction, not total
+- NeuralMind's 12-50× headline is retrieval-input reduction, not total
   bill reduction; see our [honest assessment](../HONEST-ASSESSMENT.md)
   for the 3–10× end-to-end framing. Headroom's 60–95% is their claim
   under their eval suite — we have not independently reproduced it.

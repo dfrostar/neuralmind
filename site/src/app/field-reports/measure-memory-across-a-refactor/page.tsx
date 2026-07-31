@@ -245,7 +245,7 @@ export default function FieldReportPage() {
                             code question cost ~1,033 tokens of context instead of the 50K+ a naive &quot;load the
                             relevant files&quot; approach would spend. That is one repo&apos;s measured ratio from{' '}
                             <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark .</code>,
-                            consistent with the 40–70× real-repo range — not a universal guarantee.
+                            consistent with the 12-50× real-repo range — not a universal guarantee.
                         </p>
                         <p>
                             <strong className="text-white">Personal synapse edges tripled (36 → 135).</strong> The Hebbian

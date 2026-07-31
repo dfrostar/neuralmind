@@ -13,8 +13,8 @@ Prompt caching makes resending a large context cheaper. NeuralMind makes the con
 | What it optimizes | Repeat cost of the same prefix | Size of the prefix itself |
 | Discount mechanism | Provider-side cache hit | Client-side retrieval + compression |
 | Requires identical prefix | Yes | No |
-| First-turn savings | 0% | 40–70× |
-| Nth-turn savings (cached) | ~90% of cached portion | 40–70× (plus cache on top) |
+| First-turn savings | 0% | 12-50× |
+| Nth-turn savings (cached) | ~90% of cached portion | 12-50× (plus cache on top) |
 | Works offline | No | Yes |
 | Tool-output savings | No | Yes |
 | Vendor lock-in | Yes (per-provider) | No |

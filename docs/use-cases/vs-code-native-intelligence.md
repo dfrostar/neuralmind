@@ -71,7 +71,7 @@ events via SSE. The panel retains its layout state when hidden.
 
 1. Open your workspace. The status bar shows current index state.
 2. Press `Ctrl+Shift+P` → `NeuralMind: Query` → type your question.
-3. Context appears in the **NeuralMind** Output panel (optimised, 40–70× smaller than pasting files).
+3. Context appears in the **NeuralMind** Output panel (optimised, 12-50× smaller than pasting files).
 4. Copy the relevant context into your AI assistant prompt, or let the MCP server inject it automatically.
 
 ### Auto-build on stale index

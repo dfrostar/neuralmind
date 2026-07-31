@@ -117,7 +117,7 @@
     <text x="600" y="215" font-size="84" font-weight="800" letter-spacing="-2" fill="#ffffff">NeuralMind</text>
 
     <!-- Value proposition (gradient) -->
-    <text x="600" y="315" font-size="58" font-weight="800" letter-spacing="-1" fill="url(#accent)">40–70× fewer tokens</text>
+    <text x="600" y="315" font-size="58" font-weight="800" letter-spacing="-1" fill="url(#accent)">12-50× fewer tokens</text>
 
     <!-- Subtitle -->
     <text x="600" y="370" font-size="32" font-weight="500" fill="#d6ccec">for AI coding agents</text>

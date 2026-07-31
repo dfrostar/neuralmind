@@ -1713,7 +1713,7 @@ neuralmind daemon stop
 
 ### savings *(v0.39.0+)*
 
-Show cumulative token savings from the local query event log. Verifies the 40-70x claim against your own real usage rather than trusting the demo.
+Show cumulative token savings from the local query event log. Verifies the 12-50× claim against your own real usage rather than trusting the demo.
 
 ```bash
 neuralmind savings [project_path] [OPTIONS]

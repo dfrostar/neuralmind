@@ -25,7 +25,7 @@ Deep dive into NeuralMind's 4-layer progressive disclosure system and technical 
 
 NeuralMind is designed to solve a fundamental problem in AI-assisted coding: **context window limitations**. When working with AI coding assistants, loading an entire codebase can consume 50,000+ tokens, leaving little room for meaningful conversation.
 
-NeuralMind achieves **40-70x token reduction** through intelligent, query-aware context selection using a 4-layer progressive disclosure architecture.
+NeuralMind achieves **12-50x token reduction** through intelligent, query-aware context selection using a 4-layer progressive disclosure architecture.
 
 ### The Problem
 
@@ -57,7 +57,7 @@ NeuralMind achieves **40-70x token reduction** through intelligent, query-aware 
 │  (50,000+ tokens)    Graph          Disclosure      (1,000 tokens)│
 │                                                                  │
 │  Benefits:                                                       │
-│  • 40-70x token reduction                                        │
+│  • 12-50x token reduction                                        │
 │  • Query-relevant content only                                   │
 │  • Cost effective                                                │
 │  • Fast response                                                 │

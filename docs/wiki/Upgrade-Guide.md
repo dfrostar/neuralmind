@@ -8,7 +8,7 @@
 
 ## Why upgrade?
 
-The MIT core is **free forever** — 40-70x token reduction, synapse learning, MCP server, 10 languages. You do NOT upgrade for more savings.
+The MIT core is **free forever** — 12-50x token reduction, synapse learning, MCP server, 10 languages. You do NOT upgrade for more savings.
 
 You upgrade for:
 - **Governance** — control what AI agents can publish/shared memory
@@ -106,7 +106,7 @@ This fires exactly once. To re-trigger: `neuralmind onboarding` directly.
 
 | Free tier | Team tier |
 |-----------|-----------|
-| 40-70x token reduction | Same — no additional compression |
+| 12-50x token reduction | Same — no additional compression |
 | Synapse learning | Same synapse store |
 | MCP server | Same tools |
 | Memory publish/inherit | Same bundle |

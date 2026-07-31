@@ -358,7 +358,7 @@ The live eval (`_fitness_from_live_eval`) has three axes — `retrieval_quality`
 **What works (v0.53.0):**
 | Claim | Verified | Notes |
 |---|---|---|
-| 40-70× retrieval reduction | YES — 48.5× on self | `neuralmind benchmark .` → 508 wakeup tokens/query. Verified 2026-07-19. |
+| 12-50× retrieval reduction | YES — 48.5× on self | `neuralmind benchmark .` → 508 wakeup tokens/query. Verified 2026-07-19. |
 | Query precision | YES — returns correct code | Multi-language fixtures validate precision across Python/TS/etc |
 | Multi-language indexing | YES — 7+ language fixtures | C/CPP/CS/Java/Go/Rust/PHP/Ruby/Python/TS in same vector space |
 | Structural synapse seeding | YES — 148K edges | polymarket-tier projects seed architectural signal on build |

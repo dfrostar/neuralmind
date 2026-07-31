@@ -74,7 +74,7 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 
 ## What you lose vs. Claude Code
 
-- **No PostToolUse compression** — that's Claude-Code-specific. You still get the retrieval-side savings (40–70×), just not the additional Read/Bash/Grep compression layer.
+- **No PostToolUse compression** — that's Claude-Code-specific. You still get the retrieval-side savings (12-50×), just not the additional Read/Bash/Grep compression layer.
 - **No MCP tool calls** — the model can't invoke `neuralmind_query` itself; you invoke it and paste.
 
 ## What you still get

@@ -32,14 +32,14 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
 
-> **12–50× typical savings** — updated from the 40–70× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+> **12–50× typical savings** — updated from the 12-50× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
 
 New compliance capabilities for regulated teams, plus a one-command project init.
 
 | Feature | What |
 |---------|------|
 | `neuralmind init` | One-command project setup — auto-detects structure, installs hooks, builds index, all at once |
-| Compliance annotation detection | Scans code for `# Compliance:` / `// Compliance:` annotations — flags each against CMMC 2.0 / NIST SP 800-171 controls |
+| Compliance annotation detection | Scans code for `# Compliance:` / `// Compliance:` annotations — flags each against CMMC 2.0 / NIST SP 800-53 controls |
 | CMMC content ingestion | `neuralmind ingest-cmmc` imports CMMC 2.0 assessment guides + POA&M templates into the doc index |
 | Audit export | `neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission |
 | CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health |
@@ -134,7 +134,7 @@ The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**:
 
 `neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (a measured **+6.5 points** on the reference fixture), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
 
-> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +12 pts, onboarding +6.5 pts, ChromaDB-free parity) with reproduction commands.
+> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +12 pts, onboarding +11.6 pts, ChromaDB-free parity) with reproduction commands.
 
 ### v0.14.0 — Measure faithfulness
 
@@ -233,7 +233,7 @@ sections.
 | **[Tier2-Operator-Guide](Tier2-Operator-Guide.md)** | Team tier commands, honest scope, troubleshooting |
 | **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
-| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +12 pts, onboarding +6.5 pts, ChromaDB-free parity — with reproduction commands |
+| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +12 pts, onboarding +11.6 pts, ChromaDB-free parity — with reproduction commands |
 
 ### Enterprise & Deployment
 

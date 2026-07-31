@@ -102,7 +102,7 @@ Ponytail excludes critical trust-boundary operations from its simplification rul
 | JSON Arrays | 70–90% | Schema extraction and field-level variance analysis |
 | HTML Payloads | ~95% | Article extraction via Trafilatura isolators |
 | Unified Diffs | 60–80% | Line-level delta simplification |
-| Source Code | 40–70% | AST signature preservation; inner body stripping |
+| Source Code | 12–50% | AST signature preservation; inner body stripping |
 | Build Logs | 85–95% | Sequential pattern clustering of stack traces |
 
 ### CCR (Compress-Cache-Retrieve) Reversibility
@@ -125,7 +125,7 @@ Strategic efficacy is determined by the locus of intervention. While some tools 
 | Locus of Intervention | Retrieval Stage | Generation Stage | Network Transport Stage |
 | Target Audience | Regulated Enterprises | Teams Fighting Code Bloat | SRE / High-Volume Pipelines |
 | Primary Mechanism | Hebbian Synapse Networks | Sequential Decision Ladder | Reversible CCR Loops |
-| Verified Token Savings | 40–70× cheaper queries | 80–94% per-task output tokens | 60–95% payload reduction |
+| Verified Token Savings | 12-50× cheaper queries | 80–94% per-task output tokens | 60–95% payload reduction |
 
 ### The Deliberation Cost Paradox
 

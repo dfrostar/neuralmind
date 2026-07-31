@@ -1,7 +1,7 @@
 # NeuralMind
 
 Adaptive semantic code intelligence for AI coding agents. Reduces tokens
-on code questions by 40-70x via progressive context disclosure, plus a
+on code questions by 12-50× via progressive context disclosure, plus a
 brain-like synapse layer that learns associations between code nodes
 from how you actually use the codebase.
 

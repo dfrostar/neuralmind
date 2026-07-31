@@ -82,7 +82,7 @@ const featureList = [
     {
         icon: '🛡️',
         title: 'Compliance Annotation Engine',
-        desc: 'Scans code for `Compliance:` annotations, maps them to CMMC 2.0 / NIST SP 800-171 controls. Ingest CMMC assessment guides, export audit reports, gate CI on annotation health.',
+        desc: 'Scans code for `Compliance:` annotations, maps them to CMMC 2.0 / NIST SP 800-53 controls. Ingest CMMC assessment guides, export audit reports, gate CI on annotation health.',
         badge: 'v2.0.0',
     },
     {

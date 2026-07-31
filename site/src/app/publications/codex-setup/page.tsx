@@ -127,7 +127,7 @@ export default function PublicationPage() {
                     <h2 className="font-display text-xl font-bold text-white mb-4">Abstract</h2>
                     <div className="bg-carbon-card border border-carbon-border rounded-xl p-6">
                         <p className="text-slate-300 leading-relaxed">
-                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that reduces token spend on code questions by 40-70x at the retrieval stage. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
+                            NeuralMind gives any AI coding agent a persistent memory layer — a learned, weighted graph of your codebase that reduces token spend on code questions by 12-50x at the retrieval stage. This guide walks through using NeuralMind with OpenAI Codex CLI: one-time install, registering the MCP server (works with any MCP-compatible client, including Codex), daily wakeup/query commands, per-layer token measurement, the self-improvement loop, and honest scoping of what&apos;s measured vs. modeled. All claims are verified against the live codebase at commit {POST_COMMIT}. A DeepSeek v4 Pro QA sweep corrected several overclaims from the original draft — the corrections are flagged inline.
                         </p>
                     </div>
                 </section>
@@ -322,7 +322,7 @@ export default function PublicationPage() {
                                 </thead>
                                 <tbody className="text-slate-300">
                                     <tr className="border-b border-carbon-border/50">
-                                        <td className="py-2">40-70x token reduction</td>
+                                        <td className="py-2">12-50× token reduction</td>
                                         <td className="py-2">Retrieval-stage only (50K baseline → ~800 tok)</td>
                                         <td className="py-2 text-yellow-400">Modeled</td>
                                     </tr>
@@ -360,7 +360,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The 40-70x figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex users get the retrieval-stage savings; Claude Code users add PostToolUse hook compression on top.
+                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex users get the retrieval-stage savings; Claude Code users add PostToolUse hook compression on top.
                         </p>
                     </div>
                 </section>
@@ -428,8 +428,8 @@ export default function PublicationPage() {
                                     <td className="py-2 text-red-400">Refuted</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
-                                    <td className="py-2">&quot;40-70x total workflow reduction&quot;</td>
-                                    <td className="py-2">40-70x is retrieval-stage only. Total reduction varies by workflow.</td>
+                                    <td className="py-2">&quot;12-50× total workflow reduction&quot;</td>
+                                    <td className="py-2">12-50× is retrieval-stage only. Total reduction varies by workflow.</td>
                                     <td className="py-2 text-yellow-400">Overclaim</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">

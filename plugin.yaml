@@ -6,7 +6,7 @@
 name: neuralmind
 title: NeuralMind
 description: >-
-  Semantic code intelligence for AI agents — 40-70× per-query token
+  Semantic code intelligence for AI agents — 12-70× per-query token
   reduction. Local synapse layer that learns code associations from
   co-activation. MCP server with live Obsidian-style graph view.
 author: dfrostar

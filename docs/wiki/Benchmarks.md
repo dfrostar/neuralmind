@@ -34,14 +34,14 @@ loop. Full tables and reproduction commands below.
 ## The honest headline
 
 **On code questions, NeuralMind sends the agent the few entities that matter
-instead of whole files — so the same answer costs 40–70× fewer tokens on real
+instead of whole files — so the same answer costs 12-50× fewer tokens on real
 repositories.** That real-repo range is the product's positioning; the number we
 **measure in CI** is deliberately conservative, on a tiny 500-line fixture where
 there's little to prune, and it still clears a wide margin.
 
 | What | Measured (CI, 500-line fixture) | On real repos |
 |------|---:|---|
-| Token reduction on code questions | **6.2×** | **40–70×** (more files to prune ⇒ larger ratio) |
+| Token reduction on code questions | **6.2×** | **12-50×** (more files to prune ⇒ larger ratio) |
 | Regression floor (CI fails below) | 4.0× | — |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The
@@ -71,7 +71,7 @@ measured by isolated A/Bs:
 | Effect | Off | On | Lift |
 |---|---:|---:|---:|
 | **Synapse recall** — top-k retrieval hit rate (same warm graph) | 72% | **83%** | **+12 pts** |
-| **Onboarding lift** — top-k module hit-rate from a committed team baseline | — | — | **+6.5 pts** |
+| **Onboarding lift** — top-k module hit-rate from a committed team baseline | — | — | **+11.6 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits
 rather than adding tokens. The onboarding lift is the answer to "does an agent
@@ -144,10 +144,10 @@ before/after measurement on your own refactor:
   repo with [`benchmark-your-repo`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/benchmark-your-repo.md).
 - TurboQuant is an **approximate** (quantized) index; parity is gated on the
   reference fixture, and the compression win only matters at scale.
-- The 40–70× figure is a real-repo range, not a fixed guarantee — your ratio
+- The 12-50× figure is a real-repo range, not a fixed guarantee — your ratio
   depends on repo size and question shape.
 - The field report above is a single private-repo measurement by the
-  maintainer — treat it as an existence proof consistent with the 40–70×
+  maintainer — treat it as an existence proof consistent with the 12-50×
   range, not an independent benchmark.
 
 ## Reproduce every number

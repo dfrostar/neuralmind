@@ -40,7 +40,7 @@ anonymized; every one of them came from the shipped CLI.
   ~1,033 tokens of context instead of the 50K+ a naive "load the relevant
   files" approach would spend. That is one repo's measured ratio from
   `neuralmind benchmark .`, consistent with the
-  [40–70× real-repo range](../wiki/Benchmarks.md) — not a universal guarantee.
+  [12-50× real-repo range](../wiki/Benchmarks.md) — not a universal guarantee.
 - **Personal synapse edges tripled (36 → 135)** — the
   [Hebbian synapse layer](../wiki/Learning-Guide.md) learned co-activations
   across the *new* code as it was being written and queried. The memory didn't

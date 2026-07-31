@@ -24,7 +24,7 @@
 
 ### Compliance Annotation Detection
 
-`neuralmind compliance` scans code for `# Compliance:` / `// Compliance:` annotations and evaluates each against CMMC 2.0 / NIST SP 800-171 controls. Inline compliance posture without leaving your editor.
+`neuralmind compliance` scans code for `# Compliance:` / `// Compliance:` annotations and evaluates each against CMMC 2.0 / NIST SP 800-53 controls. Inline compliance posture without leaving your editor.
 
 #### Acceptance
 
@@ -32,7 +32,7 @@
 |-----------|--------|
 | Detects `# Compliance:` annotations in Python, JS/TS, Go, Rust | Pass |
 | Maps annotations to CMMC 2.0 Level 2 controls | Pass |
-| Maps annotations to NIST SP 800-171 control families | Pass |
+| Maps annotations to NIST SP 800-53 control families | Pass |
 | Reports missing annotations for declared controls | Pass |
 
 ---
@@ -127,7 +127,7 @@ The headline savings claim has been updated from "40–70×" to **"12–50× typ
 ## Marketing uses
 
 - **LinkedIn About:** Update savings claim from "40–70×" to "12–50× typical" with honest framing. Add compliance-annotation and `neuralmind init` capabilities.
-- **LinkedIn DMs:** New angle: "Compliance-ready code intelligence. Your agent now understands CMMC 2.0 and NIST SP 800-171 annotations."
+- **LinkedIn DMs:** New angle: "Compliance-ready code intelligence. Your agent now understands CMMC 2.0 and NIST SP 800-53 annotations."
 - **README:** Updated with v2.0.0 section and calibrated savings data (done).
 - **Wiki:** Updated Home.md with v2.0.0 section (done).
 - **Website:** Updated Hero.tsx stats, added Features.tsx entries for v2.0.0 (done).

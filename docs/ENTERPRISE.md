@@ -37,7 +37,7 @@ for internal conversations; the actual numbers come from running
 - Measurable savings: baseline vs. optimized (in dollars at your model's pricing).
 - Build the index once, share across teams.
 
-**Caveat:** end-to-end cost reduction is typically 3–10×, not the 40–70× retrieval-stage figure. Plan budget conversations against the realistic number. See [HONEST-ASSESSMENT.md](HONEST-ASSESSMENT.md#what-40-70x-reduction-actually-means).
+**Caveat:** end-to-end cost reduction is typically 3–10×, not the 12-50× retrieval-stage figure. Plan budget conversations against the realistic number. See [HONEST-ASSESSMENT.md](HONEST-ASSESSMENT.md#what-12-50×-reduction-actually-means).
 
 ## Internal platform teams & shared infrastructure
 

@@ -31,12 +31,12 @@ codebase fits in a single context window, you don't pay for inference,
 or you've already invested in prompt caching plus a long-context
 model.
 
-The headline "40–70×" reduction is real, but it's a reduction in
+The headline "12-50×" reduction is real, but it's a reduction in
 **retrieval input tokens**, not a reduction in your total LLM bill.
 What you actually save depends on how much of your spend is retrieval
 vs. generation, which varies wildly by workload. For a typical
 Claude Code session the realistic end-to-end savings is **3–10×**
-total cost, not 40–70×.
+total cost, not 12-50×.
 
 The community-benchmark table is currently **three entries from the
 maintainer's own projects**. Numbers from outside contributors are
@@ -82,7 +82,7 @@ If you check 3 of 5, marginal. If you check 4–5, run
   setup; for many teams it won't.
 - **Your repo is non-standard** — heavily generated code, polyglot with weak tree-sitter coverage, or unusual layouts. Retrieval quality depends on graph quality, which depends on the extractor (built-in tree-sitter backend by default, or graphify if installed).
 
-## What "40–70× reduction" actually means
+## What "12-50× reduction" actually means
 
 The number is honest **for what it measures**:
 
@@ -91,13 +91,13 @@ The number is honest **for what it measures**:
 
 What it **does not** mean:
 
-- It is **not** a 40–70× reduction in your monthly LLM bill. Output
+- It is **not** a 12-50× reduction in your monthly LLM bill. Output
   tokens are unchanged. Conversation history accumulates. The
   retrieval call is one of many a chatty agent makes.
 - It is **not** measured against a smart-baseline like Cursor
   `@codebase` or Claude Code's built-in retrieval — those already do
   *some* retrieval. NeuralMind's marginal benefit over them is
-  smaller than 40–70× and we have not yet measured it rigorously.
+  smaller than 12-50× and we have not yet measured it rigorously.
 - It is **not** uniform across languages or repo shapes. Python
   repos with clean module structure see the high end; polyglot
   monorepos with generated code see the low end.
@@ -179,7 +179,7 @@ will.
   honest competitor. Caching gives you ~90% cost reduction with no
   retrieval infrastructure. NeuralMind is additive (smaller cached
   prompt = cheaper cache reads) but the marginal win is smaller
-  than the 40–70× headline suggests. Measure on your workload.
+  than the 12-50× headline suggests. Measure on your workload.
 - **`grep` + `Read` + careful prompting** — if you only run a few
   questions a day, this is fine. NeuralMind's value scales with
   query volume.

@@ -5,7 +5,7 @@
 
 ## 1. Background & strategic motivation
 
-NeuralMind's headline claim is "40–70× fewer tokens on code questions." The
+NeuralMind's headline claim is "12-50× fewer tokens on code questions." The
 competitive review (`DeusData/codebase-memory-mcp` + the broader code-graph-MCP
 field) is settled: breadth and packaging are commodity (closed in v0.27–v0.29),
 and the moat is the learned synapse layer (shipped as a team artifact in

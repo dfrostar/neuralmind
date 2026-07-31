@@ -39,7 +39,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### MEASURE — performance, quality
 
-- **Token reduction** measured per query (the headline 40-70× claim); benchmark CI-verified at every commit (`tests/benchmark/`)
+- **Token reduction** measured per query (the headline 12-50× claim); benchmark CI-verified at every commit (`tests/benchmark/`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
 - **Query latency** logged for every retrieval — performance regressions visible in `audit-report` output
 

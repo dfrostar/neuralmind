@@ -16,7 +16,7 @@ If you want to know what could go wrong before adopting, see
 
 For a team spending **$500+/month on AI coding agent inference** on a
 **codebase larger than ~10K lines**, NeuralMind's tooling
-**measures a 40–70× reduction in retrieval-stage input tokens** on
+**measures a 12-50× reduction in retrieval-stage input tokens** on
 real-world repos (community benchmarks; n=2). On a typical agent
 workload this **translates to a derived 3–10× reduction in
 end-to-end LLM cost** — the smaller end-to-end figure is because
@@ -36,7 +36,7 @@ Every word in that paragraph is provable on your own code:
 
 | Claim | How to verify | Time | What it actually measures |
 |---|---|---|---|
-| 40–70× retrieval reduction | `neuralmind benchmark .` reports per-query input-token counts and a Sonnet-priced dollar estimate (CLI hardcodes Claude 3.5 Sonnet input pricing today; multiply by your model's input price ratio if different). | 5 min | Retrieval-stage input tokens vs. naive baseline. |
+| 12-50× retrieval reduction | `neuralmind benchmark .` reports per-query input-token counts and a Sonnet-priced dollar estimate (CLI hardcodes Claude 3.5 Sonnet input pricing today; multiply by your model's input price ratio if different). | 5 min | Retrieval-stage input tokens vs. naive baseline. |
 | ~15 min setup | `bash scripts/demo.sh` from a fresh clone runs end-to-end. | 1 min | Wall time including pip install + chromadb model download + index build. |
 | Ongoing overhead with `init-hook` | `neuralmind init-hook .` installs a git post-commit hook that incrementally rebuilds. Without it, you re-run `neuralmind build .` manually. | 30 sec | Setup of the hook only — its incremental run takes seconds per commit. |
 | Codebase >10K lines threshold | `wc -l $(find . -name '*.py' -o -name '*.ts' -o -name '*.js')` | 5 sec | Line count, no opinion attached. |
@@ -138,7 +138,7 @@ Community-submitted benchmarks on the
 
 **Caveat (also in the [Honest Assessment](HONEST-ASSESSMENT.md)):**
 n=2 is too few to claim statistical significance. Both repos belong
-to the project maintainer. Treat 40–70× as **directional** until the
+to the project maintainer. Treat 12-50× as **directional** until the
 table grows. Adding your numbers is the single highest-leverage
 contribution to this project right now.
 

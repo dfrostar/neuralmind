@@ -8,11 +8,11 @@
 
 ## What Tier 2 (Team) gives you
 
-Tier 2 is the paid tier on top of the MIT core. **The MIT core's 40-70x token reduction is free forever** — Tier 2 adds engineering-team governance, audit, and seat management.
+Tier 2 is the paid tier on top of the MIT core. **The MIT core's 12-50x token reduction is free forever** — Tier 2 adds engineering-team governance, audit, and seat management.
 
 | Feature | MIT core (free) | Team ($29/user/mo) |
 |---------|-----------------|---------------------|
-| 40-70x token reduction | Yes | Yes |
+| 12-50x token reduction | Yes | Yes |
 | Synapse learning | Yes | Yes |
 | MCP server | Yes | Yes |
 | Memory publish/inherit | Yes | Yes |

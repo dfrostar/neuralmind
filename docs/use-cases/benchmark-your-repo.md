@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. The self-benchmarking suite proves the 40–70× claim on a committed fixture in CI — but your codebase isn't our fixture. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. The self-benchmarking suite proves the 12-50× claim on a committed fixture in CI — but your codebase isn't our fixture. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 

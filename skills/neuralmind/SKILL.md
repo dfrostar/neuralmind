@@ -51,7 +51,7 @@ metadata:
 You have access to a neural index of the current project. Prefer it over
 reading source files directly whenever you need to **locate**, **explain**,
 or **navigate** code. The index returns compact, structured context that is
-typically 40–70× cheaper than raw source.
+typically 12-50× cheaper than raw source.
 
 The index is **not** a code rewriter or executor. It retrieves; you reason.
 Treat it like a librarian: ask narrow questions, escalate only on a miss.
