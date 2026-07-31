@@ -151,6 +151,7 @@ class LicenseValidator:
         """Verify Ed25519 signature against any valid public key."""
         try:
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
             sig = lic.signature
             if not sig or sig == "self-signed":
                 return False

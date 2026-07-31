@@ -34,7 +34,7 @@ class LicenseOperations:
 
     def __del__(self):
         # Securely wipe private key from memory on destruction
-        if hasattr(self, '_private_key_bytes'):
+        if hasattr(self, "_private_key_bytes"):
             for i in range(len(self._private_key_bytes)):
                 self._private_key_bytes[i] = 0
 
@@ -106,6 +106,7 @@ class LicenseOperations:
     def _sign_license(self, data: dict) -> str:
         """Sign license data with Ed25519 private key."""
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
         priv_key = Ed25519PrivateKey.from_private_bytes(bytes(self._private_key_bytes))
         msg = json.dumps(data, sort_keys=True, separators=(",", ":"))
         sig = priv_key.sign(msg.encode("utf-8"))
@@ -113,7 +114,10 @@ class LicenseOperations:
 
     def _verify_existing_signature(self, lic_data: dict) -> bool:
         """Verify the signature on an existing license file."""
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey, Ed25519PrivateKey
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+            Ed25519PrivateKey,
+        )
+
         try:
             # Derive public key from private key for verification
             priv_key = Ed25519PrivateKey.from_private_bytes(bytes(self._private_key_bytes))
