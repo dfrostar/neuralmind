@@ -1,0 +1,52 @@
+{
+  "_comment": "SINGLE SOURCE OF TRUTH for NeuralMind's commercial facts. Every user-facing surface (site, legal docs, README, wiki) must agree with this file. CI-gated by scripts/check_commercial_terms.py — see CLAUDE.md 'Commercial terms'. Change pricing/entity HERE FIRST, then propagate.",
+  "entity": {
+    "legal_name": "Cheval-Volant LLC",
+    "trading_as": "NeuralMind",
+    "jurisdiction": "Texas, USA",
+    "contact_email": "hello@neuralmind.uk"
+  },
+  "pricing": {
+    "free": {
+      "price_usd_per_user_per_month": 0,
+      "seats": "1, auto-issued on first run, never expires, no signup",
+      "includes": "the entire MIT core — all token compression and savings"
+    },
+    "team": {
+      "price_usd_per_user_per_month": 29,
+      "display": "$29/user/mo",
+      "seats": "5-50",
+      "billing": "annual contract",
+      "includes": "shared-memory governance, seat management, hash-chained audit log, compliance export, self-hosted deployment"
+    },
+    "enterprise": {
+      "price": "custom",
+      "contact": "hello@neuralmind.uk"
+    }
+  },
+  "do_not_market": [
+    "SSO / SAML (roadmap only — label as roadmap wherever mentioned)",
+    "Real-time cross-machine sync (roadmap only)",
+    "Trials (no trial issuance mechanism exists — CTA must be contact-based)"
+  ],
+  "superseded_terms": {
+    "_comment": "Historical values that must NOT appear in current surfaces. docs/releases/ and CHANGELOG.md are exempt as historical record.",
+    "patterns": [
+      "NeuralMind, Inc",
+      "\\$15\\s*/\\s*user",
+      "\\$85,000",
+      "\\$85K",
+      "contact@neuralmind\\.io",
+      "State of Delaware"
+    ]
+  },
+  "required": [
+    { "file": "LICENSE-COMMERCIAL.md", "contains": ["Cheval-Volant LLC", "$29", "hello@neuralmind.uk"] },
+    { "file": "docs/NEURALMIND-LICENSE-AGREEMENT.md", "contains": ["Cheval-Volant LLC"] },
+    { "file": "site/src/app/pricing/page.tsx", "contains": ["$29", "hello@neuralmind.uk"] },
+    { "file": "site/src/app/terms/page.tsx", "contains": ["Cheval-Volant LLC"] },
+    { "file": "site/src/app/privacy/page.tsx", "contains": ["Cheval-Volant LLC"] },
+    { "file": "README.md", "contains": ["$29/user/mo"] },
+    { "file": "docs/wiki/Tier2-Operator-Guide.md", "contains": ["$29/user/mo"] }
+  ]
+}

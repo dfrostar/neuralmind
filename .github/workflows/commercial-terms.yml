@@ -1,0 +1,15 @@
+name: Commercial terms consistency
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    name: commercial-terms
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: All surfaces agree with commercial-terms.json
+        run: python3 scripts/check_commercial_terms.py
