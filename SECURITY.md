@@ -21,13 +21,13 @@ guidance is "stay on latest." Because NeuralMind is local-first with
 no network surface of its own, the patch urgency for older versions is
 typically low.
 
-| Version  | Status              | Notes                                        |
-| -------- | ------------------- | -------------------------------------------- |
-| 0.41.x   | :white_check_mark:  | Current release; fixes land here.            |
-| 0.40.x   | :warning:           | Critical fixes only.                         |
-| ≤ 0.39.x | :x:                 | Unsupported — `pip install --upgrade neuralmind`. |
+The policy is a rolling rule, so it can't drift out of date:
 
-The supported window will widen when we tag v1.0.0.
+| Version                  | Status             | Notes                                        |
+| ------------------------ | ------------------ | -------------------------------------------- |
+| Latest minor (see [releases](https://github.com/dfrostar/neuralmind/releases/latest)) | :white_check_mark: | Current release; all fixes land here.        |
+| Previous minor           | :warning:          | Critical security fixes only.                |
+| Anything older           | :x:                | Unsupported — `pip install --upgrade neuralmind`. |
 
 ## Reporting a Vulnerability
 
@@ -371,4 +371,4 @@ We thank all security researchers who help keep NeuralMind and its users safe.
 
 ---
 
-_This security policy is subject to change. Last updated: 2026-06-30 (v0.41.0 — ChromaDB-free ONNX default + no-cloud embedding story, the 14-tool MCP surface with builder/reader RBAC + per-actor rate limiting + `audit_events.jsonl`, the team-memory bundle threat model, schema-artifact indexing, the reuse-feedback hook, memory namespaces, and the full privacy/behaviour env-var table)._
+_This security policy is subject to change. Last updated: 2026-07-28 (supported-versions table switched to a rolling latest-minor rule). Prior content review: 2026-06-30 (v0.41.0 — ChromaDB-free ONNX default + no-cloud embedding story, the 14-tool MCP surface with builder/reader RBAC + per-actor rate limiting + `audit_events.jsonl`, the team-memory bundle threat model, schema-artifact indexing, the reuse-feedback hook, memory namespaces, and the full privacy/behaviour env-var table)._

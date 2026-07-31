@@ -1,0 +1,35 @@
+name: NeuralMind CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+# The composite action posts its summary as a PR comment; the default
+# GITHUB_TOKEN here is read-only, which made that step 403 and fail the
+# whole check even when compliance itself passed.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  compliance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: NeuralMind CI Compliance Check
+        uses: ./.github/actions/neuralmind-ci
+        with:
+          framework: all
+          diff: origin/${{ github.base_ref || 'main' }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-warning: false

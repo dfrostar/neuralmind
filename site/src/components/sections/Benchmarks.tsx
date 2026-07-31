@@ -1,7 +1,7 @@
 'use client';
 
 const dataPoints = [
-    { metric: 'Retrieval token ratio', value: '40–70×', detail: 'vs naive file paste baseline' },
+    { metric: 'Retrieval token ratio', value: '12–50×', detail: 'vs naive file paste baseline' },
     { metric: 'Synapse hit-rate gain', value: '+11.7 pts', detail: 'budget-neutral, CI-verified' },
     { metric: 'Languages indexed', value: '10', detail: 'Python, TS, Go, Rust, Java, and more' },
     { metric: 'Gold-file recall @ L3', value: '100%', detail: 'on pinned real OSS repos' },

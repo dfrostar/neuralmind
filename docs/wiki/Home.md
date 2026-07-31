@@ -1,6 +1,6 @@
 # 🧠 NeuralMind Wiki
 
-**Reduce Claude, GPT, and Gemini token costs 40–70× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.
+**Reduce Claude, GPT, and Gemini token costs 12–50× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -30,6 +30,27 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
+
+> **12–50× typical savings** — updated from the 40–70× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+
+New compliance capabilities for regulated teams, plus a one-command project init.
+
+| Feature | What |
+|---------|------|
+| `neuralmind init` | One-command project setup — auto-detects structure, installs hooks, builds index, all at once |
+| Compliance annotation detection | Scans code for `# Compliance:` / `// Compliance:` annotations — flags each against CMMC 2.0 / NIST SP 800-171 controls |
+| CMMC content ingestion | `neuralmind ingest-cmmc` imports CMMC 2.0 assessment guides + POA&M templates into the doc index |
+| Audit export | `neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission |
+| CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health |
+| MCP tool | `neuralmind_compliance_report` — live compliance stance via any MCP-compatible agent |
+| Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) |
+
+**Claim tiering:**
+- 44× avg vs 30K naive baseline — **Tier C** (self-measured, reproducible via `neuralmind benchmark .`)
+- 12–25× vs realistic 10K human baseline — **Tier C** (self-measured, same pipeline)
+- "Up to 50×+" for targeted queries — **Tier D** (hypothesized, depends on query shape)
+
 ### v1.7.1 — Schema hotfix + autopilot integration (July 2026)
 
 Synapse schema fix adds `half_life_days` + `learned_at` columns before `CREATE TABLE` to fix `sqlite3.OperationalError` on existing databases. Autopilot v0.10.1 ships with self-improving loop (15-min systemd tick). Path migration from `/home/dtfrost/` to `/home/dtfrost5/`.
@@ -57,7 +78,7 @@ Acceptance: 1582+ tests pass, `bench/` repos verify expected community counts.
 
 NeuralMind Team is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. Adds team memory governance, immutable audit log (SHA-256 hash-chained append-only), self-hosted deployment (docker-compose, one-command install), and seat management on top of the MIT core. Ed25519-signed license validation with 30-day offline grace. Acceptance: 46 unit + integration tests.
 
-Full details: [RELEASE_NOTES_v1.0.0.md](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v1.0.0.md)
+Full details: [RELEASE_NOTES_v1.0.0.md](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.0.0.md)
 
 ### v0.52.0 — Impact: blast radius under a name you'd actually reach for
 
@@ -107,51 +128,51 @@ Original impact tool release. Superseded by v0.52.0.
 
 ### v0.21.0 — ChromaDB-free retrieval
 
-The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**: Google Research's **TurboQuant** compressed index (8–16× smaller vectors) plus a bundled `OnnxMiniLMEmbedder` that produces vectors **byte-identical** to ChromaDB's (`all-MiniLM-L6-v2`; verified cosine 1.0). Retrieval stays at/above parity (fact recall 0.744 → 0.800). Enable with `backend: turbovec` in `neuralmind-backend.yaml` — see the [ChromaDB-free local](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) walkthrough. This retires the dependency behind the recurring **CVE-2026-45829** advisory; flipping the default is the staged next step. Full details: [v0.21.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.21.0.md).
+The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**: Google Research's **TurboQuant** compressed index (8–16× smaller vectors) plus a bundled `OnnxMiniLMEmbedder` that produces vectors **byte-identical** to ChromaDB's (`all-MiniLM-L6-v2`; verified cosine 1.0). Retrieval stays at/above parity (fact recall 0.744 → 0.800). Enable with `backend: turbovec` in `neuralmind-backend.yaml` — see the [ChromaDB-free local](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) walkthrough. This retires the dependency behind the recurring **CVE-2026-45829** advisory; flipping the default is the staged next step. Full details: [v0.21.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.21.0.md).
 
 ### v0.20.0 — Measure the onboarding lift
 
-`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (a measured **+6.5 points** on the reference fixture), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.20.0.md).
+`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (a measured **+6.5 points** on the reference fixture), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
 
 > 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +12 pts, onboarding +6.5 pts, ChromaDB-free parity) with reproduction commands.
 
 ### v0.14.0 — Measure faithfulness
 
-`neuralmind eval` turns "does the memory make answers *better*, not just shorter?" into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline (a **faithfulness delta**), plus grounding and contradiction checks. 100% local by default (`--json` and `--selfcheck` too); the LLM-as-judge is opt-in. It's a contributor/CI quality gate — run it from a **source checkout** (the `evals/` gold set isn't bundled in the pip wheel; from an installed wheel the command points you at the repo). The first release where you can measure *answer quality*, not just token reduction. Full details: [v0.14.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.14.0.md).
+`neuralmind eval` turns "does the memory make answers *better*, not just shorter?" into a number: it scores whether NeuralMind's selected context contains more of the facts a correct answer needs than a matched-budget naive baseline (a **faithfulness delta**), plus grounding and contradiction checks. 100% local by default (`--json` and `--selfcheck` too); the LLM-as-judge is opt-in. It's a contributor/CI quality gate — run it from a **source checkout** (the `evals/` gold set isn't bundled in the pip wheel; from an installed wheel the command points you at the repo). The first release where you can measure *answer quality*, not just token reduction. Full details: [v0.14.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.14.0.md).
 
 ### v0.13.0 — Measurement foundation
 
-The scaffolding to *prove* the memory helps, not just claim it: a 100%-local **faithfulness eval** (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer), **polyglot retrieval fixtures (TypeScript + Go)** so quality is measured beyond Python, and a written documentation process. No runtime change to your install — this is the fitness function the eval-first roadmap (v0.13→v0.16) builds on. The full `neuralmind eval` report is the next increment. Full details: [v0.13.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.13.0.md).
+The scaffolding to *prove* the memory helps, not just claim it: a 100%-local **faithfulness eval** (a versioned query + gold-fact dataset and an offline expected-fact-recall scorer), **polyglot retrieval fixtures (TypeScript + Go)** so quality is measured beyond Python, and a written documentation process. No runtime change to your install — this is the fitness function the eval-first roadmap (v0.13→v0.16) builds on. The full `neuralmind eval` report is the next increment. Full details: [v0.13.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.13.0.md).
 
 ### v0.12.0 — Install Doctor
 
-`neuralmind doctor` inspects an install (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query memory) and reports each piece with a status and the exact fix; `--json` for agents, non-zero exit to gate CI. Full details: [v0.12.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.12.0.md).
+`neuralmind doctor` inspects an install (code graph, semantic index, synapse memory, MCP server, Claude Code hooks, query memory) and reports each piece with a status and the exact fix; `--json` for agents, non-zero exit to gate CI. Full details: [v0.12.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.12.0.md).
 
 ### v0.11.0 — Directional Synapses
 
-The synapse layer now learns *what comes next*, not just *what goes together*: a `synapse_transitions` table, a `next_likely()` API, the `neuralmind next` CLI, and the `neuralmind_next_likely` MCP tool. Full details: [v0.11.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.11.0.md).
+The synapse layer now learns *what comes next*, not just *what goes together*: a `synapse_transitions` table, a `next_likely()` API, the `neuralmind next` CLI, and the `neuralmind_next_likely` MCP tool. Full details: [v0.11.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.11.0.md).
 
 ### v0.10.0 — Agent Ergonomics
 
-A content-aware PostToolUse compression footer (categorized line counts + repeated-line detection) and `neuralmind last` to recover dropped middle output without re-running the command. Full details: [v0.10.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.10.0.md).
+A content-aware PostToolUse compression footer (categorized line counts + repeated-line detection) and `neuralmind last` to recover dropped middle output without re-running the command. Full details: [v0.10.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.10.0.md).
 
 ### v0.9.0 — Enterprise-Ready
 
 Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and `ENTERPRISE.md`, with a "how to verify yourself" command for every claim.
 
-No production code changes — pure CI + docs. Full details: [v0.9.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.9.0.md).
+No production code changes — pure CI + docs. Full details: [v0.9.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.9.0.md).
 
 ### v0.8.0 — Always-On
 
 `neuralmind watch` and `neuralmind serve` are first-class production processes now. Committed [systemd](https://github.com/dfrostar/neuralmind/blob/main/scripts/systemd/) and [launchd](https://github.com/dfrostar/neuralmind/blob/main/scripts/launchd/) templates, plus a Windows Task Scheduler walkthrough in the [Scheduling Guide](Scheduling-Guide#always-on-neuralmind-watch--neuralmind-serve-v08), keep both running across reboots and crashes. `neuralmind serve` exposes a `/healthz` endpoint (unauthenticated, returns `{"status":"ok","version":"…"}`) for Docker `HEALTHCHECK` and systemd `ExecStartPost` probes. Cross-platform walkthrough at [`docs/use-cases/always-on.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/always-on.md).
 
-Distribution (v0.7.0) made NeuralMind reachable. Always-on (v0.8.0) makes it persistent — the synapse store accumulates 24/7 whether you're at the keyboard or not. Full details: [v0.8.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.8.0.md).
+Distribution (v0.7.0) made NeuralMind reachable. Always-on (v0.8.0) makes it persistent — the synapse store accumulates 24/7 whether you're at the keyboard or not. Full details: [v0.8.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.8.0.md).
 
 ### v0.7.0 — Install anywhere
 
 NeuralMind now installs five ways: `pip`, `pipx`, `uv`, Docker, and source. Same package, same CLI, same MCP server, same graph view — every path. The Quick Start matrix lives at the top of the [Installation](Installation) page and the [README](https://github.com/dfrostar/neuralmind/blob/main/README.md#install--pick-your-path); the repo's root [`Dockerfile`](https://github.com/dfrostar/neuralmind/blob/main/Dockerfile) is multi-stage, non-root, and pre-wheels every transitive dep so the runtime image doesn't need a C toolchain. PyPI keywords got a long-overdue refresh too, so search ranking for `graph-view`, `hebbian-learning`, and friends finally matches the v0.6.0 product copy.
 
-Also in v0.7.0: a P2 fix in the JSONL bridge (rotation race that could drop events under logrotate/copytruncate) and a test-coverage gap on `/api/queries`. Full details: [v0.7.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.7.0.md) · [Install paths walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md).
+Also in v0.7.0: a P2 fix in the JSONL bridge (rotation race that could drop events under logrotate/copytruncate) and a test-coverage gap on `/api/queries`. Full details: [v0.7.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.7.0.md) · [Install paths walkthrough](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/install-paths.md).
 
 ### v0.6.0 — Graph view + live activity feed
 
@@ -174,7 +195,7 @@ Hermes-Agent) talking to the same project reinforces the same
 synapse store, and the v0.6.0 canvas now shows the **union** of
 their activity. See [docs/use-cases/multi-agent.md](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/multi-agent.md).
 
-Full details: [v0.6.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.6.0.md) ·
+Full details: [v0.6.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.6.0.md) ·
 [Architecture: event bus + JSONL bridge](Architecture#event-bus-and-jsonl-bridge-v06) ·
 [CLI Reference: `neuralmind serve`](CLI-Reference#serve)
 
@@ -196,7 +217,7 @@ spreading activation. Includes the `neuralmind watch` daemon, three
 Claude Code lifecycle hooks (SessionStart, UserPromptSubmit,
 PreCompact), and a memory exporter that surfaces learned
 associations to Claude Code's auto-memory system. See the
-[release notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) or the
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.4.0.md) or the
 [Architecture](Architecture#synapse-layer-v04) and [Learning Guide](Learning-Guide#v04-synapse-layer)
 sections.
 
@@ -236,7 +257,7 @@ sections.
 | [Scheduling Guide](Scheduling-Guide) | Automate audits with Windows Task Scheduler, GitHub Actions, or cron |
 | [Learning Guide](Learning-Guide) | Opt-in memory + the brain-like synapse layer that learns associations from how you use the codebase (Hebbian co-activation with decay), the single learning system since v0.25.0 |
 | [Brain-Like Learning](https://github.com/dfrostar/neuralmind/blob/main/docs/brain_like_learning.md) | Design rationale for the v0.3.x learning system |
-| [v0.4.0 Release Notes](https://github.com/dfrostar/neuralmind/blob/main/RELEASE_NOTES_v0.4.0.md) | Brain-like synapse layer: continuous co-activation, spreading activation, lifecycle hooks |
+| [v0.4.0 Release Notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.4.0.md) | Brain-like synapse layer: continuous co-activation, spreading activation, lifecycle hooks |
 | [Troubleshooting](Troubleshooting) | Common issues and fixes |
 | [FAQ](FAQ) | 30+ frequently asked questions answered |
 

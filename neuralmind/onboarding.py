@@ -17,7 +17,9 @@ Example:
 from __future__ import annotations
 
 import getpass
+import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from neuralmind.tier2.audit import AuditLog
@@ -73,7 +75,7 @@ def _step(n: int, total: int, title: str) -> None:
 
 def _cmd_onboarding_license(args) -> int:
     """Run Step 1: License activation / free tier."""
-    _step(1, 4, "License activation")
+    _step(1, 5, "License activation")
     config = load_config(getattr(args, "config_path", None))
     lic_path = Path(config.license_file)
 
@@ -98,9 +100,69 @@ def _cmd_onboarding_license(args) -> int:
     return 0
 
 
+def _cmd_onboarding_eula(args) -> int:
+    """Run Step 2: EULA acceptance (clickwrap)."""
+    _step(2, 5, "License Agreement")
+
+    config = load_config(getattr(args, "config_path", None))
+    eula_path = Path(config.license_file).with_suffix(".eula_accepted")
+
+    if eula_path.exists():
+        print("✓ EULA already accepted — skipping.")
+        return 0
+
+    # Display EULA summary
+    print("\n" + "─" * 50)
+    print("  NEURALMIND TEAM LICENSE AGREEMENT")
+    print("─" * 50)
+    print("""
+  By using NeuralMind Team, you agree to:
+
+  1. LICENSE SCOPE
+     - Use on up to the licensed number of seats
+     - Not redistribute or sublicense the software
+
+  2. RESTRICTIONS
+     - No reverse engineering or decompiling
+     - No removal of proprietary notices
+     - No use to develop competing products
+
+  3. DATA & PRIVACY
+     - You retain rights to your data
+     - We collect anonymized usage statistics
+
+  4. TERM & TERMINATION
+     - License is valid until the expiry date
+     - May be terminated for breach or non-payment
+     - 30-day grace period after expiration
+
+  5. WARRANTY & LIABILITY
+     - Software provided "AS IS" without warranty
+     - Liability limited to fees paid in last 12 months
+
+  Full agreement: docs/NEURALMIND-LICENSE-AGREEMENT.md
+  Contact: legal@neuralmind.uk
+""")
+
+    if _yes(args, "Do you accept the NeuralMind Team License Agreement?", default=True):
+        # Record acceptance
+        acceptance = {
+            "accepted_at": datetime.now(timezone.utc).isoformat(),
+            "agreement_version": "1.0",
+            "acceptor": getpass.getuser(),
+        }
+        with open(eula_path, "w") as f:
+            json.dump(acceptance, f, indent=2)
+        print("✓ EULA accepted.")
+        return 0
+    print("✗ You must accept the EULA to continue.")
+    print("  To decline, exit and use the free tier instead.")
+    return 1
+
+
 def _cmd_onboarding_governance(args) -> int:
-    """Run Step 2: Governance defaults (scope, threshold)."""
-    _step(2, 4, "Governance defaults")
+    """Run Step 3: Governance defaults (scope, threshold)."""
+    _step(3, 5, "Governance defaults")
     config = load_config(getattr(args, "config_path", None))
 
     # Scope
@@ -148,8 +210,8 @@ def _cmd_onboarding_governance(args) -> int:
 
 
 def _cmd_onboarding_admin(args) -> int:
-    """Run Step 3: Admin email setup."""
-    _step(3, 4, "Admin setup")
+    """Run Step 4: Admin email setup."""
+    _step(4, 5, "Admin setup")
     config = load_config(getattr(args, "config_path", None))
 
     # Detect current user email from OS
@@ -174,8 +236,8 @@ def _cmd_onboarding_admin(args) -> int:
 
 
 def _cmd_onboarding_verify(args) -> int:
-    """Run Step 4: Verify installation."""
-    _step(4, 4, "Verification")
+    """Run Step 5: Verify installation."""
+    _step(5, 5, "Verification")
     config = load_config(getattr(args, "config_path", None))
     lic_path = Path(config.license_file)
     seats_db = TIER2_CONFIG_DIR / "seats.json"
@@ -226,6 +288,9 @@ def cmd_onboarding(args) -> int:
         print("Quick mode — using defaults for all prompts.")
 
     rc = _cmd_onboarding_license(args)
+    if rc != 0:
+        return rc
+    rc = _cmd_onboarding_eula(args)
     if rc != 0:
         return rc
     _cmd_onboarding_governance(args)

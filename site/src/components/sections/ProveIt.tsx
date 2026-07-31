@@ -8,7 +8,7 @@ const steps = [
     {
         step: '2',
         title: 'Then measure YOUR codebase',
-        body: 'The fixture is tiny (~500 lines, ~5.5×). Real repos consistently hit 40–70× on the same pipeline — run the benchmark on your own code and read your own number.',
+        body: 'The fixture is tiny (~500 lines, ~5.5×). Real repos consistently hit 12–50× on the same pipeline — run the benchmark on your own code and read your own number.',
         code: ['pip install neuralmind', 'cd /path/to/your-repo', 'neuralmind build .', 'neuralmind benchmark .'],
     },
     {
@@ -81,7 +81,7 @@ export default function ProveIt() {
                     </div>
                     <p className="text-slate-500 text-xs mt-3">
                         Small fixture, small multiplier — by design. It runs in CI on every commit as a regression
-                        gate. The 40–70× headline comes from real repos; your own number is one{' '}
+                        gate. The 12–50× headline comes from real repos; your own number is one{' '}
                         <code className="font-mono text-electric">neuralmind benchmark .</code> away.
                     </p>
                 </div>

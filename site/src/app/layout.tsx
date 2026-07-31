@@ -22,9 +22,9 @@ const fraunces = Fraunces({
 });
 
 export const metadata = {
-    title: 'NeuralMind — Persistent Memory for AI Coding Agents | 40–70× Token Reduction',
+    title: 'NeuralMind — Persistent Memory for AI Coding Agents | 12–50× Token Reduction',
     description:
-        'Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase like a senior engineer and cuts token costs 40–70×. Works with Claude Code, Cursor, Cline, and any MCP agent.',
+        'Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase like a senior engineer and cuts token costs 12–50×. Works with Claude Code, Cursor, Cline, and any MCP agent.',
     keywords: [
         'AI coding agent memory',
         'persistent agent memory',
@@ -56,7 +56,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Persistent Memory for AI Coding Agents',
         description:
-            'Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local engine, no telemetry, no cloud calls. Side effect: 40–70× cheaper code questions, measured in CI on every commit.',
+            'Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local engine, no telemetry, no cloud calls. Side effect: 12–50× cheaper code questions, measured in CI on every commit.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -74,7 +74,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'NeuralMind — Persistent Memory for AI Coding Agents',
         description:
-            'Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local. 40–70× token reduction, measured in CI.',
+            'Your agent learns your codebase the way a senior engineer would — and remembers it across sessions. 100% local. 12–50× token reduction, measured in CI.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -101,7 +101,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             applicationSubCategory: 'AI coding agent memory & code intelligence',
             operatingSystem: 'Linux, macOS, Windows',
             description:
-                'Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 40–70× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor.',
+                'Persistent memory and semantic code intelligence for AI coding agents. Local-first code indexing with 12–50× per-query token reduction, a brain-like synapse layer that learns associations from how you use the codebase, an Obsidian-style graph view, an MCP server, and a built-in install doctor.',
             url: 'https://neuralmind.uk',
             downloadUrl: 'https://pypi.org/project/neuralmind/',
             installUrl: 'https://pypi.org/project/neuralmind/',
@@ -116,7 +116,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             keywords:
                 'AI coding agent memory, code intelligence, token reduction, RAG, MCP server, knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
-                'Progressive L0–L3 context disclosure for 40–70× per-query token reduction',
+                'Progressive L0–L3 context disclosure for 12–50× per-query token reduction',
                 'Brain-like Hebbian synapse layer that learns associations from how you use the codebase',
                 'Bundled tree-sitter code graph indexing ten languages',
                 'Honest public benchmark: 100% gold-file recall at 38–85× fewer tokens',
