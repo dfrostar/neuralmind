@@ -428,10 +428,17 @@ class TestCLILearn:
     """`neuralmind learn` is a deprecated exit-0 no-op."""
 
     def test_cmd_learn_prints_deprecation(self, temp_project, capsys):
-        """learn prints a deprecation notice pointing at the synapse layer."""
+        """learn now ingests documents; verify it does not print deprecation."""
         from neuralmind.cli import cmd_learn
 
+        # Create a dummy file to ingest
+        dummy = temp_project / "test.md"
+        dummy.write_text("# Test\nContent")
+
         args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = False
         args.project_path = str(temp_project)
 
         # No exception, no sys.exit — a plain return is exit 0.
@@ -440,15 +447,25 @@ class TestCLILearn:
 
         captured = capsys.readouterr()
         out = captured.out.lower()
-        assert "deprecated" in out
-        assert "synapse" in out
+        # Should NOT print deprecation anymore
+        assert "deprecated" not in out
+        # Should print ingestion result
+        assert "ingested" in out or "content nodes" in out
 
     def test_cmd_learn_writes_no_patterns_file(self, temp_project, capsys):
         """learn must not write the old learned_patterns.json anymore."""
         from neuralmind.cli import cmd_learn
 
+        # Create a dummy file to ingest
+        dummy = temp_project / "test.md"
+        dummy.write_text("# Test\nContent")
+
         args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = False
         args.project_path = str(temp_project)
+
         cmd_learn(args)
 
         patterns_file = temp_project / ".neuralmind" / "learned_patterns.json"

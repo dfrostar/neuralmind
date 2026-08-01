@@ -268,6 +268,99 @@ class TurboVecEmbedder(EmbeddingBackend):
         return hashlib.sha256(text.encode()).hexdigest()[:16]
 
     # ----------------------------------------------------------------- embed
+    def embed_content(self, content_nodes: list[dict], force: bool = False) -> dict[str, int]:
+        """Embed non-code content nodes (compliance practices, docs, etc.)."""
+        stats = {"added": 0, "updated": 0, "skipped": 0}
+        if not content_nodes:
+            return stats
+
+        pending = []
+        next_uid = self._next_uid()
+
+        for node in content_nodes:
+            node_id = str(node.get("id", node.get("label", "")))
+            if not node_id:
+                continue
+            text = node.get("content_text", self._node_to_text(node))
+            content_hash = self._content_hash(text)
+            row = self._conn.execute(
+                "SELECT uid, content_hash FROM nodes WHERE node_id = ?", (node_id,)
+            ).fetchone()
+
+            if row is not None:
+                if not force and row["content_hash"] == content_hash:
+                    stats["skipped"] += 1
+                    continue
+                uid = int(row["uid"])
+                is_update = True
+                stats["updated"] += 1
+            else:
+                uid = next_uid
+                next_uid += 1
+                is_update = False
+                stats["added"] += 1
+
+            meta = self._node_metadata(node)
+            meta["content_hash"] = content_hash
+            meta["embedded_at"] = datetime.now().isoformat()
+            pending.append((node_id, uid, text, meta, content_hash, is_update))
+
+        if not pending:
+            self._persist_index()
+            self._conn.commit()
+            return stats
+
+        vectors = _l2_normalize(self._embed_matrix([p[2] for p in pending]))
+        dim = vectors.shape[1]
+        idx = self._ensure_index(dim)
+
+        now = datetime.now().isoformat()
+        new_vecs = []
+        new_ids = []
+        for (node_id, uid, text, meta, content_hash, is_update), vec in zip(
+            pending, vectors, strict=True
+        ):
+            if is_update:
+                try:
+                    idx.remove(uid)
+                except Exception:
+                    pass
+                idx.add_with_ids(vec.reshape(1, -1), np.array([uid], dtype=np.uint64))
+            else:
+                new_vecs.append(vec)
+                new_ids.append(uid)
+            self._conn.execute(
+                """
+                INSERT INTO nodes(uid, node_id, document, label, file_type,
+                                  source_file, community, content_hash, embedded_at)
+                VALUES(?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(node_id) DO UPDATE SET
+                    document=excluded.document, label=excluded.label,
+                    file_type=excluded.file_type, source_file=excluded.source_file,
+                    community=excluded.community, content_hash=excluded.content_hash,
+                    embedded_at=excluded.embedded_at
+                """,
+                (
+                    uid,
+                    node_id,
+                    text,
+                    meta["label"],
+                    meta["file_type"],
+                    meta["source_file"],
+                    meta["community"],
+                    content_hash,
+                    now,
+                ),
+            )
+
+        if new_ids:
+            idx.add_with_ids(np.vstack(new_vecs), np.array(new_ids, dtype=np.uint64))
+
+        self._dirty = True
+        self._persist_index()
+        self._conn.commit()
+        return stats
+
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
         if not self.nodes and not self.load_graph():
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
@@ -407,8 +500,13 @@ class TurboVecEmbedder(EmbeddingBackend):
             scores, ids = idx.search(q, k, allowlist=allowlist)
         except Exception:
             # A freshly mutated index may need (re)preparing before search.
-            idx.prepare()
-            scores, ids = idx.search(q, k, allowlist=allowlist)
+            # If the retry still fails (e.g., allowlist has dangling uids not in index),
+            # return empty results instead of crashing.
+            try:
+                idx.prepare()
+                scores, ids = idx.search(q, k, allowlist=allowlist)
+            except Exception:
+                return []
 
         out: list[dict[str, Any]] = []
         for score, uid in zip(scores[0], ids[0], strict=True):
