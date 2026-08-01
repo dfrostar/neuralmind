@@ -3,6 +3,7 @@ export default function Footer() {
         { label: 'Security', href: '/security' },
         { label: 'PyPI', href: 'https://pypi.org/project/neuralmind/' },
         { label: 'GitHub', href: 'https://github.com/dfrostar/neuralmind' },
+        { label: 'Release Notes', href: 'https://github.com/dfrostar/neuralmind/tree/main/docs/releases' },
         { label: 'Docs', href: 'https://docs.neuralmind.uk/wiki/Home' },
         { label: 'Pricing', href: '/pricing' },
         { label: 'Team', href: '/team' },
