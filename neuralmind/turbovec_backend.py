@@ -576,6 +576,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                     "label": str(n.get("label", n.get("id", "unknown"))),
                     "file_type": ft,
                     "source_file": str(n.get("source_file", "")),
+                    "text": str(n.get("text", n.get("document", "")))[:200],
                 }
             )
         type_summary = ", ".join(f"{v} {k}s" for k, v in file_types.items()) or "mixed"
