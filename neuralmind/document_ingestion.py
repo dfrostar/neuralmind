@@ -13,6 +13,7 @@ Security guards:
 
 from __future__ import annotations
 
+import hashlib
 import time
 from pathlib import Path
 
@@ -141,12 +142,15 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
 
 def _make_node_id(path: Path, index: int = 0) -> str:
     """Create a unique node ID for a document chunk.
-
-    Uses both stem AND extension to avoid collisions (e.g. a.md vs a.txt).
+    
+    Uses relative path (stem + parent dirs + extension) to avoid collisions
+    (e.g. a/README.md vs b/README.md).
     """
     stem = path.stem.replace(" ", "_")
     ext = path.suffix.lstrip(".").replace(" ", "_")
-    base = f"{stem}.{ext}" if ext else stem
+    # Include parent dirs (hashed) to disambiguate same-named files
+    parent_hash = hashlib.md5(str(path.parent).encode()).hexdigest()[:8]
+    base = f"{stem}.{ext}.{parent_hash}" if ext else f"{stem}.{parent_hash}"
     if index == 0:
         return f"doc:{base}"
     return f"doc:{base}:chunk{index}"
@@ -183,11 +187,23 @@ def parse_document(
         root = path.parent
     _validate_path(path, root)
 
-    # If content_type is explicit (not auto), use it directly
+    # If content_type is explicit (not "auto"), use it directly
     if content_type != "auto":
         file_type = content_type
     else:
         file_type = _sniff_file_type(path)
+    
+    # Hard security guard: reject binary regardless of content_type hint
+    try:
+        header = path.read_bytes()[:8]
+        if header[:4] == b"\x7fELF" or header[:2] == b"MZ":
+            raise ValueError(f"Binary file rejected: {path}")
+        if header[:4] in (b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe"):
+            raise ValueError(f"Binary file rejected: {path}")
+    except ValueError:
+        raise
+    except Exception:
+        pass  # If we can't read the file, the next steps will fail
 
     if file_type == "unknown":
         raise ValueError(f"Unsupported file type (binary?): {path}")

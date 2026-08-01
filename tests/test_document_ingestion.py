@@ -109,7 +109,7 @@ class TestParseDocument:
     def test_binary_rejected(self, tmp_path):
         f = tmp_path / "fake.md"
         f.write_bytes(b"\x7fELF not actually markdown")
-        with pytest.raises(ValueError, match="Unsupported"):
+        with pytest.raises(ValueError, match="Binary file rejected"):
             parse_document(f)
 
 

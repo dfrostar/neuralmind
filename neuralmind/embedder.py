@@ -613,7 +613,9 @@ class GraphEmbedder(EmbeddingBackend):
             if not node_id:
                 continue
             ids.append(node_id)
-            texts.append(self._node_to_text(node))
+            # Use content text for documents, node text for code
+            text = node.get("content_text", self._node_to_text(node))
+            texts.append(text)
             metas.append(self._node_metadata(node))
         idx.add_documents(ids, texts, metas)
         idx.build()

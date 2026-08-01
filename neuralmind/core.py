@@ -731,15 +731,15 @@ class NeuralMind:
         if not content_nodes:
             return {"error": "No content extracted from file", "node_count": 0}
 
-        # Embed the content nodes
-        stats = self.embedder.embed_content(content_nodes)
-
-        # Sync into embedder's node list so BM25 sees them
+        # Sync into embedder's node list BEFORE embedding so BM25 includes them
         existing_ids = {n.get("id", "") for n in self.embedder.nodes}
         for cn in content_nodes:
             cid = cn.get("id", "")
             if cid not in existing_ids:
                 self.embedder.nodes.append(cn)
+
+        # Embed the content nodes (includes BM25 rebuild)
+        stats = self.embedder.embed_content(content_nodes)
 
         self._emit_audit(
             category="content_ingestion",

@@ -552,10 +552,10 @@ class ContextSelector:
                     source = source.split("/")[-1]  # Just filename
                 parts.append(f"- {label} ({ftype}) — {source}")
 
-            # Include snippet text for documents
-            snippet = node.get("text", "")[:120]
-            if snippet:
-                parts.append(f"  \"{snippet}\"")
+                # Include snippet text for documents
+                snippet = node.get("text", "")[:120]
+                if snippet:
+                    parts.append(f"  \"{snippet}\"")
 
             parts.append("")
 
