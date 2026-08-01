@@ -140,7 +140,7 @@ export default async function SecurityPage() {
                             SHA-256 hash chain. The trail is tamper-evident, searchable, and exportable in JSONL/CEF formats.
                         </p>
                         <p className="text-slate-400 text-sm">
-                            Introduced in v0.27.0 (B-Audit). <a href={`${GITHUB_URL}/blob/main/docs/releases/RELEASE_NOTES_v0.27.0.md`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">Release notes →</a>
+                            See <a href={`${GITHUB_URL}/tree/main/docs/releases`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">all release notes →</a>
                         </p>
                     </div>
                 </section>

@@ -21,6 +21,7 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_stats",
         "neuralmind_benchmark",
         "neuralmind_skeleton",
+        "neuralmind_ingest_document",
     },
     "reader": {
         "neuralmind_wakeup",
