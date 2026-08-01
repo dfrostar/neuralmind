@@ -681,7 +681,7 @@ class NeuralMind:
         """
         return validate_project(self.project_path, write=write)
 
-    def ingest_document(self, file_path: str | Path, content_type: str = "auto") -> dict:
+    def ingest_document(self, file_path: str | Path, content_type: str = "auto", root: Path | None = None) -> dict:
         """Ingest an arbitrary document as first-class content nodes.
 
         Parses PDF/Markdown/text files into ContentNode objects that embed
@@ -691,6 +691,7 @@ class NeuralMind:
         Args:
             file_path: Path to the document file or directory.
             content_type: Type hint ('pdf', 'markdown', 'text', or 'auto' to sniff).
+            root: Root directory for path validation. If None, uses CWD.
 
         Returns:
             Dict with node_count, chunk_count, embed stats, or an error dict.
@@ -712,7 +713,7 @@ class NeuralMind:
             if file_path.is_dir():
                 content_nodes = [n.to_graph_node() for n in ingest_directory(file_path)]
             else:
-                content_nodes = [n.to_graph_node() for n in parse_document(file_path)]
+                content_nodes = [n.to_graph_node() for n in parse_document(file_path, root=root)]
         except (ValueError, RuntimeError) as exc:
             return {"error": str(exc)}
 

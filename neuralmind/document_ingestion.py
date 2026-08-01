@@ -142,17 +142,18 @@ def _make_node_id(path: Path, index: int = 0) -> str:
     return f"doc:{stem}:chunk{index}"
 
 
-def parse_document(path: Path) -> list[ContentNode]:
+def parse_document(path: Path, root: Path | None = None) -> list[ContentNode]:
     """Parse a document file into ContentNodes.
-
+    
     Large documents are chunked into multiple nodes for finer-grained retrieval.
-
+    
     Args:
         path: Path to the document file.
-
+        root: Root directory for path validation. If None, uses path.parent.
+        
     Returns:
         List of ContentNode objects.
-
+        
     Raises:
         ValueError: If file type is unsupported or validation fails.
         RuntimeError: If parsing fails.
@@ -164,8 +165,10 @@ def parse_document(path: Path) -> list[ContentNode]:
     if path.stat().st_size > MAX_FILE_SIZE:
         raise ValueError(f"File too large (>10MB): {path}")
 
-    # Validate and sniff
-    _validate_path(path, Path.cwd())
+    # Validate and sniff — use file's parent as root if not specified
+    if root is None:
+        root = path.parent
+    _validate_path(path, root)
     file_type = _sniff_file_type(path)
 
     if file_type == "unknown":

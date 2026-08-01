@@ -1744,7 +1744,8 @@ def cmd_learn(args):
     # project_path for create_mind is the parent directory (repo root)
     project_path = file_path.parent if file_path.is_file() else file_path
     mind = create_mind(str(project_path), auto_build=True)
-    result = mind.ingest_document(str(file_path), content_type=args.type)
+    # Pass project_path as root for path validation (files may be outside CWD)
+    result = mind.ingest_document(str(file_path), content_type=args.type, root=project_path)
 
     if args.json:
         print(json.dumps(result, indent=2))
