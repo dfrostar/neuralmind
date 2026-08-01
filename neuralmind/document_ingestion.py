@@ -66,7 +66,12 @@ def _sniff_file_type(path: Path) -> str:
     # ELF: \x7fELF, PE: MZ, Mach-O: \xfe\xed\xfa\xce or \xfe\xed\xfa\xcf
     if header[:4] == b"\x7fELF" or header[:2] == b"MZ":
         return "unknown"
-    if header[:4] in (b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe"):
+    if header[:4] in (
+        b"\xfe\xed\xfa\xce",
+        b"\xfe\xed\xfa\xcf",
+        b"\xce\xfa\xed\xfe",
+        b"\xcf\xfa\xed\xfe",
+    ):
         return "unknown"
 
     # Try UTF-8 decode to detect text
@@ -136,7 +141,7 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
 
 def _make_node_id(path: Path, index: int = 0) -> str:
     """Create a unique node ID for a document chunk.
-    
+
     Uses both stem AND extension to avoid collisions (e.g. a.md vs a.txt).
     """
     stem = path.stem.replace(" ", "_")
@@ -147,19 +152,21 @@ def _make_node_id(path: Path, index: int = 0) -> str:
     return f"doc:{base}:chunk{index}"
 
 
-def parse_document(path: Path, root: Path | None = None, content_type: str = "auto") -> list[ContentNode]:
+def parse_document(
+    path: Path, root: Path | None = None, content_type: str = "auto"
+) -> list[ContentNode]:
     """Parse a document file into ContentNodes.
-    
+
     Large documents are chunked into multiple nodes for finer-grained retrieval.
-    
+
     Args:
         path: Path to the document file.
         root: Root directory for path validation. If None, uses path.parent.
         content_type: Type hint ('pdf', 'markdown', 'text', or 'auto' to sniff).
-        
+
     Returns:
         List of ContentNode objects.
-        
+
     Raises:
         ValueError: If file type is unsupported or validation fails.
         RuntimeError: If parsing fails.
@@ -175,7 +182,7 @@ def parse_document(path: Path, root: Path | None = None, content_type: str = "au
     if root is None:
         root = path.parent
     _validate_path(path, root)
-    
+
     # If content_type is explicit (not auto), use it directly
     if content_type != "auto":
         file_type = content_type
