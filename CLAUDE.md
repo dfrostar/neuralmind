@@ -101,6 +101,18 @@ JSON's `do_not_market` list mirrors the Tier2 operator guide — SSO/SAML
 and cross-machine sync are roadmap-only; no trial CTAs (no issuance
 mechanism exists).
 
+## Multi-project scoping (operator rule)
+
+When working on the NeuralMind codebase alongside other projects (cmmc20, lingogame, autopilot):
+
+- **NeuralMind isolates automatically** — `.neuralmind/` is per-project. `build .` in repo A never touches repo B.
+- **memU does NOT isolate** — single flat store. Scope every retrieve query: `memu-hermes retrieve "[neuralmind] seed_from_documentation"` not `memu-hermes retrieve "synapse"`.
+- **Hermes memory does NOT isolate** — tag every entry with `[project]` prefix.
+- **session_search does NOT isolate** — include project name in every query.
+- **Autopilot is NEVER indexed** (contains secrets). NeuralMind + autopilot don't mix.
+
+End users running NeuralMind on a single project need no scoping — `.neuralmind/` isolation is built-in. For operators, see `docs/wiki/Multi-Project-Scoping.md`.
+
 ## Shipping a feature — docs + SEO checklist
 
 Every user-facing change ships with documentation propagated across

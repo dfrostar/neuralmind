@@ -177,8 +177,9 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 | Understand the design | [Architecture](docs/wiki/Architecture.md) · [Limits & failure modes](docs/wiki/Limits-and-Failure-Modes.md) |
 | Follow real workflows | [Use-case walkthroughs](docs/use-cases/) (20+) |
 | Compare with alternatives | [Comparisons](docs/comparisons/) |
-| Evaluate for a team | [Business case](docs/BUSINESS-CASE.md) · [Enterprise](docs/ENTERPRISE.md) · [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) |
-| Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
+|| Evaluate for a team | [Business case](docs/BUSINESS-CASE.md) · [Enterprise](docs/ENTERPRISE.md) · [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) |
+|| Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
+|| Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
 
 ---

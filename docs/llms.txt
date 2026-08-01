@@ -18,6 +18,7 @@ Key facts, each backed by a runnable eval (raw traces committed):
 - [Installation](https://docs.neuralmind.uk/wiki/Installation.html): pip install, one-command MCP setup for Claude Code, Cursor, Cline, Claude Desktop
 - [CLI reference](https://docs.neuralmind.uk/wiki/CLI-Reference.html): every command and environment variable
 - [Architecture](https://docs.neuralmind.uk/wiki/Architecture.html): progressive L0–L3 context disclosure, graph + vector + BM25 hybrid retrieval
+- [Multi-Project Scoping](https://docs.neuralmind.uk/wiki/Multi-Project-Scoping.html): isolation rules when running NeuralMind on multiple codebases
 - [FAQ](https://docs.neuralmind.uk/wiki/FAQ.html)
 - [Limits and failure modes](https://docs.neuralmind.uk/wiki/Limits-and-Failure-Modes.html): honest scope — where NeuralMind does not win
 
