@@ -216,8 +216,28 @@
                 <li>File magic sniffing (rejects binaries with .md/.txt extensions)</li>
                 <li>Size cap (10MB per file) and directory depth limit</li>
             </ul>
+            <h3>Example</h3>
+            <pre><code>$ neuralmind learn complete-cmmc-spec.md
+Ingested 129 content nodes from complete-cmmc-spec.md
+  Embedded: 129 added, 0 updated
+
+$ neuralmind query . "CMMC gap analysis"
+
+## Relevant Code Areas
+
+### Cluster 40 (relevance: 1.15)
+- Step 3: Gap Analysis (document) — complete-cmmc-spec.md
+- Step 4: Final Report Generation (document) — complete-cmmc-spec.md
+
+## Search Results
+
+1. **Step 3: Gap Analysis** (score: 0.63)
+   Type: document
+   File: complete-cmmc-spec.md
+   "Conduct a gap assessment to identify which practices
+    are not yet implemented..."</code></pre>
             <div class="quote">The agent finally sees what the team knows — not just what the code says.</div>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.11.0.md">Full v1.11.0 release notes &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.11.0.md">Full v1.11.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.11.2.md">v1.11.2 patch notes &rarr;</a></p>
         </div>
     </section>
 
