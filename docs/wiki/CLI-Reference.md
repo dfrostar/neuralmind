@@ -966,9 +966,33 @@ bundled), run it from a source checkout instead:
 
 ---
 
-### learn *(deprecated, v0.25.0)*
+### learn — document ingestion *(v1.11.0+)*
 
-**Deprecated and a no-op since v0.25.0.** The `learned_patterns`
+Ingest PDFs, Markdown, and plain text into the knowledge graph alongside code. The deprecated no-op has been repurposed as a first-class ingestion command.
+
+```bash
+neuralmind learn <file>                # ingest single file
+neuralmind learn <directory>           # ingest all supported files
+neuralmind learn --type pdf guide.pdf  # type hint (auto/pdf/markdown/text)
+neuralmind learn --json report.md      # output stats as JSON
+```
+
+**What it does:**
+- Parses PDF/Markdown/text into `ContentNode` objects with chunking
+- Embeds chunks into the same vector space as code
+- Deduplicates on re-ingestion (identical content → 0 new nodes)
+- Guards against path traversal, binary files, size bombs (>10MB)
+
+**Notes:**
+- Ingested documents appear in `neuralmind query` results alongside code
+- Learning from usage (synapses) still happens automatically via the synapse layer
+- For compliance/tagged ingestion, use `neuralmind learn --type cmmc`
+
+---
+
+### learn *(deprecated, v0.25.0 — pre-v1.11.0)*
+
+**This section describes the pre-v1.11.0 behavior, replaced by the command above.**
 cooccurrence reranker this command used to populate was removed. The
 command now prints a deprecation notice and **exits 0**, so existing
 scripts and CI that call it keep working unchanged.

@@ -200,6 +200,28 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v1110">
+            <h2>What's New in v1.11.0 — Non-code ingestion</h2>
+            <p><strong>Code intelligence is only half the picture.</strong> Teams have compliance guides, product specs, tribal knowledge in PDFs and Markdown — documents the agent can't see. <code>neuralmind learn &lt;file&gt;</code> ingests PDFs, Markdown, and plain text into the same vector space as code, so queries surface documents alongside symbols.</p>
+            <h3>How it works</h3>
+            <ol>
+                <li><strong>Ingest</strong> — parse PDF/Markdown/text into ContentNode objects with chunking for large documents.</li>
+                <li><strong>Embed</strong> — vectorize chunks into the same index as code symbols.</li>
+                <li><strong>Dedup</strong> — re-ingestion detects identical content and creates zero duplicate nodes.</li>
+                <li><strong>Query</strong> — natural-language search returns both code and documents in ranked order.</li>
+            </ol>
+            <h3>Security guards</h3>
+            <ul>
+                <li>Path canonicalization + symlink rejection</li>
+                <li>File magic sniffing (rejects binaries with .md/.txt extensions)</li>
+                <li>Size cap (10MB per file) and directory depth limit</li>
+            </ul>
+            <div class="quote">The agent finally sees what the team knows — not just what the code says.</div>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.11.0.md">Full v1.11.0 release notes &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v172">
             <h2>What's New in v1.7.2 — DocEvolver: evolutionary JSDoc for retrieval fitness</h2>
             <p><strong>Undocumented code is invisible to retrieval.</strong> An agent searching for "handle csv export" comes up empty when the method has no JSDoc — the embedding text is just the method name, which ranks low against natural language. <code>neuralmind optimize-docs .</code> finds undocumented methods, generates JSDoc variants using four mutation strategies (<code>LENGTH</code>, <code>STRUCTURE</code>, <code>KEYWORD_DENSITY</code>, <code>POSITION</code>), and evolves them against a retrieval fitness function — the same Recall@1 metric <code>neuralmind probe</code> uses.</p>
