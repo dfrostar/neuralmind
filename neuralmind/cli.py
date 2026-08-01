@@ -1741,8 +1741,12 @@ def cmd_learn(args):
         sys.exit(1)
 
     print(f"Learning from: {file_path}")
-    # project_path for create_mind is the parent directory (repo root)
+    # Find repo root: walk up to find .neuralmind/index_ir.json or .git
     project_path = file_path.parent if file_path.is_file() else file_path
+    while project_path.parent != project_path:
+        if (project_path / ".neuralmind" / "index_ir.json").exists() or (project_path / ".git").exists():
+            break
+        project_path = project_path.parent
     mind = create_mind(str(project_path), auto_build=True)
     # Pass project_path as root for path validation (files may be outside CWD)
     result = mind.ingest_document(str(file_path), content_type=args.type, root=project_path)

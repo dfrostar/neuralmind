@@ -545,12 +545,14 @@ class GraphEmbedder(EmbeddingBackend):
 
         nodes = []
         for i, node_id in enumerate(results["ids"]):
+            doc_text = results["documents"][i] if results["documents"] else ""
             nodes.append(
                 {
                     "id": node_id,
                     "label": results["metadatas"][i].get("label", node_id),
                     "file_type": results["metadatas"][i].get("file_type", "unknown"),
                     "source_file": results["metadatas"][i].get("source_file", ""),
+                    "text": doc_text[:200] if doc_text else "",
                 }
             )
 
