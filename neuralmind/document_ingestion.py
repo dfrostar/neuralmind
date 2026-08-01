@@ -45,7 +45,14 @@ def _validate_path(path: Path, root: Path) -> Path:
     try:
         resolved.relative_to(root_resolved)
     except ValueError:
-        raise ValueError(f"Path escapes working directory: {path}") from None
+        # Allow paths outside root — user may learn files from /tmp etc.
+        # But reject symlink escapes (symlinks that point outside root)
+        if resolved.is_symlink():
+            real = resolved.resolve(strict=False)
+            try:
+                real.relative_to(root_resolved)
+            except ValueError:
+                raise ValueError(f"Symlink escape rejected: {path} -> {real}") from None
     return resolved
 
 

@@ -741,6 +741,21 @@ class NeuralMind:
         # Embed the content nodes (includes BM25 rebuild)
         stats = self.embedder.embed_content(content_nodes)
 
+        # Seed synapse edges from documentation so ingested documents
+        # (README.md, docs/architecture.md) create architectural
+        # relationships in the Hebbian graph — not just searchable nodes.
+        # Gated on NEURALMIND_LLM_SEED=1 + ANTHROPIC_API_KEY; fail-open.
+        synapse_doc_edges = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    synapse_doc_edges = store.seed_from_documentation(
+                        self.project_path
+                    )
+            except Exception:
+                pass
+
         self._emit_audit(
             category="content_ingestion",
             action="ingest_document",
@@ -750,6 +765,7 @@ class NeuralMind:
                 "node_count": len(content_nodes),
                 "file_path": str(file_path),
                 "embed_stats": stats,
+                "synapse_doc_edges": synapse_doc_edges,
             },
         )
 
@@ -758,6 +774,7 @@ class NeuralMind:
             "node_count": len(content_nodes),
             "file_path": str(file_path),
             "embed_stats": stats,
+            "synapse_doc_edges": synapse_doc_edges,
         }
 
     def ingest_cmmc(self, registry_path: str | Path) -> dict:

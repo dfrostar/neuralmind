@@ -613,6 +613,25 @@ def tool_structural_gaps(
     }
 
 
+def tool_ingest_document(
+    project_path: str, file_path: str, content_type: str = "auto"
+) -> dict[str, Any]:
+    """Ingest a document into the project's neural index.
+
+    Parses PDF/Markdown/text into ContentNode objects that embed alongside
+    code in the same vector space. Documents are chunked automatically for
+    finer-grained retrieval. After ingestion, the document's contents
+    surface in query() and search() alongside code.
+
+    Synapse edges are seeded from documentation prose into the Hebbian
+    graph when NEURALMIND_LLM_SEED=1 is set — connecting documented
+    architectural relationships to code nodes.
+    """
+    mind = get_mind(project_path)
+    result = mind.ingest_document(file_path, content_type=content_type)
+    return result
+
+
 # Tool definitions for MCP
 TOOLS = [
     {
@@ -1024,6 +1043,42 @@ TOOLS = [
             "required": ["project_path"],
         },
     },
+    {
+        "name": "neuralmind_ingest_document",
+        "description": (
+            "Ingest a document (PDF, Markdown, text) into the project's "
+            "neural index. Parses and chunks the file into content nodes that "
+            "embed alongside code in the same vector space — query() and "
+            "search() will surface the document's content alongside code. "
+            "Synapse edges are seeded from documentation prose when "
+            "NEURALMIND_LLM_SEED=1 is set, connecting documented "
+            "architectural relationships to code nodes."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project_path": {
+                    "type": "string",
+                    "description": "Path to the project root directory",
+                },
+                "file_path": {
+                    "type": "string",
+                    "description": "Path to the document file (absolute or project-relative)",
+                },
+                "content_type": {
+                    "type": "string",
+                    "enum": ["auto", "pdf", "markdown", "text"],
+                    "default": "auto",
+                    "description": (
+                        "Content type hint. 'auto' sniffs from file magic "
+                        "bytes and extension. Use 'pdf', 'markdown', or "
+                        "'text' to override."
+                    ),
+                },
+            },
+            "required": ["project_path", "file_path"],
+        },
+    },
 ]
 
 
@@ -1092,6 +1147,11 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         "neuralmind_compliance_report": lambda args: tool_compliance_report(
             args["project_path"],
             args.get("format", "json"),
+        ),
+        "neuralmind_ingest_document": lambda args: tool_ingest_document(
+            args["project_path"],
+            args["file_path"],
+            args.get("content_type", "auto"),
         ),
     }
 
