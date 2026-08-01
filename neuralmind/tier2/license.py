@@ -171,7 +171,12 @@ class LicenseValidator:
             return False
 
     def _is_expired(self, lic: LicenseInfo) -> bool:
-        """True if expires_at has passed."""
+        """True if expires_at has passed.
+
+        Free tier with ``expires_at="never"`` is never expired.
+        """
+        if lic.expires_at == "never":
+            return False
         try:
             exp = datetime.fromisoformat(lic.expires_at.replace("Z", "+00:00"))
             return datetime.now(timezone.utc) > exp
