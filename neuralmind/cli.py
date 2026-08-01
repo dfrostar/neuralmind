@@ -3475,8 +3475,12 @@ def main():
         "learn", help="Ingest documents (PDF/Markdown/text) into the knowledge graph"
     )
     learn_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
-    learn_p.add_argument("--type", default="auto", choices=["auto", "pdf", "markdown", "text", "cmmc"],
-                         help="Content type hint (default: auto-detect)")
+    learn_p.add_argument(
+        "--type",
+        default="auto",
+        choices=["auto", "pdf", "markdown", "text", "cmmc"],
+        help="Content type hint (default: auto-detect)",
+    )
     learn_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
     learn_p.set_defaults(func=cmd_learn)
 

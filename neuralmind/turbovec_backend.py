@@ -340,8 +340,17 @@ class TurboVecEmbedder(EmbeddingBackend):
                     community=excluded.community, content_hash=excluded.content_hash,
                     embedded_at=excluded.embedded_at
                 """,
-                (uid, node_id, text, meta["label"], meta["file_type"],
-                 meta["source_file"], meta["community"], content_hash, now),
+                (
+                    uid,
+                    node_id,
+                    text,
+                    meta["label"],
+                    meta["file_type"],
+                    meta["source_file"],
+                    meta["community"],
+                    content_hash,
+                    now,
+                ),
             )
 
         if new_ids:
