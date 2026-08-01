@@ -681,6 +681,73 @@ class NeuralMind:
         """
         return validate_project(self.project_path, write=write)
 
+    def ingest_document(self, file_path: str | Path, content_type: str = "auto") -> dict:
+        """Ingest an arbitrary document as first-class content nodes.
+
+        Parses PDF/Markdown/text files into ContentNode objects that embed
+        alongside code in the same vector space. Large documents are chunked
+        automatically for finer-grained retrieval.
+
+        Args:
+            file_path: Path to the document file or directory.
+            content_type: Type hint ('pdf', 'markdown', 'text', or 'auto' to sniff).
+
+        Returns:
+            Dict with node_count, chunk_count, embed stats, or an error dict.
+        """
+        from neuralmind.document_ingestion import ingest_directory, parse_document
+
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            return {"error": f"File not found: {file_path}"}
+
+        # Build if not already built
+        if not self._built:
+            result = self.build()
+            if not result.get("success"):
+                return {"error": f"Build required before ingestion: {result.get('error')}"}
+
+        try:
+            if file_path.is_dir():
+                content_nodes = [n.to_graph_node() for n in ingest_directory(file_path)]
+            else:
+                content_nodes = [n.to_graph_node() for n in parse_document(file_path)]
+        except (ValueError, RuntimeError) as exc:
+            return {"error": str(exc)}
+
+        if not content_nodes:
+            return {"error": "No content extracted from file", "node_count": 0}
+
+        # Embed the content nodes
+        stats = self.embedder.embed_content(content_nodes)
+
+        # Sync into embedder's node list so BM25 sees them
+        existing_ids = {n.get("id", "") for n in self.embedder.nodes}
+        for cn in content_nodes:
+            cid = cn.get("id", "")
+            if cid not in existing_ids:
+                self.embedder.nodes.append(cn)
+
+        self._emit_audit(
+            category="content_ingestion",
+            action="ingest_document",
+            status="success",
+            target=self.project_path.name,
+            details={
+                "node_count": len(content_nodes),
+                "file_path": str(file_path),
+                "embed_stats": stats,
+            },
+        )
+
+        return {
+            "success": True,
+            "node_count": len(content_nodes),
+            "file_path": str(file_path),
+            "embed_stats": stats,
+        }
+
     def ingest_cmmc(self, registry_path: str | Path) -> dict:
         """Ingest the CMMC practice registry as first-class content nodes.
 
@@ -1495,7 +1562,6 @@ class NeuralMind:
             "avg_query_tokens": round(avg_tokens, 1),
             "avg_reduction_ratio": round(avg_reduction, 1),
             "estimated_full_codebase_tokens": 50000,
-            "baseline_disclosure": "The 'estimated_full_codebase_tokens' is a hardcoded assumed constant (50,000 tokens), not a measured value. Reduction ratios divide this assumed baseline by measured tokens.",
             "results": results,
             "summary": f"{avg_reduction:.1f}x average token reduction",
         }

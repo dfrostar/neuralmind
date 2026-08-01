@@ -1728,20 +1728,36 @@ def cmd_memory(args):
 
 
 def cmd_learn(args):
-    """Deprecated no-op: the synapse layer learns automatically.
+    """Ingest a document (PDF/Markdown/text) into the knowledge graph.
 
-    The old learned_patterns reranker that ``neuralmind learn`` populated has
-    been removed. The Hebbian synapse layer now learns continuously from
-    queries, edits, and tool calls — no manual step, and edges decay instead
-    of going stale. Kept as an exit-0 no-op so existing scripts/CI don't break.
+    Replaces the deprecated no-op. Delegates to ``core.NeuralMind.ingest_document``
+    which parses, chunks, and embeds content nodes into the vector space.
     """
-    print("`neuralmind learn` is deprecated and does nothing.")
-    print(
-        "The synapse layer now learns automatically and continuously from "
-        "queries, edits, and tool calls"
-    )
-    print("(no manual step, and edges decay instead of going stale).")
-    print("Run `neuralmind stats` or `neuralmind memory inspect` to see learned memory.")
+    from neuralmind.core import create_mind
+
+    file_path = Path(args.file_path).resolve() if args.file_path != "." else Path.cwd()
+    if not file_path.exists():
+        print(f"Error: file not found: {file_path}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Learning from: {file_path}")
+    # project_path for create_mind is the parent directory (repo root)
+    project_path = file_path.parent if file_path.is_file() else file_path
+    mind = create_mind(str(project_path), auto_build=True)
+    result = mind.ingest_document(str(file_path), content_type=args.type)
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+        return
+
+    if "error" in result:
+        print(f"Error: {result['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"Ingested {result['node_count']} content nodes from {result['file_path']}")
+    if result.get("embed_stats"):
+        stats = result["embed_stats"]
+        print(f"  Embedded: {stats.get('added', 0)} added, {stats.get('updated', 0)} updated")
 
 
 def cmd_self_improve_status(args):
@@ -3455,9 +3471,12 @@ def main():
     eval_p.set_defaults(func=cmd_eval)
 
     learn_p = subparsers.add_parser(
-        "learn", help="Deprecated no-op: the synapse layer learns automatically"
+        "learn", help="Ingest documents (PDF/Markdown/text) into the knowledge graph"
     )
-    learn_p.add_argument("project_path", nargs="?", default=".")
+    learn_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
+    learn_p.add_argument("--type", default="auto", choices=["auto", "pdf", "markdown", "text", "cmmc"],
+                         help="Content type hint (default: auto-detect)")
+    learn_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
     learn_p.set_defaults(func=cmd_learn)
 
     # onboarding command — interactive setup wizard for team tier
