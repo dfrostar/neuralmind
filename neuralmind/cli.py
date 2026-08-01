@@ -1773,6 +1773,9 @@ def cmd_learn(args):
     if result.get("embed_stats"):
         stats = result["embed_stats"]
         print(f"  Embedded: {stats.get('added', 0)} added, {stats.get('updated', 0)} updated")
+    doc_edges = result.get("synapse_doc_edges", 0)
+    if doc_edges:
+        print(f"  Synapse doc edges: {doc_edges}")
 
 
 def cmd_self_improve_status(args):

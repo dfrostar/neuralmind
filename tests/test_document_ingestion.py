@@ -31,11 +31,13 @@ class TestValidatePath:
         with pytest.raises(ValueError, match="Symlinks not allowed"):
             _validate_path(link, tmp_path)
 
-    def test_escape_rejected(self, tmp_path):
+    def test_outside_root_allowed(self, tmp_path):
+        """Files outside root are allowed (e.g., /tmp); only symlinks are rejected."""
         outside = tmp_path.parent / "escape.txt"
         outside.write_text("hello")
-        with pytest.raises(ValueError, match="Path escapes"):
-            _validate_path(outside, tmp_path)
+        # Should not raise — files outside root are permitted
+        result = _validate_path(outside, tmp_path)
+        assert result == outside.resolve()
 
 
 class TestSniffFileType:

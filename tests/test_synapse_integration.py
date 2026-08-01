@@ -189,3 +189,76 @@ def test_activate_files_single_path_records_no_transitions(tmp_path):
 
     mind.activate_files(["a.py"])
     assert store.stats()["transitions"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Document synapse seeding (v1.12.0)
+# ---------------------------------------------------------------------------
+
+
+def test_seed_from_documentation_writes_edges(tmp_path):
+    """seed_from_documentation writes synapse edges from LLM-extracted relations."""
+    import os
+    os.environ["NEURALMIND_LLM_SEED"] = "1"
+    os.environ["ANTHROPIC_API_KEY"] = "test-key"
+
+    from unittest.mock import patch
+    from neuralmind.synapses import SynapseStore
+
+    (tmp_path / "README.md").write_text(
+        "# MyApp\nAuthentication delegates to hashing."
+    )
+    store = SynapseStore(default_db_path(tmp_path))
+
+    with patch.object(
+        store,
+        "_llm_extract_relations",
+        return_value=[
+            ("auth.py::validate", "auth.py::hash_password", 0.30),
+            ("session.py::create", "session.py::validate_token", 0.35),
+        ],
+    ):
+        count = store.seed_from_documentation(tmp_path)
+
+    assert count == 2
+    assert store.stats()["edges"] == 2
+
+
+def test_seed_from_documentation_gated_off_returns_zero(tmp_path):
+    """Without NEURALMIND_LLM_SEED=1, seeding returns 0 (silent gate)."""
+    import os
+    from neuralmind.synapses import SynapseStore
+
+    (tmp_path / "README.md").write_text("# Docs")
+    store = SynapseStore(default_db_path(tmp_path))
+
+    os.environ.pop("NEURALMIND_LLM_SEED", None)
+    count = store.seed_from_documentation(tmp_path)
+    assert count == 0
+
+
+def test_seed_from_documentation_no_anthropic_key_returns_zero(tmp_path):
+    """With NEURALMIND_LLM_SEED=1 but no ANTHROPIC_API_KEY, seeding returns 0."""
+    import os
+    from neuralmind.synapses import SynapseStore
+
+    (tmp_path / "README.md").write_text("# Docs")
+    store = SynapseStore(default_db_path(tmp_path))
+
+    os.environ["NEURALMIND_LLM_SEED"] = "1"
+    os.environ.pop("ANTHROPIC_API_KEY", None)
+    count = store.seed_from_documentation(tmp_path)
+    assert count == 0
+
+
+def test_seed_from_documentation_empty_docs_returns_zero(tmp_path):
+    """No README or architecture.md → 0 edges."""
+    import os
+    os.environ["NEURALMIND_LLM_SEED"] = "1"
+    os.environ["ANTHROPIC_API_KEY"] = "test-key"
+
+    from neuralmind.synapses import SynapseStore
+
+    store = SynapseStore(default_db_path(tmp_path))
+    count = store.seed_from_documentation(tmp_path)
+    assert count == 0
