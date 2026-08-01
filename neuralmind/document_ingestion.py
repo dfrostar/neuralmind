@@ -135,14 +135,19 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
 
 
 def _make_node_id(path: Path, index: int = 0) -> str:
-    """Create a unique node ID for a document chunk."""
+    """Create a unique node ID for a document chunk.
+    
+    Uses both stem AND extension to avoid collisions (e.g. a.md vs a.txt).
+    """
     stem = path.stem.replace(" ", "_")
+    ext = path.suffix.lstrip(".").replace(" ", "_")
+    base = f"{stem}.{ext}" if ext else stem
     if index == 0:
-        return f"doc:{stem}"
-    return f"doc:{stem}:chunk{index}"
+        return f"doc:{base}"
+    return f"doc:{base}:chunk{index}"
 
 
-def parse_document(path: Path, root: Path | None = None) -> list[ContentNode]:
+def parse_document(path: Path, root: Path | None = None, content_type: str = "auto") -> list[ContentNode]:
     """Parse a document file into ContentNodes.
     
     Large documents are chunked into multiple nodes for finer-grained retrieval.
@@ -150,6 +155,7 @@ def parse_document(path: Path, root: Path | None = None) -> list[ContentNode]:
     Args:
         path: Path to the document file.
         root: Root directory for path validation. If None, uses path.parent.
+        content_type: Type hint ('pdf', 'markdown', 'text', or 'auto' to sniff).
         
     Returns:
         List of ContentNode objects.
@@ -169,7 +175,12 @@ def parse_document(path: Path, root: Path | None = None) -> list[ContentNode]:
     if root is None:
         root = path.parent
     _validate_path(path, root)
-    file_type = _sniff_file_type(path)
+    
+    # If content_type is explicit (not auto), use it directly
+    if content_type != "auto":
+        file_type = content_type
+    else:
+        file_type = _sniff_file_type(path)
 
     if file_type == "unknown":
         raise ValueError(f"Unsupported file type (binary?): {path}")

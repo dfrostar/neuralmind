@@ -713,7 +713,11 @@ class NeuralMind:
             if file_path.is_dir():
                 content_nodes = [n.to_graph_node() for n in ingest_directory(file_path)]
             else:
-                content_nodes = [n.to_graph_node() for n in parse_document(file_path, root=root)]
+                # If content_type is explicitly specified (not "auto"), pass it through
+                if content_type != "auto":
+                    content_nodes = [n.to_graph_node() for n in parse_document(file_path, root=root, content_type=content_type)]
+                else:
+                    content_nodes = [n.to_graph_node() for n in parse_document(file_path, root=root)]
         except (ValueError, RuntimeError) as exc:
             return {"error": str(exc)}
 

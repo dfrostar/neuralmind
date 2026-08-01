@@ -491,8 +491,13 @@ class TurboVecEmbedder(EmbeddingBackend):
             scores, ids = idx.search(q, k, allowlist=allowlist)
         except Exception:
             # A freshly mutated index may need (re)preparing before search.
-            idx.prepare()
-            scores, ids = idx.search(q, k, allowlist=allowlist)
+            # If the retry still fails (e.g., allowlist has dangling uids not in index),
+            # return empty results instead of crashing.
+            try:
+                idx.prepare()
+                scores, ids = idx.search(q, k, allowlist=allowlist)
+            except Exception:
+                return []
 
         out: list[dict[str, Any]] = []
         for score, uid in zip(scores[0], ids[0], strict=True):
