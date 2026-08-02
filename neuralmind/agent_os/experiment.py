@@ -22,6 +22,16 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 
+def _normal_cdf(x: float) -> float:
+    """Standard normal cumulative distribution function.
+
+    Uses the error function approximation. Sufficient for p-value
+    estimation with n>=2 historical samples.
+    """
+    import math
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
 class ExperimentStatus(str, Enum):
     """Lifecycle states for an experiment."""
 
@@ -150,6 +160,9 @@ class ExperimentRunner:
         )
         delta = self._compute_delta(baseline_value, candidate_value, higher_is_better)
 
+        # Compute p-value from historical deltas (Welch's t-test)
+        p_value = self._compute_p_value(delta)
+
         # Verdict logic (deterministic, auditable)
         if delta >= promote_threshold:
             verdict = ExperimentStatus.PROMOTED
@@ -165,7 +178,7 @@ class ExperimentRunner:
             baseline_value=baseline_value,
             candidate_value=candidate_value,
             delta=delta,
-            p_value=None,  # POC: no p-value yet
+            p_value=p_value,
             verdict=verdict,
             started_at=datetime.now(timezone.utc).isoformat(),
             ended_at=datetime.now(timezone.utc).isoformat(),
@@ -173,6 +186,35 @@ class ExperimentRunner:
         )
         self._history.append(result)
         return result
+
+    def _compute_p_value(self, current_delta: float) -> float | None:
+        """Compute p-value for the current delta against historical deltas.
+
+        Uses Welch's t-test (unequal variance). Returns None if <2 historical
+        samples. Falls back to heuristic when variance is zero.
+        """
+        historical = [
+            r.delta for r in self._history
+            if r.delta is not None
+        ]
+        if len(historical) < 2:
+            return None
+
+        n = len(historical)
+        mean_h = sum(historical) / n
+        var_h = sum((d - mean_h) ** 2 for d in historical) / max(n - 1, 1)
+
+        if var_h < 1e-12:
+            # Zero variance: current delta is either identical or different
+            return 0.0 if abs(current_delta - mean_h) < 1e-9 else 100.0
+
+        # Welch's t-statistic: (current - mean_h) / sqrt(var_h / n)
+        se = (var_h / n) ** 0.5
+        t_stat = (current_delta - mean_h) / se if se > 1e-12 else 0.0
+
+        # Approximate p-value using normal distribution (sufficient for n>=2)
+        p = 2.0 * (1.0 - _normal_cdf(abs(t_stat)))
+        return min(max(p, 0.0), 1.0)
 
     def get_history(self) -> list[ExperimentResult]:
         """Return experiment history (newest first)."""

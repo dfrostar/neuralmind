@@ -465,6 +465,21 @@ class TestExperimentRunner:
         runner.clear_history()
         assert len(runner.get_history()) == 0
 
+    def test_p_value_none_with_few_samples(self):
+        """p-value is None when <2 historical samples."""
+        runner = ExperimentRunner()
+        result = runner.run("p1", "m", 100.0, 90.0)
+        assert result.p_value is None
+
+    def test_p_value_computed_with_history(self):
+        """p-value is computed when >=2 historical samples exist."""
+        runner = ExperimentRunner()
+        runner.run("p1", "m", 100.0, 90.0)
+        runner.run("p2", "m", 100.0, 80.0)
+        result = runner.run("p3", "m", 100.0, 95.0)
+        assert result.p_value is not None
+        assert 0.0 <= result.p_value <= 1.0
+
 
 # ---------------------------------------------------------------------------
 # Integration: signal → experiment
