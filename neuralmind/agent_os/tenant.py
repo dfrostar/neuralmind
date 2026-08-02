@@ -184,7 +184,11 @@ class TenantRegistry:
     """
 
     def __init__(self, tenants_dir: Path | None = None) -> None:
-        self.tenants_dir = Path(tenants_dir) if tenants_dir else DEFAULT_TENANTS_DIR
+        if tenants_dir is None:
+            # Read env var at instantiation time for test isolation
+            env_dir = os.environ.get("NEURALMIND_TENANTS_DIR")
+            tenants_dir = Path(env_dir) if env_dir else DEFAULT_TENANTS_DIR
+        self.tenants_dir = Path(tenants_dir)
         self._lock = threading.Lock()
         self._cache: dict[str, Tenant] = {}
         self._project_index: dict[str, str] = {}  # project_path → tenant_id

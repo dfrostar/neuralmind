@@ -13,9 +13,9 @@ Design:
     - Permissions are granular, not role-names. Roles map to permission sets.
     - Unknown roles get viewer-only permissions (fail-closed).
     - The audit log records every permission check failure.
+    - Audit log is fail-closed: errors surface, not silently dropped.
     - Stdlib-only: no external dependencies.
 """
-
 from __future__ import annotations
 
 import enum
@@ -23,7 +23,6 @@ import functools
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
@@ -45,23 +44,14 @@ class Role(enum.Enum):
 class Permission(enum.Enum):
     """Agent OS permissions."""
 
-    # Project management
     MANAGE_PROJECTS = "manage_projects"
     VIEW_PROJECTS = "view_projects"
-
-    # RBAC management
     MANAGE_RBAC = "manage_rbac"
     VIEW_RBAC = "view_rbac"
-
-    # Signal/operations
     VIEW_SIGNALS = "view_signals"
     MANAGE_SIGNALS = "manage_signals"
-
-    # Experiments
     RUN_EXPERIMENTS = "run_experiments"
     VIEW_EXPERIMENTS = "view_experiments"
-
-    # Tenant management (admin only)
     DELETE_TENANT = "delete_tenant"
     MANAGE_GOVERNANCE = "manage_governance"
 
@@ -112,13 +102,11 @@ def _resolve_role_value(role_str: str) -> Role:
 
 
 def role_has_permission(role_str: str, permission: Permission) -> bool:
-    """Check if a role string grants a specific permission."""
     role = _resolve_role_value(role_str)
     return permission in ROLE_PERMISSIONS.get(role, set())
 
 
 def get_user_role(tenant: Tenant, email: str) -> str:
-    """Get the role string for an email in a tenant. Defaults to viewer."""
     for assignment in tenant.rbac:
         if assignment.email.lower() == email.lower():
             return assignment.role
@@ -126,28 +114,16 @@ def get_user_role(tenant: Tenant, email: str) -> str:
 
 
 def check_permission(tenant: Tenant, email: str, permission: Permission) -> bool:
-    """Check if email has a specific permission in a tenant."""
     role_str = get_user_role(tenant, email)
     return role_has_permission(role_str, permission)
 
 
 def require_permission(permission: Permission) -> Callable[[F], F]:
-    """Decorator that enforces a permission on a method.
-
-    The decorated method's first positional argument after `self`
-    must be the tenant_id (str), and the second must be the email (str).
-
-    Usage:
-        @require_permission(Permission.MANAGE_RBAC)
-        def add_role(self, tenant_id, email, target_email, role):
-            ...
-    """
+    """Decorator that enforces a permission on a method."""
 
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # Extract tenant_id and email from positional args
-            # Assumes: (self, tenant_id, email, ...)
             if len(args) < 3:
                 raise InsufficientPermissionError(
                     f"Cannot enforce permission {permission.value}: "
@@ -155,8 +131,6 @@ def require_permission(permission: Permission) -> Callable[[F], F]:
                 )
             tenant_id = args[1]
             email = args[2]
-            # Tenant must be resolved by the caller/registry
-            # For now, we accept a TenantRegistry instance in self._tenant_registry
             self_obj = args[0]
             registry = getattr(self_obj, "_tenant_registry", None)
             if registry is None:
@@ -195,36 +169,35 @@ class AgentOSGovernance:
     """Enforces RBAC and governance rules for the Agent OS.
 
     Wraps TenantRegistry with permission enforcement methods.
-    Audit log is JSONL in ~/.config/neuralmind/agent-os-audit.jsonl.
+    Audit log is stored in SQLite (fail-closed).
     """
 
     def __init__(
         self,
         tenant_registry: TenantRegistry,
         audit_path: Path | None = None,
+        store: Any = None,
     ) -> None:
         self._tenant_registry = tenant_registry
         self._tenants_dir = tenant_registry.tenants_dir
-        audit_dir = Path(self._tenants_dir).parent
-        self._audit_path = audit_path or (audit_dir / "agent-os-audit.jsonl")
-        self._audit_path.parent.mkdir(parents=True, exist_ok=True)
+        self._store = store
 
-    def _audit(self, actor: str, action: str, target: str, details: dict) -> None:
-        """Append an entry to the audit log."""
-        entry = {
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "actor": actor,
-            "action": action,
-            "target": target,
-            **details,
-        }
-        try:
-            with self._audit_path.open("a", encoding="utf-8") as f:
-                import json
-
-                f.write(json.dumps(entry, ensure_ascii=True) + "\n")
-        except OSError:
-            pass  # fail-open: audit logging must never block operations
+    def _audit(
+        self,
+        tenant_id: str,
+        actor: str,
+        action: str,
+        target: str,
+        details: dict | None = None,
+    ) -> None:
+        """Append an entry to the audit log. Fail-closed: raises on error."""
+        if self._store is not None:
+            # Use store's fail-closed audit
+            self._store.audit(tenant_id, actor, action, target, details)
+        else:
+            # Fallback: at least log it if no store
+            log.info("AUDIT: tenant=%s actor=%s action=%s target=%s details=%s",
+                     tenant_id, actor, action, target, details)
 
     def enforce(
         self,
@@ -232,11 +205,7 @@ class AgentOSGovernance:
         email: str,
         permission: Permission,
     ) -> GovernanceResult:
-        """Enforce a permission check with audit logging.
-
-        Returns a GovernanceResult with allowed=True only if the email
-        has the permission in the specified tenant.
-        """
+        """Enforce a permission check with audit logging."""
         tenant = self._tenant_registry.get_tenant(tenant_id)
         if tenant is None:
             return GovernanceResult(
@@ -245,7 +214,7 @@ class AgentOSGovernance:
             )
         role_str = get_user_role(tenant, email)
         if role_has_permission(role_str, permission):
-            self._audit(email, "permission_granted", tenant_id, {"permission": permission.value})
+            self._audit(tenant_id, email, "permission_granted", tenant_id, {"permission": permission.value})
             return GovernanceResult(
                 allowed=True,
                 reason=f"Permission {permission.value} granted",
@@ -253,6 +222,7 @@ class AgentOSGovernance:
                 permission=permission.value,
             )
         self._audit(
+            tenant_id,
             email,
             "permission_denied",
             tenant_id,
@@ -271,26 +241,12 @@ class AgentOSGovernance:
     def create_tenant(
         self,
         tenant_id: str,
-        email: str,  # the creating user, who becomes the tenant admin
+        email: str,
         name: str,
         tier: str = "free",
         projects: list[str] | None = None,
     ) -> Tenant:
-        """Create a tenant with the creator as admin.
-
-        This is a bootstrap operation: no pre-existing tenant context exists
-        to check a permission against, so it must NOT be gated by
-        ``require_permission`` (a decorator there would look up the not-yet-
-        created tenant and always fail). Validation of the tenant_id and
-        project ownership is performed by the underlying registry.
-
-        LIMITATION: The caller's identity is trusted from the request body
-        (``email``). Without a system-level authentication boundary, any
-        caller can create a tenant and self-appoint as its admin. This is
-        acceptable for single-operator daemon deployments but MUST be gated
-        at the API layer (resolve caller from auth token, not body) before
-        multi-tenant production use. See docs/specs/AGENT-OS-QA-REPORT.md.
-        """
+        """Create a tenant with the creator as admin."""
         return self._tenant_registry.create_tenant(
             tenant_id=tenant_id,
             name=name,
@@ -310,13 +266,11 @@ class AgentOSGovernance:
         """Assign a role to a user. Admin-only."""
         tenant = self._tenant_registry.add_role(tenant_id, target_email, role, admin_email)
         self._audit(
+            tenant_id,
             admin_email,
             "role_assigned",
             tenant_id,
-            {
-                "target": target_email,
-                "role": role,
-            },
+            {"target": target_email, "role": role},
         )
         return tenant
 
@@ -329,7 +283,7 @@ class AgentOSGovernance:
     ) -> Tenant:
         """Add a project to a tenant. Operator+."""
         tenant = self._tenant_registry.add_project(tenant_id, project_path, email)
-        self._audit(email, "project_added", tenant_id, {"project": project_path})
+        self._audit(tenant_id, email, "project_added", tenant_id, {"project": project_path})
         return tenant
 
     @require_permission(Permission.DELETE_TENANT)
@@ -338,9 +292,13 @@ class AgentOSGovernance:
         tenant_id: str,
         admin_email: str,
     ) -> None:
-        """Delete a tenant. Admin-only."""
+        """Delete a tenant. Admin-only. Cascade cleanup."""
         self._tenant_registry.delete_tenant(tenant_id, admin_email)
-        self._audit(admin_email, "tenant_deleted", tenant_id, {})
+        self._audit(tenant_id, admin_email, "tenant_deleted", tenant_id, {})
+        # Cascade cleanup: delete all tenant data from store
+        if self._store is not None:
+            rows = self._store.delete_tenant(tenant_id)
+            log.info("Cascade delete: removed %d rows for tenant %s", rows, tenant_id)
 
     def list_accessible_tenants(self, email: str) -> list[Tenant]:
         """List all tenants where the email has any role."""

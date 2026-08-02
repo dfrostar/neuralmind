@@ -628,11 +628,14 @@ class TestFailurePaths:
             blind_spots=[dummy_spot],
         )
 
-        # Monkeypatch _patch_file to raise
-        def failing_patch(file_path, line, variant):
-            raise OSError("disk full")
+        # Monkeypatch Path.write_text to raise for the target file
+        original_write_text = Path.write_text
+        def failing_write_text(self, *args, **kwargs):
+            if str(self).endswith("export.ts"):
+                raise OSError("disk full")
+            return original_write_text(self, *args, **kwargs)
 
-        monkeypatch.setattr(evolver, "_patch_file", failing_patch)
+        monkeypatch.setattr(Path, "write_text", failing_write_text)
 
         # Should not raise, should return empty list
         modified = evolver.patch_winners([result])

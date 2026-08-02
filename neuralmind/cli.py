@@ -4337,6 +4337,7 @@ def main():
     signals_push = signals_subcmd.add_parser("push", help="Push a metric value")
     signals_push.add_argument("--metric", required=True, help="Metric name")
     signals_push.add_argument("--value", type=float, required=True, help="Metric value")
+    signals_push.add_argument("--project-path", help="Project path for correlator insight")
 
     # Experiments
     experiments_p = agent_os_sub.add_parser("experiments", help="Experiment operations")
@@ -4351,6 +4352,31 @@ def main():
     exp_run.add_argument("--threshold", type=float, help="Override promote threshold (%)")
 
     exp_history = experiments_subcmd.add_parser("history", help="Show experiment history")
+
+    # Proposals (NEW in v1.16.0)
+    proposals_p = agent_os_sub.add_parser("proposals", help="Proposal management")
+    proposals_subcmd = proposals_p.add_subparsers(dest="proposals_action")
+
+    proposals_create = proposals_subcmd.add_parser("create", help="Create a proposal")
+    proposals_create.add_argument("--title", required=True, help="Proposal title")
+    proposals_create.add_argument("--hypothesis", required=True, help="Hypothesis statement")
+    proposals_create.add_argument("--baseline-tag", required=True, help="Baseline tag/version")
+    proposals_create.add_argument("--candidate-tag", required=True, help="Candidate tag/version")
+    proposals_create.add_argument("--metric", required=True, help="Metric name")
+    proposals_create.add_argument("--baseline", type=float, required=True, help="Baseline value")
+    proposals_create.add_argument("--candidate", type=float, required=True, help="Candidate value")
+    proposals_create.add_argument("--tags", nargs="*", help="Optional tags")
+
+    proposals_list_cmd = proposals_subcmd.add_parser("list", help="List all proposals")
+
+    proposals_run = proposals_subcmd.add_parser("run", help="Run experiment for a proposal")
+    proposals_run.add_argument("--id", required=True, help="Proposal ID")
+
+    proposals_history = proposals_subcmd.add_parser("history", help="Show proposal history")
+    proposals_history.add_argument("--id", required=True, help="Proposal ID")
+
+    # Health Snapshot (NEW in v1.16.0)
+    health_snapshot_p = agent_os_sub.add_parser("health-snapshot", help="Full Agent OS health snapshot")
 
     # Migrate
     migrate_p = agent_os_sub.add_parser("migrate", help="Database migration")
@@ -4371,6 +4397,11 @@ def main():
     signals_push.set_defaults(func=cmd_agent_os)
     exp_run.set_defaults(func=cmd_agent_os)
     exp_history.set_defaults(func=cmd_agent_os)
+    proposals_create.set_defaults(func=cmd_agent_os)
+    proposals_list_cmd.set_defaults(func=cmd_agent_os)
+    proposals_run.set_defaults(func=cmd_agent_os)
+    proposals_history.set_defaults(func=cmd_agent_os)
+    health_snapshot_p.set_defaults(func=cmd_agent_os)
     migrate_pg.set_defaults(func=cmd_agent_os)
     migrate_status.set_defaults(func=cmd_agent_os)
 

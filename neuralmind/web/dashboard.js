@@ -362,6 +362,26 @@
           </div>
         `).join('');
     }
+
+    // Proposals (v1.16.0)
+    const proposals = agentos.proposals || {};
+    setText('agentos-total-proposals', fmtNumber(proposals.total_proposals));
+    setText('agentos-active-proposals', fmtNumber(proposals.active));
+    setText('agentos-promoted-proposals', fmtNumber(proposals.promoted));
+    setText('agentos-rolledback-proposals', fmtNumber(proposals.rolled_back));
+    const propList = document.getElementById('agentos-proposals-list');
+    const recentProposals = proposals.recent || [];
+    if (recentProposals.length === 0) {
+      propList.innerHTML = '<div class="empty-state">No proposals</div>';
+    } else {
+      propList.innerHTML = recentProposals
+        .map(p => `
+          <div class="list-item">
+            <span class="list-label">${escapeHtml(p.title)}</span>
+            <span class="list-meta">${escapeHtml(p.metric_name)} · ${p.baseline_value} → ${p.candidate_value} · <span class="proposal-status ${escapeHtml(p.status)}">${escapeHtml(p.status)}</span> · signals: ${p.signal_count || 0}</span>
+          </div>
+        `).join('');
+    }
   }
 
   // Utility: set textContent

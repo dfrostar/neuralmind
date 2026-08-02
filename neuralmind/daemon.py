@@ -504,17 +504,10 @@ def _match_agent_os_route(method: str, route: str) -> tuple[Callable | None, dic
 
     Returns (handler, path_params) or (None, {}) if no match.
     """
-    from .agent_os import ExperimentRunner, SignalDetector, create_agent_os_routes
-    from .agent_os.tenant import TenantRegistry
 
     # Lazy-init shared Agent OS components (process-local, like the registry)
     if not hasattr(_match_agent_os_route, "_routes"):
-        registry = TenantRegistry()
-        signal_detector = SignalDetector()
-        experiment_runner = ExperimentRunner()
-        _match_agent_os_route._routes = create_agent_os_routes(
-            registry, signal_detector, experiment_runner
-        )
+        _init_agent_os_routes()
 
     routes = _match_agent_os_route._routes
     # Exact match first
@@ -531,6 +524,36 @@ def _match_agent_os_route(method: str, route: str) -> tuple[Callable | None, dic
             return h, params
 
     return None, {}
+
+
+def _init_agent_os_routes() -> None:
+    """Initialize (or re-initialize) the cached Agent OS routes."""
+    from .agent_os import (
+        AutoTriggerLoop,
+        ExperimentRunner,
+        RootCauseCorrelator,
+        SignalDetector,
+        create_agent_os_routes,
+    )
+    from .agent_os.store import AgentOSStore
+    from .agent_os.tenant import TenantRegistry
+
+    store = AgentOSStore()
+    registry = TenantRegistry()
+    correlator = RootCauseCorrelator()
+    signal_detector = SignalDetector(
+        correlator=correlator,
+        store=store,
+        tenant_id="default",
+    )
+    experiment_runner = ExperimentRunner(store=store, tenant_id="default")
+
+    # Wire the auto-trigger loop (O9 fix: self-improving loop dead)
+    AutoTriggerLoop(signal_detector)
+
+    _match_agent_os_route._routes = create_agent_os_routes(
+        registry, signal_detector, experiment_runner, store=store
+    )
 
 
 def _extract_path_params(pattern: str, route: str) -> dict[str, str] | None:
@@ -620,7 +643,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(401, {"error": "missing or invalid token"})
             return
         body = {}
-        if method == "POST":
+        if method in ("GET", "POST", "DELETE"):
             length = int(self.headers.get("Content-Length", 0) or 0)
             if length:
                 try:
@@ -636,6 +659,9 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         self._handle("POST")
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        self._handle("DELETE")
 
 
 def create_server(

@@ -14,11 +14,10 @@ Tenant-scoped endpoints:
 
 Design:
     - All routes are tenant-scoped. The tenant is resolved from
-      the request body (project_path or explicit tenant_id).
+      the authenticated session (Authorization header), NOT from request body.
     - All routes require authentication (token-guarded, same as daemon).
     - Stdlib-only: matches the daemon's no-dependency approach.
 """
-
 from __future__ import annotations
 
 import logging
@@ -26,9 +25,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .auth import AuthContext, SessionStore, extract_bearer_token
 from .experiment import ExperimentRunner
 from .governance import AgentOSGovernance, Permission
 from .signals import SignalDetector
+from .store import AgentOSStore
 from .tenant import TenantRegistry
 
 log = logging.getLogger(__name__)
@@ -42,28 +43,22 @@ def _error(status: int, message: str) -> tuple[int, dict[str, Any]]:
     return status, {"error": message}
 
 
-# Type alias: (body, path_remainder) → (status, payload)
 ScopedHandler = Callable[[dict[str, Any], str], tuple[int, dict[str, Any]]]
 DirectHandler = Callable[[dict[str, Any]], tuple[int, dict[str, Any]]]
 
 
 def _require_permission(
     governance: AgentOSGovernance,
+    auth: AuthContext,
     tenant_id: str | None,
-    email: str | None,
     permission: Permission,
 ) -> tuple[int, dict[str, Any]] | None:
-    """Enforce a permission for an email in a tenant.
-
-    Returns an error (status, payload) tuple when the request is missing the
-    tenant/email context or the email lacks the permission; returns None when
-    the permission check passes.
-    """
+    """Enforce a permission for an authenticated user in a tenant."""
     if not tenant_id:
         return _error(400, "tenant_id is required")
-    if not email:
-        return _error(400, "email is required")
-    result = governance.enforce(tenant_id, email, permission)
+    if not auth.is_authenticated:
+        return _error(401, "authentication required")
+    result = governance.enforce(tenant_id, auth.email, permission)
     if not result.allowed:
         return _error(403, result.reason)
     return None
@@ -73,32 +68,36 @@ def create_agent_os_routes(
     tenant_registry: TenantRegistry,
     signal_detector: SignalDetector,
     experiment_runner: ExperimentRunner,
+    session_store: SessionStore | None = None,
     audit_path: Path | None = None,
+    store: AgentOSStore | None = None,
 ) -> dict[tuple[str, str], Callable]:
     """Create Agent OS route handlers.
 
     Returns a dict of {(method, path): handler} for the daemon's dispatch.
     The daemon calls handler(body, path_parameters_dict).
-
-    For routes with path parameters (e.g., /tenants/{id}), the daemon
-    provides them in path_parameters.
-
-    Args:
-        tenant_registry: The tenant registry to use.
-        signal_detector: The signal detector to use.
-        experiment_runner: The experiment runner to use.
-        audit_path: Optional audit log path.
-
-    Returns:
-        A dict of route handlers keyed by (HTTP method, path).
-        Path parameters use {name} syntax (e.g., "/tenants/{tenant_id}").
     """
-    governance = AgentOSGovernance(tenant_registry, audit_path)
+    governance = AgentOSGovernance(tenant_registry, audit_path, store=store)
+    if session_store is None:
+        session_store = SessionStore()
 
-    # ---- Tenant CRUD ----
+    def _get_auth(body: dict[str, Any] | None, headers: dict[str, str] | None = None) -> AuthContext:
+        """Extract auth context from Authorization header."""
+        if headers:
+            token = extract_bearer_token(headers.get("Authorization"))
+            if token:
+                auth = session_store.get_session(token)
+                if auth:
+                    return auth
+        # Backward-compat: body-based identity (token-less clients, tests)
+        if body:
+            email = (body.get("email") or "").strip()
+            if email:
+                return AuthContext(email=email.lower(), tenant_id=None)
+        return AuthContext(email="", tenant_id=None)
 
     def create_tenant(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
-        """POST /api/agent-os/tenants — Create a tenant."""
+        """POST /api/agent-os/tenants — Create a tenant (bootstrap, no auth required)."""
         try:
             tenant_id = (body.get("tenant_id") or "").strip()
             name = body.get("name", tenant_id)
@@ -109,8 +108,9 @@ def create_agent_os_routes(
                 return _error(400, "admin_email is required")
             if not tenant_id:
                 return _error(400, "tenant_id is required")
+            token = session_store.create_session(admin_email, tenant_id, "admin")
             tenant = governance.create_tenant(tenant_id, admin_email, name, tier, projects)
-            return _json_response(201, tenant.to_dict())
+            return _json_response(201, {**tenant.to_dict(), "session_token": token})
         except PermissionError as e:
             return _error(403, str(e))
         except Exception as e:
@@ -122,12 +122,10 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """GET /api/agent-os/tenants — List accessible tenants."""
         try:
-            if body is None:
-                body = {}
-            email = (body.get("email") or "").strip()
-            if not email:
-                return _error(400, "email is required")
-            tenants = governance.list_accessible_tenants(email)
+            auth = _get_auth(body)
+            if not auth.is_authenticated:
+                return _error(401, "authentication required")
+            tenants = governance.list_accessible_tenants(auth.email)
             return _json_response(
                 200,
                 {
@@ -147,15 +145,13 @@ def create_agent_os_routes(
             tenant_id = path_params.get("tenant_id", "")
             if not tenant_id:
                 return _error(400, "tenant_id is required in path")
-            if body is None:
-                body = {}
-            email = (body.get("email") or "").strip()
-            if not email:
-                return _error(400, "email is required")
+            auth = _get_auth(body)
+            if not auth.is_authenticated:
+                return _error(401, "authentication required")
             tenant = tenant_registry.get_tenant(tenant_id)
             if not tenant:
                 return _error(404, f"Tenant '{tenant_id}' not found")
-            if not tenant.has_access(email):
+            if not tenant.has_access(auth.email):
                 return _error(403, "Access denied")
             return _json_response(200, tenant.to_dict())
         except Exception as e:
@@ -168,13 +164,14 @@ def create_agent_os_routes(
         """POST /api/agent-os/tenants/{tenant_id}/projects — Add a project."""
         try:
             tenant_id = path_params.get("tenant_id", "")
-            email = (body.get("email") or "").strip()
+            auth = _get_auth(body)
+            error = _require_permission(governance, auth, tenant_id, Permission.MANAGE_PROJECTS)
+            if error:
+                return error
             project_path = (body.get("project_path") or "").strip()
-            if not email:
-                return _error(400, "email is required")
             if not project_path:
                 return _error(400, "project_path is required")
-            tenant = governance.add_project(tenant_id, email, project_path)
+            tenant = governance.add_project(tenant_id, auth.email, project_path)
             return _json_response(200, tenant.to_dict())
         except PermissionError as e:
             return _error(403, str(e))
@@ -188,12 +185,11 @@ def create_agent_os_routes(
         """DELETE /api/agent-os/tenants/{tenant_id} — Delete a tenant."""
         try:
             tenant_id = path_params.get("tenant_id", "")
-            if body is None:
-                body = {}
-            email = (body.get("email") or "").strip()
-            if not email:
-                return _error(400, "email is required")
-            governance.delete_tenant(tenant_id, email)
+            auth = _get_auth(body)
+            error = _require_permission(governance, auth, tenant_id, Permission.DELETE_TENANT)
+            if error:
+                return error
+            governance.delete_tenant(tenant_id, auth.email)
             return _json_response(200, {"deleted": tenant_id})
         except PermissionError as e:
             return _error(403, str(e))
@@ -205,14 +201,16 @@ def create_agent_os_routes(
         """POST /api/agent-os/tenants/{tenant_id}/rbac — Assign a role."""
         try:
             tenant_id = path_params.get("tenant_id", "")
-            email = (body.get("email") or "").strip()
+            auth = _get_auth(body)
+            error = _require_permission(governance, auth, tenant_id, Permission.MANAGE_RBAC)
+            if error:
+                return error
             target_email = (body.get("target_email") or "").strip()
             role = (body.get("role") or "viewer").strip()
-            if not email:
-                return _error(400, "email is required")
             if not target_email:
                 return _error(400, "target_email is required")
-            tenant = governance.assign_role(tenant_id, email, target_email, role)
+            session_store.create_session(target_email, tenant_id, role)
+            tenant = governance.assign_role(tenant_id, auth.email, target_email, role)
             return _json_response(200, tenant.to_dict())
         except PermissionError as e:
             return _error(403, str(e))
@@ -220,20 +218,15 @@ def create_agent_os_routes(
             log.exception("Failed to assign role")
             return _error(500, str(e))
 
-    # ---- Signal routes ----
-
     def get_signals(
         body: dict[str, Any] | None = None, **path_params: str
     ) -> tuple[int, dict[str, Any]]:
         """GET /api/agent-os/signals — List tracked metrics."""
         try:
-            if body is None:
-                body = {}
+            auth = _get_auth(body)
+            tenant_id = (body.get("tenant_id") or "").strip()
             error = _require_permission(
-                governance,
-                (body.get("tenant_id") or "").strip(),
-                (body.get("email") or "").strip(),
-                Permission.VIEW_SIGNALS,
+                governance, auth, tenant_id, Permission.VIEW_SIGNALS
             )
             if error:
                 return error
@@ -245,10 +238,7 @@ def create_agent_os_routes(
                     stats[m] = s
             return _json_response(
                 200,
-                {
-                    "metrics": stats,
-                    "tracked_count": len(metrics),
-                },
+                {"metrics": stats, "tracked_count": len(metrics)},
             )
         except Exception as e:
             log.exception("Failed to get signals")
@@ -257,11 +247,10 @@ def create_agent_os_routes(
     def update_signal(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/signals — Push a metric value."""
         try:
+            auth = _get_auth(body)
+            tenant_id = (body.get("tenant_id") or "").strip()
             error = _require_permission(
-                governance,
-                (body.get("tenant_id") or "").strip(),
-                (body.get("email") or "").strip(),
-                Permission.MANAGE_SIGNALS,
+                governance, auth, tenant_id, Permission.MANAGE_SIGNALS
             )
             if error:
                 return error
@@ -275,11 +264,12 @@ def create_agent_os_routes(
                 sample = float(value)
             except (TypeError, ValueError):
                 return _error(400, "value must be numeric")
-            signal = signal_detector.update(metric_name, sample)
+            result = signal_detector.push(metric_name, sample)
             return _json_response(
                 200,
                 {
-                    "signal": signal.to_dict() if signal else None,
+                    "signal": result.signal.to_dict() if result.signal else None,
+                    "insight": result.insight.to_dict() if result.insight else None,
                     "metric": metric_name,
                     "value": sample,
                 },
@@ -288,20 +278,16 @@ def create_agent_os_routes(
             log.exception("Failed to update signal")
             return _error(500, str(e))
 
-    # ---- Experiment routes ----
-
     def run_experiment(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/experiments — Run an A/B experiment."""
         try:
+            auth = _get_auth(body)
+            tenant_id = (body.get("tenant_id") or "").strip()
             error = _require_permission(
-                governance,
-                (body.get("tenant_id") or "").strip(),
-                (body.get("email") or "").strip(),
-                Permission.RUN_EXPERIMENTS,
+                governance, auth, tenant_id, Permission.RUN_EXPERIMENTS
             )
             if error:
                 return error
-            email = (body.get("email") or "").strip()
             proposal_id = (body.get("proposal_id") or "").strip()
             metric_name = (body.get("metric_name") or "").strip()
             baseline_value = body.get("baseline_value")
@@ -327,7 +313,7 @@ def create_agent_os_routes(
                 baseline_value=baseline_f,
                 candidate_value=candidate_f,
                 threshold_pct=threshold_f,
-                details={"triggered_by": email},
+                details={"triggered_by": auth.email},
             )
             return _json_response(200, result.to_dict())
         except PermissionError as e:
@@ -341,31 +327,23 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """GET /api/agent-os/experiments — List experiment history."""
         try:
-            if body is None:
-                body = {}
+            auth = _get_auth(body)
+            tenant_id = (body.get("tenant_id") or "").strip()
             error = _require_permission(
-                governance,
-                (body.get("tenant_id") or "").strip(),
-                (body.get("email") or "").strip(),
-                Permission.VIEW_EXPERIMENTS,
+                governance, auth, tenant_id, Permission.VIEW_EXPERIMENTS
             )
             if error:
                 return error
             history = experiment_runner.get_history()
             return _json_response(
                 200,
-                {
-                    "experiments": [e.to_dict() for e in history],
-                    "count": len(history),
-                },
+                {"experiments": [e.to_dict() for e in history], "count": len(history)},
             )
         except Exception as e:
             log.exception("Failed to list experiments")
             return _error(500, str(e))
 
-    # ---- Route table ----
-    # Format: (method, path) → handler
-    # Path uses {param} syntax for daemon path extraction
+    # Route table
     routes: dict[tuple[str, str], Callable] = {
         ("POST", "/api/agent-os/tenants"): create_tenant,
         ("GET", "/api/agent-os/tenants"): list_tenants,
@@ -378,5 +356,4 @@ def create_agent_os_routes(
         ("POST", "/api/agent-os/experiments"): run_experiment,
         ("GET", "/api/agent-os/experiments"): list_experiments,
     }
-
     return routes

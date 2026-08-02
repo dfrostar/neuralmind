@@ -402,38 +402,6 @@ def agent_os_experiments(promotion_engine: Any = None) -> dict[str, Any]:
         }
 
 
-def agent_os_proposals() -> dict[str, Any]:
-    """Agent OS proposal summary for dashboard display."""
-    try:
-        from .agent_os.proposal_store import list_proposals
-
-        proposals = list_proposals()
-        statuses: dict[str, int] = {}
-        for p in proposals:
-            s = p.get("status", "unknown")
-            statuses[s] = statuses.get(s, 0) + 1
-
-        return {
-            "total_proposals": len(proposals),
-            "statuses": statuses,
-            "active": statuses.get("proposed", 0) + statuses.get("running", 0),
-            "promoted": statuses.get("promoted", 0),
-            "rolled_back": statuses.get("rolled_back", 0),
-            "recent": proposals[:10],
-            "has_data": len(proposals) > 0,
-        }
-    except Exception:
-        return {
-            "total_proposals": 0,
-            "statuses": {},
-            "active": 0,
-            "promoted": 0,
-            "rolled_back": 0,
-            "recent": [],
-            "has_data": False,
-        }
-
-
 def full_dashboard(
     mind=None,
     project_path: str | Path | None = None,
@@ -471,6 +439,5 @@ def full_dashboard(
             "tenants": agent_os_tenants(),
             "signals": agent_os_signals(signal_detector=signal_detector),
             "experiments": agent_os_experiments(promotion_engine=promotion_engine),
-            "proposals": agent_os_proposals(),
         },
     }

@@ -3,16 +3,16 @@
 Implements the experiment arm of the self-improving loop:
 - Proposed change → baseline/candidate tags
 - Run metric collection → measure delta
-- p-value-governed promote/rollback decision
-- Results logged for governance audit trail
+- p-value-governed promote/rollback decision with confidence intervals
+- Results persisted to SQLite store (crash-safe, per-tenant)
 
-This is a POC implementation (no statistical test yet) — the metric
-collector and promote/rollback wiring are real.
+Uses scipy.stats.t.sf when available (exact t-distribution p-value),
+falls back to normal CDF approximation when scipy is absent.
 """
-
 from __future__ import annotations
 
 import logging
+import math
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -21,21 +21,24 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+try:
+    from scipy.stats import t as t_dist
+    HAS_SCIPY = True
+except ImportError:
+    HAS_SCIPY = False
+
 
 def _normal_cdf(x: float) -> float:
-    """Standard normal cumulative distribution function.
-
-    Uses the error function approximation. Sufficient for p-value
-    estimation with n>=2 historical samples.
-    """
-    import math
-
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
-class ExperimentStatus(str, Enum):
-    """Lifecycle states for an experiment."""
+def _t_sf(abs_t: float, df: int) -> float:
+    if HAS_SCIPY:
+        return float(t_dist.sf(abs_t, df))
+    return 1.0 - _normal_cdf(abs_t)
 
+
+class ExperimentStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     MEASURING = "measuring"
@@ -46,15 +49,15 @@ class ExperimentStatus(str, Enum):
 
 @dataclass
 class ExperimentResult:
-    """Result of an A/B experiment."""
-
     experiment_id: str
     proposal_id: str
     metric_name: str
     baseline_value: float
     candidate_value: float
-    delta: float  # positive = improvement (after higher_is_better normalization)
-    p_value: float | None  # None if no statistical test
+    delta: float
+    p_value: float | None
+    ci_lower: float | None
+    ci_upper: float | None
     verdict: ExperimentStatus
     started_at: str
     ended_at: str
@@ -69,6 +72,8 @@ class ExperimentResult:
             "candidate_value": round(self.candidate_value, 6),
             "delta": round(self.delta, 6),
             "p_value": self.p_value,
+            "ci_lower": self.ci_lower,
+            "ci_upper": self.ci_upper,
             "verdict": self.verdict.value,
             "started_at": self.started_at,
             "ended_at": self.ended_at,
@@ -79,54 +84,54 @@ class ExperimentResult:
 class ExperimentRunner:
     """Runs A/B experiments with metric collection.
 
-    POC scope: measures two values, computes delta, applies threshold
-    governance. No statistical significance test yet (requires sample
-    populations and a t-test / bootstrap CI).
-
-    Usage:
-        runner = ExperimentRunner()
-        result = runner.run(
-            proposal_id="prop_123",
-            metric_name="latency_ms",
-            baseline_value=840.0,
-            candidate_value=810.0,
-            threshold_pct=5.0,  # need 5% improvement
-            higher_is_better=False,  # lower latency is better
-        )
-        if result.verdict == ExperimentStatus.PROMOTED:
-            ship_it()
+    Per-tenant history is persisted to SQLite store (not in-memory only).
+    Maintains in-memory history for backward compatibility.
     """
 
     def __init__(
         self,
         promote_threshold_pct: float = 5.0,
         rollback_threshold_pct: float = -3.0,
+        store: Any = None,
+        tenant_id: str = "default",
     ) -> None:
         self._promote_threshold = promote_threshold_pct / 100.0
         self._rollback_threshold = rollback_threshold_pct / 100.0
+        self._store = store
+        self._tenant_id = tenant_id
         self._history: list[ExperimentResult] = []
+
+    def _history_from_store(self) -> list[ExperimentResult]:
+        """Load experiment history from store (if available)."""
+        if self._store is None:
+            return []
+        records = self._store.get_experiment_history_for_metric(self._tenant_id, "all")
+        return [
+            ExperimentResult(
+                experiment_id=r["id"],
+                proposal_id=r["proposal_id"],
+                metric_name=r["metric_name"],
+                baseline_value=r["baseline_value"],
+                candidate_value=r["candidate_value"],
+                delta=r["delta"],
+                p_value=r.get("p_value"),
+                ci_lower=r.get("ci_lower"),
+                ci_upper=r.get("ci_upper"),
+                verdict=ExperimentStatus(r["verdict"]),
+                started_at=r["started_at"],
+                ended_at=r["ended_at"],
+                details={},
+            )
+            for r in records
+        ]
 
     @staticmethod
     def _compute_delta(baseline: float, candidate: float, higher_is_better: bool = False) -> float:
-        """Compute fractional delta.
-
-        Args:
-            baseline: Current value.
-            candidate: Proposed value.
-            higher_is_better: If True, positive delta = improvement.
-                            If False (default), negative delta = improvement
-                            (e.g., lower latency is better).
-        """
         if abs(baseline) < 1e-9:
             if abs(candidate) < 1e-9:
                 return 0.0
-            # Degenerate baseline: report the direction of the change, then
-            # apply the higher_is_better inversion like the normal path, so a
-            # lower-is-better metric (e.g. latency) doesn't promote a large
-            # candidate as a 100% "improvement".
             return 1.0 if higher_is_better else -1.0
         raw = (candidate - baseline) / abs(baseline)
-        # Invert so positive delta always = improvement
         return raw if higher_is_better else -raw
 
     def run(
@@ -139,31 +144,14 @@ class ExperimentRunner:
         higher_is_better: bool = False,
         details: dict[str, Any] | None = None,
     ) -> ExperimentResult:
-        """Run an A/B experiment and return the verdict.
-
-        Args:
-            proposal_id: The proposal this experiment validates.
-            metric_name: The metric being tested.
-            baseline_value: The baseline (current) metric value.
-            candidate_value: The candidate (proposed) metric value.
-            threshold_pct: Override the promote threshold for this run.
-            higher_is_better: If True, higher values are improvements
-                (throughput). If False (default), lower values are
-                improvements (latency).
-            details: Additional context for audit trail.
-
-        Returns:
-            ExperimentResult with the computed verdict.
-        """
         promote_threshold = (
             threshold_pct / 100.0 if threshold_pct is not None else self._promote_threshold
         )
         delta = self._compute_delta(baseline_value, candidate_value, higher_is_better)
 
-        # Compute p-value from historical deltas (Welch's t-test)
         p_value = self._compute_p_value(delta)
+        ci_lower, ci_upper = self._compute_confidence_interval(delta)
 
-        # Verdict logic (deterministic, auditable)
         if delta >= promote_threshold:
             verdict = ExperimentStatus.PROMOTED
         elif delta <= self._rollback_threshold:
@@ -179,21 +167,31 @@ class ExperimentRunner:
             candidate_value=candidate_value,
             delta=delta,
             p_value=p_value,
+            ci_lower=ci_lower,
+            ci_upper=ci_upper,
             verdict=verdict,
             started_at=datetime.now(timezone.utc).isoformat(),
             ended_at=datetime.now(timezone.utc).isoformat(),
             details=details or {},
         )
+
+        # Maintain in-memory history for backward compatibility
         self._history.append(result)
+
+        # Persist to store
+        if self._store is not None:
+            self._store.insert_experiment(self._tenant_id, result.to_dict())
+
         return result
 
     def _compute_p_value(self, current_delta: float) -> float | None:
-        """Compute p-value for the current delta against historical deltas.
-
-        Uses Welch's t-test (unequal variance). Returns None if <2 historical
-        samples. Falls back to heuristic when variance is zero.
-        """
+        """Compute p-value for the current delta against historical deltas."""
+        # Use in-memory history if available, else load from store
         historical = [r.delta for r in self._history if r.delta is not None]
+        if len(historical) < 2:
+            # Fall back to store for historical data
+            store_history = self._history_from_store()
+            historical = [r.delta for r in store_history if r.delta is not None]
         if len(historical) < 2:
             return None
 
@@ -202,16 +200,45 @@ class ExperimentRunner:
         var_h = sum((d - mean_h) ** 2 for d in historical) / max(n - 1, 1)
 
         if var_h < 1e-12:
-            # Zero variance: current delta is either identical or different
             return 0.0 if abs(current_delta - mean_h) < 1e-9 else 100.0
 
-        # Welch's t-statistic: (current - mean_h) / sqrt(var_h / n)
         se = (var_h / n) ** 0.5
         t_stat = (current_delta - mean_h) / se if se > 1e-12 else 0.0
-
-        # Approximate p-value using normal distribution (sufficient for n>=2)
-        p = 2.0 * (1.0 - _normal_cdf(abs(t_stat)))
+        df = n - 1
+        p = 2.0 * _t_sf(abs(t_stat), df)
         return min(max(p, 0.0), 1.0)
+
+    def _compute_confidence_interval(
+        self, current_delta: float, confidence: float = 0.95
+    ) -> tuple[float | None, float | None]:
+        historical = [r.delta for r in self._history if r.delta is not None]
+        if len(historical) < 2:
+            store_history = self._history_from_store()
+            historical = [r.delta for r in store_history if r.delta is not None]
+        if len(historical) < 2:
+            return None, None
+
+        n = len(historical)
+        mean_h = sum(historical) / n
+        var_h = sum((d - mean_h) ** 2 for d in historical) / max(n - 1, 1)
+
+        if var_h < 1e-12:
+            return current_delta, current_delta
+
+        se = (var_h / n) ** 0.5
+        df = n - 1
+
+        if HAS_SCIPY:
+            alpha = 1.0 - confidence
+            t_crit = float(t_dist.ppf(1.0 - alpha / 2, df))
+        else:
+            t_crit = 1.959963984540054
+
+        margin = t_crit * se
+        lower = current_delta - margin
+        upper = current_delta + margin
+
+        return lower, upper
 
     def get_history(self) -> list[ExperimentResult]:
         """Return experiment history (newest first)."""

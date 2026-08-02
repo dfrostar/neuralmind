@@ -1,37 +1,47 @@
-"""NeuralMind Agent OS — Multi-tenant, self-improving product operations.
-
-The Agent OS is the orchestration layer that runs NeuralMind as a
-multi-business product:
-
-1. **Tenants** are businesses (Level2Logic, CyberSentinel, DermEngine).
-   Each tenant owns multiple projects with isolated data, governance,
-   and RBAC.
-2. **Signal detection** watches metrics streams for anomalies
-   (Page-Hinkley test, no fixed thresholds) and writes signal records.
-3. **Governance** enforces RBAC per-tenant: admin/operator/viewer roles,
-   publishing scope, weight thresholds, audit trails.
-4. **The daemon** exposes tenant-scoped HTTP endpoints for operations.
-
-All modules are fail-open: any error degrades to pre-existing behavior
-rather than blocking the core product.
-
-Pattern follows the self-improving product operations loop (see
-ai-product-ops skill): signal → diagnose → experiment → promote/rollback.
-
-Version:
-    1.14.0
-"""
-
+"""NeuralMind Agent OS — Multi-tenant, self-improving product operations."""
 from __future__ import annotations
 
-__version__ = "1.15.0"
+__version__ = "1.16.0"
 
+from .adversarial import (
+    generate_adversarial_query,
+    get_adversarial_queries,
+)
 from .api import create_agent_os_routes
+from .auth import AuthContext, SessionStore, extract_bearer_token
+from .auto_trigger import AutoTriggerLoop
 from .correlator import CauseType, Insight, RootCauseCorrelator
 from .experiment import ExperimentResult, ExperimentRunner, ExperimentStatus
 from .governance import AgentOSGovernance, Permission, Role, require_permission
-from .promotion import PromotionEngine, PromotionRecord, PromotionStatus
+from .promotion import (
+    MIN_SIGNALS_BEFORE_AUTO_PROMOTE,
+    PromotionEngine,
+    PromotionRecord,
+    PromotionStatus,
+    Proposal,
+    ShipCallable,
+    TunerIncumbent,
+)
+from .proposal_store import (
+    create_proposal,
+    increment_signal_count,
+    list_proposals,
+    update_proposal,
+)
+from .proposal_store import (
+    get_proposal as get_proposal_by_id,
+)
+from .proposal_store import (
+    history as proposal_history,
+)
 from .signals import SeverityLevel, Signal, SignalDetector
+from .signals_log import (
+    get_insights,
+    get_signals,
+    log_insight,
+    log_signal,
+)
+from .store import AgentOSStore, get_store, reset_store
 from .tenant import (
     Tenant,
     TenantConflictError,
@@ -64,5 +74,26 @@ __all__ = [
     "PromotionEngine",
     "PromotionRecord",
     "PromotionStatus",
+    "Proposal",
+    "TunerIncumbent",
+    "ShipCallable",
+    "MIN_SIGNALS_BEFORE_AUTO_PROMOTE",
     "create_agent_os_routes",
+    "log_signal",
+    "log_insight",
+    "get_signals",
+    "get_insights",
+    "AutoTriggerLoop",
+    "AgentOSStore",
+    "get_store",
+    "reset_store",
+    "create_proposal",
+    "list_proposals",
+    "get_proposal_by_id",
+    "update_proposal",
+    "increment_signal_count",
+    "proposal_history",
+    "AuthContext",
+    "SessionStore",
+    "extract_bearer_token",
 ]
