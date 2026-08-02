@@ -24,11 +24,13 @@ Version:
 
 from __future__ import annotations
 
-__version__ = "1.14.0"
+__version__ = "1.15.0"
 
 from .api import create_agent_os_routes
+from .correlator import CauseType, Insight, RootCauseCorrelator
 from .experiment import ExperimentResult, ExperimentRunner, ExperimentStatus
 from .governance import AgentOSGovernance, Permission, Role, require_permission
+from .promotion import PromotionEngine, PromotionRecord, PromotionStatus
 from .signals import SeverityLevel, Signal, SignalDetector
 from .tenant import (
     Tenant,
@@ -56,5 +58,11 @@ __all__ = [
     "ExperimentRunner",
     "ExperimentResult",
     "ExperimentStatus",
+    "RootCauseCorrelator",
+    "CauseType",
+    "Insight",
+    "PromotionEngine",
+    "PromotionRecord",
+    "PromotionStatus",
     "create_agent_os_routes",
 ]

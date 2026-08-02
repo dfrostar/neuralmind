@@ -396,6 +396,10 @@ def dispatch(ctx: DaemonContext, method: str, path: str, body: dict | None) -> t
             if ctx.on_shutdown:
                 ctx.on_shutdown()
             return 200, {"ok": True, "shutting_down": True}
+        # Agent OS routes
+        agent_os_result = _dispatch_agent_os(ctx, method, route, body)
+        if agent_os_result is not None:
+            return agent_os_result
         raise DaemonError(404, f"no route for {method} {route}")
     except DaemonError as exc:
         return exc.status, {"error": exc.message}
@@ -486,6 +490,91 @@ def _validate(ctx: DaemonContext, project: str, write: bool) -> dict:
     from .core import validate_project
 
     return validate_project(project, write=write)
+
+
+# --------------------------------------------------------------------------- #
+# Agent OS routes
+# --------------------------------------------------------------------------- #
+
+_AGENT_OS_ROUTE_PREFIX = "/api/agent-os"
+
+
+def _match_agent_os_route(method: str, route: str) -> tuple[Callable | None, dict[str, str]]:
+    """Match an Agent OS route against the registered handlers.
+
+    Returns (handler, path_params) or (None, {}) if no match.
+    """
+    from .agent_os import create_agent_os_routes, SignalDetector, ExperimentRunner
+    from .agent_os.tenant import TenantRegistry
+
+    # Lazy-init shared Agent OS components (process-local, like the registry)
+    if not hasattr(_match_agent_os_route, "_routes"):
+        registry = TenantRegistry()
+        signal_detector = SignalDetector()
+        experiment_runner = ExperimentRunner()
+        _match_agent_os_route._routes = create_agent_os_routes(
+            registry, signal_detector, experiment_runner
+        )
+
+    routes = _match_agent_os_route._routes
+    # Exact match first
+    handler = routes.get((method, route))
+    if handler is not None:
+        return handler, {}
+
+    # Pattern match for parameterized routes
+    for (m, pattern), h in routes.items():
+        if m != method:
+            continue
+        params = _extract_path_params(pattern, route)
+        if params is not None:
+            return h, params
+
+    return None, {}
+
+
+def _extract_path_params(pattern: str, route: str) -> dict[str, str] | None:
+    """Extract path parameters from a route against a pattern.
+
+    Pattern uses {param} syntax (e.g., "/tenants/{tenant_id}").
+    Returns None if the route doesn't match the pattern.
+    """
+    pattern_parts = pattern.split("/")
+    route_parts = route.split("/")
+
+    if len(pattern_parts) != len(route_parts):
+        return None
+
+    params = {}
+    for p_part, r_part in zip(pattern_parts, route_parts):
+        if p_part.startswith("{") and p_part.endswith("}"):
+            params[p_part[1:-1]] = r_part
+        elif p_part != r_part:
+            return None
+
+    return params
+
+
+def _dispatch_agent_os(ctx: DaemonContext, method: str, route: str, body: dict) -> tuple[int, dict] | None:
+    """Dispatch an Agent OS request.
+
+    Returns (status, payload) if the route is an Agent OS route, or None
+    if the route doesn't match (so the main dispatch continues).
+    """
+    if not route.startswith(_AGENT_OS_ROUTE_PREFIX):
+        return None
+
+    handler, path_params = _match_agent_os_route(method, route)
+    if handler is None:
+        return None
+
+    try:
+        return handler(body, **path_params)
+    except Exception as exc:
+        import logging
+        log = logging.getLogger(__name__)
+        log.exception("Agent OS route failed: %s %s", method, route)
+        return 500, {"error": f"{type(exc).__name__}: {exc}"}
 
 
 # --------------------------------------------------------------------------- #
