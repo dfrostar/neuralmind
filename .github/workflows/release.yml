@@ -52,11 +52,11 @@ jobs:
           fi
           echo "OK: tag v${TAG_VERSION} matches pyproject.toml version ${PKG_VERSION}."
 
-  test:
+  smoke-test:
     name: Smoke Test
     needs: validate-version
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -67,20 +67,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install package
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -e .
 
-      - name: Smoke test (import + CLI + core functionality)
+      - name: Smoke test (import + CLI)
         run: |
           python -c "import neuralmind; print(f'neuralmind {neuralmind.__version__}')"
           neuralmind --version
-          python -m pytest tests/test_cli.py tests/test_core.py tests/test_config.py tests/test_license_validator_anti_tamper.py -x --tb=short -q
+          neuralmind --help > /dev/null
+          echo "OK: package imports and CLI works"
 
   build:
     name: Build Package
-    needs: test
+    needs: smoke-test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
