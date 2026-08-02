@@ -24,6 +24,11 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+# Minimum samples required before Page-Hinkley can fire. Prevents false
+# positives on constant baselines where std collapses to ~0 and a single
+# transient outlier would produce an infinite severity ratio.
+MIN_SAMPLES_BEFORE_ALERT = 10
+
 
 class SeverityLevel(str, Enum):
     """Signal severity levels."""
@@ -80,7 +85,7 @@ class _PageHinkleyState:
     metric_name: str
     count: int = 0
     running_sum: float = 0.0
-    running_sum_sq: float = 0.0
+    m2: float = 0.0  # Welford: sum of squared distance from the running mean
     min_cum_dev: float = 0.0
     max_cum_dev: float = 0.0
     lambda_threshold: float = 4.0  # alert threshold (× running_std)
@@ -95,7 +100,7 @@ class _PageHinkleyState:
     def running_std(self) -> float:
         if self.count < 2:
             return 0.0
-        variance = (self.running_sum_sq / self.count) - (self.running_mean ** 2)
+        variance = self.m2 / self.count
         return math.sqrt(max(variance, 0.0))
 
     @property
@@ -122,9 +127,13 @@ class _PageHinkleyState:
 
         Returns a Signal if the Page-Hinkley test fires, else None.
         """
+        # Welford's online algorithm: update M2 before incrementing count
+        # so variance is never computed via sum-of-squares cancellation.
         self.count += 1
+        delta = value - self.running_mean
         self.running_sum += value
-        self.running_sum_sq += value * value
+        delta2 = value - self.running_mean
+        self.m2 += delta * delta2
 
         # Deviation from the running (arithmetic) mean
         mean = self.running_mean
@@ -138,7 +147,13 @@ class _PageHinkleyState:
         severity = self.severity_ratio
         now = time.time()
 
-        if severity >= self.lambda_threshold and std > 1e-9:
+        # Require minimum sample count before firing to prevent false
+        # positives on constant baselines (where std collapses to ~0).
+        if (
+            severity >= self.lambda_threshold
+            and std > 1e-9
+            and self.count >= MIN_SAMPLES_BEFORE_ALERT
+        ):
             if now - self.last_signal_at < self.cooldown_seconds:
                 return None
             self.last_signal_at = now

@@ -1,8 +1,8 @@
 # Agent OS — QA Report
 
 **Date:** 2026-08-02
-**Commit:** `c8e3388` (code) + `0871eb3` (QA patches)
-**Models:** GLM-5.2 (catch-missed-issues), DeepSeek v4 Per (per-module)
+**Commit:** `c8e3388` (code) + `0871eb3` (QA patches) + `13c48ed` (DeepSeek patches)
+**Models:** GLM-5.2 (catch-missed-issues), DeepSeek v4 Pro (per-module), LongCat-2.0 (main)
 **Final:** 45/45 tests pass, ruff clean
 
 ---
@@ -18,6 +18,8 @@
 | 5 | 🔴 CRITICAL | tenant.py | Path traversal in `delete_tenant` via `../` tenant_id | ✅ Patched |
 | 6 | ⚠️ WARNING | tenant.py | Cache/disk inconsistency on `_save` failure | ✅ Patched |
 | 7 | ⚠️ WARNING | tenant.py | Email normalization not enforced at `from_dict` | ✅ Patched |
+| 8 | 🔴 HIGH | signals.py | `running_std` numerically catastrophic (cancellation) | ✅ Patched |
+| 9 | ⚠️ MEDIUM | signals.py | Zero-variance baseline fires on single outlier | ✅ Patched |
 
 ---
 
@@ -111,12 +113,31 @@ _load_all() to roll back the in-memory state before re-raising.
 **Module:** `tenant.py:76-77`
 **Found by:** DeepSeek
 
-RoleAssignment.from_dict stored email as-is from JSON. Comparisons
-lowercased, but storage didn't — mixed-case emails persisted, creating
-an inconsistency where two JSON loads of the same tenant could yield
-different rbac lists.
+`RoleAssignment.from_dict` stored email as-is from JSON. Comparisons lowercased, but storage didn't — mixed-case emails persisted, creating an inconsistency.
 
-Fix: data["email"].strip().lower() in from_dict.
+Fix: `data["email"].strip().lower()` in from_dict.
+
+---
+
+### 8. `running_std` numerical instability
+
+**Module:** `signals.py:95-99`
+**Found by:** DeepSeek
+
+`running_std` used the cancellation-prone formula `Σx²/n − mean²`. Empirically:
+- A ~1e200 constant stream raises uncaught `OverflowError` from `running_mean ** 2`
+- Offset 1e6 with true std 1.0 reports 0.5 → severity_ratio off by ~2×
+
+Fix: Replaced with Welford's stable online algorithm (`m2` field, incremental update).
+
+### 9. Zero-variance baseline false positive
+
+**Module:** `signals.py:141-143`
+**Found by:** DeepSeek
+
+When a metric holds a constant value (std collapses to ~0), `severity_ratio = cumulative_deviation / running_std` explodes on the first real deviation. A single point 1000.0 after a run of 100.0 fired immediately.
+
+Fix: Added `MIN_SAMPLES_BEFORE_ALERT = 10` constant and `self.count >= MIN_SAMPLES_BEFORE_ALERT` guard.
 
 ---
 

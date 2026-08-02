@@ -284,6 +284,13 @@ class AgentOSGovernance:
         ``require_permission`` (a decorator there would look up the not-yet-
         created tenant and always fail). Validation of the tenant_id and
         project ownership is performed by the underlying registry.
+
+        LIMITATION: The caller's identity is trusted from the request body
+        (``email``). Without a system-level authentication boundary, any
+        caller can create a tenant and self-appoint as its admin. This is
+        acceptable for single-operator daemon deployments but MUST be gated
+        at the API layer (resolve caller from auth token, not body) before
+        multi-tenant production use. See docs/specs/AGENT-OS-QA-REPORT.md.
         """
         return self._tenant_registry.create_tenant(
             tenant_id=tenant_id,
