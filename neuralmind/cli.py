@@ -17,6 +17,7 @@ from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
+from neuralmind.agent_os.cli import cmd_agent_os, run_agent_os_command
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 
@@ -4292,6 +4293,74 @@ def main():
     plic_pp = partner_sub.add_parser("licenses", help="List partner's licenses")
     plic_pp.add_argument("--partner", required=True, help="Partner ID")
     plic_pp.set_defaults(func=cmd_partner_licenses)
+
+    # Agent OS — multi-tenant operations (v1.15.0)
+    agent_os_p = subparsers.add_parser(
+        "agent-os",
+        help="Multi-tenant Agent OS: tenants, RBAC, signals, experiments",
+    )
+    agent_os_sub = agent_os_p.add_subparsers(dest="agent_os_command")
+
+    # Tenants
+    tenants_p = agent_os_sub.add_parser("tenants", help="Tenant management")
+    tenants_subcmd = tenants_p.add_subparsers(dest="tenants_action")
+
+    tenants_list = tenants_subcmd.add_parser("list", help="List all tenants")
+
+    tenants_create = tenants_subcmd.add_parser("create", help="Create a tenant")
+    tenants_create.add_argument("--id", required=True, help="Tenant ID (URL-safe slug)")
+    tenants_create.add_argument("--name", required=True, help="Display name")
+    tenants_create.add_argument("--tier", default="free", choices=["free", "team", "enterprise"])
+    tenants_create.add_argument("--admin", required=True, help="Admin email")
+    tenants_create.add_argument("--projects", nargs="*", help="Project paths")
+
+    tenants_delete = tenants_subcmd.add_parser("delete", help="Delete a tenant")
+    tenants_delete.add_argument("--id", required=True, help="Tenant ID")
+    tenants_delete.add_argument("--admin", required=True, help="Admin email")
+
+    # RBAC
+    rbac_p = agent_os_sub.add_parser("rbac", help="RBAC management")
+    rbac_subcmd = rbac_p.add_subparsers(dest="rbac_action")
+
+    rbac_add = rbac_subcmd.add_parser("add", help="Add role assignment")
+    rbac_add.add_argument("--tenant", required=True, help="Tenant ID")
+    rbac_add.add_argument("--email", required=True, help="User email")
+    rbac_add.add_argument("--role", required=True, choices=["admin", "operator", "viewer"])
+    rbac_add.add_argument("--admin", required=True, help="Admin email performing the action")
+
+    # Signals
+    signals_p = agent_os_sub.add_parser("signals", help="Signal operations")
+    signals_subcmd = signals_p.add_subparsers(dest="signals_action")
+
+    signals_list = signals_subcmd.add_parser("list", help="List tracked metrics")
+
+    signals_push = signals_subcmd.add_parser("push", help="Push a metric value")
+    signals_push.add_argument("--metric", required=True, help="Metric name")
+    signals_push.add_argument("--value", type=float, required=True, help="Metric value")
+
+    # Experiments
+    experiments_p = agent_os_sub.add_parser("experiments", help="Experiment operations")
+    experiments_subcmd = experiments_p.add_subparsers(dest="experiments_action")
+
+    exp_run = experiments_subcmd.add_parser("run", help="Run an A/B experiment")
+    exp_run.add_argument("--proposal", required=True, help="Proposal ID")
+    exp_run.add_argument("--metric", required=True, help="Metric name")
+    exp_run.add_argument("--baseline", type=float, required=True, help="Baseline value")
+    exp_run.add_argument("--candidate", type=float, required=True, help="Candidate value")
+    exp_run.add_argument("--higher-is-better", action="store_true")
+    exp_run.add_argument("--threshold", type=float, help="Override promote threshold (%)")
+
+    exp_history = experiments_subcmd.add_parser("history", help="Show experiment history")
+
+    # Set defaults
+    tenants_list.set_defaults(func=cmd_agent_os)
+    tenants_create.set_defaults(func=cmd_agent_os)
+    tenants_delete.set_defaults(func=cmd_agent_os)
+    rbac_add.set_defaults(func=cmd_agent_os)
+    signals_list.set_defaults(func=cmd_agent_os)
+    signals_push.set_defaults(func=cmd_agent_os)
+    exp_run.set_defaults(func=cmd_agent_os)
+    exp_history.set_defaults(func=cmd_agent_os)
 
     args = parser.parse_args()
     if args.command is None:
