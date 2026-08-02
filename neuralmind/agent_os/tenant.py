@@ -74,7 +74,7 @@ class RoleAssignment:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> RoleAssignment:
-        return cls(email=data["email"], role=data.get("role", "viewer"))
+        return cls(email=data["email"].strip().lower(), role=data.get("role", "viewer"))
 
 
 @dataclass
@@ -265,7 +265,7 @@ class TenantRegistry:
                     )
             rbac = []
             if admin_email:
-                rbac.append(RoleAssignment(email=admin_email.lower(), role="admin"))
+                rbac.append(RoleAssignment(email=admin_email.strip().lower(), role="admin"))
             tenant = Tenant(
                 tenant_id=tenant_id,
                 name=name,
@@ -273,7 +273,11 @@ class TenantRegistry:
                 projects=[str(Path(p).resolve()) for p in (projects or [])],
                 rbac=rbac,
             )
-            self._save(tenant)
+            try:
+                self._save(tenant)
+            except Exception:
+                self._load_all()
+                raise
             self._cache[tenant_id] = tenant
             for proj in tenant.projects:
                 self._project_index[proj] = tenant_id
@@ -318,7 +322,13 @@ class TenantRegistry:
             if resolved not in tenant.projects:
                 tenant.projects.append(resolved)
                 tenant.updated_at = datetime.now(timezone.utc).isoformat()
-                self._save(tenant)
+                try:
+                    self._save(tenant)
+                except Exception:
+                    # Roll back cache mutation on save failure to keep
+                    # in-memory state consistent with disk.
+                    self._load_all()
+                    raise
                 self._project_index[resolved] = tenant_id
             return tenant
 
@@ -335,7 +345,11 @@ class TenantRegistry:
             if resolved in tenant.projects:
                 tenant.projects.remove(resolved)
                 tenant.updated_at = datetime.now(timezone.utc).isoformat()
-                self._save(tenant)
+                try:
+                    self._save(tenant)
+                except Exception:
+                    self._load_all()
+                    raise
                 self._project_index.pop(resolved, None)
             return tenant
 
@@ -353,7 +367,11 @@ class TenantRegistry:
             tenant.rbac = [r for r in tenant.rbac if r.email != normalized]
             tenant.rbac.append(RoleAssignment(email=normalized, role=role))
             tenant.updated_at = datetime.now(timezone.utc).isoformat()
-            self._save(tenant)
+            try:
+                self._save(tenant)
+            except Exception:
+                self._load_all()
+                raise
             return tenant
 
     def remove_role(self, tenant_id: str, email: str, admin_email: str) -> Tenant:
@@ -380,6 +398,8 @@ class TenantRegistry:
                 raise TenantNotFoundError(f"Tenant '{tenant_id}' not found")
             if not tenant.is_admin(admin_email):
                 raise PermissionError(f"Not a tenant admin: {admin_email}")
+            # Defense in depth: reject non-slug tenant_ids even if cache is poisoned
+            validate_tenant_id(tenant_id)
             path = self.tenants_dir / f"{tenant_id}.json"
             try:
                 path.unlink()
