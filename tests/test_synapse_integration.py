@@ -199,15 +199,15 @@ def test_activate_files_single_path_records_no_transitions(tmp_path):
 def test_seed_from_documentation_writes_edges(tmp_path):
     """seed_from_documentation writes synapse edges from LLM-extracted relations."""
     import os
+
     os.environ["NEURALMIND_LLM_SEED"] = "1"
     os.environ["ANTHROPIC_API_KEY"] = "test-key"
 
     from unittest.mock import patch
+
     from neuralmind.synapses import SynapseStore
 
-    (tmp_path / "README.md").write_text(
-        "# MyApp\nAuthentication delegates to hashing."
-    )
+    (tmp_path / "README.md").write_text("# MyApp\nAuthentication delegates to hashing.")
     store = SynapseStore(default_db_path(tmp_path))
 
     with patch.object(
@@ -227,6 +227,7 @@ def test_seed_from_documentation_writes_edges(tmp_path):
 def test_seed_from_documentation_gated_off_returns_zero(tmp_path):
     """Without NEURALMIND_LLM_SEED=1, seeding returns 0 (silent gate)."""
     import os
+
     from neuralmind.synapses import SynapseStore
 
     (tmp_path / "README.md").write_text("# Docs")
@@ -240,6 +241,7 @@ def test_seed_from_documentation_gated_off_returns_zero(tmp_path):
 def test_seed_from_documentation_no_anthropic_key_returns_zero(tmp_path):
     """With NEURALMIND_LLM_SEED=1 but no ANTHROPIC_API_KEY, seeding returns 0."""
     import os
+
     from neuralmind.synapses import SynapseStore
 
     (tmp_path / "README.md").write_text("# Docs")
@@ -254,6 +256,7 @@ def test_seed_from_documentation_no_anthropic_key_returns_zero(tmp_path):
 def test_seed_from_documentation_empty_docs_returns_zero(tmp_path):
     """No README or architecture.md → 0 edges."""
     import os
+
     os.environ["NEURALMIND_LLM_SEED"] = "1"
     os.environ["ANTHROPIC_API_KEY"] = "test-key"
 

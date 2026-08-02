@@ -1743,19 +1743,29 @@ def cmd_learn(args):
     print(f"Learning from: {file_path}")
     # Find repo root: check CWD first, then walk up from file to find .neuralmind/index_ir.json or .git
     cwd = Path.cwd()
-    if (cwd / ".neuralmind" / "index_ir.json").exists() or (cwd / ".neuralmind" / "synapses.db").exists() or (cwd / ".git").exists():
+    if (
+        (cwd / ".neuralmind" / "index_ir.json").exists()
+        or (cwd / ".neuralmind" / "synapses.db").exists()
+        or (cwd / ".git").exists()
+    ):
         project_path = cwd
     else:
         # Walk up from file to find project markers
         project_path = file_path.parent if file_path.is_file() else file_path
-        original_path = project_path
         while project_path.parent != project_path:
-            if (project_path / ".neuralmind" / "index_ir.json").exists() or (project_path / ".neuralmind" / "synapses.db").exists() or (project_path / ".git").exists():
+            if (
+                (project_path / ".neuralmind" / "index_ir.json").exists()
+                or (project_path / ".neuralmind" / "synapses.db").exists()
+                or (project_path / ".git").exists()
+            ):
                 break
             project_path = project_path.parent
         else:
             # No project marker found — require running from project directory
-            print(f"Error: no NeuralMind project found. Run 'neuralmind learn' from your project directory (where 'neuralmind build .' was run).", file=sys.stderr)
+            print(
+                "Error: no NeuralMind project found. Run 'neuralmind learn' from your project directory (where 'neuralmind build .' was run).",
+                file=sys.stderr,
+            )
             sys.exit(1)
     mind = create_mind(str(project_path), auto_build=True)
     # Pass project_path as root for path validation (files may be outside CWD)

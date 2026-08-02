@@ -555,7 +555,7 @@ class ContextSelector:
                 # Include snippet text for documents
                 snippet = node.get("text", "")[:120]
                 if snippet:
-                    parts.append(f"  \"{snippet}\"")
+                    parts.append(f'  "{snippet}"')
 
             parts.append("")
 
@@ -852,7 +852,7 @@ class ContextSelector:
             parts.append(f"   File: {meta.get('source_file', 'unknown')}")
             snippet = result.get("document", "")[:150]
             if snippet:
-                parts.append(f"   \"{snippet}\"")
+                parts.append(f'   "{snippet}"')
             parts.append("")
 
         context = self._truncate_to_tokens("\n".join(parts), self._l3_max_tokens)

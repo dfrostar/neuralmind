@@ -28,6 +28,14 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .core import NeuralMind
+from .dashboard import (
+    full_dashboard,
+    ingestion_status,
+    performance_summary,
+    project_status,
+    savings_summary,
+    synapse_summary,
+)
 from .event_bus import get_event_bus
 from .event_log import (
     EventLogTailer,
@@ -355,6 +363,53 @@ class _Handler(BaseHTTPRequestHandler):
                 {"queries": type(self).mind.recent_queries(n=n)},
                 set_cookie=new_cookie,
             )
+        elif route == "/dashboard":
+            self._send_static("dashboard.html", set_cookie=new_cookie)
+        elif route == "/dashboard.css":
+            self._send_static("dashboard.css", set_cookie=new_cookie)
+        elif route == "/dashboard.js":
+            self._send_static("dashboard.js", set_cookie=new_cookie)
+        elif route == "/api/dashboard/full":
+            days = parse_qs(parsed.query).get("days", ["7"])[0]
+            try:
+                days = max(1, min(int(days), 365))
+            except ValueError:
+                days = 7
+            data = full_dashboard(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+                days=days,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/status":
+            data = project_status(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/synapses":
+            data = synapse_summary(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/ingestion":
+            data = ingestion_status(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/savings":
+            data = savings_summary(project_path=type(self).mind.project_path)
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/performance":
+            days = parse_qs(parsed.query).get("days", ["7"])[0]
+            try:
+                days = max(1, min(int(days), 365))
+            except ValueError:
+                days = 7
+            data = performance_summary(project_path=type(self).mind.project_path, days=days)
+            self._send_json(data, set_cookie=new_cookie)
         else:
             self.send_error(404)
 

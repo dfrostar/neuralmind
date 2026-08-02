@@ -628,8 +628,7 @@ def tool_ingest_document(
     architectural relationships to code nodes.
     """
     mind = get_mind(project_path)
-    result = mind.ingest_document(file_path, content_type=content_type)
-    return result
+    return mind.ingest_document(file_path, content_type=content_type)
 
 
 # Tool definitions for MCP

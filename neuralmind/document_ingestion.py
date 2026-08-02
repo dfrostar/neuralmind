@@ -149,7 +149,7 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
 
 def _make_node_id(path: Path, index: int = 0) -> str:
     """Create a unique node ID for a document chunk.
-    
+
     Uses relative path (stem + parent dirs + extension) to avoid collisions
     (e.g. a/README.md vs b/README.md).
     """
@@ -199,13 +199,18 @@ def parse_document(
         file_type = content_type
     else:
         file_type = _sniff_file_type(path)
-    
+
     # Hard security guard: reject binary regardless of content_type hint
     try:
         header = path.read_bytes()[:8]
         if header[:4] == b"\x7fELF" or header[:2] == b"MZ":
             raise ValueError(f"Binary file rejected: {path}")
-        if header[:4] in (b"\xfe\xed\xfa\xce", b"\xfe\xed\xfa\xcf", b"\xce\xfa\xed\xfe", b"\xcf\xfa\xed\xfe"):
+        if header[:4] in (
+            b"\xfe\xed\xfa\xce",
+            b"\xfe\xed\xfa\xcf",
+            b"\xce\xfa\xed\xfe",
+            b"\xcf\xfa\xed\xfe",
+        ):
             raise ValueError(f"Binary file rejected: {path}")
     except ValueError:
         raise

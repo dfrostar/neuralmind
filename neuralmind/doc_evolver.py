@@ -708,25 +708,54 @@ class DocEvolver:
     def patch_winners(self, results: list[EvolveResult]) -> list[str]:
         """Patch winning JSDoc variants into source files.
 
+        Only patches variants that were promoted (improved over baseline).
+        Handles multiple patches in the same file by sorting in reverse
+        line order so earlier patches don't shift later line numbers.
+
         Args:
             results: Results from :meth:`evolve`.
 
         Returns:
             List of file paths that were modified.
         """
-        modified: list[str] = []
-        for result in results:
-            if result.best_variant is None:
+        # Group by file
+        by_file: dict[str, list[tuple[int, EvolveResult]]] = {}
+        for r in results:
+            if r.best_variant is None:
                 continue
-            file_path = self.project_path / result.file_path
-            if not file_path.exists():
+            by_file.setdefault(r.file_path, []).append((r.line, r))
+
+        modified: list[str] = []
+        for file_path, entries in by_file.items():
+            fp = self.project_path / file_path
+            if not fp.exists():
                 log.warning("source file not found: %s", file_path)
                 continue
+
+            # Sort by line number (descending) so patching doesn't shift
+            # later line numbers
+            entries.sort(key=lambda x: x[0], reverse=True)
+
             try:
-                self._patch_file(file_path, result.line, result.best_variant)
-                modified.append(result.file_path)
+                content = fp.read_text(encoding="utf-8")
+                lines = content.splitlines()
+
+                for line_num, result in entries:
+                    insert_idx = self._find_method_line_by_number(lines, line_num)
+                    if insert_idx is None:
+                        continue
+                    if insert_idx > 0 and lines[insert_idx - 1].strip().endswith("*/"):
+                        continue  # Already has JSDoc
+
+                    jsdoc_lines = result.best_variant.text.splitlines()
+                    lines = lines[:insert_idx] + jsdoc_lines + lines[insert_idx:]
+
+                new_content = "\n".join(lines) + "\n"
+                fp.write_text(new_content, encoding="utf-8")
+                modified.append(file_path)
             except Exception as exc:
                 log.warning("failed to patch %s: %s", file_path, exc)
+
         return modified
 
     # ------------------------------------------------------------------- #

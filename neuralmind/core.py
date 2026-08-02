@@ -739,15 +739,17 @@ class NeuralMind:
                 self.embedder.nodes.append(cn)
 
         # Seed synapse edges between related CMMC practices
-        cmmc_synapse_edges = 0
         if self.enable_synapses:
             try:
                 store = self.synapses
                 if store is not None:
-                    practice_ids = [cn.get("id", "") for cn in content_nodes if cn.get("id", "").startswith("cmc:")]
+                    practice_ids = [
+                        cn.get("id", "")
+                        for cn in content_nodes
+                        if cn.get("id", "").startswith("cmc:")
+                    ]
                     if len(practice_ids) > 1:
                         store.reinforce(practice_ids)
-                        cmmc_synapse_edges = len(practice_ids) * (len(practice_ids) - 1) // 2
             except Exception:
                 pass
 
@@ -759,23 +761,21 @@ class NeuralMind:
         # relationships in the Hebbian graph — not just searchable nodes.
         # Gated on NEURALMIND_LLM_SEED=1 + ANTHROPIC_API_KEY; fail-open.
         synapse_doc_edges = 0
-        synapse_seed_warned = False
         if self.enable_synapses:
             try:
                 store = self.synapses
                 if store is not None:
-                    synapse_doc_edges = store.seed_from_documentation(
-                        self.project_path
-                    )
+                    synapse_doc_edges = store.seed_from_documentation(self.project_path)
                     # Warn if seeding was gated off (silent otherwise)
                     if synapse_doc_edges == 0:
                         import os
+
                         if os.environ.get("NEURALMIND_LLM_SEED") != "1":
-                            print("  ℹ Doc synapse seeding disabled (set NEURALMIND_LLM_SEED=1 + ANTHROPIC_API_KEY to enable)")
-                            synapse_seed_warned = True
+                            print(
+                                "  ℹ Doc synapse seeding disabled (set NEURALMIND_LLM_SEED=1 + ANTHROPIC_API_KEY to enable)"
+                            )
                         elif not os.environ.get("ANTHROPIC_API_KEY"):
                             print("  ℹ Doc synapse seeding needs ANTHROPIC_API_KEY")
-                            synapse_seed_warned = True
             except Exception:
                 pass
 
@@ -844,14 +844,11 @@ class NeuralMind:
         stats = self.embedder.embed_content(content_nodes)
 
         # Seed synapse edges between related CMMC practices
-        cmmc_synapse_edges = 0
         if self.enable_synapses:
             try:
                 store = self.synapses
                 if store is not None:
-                    cmmc_synapse_edges = store.seed_from_cmmc_practices(
-                        content_nodes
-                    )
+                    store.seed_from_cmmc_practices(content_nodes)
             except Exception:
                 pass
 
