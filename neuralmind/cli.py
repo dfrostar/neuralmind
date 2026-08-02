@@ -4352,6 +4352,16 @@ def main():
 
     exp_history = experiments_subcmd.add_parser("history", help="Show experiment history")
 
+    # Migrate
+    migrate_p = agent_os_sub.add_parser("migrate", help="Database migration")
+    migrate_subcmd = migrate_p.add_subparsers(dest="migrate_action")
+
+    migrate_pg = migrate_subcmd.add_parser("postgres", help="Migrate to PostgreSQL")
+    migrate_pg.add_argument("--dsn", required=True, help="PostgreSQL connection string")
+
+    migrate_status = migrate_subcmd.add_parser("status", help="Check migration status")
+    migrate_status.add_argument("--dsn", required=True, help="PostgreSQL connection string")
+
     # Set defaults
     tenants_list.set_defaults(func=cmd_agent_os)
     tenants_create.set_defaults(func=cmd_agent_os)
@@ -4361,6 +4371,8 @@ def main():
     signals_push.set_defaults(func=cmd_agent_os)
     exp_run.set_defaults(func=cmd_agent_os)
     exp_history.set_defaults(func=cmd_agent_os)
+    migrate_pg.set_defaults(func=cmd_agent_os)
+    migrate_status.set_defaults(func=cmd_agent_os)
 
     args = parser.parse_args()
     if args.command is None:
