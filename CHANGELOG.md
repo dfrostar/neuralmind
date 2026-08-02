@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.12.0](https://github.com/dfrostar/neuralmind/compare/v1.11.0...v1.12.0) (2026-08-02)
+
+
+### Features
+
+* doc synapse seeding + MCP ingest tool (v1.12.0) ([d6658ac](https://github.com/dfrostar/neuralmind/commit/d6658aca148745143600357732a55aa2925d556a))
+* MCP ingest_document RBAC + security page link ([a041453](https://github.com/dfrostar/neuralmind/commit/a04145354c48dfc8c31ce3d807ca7e16ebfa946b))
+
+
+### Bug Fixes
+
+* 5 adversarial QA bugs (data loss, crash, retrieval gap) ([99149c2](https://github.com/dfrostar/neuralmind/commit/99149c25172201ae593ef9ffee6de99b6591f056))
+* doc synapse seeding warn + tests + CMMC co-activation ([a276df1](https://github.com/dfrostar/neuralmind/commit/a276df1b6c5c5196b5746b606a9b63a64dd60a3a))
+* improve repo root detection for learn command ([71dca4f](https://github.com/dfrostar/neuralmind/commit/71dca4f659d8ab4a460d05bbbbbf029d5fe3590b))
+* show document content in query results ([8016fa0](https://github.com/dfrostar/neuralmind/commit/8016fa024153455931da2e49c21a3aa6805b76c1))
+
+
+### Documentation
+
+* add release notes template for consistency ([316de36](https://github.com/dfrostar/neuralmind/commit/316de360831a7dab0145b8a085496a9a2d66b3bc))
+* multi-project scoping page + wiring into all surfaces ([e70a0fa](https://github.com/dfrostar/neuralmind/commit/e70a0fac9b5bb233bdcabd61de5905a119dc3004))
+* RELEASE_NOTES_v1.13.0 — hardening for doc synapse seeding + MCP ingest ([f64290f](https://github.com/dfrostar/neuralmind/commit/f64290fcec54f7e54dfc0ce4252faed0980b08b4))
+* RELEASE_NOTES_v1.13.1 ([b83c874](https://github.com/dfrostar/neuralmind/commit/b83c8743f90862291320185cfa3d0f0092beaff5))
+* remove RELEASE_NOTES_v1.12.0.md from main repo ([c90e198](https://github.com/dfrostar/neuralmind/commit/c90e1982c88e942f49a80ea35bb266edd82894e1))
+* v1.11.2 release notes, about.html example, CLI-Reference update ([8c62882](https://github.com/dfrostar/neuralmind/commit/8c62882816338f64029795c17ee105309c76d996))
+
 ## [1.10.1](https://github.com/dfrostar/neuralmind/compare/v1.10.0...v1.10.1) (2026-07-30)
 
 
