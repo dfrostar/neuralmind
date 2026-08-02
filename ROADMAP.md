@@ -3,15 +3,16 @@
 A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome.
 
-## Now — v1.9.0 (structural gap detection)
+## Now — v1.14.0 (Agent OS multi-tenancy)
 
-**Latest release v1.9.0** shipped to PyPI and GHCR (2026-07-28).
+**Latest release v1.14.0** shipped to PyPI and GHCR (2026-08-02).
 
 **What shipped:**
-- **G5 structural gap detection** — Brandes betweenness, cross-community bridges, gap scoring, CLI (`neuralmind gaps --structural`), MCP tool (`neuralmind_structural_gaps`). 43 tests.
-- **DeepSeek QA patches** — gap ordering, Louvain fallback, dead code, docstrings.
-- **DocEvolver failure-path tests** — 4 new tests.
-- **CI** — Node 18→22, GitHub Pages decommissioned, SBOM publish.
+- **Agent OS package** — Multi-tenancy, RBAC, signal detection, and experiment runner. 5 modules (`tenant`, `governance`, `signals`, `experiment`, `api`).
+- **Tenant registry** — Business-scoped project isolation with per-tenant RBAC (admin/operator/viewer). JSON-backed, thread-safe, atomic writes.
+- **Page-Hinkley anomaly detection** — No fixed thresholds; detects small persistent shifts in metrics streams. Severity levels, cooldown, per-metric state.
+- **A/B experiment runner** — Promote/rollback governance with `higher_is_better` metric support. Delta normalization.
+- **Signal → experiment integration** — Anomaly-triggered experiments with full audit trail.
 
 ---
 
@@ -75,7 +76,9 @@ A second indexer type targeting book/markdown content instead of code. Reuses Ne
 
 See above — the public launch of the MIT + paid tier architecture.
 
-### Shipped releases (v1.0.0 → v1.9.0)
+### Shipped releases (v1.0.0 → v1.14.0)
+
+- **v1.14.0** — Agent OS multi-tenancy (tenant registry, RBAC, Page-Hinkley anomaly detection, A/B experiments, signal → experiment integration). 44 tests.
 
 - **v1.0.0** — Open-core launch: MIT tier (free), Tier 2 paid
   (SSO, RBAC, multi-team sync), Ed25519 license validation, dual-bound

@@ -4,7 +4,7 @@
   "source_backend": "turbovec",
   "source_schema_version": null,
   "built_at_commit": "handauthored0000000000000000000000000000",
-  "created_at": "2026-07-18T00:36:54.212477+00:00",
+  "created_at": "2026-08-02T02:55:56.047999+00:00",
   "coverage": "coarse",
   "nodes": [
     {
@@ -2489,7 +2489,428 @@
       "label": ""
     }
   ],
-  "synapses": [],
+  "synapses": [
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_api_routes_cs__method_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__method_cls",
+      "target": "src_api_routes_cs__method_cls__get_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__method_cls",
+      "target": "src_api_routes_cs__method_cls__post_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__method_cls",
+      "target": "src_api_routes_cs__method_cls__delete_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_api_routes_cs__route_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__route_cls",
+      "target": "src_api_routes_cs__route_cls__path_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__route_cls",
+      "target": "src_api_routes_cs__route_cls__method_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_api_routes_cs__routes_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls",
+      "target": "src_api_routes_cs__routes_cls__loginendpoint_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls",
+      "target": "src_api_routes_cs__routes_cls__getmeendpoint_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls",
+      "target": "src_api_routes_cs__routes_cls__chargeendpoint_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs",
+      "target": "src_auth_handlers_cs__handlers_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs__handlers_cls",
+      "target": "src_auth_handlers_cs__handlers_cls__authenticateuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs__handlers_cls",
+      "target": "src_auth_handlers_cs__handlers_cls__verifysession_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_jwtutils_cs",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_jwtutils_cs__jwtutils_cls",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__encodetoken_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_jwtutils_cs__jwtutils_cls",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__decodetoken_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_jwtutils_cs__jwtutils_cls",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__sign_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs",
+      "target": "src_billing_invoices_cs__invoice_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs__invoice_cls",
+      "target": "src_billing_invoices_cs__invoice_cls__userid_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs__invoice_cls",
+      "target": "src_billing_invoices_cs__invoice_cls__amountcents_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs",
+      "target": "src_billing_invoices_cs__invoices_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs__invoices_cls",
+      "target": "src_billing_invoices_cs__invoices_cls__chargeinvoice_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs__invoices_cls",
+      "target": "src_billing_invoices_cs__invoices_cls__sendinvoiceemail_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs__stripeclient_cls",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__apikey_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs__stripeclient_cls",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__stripeclient_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs__stripeclient_cls",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__chargecustomer_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs__stripeclient_cls",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__refundcharge_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_stripeclient_cs__stripeclient_cls",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__verifywebhook_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs",
+      "target": "src_db_connection_cs__datastore_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__datastore_cls",
+      "target": "src_db_connection_cs__datastore_cls__execute_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs",
+      "target": "src_db_connection_cs__connection_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__url_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__open_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__getconnection_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__close_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__execute_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__connection_cls__ensureschema_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_crud_cs",
+      "target": "src_users_crud_cs__crud_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_crud_cs__crud_cls",
+      "target": "src_users_crud_cs__crud_cls__createuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_crud_cs__crud_cls",
+      "target": "src_users_crud_cs__crud_cls__getuserbyemail_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_crud_cs__crud_cls",
+      "target": "src_users_crud_cs__crud_cls__getuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_user_cs",
+      "target": "src_users_user_cs__user_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_user_cs__user_cls",
+      "target": "src_users_user_cs__user_cls__id_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_user_cs__user_cls",
+      "target": "src_users_user_cs__user_cls__email_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_users_user_cs__user_cls",
+      "target": "src_users_user_cs__user_cls__isactive_sym",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_auth_handlers_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_billing_invoices_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs",
+      "target": "src_db_connection_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls__loginendpoint_fn",
+      "target": "src_auth_handlers_cs__handlers_cls__authenticateuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls__getmeendpoint_fn",
+      "target": "src_auth_handlers_cs__handlers_cls__verifysession_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_api_routes_cs__routes_cls__chargeendpoint_fn",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__chargecustomer_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs",
+      "target": "src_db_connection_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs",
+      "target": "src_users_crud_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs__handlers_cls__authenticateuser_fn",
+      "target": "src_users_crud_cs__crud_cls__getuserbyemail_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs__handlers_cls__authenticateuser_fn",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__encodetoken_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_handlers_cs__handlers_cls__verifysession_fn",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__decodetoken_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_auth_jwtutils_cs__jwtutils_cls__encodetoken_fn",
+      "target": "src_auth_jwtutils_cs__jwtutils_cls__sign_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs",
+      "target": "src_users_crud_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_billing_invoices_cs__invoices_cls__chargeinvoice_fn",
+      "target": "src_billing_stripeclient_cs__stripeclient_cls__chargecustomer_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls",
+      "target": "src_db_connection_cs__datastore_cls",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__connection_cls__ensureschema_fn",
+      "target": "src_db_connection_cs__datastore_cls__execute_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs",
+      "target": "src_users_crud_cs",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__datastore_cls__execute_fn",
+      "target": "src_users_crud_cs__crud_cls__createuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__datastore_cls__execute_fn",
+      "target": "src_users_crud_cs__crud_cls__getuserbyemail_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "src_db_connection_cs__datastore_cls__execute_fn",
+      "target": "src_users_crud_cs__crud_cls__getuser_fn",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "readme_md",
+      "target": "readme_md__h1",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "readme_md",
+      "target": "readme_md__h9",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    },
+    {
+      "source": "readme_md",
+      "target": "readme_md__h17",
+      "weight": 0.12295836866004328,
+      "kind": "co_activation"
+    }
+  ],
   "source_meta": {
     "directed": false,
     "multigraph": false,

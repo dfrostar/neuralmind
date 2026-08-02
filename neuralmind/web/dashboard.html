@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agency OS — Dashboard</title>
+  <link rel="stylesheet" href="/dashboard.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <h1>Agency OS</h1>
+        <span id="project-name" class="project-name"></span>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-view="overview">Overview</button>
+        <button class="tab" data-view="synapses">Memory</button>
+        <button class="tab" data-view="ingestion">Ingestion</button>
+        <button class="tab" data-view="performance">Performance</button>
+        <button class="tab" data-view="queries">Queries</button>
+        <button class="tab" data-view="communities">Communities</button>
+      </nav>
+      <div class="actions">
+        <button id="refresh" type="button" class="ghost" title="Refresh dashboard">↻ Refresh</button>
+        <span id="last-updated" class="muted"></span>
+      </div>
+    </header>
+
+    <main id="content">
+      <!-- Overview -->
+      <section class="view active" id="view-overview">
+        <div class="cards">
+          <div class="card status-card">
+            <h2>Project Status</h2>
+            <div class="metric-row">
+              <span class="metric-label">Status</span>
+              <span id="status-built" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Backend</span>
+              <span id="status-backend" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Nodes</span>
+              <span id="status-nodes" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Communities</span>
+              <span id="status-communities" class="metric-value">—</span>
+            </div>
+          </div>
+
+          <div class="card savings-card">
+            <h2>Savings</h2>
+            <div class="metric-row">
+              <span class="metric-label">Avg Reduction</span>
+              <span id="savings-ratio" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Tokens Saved</span>
+              <span id="savings-tokens" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Total Queries</span>
+              <span id="savings-queries" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Baseline</span>
+              <span id="savings-baseline" class="metric-value">—</span>
+            </div>
+          </div>
+
+          <div class="card synopsis-card">
+            <h2>Memory</h2>
+            <div class="metric-row">
+              <span class="metric-label">Active Namespace</span>
+              <span id="memory-namespace" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Synapse Edges</span>
+              <span id="memory-edges" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Transitions</span>
+              <span id="memory-transitions" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">LTP Edges</span>
+              <span id="memory-ltp" class="metric-value">—</span>
+            </div>
+          </div>
+
+          <div class="card ingestion-card">
+            <h2>Ingestion</h2>
+            <div class="metric-row">
+              <span class="metric-label">Document Nodes</span>
+              <span id="ingestion-nodes" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Frameworks</span>
+              <span id="ingestion-frameworks" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Last Ingested</span>
+              <span id="ingestion-last" class="metric-value">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Synapses / Memory -->
+      <section class="view" id="view-synapses">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Namespace Breakdown</h2>
+            <div id="namespaces-list" class="list"></div>
+          </div>
+          <div class="card full-width">
+            <h2>Top Synapse Edges</h2>
+            <div id="top-edges-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ingestion -->
+      <section class="view" id="view-ingestion">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Frameworks Loaded</h2>
+            <div id="frameworks-list" class="list"></div>
+          </div>
+          <div class="card full-width">
+            <h2>Recent Ingestion Events</h2>
+            <div id="ingestion-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Performance -->
+      <section class="view" id="view-performance">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Query Performance (last 7 days)</h2>
+            <div id="performance-metrics" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Queries -->
+      <section class="view" id="view-queries">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Recent Queries</h2>
+            <div id="queries-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Communities -->
+      <section class="view" id="view-communities">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Communities by Size</h2>
+            <div id="communities-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="loading">Loading dashboard…</div>
+    <div id="error-banner" class="error-banner hidden"></div>
+  </div>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

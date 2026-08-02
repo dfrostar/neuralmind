@@ -4,13 +4,13 @@ const steps = [
     {
         icon: '⚡',
         title: 'Index',
-        desc: 'tree-sitter parses your codebase into a graph — functions, classes, imports, comments. Ten languages, zero config.',
+        desc: 'tree-sitter parses your codebase into a graph — functions, classes, imports, comments. Ten languages, zero config. TurboVec compresses vectors 4-bit.',
         time: '~15 min',
     },
     {
         icon: '🧠',
         title: 'Query',
-        desc: 'Your agent asks a question. Progressive L0–L3 disclosure pulls exactly the right amount of context — never the whole repo.',
+        desc: 'Your agent asks a question. Progressive L0–L3 disclosure pulls exactly the right amount of context. Sub-second on a 1,486-node repo.',
         time: '<1s',
     },
     {

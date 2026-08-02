@@ -1,10 +1,10 @@
 'use client';
 
 const dataPoints = [
-    { metric: 'Retrieval token ratio', value: '12–50×', detail: 'vs naive file paste baseline' },
-    { metric: 'Synapse hit-rate gain', value: '+11.7 pts', detail: 'budget-neutral, CI-verified' },
-    { metric: 'Languages indexed', value: '10', detail: 'Python, TS, Go, Rust, Java, and more' },
-    { metric: 'Gold-file recall @ L3', value: '100%', detail: 'on pinned real OSS repos' },
+    { metric: 'Query Latency', value: '0.81s', detail: 'on 1,486-node repo (TurboVec)' },
+    { metric: 'Token Reduction', value: '63.6×', detail: 'on live production codebase' },
+    { metric: 'Gold-File Recall', value: '100%', detail: '11/11 golden suites PASS' },
+    { metric: 'Answerability', value: '86%', detail: 'label-free self-probe' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command' },
     { metric: 'Ongoing overhead', value: '~0', detail: 'post-commit hook auto-rebuilds' },
 ];

@@ -2,6 +2,12 @@
 
 const featureList = [
     {
+        icon: '⚡',
+        title: 'Sub-Second Retrieval',
+        desc: 'TurboVec backend: 0.81s per query on a 1,486-node repo. 10× faster than ChromaDB with comparable quality.',
+        badge: 'TurboVec',
+    },
+    {
         icon: '🧬',
         title: 'Hebbian Synapse Layer',
         desc: 'Associations strengthen when you use them together — like a real hippocampus. Budget-neutral, no cost until it activates.',
@@ -10,8 +16,20 @@ const featureList = [
     {
         icon: '🔄',
         title: 'Progressive L0–L3 Disclosure',
-        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 12–50× compression measured in CI.',
-        badge: '12–50×',
+        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 63.6× compression measured on production codebase.',
+        badge: '63.6×',
+    },
+    {
+        icon: '📊',
+        title: 'Team Dashboard',
+        desc: 'Read-only web UI: synapse memory, ingestion status, savings, latency trends, community distribution, recent queries.',
+        badge: 'New',
+    },
+    {
+        icon: '🤖',
+        title: 'Self-Documenting Code',
+        desc: 'DocEvolver finds undocumented methods, generates JSDoc variants, evolves them against retrieval fitness. Winning variants patched back into source.',
+        badge: 'Evolution',
     },
     {
         icon: '🌐',
@@ -26,12 +44,6 @@ const featureList = [
         badge: '10 langs',
     },
     {
-        icon: '📊',
-        title: 'Obsidian-Style Graph View',
-        desc: 'Local web UI showing node relationships. Clickable, filterable, searchable. Runs entirely on localhost.',
-        badge: 'Local',
-    },
-    {
         icon: '🗑️',
         title: 'Tool Output Recovery',
         desc: 'Caches dropped tool output from context windows. When your agent forgets, neuralmind remembers.',
@@ -44,34 +56,10 @@ const featureList = [
         badge: 'v1.7.0',
     },
     {
-        icon: '💥',
-        title: 'Impact Analysis (blast radius)',
-        desc: '`neuralmind impact <symbol> --depth N` surfaces every caller, importer, and subclass — with per-dependent hop + relation attribution. Same traversal as `structural --blast-radius`, now under a name that matches the question.',
-        badge: 'v0.52.0',
-    },
-    {
-        icon: '👥',
-        title: 'Team Tier ($29/user/mo)',
-        desc: 'Governance, audit log, self-hosted deployment, and seat management for teams of 5–50. Append-only hash-chained audit + offline-capable license validation.',
-        badge: 'v1.0.0',
-    },
-    {
-        icon: '⚙️',
-        title: 'CI-Gated Tuner',
-        desc: 'Population-based evolutionary search proposes configs. An independent quality harness validates against fixture queries before promotion. The daemon proposes; the harness disposes.',
-        badge: 'v0.10.1, architecture-complete',
-    },
-    {
         icon: '🔒',
         title: '100% Local Engine',
         desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
         badge: 'Secure',
-    },
-    {
-        icon: '⚙️',
-        title: 'Post-Commit Auto-Rebuild',
-        desc: '`neuralmind init-hook .` sets a git hook. Every commit incrementally updates the index in seconds.',
-        badge: 'Set & forget',
     },
     {
         icon: '🚀',
