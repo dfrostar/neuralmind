@@ -20,7 +20,8 @@
         <button class="tab" data-view="performance">Performance</button>
         <button class="tab" data-view="queries">Queries</button>
         <button class="tab" data-view="communities">Communities</button>
-      </nav>
+        <button class="tab" data-view="agentos">Agent OS</button>
+        </nav>
       <div class="actions">
         <button id="refresh" type="button" class="ghost" title="Refresh dashboard">↻ Refresh</button>
         <span id="last-updated" class="muted"></span>
@@ -163,6 +164,44 @@
           <div class="card full-width">
             <h2>Communities by Size</h2>
             <div id="communities-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Agent OS -->
+      <section class="view" id="view-agentos">
+        <div class="cards">
+          <div class="card full-width">
+            <h2>Tenants</h2>
+            <div id="agentos-tenants-summary" class="metric-row">
+              <span class="metric-label">Total Tenants</span>
+              <span id="agentos-total-tenants" class="metric-value">—</span>
+            </div>
+            <div id="agentos-tiers" class="list"></div>
+          </div>
+          <div class="card full-width">
+            <h2>Signals</h2>
+            <div id="agentos-signals-summary" class="metric-row">
+              <span class="metric-label">Tracked Metrics</span>
+              <span id="agentos-tracked-metrics" class="metric-value">—</span>
+            </div>
+            <div id="agentos-signals-list" class="list"></div>
+          </div>
+          <div class="card full-width">
+            <h2>Experiments</h2>
+            <div id="agentos-experiments-summary" class="metric-row">
+              <span class="metric-label">Total</span>
+              <span id="agentos-total-experiments" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Promotions</span>
+              <span id="agentos-promotions" class="metric-value">—</span>
+            </div>
+            <div class="metric-row">
+              <span class="metric-label">Rollbacks</span>
+              <span id="agentos-rollbacks" class="metric-value">—</span>
+            </div>
+            <div id="agentos-experiments-list" class="list"></div>
           </div>
         </div>
       </section>

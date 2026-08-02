@@ -63,6 +63,7 @@
     renderPerformance(data);
     renderQueries(data);
     renderCommunities(data);
+    renderAgentOS(data);
     updateTimestamp(data.generated_at);
   }
 
@@ -303,6 +304,64 @@
         `;
       })
       .join('');
+  }
+
+  // Agent OS
+  function renderAgentOS(data) {
+    const agentos = data.agent_os || {};
+
+    // Tenants
+    const tenants = agentos.tenants || {};
+    setText('agentos-total-tenants', fmtNumber(tenants.total_tenants));
+    const tiersList = document.getElementById('agentos-tiers');
+    const tiers = tenants.tiers || {};
+    if (Object.keys(tiers).length === 0) {
+      tiersList.innerHTML = '<div class="empty-state">No tenants</div>';
+    } else {
+      tiersList.innerHTML = Object.entries(tiers)
+        .map(([tier, count]) => `
+          <div class="list-item">
+            <span class="list-label">${escapeHtml(tier)}</span>
+            <span class="list-meta">${fmtNumber(count)} tenants</span>
+          </div>
+        `).join('');
+    }
+
+    // Signals
+    const signals = agentos.signals || {};
+    setText('agentos-tracked-metrics', fmtNumber(signals.tracked_metrics));
+    const signalsList = document.getElementById('agentos-signals-list');
+    const metrics = signals.metrics || {};
+    if (Object.keys(metrics).length === 0) {
+      signalsList.innerHTML = '<div class="empty-state">No signals tracked</div>';
+    } else {
+      signalsList.innerHTML = Object.entries(metrics)
+        .map(([name, stats]) => `
+          <div class="list-item">
+            <span class="list-label">${escapeHtml(name)}</span>
+            <span class="list-meta">mean ${stats.running_mean?.toFixed(2) || '—'} · std ${stats.running_std?.toFixed(2) || '—'}</span>
+          </div>
+        `).join('');
+    }
+
+    // Experiments
+    const experiments = agentos.experiments || {};
+    setText('agentos-total-experiments', fmtNumber(experiments.total_experiments));
+    setText('agentos-promotions', fmtNumber(experiments.promotions));
+    setText('agentos-rollbacks', fmtNumber(experiments.rollbacks));
+    const expList = document.getElementById('agentos-experiments-list');
+    const recent = experiments.recent || [];
+    if (recent.length === 0) {
+      expList.innerHTML = '<div class="empty-state">No experiments run</div>';
+    } else {
+      expList.innerHTML = recent
+        .map(e => `
+          <div class="list-item">
+            <span class="list-label">${escapeHtml(e.proposal_id)}</span>
+            <span class="list-meta">${escapeHtml(e.metric_name)} · delta ${e.delta?.toFixed(3) || '—'} · ${escapeHtml(e.verdict)}</span>
+          </div>
+        `).join('');
+    }
   }
 
   // Utility: set textContent
