@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from .experiment import ExperimentRunner
-from .governance import AgentOSGovernance
+from .governance import AgentOSGovernance, Permission
 from .signals import SignalDetector
 from .tenant import TenantRegistry
 
@@ -45,6 +45,28 @@ def _error(status: int, message: str) -> tuple[int, dict[str, Any]]:
 # Type alias: (body, path_remainder) → (status, payload)
 ScopedHandler = Callable[[dict[str, Any], str], tuple[int, dict[str, Any]]]
 DirectHandler = Callable[[dict[str, Any]], tuple[int, dict[str, Any]]]
+
+
+def _require_permission(
+    governance: AgentOSGovernance,
+    tenant_id: str | None,
+    email: str | None,
+    permission: Permission,
+) -> tuple[int, dict[str, Any]] | None:
+    """Enforce a permission for an email in a tenant.
+
+    Returns an error (status, payload) tuple when the request is missing the
+    tenant/email context or the email lacks the permission; returns None when
+    the permission check passes.
+    """
+    if not tenant_id:
+        return _error(400, "tenant_id is required")
+    if not email:
+        return _error(400, "email is required")
+    result = governance.enforce(tenant_id, email, permission)
+    if not result.allowed:
+        return _error(403, result.reason)
+    return None
 
 
 def create_agent_os_routes(
@@ -206,6 +228,16 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """GET /api/agent-os/signals — List tracked metrics."""
         try:
+            if body is None:
+                body = {}
+            error = _require_permission(
+                governance,
+                (body.get("tenant_id") or "").strip(),
+                (body.get("email") or "").strip(),
+                Permission.VIEW_SIGNALS,
+            )
+            if error:
+                return error
             metrics = signal_detector.list_metrics()
             stats = {}
             for m in metrics:
@@ -225,17 +257,29 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/signals — Push a metric value."""
         try:
+            error = _require_permission(
+                governance,
+                (body.get("tenant_id") or "").strip(),
+                (body.get("email") or "").strip(),
+                Permission.MANAGE_SIGNALS,
+            )
+            if error:
+                return error
             metric_name = (body.get("metric_name") or "").strip()
             value = body.get("value")
             if not metric_name:
                 return _error(400, "metric_name is required")
             if value is None:
                 return _error(400, "value is required")
-            signal = signal_detector.update(metric_name, float(value))
+            try:
+                sample = float(value)
+            except (TypeError, ValueError):
+                return _error(400, "value must be numeric")
+            signal = signal_detector.update(metric_name, sample)
             return _json_response(200, {
                 "signal": signal.to_dict() if signal else None,
                 "metric": metric_name,
-                "value": float(value),
+                "value": sample,
             })
         except Exception as e:
             log.exception("Failed to update signal")
@@ -248,9 +292,15 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/experiments — Run an A/B experiment."""
         try:
+            error = _require_permission(
+                governance,
+                (body.get("tenant_id") or "").strip(),
+                (body.get("email") or "").strip(),
+                Permission.RUN_EXPERIMENTS,
+            )
+            if error:
+                return error
             email = (body.get("email") or "").strip()
-            if not email:
-                return _error(400, "email is required")
             proposal_id = (body.get("proposal_id") or "").strip()
             metric_name = (body.get("metric_name") or "").strip()
             baseline_value = body.get("baseline_value")
@@ -262,12 +312,18 @@ def create_agent_os_routes(
                 return _error(400, "metric_name is required")
             if baseline_value is None or candidate_value is None:
                 return _error(400, "baseline_value and candidate_value are required")
+            try:
+                baseline_f = float(baseline_value)
+                candidate_f = float(candidate_value)
+                threshold_f = float(threshold_pct) if threshold_pct else None
+            except (TypeError, ValueError):
+                return _error(400, "baseline_value, candidate_value, and threshold_pct must be numeric")
             result = experiment_runner.run(
                 proposal_id=proposal_id,
                 metric_name=metric_name,
-                baseline_value=float(baseline_value),
-                candidate_value=float(candidate_value),
-                threshold_pct=float(threshold_pct) if threshold_pct else None,
+                baseline_value=baseline_f,
+                candidate_value=candidate_f,
+                threshold_pct=threshold_f,
                 details={"triggered_by": email},
             )
             return _json_response(200, result.to_dict())
@@ -282,6 +338,16 @@ def create_agent_os_routes(
     ) -> tuple[int, dict[str, Any]]:
         """GET /api/agent-os/experiments — List experiment history."""
         try:
+            if body is None:
+                body = {}
+            error = _require_permission(
+                governance,
+                (body.get("tenant_id") or "").strip(),
+                (body.get("email") or "").strip(),
+                Permission.VIEW_EXPERIMENTS,
+            )
+            if error:
+                return error
             history = experiment_runner.get_history()
             return _json_response(200, {
                 "experiments": [e.to_dict() for e in history],

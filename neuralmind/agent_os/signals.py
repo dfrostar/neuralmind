@@ -83,7 +83,6 @@ class _PageHinkleyState:
     running_sum_sq: float = 0.0
     min_cum_dev: float = 0.0
     max_cum_dev: float = 0.0
-    alpha: float = 0.05  # forgetting factor for mean tracking
     lambda_threshold: float = 4.0  # alert threshold (× running_std)
     last_signal_at: float = 0.0
     cooldown_seconds: float = 60.0
@@ -127,7 +126,7 @@ class _PageHinkleyState:
         self.running_sum += value
         self.running_sum_sq += value * value
 
-        # Exponentially-weighted deviation from mean
+        # Deviation from the running (arithmetic) mean
         mean = self.running_mean
         deviation = value - mean
         # Track cumulative deviation (Page-Hinkley core)
@@ -174,11 +173,9 @@ class SignalDetector:
 
     def __init__(
         self,
-        alpha: float = 0.05,
         lambda_threshold: float = 4.0,
         cooldown_seconds: float = 60.0,
     ) -> None:
-        self._alpha = alpha
         self._lambda_threshold = lambda_threshold
         self._cooldown_seconds = cooldown_seconds
         self._state: dict[str, _PageHinkleyState] = {}
@@ -187,7 +184,6 @@ class SignalDetector:
         if metric_name not in self._state:
             self._state[metric_name] = _PageHinkleyState(
                 metric_name=metric_name,
-                alpha=self._alpha,
                 lambda_threshold=self._lambda_threshold,
                 cooldown_seconds=self._cooldown_seconds,
             )

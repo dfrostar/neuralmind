@@ -269,16 +269,22 @@ class AgentOSGovernance:
             permission=permission.value,
         )
 
-    @require_permission(Permission.MANAGE_PROJECTS)
     def create_tenant(
         self,
         tenant_id: str,
-        email: str,  # the creating user (must be admin in system context)
+        email: str,  # the creating user, who becomes the tenant admin
         name: str,
         tier: str = "free",
         projects: list[str] | None = None,
     ) -> Tenant:
-        """Create a tenant with the creator as admin."""
+        """Create a tenant with the creator as admin.
+
+        This is a bootstrap operation: no pre-existing tenant context exists
+        to check a permission against, so it must NOT be gated by
+        ``require_permission`` (a decorator there would look up the not-yet-
+        created tenant and always fail). Validation of the tenant_id and
+        project ownership is performed by the underlying registry.
+        """
         return self._tenant_registry.create_tenant(
             tenant_id=tenant_id,
             name=name,

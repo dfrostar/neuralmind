@@ -107,7 +107,13 @@ class ExperimentRunner:
                             (e.g., lower latency is better).
         """
         if abs(baseline) < 1e-9:
-            return 0.0 if abs(candidate) < 1e-9 else 1.0
+            if abs(candidate) < 1e-9:
+                return 0.0
+            # Degenerate baseline: report the direction of the change, then
+            # apply the higher_is_better inversion like the normal path, so a
+            # lower-is-better metric (e.g. latency) doesn't promote a large
+            # candidate as a 100% "improvement".
+            return 1.0 if higher_is_better else -1.0
         raw = (candidate - baseline) / abs(baseline)
         # Invert so positive delta always = improvement
         return raw if higher_is_better else -raw

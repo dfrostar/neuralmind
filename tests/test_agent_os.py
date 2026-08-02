@@ -434,7 +434,21 @@ class TestExperimentRunner:
             candidate_value=1.0,
         )
         # Should not crash
+        # Default is lower_is_better: candidate > baseline is a regression → negative delta.
+        assert result.delta == -1.0
+
+    def test_zero_baseline_higher_is_better(self):
+        """Zero-baseline branch must honor higher_is_better directionality."""
+        runner = ExperimentRunner()
+        result = runner.run(
+            proposal_id="p1",
+            metric_name="m",
+            baseline_value=0.0,
+            candidate_value=10.0,
+            higher_is_better=True,   # throughput: candidate > baseline is an improvement
+        )
         assert result.delta == 1.0
+        assert result.verdict == ExperimentStatus.PROMOTED
 
     def test_history(self):
         runner = ExperimentRunner()
