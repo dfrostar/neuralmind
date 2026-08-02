@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.0.0](https://github.com/dfrostar/neuralmind/compare/v1.11.0...v2.0.0) (2026-08-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **agent-os:** none (new package, additive)
+
+### Features
+
+* **agent-os:** CLI surface for multi-tenant operations ([e337f15](https://github.com/dfrostar/neuralmind/commit/e337f15e7474ef35feafb2e0e472c0d6d92622ad))
+* **agent-os:** daemon wiring, correlator, promotion engine (v1.15.0) ([b8ac536](https://github.com/dfrostar/neuralmind/commit/b8ac536c6c631af6f3512d8c1e0126b00a4276c8))
+* **agent-os:** dashboard sections for tenants, signals, experiments ([aeb2f3f](https://github.com/dfrostar/neuralmind/commit/aeb2f3fefc4c5737e79d0ad0eaf7385f69e6864e))
+* **agent-os:** multi-tenancy, RBAC, signal detection, experiments (v1.14.0) ([c8e3388](https://github.com/dfrostar/neuralmind/commit/c8e3388fee7b1e2219d8eb8b38f09476761a3bb7))
+* **agent-os:** PostgreSQL migration schema and CLI ([9719c77](https://github.com/dfrostar/neuralmind/commit/9719c7740ebf7a234f1e09242932bf8e0954b81f))
+* **agent-os:** Welch's t-test p-value on historical deltas ([97f857c](https://github.com/dfrostar/neuralmind/commit/97f857cdf1cdca2008af0659f973916c5491494b))
+* doc synapse seeding + MCP ingest tool (v1.12.0) ([d6658ac](https://github.com/dfrostar/neuralmind/commit/d6658aca148745143600357732a55aa2925d556a))
+* MCP ingest_document RBAC + security page link ([a041453](https://github.com/dfrostar/neuralmind/commit/a04145354c48dfc8c31ce3d807ca7e16ebfa946b))
+
+
+### Bug Fixes
+
+* 5 adversarial QA bugs (data loss, crash, retrieval gap) ([99149c2](https://github.com/dfrostar/neuralmind/commit/99149c25172201ae593ef9ffee6de99b6591f056))
+* **agent-os:** DeepSeek QA — Welford std, zero-variance guard, create_tenant doc ([c9c580b](https://github.com/dfrostar/neuralmind/commit/c9c580b8ea98336f3e10bde2f1217520d5857b69))
+* **agent-os:** GLM catch-missed-issues patches ([0da1d4b](https://github.com/dfrostar/neuralmind/commit/0da1d4b319a90117acc990675ed4a28e7b0d588e))
+* **agent-os:** QA patches from GLM + DeepSeek review ([13c48ed](https://github.com/dfrostar/neuralmind/commit/13c48ed77a33ebf4815a5c107ea7c84347cdb745))
+* **ci:** add timeouts + make release smoke test fast ([7db4a7e](https://github.com/dfrostar/neuralmind/commit/7db4a7ef05da72861ca892ff762827cf6b5c2446))
+* **ci:** add timeouts to test jobs (30min) + fail-fast (-x) for release ([7213480](https://github.com/dfrostar/neuralmind/commit/72134807c86146af23b9da78dc8cd460388636ef))
+* doc synapse seeding warn + tests + CMMC co-activation ([a276df1](https://github.com/dfrostar/neuralmind/commit/a276df1b6c5c5196b5746b606a9b63a64dd60a3a))
+* improve repo root detection for learn command ([71dca4f](https://github.com/dfrostar/neuralmind/commit/71dca4f659d8ab4a460d05bbbbbf029d5fe3590b))
+* **release:** simplify smoke test to import + CLI only (10min timeout) ([032b001](https://github.com/dfrostar/neuralmind/commit/032b001a9083b57dc76caa0ddbe3739779baf5ae))
+* show document content in query results ([8016fa0](https://github.com/dfrostar/neuralmind/commit/8016fa024153455931da2e49c21a3aa6805b76c1))
+
+
+### Documentation
+
+* add release notes template for consistency ([316de36](https://github.com/dfrostar/neuralmind/commit/316de360831a7dab0145b8a085496a9a2d66b3bc))
+* Agent OS spec suite (BRD, TRD, TEST-PLAN, QA-PLAN) ([0871eb3](https://github.com/dfrostar/neuralmind/commit/0871eb3cd55ea5fc7d6630678363f5433dcc23d2))
+* multi-project scoping page + wiring into all surfaces ([e70a0fa](https://github.com/dfrostar/neuralmind/commit/e70a0fac9b5bb233bdcabd61de5905a119dc3004))
+* RELEASE_NOTES_v1.13.0 — hardening for doc synapse seeding + MCP ingest ([f64290f](https://github.com/dfrostar/neuralmind/commit/f64290fcec54f7e54dfc0ce4252faed0980b08b4))
+* RELEASE_NOTES_v1.13.1 ([b83c874](https://github.com/dfrostar/neuralmind/commit/b83c8743f90862291320185cfa3d0f0092beaff5))
+* remove RELEASE_NOTES_v1.12.0.md from main repo ([c90e198](https://github.com/dfrostar/neuralmind/commit/c90e1982c88e942f49a80ea35bb266edd82894e1))
+* v1.11.2 release notes, about.html example, CLI-Reference update ([8c62882](https://github.com/dfrostar/neuralmind/commit/8c62882816338f64029795c17ee105309c76d996))
+
 ## [1.10.1](https://github.com/dfrostar/neuralmind/compare/v1.10.0...v1.10.1) (2026-07-30)
 
 
