@@ -138,18 +138,14 @@ class Tenant:
         """True if email has admin role."""
         if not email:
             return False
-        return any(
-            r.email.lower() == email.lower() and r.role == "admin"
-            for r in self.rbac
-        )
+        return any(r.email.lower() == email.lower() and r.role == "admin" for r in self.rbac)
 
     def is_operator(self, email: str) -> bool:
         """True if email has operator or admin role."""
         if not email:
             return False
         return any(
-            r.email.lower() == email.lower() and r.role in ("admin", "operator")
-            for r in self.rbac
+            r.email.lower() == email.lower() and r.role in ("admin", "operator") for r in self.rbac
         )
 
     def has_access(self, email: str) -> bool:
@@ -316,9 +312,7 @@ class TenantRegistry:
             if resolved in self._project_index:
                 other = self._project_index[resolved]
                 if other != tenant_id:
-                    raise TenantConflictError(
-                        f"Project already assigned to tenant '{other}'"
-                    )
+                    raise TenantConflictError(f"Project already assigned to tenant '{other}'")
             if resolved not in tenant.projects:
                 tenant.projects.append(resolved)
                 tenant.updated_at = datetime.now(timezone.utc).isoformat()

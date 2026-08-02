@@ -168,8 +168,7 @@ def require_permission(permission: Permission) -> Callable[[F], F]:
                 raise InsufficientPermissionError(f"Tenant not found: {tenant_id}")
             if not check_permission(tenant, str(email), permission):
                 log.warning(
-                    f"Permission denied: {email} lacks {permission.value} "
-                    f"in tenant {tenant_id}"
+                    f"Permission denied: {email} lacks {permission.value} in tenant {tenant_id}"
                 )
                 raise InsufficientPermissionError(
                     f"Insufficient permission: {permission.value} required. "
@@ -310,10 +309,15 @@ class AgentOSGovernance:
     ) -> Tenant:
         """Assign a role to a user. Admin-only."""
         tenant = self._tenant_registry.add_role(tenant_id, target_email, role, admin_email)
-        self._audit(admin_email, "role_assigned", tenant_id, {
-            "target": target_email,
-            "role": role,
-        })
+        self._audit(
+            admin_email,
+            "role_assigned",
+            tenant_id,
+            {
+                "target": target_email,
+                "role": role,
+            },
+        )
         return tenant
 
     @require_permission(Permission.MANAGE_PROJECTS)

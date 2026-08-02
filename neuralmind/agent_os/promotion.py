@@ -17,15 +17,14 @@ Design:
 from __future__ import annotations
 
 import logging
-import time
 import uuid
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from .experiment import ExperimentResult, ExperimentRunner, ExperimentStatus
-from .signals import SeverityLevel
 
 log = logging.getLogger(__name__)
 

@@ -150,7 +150,9 @@ def create_postgres_tables(dsn: str) -> bool:
     try:
         import psycopg2
     except ImportError:
-        print("psycopg2 is required for PostgreSQL support. Install with: pip install psycopg2-binary")
+        print(
+            "psycopg2 is required for PostgreSQL support. Install with: pip install psycopg2-binary"
+        )
         return False
 
     try:
@@ -177,15 +179,18 @@ def migrate_status(dsn: str) -> dict[str, Any]:
         conn.autocommit = True
         with conn.cursor() as cur:
             tables = [
-                "signals", "insights", "proposals",
-                "experiments", "rollbacks", "adversarial_queries",
+                "signals",
+                "insights",
+                "proposals",
+                "experiments",
+                "rollbacks",
+                "adversarial_queries",
                 "health_snapshots",
             ]
             status = {}
             for table in tables:
                 cur.execute(
-                    "SELECT COUNT(*) FROM information_schema.tables "
-                    "WHERE table_name = %s",
+                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = %s",
                     (table,),
                 )
                 exists = cur.fetchone()[0] > 0

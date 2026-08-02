@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -119,8 +119,7 @@ class RootCauseCorrelator:
             )
 
         # Return the highest-confidence hypothesis
-        best = max(hypotheses, key=lambda h: h.confidence)
-        return best
+        return max(hypotheses, key=lambda h: h.confidence)
 
     def _recent_commits(
         self,
@@ -129,9 +128,9 @@ class RootCauseCorrelator:
     ) -> list[dict[str, Any]]:
         """Get recent commits from the project's git log."""
         try:
-            since_str = datetime.fromtimestamp(since_ts - self._lookback_seconds, tz=timezone.utc).strftime(
-                "%Y-%m-%dT%H:%M:%S"
-            )
+            since_str = datetime.fromtimestamp(
+                since_ts - self._lookback_seconds, tz=timezone.utc
+            ).strftime("%Y-%m-%dT%H:%M:%S")
             result = subprocess.run(
                 [
                     "git",
@@ -154,13 +153,15 @@ class RootCauseCorrelator:
                     continue
                 parts = line.split("|", 4)
                 if len(parts) >= 4:
-                    commits.append({
-                        "hash": parts[0],
-                        "author": parts[1],
-                        "email": parts[2],
-                        "message": parts[3],
-                        "date": parts[4] if len(parts) > 4 else "",
-                    })
+                    commits.append(
+                        {
+                            "hash": parts[0],
+                            "author": parts[1],
+                            "email": parts[2],
+                            "message": parts[3],
+                            "date": parts[4] if len(parts) > 4 else "",
+                        }
+                    )
             return commits
         except (subprocess.TimeoutExpired, OSError):
             return []
@@ -172,19 +173,23 @@ class RootCauseCorrelator:
     ) -> list[dict[str, Any]]:
         """Get recent config file changes (YAML/JSON/TOML in project root)."""
         changes = []
-        config_files = list(project_path.glob("*.yaml")) + \
-                       list(project_path.glob("*.yml")) + \
-                       list(project_path.glob("*.json")) + \
-                       list(project_path.glob("*.toml"))
+        config_files = (
+            list(project_path.glob("*.yaml"))
+            + list(project_path.glob("*.yml"))
+            + list(project_path.glob("*.json"))
+            + list(project_path.glob("*.toml"))
+        )
         for path in config_files:
             try:
                 mtime = path.stat().st_mtime
                 if mtime >= since_ts - self._lookback_seconds:
-                    changes.append({
-                        "file": path.name,
-                        "mtime": mtime,
-                        "path": str(path),
-                    })
+                    changes.append(
+                        {
+                            "file": path.name,
+                            "mtime": mtime,
+                            "path": str(path),
+                        }
+                    )
             except OSError:
                 continue
         return changes
@@ -198,7 +203,6 @@ class RootCauseCorrelator:
         """Score hypotheses based on evidence."""
         hypotheses = []
         now = time.time()
-        signal_ts = getattr(signal, "timestamp", now)
         metric_name = getattr(signal, "metric_name", "unknown")
         signal_id = getattr(signal, "signal_id", "unknown")
 
@@ -206,38 +210,42 @@ class RootCauseCorrelator:
         for commit in commits:
             confidence = self._commit_relevance(commit, metric_name)
             if confidence > 0.1:
-                hypotheses.append(Insight(
-                    insight_id=f"ins_{commit['hash'][:8]}_{int(now)}",
-                    signal_id=signal_id,
-                    ts=datetime.now(timezone.utc).isoformat(),
-                    hypothesis=(
-                        f"Code change by {commit['author']} ({commit['hash'][:8]}) "
-                        f"may have caused {metric_name} anomaly: {commit['message'][:80]}"
-                    ),
-                    cause_type=CauseType.CODE_CHANGE,
-                    cause_ref=commit["hash"],
-                    confidence=confidence,
-                    details=commit,
-                ))
+                hypotheses.append(
+                    Insight(
+                        insight_id=f"ins_{commit['hash'][:8]}_{int(now)}",
+                        signal_id=signal_id,
+                        ts=datetime.now(timezone.utc).isoformat(),
+                        hypothesis=(
+                            f"Code change by {commit['author']} ({commit['hash'][:8]}) "
+                            f"may have caused {metric_name} anomaly: {commit['message'][:80]}"
+                        ),
+                        cause_type=CauseType.CODE_CHANGE,
+                        cause_ref=commit["hash"],
+                        confidence=confidence,
+                        details=commit,
+                    )
+                )
 
         # Config change hypothesis
         for change in config_changes:
             confidence = 0.5  # baseline for config changes
             if metric_name.lower() in change["file"].lower():
                 confidence = 0.8  # filename matches metric
-            hypotheses.append(Insight(
-                insight_id=f"ins_cfg_{change['file']}_{int(now)}",
-                signal_id=signal_id,
-                ts=datetime.now(timezone.utc).isoformat(),
-                hypothesis=(
-                    f"Config file {change['file']} was modified recently, "
-                    f"possibly affecting {metric_name}"
-                ),
-                cause_type=CauseType.CONFIG_CHANGE,
-                cause_ref=change["file"],
-                confidence=confidence,
-                details=change,
-            ))
+            hypotheses.append(
+                Insight(
+                    insight_id=f"ins_cfg_{change['file']}_{int(now)}",
+                    signal_id=signal_id,
+                    ts=datetime.now(timezone.utc).isoformat(),
+                    hypothesis=(
+                        f"Config file {change['file']} was modified recently, "
+                        f"possibly affecting {metric_name}"
+                    ),
+                    cause_type=CauseType.CONFIG_CHANGE,
+                    cause_ref=change["file"],
+                    confidence=confidence,
+                    details=change,
+                )
+            )
 
         return hypotheses
 

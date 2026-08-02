@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
 
 def cmd_agent_os(args: argparse.Namespace) -> None:
@@ -18,12 +16,12 @@ def cmd_agent_os(args: argparse.Namespace) -> None:
         SignalDetector,
         TenantRegistry,
     )
-    
+
     action = getattr(args, "agent_os_command", None)
     if action is None:
         print("No Agent OS command specified. Run `neuralmind agent-os --help`.")
         return
-    
+
     # Initialize components
     registry = TenantRegistry()
     governance = AgentOSGovernance(registry)
@@ -31,7 +29,7 @@ def cmd_agent_os(args: argparse.Namespace) -> None:
     experiment_runner = ExperimentRunner()
     promotion_engine = PromotionEngine()
     correlator = RootCauseCorrelator()
-    
+
     try:
         if action == "tenants":
             _cmd_tenants(args, registry, governance)

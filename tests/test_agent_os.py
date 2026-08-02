@@ -104,6 +104,7 @@ class TestTenantIdValidation:
 
     def test_invalid_ids(self):
         from neuralmind.agent_os.tenant import InvalidTenantIdError
+
         with pytest.raises(InvalidTenantIdError):
             validate_tenant_id("")
         with pytest.raises(InvalidTenantIdError):
@@ -445,7 +446,7 @@ class TestExperimentRunner:
             metric_name="m",
             baseline_value=0.0,
             candidate_value=10.0,
-            higher_is_better=True,   # throughput: candidate > baseline is an improvement
+            higher_is_better=True,  # throughput: candidate > baseline is an improvement
         )
         assert result.delta == 1.0
         assert result.verdict == ExperimentStatus.PROMOTED

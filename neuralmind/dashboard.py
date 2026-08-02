@@ -303,6 +303,7 @@ def communities(mind=None, project_path: str | Path | None = None) -> list[dict]
 # Agent OS sections
 # --------------------------------------------------------------------------- #
 
+
 def agent_os_tenants(tenants_dir: Path | None = None) -> dict[str, Any]:
     """Agent OS tenant summary for dashboard display."""
     try:
@@ -357,7 +358,7 @@ def agent_os_experiments() -> dict[str, Any]:
 
         verdicts: dict[str, int] = {}
         for r in history:
-            v = r.verdict.value if hasattr(r.verdict, 'value') else str(r.verdict)
+            v = r.verdict.value if hasattr(r.verdict, "value") else str(r.verdict)
             verdicts[v] = verdicts.get(v, 0) + 1
 
         return {

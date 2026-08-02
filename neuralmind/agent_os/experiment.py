@@ -29,6 +29,7 @@ def _normal_cdf(x: float) -> float:
     estimation with n>=2 historical samples.
     """
     import math
+
     return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
 
 
@@ -155,8 +156,7 @@ class ExperimentRunner:
             ExperimentResult with the computed verdict.
         """
         promote_threshold = (
-            threshold_pct / 100.0 if threshold_pct is not None
-            else self._promote_threshold
+            threshold_pct / 100.0 if threshold_pct is not None else self._promote_threshold
         )
         delta = self._compute_delta(baseline_value, candidate_value, higher_is_better)
 
@@ -193,10 +193,7 @@ class ExperimentRunner:
         Uses Welch's t-test (unequal variance). Returns None if <2 historical
         samples. Falls back to heuristic when variance is zero.
         """
-        historical = [
-            r.delta for r in self._history
-            if r.delta is not None
-        ]
+        historical = [r.delta for r in self._history if r.delta is not None]
         if len(historical) < 2:
             return None
 

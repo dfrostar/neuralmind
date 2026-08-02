@@ -3,15 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from neuralmind.agent_os import (
     CauseType,
-    ExperimentResult,
-    ExperimentRunner,
     ExperimentStatus,
     PromotionEngine,
     PromotionRecord,
@@ -19,7 +13,6 @@ from neuralmind.agent_os import (
     RootCauseCorrelator,
     Signal,
 )
-
 
 # ---------------------------------------------------------------------------
 # Correlator
@@ -63,13 +56,15 @@ class TestRootCauseCorrelator:
         )
 
         # Mock _recent_commits to return a commit mentioning the metric
-        correlator._recent_commits = lambda path, ts: [{
-            "hash": "abc1234567890",
-            "author": "Test",
-            "email": "<EMAIL>",
-            "message": "improve latency_ms performance",
-            "date": datetime.now(timezone.utc).isoformat(),
-        }]
+        correlator._recent_commits = lambda path, ts: [
+            {
+                "hash": "abc1234567890",
+                "author": "Test",
+                "email": "<EMAIL>",
+                "message": "improve latency_ms performance",
+                "date": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
 
         insight = correlator.correlate(signal, tmp_path)
         assert insight is not None
@@ -82,11 +77,13 @@ class TestRootCauseCorrelator:
         correlator = RootCauseCorrelator(lookback_seconds=7200)
 
         # Mock _recent_config_changes
-        correlator._recent_config_changes = lambda path, ts: [{
-            "file": "backend.yaml",
-            "mtime": datetime.now(timezone.utc).timestamp(),
-            "path": str(tmp_path / "backend.yaml"),
-        }]
+        correlator._recent_config_changes = lambda path, ts: [
+            {
+                "file": "backend.yaml",
+                "mtime": datetime.now(timezone.utc).timestamp(),
+                "path": str(tmp_path / "backend.yaml"),
+            }
+        ]
 
         signal = Signal(
             signal_id="sig_1",
@@ -108,13 +105,15 @@ class TestRootCauseCorrelator:
         """Commit with perf keyword gets moderate confidence."""
         correlator = RootCauseCorrelator(lookback_seconds=7200)
 
-        correlator._recent_commits = lambda path, ts: [{
-            "hash" : "def7890123456",
-            "author" : "Dev",
-            "email" : "<EMAIL>",
-            "message" : "optimize database queries for speed",
-            "date" : datetime.now(timezone.utc).isoformat(),
-        }]
+        correlator._recent_commits = lambda path, ts: [
+            {
+                "hash": "def7890123456",
+                "author": "Dev",
+                "email": "<EMAIL>",
+                "message": "optimize database queries for speed",
+                "date": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
 
         signal = Signal(
             signal_id="sig_1",
@@ -141,6 +140,7 @@ class TestPromotionEngine:
     def test_promote_calls_ship_callable(self):
         """PROMOTED verdict triggers ship_callable."""
         shipped = []
+
         def ship(result):
             shipped.append(result)
 
@@ -158,6 +158,7 @@ class TestPromotionEngine:
     def test_rollback_calls_ship_callable(self):
         """ROLLED_BACK verdict triggers ship_callable."""
         rolled_back = []
+
         def ship(result):
             rolled_back.append(result)
 
@@ -174,6 +175,7 @@ class TestPromotionEngine:
     def test_rejected_does_not_call_ship(self):
         """REJECTED verdict is a no-op."""
         called = []
+
         def ship(result):
             called.append(result)
 
@@ -219,6 +221,7 @@ class TestPromotionEngine:
 
     def test_ship_exception_is_caught(self):
         """ship_callable exception is caught and logged, not bubbled."""
+
         def bad_ship(result):
             raise RuntimeError("ship failed!")
 

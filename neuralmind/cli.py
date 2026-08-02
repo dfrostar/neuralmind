@@ -12,12 +12,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import __version__, memory
+from neuralmind.agent_os.cli import cmd_agent_os
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
-from neuralmind.agent_os.cli import cmd_agent_os, run_agent_os_command
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 

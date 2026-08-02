@@ -504,7 +504,7 @@ def _match_agent_os_route(method: str, route: str) -> tuple[Callable | None, dic
 
     Returns (handler, path_params) or (None, {}) if no match.
     """
-    from .agent_os import create_agent_os_routes, SignalDetector, ExperimentRunner
+    from .agent_os import ExperimentRunner, SignalDetector, create_agent_os_routes
     from .agent_os.tenant import TenantRegistry
 
     # Lazy-init shared Agent OS components (process-local, like the registry)
@@ -546,7 +546,7 @@ def _extract_path_params(pattern: str, route: str) -> dict[str, str] | None:
         return None
 
     params = {}
-    for p_part, r_part in zip(pattern_parts, route_parts):
+    for p_part, r_part in zip(pattern_parts, route_parts, strict=True):
         if p_part.startswith("{") and p_part.endswith("}"):
             params[p_part[1:-1]] = r_part
         elif p_part != r_part:
@@ -555,7 +555,9 @@ def _extract_path_params(pattern: str, route: str) -> dict[str, str] | None:
     return params
 
 
-def _dispatch_agent_os(ctx: DaemonContext, method: str, route: str, body: dict) -> tuple[int, dict] | None:
+def _dispatch_agent_os(
+    ctx: DaemonContext, method: str, route: str, body: dict
+) -> tuple[int, dict] | None:
     """Dispatch an Agent OS request.
 
     Returns (status, payload) if the route is an Agent OS route, or None
@@ -572,6 +574,7 @@ def _dispatch_agent_os(ctx: DaemonContext, method: str, route: str, body: dict) 
         return handler(body, **path_params)
     except Exception as exc:
         import logging
+
         log = logging.getLogger(__name__)
         log.exception("Agent OS route failed: %s %s", method, route)
         return 500, {"error": f"{type(exc).__name__}: {exc}"}

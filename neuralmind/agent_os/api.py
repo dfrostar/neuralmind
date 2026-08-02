@@ -97,9 +97,7 @@ def create_agent_os_routes(
 
     # ---- Tenant CRUD ----
 
-    def create_tenant(
-        body: dict[str, Any], **path_params: str
-    ) -> tuple[int, dict[str, Any]]:
+    def create_tenant(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/tenants — Create a tenant."""
         try:
             tenant_id = (body.get("tenant_id") or "").strip()
@@ -130,10 +128,13 @@ def create_agent_os_routes(
             if not email:
                 return _error(400, "email is required")
             tenants = governance.list_accessible_tenants(email)
-            return _json_response(200, {
-                "tenants": [t.to_dict() for t in tenants],
-                "count": len(tenants),
-            })
+            return _json_response(
+                200,
+                {
+                    "tenants": [t.to_dict() for t in tenants],
+                    "count": len(tenants),
+                },
+            )
         except Exception as e:
             log.exception("Failed to list tenants")
             return _error(500, str(e))
@@ -200,9 +201,7 @@ def create_agent_os_routes(
             log.exception("Failed to delete tenant")
             return _error(500, str(e))
 
-    def assign_role(
-        body: dict[str, Any], **path_params: str
-    ) -> tuple[int, dict[str, Any]]:
+    def assign_role(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/tenants/{tenant_id}/rbac — Assign a role."""
         try:
             tenant_id = path_params.get("tenant_id", "")
@@ -244,17 +243,18 @@ def create_agent_os_routes(
                 s = signal_detector.get_stats(m)
                 if s:
                     stats[m] = s
-            return _json_response(200, {
-                "metrics": stats,
-                "tracked_count": len(metrics),
-            })
+            return _json_response(
+                200,
+                {
+                    "metrics": stats,
+                    "tracked_count": len(metrics),
+                },
+            )
         except Exception as e:
             log.exception("Failed to get signals")
             return _error(500, str(e))
 
-    def update_signal(
-        body: dict[str, Any], **path_params: str
-    ) -> tuple[int, dict[str, Any]]:
+    def update_signal(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/signals — Push a metric value."""
         try:
             error = _require_permission(
@@ -276,20 +276,21 @@ def create_agent_os_routes(
             except (TypeError, ValueError):
                 return _error(400, "value must be numeric")
             signal = signal_detector.update(metric_name, sample)
-            return _json_response(200, {
-                "signal": signal.to_dict() if signal else None,
-                "metric": metric_name,
-                "value": sample,
-            })
+            return _json_response(
+                200,
+                {
+                    "signal": signal.to_dict() if signal else None,
+                    "metric": metric_name,
+                    "value": sample,
+                },
+            )
         except Exception as e:
             log.exception("Failed to update signal")
             return _error(500, str(e))
 
     # ---- Experiment routes ----
 
-    def run_experiment(
-        body: dict[str, Any], **path_params: str
-    ) -> tuple[int, dict[str, Any]]:
+    def run_experiment(body: dict[str, Any], **path_params: str) -> tuple[int, dict[str, Any]]:
         """POST /api/agent-os/experiments — Run an A/B experiment."""
         try:
             error = _require_permission(
@@ -317,7 +318,9 @@ def create_agent_os_routes(
                 candidate_f = float(candidate_value)
                 threshold_f = float(threshold_pct) if threshold_pct else None
             except (TypeError, ValueError):
-                return _error(400, "baseline_value, candidate_value, and threshold_pct must be numeric")
+                return _error(
+                    400, "baseline_value, candidate_value, and threshold_pct must be numeric"
+                )
             result = experiment_runner.run(
                 proposal_id=proposal_id,
                 metric_name=metric_name,
@@ -349,10 +352,13 @@ def create_agent_os_routes(
             if error:
                 return error
             history = experiment_runner.get_history()
-            return _json_response(200, {
-                "experiments": [e.to_dict() for e in history],
-                "count": len(history),
-            })
+            return _json_response(
+                200,
+                {
+                    "experiments": [e.to_dict() for e in history],
+                    "count": len(history),
+                },
+            )
         except Exception as e:
             log.exception("Failed to list experiments")
             return _error(500, str(e))
