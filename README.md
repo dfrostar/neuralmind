@@ -121,7 +121,7 @@ neuralmind doctor           # verify the install end to end
   [VS Code extension](editors/vscode/).
 - **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
   log, seat management, self-hosted deployment. MIT core stays MIT — the
-  Team tier only activates with a license; tier2 and Agent OS are
+  Team tier only activates with a license; tier2 is
   source-available, not MIT — see [LICENSING.md](LICENSING.md). See [pricing](https://neuralmind.uk/pricing/).
 
 How it works under the hood: [Architecture](docs/wiki/Architecture.md) ·

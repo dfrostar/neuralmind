@@ -1,6 +1,6 @@
-NOTICE: This MIT License covers this repository EXCEPT the directories
-neuralmind/tier2/ and neuralmind/agent_os/, which are source-available
-under the NeuralMind Commercial Modules License. See LICENSING.md.
+NOTICE: This MIT License covers this repository EXCEPT the directory
+neuralmind/tier2/, which is source-available under the NeuralMind
+Commercial Modules License. See LICENSING.md.
 
 MIT License
 
