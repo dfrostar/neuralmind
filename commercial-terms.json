@@ -90,7 +90,6 @@
       "file": "LICENSING.md",
       "contains": [
         "neuralmind/tier2/",
-        "neuralmind/agent_os/",
         "MIT",
         "never expires",
         "Cheval-Volant LLC"
@@ -103,21 +102,12 @@
         "free-tier",
         "never expires"
       ]
-    },
-    {
-      "file": "neuralmind/agent_os/LICENSE",
-      "contains": [
-        "Cheval-Volant LLC",
-        "free-tier",
-        "never expires"
-      ]
     }
   ],
   "license_boundary": {
     "_comment": "Source-available carve-out effective v3.0.0. Prior releases (<= v2.0.1) remain MIT permanently.",
     "commercial_paths": [
-      "neuralmind/tier2/",
-      "neuralmind/agent_os/"
+      "neuralmind/tier2/"
     ],
     "style": "source-available (NeuralMind Commercial Modules License; free 1-seat use granted)",
     "everything_else": "MIT"
