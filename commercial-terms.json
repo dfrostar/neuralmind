@@ -98,7 +98,16 @@
       "file": "neuralmind/tier2/LICENSE",
       "contains": [
         "Cheval-Volant LLC",
-        "free-tier"
+        "free-tier",
+        "never expires"
+      ]
+    },
+    {
+      "file": "neuralmind/agent_os/LICENSE",
+      "contains": [
+        "Cheval-Volant LLC",
+        "free-tier",
+        "never expires"
       ]
     }
   ],
