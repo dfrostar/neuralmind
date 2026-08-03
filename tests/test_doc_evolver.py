@@ -628,15 +628,24 @@ class TestFailurePaths:
             blind_spots=[dummy_spot],
         )
 
-        # Monkeypatch _patch_file to raise
-        def failing_patch(file_path, line, variant):
+        # Monkeypatch Path.write_text to raise (the actual write call
+        # inside patch_winners, since the method no longer delegates to
+        # _patch_file).
+        original_write_text = Path.write_text
+
+        def failing_write_text(self, *args, **kwargs):
             raise OSError("disk full")
 
-        monkeypatch.setattr(evolver, "_patch_file", failing_patch)
+        monkeypatch.setattr(Path, "write_text", failing_write_text)
 
-        # Should not raise, should return empty list
-        modified = evolver.patch_winners([result])
-        assert modified == []
+        try:
+            # Should not raise, should return empty list
+            modified = evolver.patch_winners([result])
+            assert modified == []
+        finally:
+            # Restore so other tests are unaffected (monkeypatch undo handles this,
+            # but be explicit since we're patching a builtin)
+            monkeypatch.undo()
 
     def test_evaluate_candidate_restores_backup_on_failure(
         self, tmp_project: Path, blind_spots: list[BlindSpot]
