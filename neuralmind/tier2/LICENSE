@@ -1,5 +1,9 @@
-NeuralMind Commercial Modules License — v1.0
-================================================
+NeuralMind Commercial Modules License — DRAFT v1.0
+====================================================
+
+STATUS: DRAFT — PENDING OUTSIDE COUNSEL REVIEW. This text has not been
+reviewed or approved by an attorney and must not be represented as
+final or executed terms until it has been.
 
 NOTICE TO LICENSEES: THIS FILE IS A SUMMARY NOTICE ONLY. IT IS NOT THE
 LICENSE. YOUR RIGHTS TO USE THE COMMERCIAL MODULES ARE GOVERNED EXCLUSIVELY
@@ -37,16 +41,12 @@ the MIT core.
 
 You MAY, at no charge:
 1. View, read, and audit the source code.
-2. Use the Commercial Modules for internal evaluation ONLY and ONLY
-   on a single seat for a period not exceeding thirty (30) consecutive
-   days, beginning on the date of first execution, and expressly
-   excluding (a) any fee-paying or revenue-generating use, (b) any use
-   in support of production workloads, and (c) use by more than one (1)
-   named user. This paragraph is an evaluation license, not a production
-   or free-product license, and does not create any perpetual right.
-   "Production use" means deployment in support of any live business,
-   client, regulatory, or audit process, or use by more than one natural
-   person.
+2. Use the Commercial Modules for personal use and evaluation under
+   the auto-issued one (1) seat free-tier license: issued automatically
+   on first run, no signup required, and perpetual — the free-tier
+   license never expires and is not time-limited. It covers use,
+   including production use, by its one (1) named user. Nothing in
+   this License converts the free tier into a time-limited trial.
 
 You MAY, under an executed NeuralMind commercial agreement
 (see LICENSE-COMMERCIAL.md at the repository root):
