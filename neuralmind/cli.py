@@ -1742,10 +1742,12 @@ def cmd_learn(args):
         sys.exit(1)
 
     print(f"Learning from: {file_path}")
-    # Find repo root: check CWD first, then walk up from file to find .neuralmind/index_ir.json or .git
-    cwd = Path.cwd()
-    if (
-        (cwd / ".neuralmind" / "index_ir.json").exists()
+    # Find repo root: check args.project_path first, then CWD, then walk up from file
+    explicit_project = getattr(args, "project_path", None)
+    if explicit_project:
+        project_path = Path(explicit_project).resolve()
+    elif (
+        ((cwd := Path.cwd()) / ".neuralmind" / "index_ir.json").exists()
         or (cwd / ".neuralmind" / "synapses.db").exists()
         or (cwd / ".git").exists()
     ):
