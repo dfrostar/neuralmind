@@ -203,9 +203,12 @@ def test_project_status_with_mind():
 
     with tempfile.TemporaryDirectory() as tmp:
         mind = NeuralMind(tmp)
-        result = project_status(mind=mind)
-        assert result["built"] is False
-        assert result["project"] == Path(tmp).name
+        try:
+            result = project_status(mind=mind)
+            assert result["built"] is False
+            assert result["project"] == Path(tmp).name
+        finally:
+            mind.close()
 
 
 # ---------------------------------------------------------------------------
