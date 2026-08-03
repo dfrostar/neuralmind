@@ -52,7 +52,7 @@ The headline metric is **expected-fact recall of the answer**, compared
   budget** as NeuralMind's context. So a positive delta means smart selection
   beats dumb truncation **at equal cost** — not the dishonest "small context
   vs the whole 50k-token repo" comparison (the whole repo trivially contains
-  every fact at ~1.0 recall while costing 40–70× the tokens).
+  every fact at ~1.0 recall while costing 12–50× the tokens).
 
 `faithfulness_delta = mean(nm_recall) − mean(naive_recall)`. The report also
 carries grounding rate (are the right modules cited?) and contradiction rate

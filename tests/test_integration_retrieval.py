@@ -194,7 +194,7 @@ class TestRetrievalPipeline:
         result = initialized_mind.query("anything")
 
         # Should achieve at least 2x reduction
-        # (in real projects, 40-70x, but minimal project is small)
+        # (in real projects, 12-50x, but minimal project is small)
         assert result.reduction_ratio >= 1.5
 
     def test_embedder_loads_and_searches(self, initialized_mind):
