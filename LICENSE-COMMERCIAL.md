@@ -1,6 +1,6 @@
 # NeuralMind — Commercial License Agreement
 
-**Version 1.1 — Effective [Date]** *(remove DRAFT once executed)*
+**Version 1.1 — DRAFT — NOT EXECUTED — Effective [Date]** *(this is an unreviewed template; remove DRAFT only upon execution)*
 
 > Canonical commercial facts (entity, pricing, contact) live in
 > [`commercial-terms.json`](commercial-terms.json) and are CI-gated by

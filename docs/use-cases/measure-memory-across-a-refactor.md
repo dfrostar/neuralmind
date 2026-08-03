@@ -126,7 +126,7 @@ memory wasn't watching — check that hooks were installed *before* the work.
 - 48.8× is a reduction in **retrieval input tokens**, not your total LLM
   bill. For typical end-to-end agent sessions the realistic total-cost saving
   is smaller — see the [NeuralMind effectiveness page](https://neuralmind.uk/effectiveness/)
-for the honest boundary on when the free tier is the right fit.
+  for the honest boundary on when the free tier is the right fit.
 - The CI-gated, reproducible numbers live in
   [Benchmarks & Results](../wiki/Benchmarks.md); this page is deliberately
   labeled a field report.

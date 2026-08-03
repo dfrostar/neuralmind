@@ -10,9 +10,10 @@ NeuralMind is **open-core**. One repository, two licenses, one clear line:
 
 **What this means in practice**
 
-- The free tier is a **single-seat, 30-day evaluation license** — explicitly
-  capped, not perpetual. After 30 days, continued use requires an executed
-  agreement.
+- The free tier is unaffected and perpetual: a 1-seat license auto-issues
+  on first run (no signup, never expires) and the commercial modules'
+  grant explicitly covers that use, including production use by its one
+  named user.
 - The source stays in the repo and stays auditable — source-available,
   not closed.
 - Team/production use of the commercial modules requires an executed
@@ -35,7 +36,7 @@ NeuralMind is **open-core**. One repository, two licenses, one clear line:
   into the MIT core under the MIT license.
 - The MIT core remains independently operable and distributable without
   the presence or import of the Commercial Modules.
-- Chev-Volant LLC retains sole authority to determine the license terms
+- Cheval-Volant LLC retains sole authority to determine the license terms
   of all contributions to the MIT core (MIT/permissive only). No copyleft
   code may be contributed in a manner that would "infect" the commercial
   modules.
