@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/tier2/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """operations.py — License & Partner operations for NeuralMind."""
 
 from __future__ import annotations

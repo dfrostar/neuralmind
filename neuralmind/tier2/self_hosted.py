@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/tier2/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """self_hosted.py — Self-hosted mode detection, config, and data-dir initialization.
 
 When NEURALMIND_SELF_HOSTED=true or config.self_hosted.enabled=true, NeuralMind

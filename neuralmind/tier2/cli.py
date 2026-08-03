@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/tier2/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """cli.py — Tier 2 Team admin commands (commands under `neuralmind team ...`).
 
 All tier2 admin commands are gated: if no valid license is active, the

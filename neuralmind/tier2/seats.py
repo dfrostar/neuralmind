@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/tier2/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """seats.py — Seat management for Team tier.
 
 Each team seat is an email with an active/inactive flag. The seat limit comes

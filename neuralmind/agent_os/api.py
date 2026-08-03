@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/agent_os/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """api.py — Agent OS HTTP route handlers for the daemon.
 
 Tenant-scoped endpoints:

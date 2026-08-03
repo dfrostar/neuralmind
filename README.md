@@ -5,6 +5,7 @@
 [![CI](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml)
 [![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![tier2 + agent_os: source-available](https://img.shields.io/badge/tier2%20%2B%20agent__os-source--available-blue.svg)](LICENSING.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
 
@@ -120,7 +121,8 @@ neuralmind doctor           # verify the install end to end
   [VS Code extension](editors/vscode/).
 - **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
   log, seat management, self-hosted deployment. MIT core stays MIT — the
-  Team tier only activates with a license. See [pricing](https://neuralmind.uk/pricing/).
+  Team tier only activates with a license; tier2 and Agent OS are
+  source-available, not MIT — see [LICENSING.md](LICENSING.md). See [pricing](https://neuralmind.uk/pricing/).
 
 How it works under the hood: [Architecture](docs/wiki/Architecture.md) ·
 [brain-like learning](docs/brain_like_learning.md).

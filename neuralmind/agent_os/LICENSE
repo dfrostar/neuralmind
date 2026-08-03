@@ -1,0 +1,32 @@
+NeuralMind Commercial Modules License (Source-Available)
+=========================================================
+
+DRAFT v0.1 — SCAFFOLD PENDING COUNSEL REVIEW. An executed agreement controls
+over this file. Canonical commercial facts: commercial-terms.json (repo root).
+
+Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind), Texas, USA.
+
+Scope: every file under this directory ("the Commercial Modules").
+These files are source-available. They are NOT licensed under the MIT
+License that covers the rest of this repository, and this is not an
+OSI-approved open-source license.
+
+You MAY, at no charge:
+1. View, read, and audit the source code.
+2. Use the Commercial Modules for personal use and evaluation, including
+   under the auto-issued 1-seat free-tier license (issued on first run,
+   no signup, never expires).
+
+You MAY, under an executed NeuralMind commercial agreement
+(see LICENSE-COMMERCIAL.md at the repository root):
+3. Use the Commercial Modules internally for licensed seats.
+
+You may NOT, without an executed agreement:
+4. Redistribute, sublicense, or sell the Commercial Modules.
+5. Offer them to third parties as a managed or hosted service.
+6. Embed or ship them inside another product (OEM).
+7. Remove, disable, or circumvent license validation or audit features.
+
+Prior versions: all releases up to and including v2.0.1 were published
+under the MIT License and remain so permanently. This license applies to
+this and later versions of the Commercial Modules only.

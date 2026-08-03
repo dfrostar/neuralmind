@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/agent_os/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """signals.py — Page-Hinkley anomaly detection for Agent OS metrics streams.
 
 Detects small persistent shifts in metrics without fixed thresholds.

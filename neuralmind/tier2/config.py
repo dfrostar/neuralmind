@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/tier2/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """config.py — Tier 2 YAML configuration schema and I/O.
 
 Tier 2 config lives at ~/.config/neuralmind/tier2.yaml by default. All values
