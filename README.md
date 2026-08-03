@@ -145,8 +145,7 @@ with `python -m tests.benchmark.run`:
 ![Benchmark chart](docs/images/benchmark_chart.png)
 
 Methodology, gold sets, and community submissions:
-[benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md) ·
-[honest assessment (when NOT to use this)](docs/HONEST-ASSESSMENT.md).
+[benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md).
 
 ---
 
@@ -179,7 +178,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 | Understand the design | [Architecture](docs/wiki/Architecture.md) · [Limits & failure modes](docs/wiki/Limits-and-Failure-Modes.md) |
 | Follow real workflows | [Use-case walkthroughs](docs/use-cases/) (20+) |
 | Compare with alternatives | [Comparisons](docs/comparisons/) |
-|| Evaluate for a team | [Business case](docs/BUSINESS-CASE.md) · [Enterprise](docs/ENTERPRISE.md) · [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) |
+|| Evaluate for a team | [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) · [Pricing](https://neuralmind.uk/pricing/) |
 || Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 || Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
@@ -198,7 +197,7 @@ still talks to its own model — NeuralMind just makes what it sends smaller.
 
 **What if it doesn't help on my repo?** Run `neuralmind benchmark .` and
 read the number. If it's not worth it, uninstall — and see the
-[honest assessment](docs/HONEST-ASSESSMENT.md) for when that's the right call.
+[use cases](docs/use-cases/) for guidance on when NeuralMind is the right fit.
 
 **Is the paid tier required?** No. The core is MIT and complete. The Team
 tier adds governance, audit, and seat management for organizations.
