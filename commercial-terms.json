@@ -41,12 +41,85 @@
     ]
   },
   "required": [
-    { "file": "LICENSE-COMMERCIAL.md", "contains": ["Cheval-Volant LLC", "$29", "hello@neuralmind.uk"] },
-    { "file": "docs/NEURALMIND-LICENSE-AGREEMENT.md", "contains": ["Cheval-Volant LLC"] },
-    { "file": "site/src/app/pricing/page.tsx", "contains": ["$29", "hello@neuralmind.uk"] },
-    { "file": "site/src/app/terms/page.tsx", "contains": ["Cheval-Volant LLC"] },
-    { "file": "site/src/app/privacy/page.tsx", "contains": ["Cheval-Volant LLC"] },
-    { "file": "README.md", "contains": ["$29/user/mo"] },
-    { "file": "docs/wiki/Tier2-Operator-Guide.md", "contains": ["$29/user/mo"] }
-  ]
+    {
+      "file": "LICENSE-COMMERCIAL.md",
+      "contains": [
+        "Cheval-Volant LLC",
+        "$29",
+        "hello@neuralmind.uk"
+      ]
+    },
+    {
+      "file": "docs/NEURALMIND-LICENSE-AGREEMENT.md",
+      "contains": [
+        "Cheval-Volant LLC"
+      ]
+    },
+    {
+      "file": "site/src/app/pricing/page.tsx",
+      "contains": [
+        "$29",
+        "hello@neuralmind.uk"
+      ]
+    },
+    {
+      "file": "site/src/app/terms/page.tsx",
+      "contains": [
+        "Cheval-Volant LLC"
+      ]
+    },
+    {
+      "file": "site/src/app/privacy/page.tsx",
+      "contains": [
+        "Cheval-Volant LLC"
+      ]
+    },
+    {
+      "file": "README.md",
+      "contains": [
+        "$29/user/mo"
+      ]
+    },
+    {
+      "file": "docs/wiki/Tier2-Operator-Guide.md",
+      "contains": [
+        "$29/user/mo"
+      ]
+    },
+    {
+      "file": "LICENSING.md",
+      "contains": [
+        "neuralmind/tier2/",
+        "neuralmind/agent_os/",
+        "MIT",
+        "never expires",
+        "Cheval-Volant LLC"
+      ]
+    },
+    {
+      "file": "neuralmind/tier2/LICENSE",
+      "contains": [
+        "Cheval-Volant LLC",
+        "free-tier",
+        "never expires"
+      ]
+    },
+    {
+      "file": "neuralmind/agent_os/LICENSE",
+      "contains": [
+        "Cheval-Volant LLC",
+        "free-tier",
+        "never expires"
+      ]
+    }
+  ],
+  "license_boundary": {
+    "_comment": "Source-available carve-out effective v3.0.0. Prior releases (<= v2.0.1) remain MIT permanently.",
+    "commercial_paths": [
+      "neuralmind/tier2/",
+      "neuralmind/agent_os/"
+    ],
+    "style": "source-available (NeuralMind Commercial Modules License; free 1-seat use granted)",
+    "everything_else": "MIT"
+  }
 }

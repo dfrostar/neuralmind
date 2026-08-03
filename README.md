@@ -5,6 +5,7 @@
 [![CI](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci.yml)
 [![Self-benchmark](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml/badge.svg?branch=main)](https://github.com/dfrostar/neuralmind/actions/workflows/ci-benchmark.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![tier2 + agent_os: source-available](https://img.shields.io/badge/tier2%20%2B%20agent__os-source--available-blue.svg)](LICENSING.md)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
 
@@ -120,7 +121,8 @@ neuralmind doctor           # verify the install end to end
   [VS Code extension](editors/vscode/).
 - **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
   log, seat management, self-hosted deployment. MIT core stays MIT — the
-  Team tier only activates with a license. See [pricing](https://neuralmind.uk/pricing/).
+  Team tier only activates with a license; tier2 and Agent OS are
+  source-available, not MIT — see [LICENSING.md](LICENSING.md). See [pricing](https://neuralmind.uk/pricing/).
 
 How it works under the hood: [Architecture](docs/wiki/Architecture.md) ·
 [brain-like learning](docs/brain_like_learning.md).
@@ -143,8 +145,7 @@ with `python -m tests.benchmark.run`:
 ![Benchmark chart](docs/images/benchmark_chart.png)
 
 Methodology, gold sets, and community submissions:
-[benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md) ·
-[honest assessment (when NOT to use this)](docs/HONEST-ASSESSMENT.md).
+[benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md).
 
 ---
 
@@ -177,7 +178,7 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 | Understand the design | [Architecture](docs/wiki/Architecture.md) · [Limits & failure modes](docs/wiki/Limits-and-Failure-Modes.md) |
 | Follow real workflows | [Use-case walkthroughs](docs/use-cases/) (20+) |
 | Compare with alternatives | [Comparisons](docs/comparisons/) |
-|| Evaluate for a team | [Business case](docs/BUSINESS-CASE.md) · [Enterprise](docs/ENTERPRISE.md) · [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) |
+|| Evaluate for a team | [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) · [Pricing](https://neuralmind.uk/pricing/) |
 || Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
 || Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
@@ -196,7 +197,7 @@ still talks to its own model — NeuralMind just makes what it sends smaller.
 
 **What if it doesn't help on my repo?** Run `neuralmind benchmark .` and
 read the number. If it's not worth it, uninstall — and see the
-[honest assessment](docs/HONEST-ASSESSMENT.md) for when that's the right call.
+[use cases](docs/use-cases/) for guidance on when NeuralMind is the right fit.
 
 **Is the paid tier required?** No. The core is MIT and complete. The Team
 tier adds governance, audit, and seat management for organizations.

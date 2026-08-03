@@ -29,7 +29,7 @@ const sections = [
     },
     {
         title: 'Commercial Services',
-        body: 'The software itself is MIT-licensed and free in its entirety. Commercial services — AI-spend assessments, deployment and integration support, and related consulting — are provided under a separate agreement executed with Cheval-Volant LLC.',
+        body: 'The core engine is MIT-licensed and free — all token savings included. The Team and Enterprise modules (neuralmind/tier2, neuralmind/agent_os) are source-available under the NeuralMind Commercial Modules License: free 1-seat use is included, and team or production use requires an executed agreement with Cheval-Volant LLC. Commercial services — AI-spend assessments, deployment and integration support, and related consulting — are provided under a separate agreement.',
         emphasize: 'Contact hello@neuralmind.uk for service terms.',
     },
     {

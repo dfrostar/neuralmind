@@ -7,7 +7,7 @@ name = "neuralmind"
 version = "2.0.0"
 description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 12-50× cheaper code questions."
 readme = "README.md"
-license = "MIT"
+license = "MIT AND LicenseRef-NeuralMind-Commercial"
 authors = [
     { name = "Darren Frost", email = "hello@neuralmind.uk" }
 ]
@@ -44,7 +44,6 @@ keywords = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",

@@ -81,10 +81,10 @@ jobs:
             type=raw,value=latest,enable=${{ !contains(env.RELEASE_TAG, '-') }}
           labels: |
             org.opencontainers.image.title=NeuralMind
-            org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 40-70× token reduction.
+            org.opencontainers.image.description=Semantic code intelligence for AI coding agents — 12-50× token reduction.
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.RELEASE_TAG }}
-            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.licenses=MIT AND LicenseRef-NeuralMind-Commercial
           flavor: |
             latest=false
 

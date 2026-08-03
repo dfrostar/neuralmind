@@ -2,7 +2,7 @@
 
 Runs the full benchmark as part of the normal pytest suite and asserts
 that the aggregate reduction ratio stays above a conservative floor.
-Far below NeuralMind's real-world 40–70× — this test catches only
+Far below NeuralMind's real-world 12–50× — this test catches only
 catastrophic regressions.
 
 Skipped cleanly if the fixture has not been built yet (missing

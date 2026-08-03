@@ -23,7 +23,7 @@ export default function Navbar() {
 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbon/80 border-b border-carbon-border/50">
-            <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-electric to-proton flex items-center justify-center text-center leading-none">
                         <span className="text-white font-display font-bold text-sm">N</span>
@@ -33,28 +33,28 @@ export default function Navbar() {
                     </span>
                 </Link>
 
-                <div className="hidden md:flex items-center gap-8">
+                <div className="hidden xl:flex items-center gap-x-5">
                     {navLinks.map((link) => (
                         <Link
                             key={link.href}
                             href={link.href}
-                            className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
+                            className="text-slate-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
                         >
                             {link.label}
                         </Link>
                     ))}
                 </div>
 
-                <div className="hidden md:flex items-center gap-4">
+                <div className="hidden xl:flex items-center gap-3">
                     <Link
                         href="https://docs.neuralmind.uk/wiki/Home"
-                        className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
+                        className="text-slate-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
                     >
                         Docs
                     </Link>
                     <Link
                         href="https://github.com/dfrostar/neuralmind"
-                        className="text-slate-400 hover:text-white transition-colors text-sm font-medium"
+                        className="text-slate-400 hover:text-white transition-colors text-sm font-medium whitespace-nowrap"
                     >
                         GitHub
                     </Link>
@@ -67,7 +67,7 @@ export default function Navbar() {
                 </div>
 
                 <button
-                    className="md:hidden text-slate-400 hover:text-white"
+                    className="xl:hidden text-slate-400 hover:text-white"
                     onClick={() => setOpen(!open)}
                     aria-label="Toggle menu"
                 >
@@ -82,7 +82,7 @@ export default function Navbar() {
             </div>
 
             {open && (
-                <div className="md:hidden border-t border-carbon-border/50 bg-carbon/95 backdrop-blur-md">
+                <div className="xl:hidden border-t border-carbon-border/50 bg-carbon/95 backdrop-blur-md">
                     <div className="px-6 py-4 flex flex-col gap-3">
                         {navLinks.map((link) => (
                             <Link
@@ -100,6 +100,13 @@ export default function Navbar() {
                             onClick={() => setOpen(false)}
                         >
                             Docs
+                        </Link>
+                        <Link
+                            href="https://github.com/dfrostar/neuralmind"
+                            className="text-slate-400 hover:text-white transition-colors text-sm font-medium py-2"
+                            onClick={() => setOpen(false)}
+                        >
+                            GitHub
                         </Link>
                         <Link
                             href="https://pypi.org/project/neuralmind/"

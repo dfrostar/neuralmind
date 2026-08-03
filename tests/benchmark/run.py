@@ -51,7 +51,7 @@ REPORT_PATH = REPO_ROOT / "tests" / "benchmark" / "report.md"
 
 # Conservative regression floor. The fixture is intentionally small
 # (~500 lines) so ratios here top out around 5-10× — real repos with
-# thousands of lines consistently hit 40-70× because the naive baseline
+# thousands of lines consistently hit 12-50× because the naive baseline
 # is orders of magnitude larger. The floor catches catastrophic
 # regressions (retriever returning the whole graph, dropping to ~1×),
 # not a missed optimization on a toy input.
@@ -492,7 +492,7 @@ def write_report(
         "- Baseline: every `.py` file in `tests/fixtures/sample_project/` concatenated.",
         "- Tokenizer: `tiktoken` GPT-4o encoding (per-model breakdown in `multi_model.json` if generated).",
         f"- Pricing: Claude 3.5 Sonnet input @ ${CLAUDE_SONNET_INPUT_PER_MTOK}/MTok.",
-        f"- Regression floor: `{REDUCTION_FLOOR:.0f}×` — well below NeuralMind's typical `40–70×` on real repos.",
+        f"- Regression floor: `{REDUCTION_FLOOR:.0f}×` — well below NeuralMind's typical `12–50×` on real repos.",
         "",
     ]
     REPORT_PATH.write_text("\n".join(lines))

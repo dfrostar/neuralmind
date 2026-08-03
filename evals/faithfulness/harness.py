@@ -14,7 +14,7 @@ Design (see ``README.md``):
     NeuralMind context. That makes it an honest fight: "does smart selection
     beat dumb truncation at equal tokens?" — not "does a 800-token context
     beat the whole 50k-token repo?" (which the whole repo trivially wins on
-    recall while costing 40-70x the tokens).
+    recall while costing 12-50x the tokens).
 
 Import-safe: only the standard library and ``.runner`` are imported at module
 load. ``tiktoken`` and ``neuralmind.core`` are imported lazily inside the

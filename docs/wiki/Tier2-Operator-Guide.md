@@ -127,7 +127,10 @@ neuralmind team self-hosted validate-license
 - No compliance/audit requirements
 - Solo developer (1-seat free tier is sufficient)
 
-For the honest boundary, see `docs/HONEST-ASSESSMENT.md`.
+The honest boundary is documented on the NeuralMind site at
+https://neuralmind.uk/effectiveness/ — free-tier users whose codebases
+fall below the sweet spot should verify their own reduction ratio
+before purchasing.
 
 ---
 

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+# Source-available under the NeuralMind Commercial Modules License
+# (neuralmind/agent_os/LICENSE) — NOT MIT. Free 1-seat use included; see LICENSING.md.
 """NeuralMind Agent OS — Multi-tenant, self-improving product operations.
 
 The Agent OS is the orchestration layer that runs NeuralMind as a
