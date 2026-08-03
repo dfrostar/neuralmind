@@ -1,5 +1,78 @@
 # Changelog
 
+## [3.0.0](https://github.com/dfrostar/neuralmind/compare/v2.0.0...v3.0.0) (2026-08-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* neuralmind/tier2/ and neuralmind/agent_os/ are now licensed under the NeuralMind Commercial Modules License (source-available). The core engine remains MIT. Releases up to and including v2.0.1 are unaffected.
+* **agent-os:** none (new package, additive)
+
+### Features
+
+* **agent-os:** CLI surface for multi-tenant operations ([e337f15](https://github.com/dfrostar/neuralmind/commit/e337f15e7474ef35feafb2e0e472c0d6d92622ad))
+* **agent-os:** daemon wiring, correlator, promotion engine (v1.15.0) ([b8ac536](https://github.com/dfrostar/neuralmind/commit/b8ac536c6c631af6f3512d8c1e0126b00a4276c8))
+* **agent-os:** dashboard sections for tenants, signals, experiments ([aeb2f3f](https://github.com/dfrostar/neuralmind/commit/aeb2f3fefc4c5737e79d0ad0eaf7385f69e6864e))
+* **agent-os:** multi-tenancy, RBAC, signal detection, experiments (v1.14.0) ([c8e3388](https://github.com/dfrostar/neuralmind/commit/c8e3388fee7b1e2219d8eb8b38f09476761a3bb7))
+* **agent-os:** PostgreSQL migration schema and CLI ([9719c77](https://github.com/dfrostar/neuralmind/commit/9719c7740ebf7a234f1e09242932bf8e0954b81f))
+* **agent-os:** Welch's t-test p-value on historical deltas ([97f857c](https://github.com/dfrostar/neuralmind/commit/97f857cdf1cdca2008af0659f973916c5491494b))
+* doc synapse seeding + MCP ingest tool (v1.12.0) ([d6658ac](https://github.com/dfrostar/neuralmind/commit/d6658aca148745143600357732a55aa2925d556a))
+* **licensing:** add clickwrap EULA to onboarding flow ([631afc2](https://github.com/dfrostar/neuralmind/commit/631afc29d0500428a2957d305d9003131c786036))
+* **licensing:** add Team license issuance, revocation, renewal, and partner management ([8a790a3](https://github.com/dfrostar/neuralmind/commit/8a790a3251eb99f2a706bf96be2b390ffcc744cd))
+* **licensing:** CLI integration, license agreement, and tests ([1cb2a2e](https://github.com/dfrostar/neuralmind/commit/1cb2a2e372ec8b223dc628c3c7ee8707b21107c6))
+* **licensing:** DeepSeek V4 Pro + Flash QA fixes ([fdcadcf](https://github.com/dfrostar/neuralmind/commit/fdcadcfb9a2131a790f0d18e5fc7f9c3c478b2fb))
+* MCP ingest_document RBAC + security page link ([a041453](https://github.com/dfrostar/neuralmind/commit/a04145354c48dfc8c31ce3d807ca7e16ebfa946b))
+* **savings:** serve the savings report from the MCP server and daemon ([3b243d0](https://github.com/dfrostar/neuralmind/commit/3b243d0aafe33241eb3b7691ca9f00ffa7980dab))
+* tier2 + Agent OS license carve-out · navbar fix · 12–50× cleanup ([#419](https://github.com/dfrostar/neuralmind/issues/419)) ([4fcf0c8](https://github.com/dfrostar/neuralmind/commit/4fcf0c8c8ab053a580330bee9c947cd0d1dd55ca))
+* **type-verifier:** add cross-language type inference (TypeScript, Go, Rust) ([5ba24e0](https://github.com/dfrostar/neuralmind/commit/5ba24e0e9335b8ab21ecd6f890f8fe16d7a7bc56))
+
+
+### Bug Fixes
+
+* 5 adversarial QA bugs (data loss, crash, retrieval gap) ([99149c2](https://github.com/dfrostar/neuralmind/commit/99149c25172201ae593ef9ffee6de99b6591f056))
+* **agent-os:** DeepSeek QA — Welford std, zero-variance guard, create_tenant doc ([c9c580b](https://github.com/dfrostar/neuralmind/commit/c9c580b8ea98336f3e10bde2f1217520d5857b69))
+* **agent-os:** GLM catch-missed-issues patches ([0da1d4b](https://github.com/dfrostar/neuralmind/commit/0da1d4b319a90117acc990675ed4a28e7b0d588e))
+* **agent-os:** QA patches from GLM + DeepSeek review ([13c48ed](https://github.com/dfrostar/neuralmind/commit/13c48ed77a33ebf4815a5c107ea7c84347cdb745))
+* check args.project_path first, then fall back to CWD and file walk-up. ([d7de0e1](https://github.com/dfrostar/neuralmind/commit/d7de0e1d49b49ba01064a1e2f6916c11429e5fac))
+* **ci:** add timeouts + make release smoke test fast ([7db4a7e](https://github.com/dfrostar/neuralmind/commit/7db4a7ef05da72861ca892ff762827cf6b5c2446))
+* **ci:** add timeouts to test jobs (30min) + fail-fast (-x) for release ([7213480](https://github.com/dfrostar/neuralmind/commit/72134807c86146af23b9da78dc8cd460388636ef))
+* **ci:** address Codex review — action install path, SBOM-to-site deploy, stray release notes ([11eb071](https://github.com/dfrostar/neuralmind/commit/11eb071993ce53defaf108665ca150fcce8d2b1e))
+* **ci:** compliance-check action must install the checked-out source ([0d3aa24](https://github.com/dfrostar/neuralmind/commit/0d3aa24b84e77b9a7c14a338b388a248c054717a))
+* **ci:** let compliance-check post its PR comment, and never fail on it ([5250165](https://github.com/dfrostar/neuralmind/commit/5250165bba0ba0bc86aa26934da6f8e59a419d7c))
+* **cli:** use args.project_path for learn command project root detection ([d7de0e1](https://github.com/dfrostar/neuralmind/commit/d7de0e1d49b49ba01064a1e2f6916c11429e5fac))
+* demo index gate, honest pricing page, and commercial-terms alignment ([#410](https://github.com/dfrostar/neuralmind/issues/410)) ([fc82505](https://github.com/dfrostar/neuralmind/commit/fc825055bcaf59c9ca6d1e535d0c7c86971e3063))
+* **deps:** cap mcp &lt;2 — SDK 2.0 removes the server's decorator API ([#420](https://github.com/dfrostar/neuralmind/issues/420)) ([1630e00](https://github.com/dfrostar/neuralmind/commit/1630e00152e5cf146ec302d73f3c48b783f01175))
+* doc synapse seeding warn + tests + CMMC co-activation ([a276df1](https://github.com/dfrostar/neuralmind/commit/a276df1b6c5c5196b5746b606a9b63a64dd60a3a))
+* **docs-site:** remove docs/.nojekyll — it disabled the wiki entirely ([0f550d5](https://github.com/dfrostar/neuralmind/commit/0f550d5eb50a78aac120e02017db6cb3ea47439d))
+* improve repo root detection for learn command ([71dca4f](https://github.com/dfrostar/neuralmind/commit/71dca4f659d8ab4a460d05bbbbbf029d5fe3590b))
+* **license:** restore 'never' expiry guard in _is_expired — free licenses were always EXPIRED ([249fa1a](https://github.com/dfrostar/neuralmind/commit/249fa1a2a5e6fe603bb4734d06d1e5f33fa27c9a))
+* **licensing:** DeepSeek QA critical + high fixes ([b06a3ee](https://github.com/dfrostar/neuralmind/commit/b06a3ee6afcbdec193415990a1615b58fc8cc764))
+* patch BUSINESS-CASE.md model bugs + housekeeping (Phase 3 & 5) ([49f1403](https://github.com/dfrostar/neuralmind/commit/49f1403a414e813d635c9f1837c5d1af40d5cadc))
+* **release:** simplify smoke test to import + CLI only (10min timeout) ([032b001](https://github.com/dfrostar/neuralmind/commit/032b001a9083b57dc76caa0ddbe3739779baf5ae))
+* show document content in query results ([8016fa0](https://github.com/dfrostar/neuralmind/commit/8016fa024153455931da2e49c21a3aa6805b76c1))
+* **site:** current version on every release + verified PyPI/SBOM links again ([902866d](https://github.com/dfrostar/neuralmind/commit/902866d4c53373d98e9f5a171014605d100deb5d))
+* **site:** nav label 'Team' -&gt; 'Teams' ([a401fe8](https://github.com/dfrostar/neuralmind/commit/a401fe8a423e7c9c9028a65f2adaddd2bf76487a))
+* **test:** update test_patch_winners_handles_write_failure for new patch_winners impl ([2dc3eac](https://github.com/dfrostar/neuralmind/commit/2dc3eac655696f48bf038ab50cdb33781bafc611))
+* **type-verifier:** support both 'edges' and 'links' graph formats, extract func names from labels ([8de5a72](https://github.com/dfrostar/neuralmind/commit/8de5a72bd6cc0d3fce4b41952ee973382fda05da))
+* **type-verifier:** thread-pool, AST cache, any severity, func index, persist batch ([0d4633e](https://github.com/dfrostar/neuralmind/commit/0d4633ed6cf25e6bf20b81ca0c5f93d210be95d8))
+* **Wave18:** wire cmd_learn → ingest_document, v1.11.0 ([#411](https://github.com/dfrostar/neuralmind/issues/411)) ([f2f3318](https://github.com/dfrostar/neuralmind/commit/f2f331828e97963cbf5d922cc6373d76e2c369b4))
+
+
+### Documentation
+
+* add release notes for v1.9.1 (type intelligence & synapse hardening) ([b28d237](https://github.com/dfrostar/neuralmind/commit/b28d237f06055608bf55e0d7866e74cb4618622d))
+* add release notes template for consistency ([316de36](https://github.com/dfrostar/neuralmind/commit/316de360831a7dab0145b8a085496a9a2d66b3bc))
+* Agent OS spec suite (BRD, TRD, TEST-PLAN, QA-PLAN) ([0871eb3](https://github.com/dfrostar/neuralmind/commit/0871eb3cd55ea5fc7d6630678363f5433dcc23d2))
+* multi-project scoping page + wiring into all surfaces ([e70a0fa](https://github.com/dfrostar/neuralmind/commit/e70a0fac9b5bb233bdcabd61de5905a119dc3004))
+* purge retired claims — 40-70× → 12-50×, +6.5pt → +11.6pt, NIST 800-171 → 800-53 ([10575e5](https://github.com/dfrostar/neuralmind/commit/10575e5d9c3d60435e2e905d225a2f3c44cf58f3))
+* **readme:** surface the savings report command in quick start ([4d4bbb8](https://github.com/dfrostar/neuralmind/commit/4d4bbb80ec40627e84215deb1b10b57e955ac5b4))
+* RELEASE_NOTES_v1.13.0 — hardening for doc synapse seeding + MCP ingest ([f64290f](https://github.com/dfrostar/neuralmind/commit/f64290fcec54f7e54dfc0ce4252faed0980b08b4))
+* RELEASE_NOTES_v1.13.1 ([b83c874](https://github.com/dfrostar/neuralmind/commit/b83c8743f90862291320185cfa3d0f0092beaff5))
+* remove RELEASE_NOTES_v1.12.0.md from main repo ([c90e198](https://github.com/dfrostar/neuralmind/commit/c90e1982c88e942f49a80ea35bb266edd82894e1))
+* rewrite README to 214 lines, add community files, fix stale versions ([2ad797f](https://github.com/dfrostar/neuralmind/commit/2ad797fbb27cc7ad2c278bf9f61909319f55b72b))
+* v1.11.0 propagation — about.html, CLI-Reference wiki ([2a741a8](https://github.com/dfrostar/neuralmind/commit/2a741a868f85440a19ea9bf4df2117f3273d1c5d))
+* v1.11.2 release notes, about.html example, CLI-Reference update ([8c62882](https://github.com/dfrostar/neuralmind/commit/8c62882816338f64029795c17ee105309c76d996))
+
 ## [2.0.0](https://github.com/dfrostar/neuralmind/compare/v1.11.0...v2.0.0) (2026-08-02)
 
 
