@@ -22,7 +22,7 @@ toml==0.10.2
 # Held at 1.x: mcp 2.0.0 drops the low-level Server decorator API the
 # server uses (see the cap in pyproject.toml); do not bump to 2.x until
 # mcp_server.py is migrated.
-mcp==1.28.1
+mcp==2.0.0
 
 # Optional: Development & Testing
 # pytest bumped from 7.4.3 to 9.0.3 to fix tmpdir handling vuln (CVE-2025-71176).
