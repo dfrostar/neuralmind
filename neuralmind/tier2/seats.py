@@ -57,7 +57,7 @@ class SeatManager:
         import threading
 
         self.db_path = Path(db_path)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._seats: dict[str, Seat] = {}
         self._load()
 
