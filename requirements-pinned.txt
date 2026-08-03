@@ -19,6 +19,9 @@ toml==0.10.2
 # Optional: MCP Server
 # Bumped from 0.1.0 to 1.23.0 to resolve three GHSA alerts on the MCP SDK:
 #   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
+# Held at 1.x: mcp 2.0.0 drops the low-level Server decorator API the
+# server uses (see the cap in pyproject.toml); do not bump to 2.x until
+# mcp_server.py is migrated.
 mcp==1.28.1
 
 # Optional: Development & Testing

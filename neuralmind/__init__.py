@@ -109,7 +109,10 @@ from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
 __version__ = "2.0.0"
-__version_info__ = (1, 12, 0)
+# Derived so it can never drift from __version__ again (release-please only
+# rewrites the string literal above; the old hardcoded tuple sat at (1, 12, 0)
+# through three releases).
+__version_info__ = tuple(int(part) for part in __version__.split("."))
 # ChromaDB backend (lazy-exposed via ``__getattr__`` below), and ChromaDB is an
 # opt-in extra as of v0.29.0. Listing it in ``__all__`` would make
 # ``from neuralmind import *`` resolve the lazy attribute and import ChromaDB,
