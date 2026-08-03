@@ -1,4 +1,4 @@
-"""Tests for the Agency OS dashboard data layer and HTTP routes."""
+"""Tests for the NeuralMind dashboard data layer and HTTP routes."""
 
 from __future__ import annotations
 
@@ -397,7 +397,7 @@ def test_dashboard_html_served(tmp_path):
         with urllib.request.urlopen(f"{base}/dashboard", timeout=5) as resp:
             assert resp.status == 200
             body = resp.read().decode("utf-8")
-            assert "<title>Agency OS" in body
+            assert "<title>NeuralMind" in body
 
         # dashboard.css
         with urllib.request.urlopen(f"{base}/dashboard.css", timeout=5) as resp:
