@@ -119,7 +119,6 @@ class OnnxMiniLMEmbedder:
         tok = Tokenizer.from_file(str(self._resolve_model_dir() / "tokenizer.json"))
         # sentence-transformers uses 256 even though the HF config says 128.
         tok.enable_truncation(max_length=_MAX_TOKENS)
-        tok.enable_padding(pad_id=0, pad_token="[PAD]", length=_MAX_TOKENS)
         return tok
 
     @cached_property
@@ -129,11 +128,10 @@ class OnnxMiniLMEmbedder:
         so = ort.SessionOptions()
         so.log_severity_level = 3
         so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        providers = ort.get_available_providers()
-        # CoreML is slower than CPU for this tiny model; prefer CPU when present.
-        providers = [p for p in providers if p != "CoreMLExecutionProvider"]
+        # Use CPUExecutionProvider only — AzureExecutionProvider tries to
+        # contact Azure ML endpoints and hangs the build.
         return ort.InferenceSession(
-            str(self._resolve_model_dir() / "model.onnx"), sess_options=so, providers=providers
+            str(self._resolve_model_dir() / "model.onnx"), sess_options=so, providers=["CPUExecutionProvider"]
         )
 
     # ------------------------------------------------------------------ encode
@@ -151,8 +149,15 @@ class OnnxMiniLMEmbedder:
         for i in range(0, len(texts), _BATCH):
             batch = texts[i : i + _BATCH]
             encoded = [self._tokenizer.encode(d) for d in batch]
-            input_ids = np.array([e.ids for e in encoded], dtype=np.int64)
-            attention_mask = np.array([e.attention_mask for e in encoded], dtype=np.int64)
+            # Variable-length: no padding to 256 tokens. Texts are typically
+            # 100-200 chars (~20-50 tokens). Padding to 256 wasted ~80% of
+            # compute and made `neuralmind build` take 35+ min for 12K nodes.
+            max_len = max(len(e.ids) for e in encoded)
+            input_ids = np.zeros((len(batch), max_len), dtype=np.int64)
+            attention_mask = np.zeros((len(batch), max_len), dtype=np.int64)
+            for j, e in enumerate(encoded):
+                input_ids[j, :len(e.ids)] = e.ids
+                attention_mask[j, :len(e.attention_mask)] = e.attention_mask
             onnx_input = {
                 "input_ids": input_ids,
                 "attention_mask": attention_mask,
