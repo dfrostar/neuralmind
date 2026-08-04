@@ -39,8 +39,8 @@ export default function Hero() {
 
                 {/* Main headline */}
                 <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05] mb-6">
-                    Sub-second retrieval.{' '}
-                    <span className="gradient-text">63.6× cheaper queries.</span>
+                    Your team uses Claude Code?{' '}
+                    <span className="gradient-text">Now it remembers your codebase.</span>
                 </h1>
 
                 {/* Subhead */}
