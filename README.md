@@ -29,6 +29,18 @@ measured in CI on every commit.
 
 ---
 
+## Who this is for
+
+**If your team uses Claude Code, Cursor, Cline, or any MCP agent — NeuralMind makes every agent remember your codebase.**
+
+- **Claude Code** — boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files). PostToolUse compression runs automatically. Queries cost ~800 tokens, not ~50,000.
+- **Claude Teams** — `neuralmind memory publish` commits a learned-weights bundle (no source code) that teammates' agents inherit on their next session. A fresh clone starts with the team's earned intuition.
+- **Cursor, Cline, Continue, Codex** — `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory.
+
+Side effect: **12–50× cheaper code questions**, measured in CI on every commit.
+
+---
+
 ## ⚡ 30-second proof — see the memory work
 
 The clearest evidence the memory is working is the measurable side effect:
