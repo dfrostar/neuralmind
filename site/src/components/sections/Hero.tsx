@@ -42,12 +42,10 @@ export default function Hero() {
                     Your team uses Claude Code?{' '}
                     <span className="gradient-text">Now it remembers your codebase.</span>
                 </h1>
-
-                {/* Subhead */}
                 <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
                     Persistent neural memory for AI agents. Local-first synapse layer.{' '}
-                    <span className="text-white font-semibold">0.81s per query on a 1,486-node repo</span>.
-                    Built-in install doctor, Obsidian-style graph view, and honest benchmarks — measured, not marketed.
+                    <span className="text-white font-semibold">Works with every IDE your team already uses.</span>{' '}
+                    100% local, no telemetry.
                 </p>
 
                 {/* CTA buttons */}
