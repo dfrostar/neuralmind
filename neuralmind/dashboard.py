@@ -43,7 +43,7 @@ def project_status(mind=None, project_path: str | Path | None = None) -> dict[st
         "project": stats.get("project", path.name),
         "built": built,
         "backend": stats.get("backend", "unknown"),
-        "nodes": stats.get("nodes", 0),
+        "nodes": stats.get("nodes_total", stats.get("nodes", 0)),
         "communities": stats.get("communities", 0),
         "build_stats": stats.get("build_stats", {}),
     }

@@ -401,6 +401,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         if not pending:
             self._persist_index()
             self._conn.commit()
+            self.build_bm25_index()
             return stats
 
         vectors = _l2_normalize(self._embed_matrix([p[2] for p in pending]))
@@ -682,6 +683,11 @@ class TurboVecEmbedder(EmbeddingBackend):
                 }
             )
         if not ids:
+            self._bm25_cached = None
+            try:
+                self._bm25_path.unlink()
+            except (FileNotFoundError, AttributeError):
+                pass
             return
         idx = BM25Index()
         idx.add_documents(ids, texts, metas)
@@ -739,6 +745,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._dirty = True
             self._persist_index()
             self._conn.commit()
+            self.build_bm25_index()
         return removed
 
     def clear(self) -> None:
@@ -747,6 +754,12 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._conn.commit()
         self._index = None
         self._dirty = False
+        # Invalidate BM25 index — nodes are gone
+        self._bm25_cached = None
+        try:
+            self._bm25_path.unlink()
+        except (FileNotFoundError, AttributeError):
+            pass
         try:
             self._index_path.unlink()
         except FileNotFoundError:

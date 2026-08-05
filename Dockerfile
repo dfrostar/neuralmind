@@ -13,7 +13,7 @@
 #     neuralmind:dev neuralmind-mcp /project
 #
 # Run the graph view, exposed on the host:
-#   docker run --rm -p 8765:8765 \
+#   docker run --rm -p 8787:8787 \
 #     -v "$PWD:/project:ro" \
 #     neuralmind:dev neuralmind serve /project --host 0.0.0.0 --no-auth
 
@@ -59,7 +59,7 @@ RUN pip install --no-cache-dir --no-index --find-links /wheels neuralmind graphi
 
 USER neuralmind
 
-EXPOSE 8765
+EXPOSE 8787
 
 # Default to printing help — overriding with `docker run ... neuralmind <cmd>`
 # is the expected usage and matches the README examples.
