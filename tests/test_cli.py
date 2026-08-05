@@ -424,39 +424,197 @@ class TestCLIStats:
         assert stats.get("total_nodes") == 6
 
 
-class TestCLILearn:
-    """`neuralmind learn` is a deprecated exit-0 no-op."""
+class TestCLIIngest:
+    """Tests for `neuralmind ingest` and its `learn` alias."""
 
-    def test_cmd_learn_prints_deprecation(self, temp_project, capsys):
-        """learn now ingests documents; verify it does not print deprecation."""
-        from neuralmind.cli import cmd_learn
+    def test_ingest_single_markdown(self, temp_project, capsys):
+        """Ingest a single markdown file and verify node count."""
+        from neuralmind.cli import cmd_ingest
 
-        # Create a dummy file to ingest
-        dummy = temp_project / "test.md"
-        dummy.write_text("# Test\nContent")
+        dummy = temp_project / "notes.md"
+        dummy.write_text("# Title\n\nSome important content here.")
 
         args = MagicMock()
         args.file_path = str(dummy)
         args.type = "auto"
         args.json = False
         args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
 
-        # No exception, no sys.exit — a plain return is exit 0.
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        assert "ingested" in captured.out.lower()
+        assert "content node" in captured.out.lower()
+
+    def test_ingest_json_output(self, temp_project, capsys):
+        """--json returns valid JSON with expected keys."""
+        from neuralmind.cli import cmd_ingest
+
+        dummy = temp_project / "data.txt"
+        dummy.write_text("Line 1\nLine 2\nLine 3")
+
+        args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["success"] is True
+        assert data["total_nodes"] > 0
+        assert data["files_processed"] == 1
+        assert "wall_time_seconds" in data
+
+    def test_ingest_nonexistent_file(self, capsys):
+        """Error on nonexistent file."""
+        from neuralmind.cli import cmd_ingest
+
+        args = MagicMock()
+        args.file_path = "/nonexistent/path/file.md"
+        args.type = "auto"
+        args.json = False
+        args.project_path = None
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
+
+        with pytest.raises(SystemExit):
+            cmd_ingest(args)
+
+    def test_ingest_directory(self, temp_project, capsys):
+        """Ingest a directory of files recursively."""
+        from neuralmind.cli import cmd_ingest
+
+        subdir = temp_project / "docs"
+        subdir.mkdir()
+        (subdir / "a.md").write_text("# Doc A\nContent A")
+        (subdir / "b.txt").write_text("Content B")
+        (subdir / "c.md").write_text("# Doc C\nContent C")
+
+        args = MagicMock()
+        args.file_path = str(subdir)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["success"] is True
+        assert data["files_processed"] == 3
+        assert data["total_nodes"] >= 3
+
+    def test_ingest_dry_run(self, temp_project, capsys):
+        """--dry-run lists files without ingesting."""
+        from neuralmind.cli import cmd_ingest
+
+        subdir = temp_project / "docs"
+        subdir.mkdir()
+        (subdir / "x.md").write_text("# X")
+        (subdir / "y.txt").write_text("Y")
+
+        args = MagicMock()
+        args.file_path = str(subdir)
+        args.type = "auto"
+        args.json = False
+        args.project_path = str(temp_project)
+        args.dry_run = True
+        args.quiet = False
+        args.no_recursive = False
+
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        assert "Would ingest" in captured.out
+        assert "x.md" in captured.out
+        assert "y.txt" in captured.out
+
+    def test_ingest_no_recursive(self, temp_project, capsys):
+        """--no-recursive does not descend into subdirectories."""
+        from neuralmind.cli import cmd_ingest
+
+        subdir = temp_project / "docs"
+        subdir.mkdir()
+        (subdir / "top.md").write_text("# Top")
+        nested = subdir / "nested"
+        nested.mkdir()
+        (nested / "deep.md").write_text("# Deep")
+
+        args = MagicMock()
+        args.file_path = str(subdir)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = True
+
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["files_processed"] == 1
+
+    def test_ingest_quiet(self, temp_project, capsys):
+        """--quiet suppresses progress output."""
+        from neuralmind.cli import cmd_ingest
+
+        dummy = temp_project / "q.md"
+        dummy.write_text("# Quiet\nContent")
+
+        args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = False
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        cmd_ingest(args)
+
+        captured = capsys.readouterr()
+        assert captured.out == ""
+
+    def test_learn_is_alias_for_ingest(self, temp_project, capsys):
+        """`learn` calls the same code path as `ingest`."""
+        from neuralmind.cli import cmd_learn
+
+        dummy = temp_project / "alias.md"
+        dummy.write_text("# Alias test")
+
+        args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = False
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
+
         result = cmd_learn(args)
         assert result is None
 
         captured = capsys.readouterr()
-        out = captured.out.lower()
-        # Should NOT print deprecation anymore
-        assert "deprecated" not in out
-        # Should print ingestion result
-        assert "ingested" in out or "content nodes" in out
+        assert "ingested" in captured.out.lower()
 
-    def test_cmd_learn_writes_no_patterns_file(self, temp_project, capsys):
-        """learn must not write the old learned_patterns.json anymore."""
+    def test_learn_no_deprecation_warning(self, temp_project, capsys):
+        """learn does not print deprecation warnings."""
         from neuralmind.cli import cmd_learn
 
-        # Create a dummy file to ingest
         dummy = temp_project / "test.md"
         dummy.write_text("# Test\nContent")
 
@@ -465,11 +623,100 @@ class TestCLILearn:
         args.type = "auto"
         args.json = False
         args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
+
+        cmd_learn(args)
+
+        captured = capsys.readouterr()
+        assert "deprecated" not in captured.out.lower()
+
+    def test_learn_no_patterns_file(self, temp_project, capsys):
+        """learn must not write the old learned_patterns.json anymore."""
+        from neuralmind.cli import cmd_learn
+
+        dummy = temp_project / "test.md"
+        dummy.write_text("# Test\nContent")
+
+        args = MagicMock()
+        args.file_path = str(dummy)
+        args.type = "auto"
+        args.json = False
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
 
         cmd_learn(args)
 
         patterns_file = temp_project / ".neuralmind" / "learned_patterns.json"
         assert not patterns_file.exists()
+
+    def test_ingest_empty_directory(self, temp_project, capsys):
+        """Empty directory exits cleanly with a message."""
+        from neuralmind.cli import cmd_ingest
+
+        empty = temp_project / "empty"
+        empty.mkdir()
+
+        args = MagicMock()
+        args.file_path = str(empty)
+        args.type = "auto"
+        args.json = False
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = False
+        args.no_recursive = False
+
+        # Exits 0 with a message
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_ingest(args)
+        assert exc_info.value.code == 0
+
+        captured = capsys.readouterr()
+        assert "no supported files" in captured.out.lower()
+
+    def test_ingest_invalid_binary_rejected(self, temp_project, capsys):
+        """Binary file with .md extension is rejected gracefully."""
+        from neuralmind.cli import cmd_ingest
+
+        fake_md = temp_project / "fake.md"
+        fake_md.write_bytes(b"\x7fELF not actually markdown")
+
+        args = MagicMock()
+        args.file_path = str(fake_md)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        # Single-file error path: exits non-zero via sys.exit(1)
+        with pytest.raises(SystemExit):
+            cmd_ingest(args)
+
+    def test_ingest_pdf_requires_pdfplumber(self, temp_project, capsys):
+        """PDF ingestion fails gracefully when pdfplumber not installed."""
+        from neuralmind.cli import cmd_ingest
+
+        # Create a file with PDF magic bytes
+        pdf_file = temp_project / "doc.pdf"
+        pdf_file.write_bytes(b"%PDF-1.4 fake pdf content")
+
+        args = MagicMock()
+        args.file_path = str(pdf_file)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        # Will fail because pdfplumber is not installed — graceful error
+        with pytest.raises(SystemExit):
+            cmd_ingest(args)
 
 
 class TestCLIBenchmark:

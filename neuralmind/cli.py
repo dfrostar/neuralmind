@@ -1727,67 +1727,222 @@ def cmd_memory(args):
         return
 
 
-def cmd_learn(args):
-    """Ingest a document (PDF/Markdown/text) into the knowledge graph.
+def _resolve_project_path(file_path: Path, args) -> Path | None:
+    """Resolve the project root from args or by walking up from file_path.
 
-    Replaces the deprecated no-op. Delegates to ``core.NeuralMind.ingest_document``
-    which parses, chunks, and embeds content nodes into the vector space.
+    Returns None if no project marker (.neuralmind/, .git) is found.
     """
+    explicit_project = getattr(args, "project_path", None)
+    if explicit_project:
+        return Path(explicit_project).resolve()
+
+    cwd = Path.cwd()
+    if (
+        (cwd / ".neuralmind" / "index_ir.json").exists()
+        or (cwd / ".neuralmind" / "synapses.db").exists()
+        or (cwd / ".git").exists()
+    ):
+        return cwd
+
+    # Walk up from file to find project markers
+    project_path = file_path.parent if file_path.is_file() else file_path
+    while project_path.parent != project_path:
+        if (
+            (project_path / ".neuralmind" / "index_ir.json").exists()
+            or (project_path / ".neuralmind" / "synapses.db").exists()
+            or (project_path / ".git").exists()
+        ):
+            return project_path
+        project_path = project_path.parent
+
+    return None
+
+
+def _scan_files_for_ingest(dir_path: Path) -> list[Path]:
+    """Scan a directory for supported files, returning a sorted list.
+
+    Supported: .pdf, .md, .markdown, .mkd, .txt, .text, .rst, .org
+    Skips symlinks.
+    """
+    supported_exts = {".pdf", ".md", ".markdown", ".mkd", ".txt", ".text", ".rst", ".org"}
+    files: list[Path] = []
+    for f in sorted(dir_path.rglob("*")):
+        if f.is_file() and not f.is_symlink() and f.suffix.lower() in supported_exts:
+            files.append(f)
+    return files
+
+
+def cmd_ingest(args):
+    """Ingest documents (PDF/Markdown/text) into the knowledge graph.
+
+    `learn` is an alias for this command. Supports single files and
+    directories. Directories are scanned recursively for .pdf, .md,
+    .txt, .rst, and .org files.
+
+    Progress is reported per-file for directories. Errors on individual
+    files are collected and reported at the end without stopping the
+    batch.
+    """
+    import time
+
     from neuralmind.core import create_mind
+    from neuralmind.document_ingestion import parse_document
 
     file_path = Path(args.file_path).resolve() if args.file_path != "." else Path.cwd()
     if not file_path.exists():
         print(f"Error: file not found: {file_path}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Learning from: {file_path}")
-    # Find repo root: check args.project_path first, then CWD, then walk up from file
-    explicit_project = getattr(args, "project_path", None)
-    if explicit_project:
-        project_path = Path(explicit_project).resolve()
-    elif (
-        ((cwd := Path.cwd()) / ".neuralmind" / "index_ir.json").exists()
-        or (cwd / ".neuralmind" / "synapses.db").exists()
-        or (cwd / ".git").exists()
-    ):
-        project_path = cwd
+    dry_run = getattr(args, "dry_run", False)
+    quiet = getattr(args, "quiet", False)
+    no_recursive = getattr(args, "no_recursive", False)
+
+    # Collect files to ingest
+    if file_path.is_file():
+        files_to_ingest = [file_path]
     else:
-        # Walk up from file to find project markers
-        project_path = file_path.parent if file_path.is_file() else file_path
-        while project_path.parent != project_path:
-            if (
-                (project_path / ".neuralmind" / "index_ir.json").exists()
-                or (project_path / ".neuralmind" / "synapses.db").exists()
-                or (project_path / ".git").exists()
-            ):
-                break
-            project_path = project_path.parent
-        else:
-            # No project marker found — require running from project directory
-            print(
-                "Error: no NeuralMind project found. Run 'neuralmind learn' from your project directory (where 'neuralmind build .' was run).",
-                file=sys.stderr,
-            )
-            sys.exit(1)
-    mind = create_mind(str(project_path), auto_build=True)
-    # Pass project_path as root for path validation (files may be outside CWD)
-    result = mind.ingest_document(str(file_path), content_type=args.type, root=project_path)
+        files_to_ingest = _scan_files_for_ingest(file_path)
+        if no_recursive:
+            files_to_ingest = [f for f in files_to_ingest if f.parent == file_path]
 
-    if args.json:
-        print(json.dumps(result, indent=2))
-        return
+    if not files_to_ingest:
+        if not quiet:
+            print("No supported files found to ingest.")
+        sys.exit(0)
 
-    if "error" in result:
-        print(f"Error: {result['error']}", file=sys.stderr)
+    # Resolve project root
+    project_path = _resolve_project_path(file_path, args)
+    if project_path is None:
+        print(
+            "Error: no NeuralMind project found. Run 'neuralmind ingest' from your "
+            "project directory (where 'neuralmind build .' was run).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    print(f"Ingested {result['node_count']} content nodes from {result['file_path']}")
-    if result.get("embed_stats"):
-        stats = result["embed_stats"]
-        print(f"  Embedded: {stats.get('added', 0)} added, {stats.get('updated', 0)} updated")
-    doc_edges = result.get("synapse_doc_edges", 0)
-    if doc_edges:
-        print(f"  Synapse doc edges: {doc_edges}")
+    if dry_run:
+        print(f"Would ingest {len(files_to_ingest)} file(s):")
+        for f in files_to_ingest:
+            rel = f.relative_to(file_path) if file_path.is_dir() else f.name
+            print(f"  {rel}")
+        return
+
+    if not quiet:
+        print(f"Ingesting {len(files_to_ingest)} file(s) from {file_path}")
+
+    mind = create_mind(str(project_path), auto_build=True)
+    if not mind._built:
+        print(
+            "Error: failed to build NeuralMind index. Run 'neuralmind build .' first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    total_nodes = 0
+    total_embed_time = 0.0
+    errors: list[tuple[str, str]] = []
+    wall_start = time.time()
+
+    for idx, fpath in enumerate(files_to_ingest, 1):
+        if not quiet and len(files_to_ingest) > 1:
+            rel = fpath.relative_to(file_path)
+            print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        try:
+            content_nodes = [
+                n.to_graph_node()
+                for n in parse_document(fpath, root=project_path, content_type=args.type)
+            ]
+            if not content_nodes:
+                errors.append((str(fpath), "No content extracted"))
+                if not quiet and len(files_to_ingest) > 1:
+                    print(" no content")
+                continue
+
+            # Sync to embedder nodes list (avoid duplicates)
+            existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+            new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+            mind.embedder.nodes.extend(new_nodes)
+
+            # Embed
+            embed_start = time.time()
+            stats = mind.embedder.embed_content(new_nodes)
+            embed_elapsed = time.time() - embed_start
+
+            n = len(content_nodes)
+            total_nodes += n
+            total_embed_time += embed_elapsed
+
+            if not quiet and len(files_to_ingest) > 1:
+                added = stats.get("added", 0)
+                skipped = stats.get("skipped", 0)
+                print(f" {n} node(s) (+{added}, ~{skipped})")
+
+        except (ValueError, RuntimeError) as e:
+            errors.append((str(fpath), str(e)))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {e}")
+                else:
+                    print(f"Error: {e}", file=sys.stderr)
+                    sys.exit(1)
+        except Exception as e:
+            errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {type(e).__name__}: {e}")
+                else:
+                    print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+                    sys.exit(1)
+
+    # Seed synapse edges from documentation (one-time, gated on env vars)
+    synapse_doc_edges = 0
+    if mind.enable_synapses:
+        try:
+            store = mind.synapses
+            if store is not None:
+                synapse_doc_edges = store.seed_from_documentation(project_path)
+        except Exception:
+            pass
+
+    wall_time = time.time() - wall_start
+
+    if args.json:
+        output = {
+            "success": len(errors) == 0,
+            "files_processed": len(files_to_ingest),
+            "total_nodes": total_nodes,
+            "wall_time_seconds": round(wall_time, 2),
+            "synapse_doc_edges": synapse_doc_edges,
+            "errors": [{"file": str(f), "error": e} for f, e in errors],
+        }
+        print(json.dumps(output, indent=2))
+        if errors:
+            sys.exit(1)
+        return
+
+    if not quiet:
+        if total_nodes > 0:
+            print(
+                f"Ingested {total_nodes} content node(s) from "
+                f"{len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+            )
+        if synapse_doc_edges > 0:
+            print(f"  Synapse doc edges: {synapse_doc_edges}")
+        if errors:
+            print(f"\n{len(errors)} error(s):")
+            for f, err in errors[:10]:
+                print(f"  - {Path(f).name}: {err}")
+            if len(errors) > 10:
+                print(f"  ... and {len(errors) - 10} more")
+            sys.exit(1)
+
+
+def cmd_learn(args):
+    """Alias for `neuralmind ingest`."""
+    return cmd_ingest(args)
 
 
 def cmd_self_improve_status(args):
@@ -3500,8 +3655,31 @@ def main():
     )
     eval_p.set_defaults(func=cmd_eval)
 
+    ingest_p = subparsers.add_parser(
+        "ingest",
+        help="Ingest documents (PDF/Markdown/text) into the knowledge graph",
+    )
+    ingest_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
+    ingest_p.add_argument(
+        "--type",
+        default="auto",
+        choices=["auto", "pdf", "markdown", "text", "cmmc"],
+        help="Content type hint (default: auto-detect)",
+    )
+    ingest_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
+    ingest_p.add_argument(
+        "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
+    )
+    ingest_p.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress progress output"
+    )
+    ingest_p.add_argument(
+        "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
+    )
+    ingest_p.set_defaults(func=cmd_ingest)
+
     learn_p = subparsers.add_parser(
-        "learn", help="Ingest documents (PDF/Markdown/text) into the knowledge graph"
+        "learn", help="Alias for 'ingest' — ingest documents into the knowledge graph"
     )
     learn_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
     learn_p.add_argument(
@@ -3511,7 +3689,16 @@ def main():
         help="Content type hint (default: auto-detect)",
     )
     learn_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
-    learn_p.set_defaults(func=cmd_learn)
+    learn_p.add_argument(
+        "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
+    )
+    learn_p.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress progress output"
+    )
+    learn_p.add_argument(
+        "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
+    )
+    learn_p.set_defaults(func=cmd_ingest)
 
     # onboarding command — interactive setup wizard for team tier
     onboarding_p = subparsers.add_parser(
