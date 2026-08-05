@@ -1762,13 +1762,23 @@ def _scan_files_for_ingest(dir_path: Path) -> list[Path]:
     """Scan a directory for supported files, returning a sorted list.
 
     Supported: .pdf, .md, .markdown, .mkd, .txt, .text, .rst, .org
-    Skips symlinks.
+    Skips symlinks. Max depth: 10.
     """
     supported_exts = {".pdf", ".md", ".markdown", ".mkd", ".txt", ".text", ".rst", ".org"}
     files: list[Path] = []
-    for f in sorted(dir_path.rglob("*")):
-        if f.is_file() and not f.is_symlink() and f.suffix.lower() in supported_exts:
-            files.append(f)
+
+    def _walk(path: Path, depth: int = 0):
+        if depth > 10:
+            return
+        for item in sorted(path.iterdir()):
+            if item.is_symlink():
+                continue
+            if item.is_dir():
+                _walk(item, depth + 1)
+            elif item.is_file() and item.suffix.lower() in supported_exts:
+                files.append(item)
+
+    _walk(dir_path)
     return files
 
 
@@ -1869,7 +1879,8 @@ def cmd_ingest(args):
             stats = mind.embedder.embed_content(new_nodes)
             embed_elapsed = time.time() - embed_start
 
-            n = len(content_nodes)
+            # Count only actually-new nodes to avoid overcounting on dedup
+            n = len(new_nodes) if new_nodes else len(content_nodes)
             total_nodes += n
             total_embed_time += embed_elapsed
 
@@ -1886,6 +1897,17 @@ def cmd_ingest(args):
                     print(f"    {e}")
                 else:
                     print(f"Error: {e}", file=sys.stderr)
+                    # For single-file errors, still honor --json if requested
+                    if args.json:
+                        output = {
+                            "success": False,
+                            "files_processed": 0,
+                            "total_nodes": 0,
+                            "wall_time_seconds": round(time.time() - wall_start, 2),
+                            "synapse_doc_edges": 0,
+                            "errors": [{"file": str(fpath), "error": str(e)}],
+                        }
+                        print(json.dumps(output, indent=2))
                     sys.exit(1)
         except Exception as e:
             errors.append((str(fpath), f"{type(e).__name__}: {e}"))
@@ -1895,6 +1917,16 @@ def cmd_ingest(args):
                     print(f"    {type(e).__name__}: {e}")
                 else:
                     print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+                    if args.json:
+                        output = {
+                            "success": False,
+                            "files_processed": 0,
+                            "total_nodes": 0,
+                            "wall_time_seconds": round(time.time() - wall_start, 2),
+                            "synapse_doc_edges": 0,
+                            "errors": [{"file": str(fpath), "error": f"{type(e).__name__}: {e}"}],
+                        }
+                        print(json.dumps(output, indent=2))
                     sys.exit(1)
 
     # Seed synapse edges from documentation (one-time, gated on env vars)
