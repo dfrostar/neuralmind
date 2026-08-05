@@ -1509,9 +1509,16 @@ class SynapseStore:
         def _tokenize(text: str) -> set[str]:
             """Extract lowercase words (3+ chars) excluding stopwords."""
             raw = text.lower()
-            for sep in ("_", "-", "."):
+            for sep in ("_", "-", ".", "/"):
                 raw = raw.replace(sep, " ")
             return {w for w in raw.split() if len(w) >= 3 and w not in stopwords}
+
+        def _tokenize_ordered(text: str) -> list[str]:
+            """Extract lowercase words (3+ chars) excluding stopwords, preserving order."""
+            raw = text.lower()
+            for sep in ("_", "-", ".", "/"):
+                raw = raw.replace(sep, " ")
+            return [w for w in raw.split() if len(w) >= 3 and w not in stopwords]
 
         def _extract_text(node: dict) -> str:
             """All searchable text from a node (content + label + title)."""
@@ -1529,6 +1536,25 @@ class SynapseStore:
                     parts.append(str(title))
             return " ".join(parts)
 
+        def _extract_title(node: dict) -> str:
+            """Extract title from a business node, lowercased."""
+            meta = node.get("metadata")
+            if isinstance(meta, dict):
+                t = meta.get("title", "")
+                if t:
+                    return str(t).lower()
+            return ""
+
+        # Precompute token sets and ordered token lists for all nodes (M3 fix)
+        node_tokens: dict[str, set[str]] = {}
+        node_tokens_ordered: dict[str, list[str]] = {}
+        node_label_tokens: dict[str, set[str]] = {}
+        for nid in all_node_ids:
+            text = _extract_text({"id": nid, "label": node_labels[nid], "metadata": {"label": node_labels[nid]}})
+            node_tokens[nid] = _tokenize(text)
+            node_tokens_ordered[nid] = _tokenize_ordered(text)
+            node_label_tokens[nid] = _tokenize(node_labels[nid].lower())
+
         # Step 5: Match business nodes against code nodes
         edges: dict[tuple[str, str], float] = {}
 
@@ -1539,6 +1565,7 @@ class SynapseStore:
 
             text = _extract_text(biz_node)
             text_tokens = _tokenize(text)
+            text_tokens_ordered = _tokenize_ordered(text)
 
             for nid in all_node_ids:
                 if nid in business_ids:
@@ -1547,8 +1574,7 @@ class SynapseStore:
                 label = node_labels.get(nid, nid).lower()
 
                 # Exact label match (case-insensitive)
-                label_tokens = _tokenize(label)
-                if label_tokens and label_tokens.issubset(text_tokens):
+                if node_label_tokens[nid] and node_label_tokens[nid].issubset(text_tokens):
                     pair = _canonical(biz_id, nid)
                     if pair is not None:
                         edges[pair] = max(edges.get(pair, 0.0), 0.40)
@@ -1558,14 +1584,19 @@ class SynapseStore:
                 comps_filtered = [c for c in comps if c not in stopwords]
 
                 # Compound match: 2+ consecutive non-stopword components
+                # must appear as adjacent tokens in the text (H1 fix)
                 matched = False
                 for i in range(len(comps_filtered) - 1):
                     c1, c2 = comps_filtered[i], comps_filtered[i + 1]
-                    if c1 in text_tokens and c2 in text_tokens:
-                        pair = _canonical(biz_id, nid)
-                        if pair is not None:
-                            edges[pair] = max(edges.get(pair, 0.0), 0.25)
-                        matched = True
+                    # Check adjacency in ordered token list
+                    for j in range(len(text_tokens_ordered) - 1):
+                        if text_tokens_ordered[j] == c1 and text_tokens_ordered[j + 1] == c2:
+                            pair = _canonical(biz_id, nid)
+                            if pair is not None:
+                                edges[pair] = max(edges.get(pair, 0.0), 0.25)
+                            matched = True
+                            break
+                    if matched:
                         break
 
                 if matched:
@@ -1579,9 +1610,11 @@ class SynapseStore:
                             edges[pair] = max(edges.get(pair, 0.0), 0.20)
                         break
 
-        # Step 6: Cross-link business nodes via shared specific tags
+        # Step 6: Cross-link business nodes via shared specific tags and title references
         biz_tag_freq: dict[str, int] = {}
         biz_tags: dict[str, set[str]] = {}
+        biz_titles: dict[str, str] = {}
+        biz_texts: dict[str, str] = {}
         for biz_node in business_nodes:
             biz_id = biz_node.get("id", "")
             meta = biz_node.get("metadata")
@@ -1597,6 +1630,8 @@ class SynapseStore:
                     tags_raw = [str(tag).lower() for tag in t]
             tags = set(tags_raw)
             biz_tags[biz_id] = tags
+            biz_titles[biz_id] = _extract_title(biz_node)
+            biz_texts[biz_id] = _extract_text(biz_node).lower()
             for tag in tags:
                 biz_tag_freq[tag] = biz_tag_freq.get(tag, 0) + 1
 
@@ -1605,14 +1640,32 @@ class SynapseStore:
         for i in range(len(biz_ids_list)):
             for j in range(i + 1, len(biz_ids_list)):
                 id1, id2 = biz_ids_list[i], biz_ids_list[j]
+
+                # Shared tag cross-link (weight 0.20)
                 shared = biz_tags[id1] & biz_tags[id2]
+                linked = False
                 for tag in shared:
-                    # Only link on specific tags (<20% of business nodes)
                     if biz_tag_freq[tag] / biz_total < 0.20:
                         pair = _canonical(id1, id2)
                         if pair is not None:
                             edges[pair] = max(edges.get(pair, 0.0), 0.20)
+                        linked = True
                         break  # one edge per pair is sufficient
+
+                if linked:
+                    continue
+
+                # Title-reference cross-link (weight 0.25) — H2 fix
+                title1 = biz_titles[id1]
+                title2 = biz_titles[id2]
+                if title1 and title1 in biz_texts[id2]:
+                    pair = _canonical(id1, id2)
+                    if pair is not None:
+                        edges[pair] = max(edges.get(pair, 0.0), 0.25)
+                elif title2 and title2 in biz_texts[id1]:
+                    pair = _canonical(id1, id2)
+                    if pair is not None:
+                        edges[pair] = max(edges.get(pair, 0.0), 0.25)
 
         # Step 7: Insert edges (idempotent: MAX weight + MAX activation_count)
         if not edges:
@@ -1631,6 +1684,12 @@ class SynapseStore:
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
+                # Count existing edges before insert (H3 fix)
+                before = conn.execute(
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?",
+                    (SHARED_NAMESPACE,)
+                ).fetchone()[0]
+
                 conn.executemany(
                     """
                     INSERT INTO synapses(
@@ -1646,12 +1705,17 @@ class SynapseStore:
                     """,
                     rows,
                 )
+                # Count after insert — delta is actual new edges created
+                after = conn.execute(
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?",
+                    (SHARED_NAMESPACE,)
+                ).fetchone()[0]
                 conn.execute("COMMIT")
             except Exception:
                 conn.execute("ROLLBACK")
                 raise
 
-        return len(rows)
+        return after - before
 
     # ----------------------------------------------------------------- #
     # Reads

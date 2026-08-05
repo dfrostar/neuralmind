@@ -630,15 +630,18 @@ class NeuralMind:
             self._build_stats["ir"] = ir_summary
 
         self._built = True
+        audit_details = {
+            "backend": self.backend_manager.backend_name,
+            "nodes_total": self._build_stats.get("nodes_total", 0),
+        }
+        if _synapse_business_count:
+            audit_details["business_synapses"] = _synapse_business_count
         self._emit_audit(
             category="backend",
             action="build",
             status="success",
             target=self.project_path.name,
-            details={
-                "backend": self.backend_manager.backend_name,
-                "nodes_total": self._build_stats.get("nodes_total", 0),
-            },
+            details=audit_details,
         )
         return self._build_stats
 
@@ -656,8 +659,8 @@ class NeuralMind:
     def _scan_all_nodes(self) -> list[dict]:
         """Return all indexed nodes from the vector store.
 
-        Uses the persisted ChromaDB collection — not the transient
-        ``embedder.nodes`` list — so a fresh process can still retrieve
+        Uses the persisted vector store (ChromaDB or TurboVec SQLite) — not the
+        transient ``embedder.nodes`` list — so a fresh process can still retrieve
         business context nodes from a prior ingestion.
         """
         try:

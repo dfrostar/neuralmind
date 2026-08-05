@@ -648,7 +648,7 @@ def test_T1_false_positive_control(tmp_path):
 
 
 def test_T2_idempotency_no_activation_inflation(tmp_path):
-    """Re-running seed must not inflate activation_count (MAX, not +1)."""
+    """Re-running seed returns 0 new edges and must not inflate activation_count."""
     s = _store(tmp_path)
     nodes = [
         _biz_node(
@@ -663,8 +663,8 @@ def test_T2_idempotency_no_activation_inflation(tmp_path):
     count1 = s.seed_from_documents(nodes)
     assert count1 > 0
     count2 = s.seed_from_documents(nodes)
-    # Same edges returned (not doubled)
-    assert count1 == count2
+    # H3 fix: second run returns 0 new edges (not candidate count)
+    assert count2 == 0
     # activation_count must be 1 (not incremented on re-run)
     with s._connect() as conn:
         max_act = conn.execute(
@@ -689,7 +689,9 @@ def test_T3_cross_process_determinism(tmp_path):
     count1 = s1.seed_from_documents(nodes)
     s2 = SynapseStore(db)
     count2 = s2.seed_from_documents(nodes)
-    assert count1 == count2
+    # H3: second run returns 0 new edges
+    assert count1 > 0
+    assert count2 == 0
     # Edges identical
     edges1 = {(a, b) for a, b, _, _ in s1.edges(min_weight=0.0)}
     edges2 = {(a, b) for a, b, _, _ in s2.edges(min_weight=0.0)}
@@ -792,3 +794,123 @@ def test_T8_canonical_none_skip(tmp_path):
         rows = conn.execute("SELECT node_a, node_b FROM synapses").fetchall()
     for node_a, node_b in rows:
         assert node_a != node_b
+
+
+# ---------------------------------------------------------------------------
+# Adversarial QA regression tests (post-H1/H2/H3 fixes)
+# ---------------------------------------------------------------------------
+
+
+def test_H1_compound_match_requires_adjacency(tmp_path):
+    """Compound match must require components to be adjacent in text, not just present."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:engine_test.20260801",
+            "The engine was discussed. Much later, audit was mentioned.",
+        ),
+        _code_node("engine_audit_py__fn", "some_unrelated_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # "engine" and "audit" appear but are NOT adjacent → no compound match
+    # Single-component match still works (audit is present), weight = 0.20
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.20  # single match, not compound
+
+
+def test_H1_compound_match_adjacent_components(tmp_path):
+    """Adjacent components in text create compound match (0.25)."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:adjacent.20260801",
+            "We need to implement engine audit logging for compliance.",
+        ),
+        _code_node("engine_audit_py__fn", "some_other_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.25
+
+
+def test_H2_title_reference_b2b_crosslink(tmp_path):
+    """A business node referencing another's title creates a 0.25 edge."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:adopt_postgres.20260801",
+            "Adopt PostgreSQL for audit logging.",
+            title="Adopt PostgreSQL",
+            tags=["infrastructure"],
+        ),
+        _biz_node(
+            "meeting:review.20260801",
+            "In this meeting we discussed the Adopt PostgreSQL decision and next steps.",
+            title="Review Meeting",
+            tags=["infrastructure"],
+        ),
+        _code_node("engine_audit_py__fn", "audit_fn"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # Should have: title-ref b2b edge (0.25) + maybe some code edges
+    assert count >= 1
+    with s._connect() as conn:
+        rows = conn.execute("SELECT node_a, node_b, weight FROM synapses").fetchall()
+    # Find the b2b edge
+    biz_edges = [(a, b, w) for a, b, w in rows if a.startswith(("decision:", "meeting:")) and b.startswith(("decision:", "meeting:"))]
+    assert len(biz_edges) == 1
+    assert biz_edges[0][2] == 0.25
+
+
+def test_M1_file_path_tokenization(tmp_path):
+    """File paths with / separators are properly tokenized."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:filepath.20260801",
+            "Update the engine/server.py file for better logging.",
+        ),
+        _code_node("engine_server_py__handler_fn", "server_handler"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # "server" should match (not "engine/server" jammed together)
+    assert count >= 1
+
+
+def test_T9_compound_vs_single_distinction(tmp_path):
+    """Compound match (0.25) takes priority over single match (0.20)."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:compound.20260801",
+            "We use postgres connect for the database.",
+        ),
+        _code_node("engine_postgres_py__connect_fn", "some_other_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    # "postgres" + "connect" are adjacent in text → compound match = 0.25
+    assert weight == 0.25
+
+
+def test_T10_exact_label_match_weight(tmp_path):
+    """Exact full label match yields 0.40."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:exact.20260801",
+            "The audit_log_data function needs updating.",
+        ),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.40
