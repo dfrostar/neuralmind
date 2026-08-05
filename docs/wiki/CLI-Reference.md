@@ -1006,7 +1006,7 @@ Learning is now handled entirely by the **synapse layer**, which learns
 continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. A 2×2 A/B on the
 benchmark fixture showed the old reranker added 0.0 points to top-k hit
-rate while the synapse layer alone adds +11.6 points.
+rate while the synapse layer alone adds +6.1 points.
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale

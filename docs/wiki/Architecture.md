@@ -735,8 +735,8 @@ imported into every session even when the auto-memory path doesn't apply.
 NeuralMind once had a second learning mechanism, the `learned_patterns`
 cooccurrence **reranker** (v0.3.2). **It was removed in v0.25.0** after a
 2×2 A/B on the benchmark fixture showed it added 0.0 points to top-k hit
-rate whether the synapse layer was on or off (71.7% → 71.7% cold, 83.3% →
-83.3% warm), while the synapse layer alone added +11.6 points. The
+rate whether the synapse layer was on or off (77.2% → 77.2% cold, 83.3% →
+83.3% warm), while the synapse layer alone added +6.1 points. The
 reranker was also runtime-inert on the warm path — the synapse boost
 re-sort discarded its ordering anyway. The architectural reason the two
 were never equivalent:
