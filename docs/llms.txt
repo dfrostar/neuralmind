@@ -6,7 +6,7 @@ Key facts, each backed by a runnable eval (raw traces committed):
 
 - Cheaper context: 100% gold-file recall at 38–85× fewer tokens than pasting files; beats ripgrep on both recall and cost (public benchmark on `requests` and `click`).
 - Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (pure retrieval ranking, reproducible).
-- Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate +11.7 points, budget-neutral (reference fixture A/B).
+- Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate +6.1 points, budget-neutral (reference fixture A/B).
 - Better-grounded answers: faithfulness +0.143 at a matched token budget (reference fixture parity gate).
 - 100% local: no code leaves the machine; ChromaDB-free default install on Linux, Apple Silicon (macOS arm64), and Windows x64 (ChromaDB is the automatic fallback on other platforms); NIST AI RMF mapped.
 - Indexes ten languages out of the box via bundled tree-sitter (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) plus OpenAPI, SQL DDL, and Protocol Buffers schema artifacts.

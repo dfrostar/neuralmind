@@ -539,7 +539,7 @@ python -m evals.public.run
 ```
 
 The run is **deterministic** — synapse injection is **OFF** (session-dependent
-learning can't be a fixed, reproducible public number; its **+11.7pt** lift is
+learning can't be a fixed, reproducible public number; its **+6.1pt** lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running matches the

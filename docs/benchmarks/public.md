@@ -113,7 +113,7 @@ is "which file," a bare vector index is cheaper.
   usage-dependent — they learn from how *you* work — so they cannot be part of a
   *fixed, reproducible* public number. Injection is OFF here. The learning lift
   is measured separately and reproducibly by the **synapse A/B eval**
-  (`tests/benchmark/run.py`, Phase 2): **+11.7 points** top-k hit-rate, budget-
+  (`tests/benchmark/run.py`, Phase 2): **+6.1 points** top-k hit-rate, budget-
   neutral, on the reference fixture. That is the differentiator a static index
   structurally cannot copy.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*

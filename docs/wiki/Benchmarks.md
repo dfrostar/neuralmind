@@ -24,7 +24,7 @@ recall at **38–85× fewer tokens** than pasting files, beating `ripgrep` on bo
 recall and cost; **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23); **(3) Learns how you work** — the Hebbian synapse layer lifts top-k
-hit-rate **+11.7 points (71.7%→83.3%), budget-neutral** (reference fixture);
+hit-rate **+6.1 points (77.2%→83.3%), budget-neutral** (reference fixture);
 **(4) Better-grounded answers** — at a matched budget, **faithfulness +0.143,
 grounding 1.00** (reference fixture). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties it on pure findability and is cheaper on raw
