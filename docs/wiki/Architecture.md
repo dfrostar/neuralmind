@@ -757,6 +757,37 @@ for the full evidence.
 
 ---
 
+## Business-Context Synapse Seeding (N-13)
+
+`seed_from_documents()` in `neuralmind/synapses.py` builds deterministic,
+LLM-free associations between **business documents** (decisions, SOPs,
+meeting notes, policies) and your code graph. This is the backbone of
+the "second brain" expansion — NeuralMind now indexes business context,
+not just code.
+
+### How it works
+
+1. **Tokenize** each business document (split on `_`, `-`, `.`, `/`; 3+ chars; stopword-filtered).
+2. **Exact label match** (0.40): code node label is a subset of the doc's tokens.
+3. **Compound match** (0.25): 2+ consecutive non-stopword components appear
+   **adjacent in text** (H1 fix — not just both present anywhere).
+4. **Single match** (0.20): one component present.
+5. **Cross-link business nodes** (0.20): shared specific tags (<20% frequency cap).
+6. **Title-reference cross-link** (0.25): one doc's title appears in another's text (H2 fix).
+
+### Guarantees
+
+- **Idempotent**: re-running returns 0 new edges (H3 fix — counts actual rowcount delta).
+- **LTP-safe**: `MAX(activation_count)` not `+1` (reinforcement doesn't inflate on re-run).
+- **Deterministic**: canonical edge ordering + precomputed token sets (M3 fix — no O(n²) re-tokenization).
+
+### Integration
+
+Called from `build()` not `ingest_document()` — covers daemon rebuilds
+and fresh `build .` invocations, not just document ingestion.
+
+---
+
 ## Event Bus and JSONL Bridge (v0.6)
 
 v0.6.0 added a third structural piece: an **event bus** that turns

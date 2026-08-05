@@ -30,6 +30,10 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### N-13 — Business-Context Synapse Seeding (August 2026)
+
+`seed_from_documents()` builds deterministic, LLM-free associations between business documents (decisions, SOPs, meeting notes, policies) and your code graph. Compound matches require adjacency in text (not just presence), title-reference cross-linking connects related business docs, and frequency-capped tags prevent common terms from dominating. 56 tests. This is the backbone of the "second brain" expansion (N-06 scope decision).
+
 ### v3.0.2 — Post-Extraction Cleanup (August 2026)
 
 The self-improving loop (signal→insight→experiment→promote) was extracted to a private repo (`dfrostar/agencyOS`). NeuralMind is now pure code intelligence — the public package ships only what your agent needs.

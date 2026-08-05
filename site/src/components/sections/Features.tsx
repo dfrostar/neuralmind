@@ -26,10 +26,16 @@ const featureList = [
         badge: 'New',
     },
     {
-        icon: '🤖',
+        icon: '🔬',
         title: 'Self-Documenting Code',
         desc: 'DocEvolver finds undocumented methods, generates JSDoc variants, evolves them against retrieval fitness. Winning variants patched back into source.',
         badge: 'Evolution',
+    },
+    {
+        icon: '🧠',
+        title: 'Business-Context Synapse Seeding',
+        desc: 'seed_from_documents() builds deterministic, LLM-free associations between business documents (decisions, SOPs, meeting notes) and your code graph. Adjacency-matched compounds, title-reference cross-links.',
+        badge: 'N-13',
     },
     {
         icon: '🌐',

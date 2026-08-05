@@ -258,6 +258,11 @@ neuralmind benchmark .
   [VS Code extension](editors/vscode/).
 - **Ten-language code graph.** tree-sitter indexes **Python, TypeScript,
   Go, Rust, Java, C, C++, C#, Ruby, and PHP** out of the box.
+- **Business-context synapse seeding.** `seed_from_documents()` builds
+  deterministic, LLM-free associations between business documents
+  (decisions, SOPs, meeting notes, policies) and your code graph —
+  adjacency-matched compounds, title-reference cross-links, frequency-capped
+  tags. 56 tests.
 - **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
   log, seat management, self-hosted deployment. MIT core stays MIT — the
   Team tier only activates with a license; tier2 is
