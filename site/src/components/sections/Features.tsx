@@ -4,7 +4,7 @@ const featureList = [
     {
         icon: '⚡',
         title: 'Sub-Second Retrieval',
-        desc: 'TurboVec backend: 0.81s per query on a 1,486-node repo. 10× faster than ChromaDB with comparable quality.',
+        desc: 'TurboVec backend: 0.81s per query on a 1,486-node repo. ChromaDB-free, 8× smaller index vectors (4-bit quantized).',
         badge: 'TurboVec',
     },
     {
@@ -16,7 +16,7 @@ const featureList = [
     {
         icon: '🔄',
         title: 'Progressive L0–L3 Disclosure',
-        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 63.6× compression measured on production codebase.',
+        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 65.6× compression measured on a 241-node production codebase.',
         badge: '63.6×',
     },
     {

@@ -30,9 +30,17 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v3.0.2 — Post-Extraction Cleanup (August 2026)
+
+The self-improving loop (signal→insight→experiment→promote) was extracted to a private repo (`dfrostar/agencyOS`). NeuralMind is now pure code intelligence — the public package ships only what your agent needs.
+
+- **Agent OS extracted.** 12 modules moved to `dfrostar/agencyOS`. The public repo is leaner.
+- **Dashboard rebranded.** Agent/Agency OS references removed from ROADMAP and tests.
+- **v3.0.0, v3.0.1** — SBOM publishing, license cleanup, extraction follow-through.
+
 ### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
 
-> **12–50× typical savings** — updated from the 12-50× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+> **12–50× typical savings** — updated from the 12-50× estimate with founder-benchmarked results on local production repos. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
 
 New compliance capabilities for regulated teams, plus a one-command project init.
 
@@ -158,7 +166,7 @@ A content-aware PostToolUse compression footer (categorized line counts + repeat
 
 ### v0.9.0 — Enterprise-Ready
 
-Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and `ENTERPRISE.md`, with a "how to verify yourself" command for every claim.
+Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and the now-extracted enterprise docs, with a "how to verify yourself" command for every claim.
 
 No production code changes — pure CI + docs. Full details: [v0.9.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.9.0.md).
 
@@ -269,7 +277,7 @@ A two-phase token optimizer for AI coding agents.
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
 
-Combined effect: **5–10× total reduction** vs baseline agent usage, offline and model-agnostic.
+Combined effect: **12–50× retrieval token reduction** (6.2× measured in CI on the fixture), offline and model-agnostic.
 
 ### The core problem
 

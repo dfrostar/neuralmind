@@ -6,8 +6,8 @@ const cards = [
         title: 'The savings are free',
         accent: 'text-proton',
         points: [
-            'The 63.6× token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
-            'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone (at 63.6×).',
+            'The 65.6× token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
+            'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone (at 65.6×).',
             'The bigger line is time: ~$1,650/mo per 50-dev team recovered from context-limit thrashing and re-prompting, at a $50/hr fully-loaded rate.',
             'Sub-second queries (0.81s) mean no more waiting 8+ seconds per question. That compounds across every developer, every day.',
         ],
@@ -17,7 +17,7 @@ const cards = [
         title: 'Fewer wrong answers, faster teams',
         accent: 'text-electric',
         points: [
-            '86% answerability on a real production codebase (1,486 nodes) — measured, not claimed. 100% gold-file recall across 11 languages.',
+            '100% gold-file recall on the public benchmark (requests, click).',
             'Team dashboard shows synapse memory health, ingestion status, savings, latency trends — all read-only, all local.',
             'Self-documenting code: DocEvolver finds undocumented methods and evolves JSDoc that actually improves retrieval.',
             '100% local with zero code egress — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
