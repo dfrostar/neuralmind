@@ -187,6 +187,7 @@ exclude = '''
     | \.mypy_cache
     | \.tox
     | \.venv
+    | \.demo-venv
     | _build
     | buck-out
     | build
@@ -221,7 +222,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "neuralmind/__init__.py" = ["E402"]  # telemetry setup must run before imports
-"tests/**/*.py" = ["S101", "F841", "PT011", "PT012"]  # allow assert and test patterns
+"tests/**/*.py" = ["S101", "F841", "PT011", "PT012", "N802"]  # allow assert and test patterns
 
 
 [tool.mypy]

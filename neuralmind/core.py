@@ -592,6 +592,7 @@ class NeuralMind:
                         for n in all_nodes
                     ):
                         import logging
+
                         logger = logging.getLogger(__name__)
                         logger.warning(
                             "seed_from_documents: business nodes present but 0 edges seeded "
@@ -599,6 +600,7 @@ class NeuralMind:
                         )
             except Exception:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.exception("seed_from_documents failed during build")
 

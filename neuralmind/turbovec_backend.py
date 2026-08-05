@@ -274,7 +274,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             "source_file": str(node.get("source_file", "")),
             "community": int(node.get("community", -1)),
             "node_id": str(node.get("id", "")),
-    }
+        }
 
     def _content_node_metadata(self, node: dict) -> dict[str, Any]:
         """Extract metadata from a content node for filtering."""
@@ -287,6 +287,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         # Serialize tags as JSON for SQLite storage
         if "tags" in node_meta:
             import json
+
             meta["tags"] = json.dumps(node_meta["tags"])
         return meta
 
@@ -306,20 +307,22 @@ class TurboVecEmbedder(EmbeddingBackend):
             except Exception:
                 return nodes
         for row in rows:
-            nodes.append({
-                "id": row["node_id"],
-                "label": row["label"] or row["node_id"],
-                "content_text": row["document"] or "",
-                "metadata": {
-                    "label": row["label"],
-                    "file_type": row["file_type"],
-                    "source_file": row["source_file"],
-                    "community": row["community"],
-                    "node_id": row["node_id"],
-                    "content_category": row["content_category"] or "",
-                    "tags": row["tags"] or "",
-                },
-            })
+            nodes.append(
+                {
+                    "id": row["node_id"],
+                    "label": row["label"] or row["node_id"],
+                    "content_text": row["document"] or "",
+                    "metadata": {
+                        "label": row["label"],
+                        "file_type": row["file_type"],
+                        "source_file": row["source_file"],
+                        "community": row["community"],
+                        "node_id": row["node_id"],
+                        "content_category": row["content_category"] or "",
+                        "tags": row["tags"] or "",
+                    },
+                }
+            )
         return nodes
 
     @staticmethod

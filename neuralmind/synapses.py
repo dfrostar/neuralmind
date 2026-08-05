@@ -1454,9 +1454,7 @@ class SynapseStore:
         all_node_ids: list[str] = []
         node_components: dict[str, list[str]] = {}
         node_labels: dict[str, str] = {}
-        business_ids: set[str] = {
-            n["id"] for n in business_nodes if n.get("id")
-        }
+        business_ids: set[str] = {n["id"] for n in business_nodes if n.get("id")}
 
         for n in content_nodes:
             nid = n.get("id", "")
@@ -1477,7 +1475,7 @@ class SynapseStore:
         # Step 3: Build stopword blacklist — components in >30% of nodes
         # Require minimum 2 occurrences so small test graphs don't over-blacklist
         component_freq: dict[str, int] = {}
-        for nid, comps in node_components.items():
+        for _nid, comps in node_components.items():
             for c in set(comps):
                 component_freq[c] = component_freq.get(c, 0) + 1
 
@@ -1489,19 +1487,92 @@ class SynapseStore:
         # Hardcoded common tokens (code + prose)
         stopwords.update(
             {
-                "server", "test", "tests", "py", "cmd", "core", "main",
-                "util", "utils", "data", "config", "app", "model", "api",
-                "auth", "db", "log", "logs", "read", "write", "run",
-                "build", "key", "agent", "get", "set", "end", "func",
-                "fn", "class", "def", "return", "import", "from", "init",
-                "setup", "update", "delete", "create", "add", "remove",
-                "check", "use", "make", "new", "module", "file", "path",
-                "name", "type", "value", "default", "options", "args",
-                "obj", "item", "items", "index", "count", "result",
-                "results", "info", "err", "error", "msg", "code", "base",
-                "node", "nodes", "edge", "edges", "text", "content",
-                "method", "function", "object", "string", "int", "bool",
-                "none", "true", "false", "self", "other", "this", "that",
+                "server",
+                "test",
+                "tests",
+                "py",
+                "cmd",
+                "core",
+                "main",
+                "util",
+                "utils",
+                "data",
+                "config",
+                "app",
+                "model",
+                "api",
+                "auth",
+                "db",
+                "log",
+                "logs",
+                "read",
+                "write",
+                "run",
+                "build",
+                "key",
+                "agent",
+                "get",
+                "set",
+                "end",
+                "func",
+                "fn",
+                "class",
+                "def",
+                "return",
+                "import",
+                "from",
+                "init",
+                "setup",
+                "update",
+                "delete",
+                "create",
+                "add",
+                "remove",
+                "check",
+                "use",
+                "make",
+                "new",
+                "module",
+                "file",
+                "path",
+                "name",
+                "type",
+                "value",
+                "default",
+                "options",
+                "args",
+                "obj",
+                "item",
+                "items",
+                "index",
+                "count",
+                "result",
+                "results",
+                "info",
+                "err",
+                "error",
+                "msg",
+                "code",
+                "base",
+                "node",
+                "nodes",
+                "edge",
+                "edges",
+                "text",
+                "content",
+                "method",
+                "function",
+                "object",
+                "string",
+                "int",
+                "bool",
+                "none",
+                "true",
+                "false",
+                "self",
+                "other",
+                "this",
+                "that",
             }
         )
 
@@ -1550,7 +1621,9 @@ class SynapseStore:
         node_tokens_ordered: dict[str, list[str]] = {}
         node_label_tokens: dict[str, set[str]] = {}
         for nid in all_node_ids:
-            text = _extract_text({"id": nid, "label": node_labels[nid], "metadata": {"label": node_labels[nid]}})
+            text = _extract_text(
+                {"id": nid, "label": node_labels[nid], "metadata": {"label": node_labels[nid]}}
+            )
             node_tokens[nid] = _tokenize(text)
             node_tokens_ordered[nid] = _tokenize_ordered(text)
             node_label_tokens[nid] = _tokenize(node_labels[nid].lower())
@@ -1571,7 +1644,6 @@ class SynapseStore:
                 if nid in business_ids:
                     continue  # business↔business handled separately
                 comps = node_components.get(nid, [])
-                label = node_labels.get(nid, nid).lower()
 
                 # Exact label match (case-insensitive)
                 if node_label_tokens[nid] and node_label_tokens[nid].issubset(text_tokens):
@@ -1686,8 +1758,7 @@ class SynapseStore:
             try:
                 # Count existing edges before insert (H3 fix)
                 before = conn.execute(
-                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?",
-                    (SHARED_NAMESPACE,)
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?", (SHARED_NAMESPACE,)
                 ).fetchone()[0]
 
                 conn.executemany(
@@ -1707,8 +1778,7 @@ class SynapseStore:
                 )
                 # Count after insert — delta is actual new edges created
                 after = conn.execute(
-                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?",
-                    (SHARED_NAMESPACE,)
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?", (SHARED_NAMESPACE,)
                 ).fetchone()[0]
                 conn.execute("COMMIT")
             except Exception:

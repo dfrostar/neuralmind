@@ -667,9 +667,7 @@ def test_T2_idempotency_no_activation_inflation(tmp_path):
     assert count2 == 0
     # activation_count must be 1 (not incremented on re-run)
     with s._connect() as conn:
-        max_act = conn.execute(
-            "SELECT MAX(activation_count) FROM synapses"
-        ).fetchone()[0]
+        max_act = conn.execute("SELECT MAX(activation_count) FROM synapses").fetchone()[0]
     assert max_act == 1
 
 
@@ -710,9 +708,7 @@ def test_T4_namespace_and_canonical_ordering(tmp_path):
     ]
     s.seed_from_documents(nodes)
     with s._connect() as conn:
-        rows = conn.execute(
-            "SELECT node_a, node_b, namespace FROM synapses"
-        ).fetchall()
+        rows = conn.execute("SELECT node_a, node_b, namespace FROM synapses").fetchall()
     for node_a, node_b, ns in rows:
         assert ns == "shared"
         assert node_a < node_b, f"Canonical order violated: {node_a} !< {node_b}"
@@ -861,7 +857,11 @@ def test_H2_title_reference_b2b_crosslink(tmp_path):
     with s._connect() as conn:
         rows = conn.execute("SELECT node_a, node_b, weight FROM synapses").fetchall()
     # Find the b2b edge
-    biz_edges = [(a, b, w) for a, b, w in rows if a.startswith(("decision:", "meeting:")) and b.startswith(("decision:", "meeting:"))]
+    biz_edges = [
+        (a, b, w)
+        for a, b, w in rows
+        if a.startswith(("decision:", "meeting:")) and b.startswith(("decision:", "meeting:"))
+    ]
     assert len(biz_edges) == 1
     assert biz_edges[0][2] == 0.25
 

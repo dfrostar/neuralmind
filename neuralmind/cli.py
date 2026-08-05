@@ -1795,9 +1795,9 @@ def cmd_ingest(args):
     """
     import time
 
+    from neuralmind.content_node import ContentNode
     from neuralmind.core import create_mind
     from neuralmind.document_ingestion import parse_document
-    from neuralmind.content_node import ContentNode
 
     # Parse business context from JSON input
     business_types = {"decision", "meeting", "sop", "policy"}
@@ -1856,7 +1856,7 @@ def cmd_ingest(args):
                 print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
 
             try:
-                with open(fpath, "r", encoding="utf-8") as fh:
+                with open(fpath, encoding="utf-8") as fh:
                     data = json.load(fh)
 
                 # Support both single object and array of objects
@@ -1938,7 +1938,9 @@ def cmd_ingest(args):
             sys.exit(1)
 
         if not quiet:
-            print(f"Ingested {total_nodes} content node(s) from {len(files_to_ingest)} file(s) in {wall_time:.1f}s")
+            print(
+                f"Ingested {total_nodes} content node(s) from {len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+            )
             print(f"  Embed time: {total_embed_time:.2f}s")
         return
 
@@ -3803,9 +3805,7 @@ def main():
     ingest_p.add_argument(
         "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
     )
-    ingest_p.add_argument(
-        "--quiet", "-q", action="store_true", help="Suppress progress output"
-    )
+    ingest_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
     ingest_p.add_argument(
         "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
     )
@@ -3825,9 +3825,7 @@ def main():
     learn_p.add_argument(
         "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
     )
-    learn_p.add_argument(
-        "--quiet", "-q", action="store_true", help="Suppress progress output"
-    )
+    learn_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
     learn_p.add_argument(
         "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
     )

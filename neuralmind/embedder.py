@@ -276,6 +276,7 @@ class GraphEmbedder(EmbeddingBackend):
         # Serialize tags as JSON for chromadb (which only supports scalars)
         if "tags" in node_meta:
             import json
+
             meta["tags"] = json.dumps(node_meta["tags"])
         return meta
 
