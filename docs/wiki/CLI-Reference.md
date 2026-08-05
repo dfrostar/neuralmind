@@ -1613,7 +1613,7 @@ neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--port` | `8765` | TCP port to bind to |
+| `--port` | `8787` | TCP port to bind to |
 | `--no-browser` | off | Don't auto-open a browser tab on startup |
 | `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
 | `--no-auth` | off | Disable the per-session auth token. Only use on a trusted host. |

@@ -3,7 +3,7 @@
 > Goal: `neuralmind watch` and `neuralmind serve` survive reboots,
 > crashes, and tmux closes. The synapse layer accumulates 24/7 instead
 > of only while you're actively coding, and the graph view canvas is
-> always at `http://127.0.0.1:8765/` when you want to look at it.
+> always at `http://127.0.0.1:8787/` when you want to look at it.
 
 > **Why always-on matters more in v0.11.0+.** The directional
 > transition signal (`neuralmind next <file>`, `neuralmind_next_likely`
@@ -74,12 +74,12 @@ systemctl --user enable --now neuralmind-serve
 
 # 4. Verify both are up and /healthz responds
 systemctl --user status neuralmind-watch neuralmind-serve
-curl -fsS http://127.0.0.1:8765/healthz
+curl -fsS http://127.0.0.1:8787/healthz
 # {"status": "ok", "version": "0.8.0"}
 
 # The graph view canvas itself requires the per-session token. The
 # tokenized URL prints to journalctl on every startup:
-journalctl --user -u neuralmind-serve | grep -F "http://127.0.0.1:8765/"
+journalctl --user -u neuralmind-serve | grep -F "http://127.0.0.1:8787/"
 # (or pass --no-auth in ExecStart if you understand the implications)
 
 # 5. Tail logs
@@ -127,7 +127,7 @@ launchctl load -w ~/Library/LaunchAgents/com.neuralmind.serve.plist
 
 # 4. Verify
 launchctl list | grep com.neuralmind
-curl -fsS http://127.0.0.1:8765/healthz
+curl -fsS http://127.0.0.1:8787/healthz
 
 # 5. Tail logs
 tail -f ~/Library/Logs/neuralmind-watch.out.log
@@ -174,7 +174,7 @@ Register-ScheduledTask -TaskName "NeuralMind-Watch" `
 Register-ScheduledTask -TaskName "NeuralMind-Serve" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
-    -Argument "serve C:\path\to\your-project --port 8765 --no-browser") `
+    -Argument "serve C:\path\to\your-project --port 8787 --no-browser") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
@@ -182,7 +182,7 @@ Register-ScheduledTask -TaskName "NeuralMind-Serve" `
 
 # Verify
 Get-ScheduledTask NeuralMind-*
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/healthz
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/healthz
 ```
 
 ---
@@ -198,7 +198,7 @@ works without adding a package:
 
 ```dockerfile
 HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD python -c "import urllib.request, sys; r = urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=2); sys.exit(0 if r.status == 200 else 1)" || exit 1
+  CMD python -c "import urllib.request, sys; r = urllib.request.urlopen('http://127.0.0.1:8787/healthz', timeout=2); sys.exit(0 if r.status == 200 else 1)" || exit 1
 ```
 
 `--start-period=60s` matches the systemd template's readiness window
@@ -227,7 +227,7 @@ project. With `neuralmind watch` running 24/7:
 
 With `neuralmind serve` running 24/7:
 
-- **`http://127.0.0.1:8765/`** is always there. No "wait, I need to
+- **`http://127.0.0.1:8787/`** is always there. No "wait, I need to
   start the canvas first" friction when you want to debug a retrieval.
 - The canvas shows the union of every agent's activity — your editor,
   every running session, the watcher daemon — in real time.

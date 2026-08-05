@@ -95,7 +95,7 @@ All five point at the same project. Same MCP tools (`neuralmind_wakeup`,
 neuralmind serve .
 ```
 
-Opens `http://127.0.0.1:8765/?token=…` in your browser — a
+Opens `http://127.0.0.1:8787/?token=…` in your browser — a
 force-directed graph of the codebase with the learned synapse
 overlay. Pre-v0.6.0, that was a static snapshot.
 

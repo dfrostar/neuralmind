@@ -4024,8 +4024,8 @@ def main():
     serve_p.add_argument(
         "--port",
         type=int,
-        default=8765,
-        help="Port to bind (default: 8765)",
+        default=8787,
+        help="Port to bind (default: 8787)",
     )
     serve_p.add_argument(
         "--no-browser",

@@ -61,7 +61,7 @@ def project_status(mind=None, project_path: str | Path | None = None) -> dict[st
 
 def synapse_summary(mind=None, project_path: str | Path | None = None) -> dict[str, Any]:
     """Synapse memory health: namespace breakdown, LTP count, decay info."""
-    if mind is not None and mind.enable_synapses and mind.synapses is not None:
+    if mind is not None and getattr(mind, "enable_synapses", False) and getattr(mind, "synapses", None) is not None:
         try:
             store = mind.synapses
             stats = store.stats()

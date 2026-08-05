@@ -60,7 +60,7 @@ from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
 
-LEARNING_RATE = 0.15
+LEARNING_RATE = 0.30
 WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
 LTP_THRESHOLD = 5
@@ -169,10 +169,10 @@ NAMESPACE_HALF_LIVES: dict[str, float] = {
 #
 #   weight = clamp(BASE + LOG_SCALE * ln(call_count + 1), MAX)
 #
-# Below LEARNING_RATE (0.15) for single-observation edges but grows for hot
+# Below LEARNING_RATE (0.30) for single-observation edges but grows for hot
 # call paths. Below LTP_FLOOR (0.20) so structural edges can be pruned if
 # they decay long enough without a rebuild.
-STRUCTURAL_BASE_WEIGHT = 0.18
+STRUCTURAL_BASE_WEIGHT = 0.25
 STRUCTURAL_LOG_SCALE = 0.06
 STRUCTURAL_MAX_WEIGHT = 0.70
 
@@ -579,9 +579,13 @@ class SynapseStore:
                 if pair is not None:
                     pairs.append(pair)
 
+        # Seed half_life_days from namespace policy (personal/default: 30d, shared: 60d, ephemeral: 1d)
+        # instead of NULL — the NULL decay path was a silent failure (SOTA 3.2.4).
+        hl = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
+
         node_rows = [(n, ns, ts) for n in ids]
         pair_rows = [
-            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta) for a, b in pairs
+            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, hl, WEIGHT_CAP, delta) for a, b in pairs
         ]
 
         # Activation bumps and synapse upserts must land together or not at
@@ -610,7 +614,7 @@ class SynapseStore:
                         INSERT INTO synapses(
                             node_a, node_b, namespace, weight, activation_count,
                             last_activated, created_at, half_life_days, learned_at
-                        ) VALUES (?, ?, ?, ?, 1, ?, ?, NULL, NULL)
+                        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, NULL)
                         ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
                             weight = MIN(?, synapses.weight + ?),
                             activation_count = synapses.activation_count + 1,

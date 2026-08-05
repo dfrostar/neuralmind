@@ -10,18 +10,17 @@
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
 
 **Persistent memory and context compression for AI coding agents.**
+
 Your agent learns your codebase the way a senior engineer would — what goes
 together, what you usually touch next — and remembers it across sessions.
-100% local, no telemetry. Side effect: **12–50× cheaper code questions**,
-measured in CI on every commit.
+100% local, no telemetry. Side effect: **12–50× cheaper code questions** on real repos, measured in CI on every commit.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
 > - Receives PostToolUse compression automatically (Bash output → errors + signals)
 > - Queries your codebase in ~800 tokens instead of ~50,000
 >
-> Works out of the box with Claude Code, Codex, Cursor, and Cline.
-> Any other MCP agent: `neuralmind install-mcp --all`
+> **Works with every IDE your team already uses.**
 
 **Website:** [neuralmind.uk](https://neuralmind.uk) · **Docs:** [docs.neuralmind.uk](https://docs.neuralmind.uk/wiki/Home) · **Changelog:** [CHANGELOG.md](CHANGELOG.md) · **Release notes:** [docs/releases/](docs/releases/)
 
@@ -29,19 +28,177 @@ measured in CI on every commit.
 
 ---
 
-## Who this is for
+## The Problem
 
-**If your team uses Claude Code, Cursor, Cline, or any MCP agent — NeuralMind makes every agent remember your codebase.**
+Every large engineering organization has the same AI spend problem: token costs compound as the codebase grows, context is re-discovered from scratch on every query, and nobody can explain the ROI.
 
-- **Claude Code** — boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files). PostToolUse compression runs automatically. Queries cost ~800 tokens, not ~50,000.
-- **Claude Teams** — `neuralmind memory publish` commits a learned-weights bundle (no source code) that teammates' agents inherit on their next session. A fresh clone starts with the team's earned intuition.
-- **Cursor, Cline, Continue, Codex** — `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory.
+```
+You: "How does authentication work in my codebase?"
 
-Side effect: **12–50× cheaper code questions**, measured in CI on every commit.
+❌ Naive:  Load entire codebase → 50,000 tokens → $0.15-$3.75/query
+✅ NeuralMind: Smart context → ~800 tokens → $0.002-$0.06/query
+```
+
+Engineering leads are stuck between two bad options: let agents burn tokens loading whole files, or hand-curate context windows. Neither scales.
 
 ---
 
-## ⚡ 30-second proof — see the memory work
+## The Solution
+
+NeuralMind is a **code intelligence layer** that deploys in your infrastructure — not a SaaS wrapper, not a model swap. It sits between your agent and your code, learning how your team actually works.
+
+Two cooperating brains:
+
+| Brain | Role |
+|-------|------|
+| **Claude / GPT / Gemini** (your agent) | Cortex — stateless reasoning over a working-memory window |
+| **NeuralMind** | Hippocampus + associative cortex — persistent weighted graph of code nodes |
+
+The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
+
+**Your code never leaves your infrastructure.** Zero network calls from NeuralMind itself. Only the minimal relevant slice reaches your AI tool.
+
+---
+
+## Who This Is For
+
+**If your team uses Claude Code, Cursor, Cline, or any MCP agent — NeuralMind makes every agent remember your codebase.**
+
+| Agent | What You Get | Status |
+|-------|-------------|--------|
+| **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. PostToolUse compression runs automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
+| **Claude Teams** | `neuralmind memory publish` commits a learned-weights bundle (no source code) that teammates' agents inherit on their next session. | ✅ Tested |
+| **Cursor** | `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory. | 🔬 Theoretical |
+| **Cline** | Same MCP integration. | 🔬 Theoretical |
+| **Continue** | Same MCP integration. | 🔬 Theoretical |
+| **Codex** | Same MCP integration. | 🔬 Theoretical |
+| **VS Code** | Direct extension + MCP. | ✅ Tested |
+| **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
+| **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
+
+Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI.
+
+---
+
+## Benefits
+
+### 1. Cheaper context (measured in CI on every commit)
+
+| What | Measured (CI, 500-line fixture) | On real repos |
+|------|---------------------------------|--------------|
+| Token reduction on code questions | **6.6×** | **12–50×** (more files to prune ⇒ larger ratio) |
+| Regression floor (CI fails below) | 4.0× | — |
+
+The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
+
+### 2. Learns how you work (the differentiator)
+
+NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what your team edits together and surfaces it on future queries.
+
+| Effect | Off | On | Lift |
+|--------|-----|-----|------|
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 72% | **86%** | **+14 pts** |
+| **Onboarding lift** — top-k module hit-rate from a committed team baseline | — | — | **+11.6 pts** |
+
+Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
+
+### 3. Finds the right code (not just less of it)
+
+**100% gold-file recall, MRR 0.96** on the public benchmark (`requests`, `click`). Beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23). Reproducible — `python -m evals.public.run`.
+
+### 4. Better-grounded answers (not just shorter)
+
+At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00**.
+
+---
+
+## Use Cases
+
+| I want to… | Read |
+|-----------|------|
+| Cut AI inference costs on code Q&A | [Cost optimization](docs/use-cases/cost-optimization.md) |
+| Set up Claude Code hooks | [Claude Code walkthrough](docs/use-cases/claude-code.md) |
+| Measure savings on my own repo | [Benchmark your repo](docs/use-cases/benchmark-your-repo.md) |
+| Always-on synapse learning (24/7) | [Always-on](docs/use-cases/always-on.md) |
+| Run across multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
+| Deploy in regulated/offline environments | [Air-gapped](docs/use-cases/air-gapped.md) |
+
+---
+
+## Limitations (Read Before Installing)
+
+**What NeuralMind is NOT:**
+
+- **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
+- **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
+- **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
+- **NOT SOC 2 certified.** Our architecture *supports* SOC 2 deployment patterns (zero code egress, hash-chained audit log, RBAC). Certification is on the roadmap. See [commercial-terms.json](commercial-terms.json).
+- **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
+
+**Technical limits:**
+
+- **Per-language answer quality is Python-first.** Structural coverage (symbol extraction) is 100% across all 10 bundled languages. Answer quality (faithfulness, grounding) is only measured on Python fixtures.
+- **Synapse learning needs sessions.** The Hebbian layer learns from co-activation over time. A fresh install has no learned associations — they accumulate over days/weeks of real use.
+- **No real-time cross-machine sync today.** Team memory uses a commit-and-pull model (`neuralmind memory publish`). Real-time sync is roadmap-only.
+
+---
+
+## How to Use
+
+### Install (pick your path)
+
+| Method | Command |
+|--------|---------|
+| **pip** | `pip install neuralmind` |
+| **pipx** | `pipx install neuralmind` (global CLI, no env pollution) |
+| **uv** | `uv pip install neuralmind` |
+| **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest` (multi-arch) |
+| **Source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` |
+
+### Quick start
+
+```bash
+cd your-project
+neuralmind build .          # index the codebase (tree-sitter, ~seconds to minutes)
+
+neuralmind wakeup .         # what the agent sees at session start
+neuralmind query . "How does authentication work?"  # ~800 tokens, not 50,000
+
+neuralmind install-hooks .  # Claude Code: automatic PostToolUse compression
+neuralmind serve .          # Obsidian-style graph view in your browser
+neuralmind savings . --cost # measured token savings, priced for your model
+neuralmind doctor           # verify the install end to end
+```
+
+### Wire up your agent
+
+```bash
+# Any MCP-compatible agent (Claude Code, Cursor, Cline, Continue, Codex)
+neuralmind install-mcp --all
+
+# Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse)
+neuralmind install-hooks .
+
+# Team memory: commit learned weights (no source code) for teammates
+neuralmind memory publish
+```
+
+### Run the benchmark
+
+```bash
+# Measure YOUR repo — not a fixture, not a demo
+neuralmind benchmark .
+
+# Measure against the public benchmark (requests, click)
+neuralmind benchmark . --public
+
+# Retrieval self-probe: does the index find YOUR symbols?
+neuralmind probe .
+```
+
+---
+
+## ⚡ 30-Second Proof
 
 The clearest evidence the memory is working is the measurable side effect:
 the agent stops re-loading context it already understood. Reproduce it on a
@@ -52,8 +209,7 @@ git clone https://github.com/dfrostar/neuralmind && cd neuralmind
 bash scripts/demo.sh
 ```
 
-The script creates an isolated venv, installs the deps, builds the index for
-the bundled fixture project, and runs three real questions. Output looks like:
+Output looks like:
 
 ```
   Q: How does authentication work in this codebase?
@@ -66,6 +222,7 @@ the bundled fixture project, and runs three real questions. Output looks like:
 The fixture is intentionally tiny (~500 lines) — it runs in CI as a
 regression gate. Real repos measure **12–50×** on the same pipeline
 ([benchmarks](#-benchmarks) · [measured production results](https://neuralmind.uk/effectiveness/)).
+
 Then get your own number:
 
 ```bash
@@ -77,39 +234,7 @@ neuralmind benchmark .
 
 ---
 
-## 🚀 Quick start
-
-| Method | Command |
-|---|---|
-| **pip** | `pip install neuralmind` |
-| **pipx** | `pipx install neuralmind` (global CLI, no env pollution) |
-| **uv** | `uv pip install neuralmind` |
-| **Docker** | `docker pull ghcr.io/dfrostar/neuralmind:latest` (multi-arch, published on every release) |
-| **Source** | `git clone https://github.com/dfrostar/neuralmind && pip install -e .` |
-
-No external tools required — a built-in **tree-sitter** backend indexes
-**Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** out of the
-box, and the default index is ChromaDB-free (smaller deps, 8–16× smaller
-index, same answer quality). Full path-by-path walkthrough:
-[install paths](docs/use-cases/install-paths.md).
-
-```bash
-cd your-project
-neuralmind build .          # index the codebase (tree-sitter, ~seconds to minutes)
-
-neuralmind wakeup .         # what the agent sees at session start
-neuralmind query . "How does authentication work?"
-neuralmind impact MyClass --depth 2   # blast radius: callers, importers, subclasses
-
-neuralmind install-hooks .  # Claude Code: automatic PostToolUse compression
-neuralmind serve .          # Obsidian-style graph view in your browser
-neuralmind savings . --cost # measured token savings, priced for your model
-neuralmind doctor           # verify the install end to end
-```
-
----
-
-## 🧠 What you get
+## 🧠 What You Get
 
 - **Progressive context disclosure (L0–L3).** A question costs ~800 tokens,
   not your whole repo. The agent asks for more depth only where it needs it.
@@ -131,6 +256,8 @@ neuralmind doctor           # verify the install end to end
   community-coloured graph with the synapse overlay — backlinks, semantic
   quick-switcher, clickable neighbours. There's also a
   [VS Code extension](editors/vscode/).
+- **Ten-language code graph.** tree-sitter indexes **Python, TypeScript,
+  Go, Rust, Java, C, C++, C#, Ruby, and PHP** out of the box.
 - **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
   log, seat management, self-hosted deployment. MIT core stays MIT — the
   Team tier only activates with a license; tier2 is
@@ -148,9 +275,11 @@ Measured, not marketed — the numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`:
 
 - **100% gold-file recall at 38–85× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** +11 points top-k hit rate at ±0 token cost.
+- **Synapse recall A/B:** +14 points top-k hit rate at ±0 token cost.
+- **Onboarding lift:** +11.6 points top-k module hit-rate from committed team baseline ([field report](https://neuralmind.uk/effectiveness/)).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
+- **6.6× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
 - Backend parity gate: the built-in tree-sitter backend is held within
   tolerance of the legacy graphify backend on every PR.
 
@@ -190,9 +319,9 @@ Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 | Understand the design | [Architecture](docs/wiki/Architecture.md) · [Limits & failure modes](docs/wiki/Limits-and-Failure-Modes.md) |
 | Follow real workflows | [Use-case walkthroughs](docs/use-cases/) (20+) |
 | Compare with alternatives | [Comparisons](docs/comparisons/) |
-|| Evaluate for a team | [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) · [Pricing](https://neuralmind.uk/pricing/) |
-|| Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
-|| Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
+| Evaluate for a team | [Team tier operator guide](docs/wiki/Tier2-Operator-Guide.md) · [Pricing](https://neuralmind.uk/pricing/) |
+| Run on multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
+| Upgrade safely | [Upgrade guide](docs/wiki/Upgrade-Guide.md) · [UPGRADING](docs/UPGRADING.md) |
 | See what changed | [CHANGELOG](CHANGELOG.md) · [release notes](docs/releases/) · [ROADMAP](ROADMAP.md) |
 
 ---
@@ -213,6 +342,13 @@ read the number. If it's not worth it, uninstall — and see the
 
 **Is the paid tier required?** No. The core is MIT and complete. The Team
 tier adds governance, audit, and seat management for organizations.
+
+**Is this SOC 2 compliant?** Our architecture *supports* SOC 2 deployment
+patterns (zero code egress, audit log, RBAC). Certification is on the roadmap.
+See [commercial-terms.json](commercial-terms.json).
+
+**What about SSO/SAML?** Roadmap-only. Not available today. See
+[commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 ---
 

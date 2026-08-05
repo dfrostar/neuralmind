@@ -369,6 +369,38 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_static("dashboard.css", set_cookie=new_cookie)
         elif route == "/dashboard.js":
             self._send_static("dashboard.js", set_cookie=new_cookie)
+        elif route == "/api/status":
+            data = project_status(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/synapses":
+            data = synapse_summary(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/health":
+            mind_ref = type(self).mind
+            built_at = None
+            staleness_sec = None
+            if getattr(mind_ref, "_build_stats", None):
+                built_at = mind_ref._build_stats.get("built_at")
+                try:
+                    from datetime import datetime
+                    staleness_sec = (datetime.now() - datetime.fromisoformat(built_at)).total_seconds()
+                except Exception:
+                    staleness_sec = None
+            self._send_json(
+                {
+                    "status": "healthy",
+                    "built": mind_ref._built,
+                    "last_build": built_at,
+                    "staleness_sec": staleness_sec,
+                },
+                set_cookie=new_cookie,
+            )
         elif route == "/api/dashboard/full":
             days = parse_qs(parsed.query).get("days", ["7"])[0]
             try:
@@ -680,7 +712,7 @@ def _resolve_server_token(auth: bool, token_file: Path) -> str | None:
 def serve(
     project_path: str,
     host: str = "127.0.0.1",
-    port: int = 8765,
+    port: int = 8787,
     open_browser: bool = True,
     auth: bool = True,
     editor: str | None = None,
