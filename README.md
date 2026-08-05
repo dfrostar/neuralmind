@@ -56,7 +56,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**Your code never leaves your infrastructure.** Zero network calls from NeuralMind itself. Only the minimal relevant slice reaches your AI tool.
+NeuralMind makes no network calls of its own. Only the minimal relevant slice reaches your AI tool.
 
 ---
 
@@ -132,7 +132,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **NOT SOC 2 certified.** Our architecture *supports* SOC 2 deployment patterns (zero code egress, hash-chained audit log, RBAC). Certification is on the roadmap. See [commercial-terms.json](commercial-terms.json).
+- **SOC 2 certification is on the roadmap** — the architecture provides SOC 2-ready posture (zero code egress, hash-chained audit log, RBAC) and evidence for your review. See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -343,9 +343,7 @@ read the number. If it's not worth it, uninstall — and see the
 **Is the paid tier required?** No. The core is MIT and complete. The Team
 tier adds governance, audit, and seat management for organizations.
 
-**Is this SOC 2 compliant?** Our architecture *supports* SOC 2 deployment
-patterns (zero code egress, audit log, RBAC). Certification is on the roadmap.
-See [commercial-terms.json](commercial-terms.json).
+**Does NeuralMind have SOC 2 certification?** Certification is on the roadmap. The architecture provides SOC 2-ready posture (zero code egress, audit log, RBAC) and evidence for your review. See [commercial-terms.json](commercial-terms.json).
 
 **What about SSO/SAML?** Roadmap-only. Not available today. See
 [commercial-terms.json](commercial-terms.json) `do_not_market` list.
