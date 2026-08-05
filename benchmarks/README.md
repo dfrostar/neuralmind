@@ -72,7 +72,7 @@ Useful variants of #8:
 Full tables on the [Benchmarks](../docs/wiki/Benchmarks.md) page. Headline:
 **100% gold-file recall at 38–85× fewer tokens** than pasting files on real OSS
 repos, beating `ripgrep` on *both* recall and cost; **+0.143** faithfulness at a
-matched budget; **+11.7 pts** top-k hit-rate from the synapse layer
+matched budget; **+6.1 pts** top-k hit-rate from the synapse layer
 (budget-neutral). We also report where NeuralMind **doesn't** win — a well-tuned
 vector RAG ties it on pure findability and is cheaper on raw tokens, and the
 competitor row is **pure retrieval ranking**, not their LLM-agent loop.

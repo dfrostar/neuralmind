@@ -86,7 +86,7 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 
 | What | Measured (CI, 500-line fixture) | On real repos |
 |------|---------------------------------|--------------|
-| Token reduction on code questions | **6.6×** | **12–50×** (more files to prune ⇒ larger ratio) |
+| Token reduction on code questions | **6.1×** | **12–50×** (more files to prune ⇒ larger ratio) |
 | Regression floor (CI fails below) | 4.0× | — |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
@@ -97,7 +97,7 @@ NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what 
 
 | Effect | Off | On | Lift |
 |--------|-----|-----|------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 72% | **86%** | **+14 pts** |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 77.2% | **83.3%** | **+6.1 pts** |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | — | — | **+11.6 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
@@ -275,11 +275,11 @@ Measured, not marketed — the numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`:
 
 - **100% gold-file recall at 38–85× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** +14 points top-k hit rate at ±0 token cost.
+- **Synapse recall A/B:** +6.1 points top-k hit rate at ±0 token cost.
 - **Onboarding lift:** +11.6 points top-k module hit-rate from committed team baseline ([field report](https://neuralmind.uk/effectiveness/)).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
-- **6.6× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
+- **6.1× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
 - Backend parity gate: the built-in tree-sitter backend is held within
   tolerance of the legacy graphify backend on every PR.
 
