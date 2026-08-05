@@ -1827,7 +1827,6 @@ def cmd_ingest(args):
 
     # Business context: JSON file input via --type decision|meeting|sop|policy
     if is_business_type:
-        import json
         total_nodes = 0
         total_embed_time = 0.0
         errors: list[tuple[str, str]] = []
