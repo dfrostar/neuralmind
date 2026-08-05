@@ -10,7 +10,7 @@ instead of a manual step, and decay instead of staleness.
 
 This is a removal, not a regression. A 2×2 A/B on the benchmark fixture showed
 the reranker added **0.0 points** to top-k hit rate whether synapses were on or
-off, while the synapse layer alone adds **+11.6 points**. The reranker was also
+off, while the synapse layer alone adds **+6.1 points**. The reranker was also
 runtime-inert on the warm path — the synapse boost re-sort discarded its
 ordering anyway — required the manual `neuralmind learn` step to populate, and
 went stale between runs. Keeping it added surface area and a manual step for no
@@ -39,10 +39,10 @@ vs. off, crossed with synapses on vs. off:
 |---------------|--------------|-------------|----------------|
 | **Synapses off (cold)** | 71.7% | 71.7% | 0.0 points |
 | **Synapses on (warm)** | 83.3% | 83.3% | 0.0 points |
-| **Synapse delta** | — | — | +11.6 points |
+| **Synapse delta** | — | — | +6.1 points |
 
 The reranker moved the number by 0.0 points in both rows. The synapse layer
-moved it by +11.6 points. The learning that matters is the synapse layer's, and
+moved it by +6.1 points. The learning that matters is the synapse layer's, and
 it is the signal NeuralMind keeps.
 
 ## What was removed and what replaces it

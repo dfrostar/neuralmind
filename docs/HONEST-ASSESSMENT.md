@@ -205,7 +205,7 @@ We'd downgrade our own claims if:
 - Community benchmarks (n ≥ 10 outside repos) show median
   reduction below 5×. (Currently directionally above this on n=2.)
 - Top-k retrieval hit rate on a real-world query set falls below
-  60%. (Currently 71.7% cold / 83.3% warm on the reference fixture — the
+  60%. (Currently 77.2% cold / 83.3% warm on the reference fixture — the
   warm number reflects the learned synapse boost.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.
