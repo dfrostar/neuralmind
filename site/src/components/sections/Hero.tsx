@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 const heroStats = [
     { label: 'Query Latency', value: '<1s', highlight: true },
-    { label: 'Token Reduction', value: '63.6×', highlight: false },
+    { label: 'Token Reduction', value: '65.6×', highlight: false },
     { label: 'Gold-File Recall', value: '100%', highlight: false },
     { label: 'Free Tier', value: 'Auto-provisioned', highlight: false },
 ];
