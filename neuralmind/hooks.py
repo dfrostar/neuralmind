@@ -536,12 +536,10 @@ def _record_tool_transition(project_path: str, file_path: str) -> None:
     synapse_transitions table accumulates real usage sequences (Phase 1 SOTA 3.2.3).
     Fail-open — never disrupts the agent's tool flow.
     """
-    import contextlib
-    import io
 
     try:
-        from .synapses import SynapseStore, default_db_path
         from .namespaces import resolve_namespace
+        from .synapses import SynapseStore, default_db_path
 
         store = SynapseStore(
             default_db_path(project_path), namespace=resolve_namespace(project_path)
