@@ -520,6 +520,12 @@ class SynapseStore:
                 (key, str(value)),
             )
 
+    def delete_meta(self, key: str) -> bool:
+        """Delete a key from the ``meta`` table. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM meta WHERE key = ?", (key,))
+            return cur.rowcount > 0
+
     def schema_version(self) -> int:
         """The schema version recorded in the ``meta`` table (0 = pre-v1)."""
         with self._connect() as conn:

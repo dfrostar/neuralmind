@@ -100,7 +100,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         self._index = None  # turbovec IdMapIndex, lazily created/loaded
         self._dirty = False  # mutated since last prepare()
-        self._conn = sqlite3.connect(str(self._store_path))
+        self._conn = sqlite3.connect(str(self._store_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_store()
 

@@ -369,18 +369,6 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_static("dashboard.css", set_cookie=new_cookie)
         elif route == "/dashboard.js":
             self._send_static("dashboard.js", set_cookie=new_cookie)
-        elif route == "/api/status":
-            data = project_status(
-                mind=type(self).mind,
-                project_path=type(self).mind.project_path,
-            )
-            self._send_json(data, set_cookie=new_cookie)
-        elif route == "/api/synapses":
-            data = synapse_summary(
-                mind=type(self).mind,
-                project_path=type(self).mind.project_path,
-            )
-            self._send_json(data, set_cookie=new_cookie)
         elif route == "/api/health":
             mind_ref = type(self).mind
             built_at = None

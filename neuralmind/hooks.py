@@ -358,6 +358,14 @@ def run_hook(action: str) -> int:
             store.clear_namespace(EPHEMERAL_NAMESPACE)
         except Exception:
             pass
+        # _last_touched_file is the from-half of a synapse transition. If it
+        # survives into the next session, the first tool call of the new
+        # session records a phantom transition from whatever file was last
+        # touched in the prior session. Clear it at the boundary.
+        try:
+            store.delete_meta("_last_touched_file")
+        except Exception:
+            pass
         if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
             try:
                 from .synapse_memory import export_synapse_memory
