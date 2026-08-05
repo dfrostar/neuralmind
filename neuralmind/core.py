@@ -576,6 +576,32 @@ class NeuralMind:
             except Exception:
                 pass
 
+        # Seed synapse edges from business context documents (N-13).
+        # Creates Hebbian edges between ingested business content and
+        # code symbols they reference. Integrated in build() so it covers
+        # daemon rebuilds too — not just ingest_document().
+        _synapse_business_count = 0
+        if self.enable_synapses:
+            try:
+                store = self.synapses
+                if store is not None:
+                    all_nodes = self._scan_all_nodes()
+                    _synapse_business_count = store.seed_from_documents(all_nodes)
+                    if _synapse_business_count == 0 and any(
+                        n.get("metadata", {}).get("content_category") == "business_context"
+                        for n in all_nodes
+                    ):
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(
+                            "seed_from_documents: business nodes present but 0 edges seeded "
+                            "(check matching algorithm or stopword list)"
+                        )
+            except Exception:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("seed_from_documents failed during build")
+
         # Get final stats
         final_stats = self.embedder.get_stats()
 
@@ -598,6 +624,8 @@ class NeuralMind:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
             self._build_stats["structural_synapses"] = _structural_synapse_count
+        if _synapse_business_count:
+            self._build_stats["business_synapses"] = _synapse_business_count
         if ir_summary is not None:
             self._build_stats["ir"] = ir_summary
 
@@ -624,6 +652,18 @@ class NeuralMind:
     @property
     def ir_meta_path(self) -> Path:
         return ir_mod.project_artifact(self.project_path, ".neuralmind", IR_META_FILENAME)
+
+    def _scan_all_nodes(self) -> list[dict]:
+        """Return all indexed nodes from the vector store.
+
+        Uses the persisted ChromaDB collection — not the transient
+        ``embedder.nodes`` list — so a fresh process can still retrieve
+        business context nodes from a prior ingestion.
+        """
+        try:
+            return self.embedder.get_all_nodes()
+        except Exception:
+            return []
 
     def _materialize_ir(self) -> dict | None:
         """Adapt the loaded graph into the canonical IR, validate, and persist.

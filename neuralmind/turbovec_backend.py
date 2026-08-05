@@ -116,10 +116,21 @@ class TurboVecEmbedder(EmbeddingBackend):
                 source_file  TEXT,
                 community    INTEGER,
                 content_hash TEXT,
-                embedded_at  TEXT
+                embedded_at  TEXT,
+                content_category TEXT,
+                tags         TEXT
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
             """)
+        # Additive columns for existing DBs (don't fail if already present)
+        try:
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN content_category TEXT")
+        except Exception:
+            pass
+        try:
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN tags TEXT")
+        except Exception:
+            pass
         self._conn.commit()
 
     def _meta_get(self, key: str) -> str | None:
@@ -263,7 +274,53 @@ class TurboVecEmbedder(EmbeddingBackend):
             "source_file": str(node.get("source_file", "")),
             "community": int(node.get("community", -1)),
             "node_id": str(node.get("id", "")),
-        }
+    }
+
+    def _content_node_metadata(self, node: dict) -> dict[str, Any]:
+        """Extract metadata from a content node for filtering."""
+        meta = self._node_metadata(node)
+        # Preserve business-context metadata
+        node_meta = node.get("metadata", {}) or {}
+        for key in ("practice_id", "title", "domain", "framework", "content_category"):
+            if key in node_meta:
+                meta[key] = str(node_meta[key])
+        # Serialize tags as JSON for SQLite storage
+        if "tags" in node_meta:
+            import json
+            meta["tags"] = json.dumps(node_meta["tags"])
+        return meta
+
+    def get_all_nodes(self) -> list[dict]:
+        """Return all indexed nodes as a list of dicts."""
+        nodes: list[dict] = []
+        try:
+            rows = self._conn.execute(
+                "SELECT node_id, document, label, file_type, source_file, community, content_category, tags FROM nodes"
+            ).fetchall()
+        except Exception:
+            # Fallback if columns don't exist yet (legacy DB without the columns)
+            try:
+                rows = self._conn.execute(
+                    "SELECT node_id, document, label, file_type, source_file, community, '' as content_category, '' as tags FROM nodes"
+                ).fetchall()
+            except Exception:
+                return nodes
+        for row in rows:
+            nodes.append({
+                "id": row["node_id"],
+                "label": row["label"] or row["node_id"],
+                "content_text": row["document"] or "",
+                "metadata": {
+                    "label": row["label"],
+                    "file_type": row["file_type"],
+                    "source_file": row["source_file"],
+                    "community": row["community"],
+                    "node_id": row["node_id"],
+                    "content_category": row["content_category"] or "",
+                    "tags": row["tags"] or "",
+                },
+            })
+        return nodes
 
     @staticmethod
     def _content_hash(text: str) -> str:
@@ -302,7 +359,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                 is_update = False
                 stats["added"] += 1
 
-            meta = self._node_metadata(node)
+            meta = self._content_node_metadata(node)
             meta["content_hash"] = content_hash
             meta["embedded_at"] = datetime.now().isoformat()
             pending.append((node_id, uid, text, meta, content_hash, is_update))
@@ -334,13 +391,15 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._conn.execute(
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
-                                  source_file, community, content_hash, embedded_at)
-                VALUES(?,?,?,?,?,?,?,?,?)
+                                  source_file, community, content_hash, embedded_at,
+                                  content_category, tags)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
-                    embedded_at=excluded.embedded_at
+                    embedded_at=excluded.embedded_at,
+                    content_category=excluded.content_category, tags=excluded.tags
                 """,
                 (
                     uid,
@@ -352,6 +411,8 @@ class TurboVecEmbedder(EmbeddingBackend):
                     meta["community"],
                     content_hash,
                     now,
+                    meta.get("content_category", ""),
+                    meta.get("tags", ""),
                 ),
             )
 
@@ -427,13 +488,15 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._conn.execute(
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
-                                  source_file, community, content_hash, embedded_at)
-                VALUES(?,?,?,?,?,?,?,?,?)
+                                  source_file, community, content_hash, embedded_at,
+                                  content_category, tags)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
-                    embedded_at=excluded.embedded_at
+                    embedded_at=excluded.embedded_at,
+                    content_category=excluded.content_category, tags=excluded.tags
                 """,
                 (
                     uid,
@@ -445,6 +508,8 @@ class TurboVecEmbedder(EmbeddingBackend):
                     meta["community"],
                     content_hash,
                     now,
+                    meta.get("content_category", ""),
+                    meta.get("tags", ""),
                 ),
             )
 

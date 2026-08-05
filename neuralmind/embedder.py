@@ -268,11 +268,15 @@ class GraphEmbedder(EmbeddingBackend):
     def _content_node_metadata(self, node: dict) -> dict[str, Any]:
         """Extract metadata from a content node for filtering."""
         meta = self._node_metadata(node)
-        # Preserve compliance-specific metadata
+        # Preserve compliance-specific + business-context metadata
         node_meta = node.get("metadata", {}) or {}
-        for key in ("practice_id", "title", "domain", "framework"):
+        for key in ("practice_id", "title", "domain", "framework", "content_category"):
             if key in node_meta:
                 meta[key] = str(node_meta[key])
+        # Serialize tags as JSON for chromadb (which only supports scalars)
+        if "tags" in node_meta:
+            import json
+            meta["tags"] = json.dumps(node_meta["tags"])
         return meta
 
     def _node_metadata(self, node: dict) -> dict[str, Any]:
@@ -592,6 +596,36 @@ class GraphEmbedder(EmbeddingBackend):
             "community_distribution": communities,
             "db_path": self.db_path,
         }
+
+    def get_all_nodes(self) -> list[dict]:
+        """Return all indexed nodes as a list of dicts.
+
+        Each dict has the minimum shape the synapse seeder needs:
+        ``{"id": str, "label": str, "metadata": dict, "content_text": str}``.
+        """
+        nodes: list[dict] = []
+        try:
+            result = self.collection.get(
+                include=["metadatas", "documents"],
+            )
+        except Exception:
+            return nodes
+        ids = result.get("ids") or []
+        metas = result.get("metadatas") or []
+        docs = result.get("documents") or []
+        for i, nid in enumerate(ids):
+            meta = metas[i] if i < len(metas) else {}
+            doc = docs[i] if i < len(docs) else ""
+            if isinstance(meta, dict):
+                nodes.append(
+                    {
+                        "id": nid,
+                        "label": meta.get("label", nid),
+                        "metadata": meta,
+                        "content_text": str(doc) if doc else "",
+                    }
+                )
+        return nodes
 
     # ------------------------------------------------------------------
     # BM25 keyword index
