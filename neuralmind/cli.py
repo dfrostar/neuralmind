@@ -1797,6 +1797,11 @@ def cmd_ingest(args):
 
     from neuralmind.core import create_mind
     from neuralmind.document_ingestion import parse_document
+    from neuralmind.content_node import ContentNode
+
+    # Parse business context from JSON input
+    business_types = {"decision", "meeting", "sop", "policy"}
+    is_business_type = args.type in business_types
 
     file_path = Path(args.file_path).resolve() if args.file_path != "." else Path.cwd()
     if not file_path.exists():
@@ -1819,6 +1824,124 @@ def cmd_ingest(args):
         if not quiet:
             print("No supported files found to ingest.")
         sys.exit(0)
+
+    # Business context: JSON file input via --type decision|meeting|sop|policy
+    if is_business_type:
+        import json
+        total_nodes = 0
+        total_embed_time = 0.0
+        errors: list[tuple[str, str]] = []
+        wall_start = time.time()
+
+        # Resolve project root
+        project_path = _resolve_project_path(file_path, args)
+        if project_path is None:
+            print(
+                "Error: no NeuralMind project found. Run 'neuralmind ingest' from your "
+                "project directory (where 'neuralmind build .' was run).",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        mind = create_mind(str(project_path), auto_build=True)
+        if not mind._built:
+            print(
+                "Error: failed to build NeuralMind index. Run 'neuralmind build .' first.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        for idx, fpath in enumerate(files_to_ingest, 1):
+            if not quiet and len(files_to_ingest) > 1:
+                rel = fpath.relative_to(file_path)
+                print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+            try:
+                with open(fpath, "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+
+                # Support both single object and array of objects
+                items = data if isinstance(data, list) else [data]
+                content_nodes: list[dict] = []
+
+                for item in items:
+                    if args.type == "decision":
+                        content_nodes.append(ContentNode.from_decision(item).to_graph_node())
+                    elif args.type == "meeting":
+                        content_nodes.append(ContentNode.from_meeting_note(item).to_graph_node())
+                    elif args.type == "sop":
+                        content_nodes.append(ContentNode.from_sop(item).to_graph_node())
+                    elif args.type == "policy":
+                        content_nodes.append(ContentNode.from_policy(item).to_graph_node())
+
+                if not content_nodes:
+                    errors.append((str(fpath), "No content extracted"))
+                    if not quiet and len(files_to_ingest) > 1:
+                        print(" no content")
+                    continue
+
+                # Sync to embedder nodes list
+                existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+                new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+                mind.embedder.nodes.extend(new_nodes)
+
+                embed_start = time.time()
+                stats = mind.embedder.embed_content(new_nodes)
+                embed_elapsed = time.time() - embed_start
+
+                n = len(new_nodes) if new_nodes else len(content_nodes)
+                total_nodes += n
+                total_embed_time += embed_elapsed
+
+                if not quiet and len(files_to_ingest) > 1:
+                    added = stats.get("added", 0)
+                    skipped = stats.get("skipped", 0)
+                    print(f" {n} node(s) (+{added}, ~{skipped})")
+
+            except (ValueError, RuntimeError, json.JSONDecodeError) as e:
+                errors.append((str(fpath), str(e)))
+                if not quiet:
+                    if len(files_to_ingest) > 1:
+                        print(" ERROR")
+                        print(f"    {e}")
+                    else:
+                        print(f"Error: {e}", file=sys.stderr)
+            except Exception as e:
+                errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+                if not quiet:
+                    if len(files_to_ingest) > 1:
+                        print(" ERROR")
+                        print(f"    {type(e).__name__}: {e}")
+                    else:
+                        print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+
+        wall_time = time.time() - wall_start
+
+        if args.json:
+            output = {
+                "success": len(errors) == 0,
+                "files_processed": len(files_to_ingest),
+                "total_nodes": total_nodes,
+                "wall_time_seconds": round(wall_time, 2),
+                "errors": [{"file": str(f), "error": e} for f, e in errors],
+            }
+            print(json.dumps(output, indent=2))
+            if errors:
+                sys.exit(1)
+            return
+
+        if errors:
+            print(f"\n{len(errors)} error(s):", file=sys.stderr)
+            for f, err in errors[:10]:
+                print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+            if len(errors) > 10:
+                print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+            sys.exit(1)
+
+        if not quiet:
+            print(f"Ingested {total_nodes} content node(s) from {len(files_to_ingest)} file(s) in {wall_time:.1f}s")
+            print(f"  Embed time: {total_embed_time:.2f}s")
+        return
 
     # Resolve project root
     project_path = _resolve_project_path(file_path, args)
@@ -3674,8 +3797,8 @@ def main():
     ingest_p.add_argument(
         "--type",
         default="auto",
-        choices=["auto", "pdf", "markdown", "text", "cmmc"],
-        help="Content type hint (default: auto-detect)",
+        choices=["auto", "pdf", "markdown", "text", "cmmc", "decision", "meeting", "sop", "policy"],
+        help="Content type hint (default: auto-detect). Business types: decision, meeting, sop, policy (JSON input)",
     )
     ingest_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
     ingest_p.add_argument(
@@ -3696,8 +3819,8 @@ def main():
     learn_p.add_argument(
         "--type",
         default="auto",
-        choices=["auto", "pdf", "markdown", "text", "cmmc"],
-        help="Content type hint (default: auto-detect)",
+        choices=["auto", "pdf", "markdown", "text", "cmmc", "decision", "meeting", "sop", "policy"],
+        help="Content type hint (default: auto-detect). Business types: decision, meeting, sop, policy (JSON input)",
     )
     learn_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
     learn_p.add_argument(
