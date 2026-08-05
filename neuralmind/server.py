@@ -377,7 +377,10 @@ class _Handler(BaseHTTPRequestHandler):
                 built_at = mind_ref._build_stats.get("built_at")
                 try:
                     from datetime import datetime
-                    staleness_sec = (datetime.now() - datetime.fromisoformat(built_at)).total_seconds()
+
+                    staleness_sec = (
+                        datetime.now() - datetime.fromisoformat(built_at)
+                    ).total_seconds()
                 except Exception:
                     staleness_sec = None
             self._send_json(

@@ -71,14 +71,26 @@ def _fake_mind(built=True, project_name="testproj"):
         synapses=SimpleNamespace(
             stats=lambda: {
                 "namespace": "personal",
-                "namespaces": {"personal": {"edges": 5, "weight": 1.0, "transitions": 0, "transition_weight": 0.0, "nodes": 3}},
+                "namespaces": {
+                    "personal": {
+                        "edges": 5,
+                        "weight": 1.0,
+                        "transitions": 0,
+                        "transition_weight": 0.0,
+                        "nodes": 3,
+                    }
+                },
                 "edges": 5,
                 "transitions": 0,
                 "ltp_edges": 1,
             },
             edges=lambda min_weight=0.1, limit=10: [],
         ),
-        graph_data=lambda: {"nodes": [], "edges": [], "stats": {"nodes": 100, "edges": 200, "synapses": 5}},
+        graph_data=lambda: {
+            "nodes": [],
+            "edges": [],
+            "stats": {"nodes": 100, "edges": 200, "synapses": 5},
+        },
         search=lambda q, n=12: [],
     )
 
@@ -100,7 +112,17 @@ def test_api_dashboard_full_returns_all_sections():
         with urllib.request.urlopen(base + "/api/dashboard/full", timeout=5) as resp:
             assert resp.status == 200
             data = json.loads(resp.read())
-    expected_keys = ["generated_at", "project_path", "status", "synapses", "ingestion", "savings", "performance", "queries", "communities"]
+    expected_keys = [
+        "generated_at",
+        "project_path",
+        "status",
+        "synapses",
+        "ingestion",
+        "savings",
+        "performance",
+        "queries",
+        "communities",
+    ]
     for key in expected_keys:
         assert key in data, f"missing key: {key}"
 
