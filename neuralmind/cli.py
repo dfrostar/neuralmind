@@ -1897,18 +1897,6 @@ def cmd_ingest(args):
                     print(f"    {e}")
                 else:
                     print(f"Error: {e}", file=sys.stderr)
-                    # For single-file errors, still honor --json if requested
-                    if args.json:
-                        output = {
-                            "success": False,
-                            "files_processed": 0,
-                            "total_nodes": 0,
-                            "wall_time_seconds": round(time.time() - wall_start, 2),
-                            "synapse_doc_edges": 0,
-                            "errors": [{"file": str(fpath), "error": str(e)}],
-                        }
-                        print(json.dumps(output, indent=2))
-                    sys.exit(1)
         except Exception as e:
             errors.append((str(fpath), f"{type(e).__name__}: {e}"))
             if not quiet:
@@ -1917,17 +1905,6 @@ def cmd_ingest(args):
                     print(f"    {type(e).__name__}: {e}")
                 else:
                     print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
-                    if args.json:
-                        output = {
-                            "success": False,
-                            "files_processed": 0,
-                            "total_nodes": 0,
-                            "wall_time_seconds": round(time.time() - wall_start, 2),
-                            "synapse_doc_edges": 0,
-                            "errors": [{"file": str(fpath), "error": f"{type(e).__name__}: {e}"}],
-                        }
-                        print(json.dumps(output, indent=2))
-                    sys.exit(1)
 
     # Seed synapse edges from documentation (one-time, gated on env vars)
     synapse_doc_edges = 0
@@ -1955,6 +1932,15 @@ def cmd_ingest(args):
             sys.exit(1)
         return
 
+    if errors:
+        # Always report errors and exit non-zero, even with --quiet
+        print(f"\n{len(errors)} error(s):", file=sys.stderr)
+        for f, err in errors[:10]:
+            print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+        sys.exit(1)
+
     if not quiet:
         if total_nodes > 0:
             print(
@@ -1963,13 +1949,6 @@ def cmd_ingest(args):
             )
         if synapse_doc_edges > 0:
             print(f"  Synapse doc edges: {synapse_doc_edges}")
-        if errors:
-            print(f"\n{len(errors)} error(s):")
-            for f, err in errors[:10]:
-                print(f"  - {Path(f).name}: {err}")
-            if len(errors) > 10:
-                print(f"  ... and {len(errors) - 10} more")
-            sys.exit(1)
 
 
 def cmd_learn(args):

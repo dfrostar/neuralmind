@@ -697,6 +697,59 @@ class TestCLIIngest:
         with pytest.raises(SystemExit):
             cmd_ingest(args)
 
+    def test_ingest_mixed_valid_invalid_directory(self, temp_project, capsys):
+        """Mixed valid+invalid files in a directory: batch continues, errors reported, exit 1."""
+        from neuralmind.cli import cmd_ingest
+
+        subdir = temp_project / "mixed"
+        subdir.mkdir()
+        (subdir / "good.md").write_text("# Good\nContent")
+        (subdir / "also_good.txt").write_text("Also good")
+        (subdir / "bad.md").write_bytes(b"\x7fELF not markdown")
+
+        args = MagicMock()
+        args.file_path = str(subdir)
+        args.type = "auto"
+        args.json = True
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        # Should exit 1 because of the bad file
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_ingest(args)
+        assert exc_info.value.code == 1
+
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["success"] is False
+        assert data["files_processed"] == 3
+        assert data["total_nodes"] >= 2  # good.md + also_good.txt
+        assert len(data["errors"]) == 1
+        assert "bad.md" in data["errors"][0]["file"]
+
+    def test_ingest_quiet_error_exits_nonzero(self, temp_project, capsys):
+        """--quiet + error → must exit nonzero (catches silent-false-success bug)."""
+        from neuralmind.cli import cmd_ingest
+
+        fake_md = temp_project / "fake.md"
+        fake_md.write_bytes(b"\x7fELF not markdown")
+
+        args = MagicMock()
+        args.file_path = str(fake_md)
+        args.type = "auto"
+        args.json = False  # No JSON, so --quiet would have hidden the error
+        args.project_path = str(temp_project)
+        args.dry_run = False
+        args.quiet = True
+        args.no_recursive = False
+
+        # Must exit non-zero even with --quiet
+        with pytest.raises(SystemExit) as exc_info:
+            cmd_ingest(args)
+        assert exc_info.value.code == 1
+
     def test_ingest_pdf_requires_pdfplumber(self, temp_project, capsys):
         """PDF ingestion fails gracefully when pdfplumber not installed."""
         from neuralmind.cli import cmd_ingest
