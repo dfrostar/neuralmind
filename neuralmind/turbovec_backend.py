@@ -32,9 +32,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from collections.abc import Callable
 from datetime import datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -451,6 +453,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._dirty = True
         self._persist_index()
         self._conn.commit()
+        self.build_bm25_index()
         return stats
 
     # ---------------------------------------------------------------- search
@@ -634,6 +637,84 @@ class TurboVecEmbedder(EmbeddingBackend):
             "backend": "turbovec",
             "bit_width": self.bit_width,
         }
+
+    # ------------------------------------------------------------------
+    # BM25 keyword index — hybrid search
+    # ------------------------------------------------------------------
+
+    @cached_property
+    def _bm25_path(self) -> Path:
+        return self._dir / "bm25_index.json"
+
+    def _load_bm25(self):
+        """Load or build the BM25 keyword index."""
+        if hasattr(self, "_bm25_cached"):
+            return self._bm25_cached
+        from .bm25 import BM25Index
+
+        if self._bm25_path.exists():
+            self._bm25_cached = BM25Index.load(self._bm25_path)
+            return self._bm25_cached
+        return None
+
+    def build_bm25_index(self) -> None:
+        """Build and persist the BM25 keyword index from the SQLite store.
+
+        Called automatically at the end of embed_nodes() so the BM25 index
+        stays in sync with the vector index.
+        """
+        from .bm25 import BM25Index
+
+        ids, texts, metas = [], [], []
+        rows = self._conn.execute(
+            "SELECT node_id, document, label, file_type, source_file, community FROM nodes"
+        ).fetchall()
+        for r in rows:
+            ids.append(r["node_id"])
+            texts.append(r["document"] or r["label"] or r["node_id"])
+            metas.append(
+                {
+                    "label": r["label"],
+                    "file_type": r["file_type"],
+                    "source_file": r["source_file"],
+                    "community": r["community"],
+                    "node_id": r["node_id"],
+                }
+            )
+        if not ids:
+            return
+        idx = BM25Index()
+        idx.add_documents(ids, texts, metas)
+        idx.build()
+        idx.save(self._bm25_path)
+        self._bm25_cached = idx
+
+    def bm25_search(self, query: str, n: int = 10) -> list[dict[str, Any]]:
+        """BM25 keyword search — same result shape as search().
+
+        Returns an empty list when the index hasn't been built yet or when
+        NEURALMIND_BM25=0 is set.
+        """
+        if os.environ.get("NEURALMIND_BM25") == "0":
+            return []
+        idx = self._load_bm25()
+        if idx is None or idx._N == 0:
+            return []
+        raw = idx.search(query, top_k=n)
+        out = []
+        for r in raw:
+            sim = float(r["score"])
+            out.append(
+                {
+                    "id": r["id"],
+                    "document": r["document"],
+                    "metadata": r["metadata"],
+                    "distance": round(1.0 - sim, 6),
+                    "score": round(sim, 6),
+                    "_bm25_raw": r.get("_bm25_raw"),
+                }
+            )
+        return out
 
     def delete_nodes(self, node_ids) -> int:
         ids = [str(i) for i in node_ids]
