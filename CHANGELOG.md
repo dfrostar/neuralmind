@@ -1,5 +1,50 @@
 # Changelog
 
+## [3.1.0](https://github.com/dfrostar/neuralmind/compare/v3.0.0...v3.1.0) (2026-08-06)
+
+
+### Features
+
+* add BM25 keyword index to TurboVec backend for hybrid search ([2c0d35b](https://github.com/dfrostar/neuralmind/commit/2c0d35b01f9fc6161d5877fb74a0aa60b8630cac))
+* add book retrieval eval for document ingestion testing ([e80bc32](https://github.com/dfrostar/neuralmind/commit/e80bc328a920cb6adc41c6343ee49500a7247aab))
+* add neuralmind ingest CLI command with progress, dry-run, and error handling ([248ac56](https://github.com/dfrostar/neuralmind/commit/248ac564298d5128d5feb5b0508a1e7e1508821c))
+* N-13 adversarial QA fixes — H1/H2/H3/M1/M3 ([4063fbc](https://github.com/dfrostar/neuralmind/commit/4063fbccb25ded17e2b6d36e69a090a323ab98a8))
+* N-13 synapse seeding from business documents ([3d3df43](https://github.com/dfrostar/neuralmind/commit/3d3df43f4f3ef9cddf9eb9331eb455c058b68fe2))
+* **n16:** Content QA system — book/markdown indexer + IR metrics + RAGAS ([8ce40be](https://github.com/dfrostar/neuralmind/commit/8ce40be915d0bde7b2a885299042822155a7ebe2))
+* second brain — business context content types (decision, meeting, sop, policy) ([682a3d3](https://github.com/dfrostar/neuralmind/commit/682a3d3c0b09d21568c3e192798c6f70e3a860fd))
+
+
+### Bug Fixes
+
+* **benchmark:** allow partial misses in self-benchmark regression gate ([12102cc](https://github.com/dfrostar/neuralmind/commit/12102ccbd56bb14ca22fcea4c1fd8f4f2ec72c98))
+* BM25 index staleness after delete/clear (adversarial QA) ([ef1b516](https://github.com/dfrostar/neuralmind/commit/ef1b51660b343a390081441cc246bd64846946c5))
+* **ci:** clear docs-claims violations and update stale decay test threshold ([afb6710](https://github.com/dfrostar/neuralmind/commit/afb671079396f8204bbad386463711645a446256))
+* **cli:** remove local json import that shadowed module-level ([1ce217e](https://github.com/dfrostar/neuralmind/commit/1ce217e6af5cc3cc8eca70221bbe7147f68787b8))
+* **cli:** resolve CI lint + test failures from N-16 content QA feature ([276c122](https://github.com/dfrostar/neuralmind/commit/276c1222a6c513e5cd3641f48ea07cc41012ba3a))
+* correct benchmark claims across marketing site ([08250f1](https://github.com/dfrostar/neuralmind/commit/08250f1b224e993bc8044789de0321789c27be7d))
+* correct Hero.tsx token reduction 63.6×→65.6× ([ef499f7](https://github.com/dfrostar/neuralmind/commit/ef499f7423fe795c5644bebe0fd141fc814d0372))
+* correct synapse uplift + CI fixture ratio in README (+6.1pts, 6.1×) ([744e2ee](https://github.com/dfrostar/neuralmind/commit/744e2ee295947cb64c84e93cdd41d9b8c471abeb))
+* dashboard API thread safety, dead route cleanup, synapse session boundary ([07041aa](https://github.com/dfrostar/neuralmind/commit/07041aad73a95f966954463e50d9af77873f6221))
+* GLM adversarial QA fixes for ingest CLI ([34e115c](https://github.com/dfrostar/neuralmind/commit/34e115c5cde235dfbc32cc8a62b80a2cf9be2e82))
+* GLM HIGH[#3](https://github.com/dfrostar/neuralmind/issues/3) — --quiet no longer swallows errors (always exits non-zero) ([cd2eb45](https://github.com/dfrostar/neuralmind/commit/cd2eb4593a992740811128d10c345433f50774b4))
+* **n16:** CRITICAL + HIGH adversarial QA fixes ([4e6c06c](https://github.com/dfrostar/neuralmind/commit/4e6c06c3b0a3e34f8f95a13a1cbe42dad205c1c1))
+* rebrand dashboard to NeuralMind, remove Agent/Agency OS references from ROADMAP and tests ([acef1c1](https://github.com/dfrostar/neuralmind/commit/acef1c1911868cb5853239ef5a2604ac2e2ef130))
+* remove remaining agent_os references from LICENSE, README, site terms, adversarial docs ([da069bb](https://github.com/dfrostar/neuralmind/commit/da069bb16e4b0a1a5548107b91bd7241942580c1))
+* **seats:** use RLock to prevent deadlock in add_seat — non-reentrant Lock caused CI timeouts ([c9c6709](https://github.com/dfrostar/neuralmind/commit/c9c670911548e02bc999268fe8ecf3798cc7d8f8))
+* v3.0.1 patch — bug fixes, synapse layer, README accuracy, port consistency ([59283a4](https://github.com/dfrostar/neuralmind/commit/59283a48ee8342705f75a72cd3ca1b3e404210b4))
+
+
+### Documentation
+
+* add 'Who this is for' section targeting Claude Code, Claude Teams, Cursor, Cline, Codex ([bb1f1f6](https://github.com/dfrostar/neuralmind/commit/bb1f1f634be90349e10f226c79d87b82a83a4dfd))
+* add session handoff document (v3.0.2 → v3.1.0) ([6b6bf3f](https://github.com/dfrostar/neuralmind/commit/6b6bf3fe3c9f68ee7d0ba788365486025d2f5688))
+* C-1 — add business-context synapse seeding to all surfaces ([e1d566e](https://github.com/dfrostar/neuralmind/commit/e1d566ec07760cd6b3035af6a13e96f79c04d8c4))
+* correct synapse baseline in onboarding README (71.7%→77.2%) ([7e0ea39](https://github.com/dfrostar/neuralmind/commit/7e0ea39cdc7852bc11ac806002a52e56cc38726e))
+* correct synapse uplift 11.7/11.6pts → 6.1pts across all current-state docs ([d01e2bd](https://github.com/dfrostar/neuralmind/commit/d01e2bd15d9fb97bf9dbb800ea72b8e8593b9c00))
+* correct synapse uplift 11.7pts → 6.1pts across all wiki + public benchmark pages ([61f9011](https://github.com/dfrostar/neuralmind/commit/61f90116249831b6a20d79da1abaaa3a57d07c04))
+* refresh benchmark chart [skip ci] ([e7e6dff](https://github.com/dfrostar/neuralmind/commit/e7e6dffd48f547781b15b86329c07e10cab414cf))
+* ROADMAP.md post-extraction update (v3.0.2) ([0853c89](https://github.com/dfrostar/neuralmind/commit/0853c89041c73a7b659c93574b86a4dd83e91ef5))
+
 ## [3.0.0](https://github.com/dfrostar/neuralmind/compare/v2.0.0...v3.0.0) (2026-08-03)
 
 
