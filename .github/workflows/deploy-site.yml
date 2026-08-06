@@ -18,61 +18,46 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
-          domains_api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/neuralmind-marketing/domains"
+          # The stored secrets carry a trailing newline; a newline inside the
+          # Authorization header truncates POST bodies at Cloudflare's edge
+          # (GETs work, POSTs fail with 8000006). Strip all whitespace first.
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          domains_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains"
 
           echo "== Custom domains currently on the project =="
           curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
 
-          echo "== Full domain object shape (for schema reference) =="
-          curl -sS "${auth[@]}" "${domains_api}" | jq '.result[0]'
-
-          echo "== Adding www.neuralmind.uk via official cloudflare SDK =="
-          python3 -m pip install --quiet cloudflare
-          python3 - <<'PY'
-          import os, sys
-          from cloudflare import Cloudflare, APIError
-
-          client = Cloudflare(api_token=os.environ["CLOUDFLARE_API_TOKEN"])
-          acct = os.environ["CLOUDFLARE_ACCOUNT_ID"]
-          try:
-              d = client.pages.projects.domains.create(
-                  "neuralmind-marketing", account_id=acct, name="www.neuralmind.uk"
-              )
-              print("created:", d)
-          except APIError as e:
-              body = getattr(e, "body", None)
-              print("APIError:", e, file=sys.stderr)
-              print("body:", body, file=sys.stderr)
-              if "already" in str(e).lower() or "exists" in str(e).lower():
-                  print("Domain already attached; continuing.")
-              else:
-                  sys.exit(1)
-
-          names = [d.name for d in client.pages.projects.domains.list(
-              "neuralmind-marketing", account_id=acct)]
-          print("domains now:", names)
-          if "www.neuralmind.uk" not in names:
-              sys.exit(1)
-          PY
+          echo "== Adding www.neuralmind.uk =="
+          resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+            --data '{"name":"www.neuralmind.uk"}' "${domains_api}")
+          echo "${resp}" | jq .
+          if [ "$(echo "${resp}" | jq -r '.success')" != "true" ]; then
+            msg=$(echo "${resp}" | jq -r '[.errors[]?.message] | join("; ")')
+            case "${msg}" in
+              *already*|*exists*) echo "Domain already attached; continuing." ;;
+              *) echo "Failed to add domain: ${msg}" >&2; exit 1 ;;
+            esac
+          fi
 
       - name: Repair www DNS record (best-effort, needs Zone DNS Edit)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
-          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
-          zone_resp=$(curl -sS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones?name=neuralmind.uk")
-          zone_id=$(echo "${zone_resp}" | jq -r '.result[0]?.id // empty')
-          if [ -z "${zone_id}" ]; then
-            echo "Token cannot read the neuralmind.uk zone (no Zone permission)."
-            echo "MANUAL STEP: in the Cloudflare dashboard set DNS record:"
-            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
-            exit 0
-          fi
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          zone_id="d2741af1aee8025b9d11e54ad8ade6be"  # neuralmind.uk zone_tag from the project's apex domain object
 
           rec=$(curl -sS "${auth[@]}" \
             "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=www.neuralmind.uk")
+          if [ "$(echo "${rec}" | jq -r '.success')" != "true" ]; then
+            echo "Token cannot read the zone's DNS records (no Zone permission)."
+            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
+            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
+            exit 0
+          fi
           rec_id=$(echo "${rec}" | jq -r '.result[0]?.id // empty')
           echo "Current www record: $(echo "${rec}" | jq -c '.result[0]? | {type, content, proxied}')"
 
@@ -86,10 +71,10 @@ jobs:
               --data "${body}" \
               "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records")
           fi
-          echo "${upd}" | jq .
+          echo "${upd}" | jq -c '{success, errors}'
           if [ "$(echo "${upd}" | jq -r '.success')" != "true" ]; then
             echo "Could not update DNS with this token."
-            echo "MANUAL STEP: in the Cloudflare dashboard set DNS record:"
+            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
             echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
             exit 0
           fi
@@ -101,9 +86,11 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
-          domain_api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/neuralmind-marketing/domains/www.neuralmind.uk"
-          for i in $(seq 1 30); do
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          domain_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains/www.neuralmind.uk"
+          for i in $(seq 1 20); do
             st=$(curl -sS "${auth[@]}" "${domain_api}" | jq -r '.result.status // "unknown"')
             code=$(curl -sS -o /dev/null -w "%{http_code}" https://www.neuralmind.uk || echo 000)
             echo "attempt ${i}: domain status=${st}, https://www.neuralmind.uk -> HTTP ${code}"
@@ -113,6 +100,6 @@ jobs:
             fi
             sleep 20
           done
-          echo "www not serving 200 yet. Domain validation/DNS may still be propagating,"
-          echo "or the DNS record still needs the manual change printed above."
+          echo "www not serving 200 yet; validation/DNS may still be propagating."
+          echo "Check again in a few minutes. If still 404, apply the manual DNS step above."
           exit 1
