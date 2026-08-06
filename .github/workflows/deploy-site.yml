@@ -1,95 +1,73 @@
 name: Deploy site to Cloudflare Pages
 
-# TEMPORARILY REPURPOSED ON THIS BRANCH ONLY (claude/neuralmind-404-outage-5ye2o8):
-# dispatch = create www -> apex 301 redirect rule + identify which token
-# the CLOUDFLARE_API_TOKEN secret actually holds. Restored after.
+# The public marketing site (neuralmind.uk / neuralmind-marketing.pages.dev)
+# is operated from THIS repo, under site/. It is a Next.js static export
+# (output: 'export' -> site/out) uploaded to the existing Cloudflare Pages
+# project "neuralmind-marketing" via wrangler direct-upload, so the live URL
+# is unchanged regardless of which repo builds it.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   - token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#
+# Triggers:
+#   - push to main touching site/**   -> ship site content changes
+#   - a published release             -> rebuild so /security shows the new
+#                                        version (it reads the latest release
+#                                        at build time, never a hardcoded one)
+#   - manual dispatch
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-site.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
-permissions: {}
+# Don't let two site deploys overlap; a newer run cancels the older.
+concurrency:
+  group: site-pages-deploy
+  cancel-in-progress: true
 
 jobs:
-  add-www-redirect:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: site
     steps:
-      - name: Identify token
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
-          echo "Token ID + status (match the ID against the token's edit-page URL in the Cloudflare dashboard):"
-          curl -sS -H "Authorization: Bearer ${token}" \
-            "https://api.cloudflare.com/client/v4/user/tokens/verify" | jq '{id: .result.id, status: .result.status, success, errors}'
+          # The build fetches the latest release from the GitHub API (see
+          # site/src/lib/release.ts). Unauthenticated calls from shared
+          # runners get rate-limited, which would silently render the
+          # fallback version — the token keeps the fetch reliable.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build
 
-      - name: Create www -> apex 301 redirect rule
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
-          auth=(-H "Authorization: Bearer ${token}")
-          zone_id="d2741af1aee8025b9d11e54ad8ade6be"  # neuralmind.uk zone
-          api="https://api.cloudflare.com/client/v4/zones/${zone_id}/rulesets"
-
-          echo "== Locating the zone's dynamic-redirect ruleset =="
-          sets=$(curl -sS "${auth[@]}" "${api}")
-          if [ "$(echo "${sets}" | jq -r '.success')" != "true" ]; then
-            echo "Token cannot read zone rulesets."
-            echo "${sets}" | jq -c '{errors}'
-            exit 1
-          fi
-          rs_id=$(echo "${sets}" | jq -r '[.result[] | select(.phase=="http_request_dynamic_redirect" and .kind=="zone")][0].id // empty')
-
-          rule='{
-            "description": "www to apex 301",
-            "expression": "(http.host eq \"www.neuralmind.uk\")",
-            "action": "redirect",
-            "action_parameters": {
-              "from_value": {
-                "status_code": 301,
-                "target_url": { "expression": "concat(\"https://neuralmind.uk\", http.request.uri.path)" },
-                "preserve_query_string": true
-              }
-            }
-          }'
-
-          if [ -n "${rs_id}" ]; then
-            echo "Found ruleset ${rs_id}; checking for an existing www rule"
-            existing=$(curl -sS "${auth[@]}" "${api}/${rs_id}")
-            if echo "${existing}" | jq -e '.result.rules[]? | select(.description=="www to apex 301")' >/dev/null; then
-              echo "Redirect rule already present; nothing to do."
-            else
-              resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
-                --data "${rule}" "${api}/${rs_id}/rules")
-              echo "${resp}" | jq -c '{success, errors}'
-              [ "$(echo "${resp}" | jq -r '.success')" = "true" ] || exit 1
-            fi
-          else
-            echo "No dynamic-redirect ruleset yet; creating one with the rule"
-            body=$(jq -n --argjson rule "${rule}" \
-              '{name:"redirects", kind:"zone", phase:"http_request_dynamic_redirect", rules:[$rule]}')
-            resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
-              --data "${body}" "${api}")
-            echo "${resp}" | jq -c '{success, errors}'
-            [ "$(echo "${resp}" | jq -r '.success')" = "true" ] || exit 1
-          fi
-          echo "Redirect rule deployed."
-
-      - name: Verify redirect
-        run: |
-          set -euo pipefail
-          for i in $(seq 1 12); do
-            code=$(curl -sS -o /dev/null -w "%{http_code}" https://www.neuralmind.uk/pricing/ || echo 000)
-            loc=$(curl -sS -o /dev/null -w "%{redirect_url}" https://www.neuralmind.uk/pricing/ || echo "")
-            final=$(curl -sSL -o /dev/null -w "%{http_code}" https://www.neuralmind.uk/pricing/ || echo 000)
-            echo "attempt ${i}: www/pricing -> ${code} (location: ${loc}), followed -> ${final}"
-            if [ "${code}" = "301" ] && [ "${loc}" = "https://neuralmind.uk/pricing/" ] && [ "${final}" = "200" ]; then
-              echo "Redirect live: www 301s to apex and the apex serves 200."
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "Redirect not observed yet; check the rule in the dashboard."
-          exit 1
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: site
+          # Production deploy to the existing project; the live URL is preserved.
+          command: pages deploy out --project-name=neuralmind-marketing --branch=main
