@@ -1,105 +1,73 @@
 name: Deploy site to Cloudflare Pages
 
-# TEMPORARILY REPURPOSED ON THIS BRANCH ONLY (claude/neuralmind-404-outage-5ye2o8):
-# dispatching this registered workflow on this branch runs the one-off
-# www.neuralmind.uk remediation below instead of a site deploy. main's copy
-# of this workflow is untouched; this file is restored before merge.
+# The public marketing site (neuralmind.uk / neuralmind-marketing.pages.dev)
+# is operated from THIS repo, under site/. It is a Next.js static export
+# (output: 'export' -> site/out) uploaded to the existing Cloudflare Pages
+# project "neuralmind-marketing" via wrangler direct-upload, so the live URL
+# is unchanged regardless of which repo builds it.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   - token with the "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#
+# Triggers:
+#   - push to main touching site/**   -> ship site content changes
+#   - a published release             -> rebuild so /security shows the new
+#                                        version (it reads the latest release
+#                                        at build time, never a hardcoded one)
+#   - manual dispatch
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-site.yml'
+  release:
+    types: [published]
   workflow_dispatch:
 
+# Don't let two site deploys overlap; a newer run cancels the older.
+concurrency:
+  group: site-pages-deploy
+  cancel-in-progress: true
+
 jobs:
-  add-www-domain:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: site
     steps:
-      - name: Attach www.neuralmind.uk to the Pages project
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          # The stored secrets carry a trailing newline; a newline inside the
-          # Authorization header truncates POST bodies at Cloudflare's edge
-          # (GETs work, POSTs fail with 8000006). Strip all whitespace first.
-          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
-          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
-          auth=(-H "Authorization: Bearer ${token}")
-          domains_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains"
+          # The build fetches the latest release from the GitHub API (see
+          # site/src/lib/release.ts). Unauthenticated calls from shared
+          # runners get rate-limited, which would silently render the
+          # fallback version — the token keeps the fetch reliable.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build
 
-          echo "== Custom domains currently on the project =="
-          curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
-
-          echo "== Adding www.neuralmind.uk =="
-          resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
-            --data '{"name":"www.neuralmind.uk"}' "${domains_api}")
-          echo "${resp}" | jq .
-          if [ "$(echo "${resp}" | jq -r '.success')" != "true" ]; then
-            msg=$(echo "${resp}" | jq -r '[.errors[]?.message] | join("; ")')
-            case "${msg}" in
-              *already*|*exists*) echo "Domain already attached; continuing." ;;
-              *) echo "Failed to add domain: ${msg}" >&2; exit 1 ;;
-            esac
-          fi
-
-      - name: Repair www DNS record (best-effort, needs Zone DNS Edit)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
-          auth=(-H "Authorization: Bearer ${token}")
-          zone_id="d2741af1aee8025b9d11e54ad8ade6be"  # neuralmind.uk zone_tag from the project's apex domain object
-
-          rec=$(curl -sS "${auth[@]}" \
-            "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=www.neuralmind.uk")
-          if [ "$(echo "${rec}" | jq -r '.success')" != "true" ]; then
-            echo "Token cannot read the zone's DNS records (no Zone permission)."
-            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
-            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
-            exit 0
-          fi
-          rec_id=$(echo "${rec}" | jq -r '.result[0]?.id // empty')
-          echo "Current www record: $(echo "${rec}" | jq -c '.result[0]? | {type, content, proxied}')"
-
-          body='{"type":"CNAME","name":"www","content":"neuralmind-marketing.pages.dev","proxied":true,"ttl":1}'
-          if [ -n "${rec_id}" ]; then
-            upd=$(curl -sS -X PUT "${auth[@]}" -H "Content-Type: application/json" \
-              --data "${body}" \
-              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records/${rec_id}")
-          else
-            upd=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
-              --data "${body}" \
-              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records")
-          fi
-          echo "${upd}" | jq -c '{success, errors}'
-          if [ "$(echo "${upd}" | jq -r '.success')" != "true" ]; then
-            echo "Could not update DNS with this token."
-            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
-            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
-            exit 0
-          fi
-          echo "www DNS record now points at the Pages project."
-
-      - name: Verify www serves the site
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
-          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
-          auth=(-H "Authorization: Bearer ${token}")
-          domain_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains/www.neuralmind.uk"
-          for i in $(seq 1 20); do
-            st=$(curl -sS "${auth[@]}" "${domain_api}" | jq -r '.result.status // "unknown"')
-            code=$(curl -sS -o /dev/null -w "%{http_code}" https://www.neuralmind.uk || echo 000)
-            echo "attempt ${i}: domain status=${st}, https://www.neuralmind.uk -> HTTP ${code}"
-            if [ "${code}" = "200" ]; then
-              echo "www.neuralmind.uk is serving the site."
-              exit 0
-            fi
-            sleep 20
-          done
-          echo "www not serving 200 yet; validation/DNS may still be propagating."
-          echo "Check again in a few minutes. If still 404, apply the manual DNS step above."
-          exit 1
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: site
+          # Production deploy to the existing project; the live URL is preserved.
+          command: pages deploy out --project-name=neuralmind-marketing --branch=main
