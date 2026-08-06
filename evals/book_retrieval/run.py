@@ -87,7 +87,15 @@ def compute_ir_metrics(
     # DEDUP: track which gold paragraphs have already been matched to prevent
     # multiple retrieved paragraphs from mapping to the same gold (which would
     # inflate recall/precision/nDCG beyond 1.0).
-    actual_ranked: list[str] = []
+    #
+    # POSITION PRESERVATION: a retrieved paragraph with no gold match is still
+    # appended (as the sentinel `None`), NOT dropped. Dropping non-matches
+    # collapses `actual_ranked` to a list of only-relevant items, which makes
+    # MRR trivially 1.0 (the first element is always relevant) and overstates
+    # recall@5 / nDCG@5 because a match that actually sits past rank 5 is scored
+    # as though it were at a top position. Keeping a placeholder row preserves
+    # the true rank so the standard IR metrics are honest.
+    actual_ranked: list[str | None] = []
     matched_golds: set[str] = set()
     for ret_para in retrieved_paragraphs:
         best_match = None
@@ -102,6 +110,16 @@ def compute_ir_metrics(
         if best_match and best_score >= 0.15:  # Minimum overlap threshold
             actual_ranked.append(best_match)
             matched_golds.add(best_match)
+        else:
+            # Irrelevant retrieved paragraph — keep its slot so downstream
+            # metrics (recall@k / precision@k / nDCG) weight it by its true
+            # rank instead of compressing it away.
+            actual_ranked.append(None)
+
+    # NOTE: `None` sentinels are never in `relevant_set` and never key a
+    # relevance grade in `relevance_dict` (defaults to 0 for nDCG), so the
+    # stdlib metric helpers (`benchmark/metrics.py`) treat them as irrelevant
+    # rows without modification.
 
     # Compute metrics
     return {
