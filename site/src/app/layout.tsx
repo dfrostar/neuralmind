@@ -1,25 +1,5 @@
 import './globals.css';
-import { Inter, JetBrains_Mono, Fraunces } from 'next/font/google';
 import { getLatestRelease } from '@/lib/release';
-
-const inter = Inter({
-    subsets: ['latin'],
-    variable: '--font-inter',
-    display: 'swap',
-});
-
-const jetbrains = JetBrains_Mono({
-    subsets: ['latin'],
-    variable: '--font-mono',
-    display: 'swap',
-});
-
-const fraunces = Fraunces({
-    subsets: ['latin'],
-    weight: ['400', '500', '600', '700', '800', '900'],
-    variable: '--font-display',
-    display: 'swap',
-});
 
 export const metadata = {
     title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents | 65.6× Token Reduction',
@@ -140,10 +120,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const rel = await getLatestRelease();
     const jsonLd = buildJsonLd(rel.tag.replace(/^v/, ''), rel.date);
     return (
-        <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}>
+        <html lang="en">
             <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
