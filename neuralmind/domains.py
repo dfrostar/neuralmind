@@ -39,14 +39,41 @@ _CODE_SUFFIXES = frozenset({"__fn", "_fn", "__cls", "_cls", "__var", "_var"})
 _CODE_SYM_RE = re.compile(r"__\w+_sym$")
 
 # Code: source-file suffixes (underscore-separated multi-lang extensions)
-_CODE_FILE_EXTS = frozenset({
-    "_py", "_ts", "_tsx", "_js", "_jsx",
-    "_c", "_h", "_cpp", "_hpp",
-    "_cs", "_go", "_java", "_rb", "_rs", "_php",
-    "_swift", "_kt", "_scala", "_lua", "_pl", "_sh",
-    "_sql", "_toml", "_yaml", "_yml", "_json", "_txt",
-    "_css", "_scss", "_html", "_xml",
-})
+_CODE_FILE_EXTS = frozenset(
+    {
+        "_py",
+        "_ts",
+        "_tsx",
+        "_js",
+        "_jsx",
+        "_c",
+        "_h",
+        "_cpp",
+        "_hpp",
+        "_cs",
+        "_go",
+        "_java",
+        "_rb",
+        "_rs",
+        "_php",
+        "_swift",
+        "_kt",
+        "_scala",
+        "_lua",
+        "_pl",
+        "_sh",
+        "_sql",
+        "_toml",
+        "_yaml",
+        "_yml",
+        "_json",
+        "_txt",
+        "_css",
+        "_scss",
+        "_html",
+        "_xml",
+    }
+)
 
 # Decision: archival prefixes
 _DECISION_PREFIXES = ("archive_", "decision_")
@@ -56,8 +83,6 @@ _DECISION_RATIONALE_RE = re.compile(r"rationale")
 
 # Decision: community cluster ids (community_<id>)
 _DECISION_COMMUNITY_RE = re.compile(r"^community_-?\d+$")
-
-
 
 
 def classify_node(node_name: str) -> str:
@@ -106,13 +131,32 @@ def classify_node(node_name: str) -> str:
     if node_name.startswith("/"):
         # Try to classify by real file extension
         lower = node_name.lower()
-        if lower.endswith(('.py', '.ts', '.tsx', '.js', '.jsx',
-                          '.c', '.h', '.cpp', '.hpp', '.cs', '.go',
-                          '.java', '.rb', '.rs', '.php', '.swift',
-                          '.kt', '.sql', '.sh', '.toml')):
+        if lower.endswith(
+            (
+                ".py",
+                ".ts",
+                ".tsx",
+                ".js",
+                ".jsx",
+                ".c",
+                ".h",
+                ".cpp",
+                ".hpp",
+                ".cs",
+                ".go",
+                ".java",
+                ".rb",
+                ".rs",
+                ".php",
+                ".swift",
+                ".kt",
+                ".sql",
+                ".sh",
+                ".toml",
+            )
+        ):
             return "code"
-        if lower.endswith(('.md', '.mdoc', '.rst', '.txt', '.doc',
-                          '.docx')):
+        if lower.endswith((".md", ".mdoc", ".rst", ".txt", ".doc", ".docx")):
             return "document"
         return "unknown"
 

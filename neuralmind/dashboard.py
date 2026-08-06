@@ -264,9 +264,7 @@ def recent_queries(mind=None, project_path: str | Path | None = None, n: int = 2
         return []
 
 
-def domains(
-    mind=None, project_path: str | Path | None = None
-) -> dict[str, int]:
+def domains(mind=None, project_path: str | Path | None = None) -> dict[str, int]:
     """Return domain breakdown from synapse nodes.
 
     Read-only: uses the SynapseStore to enumerate all distinct nodes and
@@ -289,9 +287,7 @@ def domains(
         return {}
 
 
-def cross_domains(
-    mind=None, project_path: str | Path | None = None
-) -> dict[str, int]:
+def cross_domains(mind=None, project_path: str | Path | None = None) -> dict[str, int]:
     """Return cross-domain edge counts (pairs spanning two known domains).
 
     Read-only: uses the SynapseStore + domain classifier. Fail-open.
