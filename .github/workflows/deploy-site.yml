@@ -25,15 +25,24 @@ jobs:
           curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
 
           echo "== Adding www.neuralmind.uk =="
-          resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
-            --data '{"name":"www.neuralmind.uk"}' "${domains_api}")
-          echo "${resp}" | jq .
-          if [ "$(echo "${resp}" | jq -r '.success')" != "true" ]; then
+          added=false
+          for body in '{"name":"www.neuralmind.uk"}' '{"domain":"www.neuralmind.uk"}' '"www.neuralmind.uk"'; do
+            echo "-- POST body: ${body}"
+            resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+              --data "${body}" "${domains_api}")
+            echo "${resp}" | jq -c '{success, errors}'
+            if [ "$(echo "${resp}" | jq -r '.success')" = "true" ]; then
+              added=true; break
+            fi
             msg=$(echo "${resp}" | jq -r '[.errors[]?.message] | join("; ")')
             case "${msg}" in
-              *already*|*exists*) echo "Domain already attached; continuing." ;;
-              *) echo "Failed to add domain: ${msg}" >&2; exit 1 ;;
+              *already*|*exists*) echo "Domain already attached; continuing."; added=true; break ;;
             esac
+          done
+          echo "== Domains after add attempt =="
+          curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
+          if [ "${added}" != "true" ]; then
+            echo "All body variants rejected." >&2; exit 1
           fi
 
       - name: Repair www DNS record (best-effort, needs Zone DNS Edit)
