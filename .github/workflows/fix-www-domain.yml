@@ -50,6 +50,11 @@ jobs:
             esac
           fi
 
+      # Best-effort by design: when the token can't touch DNS this step warns
+      # instead of failing, because the final "Verify" step fails the run
+      # whenever www does not serve 200. A green RUN therefore always means
+      # www is healthy; a warning annotation flags that this step had to
+      # defer to manual DNS repair.
       - name: Repair www DNS record
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -62,7 +67,7 @@ jobs:
           rec=$(curl -sS "${auth[@]}" \
             "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=www.neuralmind.uk")
           if [ "$(echo "${rec}" | jq -r '.success')" != "true" ]; then
-            echo "Token cannot read the zone's DNS records (no Zone permission)."
+            echo "::warning::DNS repair skipped - token cannot read the zone's DNS records; the Verify step will fail the run if www is not actually serving."
             echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
             echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
             exit 0
@@ -82,7 +87,7 @@ jobs:
           fi
           echo "${upd}" | jq -c '{success, errors}'
           if [ "$(echo "${upd}" | jq -r '.success')" != "true" ]; then
-            echo "Could not update DNS with this token."
+            echo "::warning::DNS update failed with this token; the Verify step will fail the run if www is not actually serving."
             echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
             echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
             exit 0
