@@ -941,19 +941,31 @@ def _run_content_benchmark(args) -> None:
     from evals.book_retrieval.run import run_eval
 
     content_path = args.content  # Already set by nargs="?" const
+
+    # Resolve manifest_v2.json: check multiple locations
+    # 1. Parent of chapters dir (alongside underground/)
+    # 2. Parent of book dir (evals/book_retrieval/)
     manifest_path = None
-    if content_path != "evals/book_retrieval/underground/chapters":
-        # Custom path — look for manifest_v2.json in parent dir
-        candidate = Path(content_path).parent / "manifest_v2.json"
+    chapters_parent = Path(content_path).parent if Path(content_path).is_dir() else Path(content_path).parent
+    book_parent = chapters_parent.parent
+    
+    for candidate in [
+        chapters_parent / "manifest_v2.json",
+        book_parent / "manifest_v2.json",
+    ]:
         if candidate.exists():
             manifest_path = candidate
+            break
+
+    # Resolve book_dir from the content_path (chapters parent)
+    book_dir = chapters_parent
 
     print("N-16 Content Benchmark")
     print(f"  Content: {content_path}")
-    print(f"  Manifest: {manifest_path or 'default'}")
+    print(f"  Manifest: {manifest_path or 'default (manifest.json — OLD FORMAT!)'}")
     print()
 
-    report = run_eval(manifest_path=manifest_path, verbose=True)
+    report = run_eval(manifest_path=manifest_path, book_dir=book_dir, verbose=True)
 
     if "error" in report:
         print(f"Error: {report['error']}", file=sys.stderr)

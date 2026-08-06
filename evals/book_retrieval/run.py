@@ -5,6 +5,7 @@ Usage:
     python -m evals.book_retrieval.run --json
     python -m evals.book_retrieval.run --query wank-worm-origin
     python -m evals.book_retrieval.run --manifest evals/book_retrieval/manifest_v2.json
+    python -m evals.book_retrieval.run --output results.json --report report.md
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 # N-15 IR metrics (stdlib-only)
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
-from benchmark.metrics import hit_rate, mrr, ndcg_at_k, precision_at_k, recall_at_k
+from benchmark.metrics import recall_at_k, precision_at_k, mrr, ndcg_at_k, hit_rate
 
 
 def load_manifest(manifest_path: Path | None = None) -> dict[str, Any]:
@@ -83,18 +84,24 @@ def compute_ir_metrics(
                 relevant_set.add(text)
 
     # Map retrieved paragraphs to gold paragraphs by best overlap
-    # This creates a ranked list of gold paragraph matches
+    # DEDUP: track which gold paragraphs have already been matched to prevent
+    # multiple retrieved paragraphs from mapping to the same gold (which would
+    # inflate recall/precision/nDCG beyond 1.0).
     actual_ranked: list[str] = []
+    matched_golds: set[str] = set()
     for ret_para in retrieved_paragraphs:
         best_match = None
         best_score = 0.0
         for gold_para in relevance_dict:
+            if gold_para in matched_golds:
+                continue  # Already matched — skip to prevent duplicate counting
             score = overlap_score(ret_para, gold_para)
             if score > best_score:
                 best_score = score
                 best_match = gold_para
         if best_match and best_score >= 0.15:  # Minimum overlap threshold
             actual_ranked.append(best_match)
+            matched_golds.add(best_match)
 
     # Compute metrics
     return {
@@ -150,8 +157,12 @@ def run_eval(
     """
     import neuralmind
 
-    manifest = load_manifest(manifest_path)
-    queries = manifest["queries"]
+    # Load manifest with error handling
+    try:
+        manifest = load_manifest(manifest_path)
+        queries = manifest["queries"]
+    except (OSError, ValueError, KeyError) as exc:
+        return {"error": f"Failed to load manifest: {exc}"}
 
     if query_filter:
         queries = [q for q in queries if query_filter in q["id"]]
@@ -171,163 +182,155 @@ def run_eval(
     if not chapters_dir.exists():
         return {"error": f"Chapters not found at {chapters_dir}"}
 
-    # Create temp project
+    # Create a temp project directory with the book chapters + a seed Python file
     tmp_dir = Path(tempfile.mkdtemp(prefix="nm_book_eval_"))
-    proj_dir = tmp_dir / "book"
-    proj_dir.mkdir()
+    try:
+        proj_dir = tmp_dir / "book"
+        proj_dir.mkdir()
 
-    # Copy chapters
-    import shutil
+        # Copy chapters
+        import shutil
 
-    shutil.copytree(chapters_dir, proj_dir / "chapters")
+        shutil.copytree(chapters_dir, proj_dir / "chapters")
 
-    # Create a seed Python file so tree-sitter generates a minimal graph
-    seed_file = proj_dir / "_seed.py"
-    seed_file.write_text("# Seed file for document eval\ndef seed_function():\n    pass\n")
+        # Create a seed Python file so tree-sitter generates a minimal graph
+        seed_file = proj_dir / "_seed.py"
+        seed_file.write_text("# Seed file for document eval\ndef seed_function():\n    pass\n")
 
-    print(f"Initializing NeuralMind on book ({proj_dir})...")
-    mind = neuralmind.NeuralMind(str(proj_dir))
+        print(f"Initializing NeuralMind on book ({proj_dir})...")
+        mind = neuralmind.NeuralMind(str(proj_dir))
 
-    print("Building index...")
-    build_result = mind.build()
-    if not build_result.get("success"):
-        return {"error": f"Build failed: {build_result.get('error')}"}
+        print("Building index...")
+        build_result = mind.build()
+        if not build_result.get("success"):
+            return {"error": f"Build failed: {build_result.get('error')}"}
 
-    print(f"Ingesting {len(list((proj_dir / 'chapters').glob('*.md')))} chapters...")
-    for chapter in sorted((proj_dir / "chapters").glob("*.md")):
-        result = mind.ingest_document(chapter)
-        if verbose:
-            nodes = result.get("node_count", 0)
-            print(f"  {chapter.name}: {nodes} nodes")
-
-    # Run queries
-    results = []
-    total_tokens_naive = 0
-    total_tokens_nm = 0
-
-    full_text = ""
-    for chapter in sorted((proj_dir / "chapters").glob("*.md")):
-        full_text += chapter.read_text(encoding="utf-8")
-
-    print(f"\nRunning {len(queries)} queries...")
-
-    for i, query in enumerate(queries, 1):
-        q_text = query["question"]
-        gold_paras = query["gold_paragraphs"]
-
-        # Handle both old format (list of strings) and new format (list of dicts)
-        gold_paragraphs_normalized = []
-        for gp in gold_paras:
-            if isinstance(gp, str):
-                gold_paragraphs_normalized.append({"text": gp, "relevance": 3})
-            else:
-                gold_paragraphs_normalized.append(gp)
-
-        try:
-            nm_result = mind.query(q_text)
-            nm_context = nm_result.context if hasattr(nm_result, "context") else str(nm_result)
-            nm_tokens = (
-                nm_result.budget.total if hasattr(nm_result, "budget") else len(nm_context.split())
-            )
-        except Exception as e:
-            nm_context = ""
-            nm_tokens = 0
+        print(f"Ingesting {len(list((proj_dir / 'chapters').glob('*.md')))} chapters...")
+        for chapter in sorted((proj_dir / "chapters").glob("*.md")):
+            result = mind.ingest_document(chapter)
             if verbose:
-                print(f"  Query {query['id']} failed: {e}")
+                nodes = result.get("node_count", 0)
+                print(f"  {chapter.name}: {nodes} nodes")
 
-        # Extract paragraphs from context
-        retrieved_paragraphs = extract_paragraphs_from_context(nm_context)
+        # Run queries
+        results = []
+        total_tokens_naive = 0
+        total_tokens_nm = 0
 
-        # Compute N-15 IR metrics
-        ir_metrics = compute_ir_metrics(retrieved_paragraphs, gold_paragraphs_normalized)
+        full_text = ""
+        for chapter in sorted((proj_dir / "chapters").glob("*.md")):
+            full_text += chapter.read_text(encoding="utf-8")
 
-        # Compute RAGAS faithfulness
-        ragas_result = compute_faithfulness(
-            q_text, retrieved_paragraphs, gold_paragraphs_normalized
-        )
+        print(f"\nRunning {len(queries)} queries...")
 
-        naive_tokens = len(full_text.split())
-        total_tokens_naive += naive_tokens
-        total_tokens_nm += nm_tokens
+        for i, query in enumerate(queries, 1):
+            q_text = query["question"]
+            gold_paras = query["gold_paragraphs"]
 
-        # Determine query shape (from manifest or default)
-        query_shape = query.get("shape", "precise")
+            # Handle both old format (list of strings) and new format (list of dicts)
+            gold_paragraphs_normalized = []
+            for gp in gold_paras:
+                if isinstance(gp, str):
+                    gold_paragraphs_normalized.append({"text": gp, "relevance": 3})
+                else:
+                    gold_paragraphs_normalized.append(gp)
 
-        result_entry = {
-            "id": query["id"],
-            "question": q_text,
-            "shape": query_shape,
-            "nm_tokens": nm_tokens,
-            "naive_tokens": naive_tokens,
-            "reduction": naive_tokens / nm_tokens if nm_tokens > 0 else 0,
-            "ir_metrics": ir_metrics,
-            "ragas": ragas_result,
-            "themes": query.get("themes", []),
+            try:
+                nm_result = mind.query(q_text)
+                nm_context = nm_result.context if hasattr(nm_result, "context") else str(nm_result)
+                nm_tokens = (
+                    nm_result.budget.total if hasattr(nm_result, "budget") else len(nm_context.split())
+                )
+            except Exception as e:
+                nm_context = ""
+                nm_tokens = 0
+                if verbose:
+                    print(f"  Query {query['id']} failed: {e}")
+
+            # Extract paragraphs from context
+            retrieved_paragraphs = extract_paragraphs_from_context(nm_context)
+
+            # Compute N-15 IR metrics
+            ir_metrics = compute_ir_metrics(retrieved_paragraphs, gold_paragraphs_normalized)
+
+            # Compute RAGAS faithfulness
+            ragas_result = compute_faithfulness(q_text, retrieved_paragraphs, gold_paragraphs_normalized)
+
+            naive_tokens = len(full_text.split())
+            total_tokens_naive += naive_tokens
+            total_tokens_nm += nm_tokens
+
+            # Determine query shape (from manifest or default)
+            query_shape = query.get("shape", "precise")
+
+            result_entry = {
+                "id": query["id"],
+                "question": q_text,
+                "shape": query_shape,
+                "nm_tokens": nm_tokens,
+                "naive_tokens": naive_tokens,
+                "reduction": naive_tokens / nm_tokens if nm_tokens > 0 else 0,
+                "ir_metrics": ir_metrics,
+                "ragas": ragas_result,
+                "themes": query.get("themes", []),
+            }
+            results.append(result_entry)
+
+            if verbose or (i % 5 == 0):
+                status = "✓" if ir_metrics["hit_rate"] > 0 else "✗"
+                print(
+                    f"  [{status}] {query['id']}: "
+                    f"recall@5={ir_metrics['recall_at_5']:.2f}, "
+                    f"mrr={ir_metrics['mrr']:.2f}, "
+                    f"faithfulness={ragas_result['faithfulness']:.2f}"
+                )
+
+        # Aggregate
+        hits = sum(1 for r in results if r["ir_metrics"]["hit_rate"] > 0)
+        avg_recall_5 = sum(r["ir_metrics"]["recall_at_5"] for r in results) / len(results) if results else 0
+        avg_mrr = sum(r["ir_metrics"]["mrr"] for r in results) / len(results) if results else 0
+        avg_ndcg_5 = sum(r["ir_metrics"]["ndcg_at_5"] for r in results) / len(results) if results else 0
+        avg_faithfulness = sum(r["ragas"]["faithfulness"] for r in results) / len(results) if results else 0
+        avg_reduction = sum(r["reduction"] for r in results) / len(results) if results else 0
+
+        # Per-shape breakdown
+        by_shape: dict[str, list[dict]] = {}
+        for r in results:
+            shape = r.get("shape", "precise")
+            if shape not in by_shape:
+                by_shape[shape] = []
+            by_shape[shape].append(r)
+
+        shape_aggregates = {}
+        for shape, shape_results in by_shape.items():
+            shape_aggregates[shape] = {
+                "count": len(shape_results),
+                "recall_at_5": sum(r["ir_metrics"]["recall_at_5"] for r in shape_results) / len(shape_results),
+                "mrr": sum(r["ir_metrics"]["mrr"] for r in shape_results) / len(shape_results),
+                "ndcg_at_5": sum(r["ir_metrics"]["ndcg_at_5"] for r in shape_results) / len(shape_results),
+                "hit_rate": sum(r["ir_metrics"]["hit_rate"] for r in shape_results) / len(shape_results),
+                "mean_faithfulness": sum(r["ragas"]["faithfulness"] for r in shape_results) / len(shape_results),
+            }
+
+        return {
+            "version": 2,
+            "book": "Underground",
+            "query_count": len(queries),
+            "aggregates": {
+                "recall_at_5": avg_recall_5,
+                "mrr": avg_mrr,
+                "ndcg_at_5": avg_ndcg_5,
+                "hit_rate": hits / len(queries) if queries else 0,
+                "mean_faithfulness": avg_faithfulness,
+                "avg_token_reduction": avg_reduction,
+            },
+            "by_shape": shape_aggregates,
+            "queries": results,
         }
-        results.append(result_entry)
 
-        if verbose or (i % 5 == 0):
-            status = "✓" if ir_metrics["hit_rate"] > 0 else "✗"
-            print(
-                f"  [{status}] {query['id']}: "
-                f"recall@5={ir_metrics['recall_at_5']:.2f}, "
-                f"mrr={ir_metrics['mrr']:.2f}, "
-                f"faithfulness={ragas_result['faithfulness']:.2f}"
-            )
-
-    # Aggregate
-    hits = sum(1 for r in results if r["ir_metrics"]["hit_rate"] > 0)
-    avg_recall_5 = (
-        sum(r["ir_metrics"]["recall_at_5"] for r in results) / len(results) if results else 0
-    )
-    avg_mrr = sum(r["ir_metrics"]["mrr"] for r in results) / len(results) if results else 0
-    avg_ndcg_5 = sum(r["ir_metrics"]["ndcg_at_5"] for r in results) / len(results) if results else 0
-    avg_faithfulness = (
-        sum(r["ragas"]["faithfulness"] for r in results) / len(results) if results else 0
-    )
-    avg_reduction = sum(r["reduction"] for r in results) / len(results) if results else 0
-
-    # Per-shape breakdown
-    by_shape: dict[str, list[dict]] = {}
-    for r in results:
-        shape = r.get("shape", "precise")
-        if shape not in by_shape:
-            by_shape[shape] = []
-        by_shape[shape].append(r)
-
-    shape_aggregates = {}
-    for shape, shape_results in by_shape.items():
-        shape_aggregates[shape] = {
-            "count": len(shape_results),
-            "recall_at_5": sum(r["ir_metrics"]["recall_at_5"] for r in shape_results)
-            / len(shape_results),
-            "mrr": sum(r["ir_metrics"]["mrr"] for r in shape_results) / len(shape_results),
-            "ndcg_at_5": sum(r["ir_metrics"]["ndcg_at_5"] for r in shape_results)
-            / len(shape_results),
-            "hit_rate": sum(r["ir_metrics"]["hit_rate"] for r in shape_results)
-            / len(shape_results),
-            "mean_faithfulness": sum(r["ragas"]["faithfulness"] for r in shape_results)
-            / len(shape_results),
-        }
-
-    # Cleanup
-    shutil.rmtree(tmp_dir, ignore_errors=True)
-
-    return {
-        "version": 2,
-        "book": "Underground",
-        "query_count": len(queries),
-        "aggregates": {
-            "recall_at_5": avg_recall_5,
-            "mrr": avg_mrr,
-            "ndcg_at_5": avg_ndcg_5,
-            "hit_rate": hits / len(queries) if queries else 0,
-            "mean_faithfulness": avg_faithfulness,
-            "avg_token_reduction": avg_reduction,
-        },
-        "by_shape": shape_aggregates,
-        "queries": results,
-    }
+    finally:
+        # Always clean up temp directory (M3 fix: was leaking on early returns)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def print_report(report: dict[str, Any]) -> None:
