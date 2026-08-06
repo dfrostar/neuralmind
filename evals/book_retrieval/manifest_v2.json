@@ -1,0 +1,2202 @@
+{
+  "_about": "Document retrieval gold-standard for 'Underground' by Suelette Dreyfus (Project Gutenberg, 1997). 11 chapters + front/back matter. Tests: (1) precise retrieval of technical details, (2) cross-chapter thematic consistency, (3) character/entity resolution across chapters, (4) temporal/causal reasoning. Designed per TREC methodology: queries by domain expert, gold paragraphs verified against source. v2: Added graded relevance (0-3) per chunk, query shapes.",
+  "version": 2,
+  "oracle": "paragraph",
+  "book": {
+    "title": "Underground: Hacking, Madness and Obsession on the Electronic Frontier",
+    "author": "Suelette Dreyfus",
+    "source": "gutenberg.org/ebooks/4686",
+    "corpus_dir": "evals/book_retrieval/underground/chapters",
+    "total_words": 150000,
+    "chapters": 11
+  },
+  "queries": [
+    {
+      "id": "wank-worm-origin",
+      "question": "What was the WANK worm and why was it politically significant?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 0,
+          "text": "# Chapter 2: The Corner Pub. CHAPTER 2 \u2014 The Corner Pub. You talk of times of peace for all; and then prepare for war. \u2014 from `Blossom of Blood', Species Deceases. It is not surprising the SPAN security team would miss the mark. It is not surprising, for example, that these officials should to this ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 11,
+          "text": "at Jupiter. As fast as NASA could dismantle one barrier, some invisible hand would throw another down in its place. Monday, 16 October, 1989 NASA's Goddard Space Flight Center, Greenbelt, Maryland Across the vast NASA empire, reaching from Maryland to California, from Europe to Japan, NASA workers g",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 12,
+          "text": "the American computer system managers reading this new banner had never heard the word wank. Who would want to invade NASA's computer systems? And who exactly were the Worms Against Nuclear Killers? Were they some loony fringe group? Were they a guerrilla terrorist group launching some sort of attac",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 16,
+          "text": "proposals and costing, was a good way to lose out on a bid and its often considerable funding. This was not going to be a good day for the guys down at the NASA SPAN computer network office. This was not going to be a good day for John McMahon. As the assistant DECNET protocol manager for NASA's God",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 17,
+          "text": "100000 computer terminals across the globe. Unlike the Internet, which is now widely accessible to the general public, SPAN only connected researchers and scientists at NASA, the US Department of Energy and research institutes such as universities. SPAN computers also differed from most Internet com",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 18,
+          "text": "SPAN computers had many more. It was not unusual for one DEC computer to service 400 people. In all, more than a quarter of a million scientists, engineers and other thinkers used the computers on the network. An electrical engineer by training, McMahon had come from NASA's Cosmic Background Explore",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 19,
+          "text": "might be titled `Map of the Universe in Infrared'. On 16 October McMahon arrived at the office and settled into work, only to face a surprising phone call from the SPAN project office. Todd Butler and Ron Tencati, from the National Space Science Data Center, which managed NASA's half of the SPAN net",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 20,
+          "text": "users a message to trying to take over the system. What makes a worm different from other computer programs, such as viruses, is that it is self-propagating. It propels itself forward, wiggles into a new system and propagates itself at the new site. Unlike a virus, a worm doesn't latch onto a data f",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 21,
+          "text": "late 1980s, worms were obscure things, more associated with research in a computer laboratory. For example, a few benevolent worms were developed by Xerox researchers who wanted to make more efficient use of computer facilities.8 They developed a `town crier worm' which moved through a network sendi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 22,
+          "text": "only been two rogue worms of any note. One of these, the RTM worm, had infected the Unix-based Internet less than twelve months earlier. The other worm, known as Father Christmas, was the first VMS worm. Father Christmas was a small, simple worm which did not cause any permanent damage to the comput",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "worms",
+        "NASA",
+        "political",
+        "DECNET"
+      ]
+    },
+    {
+      "id": "wank-australian-origin",
+      "question": "Who created the WANK worm and what evidence pointed to Australian origin?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 0,
+          "text": "# Chapter 2: The Corner Pub. CHAPTER 2 \u2014 The Corner Pub. You talk of times of peace for all; and then prepare for war. \u2014 from `Blossom of Blood', Species Deceases. It is not surprising the SPAN security team would miss the mark. It is not surprising, for example, that these officials should to this ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 24,
+          "text": "across the base to the network office, where he and several other managers developed a way to stop the worm by the end of the day. Eventually they traced the Father Christmas worm back to the system where they believed it had been released\u2014in Switzerland. But they never discovered who created it. Fa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 29,
+          "text": "be postponed, probably until Wednesday. The weather wasn't going to budge. At 1.18 p.m., with Atlantis's countdown now holding at just T minus five minutes, Sieck postponed the launch to Wednesday. Back at the SPAN centre, things were becoming hectic. The worm was spreading through more and more sys",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 44,
+          "text": "And it mightn't look so good either if DEC just jumped into the fray. It might look like the company was in some way at fault. Things were different, however, if someone already had a relationship with a technical expert inside the company. It wasn't like NASA manager cold-calling a DEC guy who sold",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 46,
+          "text": "The small variations in the different copies he dissected seemed to stem from the worm's ability to learn and change as it moved from computer to computer. McMahon and Oberman weren't the only detectives trying to decipher the various manifestations of the worm. DEC was also examining the worm, and ",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "attribution",
+        "Australia",
+        "Midnight Oil"
+      ]
+    },
+    {
+      "id": "span-network",
+      "question": "What was SPAN and how did it relate to the WANK worm outbreak?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 44,
+          "text": "And it mightn't look so good either if DEC just jumped into the fray. It might look like the company was in some way at fault. Things were different, however, if someone already had a relationship with a technical expert inside the company. It wasn't like NASA manager cold-calling a DEC guy who sold",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 46,
+          "text": "The small variations in the different copies he dissected seemed to stem from the worm's ability to learn and change as it moved from computer to computer. McMahon and Oberman weren't the only detectives trying to decipher the various manifestations of the worm. DEC was also examining the worm, and ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 60,
+          "text": "unforgivable. NASA, potentially the greatest single collection of technical minds on Earth, had such lax computer security that a computer-literate teenager could have cracked it wide open. The tall poppy was being cut down to size by a computer program resembling a bowl of spaghetti. The first thin",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 61,
+          "text": "Important parts of the worm simply didn't work. McMahon believed this failure to be accidental. For example, his analysis showed the worm was programmed to break into accounts by trying no password, if the account holder had left the password blank. When he disassembled the worm, however, he found t",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 64,
+          "text": "his machine had even been infected. All afternoon McMahon moved back and forth between answering the ever-ringing SPAN phone and writing up NASA's analysis of the worm. He had posted a cryptic electronic message about the attack across the network, and Kevin Oberman had read it. The message had to b",
+          "relevance": 3
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "SPAN",
+        "NASA",
+        "DECNET",
+        "networks"
+      ]
+    },
+    {
+      "id": "citibank-hack",
+      "question": "How did Australian hackers steal over $500,000 from Citibank in 1989?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 57,
+          "text": "had dozens of disks loaded with the cards and other sensitive hacking information. Par had used the cards to make a few free calls, but he hadn't been charging up any jet skis. He fought temptation valiantly, and in the end he had won, but others might not have been so victorious in the same battle.",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 0,
+          "text": "# Chapter 5: The Holy Grail. CHAPTER 5 \u2014 The Holy Grail. So we came and conquered and found; riches of Commons and Kings. \u2014 from `River Runs Red', Blue Sky Mining. There it was, in black and white. Two articles by Helen Meredith in The Australian in January 1989.2 The whole Australian computer under",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_08.md",
+          "chunk_index": 46,
+          "text": "designs for a new NorTel product? The NorTel network was firewalled, which meant that there was virtually no access from the outside world. Mendax reckoned that this made it more vulnerable to hackers who managed to get in through dial-ups. It appeared that security on the NorTel network was relativ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 22,
+          "text": "only been two rogue worms of any note. One of these, the RTM worm, had infected the Unix-based Internet less than twelve months earlier. The other worm, known as Father Christmas, was the first VMS worm. Father Christmas was a small, simple worm which did not cause any permanent damage to the comput",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 41,
+          "text": "on their computers. McMahon had always felt it was important to gather lots of information about who was connecting to a computer. In his previous job, he had modified his machines so they collected as much security information as possible about their connections to other computers. VMS computers ca",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 42,
+          "text": "keep extensive records of who had been accessing their machines and when, which made the job of chasing the worm much tougher. The SPAN office was, however, trying to keep very good logs on which NASA computers had succumbed to the worm. Every time a NASA manager called to report a worm disturbance,",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 47,
+          "text": "DEC's area 48. The NASA team mulled over this information. One of them looked up area 48. It was New Zealand. New Zealand? The NASA team were left scratching their heads. This attack was getting stranger by the minute. Just when it seemed that the SPAN team members were travelling down the right pat",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 52,
+          "text": "the highest privileges were likely to have standard names, common across different machines. Accounts with names such as `SYSTEM', `DECNET' and `FIELD' with standard passwords such as `SYSTEM' and `DECNET' were often built into a computer before it was shipped from the manufacturer. If the receiving",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 59,
+          "text": "simply by trying a password which was identical to the name of the computer user's account. The SPAN team didn't want to believe it, but the evidence was overwhelming. Todd Butler answered a call from one NASA site. It was a gloomy call. He hung up. `That node just got hit,' he told the team. `How b",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Citibank",
+        "phreaking",
+        "2600-hertz",
+        "freekers"
+      ]
+    },
+    {
+      "id": "par-fugitive",
+      "question": "Why did Par become a fugitive and what deal had he negotiated with the Secret Service?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 64,
+          "text": "know what to do, but he didn't seem to have many options at the moment, so he told Chris he would wait at the station for him. Then he ducked around a corner and tried to hide. A few minutes later, Chris pulled into the depot. Par dove into the Toyota Landcruiser and Chris tore out of the station to",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 68,
+          "text": "to Par, you go through me, he said. Holman did not like that at all. When the Secret Service wanted to talk to someone, they were used to getting their way. He pushed Rosen, but the answer was still no. No no no and no again. Holman had made a mistake. He had assumed that everyone wanted to do busin",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 0,
+          "text": "# Chapter 4: The Fugitive. CHAPTER 4 \u2014 The Fugitive. There's one gun, probably more; and the others are pointing at our backdoor. \u2014 from `Knife's Edge', Bird Noises. When Par failed to show up for his hearing on 10 July 1989 in the Monterey County Juvenile Court in Salinas, he officially became a fu",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 6,
+          "text": "laptop before arriving in North Carolina. After a few weeks at the motel, however, he couldn't shake the feeling that he was being watched. There were too many strangers coming and going. He wondered if the hotel guests waiting in their cars were spying on him, and he soon began jumping at shadows. ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 3,
+          "text": "in the face of any number of terrible explosions, mishaps and accidents. NASA told journalists that the odds of a plutonium release due to `inadvertent atmospheric re-entry' were 1 in 2 million. The likelihood of a plutonium radiation leak as a result of a launch disaster was a reassuring 1 in 2700.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 12,
+          "text": "the American computer system managers reading this new banner had never heard the word wank. Who would want to invade NASA's computer systems? And who exactly were the Worms Against Nuclear Killers? Were they some loony fringe group? Were they a guerrilla terrorist group launching some sort of attac",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 21,
+          "text": "late 1980s, worms were obscure things, more associated with research in a computer laboratory. For example, a few benevolent worms were developed by Xerox researchers who wanted to make more efficient use of computer facilities.8 They developed a `town crier worm' which moved through a network sendi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 28,
+          "text": "Tuesday. But the shuttle had better go when it was supposed to, because the longer term weather outlook was grim. By Tuesday morning, Galileo's keepers were holding their breath. The countdown for the shuttle launch was ticking toward 12.57 p.m. The anti-nuclear protesters seemed to have gone quiet.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "Par",
+        "fugitive",
+        "Secret Service",
+        "cooperation"
+      ]
+    },
+    {
+      "id": "phoenix-style",
+      "question": "What distinctive style made Phoenix traceable across multiple hackings?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 84,
+          "text": "old man had tottered off, Gill pulled Bowen aside confidentially. `Don't worry about old Eric,' he said. `He lost it in the war. Today he thinks I'm Paul, tomorrow it will be someone else.' Bowen nodded, understanding. There were many strange things about Stuart Gill, all of which seemed to have a r",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_06.md",
+          "chunk_index": 1,
+          "text": "gets into his machine, and a wounded bull is a dangerous enemy. The security people had been able to connect and link up a series of break-ins with the hacker who called himself Phoenix because his style was so distinctive. For example, whenever he was creating a root shell\u2014root access\u2014for himself, ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_06.md",
+          "chunk_index": 21,
+          "text": "hacker-catcher, and he had smeared the insult across the front page of the most prestigious newspaper in America. And Markoff reported that he had been in Spaf's system too! Phoenix glowed happily. Better still, Markoff had quoted `Dave' on the subject: `The caller said \u2026 \"It used to be the security",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 11,
+          "text": "at Jupiter. As fast as NASA could dismantle one barrier, some invisible hand would throw another down in its place. Monday, 16 October, 1989 NASA's Goddard Space Flight Center, Greenbelt, Maryland Across the vast NASA empire, reaching from Maryland to California, from Europe to Japan, NASA workers g",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 13,
+          "text": "on the `nuclear killer' scale next to other agencies of the US Government, such as the Department of Defense. So the question remained: why NASA? And that word, `WANKED'. It did not make sense. What did it mean when a system was `wanked'? It meant NASA had lost control over its computer systems. A N",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 21,
+          "text": "late 1980s, worms were obscure things, more associated with research in a computer laboratory. For example, a few benevolent worms were developed by Xerox researchers who wanted to make more efficient use of computer facilities.8 They developed a `town crier worm' which moved through a network sendi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 24,
+          "text": "across the base to the network office, where he and several other managers developed a way to stop the worm by the end of the day. Eventually they traced the Father Christmas worm back to the system where they believed it had been released\u2014in Switzerland. But they never discovered who created it. Fa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 34,
+          "text": "under control. This made things harder for the SPAN team; getting a worm exterminating program out to JPL, like other sites which had cut their connection to SPAN, was going to be that much tougher. Everything had to be done over the phone. Worse, JPL was one of five routing centres for NASA's SPAN ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "Phoenix",
+        "attribution",
+        "style",
+        "handles"
+      ]
+    },
+    {
+      "id": "pad-gandalf-worms",
+      "question": "What were Pad and Gandalf accused of planning and what worm codes did they possess?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 60,
+          "text": "corner of Bear and had spirited a copy of the program away to a safer machine at another institution. It turned out to be a hollow victory. That copy of Deszip had been encrypted with Crypt, a program based on the German Enigma machine used in World War II. Without the passphrase\u2014the key to unlock t",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 61,
+          "text": "second copy of the encrypted Deszip to Gandalf, who stored it on a machine in the UK in case the Australians' copy disappeared unexpectedly. In January 1990, Electron turned his attention to getting Zardoz. After carefully reviewing an old copy of Zardoz, he had discovered a system admin in Melbourn",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 78,
+          "text": "a copy of Deszip. Phoenix would do the actual hacking, since he had the fast modem, but he would talk to Electron simultaneously on the other phone line. Electron would guide him at each step. That way, when Phoenix hit a snag, he wouldn't have to retreat to regroup and risk discovery. Both hackers ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_07.md",
+          "chunk_index": 0,
+          "text": "# Chapter 7: Judgement Day. CHAPTER 7 \u2014 Judgement Day. Your dream world is just about to end. \u2014 from `Dreamworld', Diesel and Dust. In another corner of the globe, the British hackers Pad and Gandalf learned with horror that the Australian authorities had busted the three Realm hackers. Electron had",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_07.md",
+          "chunk_index": 1,
+          "text": "was true that Gandalf and Pad had captured copies of various worm source codes. They fished around inside SPAN until they surfaced with a copy of the Father Christmas worm. And, after finally successfully hacking Russell Brand's machine at LLNL, they deftly lifted a complete copy of the WANK worm. I",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 9,
+          "text": "But in NASA's view, such was the price of a successful slingshot. Galileo experienced other delays getting off the ground. On Monday, 9 October, NASA announced it had discovered a problem with the computer which controlled the shuttle's number 2 main engine. True, the problem was with Atlantis, not ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 22,
+          "text": "only been two rogue worms of any note. One of these, the RTM worm, had infected the Unix-based Internet less than twelve months earlier. The other worm, known as Father Christmas, was the first VMS worm. Father Christmas was a small, simple worm which did not cause any permanent damage to the comput",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 24,
+          "text": "across the base to the network office, where he and several other managers developed a way to stop the worm by the end of the day. Eventually they traced the Father Christmas worm back to the system where they believed it had been released\u2014in Switzerland. But they never discovered who created it. Fa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 33,
+          "text": "to figure out what it did, the worm was pushing forward, ever deeper into NASA's computer network. Every hour NASA spent developing a cure, the worm spent searching, probing, breaking and entering. A day's delay in getting the cure out to all the systems could mean dozens of new worm invasions doing",
+          "relevance": 2
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "Pad",
+        "Gandalf",
+        "worms",
+        "RTM",
+        "British hackers"
+      ]
+    },
+    {
+      "id": "anthrax-profile",
+      "question": "What made Anthrax different from other Australian hackers and where did he live?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_10.md",
+          "chunk_index": 0,
+          "text": "# Chapter 10: Anthrax \u2014 The Outsider. CHAPTER 10 \u2014 Anthrax \u2014 The Outsider. They had a gun at my head and a knife at my back; Don't wind me up too tight. \u2014 from `Powderworks' (also called The Blue Album). Anthrax didn't like working as part of a team. He always considered other people to be the weake",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_10.md",
+          "chunk_index": 1,
+          "text": "a hacking partnership like The Realm, Anthrax liked people, liked to talk to them for hours at a time on the telephone. Sometimes he received up to ten international calls a day from his phreaker friends overseas. He would be over at a friend's house, and the friend's mother would knock on the door ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 15,
+          "text": "they lose control over their computers. Typically, it brings out the worst in them\u2014hand-wringing whines from the worriers, aching entreaties for help from the sensitive, and imperious table-thumping bellows from command-and-control types. Imagine, if you will, arriving at your job as a manager for o",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 24,
+          "text": "across the base to the network office, where he and several other managers developed a way to stop the worm by the end of the day. Eventually they traced the Father Christmas worm back to the system where they believed it had been released\u2014in Switzerland. But they never discovered who created it. Fa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 35,
+          "text": "area network, but it couldn't dictate how individual field centres dealt with the worm. That was each centre's own decision. The SPAN team could only give them advice and rush to develop a way to poison the worm. The SPAN office called John McMahon again, this time with a more urgent request. Would ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 42,
+          "text": "keep extensive records of who had been accessing their machines and when, which made the job of chasing the worm much tougher. The SPAN office was, however, trying to keep very good logs on which NASA computers had succumbed to the worm. Every time a NASA manager called to report a worm disturbance,",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 55,
+          "text": "to be mysterious comments flashing across the screen, McMahon concluded that the worm was probably harassing the staff on that computer from a neighbouring system which it had successfully invaded. The messages suggested that the recipients' accounts had not been hijacked by the worm. Yet. VAX/VMS m",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Anthrax",
+        "lone wolf",
+        "rural Victoria",
+        "international"
+      ]
+    },
+    {
+      "id": "telephone-exchange-hazard",
+      "question": "Why was hacking telephone exchanges more dangerous than hacking regular computers?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_08.md",
+          "chunk_index": 1,
+          "text": "anyone's guess, but Mendax figured it probably stood for `host-1'\u2014meaning computer site number one. Prime Suspect had stirred Mendax's interest. Mendax had spent hours experimenting with commands inside the computers which controlled telephone exchanges. In the end, those forays were all just guessw",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 1,
+          "text": "liberate the three-tonne space probe. An hour later, as Galileo skated safely away from the shuttle, the probe's 32500 pound booster system would fire up and NASA staff would watch this exquisite piece of human ingenuity embark on a six-year mission to the largest planet in the solar system. Galileo",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 9,
+          "text": "But in NASA's view, such was the price of a successful slingshot. Galileo experienced other delays getting off the ground. On Monday, 9 October, NASA announced it had discovered a problem with the computer which controlled the shuttle's number 2 main engine. True, the problem was with Atlantis, not ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 14,
+          "text": "definitely wrong. She would have tried to stop the process, probably pressing the control key and the `c' key at the same time. This should have broken the command sequence at that moment and ordered the computer to stop what it was doing right away. But it was the intruder, not the NASA scientist, ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 16,
+          "text": "proposals and costing, was a good way to lose out on a bid and its often considerable funding. This was not going to be a good day for the guys down at the NASA SPAN computer network office. This was not going to be a good day for John McMahon. As the assistant DECNET protocol manager for NASA's God",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 21,
+          "text": "late 1980s, worms were obscure things, more associated with research in a computer laboratory. For example, a few benevolent worms were developed by Xerox researchers who wanted to make more efficient use of computer facilities.8 They developed a `town crier worm' which moved through a network sendi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 42,
+          "text": "keep extensive records of who had been accessing their machines and when, which made the job of chasing the worm much tougher. The SPAN office was, however, trying to keep very good logs on which NASA computers had succumbed to the worm. Every time a NASA manager called to report a worm disturbance,",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 45,
+          "text": "in order to spread. But why would the creator of the worm release different versions? Why not just write one version properly and fire it off? The worm wasn't just one incoming missile; it was a frenzied attack. It was coming from all directions, at all sorts of different levels within NASA's comput",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 65,
+          "text": "idea of a centralised map of the SPAN system. McMahon recalled that, some time before the WANK worm attack, a manager had tried to map the system. His efforts had accidentally tripped so many system alarms that he was quietly taken aside and told not to do it again. The result was that in instances ",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "telephone exchange",
+        "danger",
+        "prefix",
+        "infrastructure"
+      ]
+    },
+    {
+      "id": "operation-weather-afp",
+      "question": "Why did the AFP's Operation Weather investigation struggle to identify the hackers using RMIT?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 0,
+          "text": "# Chapter 9: Operation Weather. CHAPTER 9 \u2014 Operation Weather. The world is crashing down on me tonight; The walls are closing in on me tonight. \u2014 from `Outbreak of Love', Earth and Sun and Moon. The AFP was frustrated. A group of hackers were using the Royal Melbourne Institute of Technology (RMIT)",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 1,
+          "text": "to distort the picture. Still, it should have been a straightforward operation. The AFP could trace hackers in this sort of situation with their hands tied behind their backs. Arrange for Telecom to whack a last party recall trace on all incoming lines to the RMIT modems. Wait for a hacker to logon,",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 2,
+          "text": "to defeat the AFP investigation. The next generation of hackers seemed to have a new-found sophistication which frustrated AFP detectives at every turn. Then, on 13 October 1990, the AFP got lucky. Perhaps the hackers had been lazy that day, or maybe they just had technical problems using their trac",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 10,
+          "text": "as RMIT prepared to phase out the AFP traps, the police had a lucky break from a different quarter\u2014NorTel. On 16 September, a line trace from a NorTel dial-up, initiated after a complaint about the hackers to the police, was successful. A fortnight later, on 1 October, the AFP began tapping Prime Su",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 23,
+          "text": "Christmas 1988, McMahon's alarm-monitoring programs began going haywire. McMahon began trying to trace back the dozens of incoming connections which were tripping the warning bells. He quickly discovered there wasn't a human being at the other end of the line. After further investigation, he found a",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 33,
+          "text": "to figure out what it did, the worm was pushing forward, ever deeper into NASA's computer network. Every hour NASA spent developing a cure, the worm spent searching, probing, breaking and entering. A day's delay in getting the cure out to all the systems could mean dozens of new worm invasions doing",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 64,
+          "text": "his machine had even been infected. All afternoon McMahon moved back and forth between answering the ever-ringing SPAN phone and writing up NASA's analysis of the worm. He had posted a cryptic electronic message about the attack across the network, and Kevin Oberman had read it. The message had to b",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 67,
+          "text": "Or give them a worm-killing program once it was developed. Or help them seal up breached accounts which the worm was feeding back to its creator. It was such a mess. At times, McMahon sat back and considered who might have created this worm. The thing almost looked as though it had been released bef",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "AFP",
+        "RMIT",
+        "Operation Weather",
+        "tracing"
+      ]
+    },
+    {
+      "id": "force-realm-bbs",
+      "question": "Who was Force and what was the Realm BBS?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 13,
+          "text": "were tucked away, hidden in anticipation of the appearance of that one customer or friend most favoured by the trader. The currency of the underground was not money; it was information. People didn't share and exchange information to accumulate monetary wealth; they did it to win respect\u2014and to buy ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 18,
+          "text": "he or she would plug the home phone line into the BBS and leave it there until morning. Others ran 24 hours a day, but the busiest times were always at night. Of course it wasn't just intellectual stimulation some users were after. Visitors often sought identity as much as ideas. On an electronic bu",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 19,
+          "text": "to spend their time in the world of the BBS. Generally, once a user chose a handle, as the on-line names are known, he stuck with it. All his electronic mail came to an account with that name on it. Postings to bulletin boards were signed with it. Others dwelling in the system world knew him by that",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 20,
+          "text": "finer technical points of computers. Many lived as outcasts in real life, never quite making it into the `normal' groups of friends at school or uni. Though some had started their first jobs, they hadn't managed to shake the daggy awkwardness which pursued them throughout their teen years. On the su",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 25,
+          "text": "Some had legitimate university computer accounts for their courses, but they kept those accounts clean. A basic rule of the underground, in the words of one hacker, was `Don't foul your own nest'. PI contained a public section and a private one. The public area was like an old-time pub. Anyone could",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 37,
+          "text": "an old password for Melbourne University's dial-out. The university's dial-out was a valuable thing. A hacker could ring up the university's computer, login as `modem' and the machine would drop him into a modem which let him dial out again. He could then dial anywhere in the world, and the universi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 38,
+          "text": "giving it out publicly. Every wanna-be and his dog would start messing around with the university's modem account. The system administrator would wise up and change the password and the hacker would quickly lose his own access to the university account. Worse, he would lose access for other hackers\u2014",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 39,
+          "text": "password when it was still valid. More importantly, by showing off a known, expired password, the hacker hinted that he might just have the current password. Voila! Instant respect. Positioning oneself to win an invite into the Inner Sanctum was a game of strategy; titillate but never go all the way",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 40,
+          "text": "at the accuracy of the information. It was easy getting out-of-date login names and passwords for a student account on Monash University's computer system. Posting a valid account for the New Zealand forestry department's VMS system intrigued the people who counted considerably more. The Great Rite ",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Force",
+        "Realm BBS",
+        "Melbourne",
+        "underground"
+      ]
+    },
+    {
+      "id": "altos-chat",
+      "question": "What was Altos Chat and how did hackers use it to communicate internationally?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 1,
+          "text": "Par was doing. Chasing Force endlessly, until he got what he wanted. It began innocently enough as idle conversation between two giants in the computer underground in the first half of 1988. Force, the well-known Australian hacker who ran the exclusive Realm BBS in Melbourne, sat chatting with Par, ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 16,
+          "text": "proposals and costing, was a good way to lose out on a bid and its often considerable funding. This was not going to be a good day for the guys down at the NASA SPAN computer network office. This was not going to be a good day for John McMahon. As the assistant DECNET protocol manager for NASA's God",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 19,
+          "text": "might be titled `Map of the Universe in Infrared'. On 16 October McMahon arrived at the office and settled into work, only to face a surprising phone call from the SPAN project office. Todd Butler and Ron Tencati, from the National Space Science Data Center, which managed NASA's half of the SPAN net",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 33,
+          "text": "to figure out what it did, the worm was pushing forward, ever deeper into NASA's computer network. Every hour NASA spent developing a cure, the worm spent searching, probing, breaking and entering. A day's delay in getting the cure out to all the systems could mean dozens of new worm invasions doing",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 40,
+          "text": "McMahon answered a phone call from an irate NASA system or network manager, he tried to get a copy of the worm from the infected machine. He also asked for the logs from their computer systems. Which computer had the worm come from? Which systems was it attacking from the infected site? In theory, t",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 44,
+          "text": "And it mightn't look so good either if DEC just jumped into the fray. It might look like the company was in some way at fault. Things were different, however, if someone already had a relationship with a technical expert inside the company. It wasn't like NASA manager cold-calling a DEC guy who sold",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 50,
+          "text": "instructions to copy itself and send that copy out to other machines. It would slip through the network and when it came upon a computer attached to the network, it would poke around looking for a way in. What it really wanted was to score a computer account with privileges, but it would settle for ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 52,
+          "text": "the highest privileges were likely to have standard names, common across different machines. Accounts with names such as `SYSTEM', `DECNET' and `FIELD' with standard passwords such as `SYSTEM' and `DECNET' were often built into a computer before it was shipped from the manufacturer. If the receiving",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 55,
+          "text": "to be mysterious comments flashing across the screen, McMahon concluded that the worm was probably harassing the staff on that computer from a neighbouring system which it had successfully invaded. The messages suggested that the recipients' accounts had not been hijacked by the worm. Yet. VAX/VMS m",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 82,
+          "text": "worm as it tried again and again to login from an infected machine. By the end of the worm attack, the SPAN office had accumulated a list of affected sites which ran over two columns on several computer screens. Each of them had lodged some form of complaint about the worm. Also by the end of the cr",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Altos Chat",
+        "X.25",
+        "international",
+        "communication"
+      ]
+    },
+    {
+      "id": "midnight-oil-connection",
+      "question": "What role did Midnight Oil play in hacker culture and how did it influence the WANK worm?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 0,
+          "text": "# Chapter 2: The Corner Pub. CHAPTER 2 \u2014 The Corner Pub. You talk of times of peace for all; and then prepare for war. \u2014 from `Blossom of Blood', Species Deceases. It is not surprising the SPAN security team would miss the mark. It is not surprising, for example, that these officials should to this ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 29,
+          "text": "be postponed, probably until Wednesday. The weather wasn't going to budge. At 1.18 p.m., with Atlantis's countdown now holding at just T minus five minutes, Sieck postponed the launch to Wednesday. Back at the SPAN centre, things were becoming hectic. The worm was spreading through more and more sys",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 32,
+          "text": "rat race\u2014you're still a rat. Or perhaps they were graced with some bad humour: Nothing is faster than the speed of light\u2026 To prove this to yourself, try opening the refrigerator door before the light comes on. Other users were treated to anti-authoritarian observations of the paranoid: The FBI is wa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 54,
+          "text": "the dark sense of humour harboured by the hacker behind the worm. Part of the worm, a subroutine, was named `find fucked'. The SPAN team tried to give NASA managers calling in as much information as they could about the worm. It was the best way to help computer managers, isolated in their offices a",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 57,
+          "text": "by the manufacturer and, if it had been turned off, tried to reactivate the account and install the password FIELD. The worm was also programmed to change the password for the standard account named DECNET to a random string of at least twelve characters. In short, the worm tried to pry open a backd",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 60,
+          "text": "unforgivable. NASA, potentially the greatest single collection of technical minds on Earth, had such lax computer security that a computer-literate teenager could have cracked it wide open. The tall poppy was being cut down to size by a computer program resembling a bowl of spaghetti. The first thin",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 64,
+          "text": "his machine had even been infected. All afternoon McMahon moved back and forth between answering the ever-ringing SPAN phone and writing up NASA's analysis of the worm. He had posted a cryptic electronic message about the attack across the network, and Kevin Oberman had read it. The message had to b",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 71,
+          "text": "activity, the computer gives it a unique process name. When the worm burrowed into a computer site, one of the first things it did was check that another copy of itself was not already running on that computer. It did this by checking for its own process names. The worm's processes were all called N",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 72,
+          "text": "program first and ran it by McMahon. It worked well, but McMahon noticed one large flaw. Oberman's program checked for the NETW_ process name, but it assumed that the worm was running under the SYSTEM group. In most cases, this was true, but it didn't have to be. If the worm was running in another g",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Midnight Oil",
+        "Australian",
+        "protest",
+        "culture"
+      ]
+    },
+    {
+      "id": "freekers",
+      "question": "Who were the 'freekers' and what techniques did they use?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 24,
+          "text": "users, up to 200 of whom were `core' users accessing the system regularly. PI had its own dedicated phone line, separate from the house phone so Bowen's parents wouldn't get upset the line was always tied up. Later, he put in four additional phone lines for Zen, which had about 2000 users. Using his",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 64,
+          "text": "free and hopefully untraceable call. The purist hacker sees phreaking more as a way of eluding telephone traces than of calling his or her friends around the world for free. The first transition into phreaking and eventually carding happened over a period of about six months in 1988. Early hackers o",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 8,
+          "text": "that line. The line which he and Nibbler used for most of their hacking showed a special status: `maintenance unit on line'. What maintenance unit? Nibbler hadn't mentioned any problems with any of the motel's lines, but Par checked with him. No problems with the telephones. Par felt nervous. In add",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 0,
+          "text": "# Chapter 5: The Holy Grail. CHAPTER 5 \u2014 The Holy Grail. So we came and conquered and found; riches of Commons and Kings. \u2014 from `River Runs Red', Blue Sky Mining. There it was, in black and white. Two articles by Helen Meredith in The Australian in January 1989.2 The whole Australian computer under",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 1,
+          "text": "to distort the picture. Still, it should have been a straightforward operation. The AFP could trace hackers in this sort of situation with their hands tied behind their backs. Arrange for Telecom to whack a last party recall trace on all incoming lines to the RMIT modems. Wait for a hacker to logon,",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 20,
+          "text": "George Jackson's nine-year stint in one of the toughest prisons in the US. Convicted for a petty crime, Jackson was supposed to be released after a short sentence but was kept in the prison at the governor's pleasure. The criminal justice system kept him on a merry-go-round of hope and despair as th",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_11.md",
+          "chunk_index": 4,
+          "text": "options and Anthrax's name came up as a possibility. The IS hackers had all seen him around a few systems and BBSes. Trax had even spoken to him once on a conference call with another phreaker. They pieced together what they knew of him and the picture fitted. The AFP were onto Anthrax and they seem",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_11.md",
+          "chunk_index": 86,
+          "text": "or large Internet provider. Computer vendors\u2014the manufacturers of software and hardware, routers, gateways, firewalls or phone switches. Military institutions, governments and banks seem to be a little less fashionable these days, though there are still plenty of attacks on these sorts of sites. Att",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 3,
+          "text": "in the face of any number of terrible explosions, mishaps and accidents. NASA told journalists that the odds of a plutonium release due to `inadvertent atmospheric re-entry' were 1 in 2 million. The likelihood of a plutonium radiation leak as a result of a launch disaster was a reassuring 1 in 2700.",
+          "relevance": 1
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 12,
+          "text": "the American computer system managers reading this new banner had never heard the word wank. Who would want to invade NASA's computer systems? And who exactly were the Worms Against Nuclear Killers? Were they some loony fringe group? Were they a guerrilla terrorist group launching some sort of attac",
+          "relevance": 1
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "freekers",
+        "phreaking",
+        "white collar crime"
+      ]
+    },
+    {
+      "id": "x25-networks",
+      "question": "What were X.25 networks and why were they important to international hackers?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 1,
+          "text": "Par was doing. Chasing Force endlessly, until he got what he wanted. It began innocently enough as idle conversation between two giants in the computer underground in the first half of 1988. Force, the well-known Australian hacker who ran the exclusive Realm BBS in Melbourne, sat chatting with Par, ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_11.md",
+          "chunk_index": 123,
+          "text": "the Internet or other TCP/IP networks Trojan A program installed by hackers to secretly gather information, such as passwords. Can also be a backdoor Tymnet An X.25 network controlled by MCI, DNIC 3106 Unix Multi-user computer operating system developed by AT&T and Berkeley CSRG VAX Virtual Address ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 16,
+          "text": "proposals and costing, was a good way to lose out on a bid and its often considerable funding. This was not going to be a good day for the guys down at the NASA SPAN computer network office. This was not going to be a good day for John McMahon. As the assistant DECNET protocol manager for NASA's God",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 55,
+          "text": "to be mysterious comments flashing across the screen, McMahon concluded that the worm was probably harassing the staff on that computer from a neighbouring system which it had successfully invaded. The messages suggested that the recipients' accounts had not been hijacked by the worm. Yet. VAX/VMS m",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 43,
+          "text": "scanner, a program which gathered the addresses of computers on the X.25 network which would be targets for future hacking adventures, ate up computing resources. But a huge machine like Minerva could handle that sort of program with ease. Minerva also allowed users to connect to other computer syst",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 53,
+          "text": "modems at the company itself. Then it was off to check the directories available for anyone to read on the main system\u2014another good source of information. Final stop: Minerva's bulletin board of news. This included postings from the system operators about planned downtime or other service issues. He",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 54,
+          "text": "aspects of the world's financial markets. A number of countries' classified military computer sites only run on X.25. It is considered by many people to be more secure than the Internet or any DECNET system. Minerva allowed incoming callers to pass into the X.25 network\u2014something most Australian uni",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 2,
+          "text": "was reserved for live on-line chatting. For free. It was like an early form of the Internet Relay Chat. The company probably hadn't meant to become the world's most prestigious hacker hang-out, but it soon ended up doing so. Altos was the first significant international live chat channel, and for mo",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 6,
+          "text": "serve as a good launchpad for bigger things, but it had a major limitation. The program could only handle one connection at a time, which meant it could only scan one branch of a network at a time. Less than three months later, Force had rewritten Bowen's program into the far more powerful DEFCON, w",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "X.25",
+        "networks",
+        "international",
+        "telecommunications"
+      ]
+    },
+    {
+      "id": "eugene-spafford",
+      "question": "Who was Eugene Spafford and why was he significant to hackers?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 61,
+          "text": "second copy of the encrypted Deszip to Gandalf, who stored it on a machine in the UK in case the Australians' copy disappeared unexpectedly. In January 1990, Electron turned his attention to getting Zardoz. After carefully reviewing an old copy of Zardoz, he had discovered a system admin in Melbourn",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 9,
+          "text": "But in NASA's view, such was the price of a successful slingshot. Galileo experienced other delays getting off the ground. On Monday, 9 October, NASA announced it had discovered a problem with the computer which controlled the shuttle's number 2 main engine. True, the problem was with Atlantis, not ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 19,
+          "text": "might be titled `Map of the Universe in Infrared'. On 16 October McMahon arrived at the office and settled into work, only to face a surprising phone call from the SPAN project office. Todd Butler and Ron Tencati, from the National Space Science Data Center, which managed NASA's half of the SPAN net",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 24,
+          "text": "across the base to the network office, where he and several other managers developed a way to stop the worm by the end of the day. Eventually they traced the Father Christmas worm back to the system where they believed it had been released\u2014in Switzerland. But they never discovered who created it. Fa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 37,
+          "text": "fact just one giant computer network, all of which the worm could invade. The Department of Energy keeps classified information on its computers. Very classified information. There are two groups in DOE: the people who do research on civilian energy projects and the people who make atomic bombs. So ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 40,
+          "text": "McMahon answered a phone call from an irate NASA system or network manager, he tried to get a copy of the worm from the infected machine. He also asked for the logs from their computer systems. Which computer had the worm come from? Which systems was it attacking from the infected site? In theory, t",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 41,
+          "text": "on their computers. McMahon had always felt it was important to gather lots of information about who was connecting to a computer. In his previous job, he had modified his machines so they collected as much security information as possible about their connections to other computers. VMS computers ca",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 53,
+          "text": "open and inspecting its entrails, he discovered an extensive collection of generic privileged accounts across the SPAN network. In fact, the worm wasn't only picking up the standard VMS privileged accounts; it had learned accounts common to NASA but not necessarily to other VMS computers. For exampl",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 55,
+          "text": "to be mysterious comments flashing across the screen, McMahon concluded that the worm was probably harassing the staff on that computer from a neighbouring system which it had successfully invaded. The messages suggested that the recipients' accounts had not been hijacked by the worm. Yet. VAX/VMS m",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 61,
+          "text": "Important parts of the worm simply didn't work. McMahon believed this failure to be accidental. For example, his analysis showed the worm was programmed to break into accounts by trying no password, if the account holder had left the password blank. When he disassembled the worm, however, he found t",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "Spafford",
+        "security expert",
+        "wounded bull"
+      ]
+    },
+    {
+      "id": "three-realm-hackers",
+      "question": "What happened to the three Realm hackers and why did they attract so much police attention?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 64,
+          "text": "his machine had even been infected. All afternoon McMahon moved back and forth between answering the ever-ringing SPAN phone and writing up NASA's analysis of the worm. He had posted a cryptic electronic message about the attack across the network, and Kevin Oberman had read it. The message had to b",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 88,
+          "text": "There was no need to explain what `the thing' was. `I'm going over to the SPAN office.' Ron Tencati and Todd Butler had a copy of the new WANK worm ready for McMahon. This version of the worm was far more virulent. It copied itself more effectively and therefore moved through the network much faster",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 54,
+          "text": "aspects of the world's financial markets. A number of countries' classified military computer sites only run on X.25. It is considered by many people to be more secure than the Internet or any DECNET system. Minerva allowed incoming callers to pass into the X.25 network\u2014something most Australian uni",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 57,
+          "text": "hackers gave it right back to them. They broke into the hacker's session with `Oh, you idiots are at it again'. The operators couldn't keep the hackers out, but they had other ways of getting even. Electron, a Melbourne hacker and rising star in the Australian underground, had been logging into a sy",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 77,
+          "text": "ear to those problems. As a woman and a non-hacker, she was removed from the jumble of male ego hierarchical problems associated with confiding in a peer. She served as a sort of mother to the embryonic hacking community, but she was young enough to avoid the judgmental pitfalls most parents fall in",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 1,
+          "text": "Par was doing. Chasing Force endlessly, until he got what he wanted. It began innocently enough as idle conversation between two giants in the computer underground in the first half of 1988. Force, the well-known Australian hacker who ran the exclusive Realm BBS in Melbourne, sat chatting with Par, ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 3,
+          "text": "a flagrant contempt for authority of any type. Instant, real-time penpals\u2014with attitude. However, Altos was more exclusive than the average underground BBS. Wanna-be hackers had trouble getting into it because of the way X.25 networks were billed. Some systems on the network took reverse-charge conn",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 6,
+          "text": "serve as a good launchpad for bigger things, but it had a major limitation. The program could only handle one connection at a time, which meant it could only scan one branch of a network at a time. Less than three months later, Force had rewritten Bowen's program into the far more powerful DEFCON, w",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 11,
+          "text": "hand out his DEFCON program and have ten people scan the same network ten different times. It wasted time and resources. Further, it was becoming harder to get access to the main X.25 sites in Australia, like Minerva. Scanning was the type of activity likely to draw the attention of a system admin a",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "Three Realm hackers",
+        "bust",
+        "Realm BBS"
+      ]
+    },
+    {
+      "id": "rtm-worm",
+      "question": "What was the RTM worm and why was it famous?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 76,
+          "text": "cracking program. There were others. And, at the top of the list, Eugene Spafford, or Spaf, as the hackers called him. By 1990, the computer underground viewed Spaf not just as security guru, but also as an anti-hacker zealot. Spaf was based at Purdue University, a hotbed of computer security expert",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_07.md",
+          "chunk_index": 0,
+          "text": "# Chapter 7: Judgement Day. CHAPTER 7 \u2014 Judgement Day. Your dream world is just about to end. \u2014 from `Dreamworld', Diesel and Dust. In another corner of the globe, the British hackers Pad and Gandalf learned with horror that the Australian authorities had busted the three Realm hackers. Electron had",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_07.md",
+          "chunk_index": 3,
+          "text": "so please don't tarnish it or start making up stories about us messing up systems. Don't hold your breath for us to hack you, but keep us in mind.' Wherever they went, their message was the same. Nonetheless Pad visualised a scenario where Spaf whipped up the computer security and law enforcement pe",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 9,
+          "text": "But in NASA's view, such was the price of a successful slingshot. Galileo experienced other delays getting off the ground. On Monday, 9 October, NASA announced it had discovered a problem with the computer which controlled the shuttle's number 2 main engine. True, the problem was with Atlantis, not ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 22,
+          "text": "only been two rogue worms of any note. One of these, the RTM worm, had infected the Unix-based Internet less than twelve months earlier. The other worm, known as Father Christmas, was the first VMS worm. Father Christmas was a small, simple worm which did not cause any permanent damage to the comput",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 36,
+          "text": "at Goddard and the absolute boss of SPAN, wanted hourly reports on the crisis. At first the core team seemed only to include NASA people and to be largely based at Goddard. But as the day wore on, new people from other parts of the US government would join the team. The worm had spread outside NASA.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 45,
+          "text": "in order to spread. But why would the creator of the worm release different versions? Why not just write one version properly and fire it off? The worm wasn't just one incoming missile; it was a frenzied attack. It was coming from all directions, at all sorts of different levels within NASA's comput",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "RTM worm",
+        "Morris",
+        "Cornell",
+        "Internet worm"
+      ]
+    },
+    {
+      "id": "2600-hertz",
+      "question": "How did the 2600-hertz signal work for phone phreaking?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 41,
+          "text": "on their computers. McMahon had always felt it was important to gather lots of information about who was connecting to a computer. In his previous job, he had modified his machines so they collected as much security information as possible about their connections to other computers. VMS computers ca",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 64,
+          "text": "free and hopefully untraceable call. The purist hacker sees phreaking more as a way of eluding telephone traces than of calling his or her friends around the world for free. The first transition into phreaking and eventually carding happened over a period of about six months in 1988. Early hackers o",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 3,
+          "text": "a flagrant contempt for authority of any type. Instant, real-time penpals\u2014with attitude. However, Altos was more exclusive than the average underground BBS. Wanna-be hackers had trouble getting into it because of the way X.25 networks were billed. Some systems on the network took reverse-charge conn",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 57,
+          "text": "had dozens of disks loaded with the cards and other sensitive hacking information. Par had used the cards to make a few free calls, but he hadn't been charging up any jet skis. He fought temptation valiantly, and in the end he had won, but others might not have been so victorious in the same battle.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 42,
+          "text": "had changed Par. Some time after she returned to Switzerland, Theorem's access to Altos shrivelled up and died. She had been logging in through her old university account but the university eventually killed her access since she was no longer a student. Without access to any X.25 network linked to t",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 45,
+          "text": "run, she had to wait for him to call her. In fact she couldn't reach any of her other friends on Altos to ask for help. How was she going to find them? They were all hackers. They chose handles so no-one would know their real names. What Theorem didn't know was that, not only had she lost access to ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 0,
+          "text": "# Chapter 5: The Holy Grail. CHAPTER 5 \u2014 The Holy Grail. So we came and conquered and found; riches of Commons and Kings. \u2014 from `River Runs Red', Blue Sky Mining. There it was, in black and white. Two articles by Helen Meredith in The Australian in January 1989.2 The whole Australian computer under",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 1,
+          "text": "199 William Street in Melbourne to send a 2600-hertz signal giving them access to a trunk line and ultimately to a managerial access code for Citibank. Sources said last night the hackers had lifted $US563,000 from the US bank and transferred it into several accounts. The money has now been withdraw",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 2,
+          "text": "list card hauls on boards Authorities remain sceptical of the latest reports of an international hacking and phreaking ring and its Australian connection. Yesterday, however, evidence continued to stream into the Melbourne based bulletin boards under suspicion \u2026 In the latest round of bulletin board",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 3,
+          "text": "total of $362018.40! `Let's hear it for our Aussie friends! `I hear they are doing just as well! `They are sending more numbers on the 23rd! Great! `They will be getting 10% as usual\u2026a nice bonus of $36 200.00!' The bulletin board also contained advice for phreakers on using telephones in Telecom's ",
+          "relevance": 2
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "2600-hertz",
+        "phreaking",
+        "trunk line",
+        "Telecom"
+      ]
+    },
+    {
+      "id": "computer-misuse-act",
+      "question": "What was the Computer Misuse Act and when did it take effect?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 17,
+          "text": "100000 computer terminals across the globe. Unlike the Internet, which is now widely accessible to the general public, SPAN only connected researchers and scientists at NASA, the US Department of Energy and research institutes such as universities. SPAN computers also differed from most Internet com",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 36,
+          "text": "at Goddard and the absolute boss of SPAN, wanted hourly reports on the crisis. At first the core team seemed only to include NASA people and to be largely based at Goddard. But as the day wore on, new people from other parts of the US government would join the team. The worm had spread outside NASA.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 10,
+          "text": "had created the WANK worm. Fingers were pointed, accusations were made, but none stuck. At the end of the day, there was coincidence and innuendo, but not enough evidence to launch a case. Like many Australian hackers, the creator of the WANK worm had emerged from the shadows of the computer undergr",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 12,
+          "text": "all things serious and sacred, continued to poke fun at upright institutions with a depth of irreverence surprising to many foreigners. This cynicism of large, respected institutions coursed through the newly formed Australian computer underground without dampening its excitement or optimism for the",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 25,
+          "text": "Some had legitimate university computer accounts for their courses, but they kept those accounts clean. A basic rule of the underground, in the words of one hacker, was `Don't foul your own nest'. PI contained a public section and a private one. The public area was like an old-time pub. Anyone could",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 29,
+          "text": "had no idea of how true that sentiment would ring in a matter of months. Bowen's place was a hub of current and future lights in the computer underground. The Wizard. The Force. Powerspike. Phoenix. Electron. Nom. Prime Suspect. Mendax. Train Trax. Some, such as Prime Suspect, merely passed through,",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 33,
+          "text": "an invite to the private area required hacking skill or information, and usually a recommendation to Bowen from someone who was already inside. Within the Inner Sanctum, as the private hacking area was called, people could comfortably share information such as opinions of new computer products, tech",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 40,
+          "text": "at the accuracy of the information. It was easy getting out-of-date login names and passwords for a student account on Monash University's computer system. Posting a valid account for the New Zealand forestry department's VMS system intrigued the people who counted considerably more. The Great Rite ",
+          "relevance": 2
+        }
+      ],
+      "shape": "temporal",
+      "themes": [
+        "Computer Misuse Act",
+        "legislation",
+        "UK",
+        "1990"
+      ]
+    },
+    {
+      "id": "handles-purpose",
+      "question": "Why do hackers use handles and what functions do they serve?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 45,
+          "text": "run, she had to wait for him to call her. In fact she couldn't reach any of her other friends on Altos to ask for help. How was she going to find them? They were all hackers. They chose handles so no-one would know their real names. What Theorem didn't know was that, not only had she lost access to ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 51,
+          "text": "worm specifically sought out these sorts of accounts because its creator knew that was where the power lay. The worm was smart, and it learned as it went along. As it traversed the network, it created a masterlist of commonly used account names. First, it tried to copy the list of computer users fro",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 94,
+          "text": "the office at strange hours. Reports have to be written. A lot of yelling and screaming occurs. You have to deal with law enforcement. These are all side effects of someone going for a joy ride in someone else's system, even if they don't do any damage. Someone has to pay the price.' McMahon never f",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 10,
+          "text": "had created the WANK worm. Fingers were pointed, accusations were made, but none stuck. At the end of the day, there was coincidence and innuendo, but not enough evidence to launch a case. Like many Australian hackers, the creator of the WANK worm had emerged from the shadows of the computer undergr",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 18,
+          "text": "he or she would plug the home phone line into the BBS and leave it there until morning. Others ran 24 hours a day, but the busiest times were always at night. Of course it wasn't just intellectual stimulation some users were after. Visitors often sought identity as much as ideas. On an electronic bu",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 25,
+          "text": "Some had legitimate university computer accounts for their courses, but they kept those accounts clean. A basic rule of the underground, in the words of one hacker, was `Don't foul your own nest'. PI contained a public section and a private one. The public area was like an old-time pub. Anyone could",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 28,
+          "text": "children. For the most part, they amused each other. Mainstream and respectful of authority on the surface, Bowen possessed the same streak of anti-establishment views harboured by many in the underground. His choice of name for Zen underlined this. Zen came from the futuristic British TV science fi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 29,
+          "text": "had no idea of how true that sentiment would ring in a matter of months. Bowen's place was a hub of current and future lights in the computer underground. The Wizard. The Force. Powerspike. Phoenix. Electron. Nom. Prime Suspect. Mendax. Train Trax. Some, such as Prime Suspect, merely passed through,",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "handles",
+        "identity",
+        "nicknames",
+        "culture"
+      ]
+    },
+    {
+      "id": "first-creation",
+      "question": "What is FIRST and why was it created in response to the WANK worm?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 21,
+          "text": "late 1980s, worms were obscure things, more associated with research in a computer laboratory. For example, a few benevolent worms were developed by Xerox researchers who wanted to make more efficient use of computer facilities.8 They developed a `town crier worm' which moved through a network sendi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 29,
+          "text": "be postponed, probably until Wednesday. The weather wasn't going to budge. At 1.18 p.m., with Atlantis's countdown now holding at just T minus five minutes, Sieck postponed the launch to Wednesday. Back at the SPAN centre, things were becoming hectic. The worm was spreading through more and more sys",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 36,
+          "text": "at Goddard and the absolute boss of SPAN, wanted hourly reports on the crisis. At first the core team seemed only to include NASA people and to be largely based at Goddard. But as the day wore on, new people from other parts of the US government would join the team. The worm had spread outside NASA.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 37,
+          "text": "fact just one giant computer network, all of which the worm could invade. The Department of Energy keeps classified information on its computers. Very classified information. There are two groups in DOE: the people who do research on civilian energy projects and the people who make atomic bombs. So ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 41,
+          "text": "on their computers. McMahon had always felt it was important to gather lots of information about who was connecting to a computer. In his previous job, he had modified his machines so they collected as much security information as possible about their connections to other computers. VMS computers ca",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 2
+        }
+      ],
+      "shape": "temporal",
+      "themes": [
+        "FIRST",
+        "incident response",
+        "WANK",
+        "international"
+      ]
+    },
+    {
+      "id": "oilz-worm-variant",
+      "question": "What was the Oilz variant of the WANK worm and why was its name significant?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 0,
+          "text": "# Chapter 2: The Corner Pub. CHAPTER 2 \u2014 The Corner Pub. You talk of times of peace for all; and then prepare for war. \u2014 from `Blossom of Blood', Species Deceases. It is not surprising the SPAN security team would miss the mark. It is not surprising, for example, that these officials should to this ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 29,
+          "text": "be postponed, probably until Wednesday. The weather wasn't going to budge. At 1.18 p.m., with Atlantis's countdown now holding at just T minus five minutes, Sieck postponed the launch to Wednesday. Back at the SPAN centre, things were becoming hectic. The worm was spreading through more and more sys",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 44,
+          "text": "And it mightn't look so good either if DEC just jumped into the fray. It might look like the company was in some way at fault. Things were different, however, if someone already had a relationship with a technical expert inside the company. It wasn't like NASA manager cold-calling a DEC guy who sold",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 45,
+          "text": "in order to spread. But why would the creator of the worm release different versions? Why not just write one version properly and fire it off? The worm wasn't just one incoming missile; it was a frenzied attack. It was coming from all directions, at all sorts of different levels within NASA's comput",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 46,
+          "text": "The small variations in the different copies he dissected seemed to stem from the worm's ability to learn and change as it moved from computer to computer. McMahon and Oberman weren't the only detectives trying to decipher the various manifestations of the worm. DEC was also examining the worm, and ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "Oilz",
+        "Midnight Oil",
+        "variant",
+        "pronunciation"
+      ]
+    },
+    {
+      "id": "underground-evolution",
+      "question": "How did the computer underground evolve from its early days to the time of the book's writing?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 10,
+          "text": "had created the WANK worm. Fingers were pointed, accusations were made, but none stuck. At the end of the day, there was coincidence and innuendo, but not enough evidence to launch a case. Like many Australian hackers, the creator of the WANK worm had emerged from the shadows of the computer undergr",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 21,
+          "text": "time had the secret, smoky flavour of the computer underground. A handful of these were invitation-only boards, places like Greyhawk and The Realm. You couldn't simply ring up the board, create a new account and login. You had to be invited by the board's owner. Members of the general modeming publi",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 29,
+          "text": "had no idea of how true that sentiment would ring in a matter of months. Bowen's place was a hub of current and future lights in the computer underground. The Wizard. The Force. Powerspike. Phoenix. Electron. Nom. Prime Suspect. Mendax. Train Trax. Some, such as Prime Suspect, merely passed through,",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 40,
+          "text": "at the accuracy of the information. It was easy getting out-of-date login names and passwords for a student account on Monash University's computer system. Posting a valid account for the New Zealand forestry department's VMS system intrigued the people who counted considerably more. The Great Rite ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 42,
+          "text": "tearing off again in search of a new place to hide. Sometimes Mendax went to school. Often he didn't. The school system didn't hold much interest for him. It didn't feed his mind the way Minerva would. They Sydney computer system was a far more interesting place to muck around in than the rural high",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 60,
+          "text": "new frontier\u2014organisations like Telecom. It was a powerful word. Say `Telecom' to a member of the computer underground from that era and you will observe the most striking reaction. Instant contempt sweeps across his face. There is a pause as his lips curl into a noticeable sneer and he replies with",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 62,
+          "text": "half an hour. Hence Telecom's other nickname in the computer underground: Teleprofit. To the BBS community, Telecom's Protective Services Unit was the enemy. They were the electronic police. The underground saw Protective Services as `the enforcers'\u2014an all-powerful government force which could raid ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 79,
+          "text": "stay alive, get them out of the house'. After that came the brick through the window. It landed in the back of her TV. Then she woke up one morning to find her phone line dead. Someone had opened the Telecom well in the nature strip across the road and cut out a metre of cable. It meant the phone li",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 1,
+          "text": "Par was doing. Chasing Force endlessly, until he got what he wanted. It began innocently enough as idle conversation between two giants in the computer underground in the first half of 1988. Force, the well-known Australian hacker who ran the exclusive Realm BBS in Melbourne, sat chatting with Par, ",
+          "relevance": 3
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "evolution",
+        "community",
+        "crackdowns",
+        "change"
+      ]
+    },
+    {
+      "id": "deccnet-security",
+      "question": "What was DECNET and what were its security weaknesses?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 25,
+          "text": "becoming the crisis centre for the worm attack, to send over a copy of the strange intruder. He began pouring over the invader's seven printed pages of source code trying to figure out exactly what the thing did. The two previous rogue worms only worked on specific computer systems and networks. In ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 38,
+          "text": "at the DOE-financed Lawrence Livermore National Laboratory, or LLNL, near San Francisco. LLNL conducted mostly military research, much of it for the Strategic Defense Initiative. Many LLNL scientists spent their days designing nuclear arms and developing beam weapons for the Star Wars program.9 DOE ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 43,
+          "text": "but on the other hand we didn't have to depend on the network being up,' McMahon said. `We needed to have some chain of communications which was not the same as the network being attacked.' A number of the NASA SPAN team members had developed contacts within different parts of DEC through the compan",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 44,
+          "text": "And it mightn't look so good either if DEC just jumped into the fray. It might look like the company was in some way at fault. Things were different, however, if someone already had a relationship with a technical expert inside the company. It wasn't like NASA manager cold-calling a DEC guy who sold",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 46,
+          "text": "The small variations in the different copies he dissected seemed to stem from the worm's ability to learn and change as it moved from computer to computer. McMahon and Oberman weren't the only detectives trying to decipher the various manifestations of the worm. DEC was also examining the worm, and ",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 60,
+          "text": "unforgivable. NASA, potentially the greatest single collection of technical minds on Earth, had such lax computer security that a computer-literate teenager could have cracked it wide open. The tall poppy was being cut down to size by a computer program resembling a bowl of spaghetti. The first thin",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 61,
+          "text": "Important parts of the worm simply didn't work. McMahon believed this failure to be accidental. For example, his analysis showed the worm was programmed to break into accounts by trying no password, if the account holder had left the password blank. When he disassembled the worm, however, he found t",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 64,
+          "text": "his machine had even been infected. All afternoon McMahon moved back and forth between answering the ever-ringing SPAN phone and writing up NASA's analysis of the worm. He had posted a cryptic electronic message about the attack across the network, and Kevin Oberman had read it. The message had to b",
+          "relevance": 3
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "DECNET",
+        "VAX",
+        "VMS",
+        "security"
+      ]
+    },
+    {
+      "id": "hacker-motivations",
+      "question": "What common psychological themes motivated hackers according to the book?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 11,
+          "text": "at Jupiter. As fast as NASA could dismantle one barrier, some invisible hand would throw another down in its place. Monday, 16 October, 1989 NASA's Goddard Space Flight Center, Greenbelt, Maryland Across the vast NASA empire, reaching from Maryland to California, from Europe to Japan, NASA workers g",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 30,
+          "text": "link between the protests against Galileo and the attack on NASA's computers to speculate publicly that the two were related. It seemed a reasonable likelihood, but there were still plenty of unanswered questions. Callers coming into the SPAN office were worried. People at the other end of the phone",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 12,
+          "text": "all things serious and sacred, continued to poke fun at upright institutions with a depth of irreverence surprising to many foreigners. This cynicism of large, respected institutions coursed through the newly formed Australian computer underground without dampening its excitement or optimism for the",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 76,
+          "text": "Although she didn't hack computers, she knew a lot about them. She ran The Real Connection, a BBS frequented by many of the hackers who hung out on PI. She wasn't somebody's sister wafting in and out of the picture in search of a boyfriend. She was older. She was as good as married. She had kids. Sh",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 12,
+          "text": "Altos from Minerva without hopping through a respectable midpoint, such as another corporate machine overseas, he could count on the Minerva admins killing off the account. DEFCON was revolutionary for its time, and difficult to reproduce. It was written for Prime computers, and not many hackers kne",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_04.md",
+          "chunk_index": 11,
+          "text": "more watchful of the people coming and going. He glanced out the front window a little more often, and he listened a little more carefully to the footsteps coming and going. How many of the guests were really just tourists? Par went through the guest list and found a man registered as being from New",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 40,
+          "text": "let's drop it'. Electron made it a habit not to believe most of the things Phoenix told him. Unless there was some solid proof, Electron figured it was just hot air. He didn't actually like Phoenix much as a person, and found talking to him difficult at times. He preferred the company of his fellow ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_06.md",
+          "chunk_index": 44,
+          "text": "own sessions in Melbourne University's systems which were traced back to his home phone; and Electron's own confession to the police. This was the first major computer hacking case in Australia under the new legislation. It was a test case\u2014the test case for computer hacking in Australia\u2014and the DPP ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 7,
+          "text": "a silence began to descend on the conversation. `Running out of things to say \u2026' Mendax said finally. They were good enough friends for him to be blunt with Prime Suspect. `Yeah.' More silence. Mendax thought how strange it was to be such good friends with someone, to work so closely with him, and y",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 48,
+          "text": "files\u2014all the evidence the AFP had hoped to seize in raids. When the AFP swooped in on the three hackers, Mendax and Prime Suspect had refused to be interviewed on the night. Trax, however, had spent several hours talking to the police at his house. He told the other IS hackers that the police had t",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "motivation",
+        "psychology",
+        "rebellion",
+        "obsession"
+      ]
+    },
+    {
+      "id": "galileo-controversy",
+      "question": "What was the Galileo space mission controversy and how did it relate to the WANK worm?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 86,
+          "text": "and 21 minutes after lift-off, Galileo began its solo journey into space. And at 8.15 p.m., Galileo's booster ignited. Inside shuttle mission control, NASA spokesman Brian Welch announced, `The spacecraft Galileo \u2026 has achieved Earth escape velocity'.18 Monday, 30 October 1989 NASA's Goddard Space F",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 94,
+          "text": "the office at strange hours. Reports have to be written. A lot of yelling and screaming occurs. You have to deal with law enforcement. These are all side effects of someone going for a joy ride in someone else's system, even if they don't do any damage. Someone has to pay the price.' McMahon never f",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 0,
+          "text": "# Chapter 1: 10, 9, 8, 7, 6, 5, 4, 3, 2, 1. CHAPTER 1 \u2014 10, 9, 8, 7, 6, 5, 4, 3, 2, 1. Somebody's out there, somebody's waiting; Somebody's trying to tell me something. \u2014 from `Somebody's Trying to Tell Me Something', 10, 9, 8, 7, 6, 5, 4, 3, 2, 1. Monday, 16 October 1989 Kennedy Space Center, Flori",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 1,
+          "text": "liberate the three-tonne space probe. An hour later, as Galileo skated safely away from the shuttle, the probe's 32500 pound booster system would fire up and NASA staff would watch this exquisite piece of human ingenuity embark on a six-year mission to the largest planet in the solar system. Galileo",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 2,
+          "text": "on a tried if not true earthly energy source: nuclear power. Nuclear power was perfect for space, a giant void free of human life which could play host to a bit of radioactive plutonium 238 dioxide. The plutonium was compact for the amount of energy it gave off\u2014and it lasted a long time. It seemed l",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 3,
+          "text": "in the face of any number of terrible explosions, mishaps and accidents. NASA told journalists that the odds of a plutonium release due to `inadvertent atmospheric re-entry' were 1 in 2 million. The likelihood of a plutonium radiation leak as a result of a launch disaster was a reassuring 1 in 2700.",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 4,
+          "text": "demonstrating and seizing media attention. Things had become very heated. On Saturday, 7 October, sign-wielding activists fitted themselves out with gas masks and walked around on street corners in nearby Cape Canaveral in protest. At 8 a.m. on Monday, 9 October, NASA started the countdown for the T",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 6,
+          "text": "had another trump card in the families of the heroes. Atlantis co-pilot Michael McCulley said the use of RTGs, Radioisotope Thermoelectric Generators\u2014the chunks of plutonium in the lead boxes\u2014was a `non-issue'. So much so, in fact, that he planned to have his loved ones at the Space Center when Atla",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 7,
+          "text": "on by a bunch of peaceniks. The launch was already running late as it was\u2014almost seven years late. Congress gave the Galileo project its stamp of approval way back in 1977 and the probe, which had been budgeted to cost about $400 million, was scheduled to be launched in 1982. However, things began g",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 8,
+          "text": "save Galileo's booster development program, NASA moved the launch yet again, to May 1986. The 1986 Challenger disaster, however, saw NASA change Galileo's booster system for safety reasons, resulting in yet more delays. The best option seemed to be a two-stage, solid-fuel IUS system. There was only ",
+          "relevance": 2
+        }
+      ],
+      "shape": "precise",
+      "themes": [
+        "Galileo",
+        "NASA",
+        "anti-nuclear",
+        "plutonium"
+      ]
+    },
+    {
+      "id": "rmit-hacking-hub",
+      "question": "Why was RMIT a hub for hacker activity in Australia?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_09.md",
+          "chunk_index": 0,
+          "text": "# Chapter 9: Operation Weather. CHAPTER 9 \u2014 Operation Weather. The world is crashing down on me tonight; The walls are closing in on me tonight. \u2014 from `Outbreak of Love', Earth and Sun and Moon. The AFP was frustrated. A group of hackers were using the Royal Melbourne Institute of Technology (RMIT)",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 33,
+          "text": "to figure out what it did, the worm was pushing forward, ever deeper into NASA's computer network. Every hour NASA spent developing a cure, the worm spent searching, probing, breaking and entering. A day's delay in getting the cure out to all the systems could mean dozens of new worm invasions doing",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 92,
+          "text": "go after the dummy, which could be designed with a hidden bomb. When the worm sniffed out the dummy, and latched onto it, the creature would explode and die. If it worked, the SPAN team would not have to depend on the worm killing itself, as they had during the first invasion. They would have the sa",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 16,
+          "text": "and community, an open-air bazaar full of vitality and the sharing of ideas. For the most part, people trusted their peers within the community and the BBS operators, who were often revered as demigods. It was a happy place. And, in general, it was a safe place, which is perhaps one reason why its v",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 25,
+          "text": "Some had legitimate university computer accounts for their courses, but they kept those accounts clean. A basic rule of the underground, in the words of one hacker, was `Don't foul your own nest'. PI contained a public section and a private one. The public area was like an old-time pub. Anyone could",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 32,
+          "text": "considerable regularity. The group hung out in the City Square after watching a movie, usually a horror film. Nightmare 2. House 3. Titles tended to be a noun followed by a numeral. Once, for a bit of lively variation, they went bowling and drove the other people at the alley nuts. After the early e",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 33,
+          "text": "an invite to the private area required hacking skill or information, and usually a recommendation to Bowen from someone who was already inside. Within the Inner Sanctum, as the private hacking area was called, people could comfortably share information such as opinions of new computer products, tech",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 34,
+          "text": "guess. Almost every hacker interviewed for this book described a vague sense of being somehow outside the innermost circle. They knew it was there, but wasn't sure just what it was. Bowen fielded occasional phone calls on his voice line from wanna-be hackers trying to pry open the door to the Inner ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 42,
+          "text": "tearing off again in search of a new place to hide. Sometimes Mendax went to school. Often he didn't. The school system didn't hold much interest for him. It didn't feed his mind the way Minerva would. They Sydney computer system was a far more interesting place to muck around in than the rural high",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 56,
+          "text": "out of his system. Any line trace, however, had to go through Telecom, which was at that time a separate body from OTC. Telecom, Rosenberg was told, was difficult about these things because of strict privacy laws. So, for the most part, he was left to deal with the hackers on his own. Rosenberg coul",
+          "relevance": 2
+        }
+      ],
+      "shape": "causal",
+      "themes": [
+        "RMIT",
+        "Melbourne",
+        "hacker hub",
+        "AFP"
+      ]
+    },
+    {
+      "id": "secretservice-methods",
+      "question": "How did the US Secret Service investigate hackers like Par?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 68,
+          "text": "to Par, you go through me, he said. Holman did not like that at all. When the Secret Service wanted to talk to someone, they were used to getting their way. He pushed Rosen, but the answer was still no. No no no and no again. Holman had made a mistake. He had assumed that everyone wanted to do busin",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 39,
+          "text": "a number of computer systems there and the Fermilab people were not happy. They called in CIAC, who contacted Oberman with an early morning phone call on 16 October. They wanted him to analyse the WANK worm. They wanted to know how dangerous it was. Most of all, they wanted to know what to do about ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_01.md",
+          "chunk_index": 49,
+          "text": "Mitterand himself had known about the bombing plan\u2014the French were red-faced. Heads rolled. French Defence Minister Charles Hernu was forced to resign. Admiral Pierre Lacoste, director of France's intelligence and covert action bureau, was sacked. France apologised and paid $NZ13 million compensatio",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 1,
+          "text": "of Incident Response and Security Teams.2 FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents. Yet, NASA and the US Department of Energy were half a world away from finding the cre",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 7,
+          "text": "almost impossible to tell where any one attack began and the other ended. Some time after the first attack, DST sent word that certain agents were going to be in Washington DC regarding other matters. They wanted a meeting with the FBI. A representative from the NASA Inspector General's Office would",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 10,
+          "text": "had created the WANK worm. Fingers were pointed, accusations were made, but none stuck. At the end of the day, there was coincidence and innuendo, but not enough evidence to launch a case. Like many Australian hackers, the creator of the WANK worm had emerged from the shadows of the computer undergr",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 28,
+          "text": "children. For the most part, they amused each other. Mainstream and respectful of authority on the surface, Bowen possessed the same streak of anti-establishment views harboured by many in the underground. His choice of name for Zen underlined this. Zen came from the futuristic British TV science fi",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 35,
+          "text": "two had chatted in a friendly fashion on-line, but Bowen didn't give out his details. Nothing could have prepared him for the little kid in the big crash helmet standing by his bike in front of Bowen's house. `Hi!' he squeaked. `I'm the Masked Avenger!' Masked Avenger\u2014a boy perhaps fifteen years old",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 68,
+          "text": "of action. One of the five would leap from the van and open the pod with a key begged, borrowed or stolen from a Telecom technician. The keys seemed easy enough to obtain. The BBSes message boards were rife with gleeful tales of valuable Telecom equipment, such as 500 metres of cable or a pod key, p",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 75,
+          "text": "a national park. Leave it as you find it. While the cream seemed to rise to the top of the hacking hierarchy, it was the scum that floated at the top of the carding community. Few people in the underground typified this more completely than Blue Thunder, who had been hanging around the outskirts of ",
+          "relevance": 2
+        }
+      ],
+      "shape": "entity",
+      "themes": [
+        "Secret Service",
+        "investigation",
+        "cooperation",
+        "Par"
+      ]
+    },
+    {
+      "id": "telsa-not-telstra",
+      "question": "What role did Telecom/Telstra play in Australian hacking incidents?",
+      "gold_paragraphs": [
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 24,
+          "text": "users, up to 200 of whom were `core' users accessing the system regularly. PI had its own dedicated phone line, separate from the house phone so Bowen's parents wouldn't get upset the line was always tied up. Later, he put in four additional phone lines for Zen, which had about 2000 users. Using his",
+          "relevance": 3
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 54,
+          "text": "aspects of the world's financial markets. A number of countries' classified military computer sites only run on X.25. It is considered by many people to be more secure than the Internet or any DECNET system. Minerva allowed incoming callers to pass into the X.25 network\u2014something most Australian uni",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 64,
+          "text": "free and hopefully untraceable call. The purist hacker sees phreaking more as a way of eluding telephone traces than of calling his or her friends around the world for free. The first transition into phreaking and eventually carding happened over a period of about six months in 1988. Early hackers o",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_02.md",
+          "chunk_index": 79,
+          "text": "stay alive, get them out of the house'. After that came the brick through the window. It landed in the back of her TV. Then she woke up one morning to find her phone line dead. Someone had opened the Telecom well in the nature strip across the road and cut out a metre of cable. It meant the phone li",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_03.md",
+          "chunk_index": 16,
+          "text": "of the company's sites. Exploration of all this uncharted territory consumed most of Force's time. There was something cutting-edge, something truly adventurous about finding a new network and carefully piecing together a picture of what the expanding web looked like. He drew detailed pictures and d",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 0,
+          "text": "# Chapter 5: The Holy Grail. CHAPTER 5 \u2014 The Holy Grail. So we came and conquered and found; riches of Commons and Kings. \u2014 from `River Runs Red', Blue Sky Mining. There it was, in black and white. Two articles by Helen Meredith in The Australian in January 1989.2 The whole Australian computer under",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 1,
+          "text": "199 William Street in Melbourne to send a 2600-hertz signal giving them access to a trunk line and ultimately to a managerial access code for Citibank. Sources said last night the hackers had lifted $US563,000 from the US bank and transferred it into several accounts. The money has now been withdraw",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 2,
+          "text": "list card hauls on boards Authorities remain sceptical of the latest reports of an international hacking and phreaking ring and its Australian connection. Yesterday, however, evidence continued to stream into the Melbourne based bulletin boards under suspicion \u2026 In the latest round of bulletin board",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 3,
+          "text": "total of $362018.40! `Let's hear it for our Aussie friends! `I hear they are doing just as well! `They are sending more numbers on the 23rd! Great! `They will be getting 10% as usual\u2026a nice bonus of $36 200.00!' The bulletin board also contained advice for phreakers on using telephones in Telecom's ",
+          "relevance": 2
+        },
+        {
+          "chapter": "chapter_05.md",
+          "chunk_index": 4,
+          "text": "last week took delivery of six months' of evidence from the Pacific Island board and associated boards going by the name of Zen and Megaworks \u2026 The Australian hackers include a number of Melbourne people, some teenagers, suspected or already convicted of crimes including fraud, drug use and car thef",
+          "relevance": 2
+        }
+      ],
+      "shape": "thematic",
+      "themes": [
+        "Telecom",
+        "Telstra",
+        "infrastructure",
+        "Australia"
+      ]
+    }
+  ]
+}

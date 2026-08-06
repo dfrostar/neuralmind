@@ -30,6 +30,14 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### N-16 — Content QA System: Book/Markdown Retrieval (August 2026)
+
+Extends NeuralMind from code-only to long-form content retrieval. Indexes 150K-word books via `neuralmind ingest-content` CLI. 30-query Underground manifest with graded relevance (0-3) per ~150-word chunk. N-15 IR metrics (recall@k, MRR, nDCG@5) + RAGAS faithfulness on compressed context. 7 CI regression gates with per-shape breakdowns (precise/thematic/entity/temporal/causal). Spec: [CONTENT-BENCHMARK-SPEC.md](../specs/CONTENT-BENCHMARK-SPEC.md).
+
+### N-15 — SOTA Retrieval Quality Benchmarks (August 2026)
+
+Graded relevance (0-3) + standard IR metrics (nDCG@5, MRR, recall@k, precision@k) + RAGAS faithfulness scoring on compressed retrieval output. 8 CI regression gates with per-shape breakdowns (focused/cross-file/identity). Zero-tolerance gate catches complete retrieval failures that averaged metrics hide. Consumes existing `ragas.py` stdlib-only judge — no embedding stack required. Spec: [RETRIEVAL-BENCHMARK-SPEC.md](../specs/RETRIEVAL-BENCHMARK-SPEC.md).
+
 ### N-13 — Business-Context Synapse Seeding (August 2026)
 
 `seed_from_documents()` builds deterministic, LLM-free associations between business documents (decisions, SOPs, meeting notes, policies) and your code graph. Compound matches require adjacency in text (not just presence), title-reference cross-linking connects related business docs, and frequency-capped tags prevent common terms from dominating. 56 tests. This is the backbone of the "second brain" expansion (N-06 scope decision).

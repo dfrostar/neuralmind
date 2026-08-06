@@ -788,6 +788,45 @@ and fresh `build .` invocations, not just document ingestion.
 
 ---
 
+## Content Indexing & Retrieval (N-16)
+
+Extends NeuralMind to index **long-form non-code content** (books, documentation, compliance frameworks) and measure retrieval quality using the N-15 benchmark framework.
+
+### Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ingest-content` CLI | `neuralmind/cli.py` | Ingest Markdown chapters into a pure content index |
+| `parse_document()` | `neuralmind/document_ingestion.py` | Parse + chunk documents into ContentNodes |
+| `manifest_v2.json` | `evals/book_retrieval/` | 30-query Underground manifest with graded relevance |
+| `run.py` v2 | `evals/book_retrieval/run.py` | N-15 IR metrics + RAGAS + per-shape breakdown |
+| CI gates | `tests/test_content_benchmark.py` | 7 regression tests with conservative floors |
+
+### Chunking Strategy
+
+Chapters are split into ~150-word overlapping segments (configurable via `--chunk-size` and `--overlap`). Each chunk becomes a `ContentNode` with a unique `doc:` ID. Overlap prevents splitting relevant passages across chunk boundaries.
+
+### Retrieval Flow
+
+1. User runs `neuralmind ingest-content <path>` to index chapters
+2. Each query runs through `nm.query()` → progressive disclosure
+3. Retrieved paragraphs are mapped to gold paragraphs via word-overlap scoring
+4. N-15 IR metrics (recall@k, MRR, nDCG@5) computed against graded relevance
+5. RAGAS faithfulness scored via `fact_recall × (1 - contradiction)` (stdlib-only)
+
+### Per-Shape Breakdown
+
+Separate aggregates for:
+- **precise** — technical details (dates, names, events)
+- **thematic** — cross-chapter themes (motivations, culture)
+- **entity** — character/entity resolution across chapters
+- **temporal** — event sequencing, causation
+- **causal** — why something happened
+
+---
+
+
+
 ## Event Bus and JSONL Bridge (v0.6)
 
 v0.6.0 added a third structural piece: an **event bus** that turns

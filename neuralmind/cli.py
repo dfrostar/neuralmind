@@ -707,6 +707,10 @@ def cmd_benchmark(args):
         _run_public_benchmark(args)
         return
 
+    if getattr(args, "content", False):
+        _run_content_benchmark(args)
+        return
+
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
@@ -924,6 +928,66 @@ def _run_quality_eval(args) -> None:
 
     exit_code = harness.emit(reports, baseline=baseline, as_json=args.json)
     sys.exit(exit_code)
+
+
+def _run_content_benchmark(args) -> None:
+    """`neuralmind benchmark --content` — the N-16 content retrieval benchmark.
+
+    Ingests a book corpus (default: Underground) and runs the N-16 eval.
+    Reports IR metrics + RAGAS faithfulness + CI regression status.
+    """
+    from pathlib import Path
+
+    from evals.book_retrieval.run import run_eval
+
+    content_path = args.content  # Already set by nargs="?" const
+    manifest_path = None
+    if content_path != "evals/book_retrieval/underground/chapters":
+        # Custom path — look for manifest_v2.json in parent dir
+        candidate = Path(content_path).parent / "manifest_v2.json"
+        if candidate.exists():
+            manifest_path = candidate
+
+    print(f"N-16 Content Benchmark")
+    print(f"  Content: {content_path}")
+    print(f"  Manifest: {manifest_path or 'default'}")
+    print()
+
+    report = run_eval(manifest_path=manifest_path, verbose=True)
+
+    if "error" in report:
+        print(f"Error: {report['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check CI floors (matching tests/test_content_benchmark.py)
+    agg = report["aggregates"]
+    floors = {
+        "recall@5": (agg["recall_at_5"], 0.20),
+        "MRR": (agg["mrr"], 0.30),
+        "nDCG@5": (agg["ndcg_at_5"], 0.20),
+        "hit_rate": (agg["hit_rate"], 0.50),
+        "faithfulness": (agg["mean_faithfulness"], 0.0),
+    }
+
+    print()
+    print("CI REGRESSION GATE:")
+    all_pass = True
+    for metric, (actual, floor) in floors.items():
+        passed = actual >= floor
+        status = "PASS" if passed else "FAIL"
+        print(f"  {metric}: {actual:.4f} >= {floor:.2f} [{status}]")
+        if not passed:
+            all_pass = False
+
+    if args.json:
+        report["ci_pass"] = all_pass
+        print(json.dumps(report, indent=2))
+    else:
+        print()
+        print(f"Overall: {'PASS' if all_pass else 'FAIL'}")
+
+    if not all_pass:
+        sys.exit(1)
 
 
 def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
@@ -1782,6 +1846,158 @@ def _scan_files_for_ingest(dir_path: Path) -> list[Path]:
     return files
 
 
+def cmd_ingest_content(args):
+    """Ingest a directory of Markdown chapters into a pure content index.
+
+    Optimized for book/content benchmarking: ingests only .md/.txt files,
+    chunks them with configurable size/overlap, and builds a pure content
+    index (no code nodes). Reports files ingested, total chunks, node count.
+    """
+    import time
+
+    from neuralmind.core import create_mind
+    from neuralmind.document_ingestion import parse_document
+
+    content_path = Path(args.content_path).resolve()
+    if not content_path.exists():
+        print(f"Error: path not found: {content_path}", file=sys.stderr)
+        sys.exit(1)
+
+    quiet = getattr(args, "quiet", False)
+    chunk_size = args.chunk_size
+    overlap = args.overlap
+
+    # Collect files
+    if content_path.is_file():
+        files_to_ingest = [content_path]
+    else:
+        # Only .md and .txt for content indexing
+        files_to_ingest = _scan_files_for_ingest(content_path)
+        files_to_ingest = [
+            f for f in files_to_ingest if f.suffix.lower() in (".md", ".markdown", ".mkd", ".txt", ".text")
+        ]
+
+    if not files_to_ingest:
+        if not quiet:
+            print("No supported content files found (.md, .txt).")
+        sys.exit(0)
+
+    # Resolve project root
+    project_path = _resolve_project_path(content_path, args)
+    if project_path is None:
+        # Use content_path's parent as project if it's a directory
+        project_path = content_path.parent if content_path.is_dir() else content_path.parent
+
+    if not quiet:
+        print(f"Content indexer: {len(files_to_ingest)} file(s) from {content_path}")
+        print(f"Chunk size: {chunk_size}, overlap: {overlap}")
+        print(f"Project: {project_path}")
+        print()
+
+    # Create a seed Python file if the project has no code files (required for build)
+    seed_file = project_path / "_content_seed.py"
+    if not any(project_path.rglob("*.py")):
+        seed_file.write_text("# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n")
+
+    mind = create_mind(str(project_path), auto_build=True)
+    if not mind._built:
+        print("Error: failed to build NeuralMind index.", file=sys.stderr)
+        sys.exit(1)
+
+    total_nodes = 0
+    total_chunks = 0
+    total_embed_time = 0.0
+    errors: list[tuple[str, str]] = []
+    wall_start = time.time()
+
+    for idx, fpath in enumerate(files_to_ingest, 1):
+        if not quiet and len(files_to_ingest) > 1:
+            rel = fpath.relative_to(content_path) if content_path.is_dir() else fpath.name
+            print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        try:
+            content_nodes = [
+                n.to_graph_node()
+                for n in parse_document(
+                    fpath,
+                    root=project_path,
+                    content_type="auto",
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                )
+            ]
+            if not content_nodes:
+                errors.append((str(fpath), "No content extracted"))
+                if not quiet and len(files_to_ingest) > 1:
+                    print(" no content")
+                continue
+
+            # Sync to embedder nodes list (avoid duplicates)
+            existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+            new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+            mind.embedder.nodes.extend(new_nodes)
+
+            # Embed
+            embed_start = time.time()
+            stats = mind.embedder.embed_content(new_nodes)
+            embed_elapsed = time.time() - embed_start
+
+            n = len(new_nodes) if new_nodes else len(content_nodes)
+            total_nodes += n
+            total_chunks += len(content_nodes)
+            total_embed_time += embed_elapsed
+
+            if not quiet and len(files_to_ingest) > 1:
+                print(f" {n} node(s)")
+
+        except (ValueError, RuntimeError) as e:
+            errors.append((str(fpath), str(e)))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {e}")
+                else:
+                    print(f"Error: {e}", file=sys.stderr)
+        except Exception as e:
+            errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {type(e).__name__}: {e}")
+                else:
+                    print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    wall_time = time.time() - wall_start
+
+    if args.json:
+        output = {
+            "success": len(errors) == 0,
+            "files_processed": len(files_to_ingest),
+            "total_chunks": total_chunks,
+            "total_nodes": total_nodes,
+            "wall_time_seconds": round(wall_time, 2),
+            "embed_time_seconds": round(total_embed_time, 2),
+            "errors": [{"file": str(f), "error": e} for f, e in errors],
+        }
+        print(json.dumps(output, indent=2))
+        if errors:
+            sys.exit(1)
+        return
+
+    if errors:
+        print(f"\n{len(errors)} error(s):", file=sys.stderr)
+        for f, err in errors[:10]:
+            print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+        sys.exit(1)
+
+    if not quiet:
+        print()
+        print(f"Ingested {len(files_to_ingest)} file(s) → {total_chunks} chunks → {total_nodes} nodes")
+        print(f"Wall time: {wall_time:.1f}s | Embed time: {total_embed_time:.2f}s")
+
+
 def cmd_ingest(args):
     """Ingest documents (PDF/Markdown/text) into the knowledge graph.
 
@@ -2003,16 +2219,16 @@ def cmd_ingest(args):
             stats = mind.embedder.embed_content(new_nodes)
             embed_elapsed = time.time() - embed_start
 
-            # Count only actually-new nodes to avoid overcounting on dedup
-            n = len(new_nodes) if new_nodes else len(content_nodes)
+            # Count actually-added nodes from embed stats (M1 fix: was overstating)
+            added = stats.get("added", 0)
+            n = added if added > 0 else len(new_nodes) if new_nodes else len(content_nodes)
             total_nodes += n
+            total_chunks += len(content_nodes)
             total_embed_time += embed_elapsed
 
             if not quiet and len(files_to_ingest) > 1:
-                added = stats.get("added", 0)
                 skipped = stats.get("skipped", 0)
                 print(f" {n} node(s) (+{added}, ~{skipped})")
-
         except (ValueError, RuntimeError) as e:
             errors.append((str(fpath), str(e)))
             if not quiet:
@@ -3679,6 +3895,12 @@ def main():
         "No data is uploaded — you copy-paste the output into an issue or PR.",
     )
     bench_p.add_argument(
+        "--content",
+        nargs="?",
+        const="evals/book_retrieval/underground/chapters",
+        help="Content benchmark: ingest + evaluate a book corpus. Optionally takes a path (default: Underground book).",
+    )
+    bench_p.add_argument(
         "--project-name", help="Project name for contribution (optional; prompts on TTY)"
     )
     bench_p.add_argument("--language", help="Primary language for contribution (optional)")
@@ -3810,6 +4032,31 @@ def main():
         "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
     )
     ingest_p.set_defaults(func=cmd_ingest)
+
+    # ingest-content: dedicated content indexer for books/markdown corpora
+    ingest_content_p = subparsers.add_parser(
+        "ingest-content",
+        help="Ingest a directory of Markdown chapters into a pure content index (for book/content benchmarking)",
+    )
+    ingest_content_p.add_argument(
+        "content_path",
+        help="Path to a directory of .md files (chapters) or a single file",
+    )
+    ingest_content_p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="Max characters per chunk (default: 500)",
+    )
+    ingest_content_p.add_argument(
+        "--overlap",
+        type=int,
+        default=50,
+        help="Character overlap between chunks (default: 50)",
+    )
+    ingest_content_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
+    ingest_content_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    ingest_content_p.set_defaults(func=cmd_ingest_content)
 
     learn_p = subparsers.add_parser(
         "learn", help="Alias for 'ingest' — ingest documents into the knowledge graph"

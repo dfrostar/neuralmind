@@ -285,6 +285,8 @@ with `python -m tests.benchmark.run`:
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
 - **6.1× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
+- **Retrieval quality (N-15):** graded relevance (0-3), nDCG@5, MRR, recall@k, precision@k + RAGAS faithfulness scoring — 8 CI regression gates, per-shape breakdowns.
+- **Content QA (N-16):** book/markdown content retrieval — 30 queries, 11 chapters, 150K-word corpus. N-15 IR metrics + RAGAS on long-form content. `ingest-content` CLI + `benchmark --content` end-to-end command.
 - Backend parity gate: the built-in tree-sitter backend is held within
   tolerance of the legacy graphify backend on every PR.
 
