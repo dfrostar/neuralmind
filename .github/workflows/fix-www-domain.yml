@@ -20,6 +20,9 @@ name: Fix www custom domain
 on:
   workflow_dispatch:
 
+# The job only talks to the Cloudflare API; the GITHUB_TOKEN needs nothing.
+permissions: {}
+
 jobs:
   add-www-domain:
     runs-on: ubuntu-latest
