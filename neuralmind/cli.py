@@ -946,9 +946,11 @@ def _run_content_benchmark(args) -> None:
     # 1. Parent of chapters dir (alongside underground/)
     # 2. Parent of book dir (evals/book_retrieval/)
     manifest_path = None
-    chapters_parent = Path(content_path).parent if Path(content_path).is_dir() else Path(content_path).parent
+    chapters_parent = (
+        Path(content_path).parent if Path(content_path).is_dir() else Path(content_path).parent
+    )
     book_parent = chapters_parent.parent
-    
+
     for candidate in [
         chapters_parent / "manifest_v2.json",
         book_parent / "manifest_v2.json",

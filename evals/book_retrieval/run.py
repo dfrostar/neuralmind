@@ -24,7 +24,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 # N-15 IR metrics (stdlib-only)
 sys.path.insert(0, str(PROJECT_ROOT / "tests"))
-from benchmark.metrics import recall_at_k, precision_at_k, mrr, ndcg_at_k, hit_rate
+from benchmark.metrics import hit_rate, mrr, ndcg_at_k, precision_at_k, recall_at_k
 
 
 def load_manifest(manifest_path: Path | None = None) -> dict[str, Any]:
@@ -239,7 +239,9 @@ def run_eval(
                 nm_result = mind.query(q_text)
                 nm_context = nm_result.context if hasattr(nm_result, "context") else str(nm_result)
                 nm_tokens = (
-                    nm_result.budget.total if hasattr(nm_result, "budget") else len(nm_context.split())
+                    nm_result.budget.total
+                    if hasattr(nm_result, "budget")
+                    else len(nm_context.split())
                 )
             except Exception as e:
                 nm_context = ""
@@ -254,7 +256,9 @@ def run_eval(
             ir_metrics = compute_ir_metrics(retrieved_paragraphs, gold_paragraphs_normalized)
 
             # Compute RAGAS faithfulness
-            ragas_result = compute_faithfulness(q_text, retrieved_paragraphs, gold_paragraphs_normalized)
+            ragas_result = compute_faithfulness(
+                q_text, retrieved_paragraphs, gold_paragraphs_normalized
+            )
 
             naive_tokens = len(full_text.split())
             total_tokens_naive += naive_tokens
@@ -287,10 +291,16 @@ def run_eval(
 
         # Aggregate
         hits = sum(1 for r in results if r["ir_metrics"]["hit_rate"] > 0)
-        avg_recall_5 = sum(r["ir_metrics"]["recall_at_5"] for r in results) / len(results) if results else 0
+        avg_recall_5 = (
+            sum(r["ir_metrics"]["recall_at_5"] for r in results) / len(results) if results else 0
+        )
         avg_mrr = sum(r["ir_metrics"]["mrr"] for r in results) / len(results) if results else 0
-        avg_ndcg_5 = sum(r["ir_metrics"]["ndcg_at_5"] for r in results) / len(results) if results else 0
-        avg_faithfulness = sum(r["ragas"]["faithfulness"] for r in results) / len(results) if results else 0
+        avg_ndcg_5 = (
+            sum(r["ir_metrics"]["ndcg_at_5"] for r in results) / len(results) if results else 0
+        )
+        avg_faithfulness = (
+            sum(r["ragas"]["faithfulness"] for r in results) / len(results) if results else 0
+        )
         avg_reduction = sum(r["reduction"] for r in results) / len(results) if results else 0
 
         # Per-shape breakdown
@@ -305,11 +315,15 @@ def run_eval(
         for shape, shape_results in by_shape.items():
             shape_aggregates[shape] = {
                 "count": len(shape_results),
-                "recall_at_5": sum(r["ir_metrics"]["recall_at_5"] for r in shape_results) / len(shape_results),
+                "recall_at_5": sum(r["ir_metrics"]["recall_at_5"] for r in shape_results)
+                / len(shape_results),
                 "mrr": sum(r["ir_metrics"]["mrr"] for r in shape_results) / len(shape_results),
-                "ndcg_at_5": sum(r["ir_metrics"]["ndcg_at_5"] for r in shape_results) / len(shape_results),
-                "hit_rate": sum(r["ir_metrics"]["hit_rate"] for r in shape_results) / len(shape_results),
-                "mean_faithfulness": sum(r["ragas"]["faithfulness"] for r in shape_results) / len(shape_results),
+                "ndcg_at_5": sum(r["ir_metrics"]["ndcg_at_5"] for r in shape_results)
+                / len(shape_results),
+                "hit_rate": sum(r["ir_metrics"]["hit_rate"] for r in shape_results)
+                / len(shape_results),
+                "mean_faithfulness": sum(r["ragas"]["faithfulness"] for r in shape_results)
+                / len(shape_results),
             }
 
         return {
