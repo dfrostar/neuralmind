@@ -261,14 +261,29 @@ def run_eval(
                     if hasattr(nm_result, "budget")
                     else len(nm_context.split())
                 )
+                # Use L3 search hits (relevance-ranked) for IR metrics.
+                # The assembled context (nm_context) is a layered disclosure
+                # document (L0→L3), NOT a ranked list — using it for recall@5/
+                # MRR/nDCG measures disclosure-layer position, not retrieval
+                # quality. top_search_hits are the actual retrieval results
+                # in descending relevance order.
+                search_hits = getattr(nm_result, "top_search_hits", None)
             except Exception as e:
                 nm_context = ""
                 nm_tokens = 0
+                search_hits = None
                 if verbose:
                     print(f"  Query {query['id']} failed: {e}")
 
-            # Extract paragraphs from context
-            retrieved_paragraphs = extract_paragraphs_from_context(nm_context)
+            # Extract ranked paragraphs from L3 search hits (relevance order)
+            # Fall back to legacy context splitting if unavailable
+            if search_hits:
+                retrieved_paragraphs = [
+                    hit.get("document", "") for hit in search_hits
+                    if hit.get("document")
+                ]
+            else:
+                retrieved_paragraphs = extract_paragraphs_from_context(nm_context)
 
             # Compute N-15 IR metrics
             ir_metrics = compute_ir_metrics(retrieved_paragraphs, gold_paragraphs_normalized)
