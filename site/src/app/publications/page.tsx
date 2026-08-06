@@ -46,6 +46,13 @@ export const metadata = {
 
 const publications = [
     {
+        slug: 'synapse-learning-loop',
+        title: 'Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation',
+        type: 'Defensive Publication',
+        date: 'August 6, 2026',
+        description: 'The NeuralMind synapse learning loop: debounced file-edit co-activation strengthens weighted edges, wall-clock half-life decay forgets, long-term potentiation preserves habitual associations, and hub-normalized spreading activation recalls. Local-first, telemetry-free.',
+    },
+    {
         slug: 'claude-teams-deep-dive',
         title: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention',
         type: 'Research Report',
