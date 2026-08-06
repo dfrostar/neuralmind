@@ -1,0 +1,106 @@
+name: Fix www custom domain
+
+# One-off remediation: re-attach www.neuralmind.uk to the Cloudflare Pages
+# project "neuralmind-marketing" so www serves the same site as the apex.
+# The www DNS record was left pointing at GitHub Pages after the site moved
+# to Cloudflare Pages, which made www.neuralmind.uk return a hard 404.
+#
+# Uses the same repository secrets as deploy-site.yml:
+#   CLOUDFLARE_API_TOKEN   - "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#
+# The DNS-repair step is best-effort: it only works if the token also has
+# Zone:DNS:Edit. If it doesn't, the job prints the exact record to change
+# in the dashboard instead of failing.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  add-www-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attach www.neuralmind.uk to the Pages project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          domains_api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/neuralmind-marketing/domains"
+
+          echo "== Custom domains currently on the project =="
+          curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
+
+          echo "== Adding www.neuralmind.uk =="
+          resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+            --data '{"name":"www.neuralmind.uk"}' "${domains_api}")
+          echo "${resp}" | jq .
+          if [ "$(echo "${resp}" | jq -r '.success')" != "true" ]; then
+            msg=$(echo "${resp}" | jq -r '[.errors[]?.message] | join("; ")')
+            case "${msg}" in
+              *already*|*exists*) echo "Domain already attached; continuing." ;;
+              *) echo "Failed to add domain: ${msg}" >&2; exit 1 ;;
+            esac
+          fi
+
+      - name: Repair www DNS record (best-effort, needs Zone DNS Edit)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          zone_resp=$(curl -sS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones?name=neuralmind.uk")
+          zone_id=$(echo "${zone_resp}" | jq -r '.result[0]?.id // empty')
+          if [ -z "${zone_id}" ]; then
+            echo "Token cannot read the neuralmind.uk zone (no Zone permission)."
+            echo "MANUAL STEP: in the Cloudflare dashboard set DNS record:"
+            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
+            exit 0
+          fi
+
+          rec=$(curl -sS "${auth[@]}" \
+            "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=www.neuralmind.uk")
+          rec_id=$(echo "${rec}" | jq -r '.result[0]?.id // empty')
+          echo "Current www record: $(echo "${rec}" | jq -c '.result[0]? | {type, content, proxied}')"
+
+          body='{"type":"CNAME","name":"www","content":"neuralmind-marketing.pages.dev","proxied":true,"ttl":1}'
+          if [ -n "${rec_id}" ]; then
+            upd=$(curl -sS -X PUT "${auth[@]}" -H "Content-Type: application/json" \
+              --data "${body}" \
+              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records/${rec_id}")
+          else
+            upd=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+              --data "${body}" \
+              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records")
+          fi
+          echo "${upd}" | jq .
+          if [ "$(echo "${upd}" | jq -r '.success')" != "true" ]; then
+            echo "Could not update DNS with this token."
+            echo "MANUAL STEP: in the Cloudflare dashboard set DNS record:"
+            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
+            exit 0
+          fi
+          echo "www DNS record now points at the Pages project."
+
+      - name: Verify www serves the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}")
+          domain_api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/pages/projects/neuralmind-marketing/domains/www.neuralmind.uk"
+          for i in $(seq 1 30); do
+            st=$(curl -sS "${auth[@]}" "${domain_api}" | jq -r '.result.status // "unknown"')
+            code=$(curl -sS -o /dev/null -w "%{http_code}" https://www.neuralmind.uk || echo 000)
+            echo "attempt ${i}: domain status=${st}, https://www.neuralmind.uk -> HTTP ${code}"
+            if [ "${code}" = "200" ]; then
+              echo "www.neuralmind.uk is serving the site."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "www not serving 200 yet. Domain validation/DNS may still be propagating,"
+          echo "or the DNS record still needs the manual change printed above."
+          exit 1
