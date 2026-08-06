@@ -233,6 +233,22 @@ html, body {
 .savings-card { border-left: 3px solid var(--green); }
 .synopsis-card { border-left: 3px solid var(--synapse); }
 .ingestion-card { border-left: 3px solid var(--accent-warm); }
+.domains-card { border-left: 3px solid var(--structural); }
+.cross-domain-card { border-left: 3px solid var(--accent-warm); }
+
+/* Domain dots */
+.domain-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.domain-dot.code { background: var(--green); }
+.domain-dot.document { background: var(--accent); }
+.domain-dot.decision { background: var(--accent-warm); }
+.domain-dot.unknown { background: var(--structural); }
 
 /* Status badges */
 .status-built {

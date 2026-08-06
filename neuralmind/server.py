@@ -29,6 +29,8 @@ from urllib.parse import parse_qs, urlparse
 
 from .core import NeuralMind
 from .dashboard import (
+    cross_domains,
+    domains,
     full_dashboard,
     ingestion_status,
     performance_summary,
@@ -424,6 +426,18 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(data, set_cookie=new_cookie)
         elif route == "/api/dashboard/savings":
             data = savings_summary(project_path=type(self).mind.project_path)
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/domains":
+            data = domains(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
+            self._send_json(data, set_cookie=new_cookie)
+        elif route == "/api/dashboard/cross-domains":
+            data = cross_domains(
+                mind=type(self).mind,
+                project_path=type(self).mind.project_path,
+            )
             self._send_json(data, set_cookie=new_cookie)
         elif route == "/api/dashboard/performance":
             days = parse_qs(parsed.query).get("days", ["7"])[0]

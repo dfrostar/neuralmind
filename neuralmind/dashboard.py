@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .domains import cross_domain_edges, domain_breakdown
 from .metrics_pipeline import MetricsCollector
 from .savings import compute_savings
 
@@ -263,6 +264,52 @@ def recent_queries(mind=None, project_path: str | Path | None = None, n: int = 2
         return []
 
 
+def domains(
+    mind=None, project_path: str | Path | None = None
+) -> dict[str, int]:
+    """Return domain breakdown from synapse nodes.
+
+    Read-only: uses the SynapseStore to enumerate all distinct nodes and
+    classifies each as code/document/decision/unknown. No writes, no side
+    effects, fail-open (missing data → empty dict).
+    """
+    path = Path(project_path) if project_path else (mind.project_path if mind else Path("."))
+    synapse_db = path / ".neuralmind" / "synapses.db"
+    if not synapse_db.exists():
+        return {}
+
+    try:
+        from .synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(path), namespace="personal")
+        breakdown = domain_breakdown(store)
+        breakdown["total"] = sum(breakdown.values())
+        return breakdown
+    except Exception:
+        return {}
+
+
+def cross_domains(
+    mind=None, project_path: str | Path | None = None
+) -> dict[str, int]:
+    """Return cross-domain edge counts (pairs spanning two known domains).
+
+    Read-only: uses the SynapseStore + domain classifier. Fail-open.
+    """
+    path = Path(project_path) if project_path else (mind.project_path if mind else Path("."))
+    synapse_db = path / ".neuralmind" / "synapses.db"
+    if not synapse_db.exists():
+        return {}
+
+    try:
+        from .synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(path), namespace="personal")
+        return cross_domain_edges(store)
+    except Exception:
+        return {}
+
+
 def communities(mind=None, project_path: str | Path | None = None) -> list[dict]:
     """Community size distribution with top labels per community."""
     if mind is not None and mind._built:
@@ -315,6 +362,8 @@ def full_dashboard(
         "status": project_status(mind, path),
         "synapses": synapse_summary(mind, path),
         "ingestion": ingestion_status(mind, path),
+        "domains": domains(mind, path),
+        "cross_domains": cross_domains(mind, path),
         "savings": savings_summary(path),
         "performance": performance_summary(path, days=days),
         "queries": {"recent": recent_queries(mind, path)},

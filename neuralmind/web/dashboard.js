@@ -60,6 +60,7 @@
     renderOverview(data);
     renderSynapses(data);
     renderIngestion(data);
+    renderDomains(data);
     renderPerformance(data);
     renderQueries(data);
     renderCommunities(data);
@@ -109,6 +110,61 @@
 
     // Project name
     setText('project-name', status.project || '');
+  }
+
+  // Domain taxonomy — cards in the overview grid
+  function renderDomains(data) {
+    const domains = data.domains || {};
+    const crossDomains = data.cross_domains || {};
+
+    // Domain cards: one per non-total key
+    const domainList = document.getElementById('domains-list');
+    if (!domainList) return;
+    const domainKeys = Object.keys(domains).filter(k => k !== 'total').sort((a, b) => domains[b] - domains[a]);
+    const total = domains.total || 1;
+
+    if (domainKeys.length === 0) {
+      domainList.innerHTML = '<div class="empty-state">No domain data — build index first</div>';
+    } else {
+      domainList.innerHTML = domainKeys.map(d => {
+        const count = domains[d];
+        const pct = ((count / total) * 100).toFixed(1);
+        const safeClass = /^[a-zA-Z0-9_-]+$/.test(d) ? d : 'unknown';
+        return `
+          <div class="list-item">
+            <span class="list-label"><span class="domain-dot ${safeClass}"></span>${escapeHtml(d)}</span>
+            <span class="list-meta">${fmtNumber(count)} nodes (${pct}%)</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Cross-domain edges
+    const crossList = document.getElementById('cross-domains-list');
+    if (!crossList) return;
+    const crossKeys = Object.keys(crossDomains);
+    if (crossKeys.length === 0) {
+      crossList.innerHTML = '<div class="empty-state">No cross-domain edges</div>';
+    } else {
+      crossList.innerHTML = crossKeys
+        .sort((a, b) => crossDomains[b] - crossDomains[a])
+        .map(pair => {
+          const parts = pair.split('_');
+          if (parts.length !== 2 || !parts[0] || !parts[1]) return '';
+          const safeA = /^[a-zA-Z0-9_-]+$/.test(parts[0]) ? parts[0] : 'unknown';
+          const safeB = /^[a-zA-Z0-9_-]+$/.test(parts[1]) ? parts[1] : 'unknown';
+          return `
+            <div class="list-item">
+              <span class="list-label">
+                <span class="domain-dot ${safeA}"></span>${escapeHtml(parts[0])}
+                ↔
+                <span class="domain-dot ${safeB}"></span>${escapeHtml(parts[1])}
+              </span>
+              <span class="list-meta">${fmtNumber(crossDomains[pair])} edges</span>
+            </div>
+          `;
+        }).join('');
+    }
   }
 
   // Synapses / Memory
@@ -339,8 +395,12 @@
   async function load() {
     try {
       const data = await fetchDashboard();
-      render(data);
       document.getElementById('loading').classList.add('hidden');
+      try {
+        render(data);
+      } catch (err) {
+        showError('Failed to render dashboard: ' + err.message);
+      }
     } catch (err) {
       document.getElementById('loading').textContent = 'Failed to load dashboard';
       showError('Failed to load dashboard: ' + err.message);
