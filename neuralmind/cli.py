@@ -707,7 +707,7 @@ def cmd_benchmark(args):
         _run_public_benchmark(args)
         return
 
-    if getattr(args, "content", False):
+    if getattr(args, "content", False) is True:
         _run_content_benchmark(args)
         return
 
@@ -948,7 +948,7 @@ def _run_content_benchmark(args) -> None:
         if candidate.exists():
             manifest_path = candidate
 
-    print(f"N-16 Content Benchmark")
+    print("N-16 Content Benchmark")
     print(f"  Content: {content_path}")
     print(f"  Manifest: {manifest_path or 'default'}")
     print()
@@ -1874,7 +1874,9 @@ def cmd_ingest_content(args):
         # Only .md and .txt for content indexing
         files_to_ingest = _scan_files_for_ingest(content_path)
         files_to_ingest = [
-            f for f in files_to_ingest if f.suffix.lower() in (".md", ".markdown", ".mkd", ".txt", ".text")
+            f
+            for f in files_to_ingest
+            if f.suffix.lower() in (".md", ".markdown", ".mkd", ".txt", ".text")
         ]
 
     if not files_to_ingest:
@@ -1897,7 +1899,9 @@ def cmd_ingest_content(args):
     # Create a seed Python file if the project has no code files (required for build)
     seed_file = project_path / "_content_seed.py"
     if not any(project_path.rglob("*.py")):
-        seed_file.write_text("# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n")
+        seed_file.write_text(
+            "# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n"
+        )
 
     mind = create_mind(str(project_path), auto_build=True)
     if not mind._built:
@@ -1939,7 +1943,7 @@ def cmd_ingest_content(args):
 
             # Embed
             embed_start = time.time()
-            stats = mind.embedder.embed_content(new_nodes)
+            mind.embedder.embed_content(new_nodes)
             embed_elapsed = time.time() - embed_start
 
             n = len(new_nodes) if new_nodes else len(content_nodes)
@@ -1994,7 +1998,9 @@ def cmd_ingest_content(args):
 
     if not quiet:
         print()
-        print(f"Ingested {len(files_to_ingest)} file(s) → {total_chunks} chunks → {total_nodes} nodes")
+        print(
+            f"Ingested {len(files_to_ingest)} file(s) → {total_chunks} chunks → {total_nodes} nodes"
+        )
         print(f"Wall time: {wall_time:.1f}s | Embed time: {total_embed_time:.2f}s")
 
 
@@ -2223,7 +2229,6 @@ def cmd_ingest(args):
             added = stats.get("added", 0)
             n = added if added > 0 else len(new_nodes) if new_nodes else len(content_nodes)
             total_nodes += n
-            total_chunks += len(content_nodes)
             total_embed_time += embed_elapsed
 
             if not quiet and len(files_to_ingest) > 1:
@@ -4055,7 +4060,9 @@ def main():
         help="Character overlap between chunks (default: 50)",
     )
     ingest_content_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
-    ingest_content_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    ingest_content_p.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress progress output"
+    )
     ingest_content_p.set_defaults(func=cmd_ingest_content)
 
     learn_p = subparsers.add_parser(

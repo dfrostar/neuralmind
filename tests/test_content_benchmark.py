@@ -13,7 +13,6 @@ Floor rationale:
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
@@ -59,7 +58,7 @@ def content_benchmark_results():
         pytest.skip("SKIP_CONTENT_BENCHMARK=1")
 
     try:
-        import neuralmind
+        import neuralmind  # noqa: F401
     except ImportError:
         pytest.skip("neuralmind not installed")
 

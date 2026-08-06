@@ -93,7 +93,6 @@ def extract_keywords(text: str) -> set[str]:
         "may",
         "might",
         "must",
-        "shall",
         "than",
         "then",
         "too",
@@ -120,19 +119,15 @@ def extract_keywords(text: str) -> set[str]:
         "being",
         "am",
         "is",
-        "are",
-        "was",
-        "were",
         "be",
-        "been",
-        "had",
-        "has",
         "having",
     }
-    return set(w for w in words if w not in stopwords)
+    return {w for w in words if w not in stopwords}
 
 
-def score_chunk_relevance(chunk: str, query_keywords: set[str], gold_keywords: set[str], gold_phrases: list[str]) -> int:
+def score_chunk_relevance(
+    chunk: str, query_keywords: set[str], gold_keywords: set[str], gold_phrases: list[str]
+) -> int:
     """Score a chunk's relevance to a query based on keyword overlap.
 
     Uses a more discriminating scoring function that ensures varied relevance.
@@ -142,23 +137,38 @@ def score_chunk_relevance(chunk: str, query_keywords: set[str], gold_keywords: s
     if not chunk_words:
         return 0
 
-    # Direct gold paragraph text matching (high confidence)
-    # Check for phrases from the original gold paragraphs
-    q_lower = chunk.lower()
-    
     # Key entity names that indicate relevance
     key_entities = {
-        "wank", "worm", "nasa", "first", "australia", "australian",
-        "phoenix", "pad", "gandalf", "par", "force", "anthrax",
-        "midnight", "oil", "freekers", "citibank", "rmit", "span",
-        "decnet", "hepgal", "telstra", "telecom", "deccnet",
+        "wank",
+        "worm",
+        "nasa",
+        "first",
+        "australia",
+        "australian",
+        "phoenix",
+        "pad",
+        "gandalf",
+        "par",
+        "force",
+        "anthrax",
+        "midnight",
+        "oil",
+        "freekers",
+        "citibank",
+        "rmit",
+        "span",
+        "decnet",
+        "hepgal",
+        "telstra",
+        "telecom",
+        "deccnet",
     }
-    
+
     # Strong match: contains key terms AND directly addresses the question
     entity_overlap = len(chunk_words & key_entities)
     query_overlap = len(chunk_words & query_keywords)
     gold_overlap = len(chunk_words & gold_keywords)
-    
+
     # Check for direct phrase matches from gold paragraphs (strong signal)
     phrase_matches = 0
     for phrase in gold_phrases:
@@ -166,17 +176,17 @@ def score_chunk_relevance(chunk: str, query_keywords: set[str], gold_keywords: s
         if len(words) >= 3:
             # Check if at least 3 consecutive words appear in chunk
             for i in range(len(words) - 2):
-                trigram = " ".join(words[i:i+3])
+                trigram = " ".join(words[i : i + 3])
                 if trigram in chunk_lower:
                     phrase_matches += 1
                     break
-    
+
     # Score based on multiple signals
     if phrase_matches >= 2 or (gold_overlap >= 8 and query_overlap >= 4):
         return 3  # Essential: contains direct phrase matches or very high overlap
-    elif phrase_matches >= 1 or gold_overlap >= 5 or (entity_overlap >= 4 and query_overlap >= 2):
+    if phrase_matches >= 1 or gold_overlap >= 5 or (entity_overlap >= 4 and query_overlap >= 2):
         return 2  # Relevant: contains some gold terms or entity overlap
-    elif entity_overlap >= 2 or query_overlap >= 2:
+    if entity_overlap >= 2 or query_overlap >= 2:
         return 1  # Tangential: mentions related entities
     return 0
 
@@ -184,10 +194,19 @@ def score_chunk_relevance(chunk: str, query_keywords: set[str], gold_keywords: s
 def determine_query_shape(query: dict) -> str:
     """Determine the query shape based on question content."""
     q = query["question"].lower()
-    themes = [t.lower() for t in query.get("themes", [])]
 
     # Check for temporal patterns
-    temporal_words = ["when", "before", "after", "during", "timeline", "sequence", "first", "last", "then"]
+    temporal_words = [
+        "when",
+        "before",
+        "after",
+        "during",
+        "timeline",
+        "sequence",
+        "first",
+        "last",
+        "then",
+    ]
     if any(w in q for w in temporal_words):
         return "temporal"
 
@@ -222,12 +241,14 @@ def build_manifest_v2():
     all_chunks = []
     for ch_name, chunks in chapters.items():
         for i, chunk in enumerate(chunks):
-            all_chunks.append({
-                "chapter": ch_name,
-                "chunk_index": i,
-                "text": chunk,
-                "keywords": extract_keywords(chunk),
-            })
+            all_chunks.append(
+                {
+                    "chapter": ch_name,
+                    "chunk_index": i,
+                    "text": chunk,
+                    "keywords": extract_keywords(chunk),
+                }
+            )
 
     print(f"Total chunks: {len(all_chunks)}")
 
@@ -246,12 +267,14 @@ def build_manifest_v2():
         for chunk in all_chunks:
             score = score_chunk_relevance(chunk["text"], q_keywords, gold_keywords, gold_phrases)
             if score > 0:
-                chunk_scores.append({
-                    "chapter": chunk["chapter"],
-                    "chunk_index": chunk["chunk_index"],
-                    "text": chunk["text"][:300],  # Truncate for manifest
-                    "relevance": score,
-                })
+                chunk_scores.append(
+                    {
+                        "chapter": chunk["chapter"],
+                        "chunk_index": chunk["chunk_index"],
+                        "text": chunk["text"][:300],  # Truncate for manifest
+                        "relevance": score,
+                    }
+                )
 
         # Sort by relevance descending
         chunk_scores.sort(key=lambda x: -x["relevance"])
@@ -269,17 +292,20 @@ def build_manifest_v2():
         # Determine query shape
         shape = determine_query_shape(query)
 
-        v2_queries.append({
-            "id": query["id"],
-            "question": query["question"],
-            "gold_paragraphs": top_chunks,
-            "shape": shape,
-            "themes": query.get("themes", []),
-        })
+        v2_queries.append(
+            {
+                "id": query["id"],
+                "question": query["question"],
+                "gold_paragraphs": top_chunks,
+                "shape": shape,
+                "themes": query.get("themes", []),
+            }
+        )
 
     # Write manifest v2
     manifest_v2 = {
-        "_about": manifest.get("_about", "") + " v2: Added graded relevance (0-3) per chunk, query shapes.",
+        "_about": manifest.get("_about", "")
+        + " v2: Added graded relevance (0-3) per chunk, query shapes.",
         "version": 2,
         "oracle": "paragraph",
         "book": manifest.get("book", {}),

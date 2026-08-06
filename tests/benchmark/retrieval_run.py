@@ -20,7 +20,6 @@ copy the fixture to tmp_path first.
 from __future__ import annotations
 
 import json
-import os
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -38,6 +37,7 @@ REPORT_PATH = REPO_ROOT / "tests" / "benchmark" / "retrieval_report.md"
 @dataclass
 class QueryMetrics:
     """Per-query retrieval quality metrics."""
+
     id: str
     question: str
     shape: str
@@ -58,6 +58,7 @@ class QueryMetrics:
 @dataclass
 class RetrievalResults:
     """Aggregated retrieval benchmark results."""
+
     version: int = 1
     timestamp: float = 0.0
     config: dict = field(default_factory=dict)
@@ -115,6 +116,8 @@ def _compute_metrics(
     context: str,
 ) -> dict:
     """Compute all IR metrics + RAGAS faithfulness for a single query."""
+    from neuralmind.ragas import contradiction_score as ragas_contradiction_score
+    from neuralmind.ragas import fact_recall as ragas_fact_recall
     from tests.benchmark.metrics import (
         hit_rate,
         mrr,
@@ -122,8 +125,6 @@ def _compute_metrics(
         precision_at_k,
         recall_at_k,
     )
-    from neuralmind.ragas import fact_recall as ragas_fact_recall
-    from neuralmind.ragas import contradiction_score as ragas_contradiction_score
 
     relevant = {k for k, v in relevance.items() if v > 0}
 
@@ -152,14 +153,18 @@ def _aggregate_metrics(all_metrics: list[QueryMetrics]) -> dict:
         return {}
 
     keys = [
-        "recall_at_1", "recall_at_3", "recall_at_5",
-        "precision_at_5", "mrr", "ndcg_at_5", "hit_rate",
-        "faithfulness", "fact_recall", "contradiction",
+        "recall_at_1",
+        "recall_at_3",
+        "recall_at_5",
+        "precision_at_5",
+        "mrr",
+        "ndcg_at_5",
+        "hit_rate",
+        "faithfulness",
+        "fact_recall",
+        "contradiction",
     ]
-    return {
-        k: round(sum(getattr(m, k) for m in all_metrics) / len(all_metrics), 4)
-        for k in keys
-    }
+    return {k: round(sum(getattr(m, k) for m in all_metrics) / len(all_metrics), 4) for k in keys}
 
 
 def _aggregate_by_shape(all_metrics: list[QueryMetrics]) -> dict:
@@ -168,10 +173,7 @@ def _aggregate_by_shape(all_metrics: list[QueryMetrics]) -> dict:
     for m in all_metrics:
         shapes.setdefault(m.shape, []).append(m)
 
-    return {
-        shape: _aggregate_metrics(metrics)
-        for shape, metrics in sorted(shapes.items())
-    }
+    return {shape: _aggregate_metrics(metrics) for shape, metrics in sorted(shapes.items())}
 
 
 # --------------------------------------------------------------------- runner
@@ -210,14 +212,12 @@ def run_benchmark() -> RetrievalResults:
             question=q["question"],
             shape=q["shape"],
             ranked_modules=ranked,
-            expected_modules=[
-                k for k, v in q["relevance_grades"].items() if v > 0
-            ],
+            expected_modules=[k for k, v in q["relevance_grades"].items() if v > 0],
             **metrics,
         )
         all_metrics.append(qm)
 
-    results = RetrievalResults(
+    return RetrievalResults(
         version=1,
         timestamp=time.time(),
         config={
@@ -229,8 +229,6 @@ def run_benchmark() -> RetrievalResults:
         by_shape=_aggregate_by_shape(all_metrics),
         queries=[asdict(m) for m in all_metrics],
     )
-
-    return results
 
 
 def write_results(results: RetrievalResults) -> None:

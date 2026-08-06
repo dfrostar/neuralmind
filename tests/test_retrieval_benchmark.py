@@ -17,7 +17,6 @@ Floor rationale:
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -110,11 +109,7 @@ class TestRetrievalBenchmark:
         Zero tolerance for complete misses — averaged metrics can hide
         queries that return zero relevant modules. This test catches them.
         """
-        zero_hit = [
-            q["id"]
-            for q in retrieval_results.queries
-            if q["recall_at_5"] == 0.0
-        ]
+        zero_hit = [q["id"] for q in retrieval_results.queries if q["recall_at_5"] == 0.0]
         assert len(zero_hit) == 0, (
             f"{len(zero_hit)} queries returned zero relevant modules in top-5: {zero_hit}. "
             "Each query should surface at least one expected module."
