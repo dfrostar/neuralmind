@@ -58,31 +58,38 @@ class TestSeatManagerBasic:
         assert seats.active_count() == 1
 
 
-class TestSeatManagerFreeTier:
-    """Free tier bypasses seat-limit enforcement."""
+class TestSeatManagerLimitEnforcement:
+    """The license seat limit applies to every tier — free includes one seat."""
 
     @pytest.fixture
     def seats(self, tmp_path: Path) -> SeatManager:
         return SeatManager(tmp_path / "seats.json")
 
-    def test_free_tier_can_add_beyond_limit(self, seats: SeatManager) -> None:
-        seats.add_seat(EMAIL1, license_limit=1, tier="free")
-        seats.add_seat(EMAIL2, license_limit=1, tier="free")
-        assert seats.active_count() == 2
-
-    def test_free_tier_can_add_seat_unlimited(self, seats: SeatManager) -> None:
-        for i in range(10):
-            seats.add_seat(f"user{i}@example.org", license_limit=1, tier="free")
-        assert seats.active_count() == 10
-
-    def test_paid_tier_still_enforces_limit(self, seats: SeatManager) -> None:
-        seats.add_seat(EMAIL1, license_limit=1, tier="team")
+    def test_free_license_enforces_single_seat(self, seats: SeatManager) -> None:
+        seats.add_seat(EMAIL1, license_limit=1)
         with pytest.raises(SeatLimitError):
-            seats.add_seat(EMAIL2, license_limit=1, tier="team")
+            seats.add_seat(EMAIL2, license_limit=1)
+        assert seats.active_count() == 1
 
-    def test_free_tier_reactivate_does_not_count_limit(self, seats: SeatManager) -> None:
-        seat = seats.add_seat(EMAIL1, license_limit=1, tier="free")
+    def test_team_license_enforces_its_limit(self, seats: SeatManager) -> None:
+        seats.add_seat(EMAIL1, license_limit=2)
+        seats.add_seat(EMAIL2, license_limit=2)
+        with pytest.raises(SeatLimitError):
+            seats.add_seat("third@example.org", license_limit=2)
+
+    def test_remove_frees_a_slot(self, seats: SeatManager) -> None:
+        seats.add_seat(EMAIL1, license_limit=1)
         seats.remove_seat(EMAIL1)
-        # Reactivate should succeed even though we were at limit before
-        seat2 = seats.add_seat(EMAIL1, license_limit=1, tier="free")
+        seat2 = seats.add_seat(EMAIL2, license_limit=1)
         assert seat2.active is True
+        assert seats.active_count() == 1
+
+    def test_reactivation_respects_limit(self, seats: SeatManager) -> None:
+        seats.add_seat(EMAIL1, license_limit=1)
+        seats.remove_seat(EMAIL1)
+        # Reactivating the only seat fits within the 1-seat limit...
+        seat = seats.add_seat(EMAIL1, license_limit=1)
+        assert seat.active is True
+        # ...but a second distinct seat still does not.
+        with pytest.raises(SeatLimitError):
+            seats.add_seat(EMAIL2, license_limit=1)
