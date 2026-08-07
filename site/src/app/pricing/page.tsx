@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Pricing — NeuralMind',
     description:
-        'NeuralMind is MIT-licensed open source. Team and Enterprise tiers add shared memory governance, seat management, and self-hosted deployment.',
+        'NeuralMind is MIT-licensed open source with every feature free at 1 seat. The Team tier licenses seats beyond one (5-50) with priority support; Enterprise adds custom SLAs.',
 };
 
 const tiers = [
@@ -14,12 +14,14 @@ const tiers = [
         name: 'Free',
         price: '$0',
         period: 'forever',
-        description: 'MIT-licensed open source. One user, personal memory, community support.',
+        description:
+            'MIT core plus every tier2 feature at 1 seat — governance, audit, self-hosted. Nothing is gated.',
         features: [
             'MIT OSS — full source code',
-            'Single user',
+            '1-seat license, auto-issued, never expires',
             'Personal memory graph',
             'L0–L3 progressive disclosure',
+            'Governance, audit & self-hosted at 1 seat',
             'Community support (Discord/GitHub)',
         ],
         cta: 'pip install neuralmind',
@@ -30,13 +32,14 @@ const tiers = [
         name: 'Team',
         price: '$29',
         period: 'per user / month',
-        description: 'Shared memory governance, seat management, signed manifests, admin audit.',
+        description:
+            'The license buys seats and support — the features are already free at 1 seat, so evaluate everything first.',
         features: [
-            'Team memory governance',
-            'Seat management (add/remove)',
-            'Shared context across agents',
-            'Signed synapse manifests',
-            'Admin audit trail',
+            'Multi-seat license (5-50 seats)',
+            'Priority support',
+            'Annual invoice — procurement-friendly',
+            'Signed seat manifests + admin audit at team scale',
+            'Self-hosted deployment support',
         ],
         cta: 'Contact us about Team',
         ctaHref: 'mailto:hello@neuralmind.uk?subject=NeuralMind%20Team%20tier',
@@ -63,15 +66,15 @@ const tiers = [
 const faqs = [
     {
         q: 'Is NeuralMind really open source?',
-        a: 'Yes. The core engine is MIT-licensed — full source on GitHub, no feature gates. Team and Enterprise tiers build on top with governance and deployment features, not by withholding the OSS core.',
+        a: 'Yes. The core engine is MIT-licensed — full source on GitHub, no feature gates. The paid tiers do not unlock hidden features: the Team license covers seats beyond one, priority support, and an annual invoice. Everything is evaluable on the free 1-seat license first.',
     },
     {
         q: 'How does billing work for Team?',
-        a: 'Per-seat monthly billing. Add or remove seats at any time; prorated adjustments apply. Annual commitments available at a discount.',
+        a: '$29 per user per month on an annual contract, 5-50 seats, invoiced — contact hello@neuralmind.uk to start. There is no self-serve checkout. Seats are reassignable as your team changes.',
     },
     {
         q: 'Where is my team data stored?',
-        a: 'All synapse data is stored locally by default. Team tier syncs through an encrypted relay we host; you can also self-host the relay. Enterprise runs entirely within your own infrastructure. We never train on your code.',
+        a: 'All synapse data is stored locally. Team memory bundles publish and import through your own git repository — no relay, no server of ours in the path. Enterprise can run fully air-gapped in your infrastructure. We never train on your code.',
     },
 ];
 
@@ -89,8 +92,9 @@ export default async function PricingPage() {
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto">
                         NeuralMind&apos;s core engine ({version}) is MIT-licensed open source —
-                        free forever. Add Team or Enterprise tiers when you need shared
-                        memory governance, seat management, or self-hosted deployment.
+                        free forever, including governance, audit, and self-hosted at
+                        1 seat. The Team tier licenses seats beyond one; Enterprise
+                        adds custom SLAs and onboarding.
                     </p>
                 </section>
 

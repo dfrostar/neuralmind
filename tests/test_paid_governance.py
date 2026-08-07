@@ -43,7 +43,7 @@ def test_seat_mutation_audited(tmp_path):
     sm = SeatManager(tmp_path / "seats.json")
 
     gov.require_admin(_ADMIN)
-    sm.add_seat(_USER1, config.seats, tier=config.tier)
+    sm.add_seat(_USER1, config.seats)
     audit.log(actor=_ADMIN, action="seat_add", target=_USER1)
     assert audit.count() == 1
 
@@ -87,7 +87,7 @@ def test_free_tier_but_admin_required():
     sm = SeatManager(td / "seats.json")
 
     gov.require_admin(_ADMIN)
-    sm.add_seat(_USER1, config.seats, tier="free")
+    sm.add_seat(_USER1, config.seats)
     with pytest.raises(PermissionError):
         gov.require_admin("intruder")
 

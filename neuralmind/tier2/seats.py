@@ -4,7 +4,8 @@
 """seats.py — Seat management for Team tier.
 
 Each team seat is an email with an active/inactive flag. The seat limit comes
-from the license (Tier2Config.seats). Adding a seat beyond the limit raises
+from the license (Tier2Config.seats) for every tier — the auto-issued free
+license includes exactly one seat. Adding a seat beyond the limit raises
 SeatLimitError.
 """
 
@@ -92,10 +93,8 @@ class SeatManager:
         with self._lock:
             return sum(1 for s in self._seats.values() if s.active)
 
-    def can_add_seat(self, license_limit: int, tier: str | None = None) -> bool:
+    def can_add_seat(self, license_limit: int) -> bool:
         """True if active seats < license limit."""
-        if tier == "free":
-            return True
         with self._lock:
             return self.active_count() < license_limit
 
@@ -108,14 +107,14 @@ class SeatManager:
         with self._lock:
             return sorted(self._seats.values(), key=lambda s: s.email)
 
-    def add_seat(self, email: str, license_limit: int, tier: str | None = None) -> Seat:
+    def add_seat(self, email: str, license_limit: int) -> Seat:
         """Add a new seat. Idempotent if email already exists."""
         normalized = email.strip().lower()
         with self._lock:
             if normalized in self._seats:
                 if self._seats[normalized].active:
                     return self._seats[normalized]
-                if tier != "free" and self.active_count() >= license_limit:
+                if self.active_count() >= license_limit:
                     raise SeatLimitError(
                         f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
                     )
@@ -124,7 +123,7 @@ class SeatManager:
                 self._save()
                 return self._seats[normalized]
 
-            if not self.can_add_seat(license_limit, tier=tier):
+            if not self.can_add_seat(license_limit):
                 raise SeatLimitError(
                     f"Seat limit reached: {self.active_count() + 1}/{license_limit}"
                 )
@@ -171,7 +170,6 @@ def sync_seats(
     seats_db_path: Path,
     manifest: dict[str, Any],
     license_limit: int,
-    tier: str,
     admin: str,
 ) -> dict[str, Any]:
     """Reconcile local seats from a verified manifest."""
@@ -184,7 +182,7 @@ def sync_seats(
         if not email:
             continue
         try:
-            sm.add_seat(email, license_limit, tier=tier)
+            sm.add_seat(email, license_limit)
             added.append(email)
         except SeatLimitError as e:
             failed.append({"email": email, "reason": str(e)})

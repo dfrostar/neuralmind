@@ -299,12 +299,12 @@ def cmd_team_seats(args) -> int:
         return cmd_team_seats_sync(args, config=config, audit=audit)
 
     # Every seat mutation requires admin authentication.
-    # Free-tier seats bypass the limit check (handled inside sm.add_seat),
-    # but admin authentication still applies for auditability.
+    # The seat limit always comes from the license: the free license
+    # includes one seat, a Team license covers 5-50 — see LICENSING.md.
     if args.subcommand == "add":
         try:
             gov.require_admin(admin)
-            sm.add_seat(args.email, config.seats, tier=config.tier)
+            sm.add_seat(args.email, config.seats)
             audit.log(actor=admin, action="seat_add", target=args.email)
             print(f"Seat added: {args.email}")
             return 0
@@ -313,6 +313,11 @@ def cmd_team_seats(args) -> int:
             return 1
         except SeatLimitError as e:
             print(f"Seat limit reached: {e}")
+            if config.tier == "free":
+                print(
+                    "The free license includes 1 seat. A Team license covers "
+                    "5-50 seats — https://neuralmind.uk/pricing/"
+                )
             return 1
 
     if args.subcommand == "remove":
@@ -421,7 +426,6 @@ def cmd_team_seats_sync(args, config=None, audit=None) -> int:
         seats_db,
         manifest,
         license_limit=config.seats,
-        tier=config.tier,
         admin=admin,
     )
 
