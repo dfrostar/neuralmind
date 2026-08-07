@@ -1,8 +1,18 @@
-# Budget-Neutral Synaptic Recall: Hub-Normalized Spreading Activation with Learned Per-Edge Decay for AI Agent Context Retrieval
+# Budget-Neutral Synaptic Recall: Displacement Injection with Learned Per-Edge Decay for AI Agent Context Retrieval
 
 **Author:** Darren Frost (dfrostar)
 **Date:** 2026-08-07
 **Repo:** https://github.com/dfrostar/neuralmind (implementation as of commit `89eff6c`)
+
+> **Companion publication.** The learning loop that produces the graph this
+> method retrieves from — debounced co-activation capture, Hebbian
+> reinforcement, long-term potentiation, and hub-normalized spreading
+> activation — is specified in
+> [Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation](defensive-synapse-learning-loop.md)
+> (2026-08-06). This publication is its retrieval-side complement: §1 and §3
+> below summarize the loop for self-containment; the novel claims here are
+> the **learned per-edge half-life** (§2) and **budget-neutral injection**
+> (§4), and their combination with that loop.
 
 ---
 
@@ -187,6 +197,7 @@ To the best of our knowledge, the specific combination of:
 
 — has not been previously published in the context of local-first code intelligence systems. Related work includes:
 
+- **NeuralMind synapse learning loop** (Frost, 2026 — companion publication, `defensive-synapse-learning-loop.md`) — specifies the co-activation capture, reinforcement, LTP, and spreading-activation recall this method builds on; does not cover learned per-edge half-lives or budget-neutral injection
 - **Hebbian learning** (Hebb, 1949) — the co-activation principle, without decay learning or budgeted retrieval
 - **Spreading activation in semantic memory** (Collins & Loftus, 1975; Anderson's ACT-R, 1983) — cognitive models; no hub normalization for code graphs, no token budgets
 - **Spreading activation in information retrieval** (Crestani, 1997) — survey of IR applications; result sets grow with activation rather than displacing

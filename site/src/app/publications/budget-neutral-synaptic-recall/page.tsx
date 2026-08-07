@@ -103,9 +103,9 @@ export default function PublicationPage() {
                         Budget-Neutral Synaptic Recall
                     </h1>
                     <p className="text-lg text-slate-300 mb-4">
-                        Hub-Normalized Spreading Activation with Learned Per-Edge Decay for AI Agent Context Retrieval
+                        Displacement Injection with Learned Per-Edge Decay for AI Agent Context Retrieval
                     </p>
-                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                    <div className="flex items-center gap-4 text-sm text-slate-400 mb-4">
                         <span>Darren Frost (dfrostar)</span>
                         <span>•</span>
                         <a
@@ -117,6 +117,13 @@ export default function PublicationPage() {
                             View source →
                         </a>
                     </div>
+                    <p className="text-sm text-slate-400 bg-carbon-card border border-carbon-border rounded-lg px-4 py-3">
+                        <strong className="text-white">Companion publication:</strong> the learning loop that produces the graph this method retrieves from is specified in{' '}
+                        <a href="/publications/synapse-learning-loop" className="text-electric hover:text-electric-bright transition-colors">
+                            Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation
+                        </a>
+                        . This publication is its retrieval-side complement — the novel claims here are the learned per-edge half-life and budget-neutral injection.
+                    </p>
                 </header>
 
                 {/* Abstract */}
@@ -312,7 +319,7 @@ shared 0.5 × 0.5 = 0.25
                         To the best of our knowledge, the specific combination of: (1) Hebbian edge learning driven by AI-agent tool telemetry, (2) per-edge learned exponential half-life blended by recency confidence toward a namespace default, (3) square-root hub-normalized spreading activation over namespace-merged edge weights, and (4) budget-neutral injection via score boost plus one-for-one displacement with a byte-identical cold-start guarantee — has not been previously published in the context of local-first code intelligence systems.
                     </p>
                     <p className="text-slate-300 leading-relaxed">
-                        Related work includes Hebbian learning (Hebb, 1949), spreading activation in semantic memory (Collins &amp; Loftus, 1975; Anderson&apos;s ACT-R, 1983), spreading activation in information retrieval (Crestani, 1997), forgetting curves (Ebbinghaus, 1885), retrieval-augmented generation (Lewis et al., 2020), and LLM memory hierarchies (MemGPT — Packer et al., 2023).
+                        Related work includes the companion <a href="/publications/synapse-learning-loop" className="text-electric hover:text-electric-bright transition-colors">NeuralMind synapse learning loop publication</a> (Frost, 2026 — specifies the capture, reinforcement, LTP, and recall machinery this method builds on, but not learned per-edge half-lives or budget-neutral injection), Hebbian learning (Hebb, 1949), spreading activation in semantic memory (Collins &amp; Loftus, 1975; Anderson&apos;s ACT-R, 1983), spreading activation in information retrieval (Crestani, 1997), forgetting curves (Ebbinghaus, 1885), retrieval-augmented generation (Lewis et al., 2020), and LLM memory hierarchies (MemGPT — Packer et al., 2023).
                     </p>
                 </section>
 
