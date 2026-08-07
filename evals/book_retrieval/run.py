@@ -279,8 +279,7 @@ def run_eval(
             # Fall back to legacy context splitting if unavailable
             if search_hits:
                 retrieved_paragraphs = [
-                    hit.get("document", "") for hit in search_hits
-                    if hit.get("document")
+                    hit.get("document", "") for hit in search_hits if hit.get("document")
                 ]
             else:
                 retrieved_paragraphs = extract_paragraphs_from_context(nm_context)
