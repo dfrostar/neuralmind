@@ -263,10 +263,13 @@ neuralmind benchmark .
   (decisions, SOPs, meeting notes, policies) and your code graph —
   adjacency-matched compounds, title-reference cross-links, frequency-capped
   tags. 56 tests.
-- **Team tier ($29/user/mo).** Governance, append-only hash-chained audit
-  log, seat management, self-hosted deployment. MIT core stays MIT — the
-  Team tier only activates with a license; tier2 is
-  source-available, not MIT — see [LICENSING.md](LICENSING.md). See [pricing](https://neuralmind.uk/pricing/).
+- **Team tier ($29/user/mo).** The license buys seats and support: a
+  multi-seat license (5-50), priority support, and an annual invoice.
+  The features themselves — shared-memory governance, append-only
+  hash-chained audit log, self-hosted deployment — run under the
+  auto-issued free license at 1 seat, so you can evaluate everything
+  before paying. MIT core stays MIT; tier2 is source-available, not
+  MIT — see [LICENSING.md](LICENSING.md) and [pricing](https://neuralmind.uk/pricing/).
 
 How it works under the hood: [Architecture](docs/wiki/Architecture.md) ·
 [brain-like learning](docs/brain_like_learning.md).

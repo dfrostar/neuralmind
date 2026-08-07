@@ -9,12 +9,15 @@ from pathlib import Path
 
 import yaml
 
+# Per-seat prices must agree with commercial-terms.json ($29/user/mo, the
+# CI-gated source of truth) — longer terms are the flat monthly rate, no
+# invented discounts.
 DEFAULT_PRICING = {
     "team": {
-        "monthly": {"base_per_seat": 50.00, "currency": "USD"},
-        "quarterly": {"base_per_seat": 135.00, "currency": "USD"},
-        "annual": {"base_per_seat": 540.00, "currency": "USD"},
-        "biennial": {"base_per_seat": 960.00, "currency": "USD"},
+        "monthly": {"base_per_seat": 29.00, "currency": "USD"},
+        "quarterly": {"base_per_seat": 87.00, "currency": "USD"},
+        "annual": {"base_per_seat": 348.00, "currency": "USD"},
+        "biennial": {"base_per_seat": 696.00, "currency": "USD"},
     },
     "free": {"seats": 1, "never_expires": True},
     "partners": {
@@ -46,14 +49,14 @@ def calculate_price(
         return 0.0
     tier_pricing = pricing.get("team", {})
     if term_months == 1:
-        base = tier_pricing.get("monthly", {}).get("base_per_seat", 50.0)
+        base = tier_pricing.get("monthly", {}).get("base_per_seat", 29.0)
     elif term_months == 3:
-        base = tier_pricing.get("quarterly", {}).get("base_per_seat", 135.0)
+        base = tier_pricing.get("quarterly", {}).get("base_per_seat", 87.0)
     elif term_months == 12:
-        base = tier_pricing.get("annual", {}).get("base_per_seat", 540.0)
+        base = tier_pricing.get("annual", {}).get("base_per_seat", 348.0)
     elif term_months == 24:
-        base = tier_pricing.get("biennial", {}).get("base_per_seat", 960.0)
+        base = tier_pricing.get("biennial", {}).get("base_per_seat", 696.0)
     else:
         # Monthly rate for other terms
-        base = tier_pricing.get("monthly", {}).get("base_per_seat", 50.0)
+        base = tier_pricing.get("monthly", {}).get("base_per_seat", 29.0)
     return base * seats
