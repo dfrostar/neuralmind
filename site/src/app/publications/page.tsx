@@ -10,6 +10,8 @@ export const metadata = {
         'technical report',
         'team memory',
         'token reduction',
+        'spreading activation',
+        'Hebbian learning',
         'agent amnesia',
         'Claude Code',
         'MCP server',
@@ -45,6 +47,13 @@ export const metadata = {
 };
 
 const publications = [
+    {
+        slug: 'budget-neutral-synaptic-recall',
+        title: 'Budget-Neutral Synaptic Recall: Displacement Injection with Learned Per-Edge Decay',
+        type: 'Defensive Publication',
+        date: 'August 7, 2026',
+        description: 'Companion to the synapse learning loop publication, covering the retrieval side: recalled associations enter the agent’s context by boosting present hits and displacing the weakest vector hits one-for-one, so the token budget never grows — with per-edge forgetting rates learned from reinforcement history.',
+    },
     {
         slug: 'synapse-learning-loop',
         title: 'Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation',
