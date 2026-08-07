@@ -58,7 +58,7 @@ You'll likely see real benefit if **all** of these are true:
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.
-- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/dfrostar/graphify) is optional and takes priority where present.
+- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/safishamsi/graphify) is optional and takes priority where present.
 
 If you check 3 of 5, marginal. If you check 4–5, run
 `bash scripts/demo.sh` and then `neuralmind benchmark .` on your repo.
@@ -198,6 +198,24 @@ will.
 See [`docs/comparisons/`](comparisons/README.md) for longer
 side-by-sides on each.
 
+## Platform risk — the agent vendors ship this natively
+
+The most likely way NeuralMind loses is not a better third-party tool;
+it is the agent vendors absorbing the layer. The shipped record:
+Windsurf Cascade Memories (Jan 2025), Cursor Memories (Jun 2025),
+GitHub Copilot Spaces GA (Sep 2025), Anthropic's API memory tool
+(Sep 2025), Claude Code auto-memory (Feb 2026) — native retrieval plus
+learned per-project memory, the two halves of our pitch. Two major
+agents (Claude Code, Cline) also argue publicly that a semantic index
+is unnecessary for agentic search.
+
+What that leaves NeuralMind is the cross-agent, local-first position:
+the same measured retrieval and the same learned, git-portable team
+memory across Claude Code, Cursor, Cline, Codex, and any MCP client,
+with state that lives in your repo instead of one vendor's cloud. If
+you run a single agent and its native memory satisfies you, that is a
+legitimate reason not to install this.
+
 ## What would change our minds
 
 We'd downgrade our own claims if:
@@ -209,6 +227,9 @@ We'd downgrade our own claims if:
   warm number reflects the learned synapse boost.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.
+- A major agent vendor ships learned, git-portable **team** memory
+  natively — cross-agent neutrality would then be the only remaining
+  differentiation.
 
 We'd upgrade them if:
 

@@ -38,6 +38,14 @@ and is not part of the public PyPI package.
 - **Broker pattern** — pluggable payment provider (Stripe primary,
   LemonSqueezy fallback) for the Team tier.
 - **Grace period per-license** — configurability beyond global constant.
+- **Output directory consolidation** — move the canonical index dir from
+  `graphify-out/` to `.neuralmind/` with a legacy-path shim, removing a
+  third-party product name from every user's repo (choke point:
+  `project_artifact` in `neuralmind/ir.py`; touches ~12 modules, docs,
+  and the site privacy policy).
+- **Cost Attribution Dashboard** — `neuralmind stats --cost`: per-repo,
+  per-seat modeled savings as a CFO-facing ROI artifact (free tier;
+  feeds the services funnel — see `docs/PILOT-BRD.md`).
 
 ---
 

@@ -81,7 +81,20 @@ The NeuralMind project reserves the right to:
 
 ---
 
-## 7. Contact
+## 7. Third-Party Trademarks in NeuralMind Materials
+
+NeuralMind's own documentation, wiki, and websites regularly name other projects and products (e.g. graphify, Claude Code, Cursor, GitHub Copilot, Headroom). When they do:
+
+1. **Nominative use only** — third-party names identify the third party's own product, accurately and no more than necessary.
+2. **No implied endorsement** — comparisons and integration notes must not suggest the third party sponsors or endorses NeuralMind.
+3. **Attribution and links** — the first substantive mention of a third-party open-source project in a document links to its canonical home and, where relevant, credits its license and author (see [NOTICE](../NOTICE)).
+4. **Accuracy over marketing** — claims about a third-party product (required vs. optional, compatible, benchmarked) must reflect the current release; stale claims are treated as documentation bugs.
+
+All third-party marks remain the property of their respective owners.
+
+---
+
+## 8. Contact
 
 For questions about this policy or to request permission for uses not covered above:
 
@@ -89,6 +102,6 @@ For questions about this policy or to request permission for uses not covered ab
 
 ---
 
-## 8. Acceptance
+## 9. Acceptance
 
 By using the NeuralMind trademarks, you agree to be bound by the terms of this policy.
