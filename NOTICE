@@ -1,0 +1,25 @@
+NeuralMind — adaptive semantic code intelligence for AI coding agents.
+Copyright (c) 2026 Cheval-Volant LLC (d/b/a NeuralMind).
+
+Licensing: MIT for the core; neuralmind/tier2/ is source-available under
+the NeuralMind Commercial Modules License — see LICENSING.md.
+
+Third-party acknowledgements
+----------------------------
+
+graphify (https://github.com/safishamsi/graphify)
+  MIT License, Copyright (c) 2026 Safi Shamsi.
+  NeuralMind's built-in tree-sitter backend (neuralmind/graphgen.py)
+  emits a graph.json compatible with the format graphify pioneered, and
+  a graphify-generated graph is supported as an optional richer backend.
+  No graphify code is vendored or copied into this repository; the
+  interoperable file format was reimplemented independently.
+
+tree-sitter and its language grammars (MIT)
+  Power the built-in graph backend (Python, TypeScript, Go, Rust, Java,
+  C, C++, C#, Ruby, PHP). The full dependency inventory with licenses
+  ships as a CycloneDX SBOM for every release — see
+  https://neuralmind.uk/sbom/ and .github/workflows/sbom.yml.
+
+Trademarks of third parties named in documentation remain the property
+of their respective owners — see docs/TRADEMARK-POLICY.md §7.
