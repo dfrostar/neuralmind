@@ -39,8 +39,7 @@ runtime:
   binaries:
     - neuralmind
     - neuralmind-mcp
-    - graphify
-  install: pip install neuralmind graphifyy
+  install: pip install neuralmind
 metadata:
   complexity: low
   category: developer-tools
@@ -64,16 +63,16 @@ Before the first call in a session, confirm the index exists:
 neuralmind_stats(project_path=".")
 ```
 
-If `built: false`, the project hasn't been indexed yet. The build pipeline
-needs both `neuralmind` and `graphifyy` (separate package, ships the
-`graphify` CLI). Tell the user to run:
+If `built: false`, the project hasn't been indexed yet. Tell the user to run:
 
 ```
-pip install neuralmind graphifyy   # if either is missing
-graphify update . && neuralmind build .
+pip install neuralmind   # if missing
+neuralmind build .
 ```
 
-…and stop. Do not fabricate answers when the index is missing.
+…and stop. Do not fabricate answers when the index is missing. (Projects
+using the optional graphify backend refresh its richer graph first:
+`graphify update . && neuralmind build .`)
 
 ## Decision tree — which tool to call
 

@@ -865,7 +865,7 @@ $ neuralmind query . "CMMC gap analysis"
             <ul>
                 <li><strong><code>neuralmind doctor</code>.</strong> Inspects the install and reports each piece with a status (<code>ok</code> / <code>warn</code> / <code>fail</code>) and the exact command to fix it. Read-only — it never builds or mutates state. Exits non-zero when a check <em>fails</em> (graph/index missing) so you can gate a CI step or an agent's provisioning on it.</li>
                 <li><strong><code>--json</code> output.</strong> A stable, machine-readable snapshot of every check, for scripting and agent consumption. An agent provisioning its own environment can run <code>neuralmind doctor --json</code> as a pre-flight check before issuing queries.</li>
-                <li><strong>Friendlier "graph not built" error.</strong> Querying a project before its code graph exists used to raise an opaque <code>AttributeError</code>. It now raises a clear, actionable message naming the two commands to run (<code>graphify update</code>, then <code>neuralmind build</code>) and points you at <code>neuralmind doctor</code>.</li>
+                <li><strong>Friendlier "graph not built" error.</strong> Querying a project before its code graph exists used to raise an opaque <code>AttributeError</code>. It now raises a clear, actionable message naming the two commands to run (<code>graphify update</code>, then <code>neuralmind build</code>) and points you at <code>neuralmind doctor</code>. <em>(Since v0.15.0 the built-in tree-sitter backend removed the graphify step — <code>neuralmind build</code> alone suffices; graphify remains an optional richer backend.)</em></li>
             </ul>
             <h3>Why this matters</h3>
             <p>Most NeuralMind support friction is setup friction: a piece isn't installed, and the failure doesn't say which one. <code>doctor</code> turns "it doesn't work" into a checklist with fixes — for the human dropped into a fresh clone, and for the agent that has to verify its own environment before relying on the tool. No new dependencies, no behavior change for working installs.</p>
@@ -944,7 +944,7 @@ $ neuralmind query . "CMMC gap analysis"
             <p><strong>Distribution release, not a features release.</strong> The brain is the same brain. What changed is how many ways you can install it.</p>
             <h3>Five install paths</h3>
             <ul>
-                <li><strong><code>pip install neuralmind graphifyy</code></strong> — the default. Works in any venv.</li>
+                <li><strong><code>pip install neuralmind graphifyy</code></strong> — the default at the time. Works in any venv. <em>(Since v0.15.0, plain <code>pip install neuralmind</code> is the default — graphify became an optional backend.)</em></li>
                 <li><strong><code>pipx install neuralmind</code></strong> — global CLI, isolated env. <code>neuralmind</code> on PATH everywhere without activation.</li>
                 <li><strong><code>uv pip install neuralmind graphifyy</code></strong> — ~10× faster than pip, same wheel.</li>
                 <li><strong><code>docker build -t neuralmind:dev .</code></strong> — multi-stage Dockerfile in the repo root, non-root runtime, transitive deps pre-wheeled in the builder. GHCR auto-publish lands in a later release; build locally for now.</li>
