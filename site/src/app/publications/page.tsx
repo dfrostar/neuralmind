@@ -10,6 +10,8 @@ export const metadata = {
         'technical report',
         'team memory',
         'token reduction',
+        'spreading activation',
+        'Hebbian learning',
         'agent amnesia',
         'Claude Code',
         'MCP server',
@@ -45,6 +47,13 @@ export const metadata = {
 };
 
 const publications = [
+    {
+        slug: 'budget-neutral-synaptic-recall',
+        title: 'Budget-Neutral Synaptic Recall: Hub-Normalized Spreading Activation with Learned Per-Edge Decay',
+        type: 'Defensive Publication',
+        date: 'August 7, 2026',
+        description: 'A method for injecting learned associative recall into an AI agent’s context window without increasing token cost. Hebbian co-activation edges decay at learned per-edge half-lives; spreading activation recalls them; the weakest vector hits are displaced one-for-one, so the token budget never grows.',
+    },
     {
         slug: 'claude-teams-deep-dive',
         title: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention',
