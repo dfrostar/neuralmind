@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.1.1](https://github.com/dfrostar/neuralmind/compare/v3.1.0...v3.1.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **benchmark:** preserve rank positions in metric calculation + honest test docs ([b5d1098](https://github.com/dfrostar/neuralmind/commit/b5d1098b6a42eac761b387cb442fcaac83a03ee4))
+* **benchmark:** use L3 search hits for IR metrics instead of assembled context ([5ab35ea](https://github.com/dfrostar/neuralmind/commit/5ab35ea873cf1854b738807eeca768e1d9db433e))
+
+
+### Documentation
+
+* **publications:** second defensive publication — budget-neutral synaptic recall ([#424](https://github.com/dfrostar/neuralmind/issues/424)) ([ede5966](https://github.com/dfrostar/neuralmind/commit/ede5966b2344657ac76929c0727818fe4cc47ecd))
+
 ## [3.1.0](https://github.com/dfrostar/neuralmind/compare/v3.0.0...v3.1.0) (2026-08-06)
 
 
