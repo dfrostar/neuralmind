@@ -1,0 +1,924 @@
+{
+  "version": 2,
+  "book": "Underground",
+  "query_count": 30,
+  "aggregates": {
+    "recall_at_5": 0.3266666666666667,
+    "mrr": 0.7333333333333333,
+    "ndcg_at_5": 0.5296468219143086,
+    "hit_rate": 1.0,
+    "mean_faithfulness": 0.010000000000000002,
+    "avg_token_reduction": 248.2019417527407
+  },
+  "by_shape": {
+    "causal": {
+      "count": 11,
+      "recall_at_5": 0.3181818181818182,
+      "mrr": 0.8181818181818182,
+      "ndcg_at_5": 0.4825801747552276,
+      "hit_rate": 1.0,
+      "mean_faithfulness": 0.009090909090909092
+    },
+    "entity": {
+      "count": 9,
+      "recall_at_5": 0.3222222222222222,
+      "mrr": 0.6666666666666666,
+      "ndcg_at_5": 0.5204958954352068,
+      "hit_rate": 1.0,
+      "mean_faithfulness": 0.0
+    },
+    "precise": {
+      "count": 7,
+      "recall_at_5": 0.34285714285714286,
+      "mrr": 0.7142857142857143,
+      "ndcg_at_5": 0.6246311334790212,
+      "hit_rate": 1.0,
+      "mean_faithfulness": 0.014285714285714287
+    },
+    "temporal": {
+      "count": 2,
+      "recall_at_5": 0.3,
+      "mrr": 0.5,
+      "ndcg_at_5": 0.46294307103437243,
+      "hit_rate": 1.0,
+      "mean_faithfulness": 0.0
+    },
+    "thematic": {
+      "count": 1,
+      "recall_at_5": 0.4,
+      "mrr": 1.0,
+      "ndcg_at_5": 0.5982555997830009,
+      "hit_rate": 1.0,
+      "mean_faithfulness": 0.1
+    }
+  },
+  "queries": [
+    {
+      "id": "wank-worm-origin",
+      "question": "What was the WANK worm and why was it politically significant?",
+      "shape": "causal",
+      "nm_tokens": 621,
+      "naive_tokens": 152903,
+      "reduction": 246.2206119162641,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.2,
+        "precision_at_5": 0.4,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.35032057642701403,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "worms",
+        "NASA",
+        "political",
+        "DECNET"
+      ]
+    },
+    {
+      "id": "wank-australian-origin",
+      "question": "Who created the WANK worm and what evidence pointed to Australian origin?",
+      "shape": "entity",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.3048207143653232,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "attribution",
+        "Australia",
+        "Midnight Oil"
+      ]
+    },
+    {
+      "id": "span-network",
+      "question": "What was SPAN and how did it relate to the WANK worm outbreak?",
+      "shape": "precise",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.529634717214042,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "SPAN",
+        "NASA",
+        "DECNET",
+        "networks"
+      ]
+    },
+    {
+      "id": "citibank-hack",
+      "question": "How did Australian hackers steal over $500,000 from Citibank in 1989?",
+      "shape": "entity",
+      "nm_tokens": 565,
+      "naive_tokens": 152903,
+      "reduction": 270.624778761062,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.8180355296436479,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Citibank",
+        "phreaking",
+        "2600-hertz",
+        "freekers"
+      ]
+    },
+    {
+      "id": "par-fugitive",
+      "question": "Why did Par become a fugitive and what deal had he negotiated with the Secret Service?",
+      "shape": "causal",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.3775724115231273,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Par",
+        "fugitive",
+        "Secret Service",
+        "cooperation"
+      ]
+    },
+    {
+      "id": "phoenix-style",
+      "question": "What distinctive style made Phoenix traceable across multiple hackings?",
+      "shape": "precise",
+      "nm_tokens": 565,
+      "naive_tokens": 152903,
+      "reduction": 270.624778761062,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.7719184050168792,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Phoenix",
+        "attribution",
+        "style",
+        "handles"
+      ]
+    },
+    {
+      "id": "pad-gandalf-worms",
+      "question": "What were Pad and Gandalf accused of planning and what worm codes did they possess?",
+      "shape": "precise",
+      "nm_tokens": 564,
+      "naive_tokens": 152903,
+      "reduction": 271.10460992907804,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.8687949224876581,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.1,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Pad",
+        "Gandalf",
+        "worms",
+        "RTM",
+        "British hackers"
+      ]
+    },
+    {
+      "id": "anthrax-profile",
+      "question": "What made Anthrax different from other Australian hackers and where did he live?",
+      "shape": "entity",
+      "nm_tokens": 603,
+      "naive_tokens": 152903,
+      "reduction": 253.57048092868988,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.7672558873746739,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Anthrax",
+        "lone wolf",
+        "rural Victoria",
+        "international"
+      ]
+    },
+    {
+      "id": "telephone-exchange-hazard",
+      "question": "Why was hacking telephone exchanges more dangerous than hacking regular computers?",
+      "shape": "causal",
+      "nm_tokens": 566,
+      "naive_tokens": 152903,
+      "reduction": 270.14664310954066,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5982555997830009,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "telephone exchange",
+        "danger",
+        "prefix",
+        "infrastructure"
+      ]
+    },
+    {
+      "id": "operation-weather-afp",
+      "question": "Why did the AFP's Operation Weather investigation struggle to identify the hackers using RMIT?",
+      "shape": "causal",
+      "nm_tokens": 624,
+      "naive_tokens": 152903,
+      "reduction": 245.03685897435898,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.2,
+        "precision_at_5": 0.4,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5499742595406059,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "AFP",
+        "RMIT",
+        "Operation Weather",
+        "tracing"
+      ]
+    },
+    {
+      "id": "force-realm-bbs",
+      "question": "Who was Force and what was the Realm BBS?",
+      "shape": "entity",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.52040658279922,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Force",
+        "Realm BBS",
+        "Melbourne",
+        "underground"
+      ]
+    },
+    {
+      "id": "altos-chat",
+      "question": "What was Altos Chat and how did hackers use it to communicate internationally?",
+      "shape": "entity",
+      "nm_tokens": 564,
+      "naive_tokens": 152903,
+      "reduction": 271.10460992907804,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.7947246441884293,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Altos Chat",
+        "X.25",
+        "international",
+        "communication"
+      ]
+    },
+    {
+      "id": "midnight-oil-connection",
+      "question": "What role did Midnight Oil play in hacker culture and how did it influence the WANK worm?",
+      "shape": "entity",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.36470854883165826,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Midnight Oil",
+        "Australian",
+        "protest",
+        "culture"
+      ]
+    },
+    {
+      "id": "freekers",
+      "question": "Who were the 'freekers' and what techniques did they use?",
+      "shape": "entity",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.18862500964516318,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "freekers",
+        "phreaking",
+        "white collar crime"
+      ]
+    },
+    {
+      "id": "x25-networks",
+      "question": "What were X.25 networks and why were they important to international hackers?",
+      "shape": "causal",
+      "nm_tokens": 606,
+      "naive_tokens": 152903,
+      "reduction": 252.3151815181518,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5069933512136416,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.1,
+        "answer_relevance": null
+      },
+      "themes": [
+        "X.25",
+        "networks",
+        "international",
+        "telecommunications"
+      ]
+    },
+    {
+      "id": "eugene-spafford",
+      "question": "Who was Eugene Spafford and why was he significant to hackers?",
+      "shape": "causal",
+      "nm_tokens": 566,
+      "naive_tokens": 152903,
+      "reduction": 270.14664310954066,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5982555997830009,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Spafford",
+        "security expert",
+        "wounded bull"
+      ]
+    },
+    {
+      "id": "three-realm-hackers",
+      "question": "What happened to the three Realm hackers and why did they attract so much police attention?",
+      "shape": "causal",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.36470854883165826,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Three Realm hackers",
+        "bust",
+        "Realm BBS"
+      ]
+    },
+    {
+      "id": "rtm-worm",
+      "question": "What was the RTM worm and why was it famous?",
+      "shape": "causal",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.24538379284023237,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "RTM worm",
+        "Morris",
+        "Cornell",
+        "Internet worm"
+      ]
+    },
+    {
+      "id": "2600-hertz",
+      "question": "How did the 2600-hertz signal work for phone phreaking?",
+      "shape": "precise",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.49881953556754577,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "2600-hertz",
+        "phreaking",
+        "trunk line",
+        "Telecom"
+      ]
+    },
+    {
+      "id": "computer-misuse-act",
+      "question": "What was the Computer Misuse Act and when did it take effect?",
+      "shape": "temporal",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.5611775932370866,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Computer Misuse Act",
+        "legislation",
+        "UK",
+        "1990"
+      ]
+    },
+    {
+      "id": "handles-purpose",
+      "question": "Why do hackers use handles and what functions do they serve?",
+      "shape": "causal",
+      "nm_tokens": 566,
+      "naive_tokens": 152903,
+      "reduction": 270.14664310954066,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.7539536337505628,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "handles",
+        "identity",
+        "nicknames",
+        "culture"
+      ]
+    },
+    {
+      "id": "first-creation",
+      "question": "What is FIRST and why was it created in response to the WANK worm?",
+      "shape": "temporal",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.36470854883165826,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "FIRST",
+        "incident response",
+        "WANK",
+        "international"
+      ]
+    },
+    {
+      "id": "oilz-worm-variant",
+      "question": "What was the Oilz variant of the WANK worm and why was its name significant?",
+      "shape": "causal",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.36470854883165826,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Oilz",
+        "Midnight Oil",
+        "variant",
+        "pronunciation"
+      ]
+    },
+    {
+      "id": "underground-evolution",
+      "question": "How did the computer underground evolve from its early days to the time of the book's writing?",
+      "shape": "precise",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.529634717214042,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "evolution",
+        "community",
+        "crackdowns",
+        "change"
+      ]
+    },
+    {
+      "id": "deccnet-security",
+      "question": "What was DECNET and what were its security weaknesses?",
+      "shape": "precise",
+      "nm_tokens": 566,
+      "naive_tokens": 152903,
+      "reduction": 270.14664310954066,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.8687949224876581,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "DECNET",
+        "VAX",
+        "VMS",
+        "security"
+      ]
+    },
+    {
+      "id": "hacker-motivations",
+      "question": "What common psychological themes motivated hackers according to the book?",
+      "shape": "entity",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.36470854883165826,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "motivation",
+        "psychology",
+        "rebellion",
+        "obsession"
+      ]
+    },
+    {
+      "id": "galileo-controversy",
+      "question": "What was the Galileo space mission controversy and how did it relate to the WANK worm?",
+      "shape": "precise",
+      "nm_tokens": 652,
+      "naive_tokens": 152903,
+      "reduction": 234.5138036809816,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.3048207143653232,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Galileo",
+        "NASA",
+        "anti-nuclear",
+        "plutonium"
+      ]
+    },
+    {
+      "id": "rmit-hacking-hub",
+      "question": "Why was RMIT a hub for hacker activity in Australia?",
+      "shape": "causal",
+      "nm_tokens": 565,
+      "naive_tokens": 152903,
+      "reduction": 270.624778761062,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5982555997830009,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "RMIT",
+        "Melbourne",
+        "hacker hub",
+        "AFP"
+      ]
+    },
+    {
+      "id": "secretservice-methods",
+      "question": "How did the US Secret Service investigate hackers like Par?",
+      "shape": "entity",
+      "nm_tokens": 653,
+      "naive_tokens": 152903,
+      "reduction": 234.15467075038285,
+      "ir_metrics": {
+        "recall_at_1": 0.0,
+        "recall_at_3": 0.2,
+        "recall_at_5": 0.3,
+        "precision_at_5": 0.6,
+        "mrr": 0.5,
+        "ndcg_at_5": 0.5611775932370866,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.0,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Secret Service",
+        "investigation",
+        "cooperation",
+        "Par"
+      ]
+    },
+    {
+      "id": "telsa-not-telstra",
+      "question": "What role did Telecom/Telstra play in Australian hacking incidents?",
+      "shape": "thematic",
+      "nm_tokens": 578,
+      "naive_tokens": 152903,
+      "reduction": 264.538062283737,
+      "ir_metrics": {
+        "recall_at_1": 0.1,
+        "recall_at_3": 0.3,
+        "recall_at_5": 0.4,
+        "precision_at_5": 0.8,
+        "mrr": 1.0,
+        "ndcg_at_5": 0.5982555997830009,
+        "hit_rate": 1.0
+      },
+      "ragas": {
+        "context_precision": null,
+        "context_recall": null,
+        "faithfulness": 0.1,
+        "answer_relevance": null
+      },
+      "themes": [
+        "Telecom",
+        "Telstra",
+        "infrastructure",
+        "Australia"
+      ]
+    }
+  ]
+}
