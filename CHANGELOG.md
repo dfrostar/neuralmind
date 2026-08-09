@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.1.2](https://github.com/dfrostar/neuralmind/compare/v3.1.1...v3.1.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **tier2:** enforce the free-tier seat limit and align pricing with commercial-terms ([8a4ecbf](https://github.com/dfrostar/neuralmind/commit/8a4ecbfd690fd3e382db7f993f38a9beab94765f))
+
+
+### Documentation
+
+* drop dead link to removed CRITIQUE-COVERAGE.md ([9471650](https://github.com/dfrostar/neuralmind/commit/947165006b7dae901861e83493b5b54b3c9279c5))
+* right-size graphify to optional status and add project governance artifacts ([48495a5](https://github.com/dfrostar/neuralmind/commit/48495a5380a41698b205be5a38bed79cb0e7bfc7))
+* **site:** add fixed-fee services page (assessment + pilot) ([11de20e](https://github.com/dfrostar/neuralmind/commit/11de20e528aab5b5a1911b00e4477d54c1f505a4))
+
 ## [3.1.1](https://github.com/dfrostar/neuralmind/compare/v3.1.0...v3.1.1) (2026-08-07)
 
 
