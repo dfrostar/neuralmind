@@ -6,6 +6,16 @@
 
 ---
 
+## ✅ COMPLETE: P0 Dogfood Fixes (2026-08-09)
+
+| # | Issue | Status | Fix | Commit |
+|---|-------|--------|-----|--------|
+| 1 | Role-gated MCP tools | ✅ FIXED | Added savings, compliance_report, structural_gaps, synapse_stats, synapse_decay, export_synapse_memory, feedback to builder role | `b113b24` |
+| 2 | No auto-rebuild | ✅ FIXED | Post-build hint directing to `init-hook` and `watch` | `aded3fd` |
+| 4 | No incremental build | ✅ FIXED | `_maybe_generate_builtin_graph` now regenerates on every build (graphgen reuses unchanged nodes by hash) | `986db53` |
+
+---
+
 ## ✅ COMPLETE: Gap Closure (Forward-ported to v3.1.2)
 
 | ID | Task | Effort | Evidence |
@@ -18,28 +28,21 @@
 | G-06 | Wire to CLI parser + imports | 10 min | `cli.py` |
 | G-07 | README: learning rate, feedback, status | 10 min | `README.md` |
 
-**Status:** All wired and tested on v3.1.2. CLI imports clean, `status` produces real output, `feedback good/bad` adjusts edges.
-
 ---
 
-## 🔨 ACTIVE: P0 Dogfood Fixes
-
-These break the core value prop in v3.1.2 per dogfood run (2026-08-09):
+## 🔨 ACTIVE: P1 Fixes
 
 | # | Issue | Status | Priority | Notes |
 |---|-------|--------|----------|-------|
-| 1 | **Role-gated MCP tools** | 🔴 REPRODUCED | P0 | `savings`, `compliance_report`, `structural_gaps`, `synapse_stats` deny `builder` role. Local installs should default to `operator`. |
-| 2 | **No auto-rebuild** | 🔴 REPRODUCED | P0 | Index goes stale on every commit. `watch` exists but isn't auto-started. |
-| 4 | **No incremental build** | 🔴 REPRODUCED | P0 | 77s full rebuild. Need delta embedding for changed files + neighbors. |
+| 3 | No `.neuralmindignore` | 🔴 REPRODUCED | P1 | 680/1080 nodes are markdown docs. Add `.gitignore`-style exclusion. |
+| 6 | No audit trail query | 🔴 REPRODUCED | P1 | `audit.py` exists but no CLI/MCP tool to query it. |
 
 ---
 
-## 📋 BACKLOG: P1-P3
+## 📋 BACKLOG: P2-P3
 
 | # | Issue | Status | Priority | Notes |
 |---|-------|--------|----------|-------|
-| 3 | No `.neuralmindignore` | 🔴 REPRODUCED | P1 | 680/1080 nodes are markdown docs. |
-| 6 | No audit trail query | 🔴 REPRODUCED | P1 | `audit.py` exists but no CLI/MCP tool. |
 | 5 | 176 unknown edge relations | 🔴 REPRODUCED | P2 | Tree-sitter method edges not mapped to IR. |
 | 7 | Compliance ingestion (SOC2/ISO) | ⚠️ PARTIAL | P2 | `compliance_matcher.py` exists; check SOC2/ISO 27001 coverage. |
 | 8 | Markdown bloat in ranking | 🔴 REPRODUCED | P2 | Same root cause as #3. |
@@ -77,7 +80,10 @@ These break the core value prop in v3.1.2 per dogfood run (2026-08-09):
 | Explicit feedback | None | `feedback good/bad` ✅ |
 | Status observability | `stats` (embedder only) | `status` (synapse health + learning diagnostic) ✅ |
 | Anti-Hebbian penalization | None | `penalize()` with auto-prune ✅ |
+| Builder role analytics | Denied | Full access ✅ |
+| Incremental build | Full 77s rebuild | Delta embedding ✅ |
+| Auto-rebuild suggestion | None | Post-build hint ✅ |
 
 ---
 
-*Next: commit this work, then tackle P0 items (role-gating, auto-rebuild, incremental build).*
+*Next: tackle P1 items (#3 `.neuralmindignore`, #6 audit trail query).*
