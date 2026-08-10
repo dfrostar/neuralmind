@@ -243,6 +243,12 @@ def cmd_build(args):
         print(f"Build failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
 
+    # Hint: auto-rebuild on commit to prevent stale-index drift
+    if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
+        print()
+        print("  💡 Keep the index fresh: neuralmind init-hook .  (auto-rebuild on every commit)")
+        print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
+
 
 def _try_daemon():
     """Return a connected DaemonClient, or None to fall back to direct mode.
