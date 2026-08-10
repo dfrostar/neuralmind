@@ -156,6 +156,47 @@ def tool_stats(project_path: str) -> dict[str, Any]:
         return {"project": Path(project_path).name, "built": False, "error": str(e)}
 
 
+def tool_health(project_path: str) -> dict[str, Any]:
+    """Lightweight health check for CI/CD, Docker, systemd."""
+    import time
+    from pathlib import Path
+    
+    nm_dir = Path(project_path) / ".neuralmind"
+    ir_path = nm_dir / "index_ir.json"
+    
+    if not ir_path.exists():
+        return {"status": "no_index", "healthy": False, "exit_code": 2}
+    
+    try:
+        ir_meta = json.loads(ir_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        ir_meta = {}
+    
+    last_build = ir_meta.get("built_at", 0) or ir_path.stat().st_mtime
+    age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
+    
+    disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
+    
+    synapse_count = 0
+    synapse_path = nm_dir / "synapses.db"
+    if synapse_path.exists():
+        try:
+            from neuralmind.synapses import SynapseStore
+            synapse_count = SynapseStore(synapse_path).stats().get("edges", 0)
+        except Exception:
+            pass
+    
+    return {
+        "status": "stale" if age_hours >= 24 else "healthy",
+        "healthy": age_hours < 24,
+        "exit_code": 1 if age_hours >= 24 else 0,
+        "index_age_hours": round(age_hours, 1),
+        "node_count": ir_meta.get("node_count", ir_meta.get("nodes_total", 0)),
+        "disk_mb": round(disk_mb, 2),
+        "synapse_edges": synapse_count,
+    }
+
+
 def tool_benchmark(project_path: str) -> dict[str, Any]:
     """Run token reduction benchmark."""
     mind = get_mind(project_path)
@@ -962,6 +1003,19 @@ TOOLS = [
         },
     },
     {
+        "name": "neuralmind_health",
+        "description": (
+            "Lightweight health check for CI/CD and orchestrators. Returns "
+            "index age, node count, last build time, disk usage, synapse edges. "
+            "Exit code 0=healthy, 1=stale, 2=no index."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"project_path": {"type": "string"}},
+            "required": ["project_path"],
+        },
+    },
+    {
         "name": "neuralmind_review",
         "description": (
             "Warn about likely co-breakage before a commit or code review. "
@@ -1093,6 +1147,7 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
         ),
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),
+        "neuralmind_health": lambda args: tool_health(args["project_path"]),
         "neuralmind_benchmark": lambda args: tool_benchmark(args["project_path"]),
         "neuralmind_savings": lambda args: tool_savings(
             args["project_path"],

@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.cli_feedback_status import cmd_feedback_bad, cmd_feedback_good, cmd_status
+from neuralmind.cli_health import cmd_health
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
@@ -4021,6 +4022,15 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    # health command — lightweight health check for CI/CD
+    health_p = subparsers.add_parser(
+        "health",
+        help="Check NeuralMind health (exit 0=healthy, 1=stale, 2=no index)",
+    )
+    health_p.add_argument("project_path", nargs="?", default=".")
+    health_p.add_argument("--json", "-j", action="store_true")
+    health_p.set_defaults(func=cmd_health)
 
     metrics_p = subparsers.add_parser(
         "metrics",
