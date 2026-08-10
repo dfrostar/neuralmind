@@ -1477,6 +1477,43 @@ def cmd_eval(args):
     print(harness.render_json(report) if args.json else harness.render_markdown(report))
 
 
+def cmd_synapse_prune(args) -> None:
+    """Prune stale synapses older than N days."""
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    db = Path(default_db_path(args.project_path))
+    if not db.exists():
+        print(f"No synapse store at {db}", file=sys.stderr)
+        sys.exit(1)
+    store = SynapseStore(db)
+    pruned = store.prune_stale(age_days=args.days)
+    if args.json:
+        print(json.dumps({"pruned": pruned, "age_days": args.days}))
+    else:
+        print(f"✓ Pruned {pruned} synapses older than {args.days} days")
+
+
+def cmd_synapse_stats(args) -> None:
+    """Show detailed synapse stats."""
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    db = Path(default_db_path(args.project_path))
+    if not db.exists():
+        print(f"No synapse store at {db}", file=sys.stderr)
+        sys.exit(1)
+    store = SynapseStore(db)
+    stats = store.stats_detailed()
+    if args.json:
+        print(json.dumps(stats, indent=2))
+        return
+    print(f"Synapse Stats — {stats['db_path']}")
+    print(f"  Edges:          {stats['edges']} ({stats['ltp_protected']} LTP-protected)")
+    print(f"  Stale (30d):    {stats.get('stale_30d', 0)}")
+    print(f"  Dormant:        {stats.get('dormant', 0)}")
+    print(f"  Transitions:    {stats['transitions']}")
+    print(f"  Total weight:   {stats['total_weight']:.2f}")
+
+
 def cmd_next(args):
     """Show what typically follows a node (file path or node id) in the
     learned directional-transition graph."""
@@ -4368,6 +4405,30 @@ def main():
     mem_review_reject.add_argument("project_path", nargs="?", default=".")
     mem_review_reject.add_argument("--json", "-j", action="store_true")
     mem_review_reject.set_defaults(func=cmd_memory)
+
+    # synapse command group — prune + detailed stats
+    synapse_p = subparsers.add_parser(
+        "synapse",
+        help="Prune stale synapses and view detailed stats",
+    )
+    synapse_sub = synapse_p.add_subparsers(dest="synapse_cmd", required=True)
+
+    synapse_prune = synapse_sub.add_parser(
+        "prune",
+        help="Remove synapses older than N days (default: 30)",
+    )
+    synapse_prune.add_argument("project_path", nargs="?", default=".")
+    synapse_prune.add_argument("--days", type=int, default=30, help="Age threshold in days")
+    synapse_prune.add_argument("--json", "-j", action="store_true")
+    synapse_prune.set_defaults(func=cmd_synapse_prune)
+
+    synapse_stats = synapse_sub.add_parser(
+        "stats",
+        help="Show detailed synapse stats (total, active, stale, LTP)",
+    )
+    synapse_stats.add_argument("project_path", nargs="?", default=".")
+    synapse_stats.add_argument("--json", "-j", action="store_true")
+    synapse_stats.set_defaults(func=cmd_synapse_stats)
 
     mem_staleness_scan = memory_sub.add_parser(
         "staleness-scan",

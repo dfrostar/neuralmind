@@ -2257,6 +2257,34 @@ class SynapseStore:
             "activations": int(activations),
         }
 
+    def prune_stale(self, age_days: int | None = None) -> int:
+        """Remove synapses older than N days."""
+        if age_days is None:
+            return 0
+        cutoff = time.time() - (age_days * 86400)
+        with self._connect() as conn:
+            cur = conn.execute(
+                "DELETE FROM synapses WHERE created_at < ? OR last_activated < ?",
+                (cutoff, cutoff),
+            )
+            return cur.rowcount
+
+    def stats_detailed(self) -> dict:
+        """Detailed synapse stats for diagnostics."""
+        basic = self.stats()
+        with self._connect() as conn:
+            stale = conn.execute(
+                "SELECT COUNT(*) FROM synapses WHERE last_activated < ?",
+                (time.time() - 30 * 86400,),
+            ).fetchone()[0]
+            dormant = conn.execute(
+                "SELECT COUNT(*) FROM synapses WHERE activation_count <= 1",
+            ).fetchone()[0]
+        basic["stale_30d"] = int(stale)
+        basic["dormant"] = int(dormant)
+        basic["ltp_protected"] = basic.get("ltp_edges", 0)
+        return basic
+
     def reset(self) -> None:
         """Drop all synapses, transitions, and activations. Useful for
         tests and full retrain. The schema version marker survives so the
