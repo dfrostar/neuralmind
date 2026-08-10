@@ -339,9 +339,63 @@ def _print_explain(result) -> None:
         print("  Tip: add --trace to see per-layer synapse firing detail.")
 
 
+def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
+    """Query across multiple projects and merge results."""
+    from pathlib import Path
+    
+    trace = getattr(args, "trace", False) is True
+    explain = getattr(args, "explain", False) is True
+    if explain and not trace:
+        trace = True
+
+    all_hits = []
+    total_tokens = 0
+    for proj_path in project_paths:
+        mind = create_mind(proj_path, auto_build=True)
+        result = mind.query(args.question, trace=trace)
+        total_tokens += result.budget.total
+        for hit in result.top_search_hits:
+            hit["_project"] = Path(proj_path).name
+            all_hits.append(hit)
+
+    # Deduplicate by id, keep highest score
+    seen = {}
+    for hit in all_hits:
+        hid = hit.get("id", hit.get("label", ""))
+        if hid not in seen or hit.get("score", 0) > seen[hid].get("score", 0):
+            seen[hid] = hit
+    unique_hits = list(seen.values())
+
+    if args.json:
+        output = {
+            "query": args.question,
+            "projects": project_paths,
+            "tokens": total_tokens,
+            "results": len(unique_hits),
+            "hits": unique_hits[:20],
+        }
+        print(json.dumps(output, indent=2, default=str))
+    else:
+        print(f"Query: {args.question}  (cross-project: {len(project_paths)} repos)")
+        print(f"Tokens: {total_tokens} | Results: {len(unique_hits)}")
+        print("=" * 60)
+        for i, hit in enumerate(unique_hits[:20]):
+            score = hit.get("score", 0)
+            project = hit.get("_project", "?")
+            label = hit.get("label", hit.get("id", ""))[:60]
+            print(f"  {i+1}. [{project}] {label}  ({score:.3f})")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     _increment_wakeup_count()
+
+    # Handle cross-project query
+    projects_arg = getattr(args, "projects", None)
+    if projects_arg:
+        project_paths = [p.strip() for p in projects_arg.split(",") if p.strip()]
+        if len(project_paths) > 1:
+            return _cmd_query_cross_project(args, project_paths)
 
     # Migration check: warn on version mismatch before slow reindex
     _migrate_warning = _check_version_mismatch(args.project_path or ".")
@@ -3900,6 +3954,10 @@ def main():
         choices=["auto", "code", "docs"],
         default="auto",
         help="Filter results: 'code' restricts to source code, 'docs' to documentation, 'auto' includes both (default: auto)",
+    )
+    query_p.add_argument(
+        "--projects",
+        help="Comma-separated list of project paths to query (cross-project). If specified, overrides project_path.",
     )
     query_p.set_defaults(func=cmd_query)
 
