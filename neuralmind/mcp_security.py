@@ -22,6 +22,14 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_benchmark",
         "neuralmind_skeleton",
         "neuralmind_ingest_document",
+        # Analytics tools — local installs should measure ROI
+        "neuralmind_savings",
+        "neuralmind_compliance_report",
+        "neuralmind_structural_gaps",
+        "neuralmind_synapse_stats",
+        "neuralmind_synapse_decay",
+        "neuralmind_export_synapse_memory",
+        "neuralmind_feedback",
     },
     "reader": {
         "neuralmind_wakeup",
