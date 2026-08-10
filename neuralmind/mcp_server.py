@@ -191,7 +191,7 @@ def tool_health(project_path: str) -> dict[str, Any]:
         "healthy": age_hours < 24,
         "exit_code": 1 if age_hours >= 24 else 0,
         "index_age_hours": round(age_hours, 1),
-        "node_count": ir_meta.get("node_count", ir_meta.get("nodes_total", 0)),
+        "node_count": ir_meta.get("node_count", len(ir_meta.get("nodes", []))),
         "disk_mb": round(disk_mb, 2),
         "synapse_edges": synapse_count,
     }

@@ -53,8 +53,8 @@ def cmd_health(args) -> None:
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
     is_stale = age_hours >= 24
 
-    # Node count
-    node_count = ir_meta.get("node_count", ir_meta.get("nodes_total", 0))
+    # Node count (IR stores nodes as a list under "nodes")
+    node_count = ir_meta.get("node_count", len(ir_meta.get("nodes", [])))
 
     # Disk usage
     disk_usage = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file())
