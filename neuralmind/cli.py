@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
+from neuralmind.cli_feedback_status import cmd_feedback_bad, cmd_feedback_good, cmd_status
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
@@ -4205,6 +4206,30 @@ def main():
         help="Inspect, reset, export, or import learned synapse memory by namespace",
     )
     memory_sub = memory_p.add_subparsers(dest="memory_cmd", required=True)
+
+    # feedback command — explicit good/bad adjustment of last-reinforced edges
+    feedback_p = subparsers.add_parser(
+        "feedback",
+        help="Adjust the last query's reinforced edges: 'good' boosts, 'bad' penalizes",
+    )
+    feedback_sub = feedback_p.add_subparsers(dest="feedback_cmd", required=True)
+    feedback_good_p = feedback_sub.add_parser("good", help="Last result was useful (+0.60)")
+    feedback_good_p.add_argument("project_path", nargs="?", default=".")
+    feedback_good_p.add_argument("--json", "-j", action="store_true")
+    feedback_good_p.set_defaults(func=cmd_feedback_good)
+    feedback_bad_p = feedback_sub.add_parser("bad", help="Last result was wrong (-0.30)")
+    feedback_bad_p.add_argument("project_path", nargs="?", default=".")
+    feedback_bad_p.add_argument("--json", "-j", action="store_true")
+    feedback_bad_p.set_defaults(func=cmd_feedback_bad)
+
+    # status command — synapse dashboard + 'is it learning?' diagnostic
+    status_p = subparsers.add_parser(
+        "status",
+        help="Show synapse memory health: edge counts, weight distribution, and whether the layer is actively learning",
+    )
+    status_p.add_argument("project_path", nargs="?", default=".")
+    status_p.add_argument("--json", "-j", action="store_true")
+    status_p.set_defaults(func=cmd_status)
 
     mem_inspect = memory_sub.add_parser(
         "inspect", help="Show learned memory contribution by namespace"

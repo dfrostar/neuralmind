@@ -664,6 +664,64 @@ class SynapseStore:
 
         return len(pairs)
 
+    def penalize(
+        self,
+        node_ids: Iterable[str],
+        penalty: float = 0.3,
+        now: float | None = None,
+        namespace: str | None = None,
+    ) -> int:
+        """Anti-Hebbian: reduce weights on every pairwise edge in node_ids.
+
+        The explicit-feedback 'bad' path: when a user flags the last query
+        as unhelpful, the edges it reinforced are penalized so they surface
+        less on future similar queries. Weights floor at 0 (never go
+        negative). Edges that decay below PRUNE_THRESHOLD are deleted.
+
+        Returns the number of pairs touched. Self-pairs and duplicates are
+        ignored. Each node's activation counter is NOT incremented —
+        penalization is a pure weight reduction, not an activation signal.
+        """
+        ids = [n for n in dict.fromkeys(node_ids) if n]
+        if not ids:
+            return 0
+        ns = normalize_namespace(namespace) if namespace else self.namespace
+        ts = now if now is not None else time.time()
+        penalty = max(0.0, min(penalty, WEIGHT_CAP))
+
+        pairs: list[tuple[str, str]] = []
+        for i, a in enumerate(ids):
+            for b in ids[i + 1 :]:
+                pair = _canonical(a, b)
+                if pair is not None:
+                    pairs.append(pair)
+
+        if not pairs:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    UPDATE synapses
+                    SET weight = MAX(0.0, weight - ?),
+                        last_activated = ?
+                    WHERE node_a = ? AND node_b = ? AND namespace = ?
+                    """,
+                    [(penalty, ts, a, b, ns) for a, b in pairs],
+                )
+                # Delete edges that fell below prune threshold
+                conn.execute(
+                    "DELETE FROM synapses WHERE namespace = ? AND weight <= ?",
+                    (ns, PRUNE_THRESHOLD),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(pairs)
+
     def record_sequence(
         self,
         ordered_ids: Iterable[str],
