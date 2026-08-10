@@ -401,7 +401,29 @@ def cmd_query(args):
             pass  # fall through to direct mode
 
     mind = create_mind(args.project_path, auto_build=True)
+    
+    # Apply type filter if specified
+    query_type = getattr(args, "type", "auto")
+    
     result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
+    
+    # Filter results by type
+    if query_type != "auto":
+        from pathlib import Path
+        code_extensions = {'.py', '.js', '.ts', '.java', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.kts'}
+        docs_extensions = {'.md', '.markdown', '.txt', '.rst', '.org', '.tex', '.adoc'}
+        
+        if hasattr(result, 'top_search_hits'):
+            filtered = []
+            for hit in result.top_search_hits:
+                source_file = hit.get('source_file', hit.get('metadata', {}).get('source_file', ''))
+                ext = Path(source_file).suffix.lower()
+                if query_type == 'code' and ext in code_extensions:
+                    filtered.append(hit)
+                elif query_type == 'docs' and ext in docs_extensions:
+                    filtered.append(hit)
+            result.top_search_hits = filtered
+    
     if args.json:
         output = {
             "query": args.question,
@@ -3872,6 +3894,12 @@ def main():
         help="Show a human-friendly breakdown of why this context was selected: "
         "token savings, layers used, communities loaded, top search hits, "
         "and which synapses fired.",
+    )
+    query_p.add_argument(
+        "--type",
+        choices=["auto", "code", "docs"],
+        default="auto",
+        help="Filter results: 'code' restricts to source code, 'docs' to documentation, 'auto' includes both (default: auto)",
     )
     query_p.set_defaults(func=cmd_query)
 
