@@ -1,0 +1,24 @@
+# NeuralMind ignore file
+# .gitignore-style patterns — files matching these patterns are excluded from the index.
+
+# Documentation (680 of 1080 nodes are markdown — dilutes code retrieval)
+docs/
+*.md
+*.markdown
+
+# Tests (usually not needed for code intelligence)
+tests/
+test_*.py
+
+# Config files (noise in graph)
+*.config.js
+*.config.ts
+postcss.config.js
+tailwind.config.js
+ps1/
+
+# Build artifacts
+graphify-out/
+.neuralmind/
+__pycache__/
+*.pyc
