@@ -1597,6 +1597,34 @@ def cmd_audit_verify(args):
         sys.exit(1)
 
 
+def cmd_audit_recent(args):
+    """Show recent audit events — quick operational visibility."""
+    trail = AuditTrail(args.project_path)
+    events = trail.search(
+        category=args.category,
+        action=args.action,
+        actor=args.actor,
+        since=args.since,
+        limit=args.limit,
+    )
+    if args.json:
+        print(json.dumps(events, indent=2, default=str))
+        return
+    if not events:
+        print("No audit events found.")
+        return
+    print(f"Recent audit events ({len(events)} shown):")
+    print(f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} Target")
+    print("  " + "-" * 80)
+    for evt in events:
+        ts = evt.get("timestamp", "")[:19]
+        cat = evt.get("category", "")[:11]
+        act = evt.get("action", "")[:19]
+        actor = evt.get("actor", "")[:11]
+        target = str(evt.get("target", ""))[:30]
+        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
+
+
 def cmd_memory(args):
     """Namespace-level controls over the learned synapse memory (PRD 4).
 
@@ -4205,6 +4233,19 @@ def main():
     audit_verify.add_argument("project_path", nargs="?", default=".")
     audit_verify.add_argument("--json", "-j", action="store_true")
     audit_verify.set_defaults(func=cmd_audit_verify)
+
+    audit_recent = audit_sub.add_parser(
+        "recent",
+        help="Show recent audit events (last N, or filter by category/action/actor)",
+    )
+    audit_recent.add_argument("project_path", nargs="?", default=".")
+    audit_recent.add_argument("-n", "--limit", type=int, default=20, help="Number of events to show (default: 20)")
+    audit_recent.add_argument("--category", help="Filter by category (substring)")
+    audit_recent.add_argument("--action", help="Filter by action (substring)")
+    audit_recent.add_argument("--actor", help="Filter by actor (substring)")
+    audit_recent.add_argument("--since", help="ISO-8601 lower bound on timestamp")
+    audit_recent.add_argument("--json", "-j", action="store_true")
+    audit_recent.set_defaults(func=cmd_audit_recent)
 
     # memory command group — namespace controls over learned memory (PRD 4)
     memory_p = subparsers.add_parser(
