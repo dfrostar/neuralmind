@@ -99,14 +99,10 @@ class NeuralMindConfig:
         local = data.get("local_models", {}) or {}
         api = data.get("api", {}) or {}
         return cls(
-            local_models=LocalModelsConfig(**{
-                k: v for k, v in local.items()
-                if k in LocalModelsConfig.__dataclass_fields__
-            }),
-            api=ApiConfig(**{
-                k: v for k, v in api.items()
-                if k in ApiConfig.__dataclass_fields__
-            }),
+            local_models=LocalModelsConfig(
+                **{k: v for k, v in local.items() if k in LocalModelsConfig.__dataclass_fields__}
+            ),
+            api=ApiConfig(**{k: v for k, v in api.items() if k in ApiConfig.__dataclass_fields__}),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -134,11 +130,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
     """Recursively merge override into base, returning a new dict."""
     result = base.copy()
     for key, value in override.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
@@ -160,7 +152,9 @@ def load_config() -> NeuralMindConfig:
         return DEFAULT_CONFIG
 
     if not isinstance(raw, dict):
-        logger.warning("Config file %s must be a TOML table, got %s", config_file, type(raw).__name__)
+        logger.warning(
+            "Config file %s must be a TOML table, got %s", config_file, type(raw).__name__
+        )
         return DEFAULT_CONFIG
 
     merged = _deep_merge(DEFAULT_CONFIG.to_dict(), raw)
