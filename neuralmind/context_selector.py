@@ -852,28 +852,27 @@ class ContextSelector:
         # Boost factors (configurable via env vars)
         code_boost = float(os.environ.get("NEURALMIND_CODE_BOOST", "3.0"))
         doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
-        
         for result in results:
             meta = result.get("metadata", {})
             file_type = meta.get("file_type", "")
             source_file = meta.get("source_file", "")
             
-            # Determine if node is code or doc
-            is_code = file_type == "code" or bool(source_file) and not source_file.endswith(('.md', '.markdown', '.txt', '.rst', '.org'))
+            # Determine if node is code or doc (mutually exclusive)
             is_doc = file_type in ("rationale", "document") or source_file.endswith(('.md', '.markdown', '.txt', '.rst', '.org'))
+            is_code = not is_doc and (file_type == "code" or bool(source_file))
             
             if intent == "code":
                 if is_code:
                     result["score"] = result.get("score", 0) * code_boost
                     result["_intent_boost"] = code_boost
-                elif is_doc:
+                else:
                     result["score"] = result.get("score", 0) * 0.5
                     result["_intent_boost"] = 0.5
             elif intent == "docs":
                 if is_doc:
                     result["score"] = result.get("score", 0) * doc_boost
                     result["_intent_boost"] = doc_boost
-                elif is_code:
+                else:
                     result["score"] = result.get("score", 0) * 0.7
                     result["_intent_boost"] = 0.7
         
@@ -1062,15 +1061,19 @@ class ContextSelector:
         )
 
     def get_query_context(
-        self, query: str, trace: bool = False, trace_verbose: bool = False
+        self, query: str, trace: bool = False, trace_verbose: bool = False, query_type: str = "auto"
     ) -> ContextResult:
         """
         Get full context for a specific query.
         Use this when answering a question about the codebase.
 
-        With ``trace=True``, records a per-layer :class:`~neuralmind.trace.
-        RetrievalTrace` (candidates, cluster scoring, synapse boosts, final
-        hits, token budget) and attaches it to ``result.trace``.
+        With ``trace=True``, records a per-layer retrieval trace.
+
+        Args:
+            query: Natural language query
+            trace: If True, attach a per-layer retrieval trace
+            trace_verbose: If True (with trace), keep full candidate/hit lists
+            query_type: Filter results — 'code', 'docs', or 'auto' (default)
 
         Returns:
             ContextResult with relevant context and search results
@@ -1086,6 +1089,7 @@ class ContextSelector:
                 include_l1=True,
                 include_l2=True,
                 include_l3=True,
+                query_type=query_type,
             )
             if self._trace is not None:
                 result.trace = self._trace.to_dict()

@@ -705,16 +705,24 @@ class SynapseStore:
                 conn.executemany(
                     """
                     UPDATE synapses
-                    SET weight = MAX(0.0, weight - ?),
-                        last_activated = ?
+                    SET weight = MAX(0.0, weight - ?)
                     WHERE node_a = ? AND node_b = ? AND namespace = ?
                     """,
-                    [(penalty, ts, a, b, ns) for a, b in pairs],
+                    [(penalty, a, b, ns) for a, b in pairs],
                 )
-                # Delete edges that fell below prune threshold
+                # Delete only penalized edges that fell below prune threshold
+                # LTP-protected edges (activation_count >= LTP_THRESHOLD) are preserved
+                placeholders = ",".join(["(?,?)"] * len(pairs))
+                flat = [item for pair in pairs for item in pair]
                 conn.execute(
-                    "DELETE FROM synapses WHERE namespace = ? AND weight <= ?",
-                    (ns, PRUNE_THRESHOLD),
+                    f"""
+                    DELETE FROM synapses
+                    WHERE namespace = ?
+                    AND weight <= ?
+                    AND activation_count < ?
+                    AND (node_a, node_b) IN ({placeholders})
+                    """,
+                    (ns, PRUNE_THRESHOLD, LTP_THRESHOLD, *flat),
                 )
                 conn.execute("COMMIT")
             except Exception:
@@ -2258,14 +2266,22 @@ class SynapseStore:
         }
 
     def prune_stale(self, age_days: int | None = None) -> int:
-        """Remove synapses older than N days."""
+        """Remove synapses older than N days.
+        
+        LTP-protected edges (activation_count >= LTP_THRESHOLD) are preserved
+        to maintain learned associations.
+        """
         if age_days is None:
             return 0
         cutoff = time.time() - (age_days * 86400)
         with self._connect() as conn:
             cur = conn.execute(
-                "DELETE FROM synapses WHERE created_at < ? OR last_activated < ?",
-                (cutoff, cutoff),
+                """
+                DELETE FROM synapses
+                WHERE last_activated < ?
+                AND activation_count < ?
+                """,
+                (cutoff, LTP_THRESHOLD),
             )
             return cur.rowcount
 

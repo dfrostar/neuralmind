@@ -350,15 +350,23 @@ def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
 
     all_hits = []
     total_tokens = 0
+    errors = []
     for proj_path in project_paths:
-        mind = create_mind(proj_path, auto_build=True)
-        result = mind.query(args.question, trace=trace)
-        total_tokens += result.budget.total
-        for hit in result.top_search_hits:
-            hit["_project"] = Path(proj_path).name
-            all_hits.append(hit)
+        try:
+            mind = create_mind(proj_path, auto_build=True)
+            result = mind.query(args.question, trace=trace)
+            total_tokens += result.budget.total
+            for hit in result.top_search_hits:
+                hit["_project"] = Path(proj_path).name
+                all_hits.append(hit)
+        except Exception as e:
+            errors.append(f"{proj_path}: {e}")
+            continue
 
-    # Deduplicate by id, keep highest score
+    if errors:
+        print(f"⚠ {len(errors)} project(s) failed:", file=sys.stderr)
+        for e in errors:
+            print(f"   {e}", file=sys.stderr)
     seen = {}
     for hit in all_hits:
         hid = hit.get("id", hit.get("label", ""))
@@ -413,11 +421,11 @@ def cmd_query(args):
     if explain and not trace:
         trace = True
 
-    # --relevance (sidecar from ContextResult.top_search_hits) and --explain
-    # (full per-layer breakdown) both need the full result object, which the
-    # daemon's thin query response does not carry — fall back to direct mode
-    # when either is requested.
-    client = None if (relevance or explain) else _try_daemon()
+    # --relevance, --explain, and --type all need the full result object,
+    # which the daemon's thin query response does not carry — fall back to
+    # direct mode when any is requested.
+    query_type = getattr(args, "type", "auto")
+    client = None if (relevance or explain or query_type != "auto") else _try_daemon()
     if client is not None:
         try:
             out = client.query(
@@ -459,24 +467,7 @@ def cmd_query(args):
     # Apply type filter if specified
     query_type = getattr(args, "type", "auto")
     
-    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
-    
-    # Filter results by type
-    if query_type != "auto":
-        from pathlib import Path
-        code_extensions = {'.py', '.js', '.ts', '.java', '.c', '.cpp', '.h', '.hpp', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.kts'}
-        docs_extensions = {'.md', '.markdown', '.txt', '.rst', '.org', '.tex', '.adoc'}
-        
-        if hasattr(result, 'top_search_hits'):
-            filtered = []
-            for hit in result.top_search_hits:
-                source_file = hit.get('source_file', hit.get('metadata', {}).get('source_file', ''))
-                ext = Path(source_file).suffix.lower()
-                if query_type == 'code' and ext in code_extensions:
-                    filtered.append(hit)
-                elif query_type == 'docs' and ext in docs_extensions:
-                    filtered.append(hit)
-            result.top_search_hits = filtered
+    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose, query_type=query_type)
     
     if args.json:
         output = {

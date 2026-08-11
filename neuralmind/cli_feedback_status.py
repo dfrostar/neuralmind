@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-from .synapses import SynapseStore, default_db_path
+from .synapses import LEARNING_RATE, SynapseStore, default_db_path
 from .namespaces import resolve_namespace
 
 
@@ -36,7 +36,7 @@ def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
 
 
 def cmd_feedback_good(args) -> None:
-    """Boost the last query's reinforced edges (+0.60)."""
+    """Boost the last query's reinforced edges."""
     project_path = Path(args.project_path).resolve()
     node_ids, err = _get_last_reinforced(project_path)
     if err:
@@ -50,14 +50,15 @@ def cmd_feedback_good(args) -> None:
 
     ns = resolve_namespace(project_path)
     store = SynapseStore(db, namespace=ns)
-    # Boost: reinforce with strength=2.0 → delta = 0.30 × 2.0 = 0.60 per edge
+    # Boost: reinforce with strength=2.0
     pairs = store.reinforce(node_ids, strength=2.0)
+    delta = LEARNING_RATE * 2.0
 
     result = {
         "feedback": "good",
         "node_count": len(node_ids),
         "pairs_adjusted": pairs,
-        "adjustment_per_edge": 0.6,
+        "adjustment_per_edge": delta,
         "namespace": ns,
     }
     if args.json:
@@ -68,7 +69,7 @@ def cmd_feedback_good(args) -> None:
 
 
 def cmd_feedback_bad(args) -> None:
-    """Penalize the last query's reinforced edges (-0.30)."""
+    """Penalize the last query's reinforced edges."""
     project_path = Path(args.project_path).resolve()
     node_ids, err = _get_last_reinforced(project_path)
     if err:
@@ -82,19 +83,20 @@ def cmd_feedback_bad(args) -> None:
 
     ns = resolve_namespace(project_path)
     store = SynapseStore(db, namespace=ns)
-    pairs = store.penalize(node_ids, penalty=0.3)
+    penalty = LEARNING_RATE  # 0.30
+    pairs = store.penalize(node_ids, penalty=penalty)
 
     result = {
         "feedback": "bad",
         "node_count": len(node_ids),
         "pairs_adjusted": pairs,
-        "adjustment_per_edge": -0.3,
+        "adjustment_per_edge": -penalty,
         "namespace": ns,
     }
     if args.json:
         print(json.dumps(result, indent=2))
         return
-    print(f"✓ Penalized {pairs} edges from last query (-0.30 each).")
+    print(f"✓ Penalized {pairs} edges from last query (-{penalty:.2f} each).")
     print(f"  Nodes: {len(node_ids)} • Namespace: {ns}")
     print("  Those edges will surface less on future similar queries.")
 
