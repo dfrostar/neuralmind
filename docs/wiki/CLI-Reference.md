@@ -539,18 +539,19 @@ python -m evals.public.run
 ```
 
 The run is **deterministic** — synapse injection is **OFF** (session-dependent
-learning can't be a fixed, reproducible public number; its **+14pt** lift is
+learning can't be a fixed, reproducible public number; its **+6.1pt** lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running matches the
 published table to the token.
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **85–100% gold-file recall (93.75% mean) at 45–259× fewer
-tokens** than pasting files, and beats `ripgrep` on *both* recall and cost on
-every repo. The benchmark also reports, without hiding it, that a well-tuned
-vector RAG ties or beats it at *findability* too (and cheaper on raw tokens),
-and that 4 of 40 queries show partial gold-file misses. Full methodology,
+— NeuralMind reaches **79–100% gold-file recall (93.75% mean) at 45–257× fewer
+tokens** than pasting files, and beats `ripgrep` on cost on every repo; on
+recall it's ahead on 2 of 4 repos and ties exactly on the other 2. The
+benchmark also reports, without hiding it, that a well-tuned vector RAG ties
+or beats it at *findability* too (and cheaper on raw tokens), and that `click`
+is NeuralMind's weakest repo in the corpus. Full methodology,
 results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
@@ -1007,7 +1008,7 @@ Learning is now handled entirely by the **synapse layer**, which learns
 continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. A 2×2 A/B on the
 benchmark fixture showed the old reranker added 0.0 points to top-k hit
-rate while the synapse layer alone adds +14 points.
+rate while the synapse layer alone adds +6.1 points.
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale
@@ -1614,7 +1615,7 @@ neuralmind serve [project_path] [--port PORT] [--no-browser] [--editor EDITOR] [
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--port` | `8765` | TCP port to bind to |
+| `--port` | `8787` | TCP port to bind to |
 | `--no-browser` | off | Don't auto-open a browser tab on startup |
 | `--editor` | `$EDITOR` | Editor command used by the "Open in editor" button — `code`, `code -n`, `cursor`, `vim`, `subl`, `idea`, etc. |
 | `--no-auth` | off | Disable the per-session auth token. Only use on a trusted host. |

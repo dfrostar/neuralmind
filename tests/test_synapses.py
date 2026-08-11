@@ -595,3 +595,322 @@ def test_seed_from_structural_uses_shared_namespace(tmp_path):
     with s._connect() as conn:
         ns = conn.execute("SELECT namespace FROM synapses WHERE node_a = 'A'").fetchone()[0]
     assert ns == "shared"
+
+
+# --------------------------------------------------------------------------- #
+# N-13: Document → synapse seeding tests
+# --------------------------------------------------------------------------- #
+
+
+def _make_store(tmp_path):
+    """Create a SynapseStore with structural_edges populated."""
+    return _store(tmp_path)
+
+
+def _code_node(nid, label=None):
+    """Helper: a code node dict."""
+    return {
+        "id": nid,
+        "label": label or nid,
+        "metadata": {"label": label or nid},
+    }
+
+
+def _biz_node(nid, text, tags=None, title=None):
+    """Helper: a business context node dict."""
+    meta = {"content_category": "business_context"}
+    if title:
+        meta["title"] = title
+    if tags:
+        meta["tags"] = tags
+    return {
+        "id": nid,
+        "label": title or nid,
+        "content_text": text,
+        "metadata": meta,
+    }
+
+
+def test_T1_false_positive_control(tmp_path):
+    """Generic words ('server', 'engine') must NOT create spurious edges."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:test_decision.20260801",
+            "We discussed the architecture. No specific code references.",
+        ),
+        _code_node("engine_server_py__cmd_ingest_fn", "cmd_ingest_fn"),
+        _code_node("engine_core_py__main_fn", "main_fn"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # Generic "server"/"engine" are stopwords → no edges
+    assert count == 0
+
+
+def test_T2_idempotency_no_activation_inflation(tmp_path):
+    """Re-running seed returns 0 new edges and must not inflate activation_count."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:adopt_postgres.20260801",
+            "Use PostgreSQL for CMMC audit logs.",
+            tags=["infrastructure"],
+            title="Adopt PostgreSQL",
+        ),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+        _code_node("engine_db_pg__connect_fn", "postgres_connect"),
+    ]
+    count1 = s.seed_from_documents(nodes)
+    assert count1 > 0
+    count2 = s.seed_from_documents(nodes)
+    # H3 fix: second run returns 0 new edges (not candidate count)
+    assert count2 == 0
+    # activation_count must be 1 (not incremented on re-run)
+    with s._connect() as conn:
+        max_act = conn.execute("SELECT MAX(activation_count) FROM synapses").fetchone()[0]
+    assert max_act == 1
+
+
+def test_T3_cross_process_determinism(tmp_path):
+    """Seed in one store, reopen fresh store — same edges."""
+    db = tmp_path / "synapses.db"
+    s1 = SynapseStore(db)
+    nodes = [
+        _biz_node(
+            "decision:security_review.20260801",
+            "Conduct quarterly security review of auth module.",
+            tags=["security", "compliance"],
+        ),
+        _code_node("engine_auth_py__login_fn", "auth_login"),
+        _code_node("engine_security_py__check_fn", "security_check"),
+    ]
+    count1 = s1.seed_from_documents(nodes)
+    s2 = SynapseStore(db)
+    count2 = s2.seed_from_documents(nodes)
+    # H3: second run returns 0 new edges
+    assert count1 > 0
+    assert count2 == 0
+    # Edges identical
+    edges1 = {(a, b) for a, b, _, _ in s1.edges(min_weight=0.0)}
+    edges2 = {(a, b) for a, b, _, _ in s2.edges(min_weight=0.0)}
+    assert edges1 == edges2
+
+
+def test_T4_namespace_and_canonical_ordering(tmp_path):
+    """New edges must be 'shared' namespace, stored with node_a < node_b."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:important.20260801",
+            "Important decision about audit logs.",
+        ),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+    ]
+    s.seed_from_documents(nodes)
+    with s._connect() as conn:
+        rows = conn.execute("SELECT node_a, node_b, namespace FROM synapses").fetchall()
+    for node_a, node_b, ns in rows:
+        assert ns == "shared"
+        assert node_a < node_b, f"Canonical order violated: {node_a} !< {node_b}"
+
+
+def test_T5_stoplist_specificity(tmp_path):
+    """Specific symbol creates edge; generic word does not."""
+    s = _store(tmp_path)
+    # "audit" is specific → should match
+    # "util" is a stopword → should NOT match even if present in text
+    nodes = [
+        _biz_node(
+            "decision:specific.20260801",
+            "The audit module needs refactoring.",
+        ),
+        _code_node("engine_audit_py__verify_fn", "audit_verify"),
+        _code_node("engine_util_py__helper_fn", "util_helper"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # "audit" should match (specific component)
+    assert count >= 1
+    with s._connect() as conn:
+        rows = conn.execute("SELECT node_a, node_b FROM synapses").fetchall()
+    # No edge to the util node (util is a stopword)
+    for node_a, node_b in rows:
+        assert not node_a.endswith("__helper_fn")
+        assert not node_b.endswith("__helper_fn")
+
+
+def test_T6_business_to_business_shared_tag(tmp_path):
+    """Shared specific tag creates 0.20 edge when frequency < 20%."""
+    s = _store(tmp_path)
+    # 11 business nodes: 2 share "rare_pair_tag" (18% < 20%), rest unique
+    nodes = [
+        _biz_node("decision:shared.20260801", "Text.", tags=["rare_pair_tag"]),
+        _biz_node("decision:sharer.20260801", "Text.", tags=["rare_pair_tag"]),
+    ] + [_biz_node(f"decision:f{i}.20260801", "Text.", tags=[f"tag{i}"]) for i in range(9)]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        row = conn.execute("SELECT node_a, node_b, weight FROM synapses").fetchone()
+    assert row[2] == 0.20
+    assert row[0] < row[1]  # canonical ordering
+
+
+def test_T7_fail_open(tmp_path):
+    """No business nodes → 0 edges, no exception; malformed metadata ok."""
+    s = _store(tmp_path)
+    # No business nodes
+    nodes = [
+        _code_node("engine_audit_py__fn", "audit_fn"),
+        _code_node("engine_server_py__fn", "server_fn"),
+    ]
+    assert s.seed_from_documents(nodes) == 0
+    # Empty list
+    assert s.seed_from_documents([]) == 0
+    # Malformed metadata (no metadata key)
+    nodes_bad = [
+        {"id": "bad:node.001", "label": "bad", "content_text": "text"},
+    ]
+    assert s.seed_from_documents(nodes_bad) == 0
+
+
+def test_T8_canonical_none_skip(tmp_path):
+    """_canonical returns None for self-pairs — must be handled gracefully."""
+    s = _store(tmp_path)
+    # Business node with same ID would cause a==b in _canonical
+    nodes = [
+        _biz_node(
+            "decision:self.20260801",
+            "Self-referential decision.",
+        ),
+        _code_node("decision:self.20260801", "different_label"),
+    ]
+    # Should not raise
+    count = s.seed_from_documents(nodes)
+    # All edges should have node_a != node_b
+    with s._connect() as conn:
+        rows = conn.execute("SELECT node_a, node_b FROM synapses").fetchall()
+    for node_a, node_b in rows:
+        assert node_a != node_b
+
+
+# ---------------------------------------------------------------------------
+# Adversarial QA regression tests (post-H1/H2/H3 fixes)
+# ---------------------------------------------------------------------------
+
+
+def test_H1_compound_match_requires_adjacency(tmp_path):
+    """Compound match must require components to be adjacent in text, not just present."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:engine_test.20260801",
+            "The engine was discussed. Much later, audit was mentioned.",
+        ),
+        _code_node("engine_audit_py__fn", "some_unrelated_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # "engine" and "audit" appear but are NOT adjacent → no compound match
+    # Single-component match still works (audit is present), weight = 0.20
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.20  # single match, not compound
+
+
+def test_H1_compound_match_adjacent_components(tmp_path):
+    """Adjacent components in text create compound match (0.25)."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:adjacent.20260801",
+            "We need to implement engine audit logging for compliance.",
+        ),
+        _code_node("engine_audit_py__fn", "some_other_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.25
+
+
+def test_H2_title_reference_b2b_crosslink(tmp_path):
+    """A business node referencing another's title creates a 0.25 edge."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:adopt_postgres.20260801",
+            "Adopt PostgreSQL for audit logging.",
+            title="Adopt PostgreSQL",
+            tags=["infrastructure"],
+        ),
+        _biz_node(
+            "meeting:review.20260801",
+            "In this meeting we discussed the Adopt PostgreSQL decision and next steps.",
+            title="Review Meeting",
+            tags=["infrastructure"],
+        ),
+        _code_node("engine_audit_py__fn", "audit_fn"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # Should have: title-ref b2b edge (0.25) + maybe some code edges
+    assert count >= 1
+    with s._connect() as conn:
+        rows = conn.execute("SELECT node_a, node_b, weight FROM synapses").fetchall()
+    # Find the b2b edge
+    biz_edges = [
+        (a, b, w)
+        for a, b, w in rows
+        if a.startswith(("decision:", "meeting:")) and b.startswith(("decision:", "meeting:"))
+    ]
+    assert len(biz_edges) == 1
+    assert biz_edges[0][2] == 0.25
+
+
+def test_M1_file_path_tokenization(tmp_path):
+    """File paths with / separators are properly tokenized."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:filepath.20260801",
+            "Update the engine/server.py file for better logging.",
+        ),
+        _code_node("engine_server_py__handler_fn", "server_handler"),
+    ]
+    count = s.seed_from_documents(nodes)
+    # "server" should match (not "engine/server" jammed together)
+    assert count >= 1
+
+
+def test_T9_compound_vs_single_distinction(tmp_path):
+    """Compound match (0.25) takes priority over single match (0.20)."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:compound.20260801",
+            "We use postgres connect for the database.",
+        ),
+        _code_node("engine_postgres_py__connect_fn", "some_other_label"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    # "postgres" + "connect" are adjacent in text → compound match = 0.25
+    assert weight == 0.25
+
+
+def test_T10_exact_label_match_weight(tmp_path):
+    """Exact full label match yields 0.40."""
+    s = _store(tmp_path)
+    nodes = [
+        _biz_node(
+            "decision:exact.20260801",
+            "The audit_log_data function needs updating.",
+        ),
+        _code_node("engine_audit_py__log_fn", "audit_log_data"),
+    ]
+    count = s.seed_from_documents(nodes)
+    assert count == 1
+    with s._connect() as conn:
+        weight = conn.execute("SELECT weight FROM synapses").fetchone()[0]
+    assert weight == 0.40

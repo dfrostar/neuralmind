@@ -6,6 +6,7 @@ export default function Footer() {
         { label: 'Release Notes', href: 'https://github.com/dfrostar/neuralmind/tree/main/docs/releases' },
         { label: 'Docs', href: 'https://docs.neuralmind.uk/wiki/Home' },
         { label: 'Pricing', href: '/pricing' },
+        { label: 'Services', href: '/services' },
         { label: 'Team', href: '/team' },
         { label: 'License (MIT)', href: 'https://github.com/dfrostar/neuralmind/blob/main/LICENSE' },
         { label: 'Privacy', href: '/privacy' },

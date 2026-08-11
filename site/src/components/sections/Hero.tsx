@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 const heroStats = [
     { label: 'Query Latency', value: '<1s', highlight: true },
-    { label: 'Token Reduction', value: '63.6×', highlight: false },
+    { label: 'Token Reduction', value: '65.6×', highlight: false },
     { label: 'Gold-File Recall', value: '100%', highlight: false },
     { label: 'Free Tier', value: 'Auto-provisioned', highlight: false },
 ];
@@ -39,15 +39,13 @@ export default function Hero() {
 
                 {/* Main headline */}
                 <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05] mb-6">
-                    Sub-second retrieval.{' '}
-                    <span className="gradient-text">63.6× cheaper queries.</span>
+                    Your team uses Claude Code?{' '}
+                    <span className="gradient-text">Now it remembers your codebase.</span>
                 </h1>
-
-                {/* Subhead */}
                 <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
                     Persistent neural memory for AI agents. Local-first synapse layer.{' '}
-                    <span className="text-white font-semibold">0.81s per query on a 1,486-node repo</span>.
-                    Built-in install doctor, Obsidian-style graph view, and honest benchmarks — measured, not marketed.
+                    <span className="text-white font-semibold">Works with every IDE your team already uses.</span>{' '}
+                    100% local, no telemetry.
                 </p>
 
                 {/* CTA buttons */}

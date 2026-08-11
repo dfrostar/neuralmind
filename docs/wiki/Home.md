@@ -14,9 +14,9 @@ smaller-scope.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **85–100% gold-file recall (93.75% mean) at 45–259× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost on every repo | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| 💸 | **Cheaper context** | **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** than pasting files — beats `ripgrep` on cost on every repo, and on recall beats it on 2 of 4 and ties exactly on the other 2 | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+14 points (72%→86%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+6.1 points (77.2%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
 | 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
@@ -33,9 +33,29 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### N-16 — Content QA System: Book/Markdown Retrieval (August 2026)
+
+Extends NeuralMind from code-only to long-form content retrieval. Indexes 150K-word books via `neuralmind ingest-content` CLI. 30-query Underground manifest with graded relevance (0-3) per ~150-word chunk. N-15 IR metrics (recall@k, MRR, nDCG@5) + RAGAS faithfulness on compressed context. 7 CI regression gates with per-shape breakdowns (precise/thematic/entity/temporal/causal). Spec: [CONTENT-BENCHMARK-SPEC.md](../specs/CONTENT-BENCHMARK-SPEC.md).
+
+### N-15 — SOTA Retrieval Quality Benchmarks (August 2026)
+
+Graded relevance (0-3) + standard IR metrics (nDCG@5, MRR, recall@k, precision@k) + RAGAS faithfulness scoring on compressed retrieval output. 8 CI regression gates with per-shape breakdowns (focused/cross-file/identity). Zero-tolerance gate catches complete retrieval failures that averaged metrics hide. Consumes existing `ragas.py` stdlib-only judge — no embedding stack required. Spec: [RETRIEVAL-BENCHMARK-SPEC.md](../specs/RETRIEVAL-BENCHMARK-SPEC.md).
+
+### N-13 — Business-Context Synapse Seeding (August 2026)
+
+`seed_from_documents()` builds deterministic, LLM-free associations between business documents (decisions, SOPs, meeting notes, policies) and your code graph. Compound matches require adjacency in text (not just presence), title-reference cross-linking connects related business docs, and frequency-capped tags prevent common terms from dominating. 56 tests. This is the backbone of the "second brain" expansion (N-06 scope decision).
+
+### v3.0.2 — Post-Extraction Cleanup (August 2026)
+
+The self-improving loop (signal→insight→experiment→promote) was extracted to a private repo (`dfrostar/agencyOS`). NeuralMind is now pure code intelligence — the public package ships only what your agent needs.
+
+- **Agent OS extracted.** 12 modules moved to `dfrostar/agencyOS`. The public repo is leaner.
+- **Dashboard rebranded.** Agent/Agency OS references removed from ROADMAP and tests.
+- **v3.0.0, v3.0.1** — SBOM publishing, license cleanup, extraction follow-through.
+
 ### v2.0.0 — Compliance Engine + `neuralmind init` (August 2026)
 
-> **12–50× typical savings** — updated from the 12-50× estimate with real user data. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
+> **12–50× typical savings** — updated from the 12-50× estimate with founder-benchmarked results on local production repos. The original number was real vs a naive "dump all files" baseline (~30K tokens); 12–50× is the realistic range against a 10K-token human baseline. Up to 50×+ for targeted queries.
 
 New compliance capabilities for regulated teams, plus a one-command project init.
 
@@ -135,9 +155,9 @@ The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**:
 
 ### v0.20.0 — Measure the onboarding lift
 
-`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (a measured **+6.5 points** on the reference fixture), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
+`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (currently **+0.9 points** on the reference fixture — down from the +6.5 points measured at this feature's introduction, because the cold-path baseline has itself gotten better since, leaving less headroom for the memory layer to add), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
 
-> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +14 pts, onboarding +6.5 pts, ChromaDB-free parity) with reproduction commands.
+> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +6.1 pts, onboarding +0.9 pts, ChromaDB-free parity) with reproduction commands.
 
 ### v0.14.0 — Measure faithfulness
 
@@ -161,7 +181,7 @@ A content-aware PostToolUse compression footer (categorized line counts + repeat
 
 ### v0.9.0 — Enterprise-Ready
 
-Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and `ENTERPRISE.md`, with a "how to verify yourself" command for every claim.
+Phase 3 of the release arc. Every tagged release now auto-publishes a multi-platform container image to GHCR (`ghcr.io/dfrostar/neuralmind:vX.Y.Z` and `:latest`, `linux/amd64` + `linux/arm64`) and attaches a CycloneDX JSON SBOM to the GitHub Release. New [`docs/use-cases/air-gapped.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md) walkthrough covers the strictest deployment posture — no outbound network at install, build, runtime, or query. New [`docs/COMPLIANCE-SUMMARY.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md) consolidates NIST AI RMF + SOC 2 + GDPR claims previously scattered across `SECURITY-GUIDE.md` and the now-extracted enterprise docs, with a "how to verify yourself" command for every claim.
 
 No production code changes — pure CI + docs. Full details: [v0.9.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.9.0.md).
 
@@ -237,7 +257,7 @@ sections.
 || **[Multi-Project-Scoping](Multi-Project-Scoping.md)** | Working across multiple codebases — isolation rules for NeuralMind, memU, and agent memory |
 || **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
-| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +14 pts, onboarding +6.5 pts, ChromaDB-free parity — with reproduction commands |
+| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +6.1 pts, onboarding +0.9 pts, ChromaDB-free parity — with reproduction commands |
 
 ### Enterprise & Deployment
 
@@ -272,7 +292,7 @@ A two-phase token optimizer for AI coding agents.
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
 
-Combined effect: **5–10× total reduction** vs baseline agent usage, offline and model-agnostic.
+Combined effect: **12–50× retrieval token reduction** (6.2× measured in CI on the fixture), offline and model-agnostic.
 
 ### The core problem
 

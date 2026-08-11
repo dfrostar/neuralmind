@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agency OS — Dashboard</title>
+  <title>NeuralMind — Dashboard</title>
   <link rel="stylesheet" href="/dashboard.css" />
 </head>
 <body>
   <div id="app">
     <header id="topbar">
       <div class="brand">
-        <h1>Agency OS</h1>
+        <h1>NeuralMind</h1>
         <span id="project-name" class="project-name"></span>
       </div>
       <nav class="tabs">
@@ -20,7 +20,6 @@
         <button class="tab" data-view="performance">Performance</button>
         <button class="tab" data-view="queries">Queries</button>
         <button class="tab" data-view="communities">Communities</button>
-        <button class="tab" data-view="agentos">Agent OS</button>
         </nav>
       <div class="actions">
         <button id="refresh" type="button" class="ghost" title="Refresh dashboard">↻ Refresh</button>
@@ -107,6 +106,16 @@
               <span id="ingestion-last" class="metric-value">—</span>
             </div>
           </div>
+
+          <div class="card domains-card">
+            <h2>Domain Breakdown</h2>
+            <div id="domains-list" class="list"></div>
+          </div>
+
+          <div class="card cross-domain-card">
+            <h2>Cross-Domain Edges</h2>
+            <div id="cross-domains-list" class="list"></div>
+          </div>
         </div>
       </section>
 
@@ -168,43 +177,6 @@
         </div>
       </section>
 
-      <!-- Agent OS -->
-      <section class="view" id="view-agentos">
-        <div class="cards">
-          <div class="card full-width">
-            <h2>Tenants</h2>
-            <div id="agentos-tenants-summary" class="metric-row">
-              <span class="metric-label">Total Tenants</span>
-              <span id="agentos-total-tenants" class="metric-value">—</span>
-            </div>
-            <div id="agentos-tiers" class="list"></div>
-          </div>
-          <div class="card full-width">
-            <h2>Signals</h2>
-            <div id="agentos-signals-summary" class="metric-row">
-              <span class="metric-label">Tracked Metrics</span>
-              <span id="agentos-tracked-metrics" class="metric-value">—</span>
-            </div>
-            <div id="agentos-signals-list" class="list"></div>
-          </div>
-          <div class="card full-width">
-            <h2>Experiments</h2>
-            <div id="agentos-experiments-summary" class="metric-row">
-              <span class="metric-label">Total</span>
-              <span id="agentos-total-experiments" class="metric-value">—</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">Promotions</span>
-              <span id="agentos-promotions" class="metric-value">—</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">Rollbacks</span>
-              <span id="agentos-rollbacks" class="metric-value">—</span>
-            </div>
-            <div id="agentos-experiments-list" class="list"></div>
-          </div>
-        </div>
-      </section>
     </main>
 
     <div id="loading">Loading dashboard…</div>

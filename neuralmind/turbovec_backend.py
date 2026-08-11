@@ -32,9 +32,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 from collections.abc import Callable
 from datetime import datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -98,7 +100,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         self._index = None  # turbovec IdMapIndex, lazily created/loaded
         self._dirty = False  # mutated since last prepare()
-        self._conn = sqlite3.connect(str(self._store_path))
+        self._conn = sqlite3.connect(str(self._store_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_store()
 
@@ -114,10 +116,21 @@ class TurboVecEmbedder(EmbeddingBackend):
                 source_file  TEXT,
                 community    INTEGER,
                 content_hash TEXT,
-                embedded_at  TEXT
+                embedded_at  TEXT,
+                content_category TEXT,
+                tags         TEXT
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
             """)
+        # Additive columns for existing DBs (don't fail if already present)
+        try:
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN content_category TEXT")
+        except Exception:
+            pass
+        try:
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN tags TEXT")
+        except Exception:
+            pass
         self._conn.commit()
 
     def _meta_get(self, key: str) -> str | None:
@@ -263,6 +276,55 @@ class TurboVecEmbedder(EmbeddingBackend):
             "node_id": str(node.get("id", "")),
         }
 
+    def _content_node_metadata(self, node: dict) -> dict[str, Any]:
+        """Extract metadata from a content node for filtering."""
+        meta = self._node_metadata(node)
+        # Preserve business-context metadata
+        node_meta = node.get("metadata", {}) or {}
+        for key in ("practice_id", "title", "domain", "framework", "content_category"):
+            if key in node_meta:
+                meta[key] = str(node_meta[key])
+        # Serialize tags as JSON for SQLite storage
+        if "tags" in node_meta:
+            import json
+
+            meta["tags"] = json.dumps(node_meta["tags"])
+        return meta
+
+    def get_all_nodes(self) -> list[dict]:
+        """Return all indexed nodes as a list of dicts."""
+        nodes: list[dict] = []
+        try:
+            rows = self._conn.execute(
+                "SELECT node_id, document, label, file_type, source_file, community, content_category, tags FROM nodes"
+            ).fetchall()
+        except Exception:
+            # Fallback if columns don't exist yet (legacy DB without the columns)
+            try:
+                rows = self._conn.execute(
+                    "SELECT node_id, document, label, file_type, source_file, community, '' as content_category, '' as tags FROM nodes"
+                ).fetchall()
+            except Exception:
+                return nodes
+        for row in rows:
+            nodes.append(
+                {
+                    "id": row["node_id"],
+                    "label": row["label"] or row["node_id"],
+                    "content_text": row["document"] or "",
+                    "metadata": {
+                        "label": row["label"],
+                        "file_type": row["file_type"],
+                        "source_file": row["source_file"],
+                        "community": row["community"],
+                        "node_id": row["node_id"],
+                        "content_category": row["content_category"] or "",
+                        "tags": row["tags"] or "",
+                    },
+                }
+            )
+        return nodes
+
     @staticmethod
     def _content_hash(text: str) -> str:
         return hashlib.sha256(text.encode()).hexdigest()[:16]
@@ -300,7 +362,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                 is_update = False
                 stats["added"] += 1
 
-            meta = self._node_metadata(node)
+            meta = self._content_node_metadata(node)
             meta["content_hash"] = content_hash
             meta["embedded_at"] = datetime.now().isoformat()
             pending.append((node_id, uid, text, meta, content_hash, is_update))
@@ -332,13 +394,15 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._conn.execute(
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
-                                  source_file, community, content_hash, embedded_at)
-                VALUES(?,?,?,?,?,?,?,?,?)
+                                  source_file, community, content_hash, embedded_at,
+                                  content_category, tags)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
-                    embedded_at=excluded.embedded_at
+                    embedded_at=excluded.embedded_at,
+                    content_category=excluded.content_category, tags=excluded.tags
                 """,
                 (
                     uid,
@@ -350,6 +414,8 @@ class TurboVecEmbedder(EmbeddingBackend):
                     meta["community"],
                     content_hash,
                     now,
+                    meta.get("content_category", ""),
+                    meta.get("tags", ""),
                 ),
             )
 
@@ -399,6 +465,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         if not pending:
             self._persist_index()
             self._conn.commit()
+            self.build_bm25_index()
             return stats
 
         vectors = _l2_normalize(self._embed_matrix([p[2] for p in pending]))
@@ -424,13 +491,15 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._conn.execute(
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
-                                  source_file, community, content_hash, embedded_at)
-                VALUES(?,?,?,?,?,?,?,?,?)
+                                  source_file, community, content_hash, embedded_at,
+                                  content_category, tags)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
-                    embedded_at=excluded.embedded_at
+                    embedded_at=excluded.embedded_at,
+                    content_category=excluded.content_category, tags=excluded.tags
                 """,
                 (
                     uid,
@@ -442,6 +511,8 @@ class TurboVecEmbedder(EmbeddingBackend):
                     meta["community"],
                     content_hash,
                     now,
+                    meta.get("content_category", ""),
+                    meta.get("tags", ""),
                 ),
             )
 
@@ -451,6 +522,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._dirty = True
         self._persist_index()
         self._conn.commit()
+        self.build_bm25_index()
         return stats
 
     # ---------------------------------------------------------------- search
@@ -635,6 +707,89 @@ class TurboVecEmbedder(EmbeddingBackend):
             "bit_width": self.bit_width,
         }
 
+    # ------------------------------------------------------------------
+    # BM25 keyword index — hybrid search
+    # ------------------------------------------------------------------
+
+    @cached_property
+    def _bm25_path(self) -> Path:
+        return self._dir / "bm25_index.json"
+
+    def _load_bm25(self):
+        """Load or build the BM25 keyword index."""
+        if hasattr(self, "_bm25_cached"):
+            return self._bm25_cached
+        from .bm25 import BM25Index
+
+        if self._bm25_path.exists():
+            self._bm25_cached = BM25Index.load(self._bm25_path)
+            return self._bm25_cached
+        return None
+
+    def build_bm25_index(self) -> None:
+        """Build and persist the BM25 keyword index from the SQLite store.
+
+        Called automatically at the end of embed_nodes() so the BM25 index
+        stays in sync with the vector index.
+        """
+        from .bm25 import BM25Index
+
+        ids, texts, metas = [], [], []
+        rows = self._conn.execute(
+            "SELECT node_id, document, label, file_type, source_file, community FROM nodes"
+        ).fetchall()
+        for r in rows:
+            ids.append(r["node_id"])
+            texts.append(r["document"] or r["label"] or r["node_id"])
+            metas.append(
+                {
+                    "label": r["label"],
+                    "file_type": r["file_type"],
+                    "source_file": r["source_file"],
+                    "community": r["community"],
+                    "node_id": r["node_id"],
+                }
+            )
+        if not ids:
+            self._bm25_cached = None
+            try:
+                self._bm25_path.unlink()
+            except (FileNotFoundError, AttributeError):
+                pass
+            return
+        idx = BM25Index()
+        idx.add_documents(ids, texts, metas)
+        idx.build()
+        idx.save(self._bm25_path)
+        self._bm25_cached = idx
+
+    def bm25_search(self, query: str, n: int = 10) -> list[dict[str, Any]]:
+        """BM25 keyword search — same result shape as search().
+
+        Returns an empty list when the index hasn't been built yet or when
+        NEURALMIND_BM25=0 is set.
+        """
+        if os.environ.get("NEURALMIND_BM25") == "0":
+            return []
+        idx = self._load_bm25()
+        if idx is None or idx._N == 0:
+            return []
+        raw = idx.search(query, top_k=n)
+        out = []
+        for r in raw:
+            sim = float(r["score"])
+            out.append(
+                {
+                    "id": r["id"],
+                    "document": r["document"],
+                    "metadata": r["metadata"],
+                    "distance": round(1.0 - sim, 6),
+                    "score": round(sim, 6),
+                    "_bm25_raw": r.get("_bm25_raw"),
+                }
+            )
+        return out
+
     def delete_nodes(self, node_ids) -> int:
         ids = [str(i) for i in node_ids]
         if not ids:
@@ -658,6 +813,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._dirty = True
             self._persist_index()
             self._conn.commit()
+            self.build_bm25_index()
         return removed
 
     def clear(self) -> None:
@@ -666,6 +822,12 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._conn.commit()
         self._index = None
         self._dirty = False
+        # Invalidate BM25 index — nodes are gone
+        self._bm25_cached = None
+        try:
+            self._bm25_path.unlink()
+        except (FileNotFoundError, AttributeError):
+            pass
         try:
             self._index_path.unlink()
         except FileNotFoundError:

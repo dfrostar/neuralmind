@@ -50,7 +50,7 @@ window. The lift only becomes visible in the ranked top-k — which is why that 
 the headline and the gate.
 
 This formalises the self-benchmark's long-standing Phase-3 synapse A/B (top-k
-hit rate 71.7% → 83.3% with recall on) into a committed-baseline eval with a CI
+hit rate 77.2% → 83.3% with recall on) into a committed-baseline eval with a CI
 gate — scored on the *same* top-k hit-rate metric.
 
 ### The committed team baseline

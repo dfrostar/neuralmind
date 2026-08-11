@@ -1,0 +1,386 @@
+{
+  "version": 1,
+  "description": "N-15 SOTA Retrieval Quality Benchmark — graded relevance + gold facts for each fixture query. Relevance: 0=irrelevant, 1=tangential, 2=relevant, 3=essential. Gold facts derived from fixture source code, not invented.",
+  "queries": [
+    {
+      "id": "auth-flow",
+      "question": "How does authentication work in this codebase?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 3,
+        "auth/jwt_utils.py": 3,
+        "api/routes.py": 2,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 2,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "authenticate_user validates credentials and issues access + refresh tokens",
+        "verify_session returns user id for a valid access token",
+        "logout revokes a refresh token by writing to the revocation list",
+        "SESSION_TTL is 1 hour and REFRESH_TTL is 30 days"
+      ]
+    },
+    {
+      "id": "api-endpoints",
+      "question": "What are the main API endpoints?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 2,
+        "auth/jwt_utils.py": 1,
+        "api/routes.py": 3,
+        "billing/stripe_client.py": 1,
+        "billing/invoices.py": 1,
+        "users/crud.py": 1,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "POST /api/auth/login returns access + refresh tokens",
+        "POST /api/users creates a new user via sign-up flow",
+        "POST /api/billing/charge charges the authenticated user",
+        "POST /webhooks/stripe receives Stripe events"
+      ]
+    },
+    {
+      "id": "billing-flow",
+      "question": "Explain the billing flow from a user perspective.",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 3,
+        "billing/invoices.py": 3,
+        "users/crud.py": 2,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "charge_customer validates user, calls Stripe API, creates invoice and billing record",
+        "refund_charge issues a full refund and logs it in the refunds table",
+        "create_invoice writes an invoice row and returns it",
+        "list_user_invoices returns all invoices for a user newest first"
+      ]
+    },
+    {
+      "id": "user-storage",
+      "question": "How are users stored in the database?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 1,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 1,
+        "billing/invoices.py": 1,
+        "users/crud.py": 3,
+        "db/connection.py": 3
+      },
+      "gold_facts": [
+        "The users table has columns: id, email, password_hash, created_at, last_login, is_active",
+        "create_user inserts a new user and returns a User dataclass",
+        "deactivate_user performs a soft-delete by setting is_active to 0",
+        "get_connection returns a thread-local SQLite connection"
+      ]
+    },
+    {
+      "id": "jwt-verify",
+      "question": "How does JWT signature verification work?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 1,
+        "auth/jwt_utils.py": 3,
+        "api/routes.py": 0,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "decode_token splits the token into 3 segments: header, payload, signature",
+        "signature verification uses hmac.compare_digest to prevent timing attacks",
+        "decode_token checks the exp claim against the current time",
+        "TokenExpiredError is raised when the token is expired"
+      ]
+    },
+    {
+      "id": "stripe-webhook",
+      "question": "What happens when a Stripe webhook fires?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 3,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "verify_webhook validates the Stripe-Signature header with hmac.compare_digest",
+        "handle_webhook_event dispatches based on event type: charge.succeeded, charge.failed, charge.refunded",
+        "WEBHOOK_TOLERANCE_SEC is 300 seconds",
+        "WebhookVerificationError is raised on signature mismatch"
+      ]
+    },
+    {
+      "id": "create-user",
+      "question": "How do I create a new user?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 2,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 3,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "create_user inserts into the users table with email, password_hash, created_at, is_active",
+        "create_user returns a User dataclass with the new id",
+        "the User dataclass has fields: id, email, password_hash, created_at, last_login, is_active",
+        "POST /api/users endpoint calls create_user"
+      ]
+    },
+    {
+      "id": "refund",
+      "question": "Show me the refund logic.",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 3,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "refund_charge issues a full refund for a previous charge",
+        "refund_charge updates the charges status to 'refunded'",
+        "refund_charge inserts a row into the refunds table",
+        "BillingError is raised if the charge is already refunded"
+      ]
+    },
+    {
+      "id": "db-choice",
+      "question": "What database does this project use?",
+      "shape": "identity",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 0,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 3
+      },
+      "gold_facts": [
+        "The project uses SQLite as the database",
+        "The database file is stored at fixture.db",
+        "get_connection uses sqlite3.connect with check_same_thread=False",
+        "The schema is created lazily on first access via _ensure_schema"
+      ]
+    },
+    {
+      "id": "invoice-send",
+      "question": "How are invoices sent to users?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 3,
+        "users/crud.py": 1,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "send_invoice_email renders an invoice and hands it to the email transport",
+        "send_invoice_email updates the invoices sent_at timestamp",
+        "list_user_invoices returns all invoices for a user ordered by created_at DESC",
+        "InvoiceNotFoundError is raised when referencing a missing invoice"
+      ]
+    },
+    {
+      "id": "debug-login-silent",
+      "question": "A user login is failing without any error message — which file contains credential validation?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 3,
+        "auth/jwt_utils.py": 1,
+        "api/routes.py": 0,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 1,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "authenticate_user calls verify_password with the plain password and stored hash",
+        "InvalidCredentialsError is raised when email or password does not match",
+        "verify_password uses hmac.compare_digest for constant-time comparison",
+        "authenticate_user calls get_user_by_email to look up the user"
+      ]
+    },
+    {
+      "id": "debug-webhook-reject",
+      "question": "Stripe webhooks are being rejected — where is the signature verified?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 3,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "verify_webhook parses the Stripe-Signature header format 't=timestamp,v1=hex_signature'",
+        "signature verification uses hmac.new with sha256",
+        "the signed_payload is constructed as '{timestamp}.{payload}'",
+        "WebhookVerificationError is raised when the signature does not match"
+      ]
+    },
+    {
+      "id": "debug-invoice-missing",
+      "question": "Invoices are not appearing for a user — which files handle invoice retrieval?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 3,
+        "users/crud.py": 1,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "list_user_invoices selects from the invoices table filtered by user_id",
+        "create_invoice inserts into the invoices table",
+        "send_invoice_email retrieves the invoice by id before sending",
+        "InvoiceNotFoundError is raised when the invoice id is not found"
+      ]
+    },
+    {
+      "id": "debug-token-expire",
+      "question": "Users are being logged out unexpectedly — where is token expiry enforced?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 1,
+        "auth/jwt_utils.py": 3,
+        "api/routes.py": 0,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "decode_token checks the exp claim against the current time",
+        "TokenExpiredError is raised when int(time.time()) exceeds int(exp)",
+        "verify_session calls decode_token to validate the access token",
+        "the exp claim in encode_token is converted from datetime to int timestamp"
+      ]
+    },
+    {
+      "id": "refactor-add-user-field",
+      "question": "I need to add an email_verified column to users — which files would change?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 1,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 3,
+        "db/connection.py": 3
+      },
+      "gold_facts": [
+        "the users table schema is defined in db/connection.py _ensure_schema",
+        "the User dataclass in users/crud.py defines the canonical user record fields",
+        "create_user inserts email, password_hash, created_at, is_active into the users table",
+        "get_user_by_email returns a raw dict with id, email, password_hash, created_at, last_login, is_active"
+      ]
+    },
+    {
+      "id": "refactor-swap-database",
+      "question": "I need to replace the database backend — which file owns the connection pool?",
+      "shape": "focused",
+      "relevance_grades": {
+        "auth/handlers.py": 1,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 0,
+        "billing/stripe_client.py": 1,
+        "billing/invoices.py": 1,
+        "users/crud.py": 1,
+        "db/connection.py": 3
+      },
+      "gold_facts": [
+        "get_connection returns a thread-local sqlite3.Connection",
+        "_ensure_schema creates all fixture tables if they do not exist",
+        "the connection uses _DB_PATH which is fixture.db in the same directory as connection.py",
+        "close_all closes the thread-local connection if it exists"
+      ]
+    },
+    {
+      "id": "refactor-add-mfa",
+      "question": "I want to add multi-factor authentication to the login flow — which files would I modify?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 3,
+        "auth/jwt_utils.py": 2,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 1,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "authenticate_user is the login function that validates credentials and issues tokens",
+        "encode_token produces a signed JWT string from a claims dict",
+        "decode_token verifies signature + expiry and returns the claims dict",
+        "SESSION_TTL and REFRESH_TTL control token lifetimes in handlers.py"
+      ]
+    },
+    {
+      "id": "next-after-jwt-change",
+      "question": "I just changed how JWT tokens are signed — what other files should I review?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 2,
+        "auth/jwt_utils.py": 3,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 0,
+        "billing/invoices.py": 0,
+        "users/crud.py": 0,
+        "db/connection.py": 0
+      },
+      "gold_facts": [
+        "_sign uses hmac.new with JWT_SECRET and hashlib.sha256",
+        "decode_token calls _sign to compute the expected signature",
+        "verify_session calls decode_token to validate access tokens",
+        "encode_token sets the alg header to HS256"
+      ]
+    },
+    {
+      "id": "next-after-charge-change",
+      "question": "I updated the charge_customer function — what else commonly changes with billing?",
+      "shape": "cross-file",
+      "relevance_grades": {
+        "auth/handlers.py": 0,
+        "auth/jwt_utils.py": 0,
+        "api/routes.py": 1,
+        "billing/stripe_client.py": 3,
+        "billing/invoices.py": 2,
+        "users/crud.py": 1,
+        "db/connection.py": 1
+      },
+      "gold_facts": [
+        "charge_customer validates the user, calls Stripe API, creates invoice and billing record",
+        "create_invoice is called inside charge_customer after a successful charge",
+        "charge_customer inserts into the charges table with user_id, stripe_id, amount_cents, status, created_at",
+        "BillingError is raised when the user is not chargeable"
+      ]
+    }
+  ]
+}

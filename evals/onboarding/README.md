@@ -42,7 +42,7 @@ gated:
   headline is scored there.
 
 This formalises the self-benchmark's Phase-3 synapse A/B
-(`tests/benchmark/run.py`: top-k hit rate 72% → 86% with recall on) into a
+(`tests/benchmark/run.py`: top-k hit rate 77.2% → 83.3% with recall on) into a
 committed-baseline eval — scored on the *same* top-k hit-rate metric.
 
 ### The committed team baseline

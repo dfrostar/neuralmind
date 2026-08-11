@@ -10,7 +10,7 @@ import pytest
 from neuralmind.tier2.audit import AuditLog
 from neuralmind.tier2.config import Tier2Config
 from neuralmind.tier2.governance import TeamGovernance
-from neuralmind.tier2.seats import SeatManager
+from neuralmind.tier2.seats import SeatLimitError, SeatManager
 
 ADMIN = "admin"
 NON_ADMIN = "intruder"
@@ -31,8 +31,28 @@ def test_add_seat_requires_admin():
         sm = SeatManager(td / "seats.json")
 
         g.require_admin(ADMIN)
-        seat = sm.add_seat("newuser", config.seats, tier=config.tier)
+        seat = sm.add_seat("newuser", config.seats)
         assert seat.email == "newuser"
+
+
+def test_free_license_refuses_second_seat():
+    """The free 1-seat license enforces its limit — the only licensed gate."""
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        config = Tier2Config()
+        config.governance.admin_emails = [ADMIN]
+        config.seats = 1
+        config.tier = "free"
+        config.license_file = str(td / "license.json")
+        config.audit_db = str(td / "audit.jsonl")
+        audit = AuditLog(td / "audit.jsonl")
+        g = TeamGovernance(td, config, audit)
+        sm = SeatManager(td / "seats.json")
+
+        g.require_admin(ADMIN)
+        sm.add_seat("first", config.seats)
+        with pytest.raises(SeatLimitError):
+            sm.add_seat("second", config.seats)
 
 
 def test_remove_seat_requires_admin():
@@ -50,7 +70,7 @@ def test_remove_seat_requires_admin():
         sm = SeatManager(td / "seats.json")
 
         g.require_admin(ADMIN)
-        sm.add_seat("newuser", config.seats, tier=config.tier)
+        sm.add_seat("newuser", config.seats)
         g.require_admin(ADMIN)
         seat = sm.remove_seat("newuser")
         assert seat.email == "newuser"

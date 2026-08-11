@@ -120,7 +120,7 @@ Register-ScheduledTask -TaskName "NeuralMind-Watch" `
 Register-ScheduledTask -TaskName "NeuralMind-Serve" `
   -Action (New-ScheduledTaskAction `
     -Execute "neuralmind" `
-    -Argument "serve C:\path\to\your-project --port 8765 --no-browser") `
+    -Argument "serve C:\path\to\your-project --port 8787 --no-browser") `
   -Trigger (New-ScheduledTaskTrigger -AtLogOn) `
   -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable `
     -ExecutionTimeLimit (New-TimeSpan -Seconds 0) `
@@ -128,7 +128,7 @@ Register-ScheduledTask -TaskName "NeuralMind-Serve" `
 
 # Verify both
 Get-ScheduledTask NeuralMind-*
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8765/healthz
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8787/healthz
 # StatusCode 200, JSON body: {"status": "ok", "version": "0.8.0"}
 ```
 

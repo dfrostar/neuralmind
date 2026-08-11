@@ -1,5 +1,5 @@
 """
-dashboard.py — Read-only Agency OS dashboard data layer.
+dashboard.py — Read-only NeuralMind dashboard data layer.
 
 Materializes the metrics a team needs to see at a glance:
   - Project status (built/unbuilt, last build, node/edge counts)
@@ -24,6 +24,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from .domains import cross_domain_edges, domain_breakdown
 from .metrics_pipeline import MetricsCollector
 from .savings import compute_savings
 
@@ -43,7 +44,7 @@ def project_status(mind=None, project_path: str | Path | None = None) -> dict[st
         "project": stats.get("project", path.name),
         "built": built,
         "backend": stats.get("backend", "unknown"),
-        "nodes": stats.get("nodes", 0),
+        "nodes": stats.get("nodes_total", stats.get("nodes", 0)),
         "communities": stats.get("communities", 0),
         "build_stats": stats.get("build_stats", {}),
     }
@@ -61,7 +62,11 @@ def project_status(mind=None, project_path: str | Path | None = None) -> dict[st
 
 def synapse_summary(mind=None, project_path: str | Path | None = None) -> dict[str, Any]:
     """Synapse memory health: namespace breakdown, LTP count, decay info."""
-    if mind is not None and mind.enable_synapses and mind.synapses is not None:
+    if (
+        mind is not None
+        and getattr(mind, "enable_synapses", False)
+        and getattr(mind, "synapses", None) is not None
+    ):
         try:
             store = mind.synapses
             stats = store.stats()
@@ -259,6 +264,48 @@ def recent_queries(mind=None, project_path: str | Path | None = None, n: int = 2
         return []
 
 
+def domains(mind=None, project_path: str | Path | None = None) -> dict[str, int]:
+    """Return domain breakdown from synapse nodes.
+
+    Read-only: uses the SynapseStore to enumerate all distinct nodes and
+    classifies each as code/document/decision/unknown. No writes, no side
+    effects, fail-open (missing data → empty dict).
+    """
+    path = Path(project_path) if project_path else (mind.project_path if mind else Path("."))
+    synapse_db = path / ".neuralmind" / "synapses.db"
+    if not synapse_db.exists():
+        return {}
+
+    try:
+        from .synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(path), namespace="personal")
+        breakdown = domain_breakdown(store)
+        breakdown["total"] = sum(breakdown.values())
+        return breakdown
+    except Exception:
+        return {}
+
+
+def cross_domains(mind=None, project_path: str | Path | None = None) -> dict[str, int]:
+    """Return cross-domain edge counts (pairs spanning two known domains).
+
+    Read-only: uses the SynapseStore + domain classifier. Fail-open.
+    """
+    path = Path(project_path) if project_path else (mind.project_path if mind else Path("."))
+    synapse_db = path / ".neuralmind" / "synapses.db"
+    if not synapse_db.exists():
+        return {}
+
+    try:
+        from .synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(default_db_path(path), namespace="personal")
+        return cross_domain_edges(store)
+    except Exception:
+        return {}
+
+
 def communities(mind=None, project_path: str | Path | None = None) -> list[dict]:
     """Community size distribution with top labels per community."""
     if mind is not None and mind._built:
@@ -299,87 +346,6 @@ def communities(mind=None, project_path: str | Path | None = None) -> list[dict]
     return result
 
 
-# --------------------------------------------------------------------------- #
-# Agent OS sections
-# --------------------------------------------------------------------------- #
-
-
-def agent_os_tenants(tenants_dir: Path | None = None) -> dict[str, Any]:
-    """Agent OS tenant summary for dashboard display."""
-    try:
-        from .agent_os import TenantRegistry
-
-        registry = TenantRegistry(tenants_dir) if tenants_dir else TenantRegistry()
-        tenants = registry.list_tenants()
-
-        tiers: dict[str, int] = {}
-        for t in tenants:
-            tiers[t.tier] = tiers.get(t.tier, 0) + 1
-
-        return {
-            "total_tenants": len(tenants),
-            "tiers": tiers,
-            "recent": [t.to_dict() for t in tenants[:5]],
-            "has_data": len(tenants) > 0,
-        }
-    except Exception:
-        return {"total_tenants": 0, "tiers": {}, "recent": [], "has_data": False}
-
-
-def agent_os_signals() -> dict[str, Any]:
-    """Agent OS signal summary for dashboard display."""
-    try:
-        from .agent_os import SignalDetector
-
-        detector = SignalDetector()
-        metrics = detector.list_metrics()
-        stats = {}
-        for m in metrics:
-            s = detector.get_stats(m)
-            if s:
-                stats[m] = s
-
-        return {
-            "tracked_metrics": len(metrics),
-            "metrics": stats,
-            "has_data": len(metrics) > 0,
-        }
-    except Exception:
-        return {"tracked_metrics": 0, "metrics": {}, "has_data": False}
-
-
-def agent_os_experiments() -> dict[str, Any]:
-    """Agent OS experiment summary for dashboard display."""
-    try:
-        from .agent_os import PromotionEngine
-
-        engine = PromotionEngine()
-        history = engine.get_history()
-
-        verdicts: dict[str, int] = {}
-        for r in history:
-            v = r.verdict.value if hasattr(r.verdict, "value") else str(r.verdict)
-            verdicts[v] = verdicts.get(v, 0) + 1
-
-        return {
-            "total_experiments": len(history),
-            "verdicts": verdicts,
-            "recent": [r.to_dict() for r in history[:10]],
-            "promotions": verdicts.get("promoted", 0),
-            "rollbacks": verdicts.get("rolled_back", 0),
-            "has_data": len(history) > 0,
-        }
-    except Exception:
-        return {
-            "total_experiments": 0,
-            "verdicts": {},
-            "recent": [],
-            "promotions": 0,
-            "rollbacks": 0,
-            "has_data": False,
-        }
-
-
 def full_dashboard(
     mind=None, project_path: str | Path | None = None, days: int = 7
 ) -> dict[str, Any]:
@@ -392,13 +358,10 @@ def full_dashboard(
         "status": project_status(mind, path),
         "synapses": synapse_summary(mind, path),
         "ingestion": ingestion_status(mind, path),
+        "domains": domains(mind, path),
+        "cross_domains": cross_domains(mind, path),
         "savings": savings_summary(path),
         "performance": performance_summary(path, days=days),
         "queries": {"recent": recent_queries(mind, path)},
         "communities": communities(mind, mind.project_path if mind else path) if mind else [],
-        "agent_os": {
-            "tenants": agent_os_tenants(),
-            "signals": agent_os_signals(),
-            "experiments": agent_os_experiments(),
-        },
     }

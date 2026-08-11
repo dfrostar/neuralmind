@@ -234,7 +234,8 @@ class TestDecayFunctionWithLearnedRate:
             )
             weight = cur.fetchone()[0]
         # With 30-day namespace default over 30 days: retention = 0.5.
-        assert weight < 0.10
+        # LEARNING_RATE=0.30 → initial=0.30, final=0.30*0.5=0.15
+        assert weight < 0.20
 
     def test_update_learned_half_life_passes_project_path(self, tmp_path) -> None:
         """update_learned_half_life passes project_path to default_bounds."""

@@ -60,7 +60,7 @@ from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
 
-LEARNING_RATE = 0.15
+LEARNING_RATE = 0.30
 WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
 LTP_THRESHOLD = 5
@@ -169,10 +169,10 @@ NAMESPACE_HALF_LIVES: dict[str, float] = {
 #
 #   weight = clamp(BASE + LOG_SCALE * ln(call_count + 1), MAX)
 #
-# Below LEARNING_RATE (0.15) for single-observation edges but grows for hot
+# Below LEARNING_RATE (0.30) for single-observation edges but grows for hot
 # call paths. Below LTP_FLOOR (0.20) so structural edges can be pruned if
 # they decay long enough without a rebuild.
-STRUCTURAL_BASE_WEIGHT = 0.18
+STRUCTURAL_BASE_WEIGHT = 0.25
 STRUCTURAL_LOG_SCALE = 0.06
 STRUCTURAL_MAX_WEIGHT = 0.70
 
@@ -520,6 +520,12 @@ class SynapseStore:
                 (key, str(value)),
             )
 
+    def delete_meta(self, key: str) -> bool:
+        """Delete a key from the ``meta`` table. Returns True if a row was deleted."""
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM meta WHERE key = ?", (key,))
+            return cur.rowcount > 0
+
     def schema_version(self) -> int:
         """The schema version recorded in the ``meta`` table (0 = pre-v1)."""
         with self._connect() as conn:
@@ -579,9 +585,13 @@ class SynapseStore:
                 if pair is not None:
                     pairs.append(pair)
 
+        # Seed half_life_days from namespace policy (personal/default: 30d, shared: 60d, ephemeral: 1d)
+        # instead of NULL — the NULL decay path was a silent failure (SOTA 3.2.4).
+        hl = NAMESPACE_HALF_LIVES.get(ns, HALF_LIFE_DAYS)
+
         node_rows = [(n, ns, ts) for n in ids]
         pair_rows = [
-            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, WEIGHT_CAP, delta) for a, b in pairs
+            (a, b, ns, min(WEIGHT_CAP, delta), ts, ts, hl, WEIGHT_CAP, delta) for a, b in pairs
         ]
 
         # Activation bumps and synapse upserts must land together or not at
@@ -610,7 +620,7 @@ class SynapseStore:
                         INSERT INTO synapses(
                             node_a, node_b, namespace, weight, activation_count,
                             last_activated, created_at, half_life_days, learned_at
-                        ) VALUES (?, ?, ?, ?, 1, ?, ?, NULL, NULL)
+                        ) VALUES (?, ?, ?, ?, 1, ?, ?, ?, NULL)
                         ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
                             weight = MIN(?, synapses.weight + ?),
                             activation_count = synapses.activation_count + 1,
@@ -1384,6 +1394,398 @@ class SynapseStore:
                 conn.execute("ROLLBACK")
                 raise
         return len(rows)
+
+    # ----------------------------------------------------------------- #
+    # Document-based seeding — Hebbian edges from business content (N-13)
+    # ----------------------------------------------------------------- #
+
+    def seed_from_documents(self, content_nodes: list[dict], now: float | None = None) -> int:
+        """Seed synapse edges from ingested business context documents.
+
+        Accepts a list of all node dicts (code + content from the vector
+        store), filters for business context nodes, and creates Hebbian
+        edges between them and matching code nodes whose ID components
+        appear in the business text. Also links related business nodes
+        via shared specific tags.
+
+        Matching is deterministic and LLM-free:
+
+        * Normalize every node ID by splitting on ``_``, ``.``, ``/``, ``-``,
+          ``::`` and lowercasing.
+        * A component is a **stopword** if it appears in >30% of all node
+          IDs or is on the hardcoded common-token blacklist.
+        * For each business node, tokenize ``content_text`` + ``label``
+          + ``metadata.title`` into lowercase words (3+ chars).
+        * **Exact label match** → edge weight 0.40.
+        * **Compound match**: 2+ consecutive non-stopword components of a
+          node ID appear in the text tokens → weight 0.25.
+        * **Single rare component**: exactly one non-stopword component
+          appears → weight 0.20.
+        * Business↔business: shared tag appearing in <20% of business
+          nodes → weight 0.20.
+
+        Idempotent: re-running :meth:`build` reinforces existing edges
+        (``weight = MAX``) without inflating ``activation_count``
+        (``MAX``, not ``+1``). The ``+1`` idiom is for
+        :meth:`seed_from_structural` (re-observing real call-graph edges);
+        keyword-match seeding would LTP-protect false positives after ~5
+        runs if incremented.
+
+        Returns the number of edges created (0 when no business nodes
+        present — fail-open).
+        """
+        import json as json_mod
+
+        ts = now if now is not None else time.time()
+
+        if not content_nodes:
+            return 0
+
+        # Step 1: Filter business nodes
+        business_nodes: list[dict] = []
+        for n in content_nodes:
+            meta = n.get("metadata")
+            if isinstance(meta, dict) and meta.get("content_category") == "business_context":
+                business_nodes.append(n)
+        if not business_nodes:
+            return 0
+
+        # Step 2: Build lookup of all node IDs → components + labels
+        all_node_ids: list[str] = []
+        node_components: dict[str, list[str]] = {}
+        node_labels: dict[str, str] = {}
+        business_ids: set[str] = {n["id"] for n in business_nodes if n.get("id")}
+
+        for n in content_nodes:
+            nid = n.get("id", "")
+            if not nid:
+                continue
+            all_node_ids.append(nid)
+            node_labels[nid] = n.get("label", nid)
+            # Normalize: replace separators with spaces, split, filter short
+            raw = nid.lower()
+            for sep in ("_", ".", "/", "-", "::"):
+                raw = raw.replace(sep, " ")
+            components = [c for c in raw.split() if len(c) >= 2]
+            node_components[nid] = components
+
+        if not all_node_ids:
+            return 0
+
+        # Step 3: Build stopword blacklist — components in >30% of nodes
+        # Require minimum 2 occurrences so small test graphs don't over-blacklist
+        component_freq: dict[str, int] = {}
+        for _nid, comps in node_components.items():
+            for c in set(comps):
+                component_freq[c] = component_freq.get(c, 0) + 1
+
+        total_nodes = len(all_node_ids)
+        stopwords: set[str] = set()
+        for c, count in component_freq.items():
+            if count >= 2 and count / total_nodes > 0.30:
+                stopwords.add(c)
+        # Hardcoded common tokens (code + prose)
+        stopwords.update(
+            {
+                "server",
+                "test",
+                "tests",
+                "py",
+                "cmd",
+                "core",
+                "main",
+                "util",
+                "utils",
+                "data",
+                "config",
+                "app",
+                "model",
+                "api",
+                "auth",
+                "db",
+                "log",
+                "logs",
+                "read",
+                "write",
+                "run",
+                "build",
+                "key",
+                "agent",
+                "get",
+                "set",
+                "end",
+                "func",
+                "fn",
+                "class",
+                "def",
+                "return",
+                "import",
+                "from",
+                "init",
+                "setup",
+                "update",
+                "delete",
+                "create",
+                "add",
+                "remove",
+                "check",
+                "use",
+                "make",
+                "new",
+                "module",
+                "file",
+                "path",
+                "name",
+                "type",
+                "value",
+                "default",
+                "options",
+                "args",
+                "obj",
+                "item",
+                "items",
+                "index",
+                "count",
+                "result",
+                "results",
+                "info",
+                "err",
+                "error",
+                "msg",
+                "code",
+                "base",
+                "node",
+                "nodes",
+                "edge",
+                "edges",
+                "text",
+                "content",
+                "method",
+                "function",
+                "object",
+                "string",
+                "int",
+                "bool",
+                "none",
+                "true",
+                "false",
+                "self",
+                "other",
+                "this",
+                "that",
+            }
+        )
+
+        # Step 4: Tokenization helpers
+        def _tokenize(text: str) -> set[str]:
+            """Extract lowercase words (3+ chars) excluding stopwords."""
+            raw = text.lower()
+            for sep in ("_", "-", ".", "/"):
+                raw = raw.replace(sep, " ")
+            return {w for w in raw.split() if len(w) >= 3 and w not in stopwords}
+
+        def _tokenize_ordered(text: str) -> list[str]:
+            """Extract lowercase words (3+ chars) excluding stopwords, preserving order."""
+            raw = text.lower()
+            for sep in ("_", "-", ".", "/"):
+                raw = raw.replace(sep, " ")
+            return [w for w in raw.split() if len(w) >= 3 and w not in stopwords]
+
+        def _extract_text(node: dict) -> str:
+            """All searchable text from a node (content + label + title)."""
+            parts: list[str] = []
+            ct = node.get("content_text", "")
+            if ct:
+                parts.append(str(ct))
+            label = node.get("label", "")
+            if label:
+                parts.append(str(label))
+            meta = node.get("metadata")
+            if isinstance(meta, dict):
+                title = meta.get("title", "")
+                if title:
+                    parts.append(str(title))
+            return " ".join(parts)
+
+        def _extract_title(node: dict) -> str:
+            """Extract title from a business node, lowercased."""
+            meta = node.get("metadata")
+            if isinstance(meta, dict):
+                t = meta.get("title", "")
+                if t:
+                    return str(t).lower()
+            return ""
+
+        # Precompute token sets and ordered token lists for all nodes (M3 fix)
+        node_tokens: dict[str, set[str]] = {}
+        node_tokens_ordered: dict[str, list[str]] = {}
+        node_label_tokens: dict[str, set[str]] = {}
+        for nid in all_node_ids:
+            text = _extract_text(
+                {"id": nid, "label": node_labels[nid], "metadata": {"label": node_labels[nid]}}
+            )
+            node_tokens[nid] = _tokenize(text)
+            node_tokens_ordered[nid] = _tokenize_ordered(text)
+            node_label_tokens[nid] = _tokenize(node_labels[nid].lower())
+
+        # Step 5: Match business nodes against code nodes
+        edges: dict[tuple[str, str], float] = {}
+
+        for biz_node in business_nodes:
+            biz_id = biz_node.get("id", "")
+            if not biz_id:
+                continue
+
+            text = _extract_text(biz_node)
+            text_tokens = _tokenize(text)
+            text_tokens_ordered = _tokenize_ordered(text)
+
+            for nid in all_node_ids:
+                if nid in business_ids:
+                    continue  # business↔business handled separately
+                comps = node_components.get(nid, [])
+
+                # Exact label match (case-insensitive)
+                if node_label_tokens[nid] and node_label_tokens[nid].issubset(text_tokens):
+                    pair = _canonical(biz_id, nid)
+                    if pair is not None:
+                        edges[pair] = max(edges.get(pair, 0.0), 0.40)
+                    continue
+
+                # Filter stopword components for compound/single matching
+                comps_filtered = [c for c in comps if c not in stopwords]
+
+                # Compound match: 2+ consecutive non-stopword components
+                # must appear as adjacent tokens in the text (H1 fix)
+                matched = False
+                for i in range(len(comps_filtered) - 1):
+                    c1, c2 = comps_filtered[i], comps_filtered[i + 1]
+                    # Check adjacency in ordered token list
+                    for j in range(len(text_tokens_ordered) - 1):
+                        if text_tokens_ordered[j] == c1 and text_tokens_ordered[j + 1] == c2:
+                            pair = _canonical(biz_id, nid)
+                            if pair is not None:
+                                edges[pair] = max(edges.get(pair, 0.0), 0.25)
+                            matched = True
+                            break
+                    if matched:
+                        break
+
+                if matched:
+                    continue
+
+                # Single non-stopword component match (weight 0.20)
+                for c in comps_filtered:
+                    if c in text_tokens:
+                        pair = _canonical(biz_id, nid)
+                        if pair is not None:
+                            edges[pair] = max(edges.get(pair, 0.0), 0.20)
+                        break
+
+        # Step 6: Cross-link business nodes via shared specific tags and title references
+        biz_tag_freq: dict[str, int] = {}
+        biz_tags: dict[str, set[str]] = {}
+        biz_titles: dict[str, str] = {}
+        biz_texts: dict[str, str] = {}
+        for biz_node in business_nodes:
+            biz_id = biz_node.get("id", "")
+            meta = biz_node.get("metadata")
+            tags_raw: list[str] = []
+            if isinstance(meta, dict):
+                t = meta.get("tags", [])
+                if isinstance(t, str):
+                    try:
+                        t = json_mod.loads(t)
+                    except (json_mod.JSONDecodeError, TypeError):
+                        t = []
+                if isinstance(t, (list, tuple)):
+                    tags_raw = [str(tag).lower() for tag in t]
+            tags = set(tags_raw)
+            biz_tags[biz_id] = tags
+            biz_titles[biz_id] = _extract_title(biz_node)
+            biz_texts[biz_id] = _extract_text(biz_node).lower()
+            for tag in tags:
+                biz_tag_freq[tag] = biz_tag_freq.get(tag, 0) + 1
+
+        biz_total = len(business_nodes)
+        biz_ids_list = sorted(biz_tags.keys())
+        for i in range(len(biz_ids_list)):
+            for j in range(i + 1, len(biz_ids_list)):
+                id1, id2 = biz_ids_list[i], biz_ids_list[j]
+
+                # Shared tag cross-link (weight 0.20)
+                shared = biz_tags[id1] & biz_tags[id2]
+                linked = False
+                for tag in shared:
+                    if biz_tag_freq[tag] / biz_total < 0.20:
+                        pair = _canonical(id1, id2)
+                        if pair is not None:
+                            edges[pair] = max(edges.get(pair, 0.0), 0.20)
+                        linked = True
+                        break  # one edge per pair is sufficient
+
+                if linked:
+                    continue
+
+                # Title-reference cross-link (weight 0.25) — H2 fix
+                title1 = biz_titles[id1]
+                title2 = biz_titles[id2]
+                if title1 and title1 in biz_texts[id2]:
+                    pair = _canonical(id1, id2)
+                    if pair is not None:
+                        edges[pair] = max(edges.get(pair, 0.0), 0.25)
+                elif title2 and title2 in biz_texts[id1]:
+                    pair = _canonical(id1, id2)
+                    if pair is not None:
+                        edges[pair] = max(edges.get(pair, 0.0), 0.25)
+
+        # Step 7: Insert edges (idempotent: MAX weight + MAX activation_count)
+        if not edges:
+            return 0
+
+        rows: list[tuple] = []
+        for (na, nb), w in edges.items():
+            pair = _canonical(na, nb)
+            if pair is None:
+                continue
+            rows.append(self._canonical_synapse_row(pair[0], pair[1], w, 1, ts, ts))
+
+        if not rows:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                # Count existing edges before insert (H3 fix)
+                before = conn.execute(
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?", (SHARED_NAMESPACE,)
+                ).fetchone()[0]
+
+                conn.executemany(
+                    """
+                    INSERT INTO synapses(
+                        node_a, node_b, namespace, weight, activation_count,
+                        last_activated, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(node_a, node_b, namespace) DO UPDATE SET
+                        weight = MAX(synapses.weight, excluded.weight),
+                        activation_count = MAX(
+                            synapses.activation_count, excluded.activation_count
+                        ),
+                        last_activated = excluded.last_activated
+                    """,
+                    rows,
+                )
+                # Count after insert — delta is actual new edges created
+                after = conn.execute(
+                    "SELECT COUNT(*) FROM synapses WHERE namespace = ?", (SHARED_NAMESPACE,)
+                ).fetchone()[0]
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+
+        return after - before
 
     # ----------------------------------------------------------------- #
     # Reads

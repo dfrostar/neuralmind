@@ -8,7 +8,7 @@ const steps = [
     {
         step: '2',
         title: 'Then measure YOUR codebase',
-        body: 'The fixture is tiny (~500 lines, ~5.5×). Real repos consistently hit 12–50× on the same pipeline — run the benchmark on your own code and read your own number. We measured 63.6× on a 1,486-node production codebase (Level2Logic).',
+        body: 'The fixture is tiny (~500 lines, ~5.5×). Real repos consistently hit 12–50× on the same pipeline — run the benchmark on your own code and read your own number. We measured 65.6× on a 1,486-node production codebase (Level2Logic).',
         code: ['pip install neuralmind', 'cd /path/to/your-repo', 'neuralmind build .', 'neuralmind benchmark .'],
     },
     {

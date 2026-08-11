@@ -92,8 +92,8 @@ docker run --rm -i \
   ghcr.io/dfrostar/neuralmind \
   neuralmind-mcp /project
 
-# Run the graph view on http://localhost:8765
-docker run --rm -p 8765:8765 \
+# Run the graph view on http://localhost:8787
+docker run --rm -p 8787:8787 \
   -v "$PWD:/project:ro" \
   ghcr.io/dfrostar/neuralmind \
   neuralmind serve /project --host 0.0.0.0 --no-auth

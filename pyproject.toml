@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "2.0.0"
+version = "3.1.2"
 description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 12-50× cheaper code questions."
 readme = "README.md"
 license = "MIT AND LicenseRef-NeuralMind-Commercial"
@@ -187,6 +187,7 @@ exclude = '''
     | \.mypy_cache
     | \.tox
     | \.venv
+    | \.demo-venv
     | _build
     | buck-out
     | build
@@ -221,7 +222,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "neuralmind/__init__.py" = ["E402"]  # telemetry setup must run before imports
-"tests/**/*.py" = ["S101", "F841", "PT011", "PT012"]  # allow assert and test patterns
+"tests/**/*.py" = ["S101", "F841", "PT011", "PT012", "N802"]  # allow assert and test patterns
+"evals/**/*.py" = ["E402", "F841"]  # sys.path manipulation + eval scripts
 
 
 [tool.mypy]

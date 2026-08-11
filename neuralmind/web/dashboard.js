@@ -1,5 +1,5 @@
 /**
- * dashboard.js — Agency OS read-only dashboard frontend.
+ * dashboard.js — NeuralMind read-only dashboard frontend.
  *
  * Fetches /api/dashboard/full and renders all views. Tab navigation
  * switches between overview, memory, ingestion, performance, queries,
@@ -60,10 +60,10 @@
     renderOverview(data);
     renderSynapses(data);
     renderIngestion(data);
+    renderDomains(data);
     renderPerformance(data);
     renderQueries(data);
     renderCommunities(data);
-    renderAgentOS(data);
     updateTimestamp(data.generated_at);
   }
 
@@ -110,6 +110,61 @@
 
     // Project name
     setText('project-name', status.project || '');
+  }
+
+  // Domain taxonomy — cards in the overview grid
+  function renderDomains(data) {
+    const domains = data.domains || {};
+    const crossDomains = data.cross_domains || {};
+
+    // Domain cards: one per non-total key
+    const domainList = document.getElementById('domains-list');
+    if (!domainList) return;
+    const domainKeys = Object.keys(domains).filter(k => k !== 'total').sort((a, b) => domains[b] - domains[a]);
+    const total = domains.total || 1;
+
+    if (domainKeys.length === 0) {
+      domainList.innerHTML = '<div class="empty-state">No domain data — build index first</div>';
+    } else {
+      domainList.innerHTML = domainKeys.map(d => {
+        const count = domains[d];
+        const pct = ((count / total) * 100).toFixed(1);
+        const safeClass = /^[a-zA-Z0-9_-]+$/.test(d) ? d : 'unknown';
+        return `
+          <div class="list-item">
+            <span class="list-label"><span class="domain-dot ${safeClass}"></span>${escapeHtml(d)}</span>
+            <span class="list-meta">${fmtNumber(count)} nodes (${pct}%)</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Cross-domain edges
+    const crossList = document.getElementById('cross-domains-list');
+    if (!crossList) return;
+    const crossKeys = Object.keys(crossDomains);
+    if (crossKeys.length === 0) {
+      crossList.innerHTML = '<div class="empty-state">No cross-domain edges</div>';
+    } else {
+      crossList.innerHTML = crossKeys
+        .sort((a, b) => crossDomains[b] - crossDomains[a])
+        .map(pair => {
+          const parts = pair.split('_');
+          if (parts.length !== 2 || !parts[0] || !parts[1]) return '';
+          const safeA = /^[a-zA-Z0-9_-]+$/.test(parts[0]) ? parts[0] : 'unknown';
+          const safeB = /^[a-zA-Z0-9_-]+$/.test(parts[1]) ? parts[1] : 'unknown';
+          return `
+            <div class="list-item">
+              <span class="list-label">
+                <span class="domain-dot ${safeA}"></span>${escapeHtml(parts[0])}
+                ↔
+                <span class="domain-dot ${safeB}"></span>${escapeHtml(parts[1])}
+              </span>
+              <span class="list-meta">${fmtNumber(crossDomains[pair])} edges</span>
+            </div>
+          `;
+        }).join('');
+    }
   }
 
   // Synapses / Memory
@@ -306,64 +361,6 @@
       .join('');
   }
 
-  // Agent OS
-  function renderAgentOS(data) {
-    const agentos = data.agent_os || {};
-
-    // Tenants
-    const tenants = agentos.tenants || {};
-    setText('agentos-total-tenants', fmtNumber(tenants.total_tenants));
-    const tiersList = document.getElementById('agentos-tiers');
-    const tiers = tenants.tiers || {};
-    if (Object.keys(tiers).length === 0) {
-      tiersList.innerHTML = '<div class="empty-state">No tenants</div>';
-    } else {
-      tiersList.innerHTML = Object.entries(tiers)
-        .map(([tier, count]) => `
-          <div class="list-item">
-            <span class="list-label">${escapeHtml(tier)}</span>
-            <span class="list-meta">${fmtNumber(count)} tenants</span>
-          </div>
-        `).join('');
-    }
-
-    // Signals
-    const signals = agentos.signals || {};
-    setText('agentos-tracked-metrics', fmtNumber(signals.tracked_metrics));
-    const signalsList = document.getElementById('agentos-signals-list');
-    const metrics = signals.metrics || {};
-    if (Object.keys(metrics).length === 0) {
-      signalsList.innerHTML = '<div class="empty-state">No signals tracked</div>';
-    } else {
-      signalsList.innerHTML = Object.entries(metrics)
-        .map(([name, stats]) => `
-          <div class="list-item">
-            <span class="list-label">${escapeHtml(name)}</span>
-            <span class="list-meta">mean ${stats.running_mean?.toFixed(2) || '—'} · std ${stats.running_std?.toFixed(2) || '—'}</span>
-          </div>
-        `).join('');
-    }
-
-    // Experiments
-    const experiments = agentos.experiments || {};
-    setText('agentos-total-experiments', fmtNumber(experiments.total_experiments));
-    setText('agentos-promotions', fmtNumber(experiments.promotions));
-    setText('agentos-rollbacks', fmtNumber(experiments.rollbacks));
-    const expList = document.getElementById('agentos-experiments-list');
-    const recent = experiments.recent || [];
-    if (recent.length === 0) {
-      expList.innerHTML = '<div class="empty-state">No experiments run</div>';
-    } else {
-      expList.innerHTML = recent
-        .map(e => `
-          <div class="list-item">
-            <span class="list-label">${escapeHtml(e.proposal_id)}</span>
-            <span class="list-meta">${escapeHtml(e.metric_name)} · delta ${e.delta?.toFixed(3) || '—'} · ${escapeHtml(e.verdict)}</span>
-          </div>
-        `).join('');
-    }
-  }
-
   // Utility: set textContent
   function setText(id, text) {
     const el = document.getElementById(id);
@@ -398,8 +395,12 @@
   async function load() {
     try {
       const data = await fetchDashboard();
-      render(data);
       document.getElementById('loading').classList.add('hidden');
+      try {
+        render(data);
+      } catch (err) {
+        showError('Failed to render dashboard: ' + err.message);
+      }
     } catch (err) {
       document.getElementById('loading').textContent = 'Failed to load dashboard';
       showError('Failed to load dashboard: ' + err.message);

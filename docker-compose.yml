@@ -6,7 +6,7 @@ services:
       - neuralmind-data:/data
       - ./license.json:/app/license.json:ro
     ports:
-      - "127.0.0.1:8765:8765"
+      - "127.0.0.1:8787:8787"
     environment:
       - NEURALMIND_TIER=team
       - NEURALMIND_SELF_HOSTED=true

@@ -4,7 +4,7 @@
   "source_backend": "turbovec",
   "source_schema_version": null,
   "built_at_commit": "handauthored0000000000000000000000000000",
-  "created_at": "2026-08-02T02:55:47.895419+00:00",
+  "created_at": "2026-08-05T19:43:51.898095+00:00",
   "coverage": "coarse",
   "nodes": [
     {
@@ -1917,397 +1917,397 @@
     {
       "source": "include_billing_h",
       "target": "include_billing_h__invoice_cls",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h__invoice_cls",
       "target": "include_billing_h__invoice_cls__id_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h__invoice_cls",
       "target": "include_billing_h__invoice_cls__user_id_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h__invoice_cls",
       "target": "include_billing_h__invoice_cls__amount_cents_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h__invoice_cls",
       "target": "include_billing_h__invoice_cls__paid_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "include_billing_h__invoice_create_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "include_billing_h__invoice_charge_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "include_billing_h__stripe_refund_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h",
       "target": "include_db_h__connection_cls",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h__connection_cls",
       "target": "include_db_h__connection_cls__dsn_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h__connection_cls",
       "target": "include_db_h__connection_cls__socket_fd_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h__connection_cls",
       "target": "include_db_h__connection_cls__in_transaction_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h",
       "target": "include_db_h__db_connect_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h",
       "target": "include_db_h__db_execute_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h",
       "target": "include_db_h__db_close_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h",
       "target": "include_handlers_h__authresult_cls",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h__authresult_cls",
       "target": "include_handlers_h__authresult_cls__auth_ok_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h__authresult_cls",
       "target": "include_handlers_h__authresult_cls__auth_expired_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h__authresult_cls",
       "target": "include_handlers_h__authresult_cls__auth_invalid_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h",
       "target": "include_handlers_h__authenticate_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h",
       "target": "include_jwt_h__claims_cls",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h__claims_cls",
       "target": "include_jwt_h__claims_cls__subject_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h__claims_cls",
       "target": "include_jwt_h__claims_cls__issued_at_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h__claims_cls",
       "target": "include_jwt_h__claims_cls__expires_at_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h",
       "target": "include_jwt_h__jwt_sign_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h",
       "target": "include_jwt_h__jwt_verify_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_routes_h",
       "target": "include_routes_h__route_request_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "include_user_h__user_cls",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h__user_cls",
       "target": "include_user_h__user_cls__id_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h__user_cls",
       "target": "include_user_h__user_cls__email_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h__user_cls",
       "target": "include_user_h__user_cls__password_hash_sym",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "include_user_h__user_create_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "include_user_h__user_find_by_email_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "include_user_h__user_delete_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_api_routes_c",
       "target": "src_api_routes_c__route_request_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_auth_handlers_c",
       "target": "src_auth_handlers_c__authenticate_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_auth_jwt_c",
       "target": "src_auth_jwt_c__encode_segment_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_auth_jwt_c",
       "target": "src_auth_jwt_c__jwt_sign_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_auth_jwt_c",
       "target": "src_auth_jwt_c__jwt_verify_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_billing_invoices_c",
       "target": "src_billing_invoices_c__invoice_create_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_billing_invoices_c",
       "target": "src_billing_invoices_c__invoice_charge_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_billing_invoices_c",
       "target": "src_billing_invoices_c__stripe_refund_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_db_connection_c",
       "target": "src_db_connection_c__db_connect_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_db_connection_c",
       "target": "src_db_connection_c__db_execute_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_db_connection_c",
       "target": "src_db_connection_c__db_close_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_users_crud_c",
       "target": "src_users_crud_c__next_id_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_users_crud_c",
       "target": "src_users_crud_c__user_create_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_users_crud_c",
       "target": "src_users_crud_c__user_find_by_email_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_users_crud_c",
       "target": "src_users_crud_c__user_delete_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "include_user_h",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h",
       "target": "include_jwt_h",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_routes_h",
       "target": "src_api_routes_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h",
       "target": "src_api_routes_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "src_api_routes_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "src_api_routes_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h__authenticate_fn",
       "target": "src_api_routes_c__route_request_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h__user_create_fn",
       "target": "src_api_routes_c__route_request_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_handlers_h",
       "target": "src_auth_handlers_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h__jwt_verify_fn",
       "target": "src_auth_handlers_c__authenticate_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_jwt_h",
       "target": "src_auth_jwt_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_auth_jwt_c__encode_segment_fn",
       "target": "src_auth_jwt_c__jwt_sign_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_billing_h",
       "target": "src_billing_invoices_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_db_h",
       "target": "src_db_connection_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "include_user_h",
       "target": "src_users_crud_c",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "src_users_crud_c__next_id_fn",
       "target": "src_users_crud_c__user_create_fn",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     },
     {
       "source": "readme_md",
       "target": "readme_md__h1",
-      "weight": 0.12295836866004328,
+      "weight": 0.1315888308335967,
       "kind": "co_activation"
     }
   ],

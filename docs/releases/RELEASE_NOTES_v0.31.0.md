@@ -58,7 +58,7 @@ Full analysis, caveats, and "where NeuralMind loses" in
 - **Cost + correctness jointly** — never a lone reduction ratio.
 - **Pre-registered queries, every one reported, including losses.**
 - **Deterministic** — synapse injection off (session-dependent learning can't be
-  a fixed public number; its +11.7pt lift is measured separately by the synapse
+  a fixed public number; its +6.1pt lift is measured separately by the synapse
   A/B eval). Re-running matches to the token.
 - **Forkable** — `.github/workflows/bench-public.yml` regenerates the table on
   demand; raw per-query data committed at `bench/public/results.json`.

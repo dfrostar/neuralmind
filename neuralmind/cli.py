@@ -12,7 +12,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import __version__, memory
-from neuralmind.agent_os.cli import cmd_agent_os
 from neuralmind.audit import AuditTrail
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
@@ -715,6 +714,10 @@ def cmd_benchmark(args):
         _run_public_benchmark(args)
         return
 
+    if getattr(args, "content", False) is True:
+        _run_content_benchmark(args)
+        return
+
     print(f"Running benchmark for: {args.project_path}")
     mind = create_mind(args.project_path, auto_build=True)
     result = mind.benchmark()
@@ -932,6 +935,80 @@ def _run_quality_eval(args) -> None:
 
     exit_code = harness.emit(reports, baseline=baseline, as_json=args.json)
     sys.exit(exit_code)
+
+
+def _run_content_benchmark(args) -> None:
+    """`neuralmind benchmark --content` — the N-16 content retrieval benchmark.
+
+    Ingests a book corpus (default: Underground) and runs the N-16 eval.
+    Reports IR metrics + RAGAS faithfulness + CI regression status.
+    """
+    from pathlib import Path
+
+    from evals.book_retrieval.run import run_eval
+
+    content_path = args.content  # Already set by nargs="?" const
+
+    # Resolve manifest_v2.json: check multiple locations
+    # 1. Parent of chapters dir (alongside underground/)
+    # 2. Parent of book dir (evals/book_retrieval/)
+    manifest_path = None
+    chapters_parent = (
+        Path(content_path).parent if Path(content_path).is_dir() else Path(content_path).parent
+    )
+    book_parent = chapters_parent.parent
+
+    for candidate in [
+        chapters_parent / "manifest_v2.json",
+        book_parent / "manifest_v2.json",
+    ]:
+        if candidate.exists():
+            manifest_path = candidate
+            break
+
+    # Resolve book_dir from the content_path (chapters parent)
+    book_dir = chapters_parent
+
+    print("N-16 Content Benchmark")
+    print(f"  Content: {content_path}")
+    print(f"  Manifest: {manifest_path or 'default (manifest.json — OLD FORMAT!)'}")
+    print()
+
+    report = run_eval(manifest_path=manifest_path, book_dir=book_dir, verbose=True)
+
+    if "error" in report:
+        print(f"Error: {report['error']}", file=sys.stderr)
+        sys.exit(1)
+
+    # Check CI floors (matching tests/test_content_benchmark.py)
+    agg = report["aggregates"]
+    floors = {
+        "recall@5": (agg["recall_at_5"], 0.20),
+        "MRR": (agg["mrr"], 0.30),
+        "nDCG@5": (agg["ndcg_at_5"], 0.20),
+        "hit_rate": (agg["hit_rate"], 0.50),
+        "faithfulness": (agg["mean_faithfulness"], 0.0),
+    }
+
+    print()
+    print("CI REGRESSION GATE:")
+    all_pass = True
+    for metric, (actual, floor) in floors.items():
+        passed = actual >= floor
+        status = "PASS" if passed else "FAIL"
+        print(f"  {metric}: {actual:.4f} >= {floor:.2f} [{status}]")
+        if not passed:
+            all_pass = False
+
+    if args.json:
+        report["ci_pass"] = all_pass
+        print(json.dumps(report, indent=2))
+    else:
+        print()
+        print(f"Overall: {'PASS' if all_pass else 'FAIL'}")
+
+    if not all_pass:
+        sys.exit(1)
 
 
 def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
@@ -1735,67 +1812,514 @@ def cmd_memory(args):
         return
 
 
-def cmd_learn(args):
-    """Ingest a document (PDF/Markdown/text) into the knowledge graph.
+def _resolve_project_path(file_path: Path, args) -> Path | None:
+    """Resolve the project root from args or by walking up from file_path.
 
-    Replaces the deprecated no-op. Delegates to ``core.NeuralMind.ingest_document``
-    which parses, chunks, and embeds content nodes into the vector space.
+    Returns None if no project marker (.neuralmind/, .git) is found.
     """
+    explicit_project = getattr(args, "project_path", None)
+    if explicit_project:
+        return Path(explicit_project).resolve()
+
+    cwd = Path.cwd()
+    if (
+        (cwd / ".neuralmind" / "index_ir.json").exists()
+        or (cwd / ".neuralmind" / "synapses.db").exists()
+        or (cwd / ".git").exists()
+    ):
+        return cwd
+
+    # Walk up from file to find project markers
+    project_path = file_path.parent if file_path.is_file() else file_path
+    while project_path.parent != project_path:
+        if (
+            (project_path / ".neuralmind" / "index_ir.json").exists()
+            or (project_path / ".neuralmind" / "synapses.db").exists()
+            or (project_path / ".git").exists()
+        ):
+            return project_path
+        project_path = project_path.parent
+
+    return None
+
+
+def _scan_files_for_ingest(dir_path: Path) -> list[Path]:
+    """Scan a directory for supported files, returning a sorted list.
+
+    Supported: .pdf, .md, .markdown, .mkd, .txt, .text, .rst, .org
+    Skips symlinks. Max depth: 10.
+    """
+    supported_exts = {".pdf", ".md", ".markdown", ".mkd", ".txt", ".text", ".rst", ".org"}
+    files: list[Path] = []
+
+    def _walk(path: Path, depth: int = 0):
+        if depth > 10:
+            return
+        for item in sorted(path.iterdir()):
+            if item.is_symlink():
+                continue
+            if item.is_dir():
+                _walk(item, depth + 1)
+            elif item.is_file() and item.suffix.lower() in supported_exts:
+                files.append(item)
+
+    _walk(dir_path)
+    return files
+
+
+def cmd_ingest_content(args):
+    """Ingest a directory of Markdown chapters into a pure content index.
+
+    Optimized for book/content benchmarking: ingests only .md/.txt files,
+    chunks them with configurable size/overlap, and builds a pure content
+    index (no code nodes). Reports files ingested, total chunks, node count.
+    """
+    import time
+
     from neuralmind.core import create_mind
+    from neuralmind.document_ingestion import parse_document
+
+    content_path = Path(args.content_path).resolve()
+    if not content_path.exists():
+        print(f"Error: path not found: {content_path}", file=sys.stderr)
+        sys.exit(1)
+
+    quiet = getattr(args, "quiet", False)
+    chunk_size = args.chunk_size
+    overlap = args.overlap
+
+    # Collect files
+    if content_path.is_file():
+        files_to_ingest = [content_path]
+    else:
+        # Only .md and .txt for content indexing
+        files_to_ingest = _scan_files_for_ingest(content_path)
+        files_to_ingest = [
+            f
+            for f in files_to_ingest
+            if f.suffix.lower() in (".md", ".markdown", ".mkd", ".txt", ".text")
+        ]
+
+    if not files_to_ingest:
+        if not quiet:
+            print("No supported content files found (.md, .txt).")
+        sys.exit(0)
+
+    # Resolve project root
+    project_path = _resolve_project_path(content_path, args)
+    if project_path is None:
+        # Use content_path's parent as project if it's a directory
+        project_path = content_path.parent if content_path.is_dir() else content_path.parent
+
+    if not quiet:
+        print(f"Content indexer: {len(files_to_ingest)} file(s) from {content_path}")
+        print(f"Chunk size: {chunk_size}, overlap: {overlap}")
+        print(f"Project: {project_path}")
+        print()
+
+    # Create a seed Python file if the project has no code files (required for build)
+    seed_file = project_path / "_content_seed.py"
+    if not any(project_path.rglob("*.py")):
+        seed_file.write_text(
+            "# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n"
+        )
+
+    mind = create_mind(str(project_path), auto_build=True)
+    if not mind._built:
+        print("Error: failed to build NeuralMind index.", file=sys.stderr)
+        sys.exit(1)
+
+    total_nodes = 0
+    total_chunks = 0
+    total_embed_time = 0.0
+    errors: list[tuple[str, str]] = []
+    wall_start = time.time()
+
+    for idx, fpath in enumerate(files_to_ingest, 1):
+        if not quiet and len(files_to_ingest) > 1:
+            rel = fpath.relative_to(content_path) if content_path.is_dir() else fpath.name
+            print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        try:
+            content_nodes = [
+                n.to_graph_node()
+                for n in parse_document(
+                    fpath,
+                    root=project_path,
+                    content_type="auto",
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                )
+            ]
+            if not content_nodes:
+                errors.append((str(fpath), "No content extracted"))
+                if not quiet and len(files_to_ingest) > 1:
+                    print(" no content")
+                continue
+
+            # Sync to embedder nodes list (avoid duplicates)
+            existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+            new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+            mind.embedder.nodes.extend(new_nodes)
+
+            # Embed
+            embed_start = time.time()
+            mind.embedder.embed_content(new_nodes)
+            embed_elapsed = time.time() - embed_start
+
+            n = len(new_nodes) if new_nodes else len(content_nodes)
+            total_nodes += n
+            total_chunks += len(content_nodes)
+            total_embed_time += embed_elapsed
+
+            if not quiet and len(files_to_ingest) > 1:
+                print(f" {n} node(s)")
+
+        except (ValueError, RuntimeError) as e:
+            errors.append((str(fpath), str(e)))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {e}")
+                else:
+                    print(f"Error: {e}", file=sys.stderr)
+        except Exception as e:
+            errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {type(e).__name__}: {e}")
+                else:
+                    print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    wall_time = time.time() - wall_start
+
+    if args.json:
+        output = {
+            "success": len(errors) == 0,
+            "files_processed": len(files_to_ingest),
+            "total_chunks": total_chunks,
+            "total_nodes": total_nodes,
+            "wall_time_seconds": round(wall_time, 2),
+            "embed_time_seconds": round(total_embed_time, 2),
+            "errors": [{"file": str(f), "error": e} for f, e in errors],
+        }
+        print(json.dumps(output, indent=2))
+        if errors:
+            sys.exit(1)
+        return
+
+    if errors:
+        print(f"\n{len(errors)} error(s):", file=sys.stderr)
+        for f, err in errors[:10]:
+            print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+        sys.exit(1)
+
+    if not quiet:
+        print()
+        print(
+            f"Ingested {len(files_to_ingest)} file(s) → {total_chunks} chunks → {total_nodes} nodes"
+        )
+        print(f"Wall time: {wall_time:.1f}s | Embed time: {total_embed_time:.2f}s")
+
+
+def cmd_ingest(args):
+    """Ingest documents (PDF/Markdown/text) into the knowledge graph.
+
+    `learn` is an alias for this command. Supports single files and
+    directories. Directories are scanned recursively for .pdf, .md,
+    .txt, .rst, and .org files.
+
+    Progress is reported per-file for directories. Errors on individual
+    files are collected and reported at the end without stopping the
+    batch.
+    """
+    import time
+
+    from neuralmind.content_node import ContentNode
+    from neuralmind.core import create_mind
+    from neuralmind.document_ingestion import parse_document
+
+    # Parse business context from JSON input
+    business_types = {"decision", "meeting", "sop", "policy"}
+    is_business_type = args.type in business_types
 
     file_path = Path(args.file_path).resolve() if args.file_path != "." else Path.cwd()
     if not file_path.exists():
         print(f"Error: file not found: {file_path}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Learning from: {file_path}")
-    # Find repo root: check args.project_path first, then CWD, then walk up from file
-    explicit_project = getattr(args, "project_path", None)
-    if explicit_project:
-        project_path = Path(explicit_project).resolve()
-    elif (
-        ((cwd := Path.cwd()) / ".neuralmind" / "index_ir.json").exists()
-        or (cwd / ".neuralmind" / "synapses.db").exists()
-        or (cwd / ".git").exists()
-    ):
-        project_path = cwd
+    dry_run = getattr(args, "dry_run", False)
+    quiet = getattr(args, "quiet", False)
+    no_recursive = getattr(args, "no_recursive", False)
+
+    # Collect files to ingest
+    if file_path.is_file():
+        files_to_ingest = [file_path]
     else:
-        # Walk up from file to find project markers
-        project_path = file_path.parent if file_path.is_file() else file_path
-        while project_path.parent != project_path:
-            if (
-                (project_path / ".neuralmind" / "index_ir.json").exists()
-                or (project_path / ".neuralmind" / "synapses.db").exists()
-                or (project_path / ".git").exists()
-            ):
-                break
-            project_path = project_path.parent
-        else:
-            # No project marker found — require running from project directory
+        files_to_ingest = _scan_files_for_ingest(file_path)
+        if no_recursive:
+            files_to_ingest = [f for f in files_to_ingest if f.parent == file_path]
+
+    if not files_to_ingest:
+        if not quiet:
+            print("No supported files found to ingest.")
+        sys.exit(0)
+
+    # Business context: JSON file input via --type decision|meeting|sop|policy
+    if is_business_type:
+        total_nodes = 0
+        total_embed_time = 0.0
+        errors: list[tuple[str, str]] = []
+        wall_start = time.time()
+
+        # Resolve project root
+        project_path = _resolve_project_path(file_path, args)
+        if project_path is None:
             print(
-                "Error: no NeuralMind project found. Run 'neuralmind learn' from your project directory (where 'neuralmind build .' was run).",
+                "Error: no NeuralMind project found. Run 'neuralmind ingest' from your "
+                "project directory (where 'neuralmind build .' was run).",
                 file=sys.stderr,
             )
             sys.exit(1)
-    mind = create_mind(str(project_path), auto_build=True)
-    # Pass project_path as root for path validation (files may be outside CWD)
-    result = mind.ingest_document(str(file_path), content_type=args.type, root=project_path)
 
-    if args.json:
-        print(json.dumps(result, indent=2))
+        mind = create_mind(str(project_path), auto_build=True)
+        if not mind._built:
+            print(
+                "Error: failed to build NeuralMind index. Run 'neuralmind build .' first.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        for idx, fpath in enumerate(files_to_ingest, 1):
+            if not quiet and len(files_to_ingest) > 1:
+                rel = fpath.relative_to(file_path)
+                print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+            try:
+                with open(fpath, encoding="utf-8") as fh:
+                    data = json.load(fh)
+
+                # Support both single object and array of objects
+                items = data if isinstance(data, list) else [data]
+                content_nodes: list[dict] = []
+
+                for item in items:
+                    if args.type == "decision":
+                        content_nodes.append(ContentNode.from_decision(item).to_graph_node())
+                    elif args.type == "meeting":
+                        content_nodes.append(ContentNode.from_meeting_note(item).to_graph_node())
+                    elif args.type == "sop":
+                        content_nodes.append(ContentNode.from_sop(item).to_graph_node())
+                    elif args.type == "policy":
+                        content_nodes.append(ContentNode.from_policy(item).to_graph_node())
+
+                if not content_nodes:
+                    errors.append((str(fpath), "No content extracted"))
+                    if not quiet and len(files_to_ingest) > 1:
+                        print(" no content")
+                    continue
+
+                # Sync to embedder nodes list
+                existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+                new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+                mind.embedder.nodes.extend(new_nodes)
+
+                embed_start = time.time()
+                stats = mind.embedder.embed_content(new_nodes)
+                embed_elapsed = time.time() - embed_start
+
+                n = len(new_nodes) if new_nodes else len(content_nodes)
+                total_nodes += n
+                total_embed_time += embed_elapsed
+
+                if not quiet and len(files_to_ingest) > 1:
+                    added = stats.get("added", 0)
+                    skipped = stats.get("skipped", 0)
+                    print(f" {n} node(s) (+{added}, ~{skipped})")
+
+            except (ValueError, RuntimeError, json.JSONDecodeError) as e:
+                errors.append((str(fpath), str(e)))
+                if not quiet:
+                    if len(files_to_ingest) > 1:
+                        print(" ERROR")
+                        print(f"    {e}")
+                    else:
+                        print(f"Error: {e}", file=sys.stderr)
+            except Exception as e:
+                errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+                if not quiet:
+                    if len(files_to_ingest) > 1:
+                        print(" ERROR")
+                        print(f"    {type(e).__name__}: {e}")
+                    else:
+                        print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+
+        wall_time = time.time() - wall_start
+
+        if args.json:
+            output = {
+                "success": len(errors) == 0,
+                "files_processed": len(files_to_ingest),
+                "total_nodes": total_nodes,
+                "wall_time_seconds": round(wall_time, 2),
+                "errors": [{"file": str(f), "error": e} for f, e in errors],
+            }
+            print(json.dumps(output, indent=2))
+            if errors:
+                sys.exit(1)
+            return
+
+        if errors:
+            print(f"\n{len(errors)} error(s):", file=sys.stderr)
+            for f, err in errors[:10]:
+                print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+            if len(errors) > 10:
+                print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+            sys.exit(1)
+
+        if not quiet:
+            print(
+                f"Ingested {total_nodes} content node(s) from {len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+            )
+            print(f"  Embed time: {total_embed_time:.2f}s")
         return
 
-    if "error" in result:
-        print(f"Error: {result['error']}", file=sys.stderr)
+    # Resolve project root
+    project_path = _resolve_project_path(file_path, args)
+    if project_path is None:
+        print(
+            "Error: no NeuralMind project found. Run 'neuralmind ingest' from your "
+            "project directory (where 'neuralmind build .' was run).",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    print(f"Ingested {result['node_count']} content nodes from {result['file_path']}")
-    if result.get("embed_stats"):
-        stats = result["embed_stats"]
-        print(f"  Embedded: {stats.get('added', 0)} added, {stats.get('updated', 0)} updated")
-    doc_edges = result.get("synapse_doc_edges", 0)
-    if doc_edges:
-        print(f"  Synapse doc edges: {doc_edges}")
+    if dry_run:
+        print(f"Would ingest {len(files_to_ingest)} file(s):")
+        for f in files_to_ingest:
+            rel = f.relative_to(file_path) if file_path.is_dir() else f.name
+            print(f"  {rel}")
+        return
+
+    if not quiet:
+        print(f"Ingesting {len(files_to_ingest)} file(s) from {file_path}")
+
+    mind = create_mind(str(project_path), auto_build=True)
+    if not mind._built:
+        print(
+            "Error: failed to build NeuralMind index. Run 'neuralmind build .' first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    total_nodes = 0
+    total_embed_time = 0.0
+    errors: list[tuple[str, str]] = []
+    wall_start = time.time()
+
+    for idx, fpath in enumerate(files_to_ingest, 1):
+        if not quiet and len(files_to_ingest) > 1:
+            rel = fpath.relative_to(file_path)
+            print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+
+        try:
+            content_nodes = [
+                n.to_graph_node()
+                for n in parse_document(fpath, root=project_path, content_type=args.type)
+            ]
+            if not content_nodes:
+                errors.append((str(fpath), "No content extracted"))
+                if not quiet and len(files_to_ingest) > 1:
+                    print(" no content")
+                continue
+
+            # Sync to embedder nodes list (avoid duplicates)
+            existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
+            new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
+            mind.embedder.nodes.extend(new_nodes)
+
+            # Embed
+            embed_start = time.time()
+            stats = mind.embedder.embed_content(new_nodes)
+            embed_elapsed = time.time() - embed_start
+
+            # Count actually-added nodes from embed stats (M1 fix: was overstating)
+            added = stats.get("added", 0)
+            n = added if added > 0 else len(new_nodes) if new_nodes else len(content_nodes)
+            total_nodes += n
+            total_embed_time += embed_elapsed
+
+            if not quiet and len(files_to_ingest) > 1:
+                skipped = stats.get("skipped", 0)
+                print(f" {n} node(s) (+{added}, ~{skipped})")
+        except (ValueError, RuntimeError) as e:
+            errors.append((str(fpath), str(e)))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {e}")
+                else:
+                    print(f"Error: {e}", file=sys.stderr)
+        except Exception as e:
+            errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+            if not quiet:
+                if len(files_to_ingest) > 1:
+                    print(" ERROR")
+                    print(f"    {type(e).__name__}: {e}")
+                else:
+                    print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+
+    # Seed synapse edges from documentation (one-time, gated on env vars)
+    synapse_doc_edges = 0
+    if mind.enable_synapses:
+        try:
+            store = mind.synapses
+            if store is not None:
+                synapse_doc_edges = store.seed_from_documentation(project_path)
+        except Exception:
+            pass
+
+    wall_time = time.time() - wall_start
+
+    if args.json:
+        output = {
+            "success": len(errors) == 0,
+            "files_processed": len(files_to_ingest),
+            "total_nodes": total_nodes,
+            "wall_time_seconds": round(wall_time, 2),
+            "synapse_doc_edges": synapse_doc_edges,
+            "errors": [{"file": str(f), "error": e} for f, e in errors],
+        }
+        print(json.dumps(output, indent=2))
+        if errors:
+            sys.exit(1)
+        return
+
+    if errors:
+        # Always report errors and exit non-zero, even with --quiet
+        print(f"\n{len(errors)} error(s):", file=sys.stderr)
+        for f, err in errors[:10]:
+            print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+        if len(errors) > 10:
+            print(f"  ... and {len(errors) - 10} more", file=sys.stderr)
+        sys.exit(1)
+
+    if not quiet:
+        if total_nodes > 0:
+            print(
+                f"Ingested {total_nodes} content node(s) from "
+                f"{len(files_to_ingest)} file(s) in {wall_time:.1f}s"
+            )
+        if synapse_doc_edges > 0:
+            print(f"  Synapse doc edges: {synapse_doc_edges}")
+
+
+def cmd_learn(args):
+    """Alias for `neuralmind ingest`."""
+    return cmd_ingest(args)
 
 
 def cmd_self_improve_status(args):
@@ -3397,6 +3921,12 @@ def main():
         "No data is uploaded — you copy-paste the output into an issue or PR.",
     )
     bench_p.add_argument(
+        "--content",
+        nargs="?",
+        const="evals/book_retrieval/underground/chapters",
+        help="Content benchmark: ingest + evaluate a book corpus. Optionally takes a path (default: Underground book).",
+    )
+    bench_p.add_argument(
         "--project-name", help="Project name for contribution (optional; prompts on TTY)"
     )
     bench_p.add_argument("--language", help="Primary language for contribution (optional)")
@@ -3508,18 +4038,73 @@ def main():
     )
     eval_p.set_defaults(func=cmd_eval)
 
+    ingest_p = subparsers.add_parser(
+        "ingest",
+        help="Ingest documents (PDF/Markdown/text) into the knowledge graph",
+    )
+    ingest_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
+    ingest_p.add_argument(
+        "--type",
+        default="auto",
+        choices=["auto", "pdf", "markdown", "text", "cmmc", "decision", "meeting", "sop", "policy"],
+        help="Content type hint (default: auto-detect). Business types: decision, meeting, sop, policy (JSON input)",
+    )
+    ingest_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
+    ingest_p.add_argument(
+        "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
+    )
+    ingest_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    ingest_p.add_argument(
+        "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
+    )
+    ingest_p.set_defaults(func=cmd_ingest)
+
+    # ingest-content: dedicated content indexer for books/markdown corpora
+    ingest_content_p = subparsers.add_parser(
+        "ingest-content",
+        help="Ingest a directory of Markdown chapters into a pure content index (for book/content benchmarking)",
+    )
+    ingest_content_p.add_argument(
+        "content_path",
+        help="Path to a directory of .md files (chapters) or a single file",
+    )
+    ingest_content_p.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="Max characters per chunk (default: 500)",
+    )
+    ingest_content_p.add_argument(
+        "--overlap",
+        type=int,
+        default=50,
+        help="Character overlap between chunks (default: 50)",
+    )
+    ingest_content_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
+    ingest_content_p.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress progress output"
+    )
+    ingest_content_p.set_defaults(func=cmd_ingest_content)
+
     learn_p = subparsers.add_parser(
-        "learn", help="Ingest documents (PDF/Markdown/text) into the knowledge graph"
+        "learn", help="Alias for 'ingest' — ingest documents into the knowledge graph"
     )
     learn_p.add_argument("file_path", nargs="?", default=".", help="File or directory to ingest")
     learn_p.add_argument(
         "--type",
         default="auto",
-        choices=["auto", "pdf", "markdown", "text", "cmmc"],
-        help="Content type hint (default: auto-detect)",
+        choices=["auto", "pdf", "markdown", "text", "cmmc", "decision", "meeting", "sop", "policy"],
+        help="Content type hint (default: auto-detect). Business types: decision, meeting, sop, policy (JSON input)",
     )
     learn_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
-    learn_p.set_defaults(func=cmd_learn)
+    learn_p.add_argument(
+        "--dry-run", action="store_true", help="List files that would be ingested without ingesting"
+    )
+    learn_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    learn_p.add_argument(
+        "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
+    )
+    learn_p.set_defaults(func=cmd_ingest)
 
     # onboarding command — interactive setup wizard for team tier
     onboarding_p = subparsers.add_parser(
@@ -4032,8 +4617,8 @@ def main():
     serve_p.add_argument(
         "--port",
         type=int,
-        default=8765,
-        help="Port to bind (default: 8765)",
+        default=8787,
+        help="Port to bind (default: 8787)",
     )
     serve_p.add_argument(
         "--no-browser",
@@ -4302,86 +4887,6 @@ def main():
     plic_pp = partner_sub.add_parser("licenses", help="List partner's licenses")
     plic_pp.add_argument("--partner", required=True, help="Partner ID")
     plic_pp.set_defaults(func=cmd_partner_licenses)
-
-    # Agent OS — multi-tenant operations (v1.15.0)
-    agent_os_p = subparsers.add_parser(
-        "agent-os",
-        help="Multi-tenant Agent OS: tenants, RBAC, signals, experiments",
-    )
-    agent_os_sub = agent_os_p.add_subparsers(dest="agent_os_command")
-
-    # Tenants
-    tenants_p = agent_os_sub.add_parser("tenants", help="Tenant management")
-    tenants_subcmd = tenants_p.add_subparsers(dest="tenants_action")
-
-    tenants_list = tenants_subcmd.add_parser("list", help="List all tenants")
-
-    tenants_create = tenants_subcmd.add_parser("create", help="Create a tenant")
-    tenants_create.add_argument("--id", required=True, help="Tenant ID (URL-safe slug)")
-    tenants_create.add_argument("--name", required=True, help="Display name")
-    tenants_create.add_argument("--tier", default="free", choices=["free", "team", "enterprise"])
-    tenants_create.add_argument("--admin", required=True, help="Admin email")
-    tenants_create.add_argument("--projects", nargs="*", help="Project paths")
-
-    tenants_delete = tenants_subcmd.add_parser("delete", help="Delete a tenant")
-    tenants_delete.add_argument("--id", required=True, help="Tenant ID")
-    tenants_delete.add_argument("--admin", required=True, help="Admin email")
-
-    # RBAC
-    rbac_p = agent_os_sub.add_parser("rbac", help="RBAC management")
-    rbac_subcmd = rbac_p.add_subparsers(dest="rbac_action")
-
-    rbac_add = rbac_subcmd.add_parser("add", help="Add role assignment")
-    rbac_add.add_argument("--tenant", required=True, help="Tenant ID")
-    rbac_add.add_argument("--email", required=True, help="User email")
-    rbac_add.add_argument("--role", required=True, choices=["admin", "operator", "viewer"])
-    rbac_add.add_argument("--admin", required=True, help="Admin email performing the action")
-
-    # Signals
-    signals_p = agent_os_sub.add_parser("signals", help="Signal operations")
-    signals_subcmd = signals_p.add_subparsers(dest="signals_action")
-
-    signals_list = signals_subcmd.add_parser("list", help="List tracked metrics")
-
-    signals_push = signals_subcmd.add_parser("push", help="Push a metric value")
-    signals_push.add_argument("--metric", required=True, help="Metric name")
-    signals_push.add_argument("--value", type=float, required=True, help="Metric value")
-
-    # Experiments
-    experiments_p = agent_os_sub.add_parser("experiments", help="Experiment operations")
-    experiments_subcmd = experiments_p.add_subparsers(dest="experiments_action")
-
-    exp_run = experiments_subcmd.add_parser("run", help="Run an A/B experiment")
-    exp_run.add_argument("--proposal", required=True, help="Proposal ID")
-    exp_run.add_argument("--metric", required=True, help="Metric name")
-    exp_run.add_argument("--baseline", type=float, required=True, help="Baseline value")
-    exp_run.add_argument("--candidate", type=float, required=True, help="Candidate value")
-    exp_run.add_argument("--higher-is-better", action="store_true")
-    exp_run.add_argument("--threshold", type=float, help="Override promote threshold (%)")
-
-    exp_history = experiments_subcmd.add_parser("history", help="Show experiment history")
-
-    # Migrate
-    migrate_p = agent_os_sub.add_parser("migrate", help="Database migration")
-    migrate_subcmd = migrate_p.add_subparsers(dest="migrate_action")
-
-    migrate_pg = migrate_subcmd.add_parser("postgres", help="Migrate to PostgreSQL")
-    migrate_pg.add_argument("--dsn", required=True, help="PostgreSQL connection string")
-
-    migrate_status = migrate_subcmd.add_parser("status", help="Check migration status")
-    migrate_status.add_argument("--dsn", required=True, help="PostgreSQL connection string")
-
-    # Set defaults
-    tenants_list.set_defaults(func=cmd_agent_os)
-    tenants_create.set_defaults(func=cmd_agent_os)
-    tenants_delete.set_defaults(func=cmd_agent_os)
-    rbac_add.set_defaults(func=cmd_agent_os)
-    signals_list.set_defaults(func=cmd_agent_os)
-    signals_push.set_defaults(func=cmd_agent_os)
-    exp_run.set_defaults(func=cmd_agent_os)
-    exp_history.set_defaults(func=cmd_agent_os)
-    migrate_pg.set_defaults(func=cmd_agent_os)
-    migrate_status.set_defaults(func=cmd_agent_os)
 
     args = parser.parse_args()
     if args.command is None:

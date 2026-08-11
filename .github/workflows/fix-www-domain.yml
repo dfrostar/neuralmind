@@ -1,0 +1,124 @@
+name: Fix www custom domain
+
+# Remediation for the 2026-08-06 www.neuralmind.uk outage, kept as a
+# re-runnable tool. The www DNS record had been left pointing at GitHub
+# Pages (CNAME dfrostar.github.io) after the site moved to the Cloudflare
+# Pages project "neuralmind-marketing", so www returned GitHub's
+# "Site not found" 404. This job attaches www as a custom domain on the
+# Pages project, repoints the DNS record, and verifies www serves 200.
+# It is idempotent — safe to re-run if www ever regresses.
+#
+# Uses the same repository secrets as deploy-site.yml:
+#   CLOUDFLARE_API_TOKEN   - Pages Edit + Zone DNS Edit
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID
+#
+# NOTE: the stored secrets carry a trailing newline. A newline inside the
+# Authorization header truncates POST bodies at Cloudflare's edge (GETs
+# authenticate, POSTs fail with error 8000006), so every step strips
+# whitespace from the secrets before use.
+
+on:
+  workflow_dispatch:
+
+# The job only talks to the Cloudflare API; the GITHUB_TOKEN needs nothing.
+permissions: {}
+
+jobs:
+  add-www-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attach www.neuralmind.uk to the Pages project
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          domains_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains"
+
+          echo "== Custom domains currently on the project =="
+          curl -sS "${auth[@]}" "${domains_api}" | jq -r '.result[]?.name'
+
+          echo "== Adding www.neuralmind.uk =="
+          resp=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+            --data '{"name":"www.neuralmind.uk"}' "${domains_api}")
+          echo "${resp}" | jq .
+          if [ "$(echo "${resp}" | jq -r '.success')" != "true" ]; then
+            msg=$(echo "${resp}" | jq -r '[.errors[]?.message] | join("; ")')
+            case "${msg}" in
+              *already*|*exists*) echo "Domain already attached; continuing." ;;
+              *) echo "Failed to add domain: ${msg}" >&2; exit 1 ;;
+            esac
+          fi
+
+      # Best-effort by design: when the token can't touch DNS this step warns
+      # instead of failing, because the final "Verify" step fails the run
+      # whenever www does not serve 200. A green RUN therefore always means
+      # www is healthy; a warning annotation flags that this step had to
+      # defer to manual DNS repair.
+      - name: Repair www DNS record
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          zone_id="d2741af1aee8025b9d11e54ad8ade6be"  # neuralmind.uk zone
+
+          rec=$(curl -sS "${auth[@]}" \
+            "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records?name=www.neuralmind.uk")
+          if [ "$(echo "${rec}" | jq -r '.success')" != "true" ]; then
+            echo "::warning::DNS repair skipped - token cannot read the zone's DNS records; the Verify step will fail the run if www is not actually serving."
+            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
+            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
+            exit 0
+          fi
+          rec_id=$(echo "${rec}" | jq -r '.result[0]?.id // empty')
+          echo "Current www record: $(echo "${rec}" | jq -c '.result[0]? | {type, content, proxied}')"
+
+          body='{"type":"CNAME","name":"www","content":"neuralmind-marketing.pages.dev","proxied":true,"ttl":1}'
+          if [ -n "${rec_id}" ]; then
+            upd=$(curl -sS -X PUT "${auth[@]}" -H "Content-Type: application/json" \
+              --data "${body}" \
+              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records/${rec_id}")
+          else
+            upd=$(curl -sS -X POST "${auth[@]}" -H "Content-Type: application/json" \
+              --data "${body}" \
+              "https://api.cloudflare.com/client/v4/zones/${zone_id}/dns_records")
+          fi
+          echo "${upd}" | jq -c '{success, errors}'
+          if [ "$(echo "${upd}" | jq -r '.success')" != "true" ]; then
+            echo "::warning::DNS update failed with this token; the Verify step will fail the run if www is not actually serving."
+            echo "MANUAL STEP if www stays 404: in the Cloudflare dashboard set DNS record:"
+            echo "  www  CNAME  neuralmind-marketing.pages.dev  (proxied)"
+            exit 0
+          fi
+          echo "www DNS record now points at the Pages project."
+
+      - name: Verify www serves the site
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          token=$(printf %s "${CLOUDFLARE_API_TOKEN}" | tr -d '[:space:]')
+          acct=$(printf %s "${CLOUDFLARE_ACCOUNT_ID}" | tr -d '[:space:]')
+          auth=(-H "Authorization: Bearer ${token}")
+          domain_api="https://api.cloudflare.com/client/v4/accounts/${acct}/pages/projects/neuralmind-marketing/domains/www.neuralmind.uk"
+          # -L: a zone redirect rule 301s www -> apex; following it, healthy
+          # means the final response is 200 whichever host serves it.
+          for i in $(seq 1 20); do
+            st=$(curl -sS "${auth[@]}" "${domain_api}" | jq -r '.result.status // "unknown"')
+            code=$(curl -sSL -o /dev/null -w "%{http_code}" https://www.neuralmind.uk || echo 000)
+            echo "attempt ${i}: domain status=${st}, https://www.neuralmind.uk -> HTTP ${code}"
+            if [ "${code}" = "200" ]; then
+              echo "www.neuralmind.uk is serving the site."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "www not serving 200 yet; validation/DNS may still be propagating."
+          echo "Check again in a few minutes. If still 404, apply the manual DNS step above."
+          exit 1

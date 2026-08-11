@@ -132,7 +132,25 @@ def _parse_pdf(path: Path) -> str:
 
 
 def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
-    """Chunk text into overlapping windows."""
+    """Chunk text into overlapping windows.
+
+    Args:
+        text: Text to chunk.
+        chunk_size: Maximum characters per chunk. Must be > overlap.
+        overlap: Character overlap between consecutive chunks. Must be < chunk_size.
+
+    Returns:
+        List of text chunks.
+
+    Raises:
+        ValueError: If chunk_size <= overlap (would cause infinite loop).
+    """
+    if chunk_size <= overlap:
+        raise ValueError(
+            f"chunk_size ({chunk_size}) must be greater than overlap ({overlap}). "
+            f"Use --chunk-size > --overlap."
+        )
+
     if len(text) <= chunk_size:
         return [text]
 
@@ -164,7 +182,11 @@ def _make_node_id(path: Path, index: int = 0) -> str:
 
 
 def parse_document(
-    path: Path, root: Path | None = None, content_type: str = "auto"
+    path: Path,
+    root: Path | None = None,
+    content_type: str = "auto",
+    chunk_size: int = CHUNK_SIZE,
+    overlap: int = CHUNK_OVERLAP,
 ) -> list[ContentNode]:
     """Parse a document file into ContentNodes.
 
@@ -174,6 +196,8 @@ def parse_document(
         path: Path to the document file.
         root: Root directory for path validation. If None, uses path.parent.
         content_type: Type hint ('pdf', 'markdown', 'text', or 'auto' to sniff).
+        chunk_size: Max characters per chunk (default: CHUNK_SIZE=500).
+        overlap: Character overlap between chunks (default: CHUNK_OVERLAP=50).
 
     Returns:
         List of ContentNode objects.
@@ -229,7 +253,7 @@ def parse_document(
         raise ValueError(f"Empty document: {path}")
 
     # Chunk if large
-    chunks = _chunk_text(text)
+    chunks = _chunk_text(text, chunk_size=chunk_size, overlap=overlap)
     nodes = []
 
     for i, chunk in enumerate(chunks):

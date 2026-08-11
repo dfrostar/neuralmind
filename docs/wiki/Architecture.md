@@ -735,8 +735,8 @@ imported into every session even when the auto-memory path doesn't apply.
 NeuralMind once had a second learning mechanism, the `learned_patterns`
 cooccurrence **reranker** (v0.3.2). **It was removed in v0.25.0** after a
 2×2 A/B on the benchmark fixture showed it added 0.0 points to top-k hit
-rate whether the synapse layer was on or off (72% → 72% cold, 86% →
-86% warm), while the synapse layer alone added +14 points. The
+rate whether the synapse layer was on or off (77.2% → 77.2% cold, 83.3% →
+83.3% warm), while the synapse layer alone added +6.1 points. The
 reranker was also runtime-inert on the warm path — the synapse boost
 re-sort discarded its ordering anyway. The architectural reason the two
 were never equivalent:
@@ -756,6 +756,76 @@ discarded. The synapse layer is now the single learning system. See the
 for the full evidence.
 
 ---
+
+## Business-Context Synapse Seeding (N-13)
+
+`seed_from_documents()` in `neuralmind/synapses.py` builds deterministic,
+LLM-free associations between **business documents** (decisions, SOPs,
+meeting notes, policies) and your code graph. This is the backbone of
+the "second brain" expansion — NeuralMind now indexes business context,
+not just code.
+
+### How it works
+
+1. **Tokenize** each business document (split on `_`, `-`, `.`, `/`; 3+ chars; stopword-filtered).
+2. **Exact label match** (0.40): code node label is a subset of the doc's tokens.
+3. **Compound match** (0.25): 2+ consecutive non-stopword components appear
+   **adjacent in text** (H1 fix — not just both present anywhere).
+4. **Single match** (0.20): one component present.
+5. **Cross-link business nodes** (0.20): shared specific tags (<20% frequency cap).
+6. **Title-reference cross-link** (0.25): one doc's title appears in another's text (H2 fix).
+
+### Guarantees
+
+- **Idempotent**: re-running returns 0 new edges (H3 fix — counts actual rowcount delta).
+- **LTP-safe**: `MAX(activation_count)` not `+1` (reinforcement doesn't inflate on re-run).
+- **Deterministic**: canonical edge ordering + precomputed token sets (M3 fix — no O(n²) re-tokenization).
+
+### Integration
+
+Called from `build()` not `ingest_document()` — covers daemon rebuilds
+and fresh `build .` invocations, not just document ingestion.
+
+---
+
+## Content Indexing & Retrieval (N-16)
+
+Extends NeuralMind to index **long-form non-code content** (books, documentation, compliance frameworks) and measure retrieval quality using the N-15 benchmark framework.
+
+### Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `ingest-content` CLI | `neuralmind/cli.py` | Ingest Markdown chapters into a pure content index |
+| `parse_document()` | `neuralmind/document_ingestion.py` | Parse + chunk documents into ContentNodes |
+| `manifest_v2.json` | `evals/book_retrieval/` | 30-query Underground manifest with graded relevance |
+| `run.py` v2 | `evals/book_retrieval/run.py` | N-15 IR metrics + RAGAS + per-shape breakdown |
+| CI gates | `tests/test_content_benchmark.py` | 7 regression tests with conservative floors |
+
+### Chunking Strategy
+
+Chapters are split into ~150-word overlapping segments (configurable via `--chunk-size` and `--overlap`). Each chunk becomes a `ContentNode` with a unique `doc:` ID. Overlap prevents splitting relevant passages across chunk boundaries.
+
+### Retrieval Flow
+
+1. User runs `neuralmind ingest-content <path>` to index chapters
+2. Each query runs through `nm.query()` → progressive disclosure
+3. Retrieved paragraphs are mapped to gold paragraphs via word-overlap scoring
+4. N-15 IR metrics (recall@k, MRR, nDCG@5) computed against graded relevance
+5. RAGAS faithfulness scored via `fact_recall × (1 - contradiction)` (stdlib-only)
+
+### Per-Shape Breakdown
+
+Separate aggregates for:
+- **precise** — technical details (dates, names, events)
+- **thematic** — cross-chapter themes (motivations, culture)
+- **entity** — character/entity resolution across chapters
+- **temporal** — event sequencing, causation
+- **causal** — why something happened
+
+---
+
+
 
 ## Event Bus and JSONL Bridge (v0.6)
 

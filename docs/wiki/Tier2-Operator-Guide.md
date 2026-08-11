@@ -8,21 +8,22 @@
 
 ## What Tier 2 (Team) gives you
 
-Tier 2 is the paid tier on top of the MIT core. **The MIT core's 12-50x token reduction is free forever** — Tier 2 adds engineering-team governance, audit, and seat management.
+Tier 2 is the paid tier on top of the MIT core. **The MIT core's 12-50x token reduction is free forever**, and the tier2 feature set — governance, audit, self-hosted — runs under the auto-issued free 1-seat license too. A paid Team license buys **seats beyond one (5-50), priority support, and an annual invoice**, not hidden features.
 
-| Feature | MIT core (free) | Team ($29/user/mo) |
-|---------|-----------------|---------------------|
+| Feature | Free license (1 seat) | Team ($29/user/mo, 5-50 seats) |
+|---------|-----------------------|--------------------------------|
 | 12-50x token reduction | Yes | Yes |
 | Synapse learning | Yes | Yes |
 | MCP server | Yes | Yes |
 | Memory publish/inherit | Yes | Yes |
-| Governance (publish scope, weight threshold) | No | Yes |
-| Audit log (SHA-256 hash-chained) | No | Yes |
-| Seat management (add/remove/list) | No | Yes |
-| Self-hosted deployment | No | Yes |
-| License validation (Ed25519 + 30-day grace) | No | Yes |
+| Governance (publish scope, weight threshold) | Yes, at 1 seat | Yes |
+| Audit log (SHA-256 hash-chained) | Yes, at 1 seat | Yes |
+| Self-hosted deployment | Yes, at 1 seat | Yes, with deployment support |
+| Seats beyond one | No | Yes (up to 50) |
+| Priority support + annual invoice | No | Yes |
+| License validation (Ed25519 + 30-day grace) | Auto-issued free license | Signed Team license |
 
-**You are paying for compliance and control, not for the compression.**
+**You are paying for seats and support, not for features — everything is evaluable free at 1 seat.**
 
 ---
 

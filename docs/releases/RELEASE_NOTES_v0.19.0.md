@@ -65,7 +65,7 @@ Research (and the competitive landscape) is clear: AST-derived code graphs are
 becoming table stakes. What a static graph *can't* copy is **usage memory** —
 NeuralMind's Hebbian synapse layer, which learns what you actually edit
 together. The self-benchmark already measures that learned uplift directly
-(Phase 3 — synapse-recall A/B: top-k hit rate **71.7% → 83.3%, +11.7 points**
+(Phase 3 — synapse-recall A/B: top-k hit rate **77.2% → 83.3%, +6.1 points**
 with recall on, token-budget-neutral). v0.19.0 invests in the *other* half of
 the moat — **distribution**: the easier NeuralMind is to plug into every agent,
 the more usage it sees, the more it learns.

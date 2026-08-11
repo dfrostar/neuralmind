@@ -108,9 +108,12 @@ def activate_files(mind: NeuralMind, file_paths: list[str], strength: float = 1.
                     node_ids.append(str(nid))
         except Exception:
             continue
-    if len(node_ids) < 2:
-        return 0
-    return mind.activate(node_ids, strength=strength)
+    # Phase 1 SOTA 3.2.5: reinforce even single nodes — the activation
+    # counter still feeds hub/stats signals and the file-level transition
+    # above already handles directional edges for multi-file batches.
+    if node_ids:
+        return mind.activate(node_ids, strength=strength)
+    return 0
 
 
 def record_edit_activity(mind: NeuralMind, file_path: str, new_code: str) -> dict:
@@ -247,7 +250,10 @@ def reinforce_from_query(mind: NeuralMind, question: str, result: ContextResult)
             node_ids.append(str(nid))
     for comm_id in result.communities_loaded or []:
         node_ids.append(f"community_{comm_id}")
-    if len(node_ids) >= 2:
+    # Reinforce on EVERY query — even a single node gets its activation
+    # counter bumped (Hebbian: nodes that fire together wire together;
+    # a lone activation still feeds the hub/stats signals).
+    if node_ids:
         try:
             store.reinforce(node_ids)
         except Exception:

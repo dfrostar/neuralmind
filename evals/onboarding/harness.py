@@ -10,7 +10,7 @@ don't have:
 > how much?
 
 It is a formalisation of the self-benchmark's Phase-3 synapse A/B
-(``tests/benchmark/run.py``: top-k hit rate 71.7% → 83.3% with recall on),
+(``tests/benchmark/run.py``: top-k hit rate 77.2% → 83.3% with recall on),
 turned into a committed-baseline eval scored by the same offline judge as the
 faithfulness eval.
 

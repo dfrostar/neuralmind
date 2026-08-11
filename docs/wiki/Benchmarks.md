@@ -19,15 +19,15 @@ NeuralMind is more than token reduction; the numbers below back **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
-fixture** (real but smaller-scope): **(1) Cheaper context** — **85–100%
-gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–259×
+fixture** (real but smaller-scope): **(1) Cheaper context** — **79–100%
+gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–257×
 fewer tokens** than pasting files, beating `ripgrep` on both recall and cost
 on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
 how you work** — the Hebbian synapse layer lifts top-k
-hit-rate **+14 points (72%→86%), budget-neutral** (reference fixture);
+hit-rate **+6.1 points (77.2%→83.3%), budget-neutral** (reference fixture);
 **(4) Better-grounded answers** — at a matched budget, **faithfulness +0.143,
 grounding 1.00** (reference fixture). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
@@ -75,8 +75,8 @@ measured by isolated A/Bs:
 
 | Effect | Off | On | Lift |
 |---|---:|---:|---:|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 72% | **86%** | **+14 pts** |
-| **Onboarding lift** — top-k module hit-rate from a committed team baseline | 75.9% | **82.4%** | **+6.5 pts** |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 77.2% | **83.3%** | **+6.1 pts** |
+| **Onboarding lift** — top-k module hit-rate from a committed team baseline | 81.5% | **82.4%** | **+0.9 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits
 rather than adding tokens. The onboarding lift is the answer to "does an agent

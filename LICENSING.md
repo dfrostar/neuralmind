@@ -4,9 +4,8 @@ NeuralMind is **open-core**. One repository, two licenses, one clear line:
 
 | Tree | License | What it is |
 |------|---------|------------|
-| Everything except the two directories below | [MIT](LICENSE) | The core engine: code graph, synapse learning, retrieval, MCP server, hooks, CLI, compliance annotation engine, VS Code extension. **All token savings live here and are free, forever.** |
-| `neuralmind/tier2/` | [Commercial Modules License](neuralmind/tier2/LICENSE) (source-available) | Team-tier governance: seats, hash-chained audit, self-hosted control plane, license machinery. |
-| `neuralmind/agent_os/` | [Commercial Modules License](neuralmind/agent_os/LICENSE) (source-available) | Enterprise orchestration: multi-tenant registry, per-tenant RBAC, anomaly signals, experiment governance. |
+| Everything except the directory below | [MIT](LICENSE) | The core engine: code graph, synapse learning, retrieval, MCP server, hooks, CLI, compliance annotation engine, VS Code extension. **All token savings live here and are free, forever.** |
+| `neuralmind/tier2/` | [Commercial Modules License](neuralmind/tier2/LICENSE) (source-available) | Team-tier modules: seats, hash-chained audit, self-hosted control plane, license machinery. Every feature runs under the free 1-seat license; a paid Team license buys seats beyond one (5-50) plus support. |
 
 **What this means in practice**
 

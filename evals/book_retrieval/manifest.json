@@ -1,0 +1,328 @@
+{
+  "_about": "Document retrieval gold-standard for 'Underground' by Suelette Dreyfus (Project Gutenberg, 1997). 11 chapters + front/back matter. Tests: (1) precise retrieval of technical details, (2) cross-chapter thematic consistency, (3) character/entity resolution across chapters, (4) temporal/causal reasoning. Designed per TREC methodology: queries by domain expert, gold paragraphs verified against source.",
+  "oracle": "paragraph",
+  "book": {
+    "title": "Underground: Hacking, Madness and Obsession on the Electronic Frontier",
+    "author": "Suelette Dreyfus",
+    "source": "gutenberg.org/ebooks/4686",
+    "corpus_dir": "evals/book_retrieval/underground/chapters",
+    "total_words": 150000,
+    "chapters": 11
+  },
+  "queries": [
+    {
+      "id": "wank-worm-origin",
+      "question": "What was the WANK worm and why was it politically significant?",
+      "gold_paragraphs": [
+        "The WANK worm—Worms Against Nuclear Killers—was the first major computer worm bearing a political message, released into NASA's SPAN/DEC/HEPNET network in October 1989.",
+        "It was also the trigger for the creation of FIRST, the Forum of Incident Response and Security Teams.",
+        "With WANK, life imitated art, since the term computer 'worm' came from John Brunner's sci-fi novel, The Shockwave Rider, about a politically motivated worm."
+      ],
+      "themes": ["worms", "NASA", "political", "DECNET"],
+      "chapter": "01, 02"
+    },
+    {
+      "id": "wank-australian-origin",
+      "question": "Who created the WANK worm and what evidence pointed to Australian origin?",
+      "gold_paragraphs": [
+        "The WANK worm is also believed to be the first worm written by an Australian, or Australians.",
+        "Even as investigators sniffed around electronic trails leading to France, it appears the perpetrator was hiding behind his computer and modem in Australia.",
+        "Likely as not, only an Australian would see the worm's link to the lyrics of Midnight Oil."
+      ],
+      "themes": ["attribution", "Australia", "Midnight Oil"],
+      "chapter": "01, 02"
+    },
+    {
+      "id": "span-network",
+      "question": "What was SPAN and how did it relate to the WANK worm outbreak?",
+      "gold_paragraphs": [
+        "SPAN—Space Physics Analysis Network—was a global DECNET-based network, primarily controlled by NASA.",
+        "The WANK worm spread through SPAN and its interconnected networks including HEPNET and DECNET.",
+        "NASA's SPAN security team would miss the mark...these officials should to this day be pronouncing the 'Oilz' version of the WANK worm as 'oil zee'."
+      ],
+      "themes": ["SPAN", "NASA", "DECNET", "networks"],
+      "chapter": "01, 02"
+    },
+    {
+      "id": "citibank-hack",
+      "question": "How did Australian hackers steal over $500,000 from Citibank in 1989?",
+      "gold_paragraphs": [
+        "An elite group of Australian hackers has lifted more than $US500,000 ($580,000) out of America's Citibank in one of the daring hacking crimes in Australia's history.",
+        "The Australian connection is reported to have used a telephone in the foyer of Telecom's headquarters at 199 William Street in Melbourne to send a 2600-hertz signal giving them access to a trunk line and ultimately to a managerial access code for Citibank.",
+        "These are the elite 'freekers' of white collar crime."
+      ],
+      "themes": ["Citibank", "phreaking", "2600-hertz", "freekers"],
+      "chapter": "05"
+    },
+    {
+      "id": "par-fugitive",
+      "question": "Why did Par become a fugitive and what deal had he negotiated with the Secret Service?",
+      "gold_paragraphs": [
+        "When Par failed to show up for his hearing on 10 July 1989 in the Monterey County Juvenile Court in Salinas, he officially become a fugitive.",
+        "Rosen had negotiated a deal for Par: reparations plus fifteen days or less in juvenile prison in exchange for Par's full cooperation with the Secret Service.",
+        "Par had appeared deeply troubled over the matter for weeks. He didn't seem to mind telling the Feds how he had broken into various computers, but that's not what they were really looking for. They wanted him to rat."
+      ],
+      "themes": ["Par", "fugitive", "Secret Service", "cooperation"],
+      "chapter": "04"
+    },
+    {
+      "id": "phoenix-style",
+      "question": "What distinctive style made Phoenix traceable across multiple hackings?",
+      "gold_paragraphs": [
+        "Whenever he was creating a root shell—root access—for himself, he would always save it in the same filename and in the same location on the computer. In some instances, he even created accounts called 'Phoenix' for himself.",
+        "It was this consistency of style which had made things so much easier for admins to trace his movements.",
+        "Pad had an important warning for the Australian hackers...'Feen, they know you did over Spaf's machine,' Pad told Phoenix. 'They know it's been you in other systems also. They've got your handle.'"
+      ],
+      "themes": ["Phoenix", "attribution", "style", "handles"],
+      "chapter": "06"
+    },
+    {
+      "id": "pad-gandalf-worms",
+      "question": "What were Pad and Gandalf accused of planning and what worm codes did they possess?",
+      "gold_paragraphs": [
+        "In one of his hacking forays, Pad had discovered a file, apparently written by Eugene Spafford, which said he was concerned that some British hackers—read Pad and Gandalf—would create a new worm, based on the RTM worm, and release it into the Internet.",
+        "Gandalf and Pad had captured copies of various worm source codes. They fished around inside SPAN until they surfaced with a copy of the WANK worm.",
+        "Despite their growing library of worm code, Pad had no intention of writing a new worm based on these existing codes."
+      ],
+      "themes": ["Pad", "Gandalf", "worms", "RTM", "British hackers"],
+      "chapter": "07"
+    },
+    {
+      "id": "anthrax-profile",
+      "question": "What made Anthrax different from other Australian hackers and where did he live?",
+      "gold_paragraphs": [
+        "Anthrax didn't like working as part of a team. He always considered other people to be the weakest link in the chain.",
+        "Anthrax lived in a town in rural Victoria. Despite the fact that he never joined a hacking partnership like The Realm, Anthrax liked people, liked to talk to them for hours at a time on the telephone.",
+        "Sometimes he received up to ten international calls a day from his phreaker friends overseas."
+      ],
+      "themes": ["Anthrax", "lone wolf", "rural Victoria", "international"],
+      "chapter": "10, 11"
+    },
+    {
+      "id": "telephone-exchange-hazard",
+      "question": "Why was hacking telephone exchanges more dangerous than hacking regular computers?",
+      "gold_paragraphs": [
+        "Unlike making a mistake inside a single computer, mis-guessing a command inside a telephone exchange in downtown Sydney or Melbourne could take down a whole prefix—10000 or more phone lines—and cause instant havoc.",
+        "Mendax had spent hours experimenting with commands inside the computers which controlled telephone exchanges. In the end, those forays were all just guesswork—trial and error learning, at considerable risk of discovery."
+      ],
+      "themes": ["telephone exchange", "danger", "prefix", "infrastructure"],
+      "chapter": "08"
+    },
+    {
+      "id": "operation-weather-afp",
+      "question": "Why did the AFP's Operation Weather investigation struggle to identify the hackers using RMIT?",
+      "gold_paragraphs": [
+        "The AFP was frustrated. A group of hackers were using the Royal Melbourne Institute of Technology (RMIT) as a launchpad for hacking attacks on Australian companies, research institutes and a series of overseas sites.",
+        "The line traces began failing, and not just occasionally. All the time. Whenever RMIT staff found the hackers on-line, they clipped the modem line and waited for Telecom to trace that line back to its point of origin.",
+        "There was so much hacker activity at RMIT it was difficult to know for sure."
+      ],
+      "themes": ["AFP", "RMIT", "Operation Weather", "tracing"],
+      "chapter": "09"
+    },
+    {
+      "id": "force-realm-bbs",
+      "question": "Who was Force and what was the Realm BBS?",
+      "gold_paragraphs": [
+        "Force, the well-known Australian hacker who ran the exclusive Realm BBS in Melbourne.",
+        "The Realm was an exclusive, invitation-only bulletin board system—a digital corner pub where Australian hackers gathered to share information."
+      ],
+      "themes": ["Force", "Realm BBS", "Melbourne", "underground"],
+      "chapter": "03"
+    },
+    {
+      "id": "altos-chat",
+      "question": "What was Altos Chat and how did hackers use it to communicate internationally?",
+      "gold_paragraphs": [
+        "Altos Computer Systems in Hamburg ran a conference feature called Altos Chat on one of its machines. You could call up from anywhere on the X.25 data communications network, and the company's computer would let you connect.",
+        "Force...sat chatting with Par, the American master of X.25 networks, in Germany. Neither of them was physically in Germany, but Altos was."
+      ],
+      "themes": ["Altos Chat", "X.25", "international", "communication"],
+      "chapter": "03"
+    },
+    {
+      "id": "midnight-oil-connection",
+      "question": "What role did Midnight Oil play in hacker culture and how did it influence the WANK worm?",
+      "gold_paragraphs": [
+        "Each chapter in this book is headed with a quote from a Midnight Oil song which expresses an important aspect of the chapter.",
+        "The Oilz are uniquely Australian. Their loud voice of protest against the establishment—particularly the military-industrial establishment—echoes a key theme in the underground, where music in general plays a vital role.",
+        "Likely as not, only an Australian would see the worm's link to the lyrics of Midnight Oil."
+      ],
+      "themes": ["Midnight Oil", "Australian", "protest", "culture"],
+      "chapter": "02, Introduction"
+    },
+    {
+      "id": "freekers",
+      "question": "Who were the 'freekers' and what techniques did they use?",
+      "gold_paragraphs": [
+        "These are the elite 'freekers' of white collar crime.",
+        "The term 'freeker' came from 'phone freak'—hackers who specialized in manipulating telephone systems, particularly using 2600-hertz signals to access trunk lines."
+      ],
+      "themes": ["freekers", "phreaking", "white collar crime"],
+      "chapter": "05"
+    },
+    {
+      "id": "x25-networks",
+      "question": "What were X.25 networks and why were they important to international hackers?",
+      "gold_paragraphs": [
+        "X.25 was an international data communications network, using the X.25 communications protocol. Network is run primarily by major telecommunications companies.",
+        "Par, the American master of X.25 networks.",
+        "You could call up from anywhere on the X.25 data communications network, and the company's computer would let you connect."
+      ],
+      "themes": ["X.25", "networks", "international", "telecommunications"],
+      "chapter": "03"
+    },
+    {
+      "id": "eugene-spafford",
+      "question": "Who was Eugene Spafford and why was he significant to hackers?",
+      "gold_paragraphs": [
+        "Eugene Spafford was the kind of computer security expert who loses a lot of face when a hacker gets into his machine, and a wounded bull is a dangerous enemy.",
+        "In one of his hacking forays, Pad had discovered a file, apparently written by Eugene Spafford, which said he was concerned that some British hackers...would create a new worm."
+      ],
+      "themes": ["Spafford", "security expert", "wounded bull"],
+      "chapter": "06, 07"
+    },
+    {
+      "id": "three-realm-hackers",
+      "question": "What happened to the three Realm hackers and why did they attract so much police attention?",
+      "gold_paragraphs": [
+        "The Australian authorities had busted the three Realm hackers. Electron had simply disappeared one day. A short time later, Phoenix was gone too.",
+        "The Realm was an exclusive, invitation-only bulletin board system—a digital corner pub where Australian hackers gathered."
+      ],
+      "themes": ["Three Realm hackers", "bust", "Realm BBS"],
+      "chapter": "07, 11"
+    },
+    {
+      "id": "rtm-worm",
+      "question": "What was the RTM worm and why was it famous?",
+      "gold_paragraphs": [
+        "RTM—Robert Tappan Morris (Jr), the Cornell University student who wrote the Internet worm, also known as the RTM worm.",
+        "Next to the RTM worm, WANK is the most famous worm in the history of computer networks.",
+        "Pad had discovered a file...which said he was concerned that some British hackers—read Pad and Gandalf—would create a new worm, based on the RTM worm."
+      ],
+      "themes": ["RTM worm", "Morris", "Cornell", "Internet worm"],
+      "chapter": "01, 07, Glossary"
+    },
+    {
+      "id": "2600-hertz",
+      "question": "How did the 2600-hertz signal work for phone phreaking?",
+      "gold_paragraphs": [
+        "The Australian connection is reported to have used a telephone in the foyer of Telecom's headquarters at 199 William Street in Melbourne to send a 2600-hertz signal giving them access to a trunk line and ultimately to a managerial access code for Citibank."
+      ],
+      "themes": ["2600-hertz", "phreaking", "trunk line", "Telecom"],
+      "chapter": "05"
+    },
+    {
+      "id": "computer-misuse-act",
+      "question": "What was the Computer Misuse Act and when did it take effect?",
+      "gold_paragraphs": [
+        "Computer Misuse Act 1990 (UK)",
+        "The computer underground has changed over time, largely in response to the introduction of new computer crime laws across the globe."
+      ],
+      "themes": ["Computer Misuse Act", "legislation", "UK", "1990"],
+      "chapter": "07, Bibliography"
+    },
+    {
+      "id": "handles-purpose",
+      "question": "Why do hackers use handles and what functions do they serve?",
+      "gold_paragraphs": [
+        "Hackers use 'handles'—on-line nicknames—that serve two purposes. They shield the hacker's identity and, importantly, they often make a statement about how the hacker perceives himself in the underground.",
+        "Hawk, Crawler, Toucan Jones, Comhack, Dataking, Spy, Ripmax, Fractal Insanity, Blade. These are all real handles used in Australia.",
+        "In the computer underground, a hacker's handle is his name."
+      ],
+      "themes": ["handles", "identity", "nicknames", "culture"],
+      "chapter": "Introduction"
+    },
+    {
+      "id": "first-creation",
+      "question": "What is FIRST and why was it created in response to the WANK worm?",
+      "gold_paragraphs": [
+        "FIRST was an international security alliance allowing governments, universities and commercial organisations to share information about computer network security incidents.",
+        "The WANK worm was the trigger for the creation of FIRST, the Forum of Incident Response and Security Teams."
+      ],
+      "themes": ["FIRST", "incident response", "WANK", "international"],
+      "chapter": "02"
+    },
+    {
+      "id": "oilz-worm-variant",
+      "question": "What was the Oilz variant of the WANK worm and why was its name significant?",
+      "gold_paragraphs": [
+        "It is not surprising, for example, that these officials should to this day be pronouncing the 'Oilz' version of the WANK worm as 'oil zee'.",
+        "Likely as not, only an Australian would see the worm's link to the lyrics of Midnight Oil."
+      ],
+      "themes": ["Oilz", "Midnight Oil", "variant", "pronunciation"],
+      "chapter": "02"
+    },
+    {
+      "id": "underground-evolution",
+      "question": "How did the computer underground evolve from its early days to the time of the book's writing?",
+      "gold_paragraphs": [
+        "In the beginning, the computer underground was a place, like the corner pub, open and friendly. Now, it has become an ephemeral expanse, where hackers occasionally bump into one another but where the original sense of open community has been lost.",
+        "The computer underground has changed over time, largely in response to the introduction of new computer crime laws across the globe and to numerous police crackdowns. This work attempts to document not only an important piece of Australian history, but also to show fundamental shifts in the underground—to show, in essence, how the underground has moved further underground."
+      ],
+      "themes": ["evolution", "community", "crackdowns", "change"],
+      "chapter": "02, Introduction"
+    },
+    {
+      "id": "deccnet-security",
+      "question": "What was DECNET and what were its security weaknesses?",
+      "gold_paragraphs": [
+        "DECNET A network protocol used to convey information between (primarily) VAX/VMS machines",
+        "The WANK worm spread through SPAN and its interconnected networks including HEPNET and DECNET.",
+        "The WANK worm is a DECNET/VMS-based worm."
+      ],
+      "themes": ["DECNET", "VAX", "VMS", "security"],
+      "chapter": "01, 02, Glossary"
+    },
+    {
+      "id": "hacker-motivations",
+      "question": "What common psychological themes motivated hackers according to the book?",
+      "gold_paragraphs": [
+        "While each hacker has a distinct story, there are common themes which appear throughout many of the stories. Rebellion against all symbols of authority. Dysfunctional families. Bright children suffocated by ill-equipped teachers. Mental illness or instability. Obsession and addiction."
+      ],
+      "themes": ["motivation", "psychology", "rebellion", "obsession"],
+      "chapter": "Introduction"
+    },
+    {
+      "id": "galileo-controversy",
+      "question": "What was the Galileo space mission controversy and how did it relate to the WANK worm?",
+      "gold_paragraphs": [
+        "Monday, 16 October 1989. Kennedy Space Center, Florida. NASA buzzed with the excitement of a launch. Galileo was finally going to Jupiter.",
+        "American anti-nuclear activists didn't quite see it that way. They figured what goes up might come down...NASA told journalists that the odds of a plutonium release due to 'inadvertent atmospheric re-entry' were 1 in 2 million.",
+        "The WANK worm appeared in NASA's networks just as the Galileo launch was facing anti-nuclear protests—the worm's name stood for 'Worms Against Nuclear Killers'."
+      ],
+      "themes": ["Galileo", "NASA", "anti-nuclear", "plutonium"],
+      "chapter": "01"
+    },
+    {
+      "id": "rmit-hacking-hub",
+      "question": "Why was RMIT a hub for hacker activity in Australia?",
+      "gold_paragraphs": [
+        "The AFP was frustrated. A group of hackers were using the Royal Melbourne Institute of Technology (RMIT) as a launchpad for hacking attacks on Australian companies, research institutes and a series of overseas sites.",
+        "There was so much hacker activity at RMIT it was difficult to know for sure."
+      ],
+      "themes": ["RMIT", "Melbourne", "hacker hub", "AFP"],
+      "chapter": "09"
+    },
+    {
+      "id": "secretservice-methods",
+      "question": "How did the US Secret Service investigate hackers like Par?",
+      "gold_paragraphs": [
+        "Rosen had negotiated a deal for Par: reparations plus fifteen days or less in juvenile prison in exchange for Par's full cooperation with the Secret Service.",
+        "They wanted him to rat on everyone. They knew Par was a kingpin and, as such, he knew all the important players in the underground."
+      ],
+      "themes": ["Secret Service", "investigation", "cooperation", "Par"],
+      "chapter": "04"
+    },
+    {
+      "id": "telsa-not-telstra",
+      "question": "What role did Telecom/Telstra play in Australian hacking incidents?",
+      "gold_paragraphs": [
+        "The Australian connection is reported to have used a telephone in the foyer of Telecom's headquarters at 199 William Street in Melbourne.",
+        "OTC was later merged with Telecom to become Telstra.",
+        "The AFP could trace hackers...Arrange for Telecom to whack a last party recall trace on all incoming lines to the RMIT modems."
+      ],
+      "themes": ["Telecom", "Telstra", "infrastructure", "Australia"],
+      "chapter": "05, 09"
+    }
+  ]
+}

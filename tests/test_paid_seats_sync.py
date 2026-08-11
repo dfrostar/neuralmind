@@ -71,7 +71,7 @@ class TestSyncSeats:
             keypair["private_key_hex"],
         )
         seats_db = tmp_path / "seats.json"
-        result = sync_seats(seats_db, manifest, license_limit=5, tier="team", admin=_ADMIN)
+        result = sync_seats(seats_db, manifest, license_limit=5, admin=_ADMIN)
         assert result["status"] == "ok"
         assert len(result["added"]) == 2
 
@@ -81,7 +81,7 @@ class TestSyncSeats:
             keypair["private_key_hex"],
         )
         seats_db = tmp_path / "seats.json"
-        result = sync_seats(seats_db, manifest, license_limit=2, tier="team", admin=_ADMIN)
+        result = sync_seats(seats_db, manifest, license_limit=2, admin=_ADMIN)
         assert result["status"] == "partial"
         assert len(result["failed"]) == 1
         assert result["failed"][0]["email"] == "userc"

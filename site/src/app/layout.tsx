@@ -1,30 +1,10 @@
 import './globals.css';
-import { Inter, JetBrains_Mono, Fraunces } from 'next/font/google';
 import { getLatestRelease } from '@/lib/release';
 
-const inter = Inter({
-    subsets: ['latin'],
-    variable: '--font-inter',
-    display: 'swap',
-});
-
-const jetbrains = JetBrains_Mono({
-    subsets: ['latin'],
-    variable: '--font-mono',
-    display: 'swap',
-});
-
-const fraunces = Fraunces({
-    subsets: ['latin'],
-    weight: ['400', '500', '600', '700', '800', '900'],
-    variable: '--font-display',
-    display: 'swap',
-});
-
 export const metadata = {
-    title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents | 63.6× Token Reduction',
+    title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents | 65.6× Token Reduction',
     description:
-        'Sub-second retrieval for AI coding agents. 63.6× token reduction on a 1,486-node production codebase. 86% answerability. Local-first, zero telemetry.',
+        'Sub-second retrieval for AI coding agents. 65.6× token reduction on a 1,486-node production codebase. Local-first, zero telemetry.',
     keywords: [
         'AI coding agent memory',
         'sub-second code retrieval',
@@ -51,7 +31,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents',
         description:
-            'Sub-second retrieval on a 1,486-node repo. 63.6× token reduction. 86% answerability. Local-first, zero telemetry, honest benchmarks.',
+            'Sub-second retrieval on a 1,486-node repo. 65.6× token reduction. Local-first, zero telemetry, honest benchmarks.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -69,7 +49,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents',
         description:
-            'Sub-second retrieval on a 1,486-node repo. 63.6× token reduction. 86% answerability. Local-first, zero telemetry.',
+            'Sub-second retrieval on a 1,486-node repo. 65.6× token reduction. Local-first, zero telemetry.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -112,8 +92,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'AI coding agent memory, code intelligence, token reduction, RAG, MCP server, knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
                 'Sub-second retrieval (0.81s/query) via TurboVec 4-bit quantized index',
-                '63.6× per-query token reduction measured on 1,486-node production codebase',
-                '86% answerability, 100% gold-file recall across 11 languages',
+                '65.6× per-query token reduction measured on 1,486-node production codebase',
                 'Read-only team dashboard with synapse memory, ingestion, and latency trends',
                 'DocEvolver: evolutionary JSDoc optimization for undocumented methods',
                 'Brain-like Hebbian synapse layer that learns associations from how you use the codebase',
@@ -141,10 +120,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const rel = await getLatestRelease();
     const jsonLd = buildJsonLd(rel.tag.replace(/^v/, ''), rel.date);
     return (
-        <html lang="en" className={`${inter.variable} ${jetbrains.variable} ${fraunces.variable}`}>
+        <html lang="en">
             <head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

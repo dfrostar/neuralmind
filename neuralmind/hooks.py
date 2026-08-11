@@ -248,6 +248,9 @@ def run_hook(action: str) -> int:
         compressed = compress_read(file_path, content)
         if compressed != content:
             _emit(compressed)
+        # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
+        cwd = payload.get("cwd") or os.getcwd()
+        _record_tool_transition(cwd, file_path)
         return 0
 
     if action == "compress-bash":
@@ -308,6 +311,9 @@ def run_hook(action: str) -> int:
             return 0
         cwd = payload.get("cwd") or os.getcwd()
         _record_edit_activity(cwd, file_path, new_code)
+        # Phase 1 SOTA 3.2.3: track PostToolUse transitions — after editing,
+        # record a directional transition from the previously-touched file.
+        _record_tool_transition(cwd, file_path)
         return 0
 
     if action == "session-start":
@@ -350,6 +356,14 @@ def run_hook(action: str) -> int:
             from .synapses import EPHEMERAL_NAMESPACE
 
             store.clear_namespace(EPHEMERAL_NAMESPACE)
+        except Exception:
+            pass
+        # _last_touched_file is the from-half of a synapse transition. If it
+        # survives into the next session, the first tool call of the new
+        # session records a phantom transition from whatever file was last
+        # touched in the prior session. Clear it at the boundary.
+        try:
+            store.delete_meta("_last_touched_file")
         except Exception:
             pass
         if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
@@ -511,6 +525,29 @@ def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> N
         with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             mind = NeuralMind(project_path)
             mind.record_edit_activity(file_path, new_code)
+    except Exception:
+        return
+
+
+def _record_tool_transition(project_path: str, file_path: str) -> None:
+    """Record a directional transition from the last-touched file to this one.
+
+    Tracks which file the agent worked on before editing this file, so the
+    synapse_transitions table accumulates real usage sequences (Phase 1 SOTA 3.2.3).
+    Fail-open — never disrupts the agent's tool flow.
+    """
+
+    try:
+        from .namespaces import resolve_namespace
+        from .synapses import SynapseStore, default_db_path
+
+        store = SynapseStore(
+            default_db_path(project_path), namespace=resolve_namespace(project_path)
+        )
+        last = store.get_meta("_last_touched_file")
+        if last and last != file_path:
+            store.record_sequence([last, file_path], strength=0.8)
+        store.set_meta("_last_touched_file", file_path)
     except Exception:
         return
 

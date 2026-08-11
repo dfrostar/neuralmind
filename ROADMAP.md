@@ -3,25 +3,49 @@
 A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome.
 
-## Now — v1.14.0 (Agent OS multi-tenancy)
+## Now — v3.0.2 (Pure Core)
 
-**Latest release v1.14.0** shipped to PyPI and GHCR (2026-08-02).
+**Latest release v3.0.2** shipped to PyPI and GHCR (2026-08-03).
 
 **What shipped:**
-- **Agent OS package** — Multi-tenancy, RBAC, signal detection, and experiment runner. 5 modules (`tenant`, `governance`, `signals`, `experiment`, `api`).
-- **Tenant registry** — Business-scoped project isolation with per-tenant RBAC (admin/operator/viewer). JSON-backed, thread-safe, atomic writes.
-- **Page-Hinkley anomaly detection** — No fixed thresholds; detects small persistent shifts in metrics streams. Severity levels, cooldown, per-metric state.
-- **A/B experiment runner** — Promote/rollback governance with `higher_is_better` metric support. Delta normalization.
-- **Signal → experiment integration** — Anomaly-triggered experiments with full audit trail.
+- **Extraction complete** — Multi-tenancy, RBAC, signal detection, experiment
+  runner, and governance (formerly `agent_os/`) extracted to a separate
+  private repo. Public NeuralMind is now pure code intelligence again:
+  context disclosure, synapse layer, graph view, MCP, and benchmarking.
+- **Zero dead weight** — 95 tests for the extracted Agent OS live in
+  `dfrostar/agencyOS` (private). The public repo has no tenant cruft.
+- **Clean install** — `pip install neuralmind` gives you the original
+  product: `build`, `query`, `watch`, `serve`, `probe`, `benchmark`,
+  `context`, `synapse`, `mcp`.
+
+**What was extracted (v1.14.0):**
+The multi-tenancy package (tenant registry, RBAC, Page-Hinkley anomaly
+detection, A/B experiments, signal → experiment integration, dashboard)
+now lives in the private `dfrostar/agencyOS` repo. It ships independently
+and is not part of the public PyPI package.
 
 ---
 
-## Next (v1.10.0 — near term)
+## Next (~1 quarter)
 
-- **Self-benchmark stability** — flaky chromadb embedding nondeterminism in CI.
-- **Retrieval quality benchmarks** — top-k accuracy and answer faithfulness on public query set.
-- **Broker pattern** — pluggable payment provider (Stripe primary, LemonSqueezy fallback).
+- **Stabilize core post-extraction** — verify no import regressions, run
+  the full benchmark suite, update integration tests that may have
+  referenced agent_os internals.
+- **Self-benchmark stability** — flaky chromadb embedding
+  nondeterminism in CI.
+- **Retrieval quality benchmarks** — top-k accuracy and answer
+  faithfulness on public query set.
+- **Broker pattern** — pluggable payment provider (Stripe primary,
+  LemonSqueezy fallback) for the Team tier.
 - **Grace period per-license** — configurability beyond global constant.
+- **Output directory consolidation** — move the canonical index dir from
+  `graphify-out/` to `.neuralmind/` with a legacy-path shim, removing a
+  third-party product name from every user's repo (choke point:
+  `project_artifact` in `neuralmind/ir.py`; touches ~12 modules, docs,
+  and the site privacy policy).
+- **Cost Attribution Dashboard** — `neuralmind stats --cost`: per-repo,
+  per-seat modeled savings as a CFO-facing ROI artifact (free tier;
+  feeds the services funnel — see `docs/PILOT-BRD.md`).
 
 ---
 
@@ -29,20 +53,24 @@ move any of these forward are very welcome.
 
 ### Book Content QA System (v1.9.x)
 
-A second indexer type targeting book/markdown content instead of code. Reuses NeuralMind's turbovec backend, embedding pipeline, and hybrid search infrastructure.
+A second indexer type targeting book/markdown content instead of code.
+Reuses NeuralMind's turbovec backend, embedding pipeline, and hybrid
+search infrastructure.
 
 | Module | Target | Query Type |
 |--------|--------|------------|
 | `neuralmind/code_graph/` | Code repos | "Find the function that handles X" |
 | `neuralmind/content_qa/` | Book markdown | "What does the book say about Y?" |
 
-**First use-case:** *The Peptide Patient's Guide* (~27,000 words, 8 chapters, 96 claims).
+**First use-case:** *The Peptide Patient's Guide* (~27,000 words,
+8 chapters, 96 claims).
 
-**Status:** Draft docs in Downloads (BRD/TRD/PRD/requirements, 2026-07-29). Implementation begins after v1.10.0.
+**Status:** Draft docs in Downloads (BRD/TRD/PRD/requirements,
+2026-07-29). Implementation begins after core stabilization.
 
 ---
 
-## Shipped — v0.13 → v1.9.0
+## Shipped — v0.13 → v3.0.2
 
 ### The long arc (v0.13 → v0.54.0)
 
@@ -76,9 +104,7 @@ A second indexer type targeting book/markdown content instead of code. Reuses Ne
 
 See above — the public launch of the MIT + paid tier architecture.
 
-### Shipped releases (v1.0.0 → v1.14.0)
-
-- **v1.14.0** — Agent OS multi-tenancy (tenant registry, RBAC, Page-Hinkley anomaly detection, A/B experiments, signal → experiment integration). 44 tests.
+### Multi-tenancy era (v1.0.0 → v1.14.0)
 
 - **v1.0.0** — Open-core launch: MIT tier (free), Tier 2 paid
   (SSO, RBAC, multi-team sync), Ed25519 license validation, dual-bound
@@ -101,17 +127,39 @@ See above — the public launch of the MIT + paid tier architecture.
   cross-community bridge detection, gap scoring, CLI, MCP tool).
   43 tests. DeepSeek QA patches. DocEvolver failure-path tests.
   Node 18→22. GitHub Pages decommissioned.
+- **v1.10.0–v1.13.0** — Incremental improvements, documentation updates,
+  marketing surfaces, internal tooling refinements.
+- **v1.14.0** — Multi-tenancy package (tenant registry, RBAC, Page-Hinkley
+  anomaly detection, A/B experiments, signal → experiment integration).
+  44 tests.
+
+### Pure-core relaunch (v2.0.0 → v3.0.2)
+
+- **v2.0.0** — Extraction begins: Agent OS module moved to local
+  directory, public repo neutered of tenant code.
+- **v2.0.1** — Version bump + extraction patches.
+- **v3.0.0** — Agent OS fully removed from public repo. Clean
+  separation: `dfrostar/agencyOS` (private) is the sole home for
+  multi-tenancy.
+- **v3.0.1** — Post-extraction cleanup, dependency hygiene, README
+  update.
+- **v3.0.2** — Final extraction verification. Zero agent_os refs in
+  public repo (outside git history). Marketing surfaces updated.
+
+---
 
 ## Next (~1–2 quarters)
 
 - **Auto-regenerate the public benchmark on drift** — `bench/public/report.md`
   was generated once at the benchmark's original commit and never rerun since,
   even as retrieval code changed underneath it (2026-08 audit: a fresh run
-  moved `requests` from 1.00→0.93 recall with no corpus change — see
-  [public.md](docs/benchmarks/public.md#the-corpus)). Wire `bench-public.yml`
-  to regenerate and diff-check on `evals/public/manifest.json` or retrieval
-  code-path changes, the same way `ci-benchmark.yml` already gates the
-  reference-fixture numbers, so a stale snapshot can't sit uncorrected again.
+  moved `requests` recall from a published 1.00 to 0.96, and re-running again
+  after merging several months of `main` moved every repo's numbers a second
+  time in the same audit — see [public.md](docs/benchmarks/public.md#the-corpus)
+  for both deltas). Wire `bench-public.yml` to regenerate and diff-check on
+  `evals/public/manifest.json` or retrieval code-path changes, the same way
+  `ci-benchmark.yml` already gates the reference-fixture numbers, so a stale
+  snapshot can't sit uncorrected again.
 - **Self-contained pip-only demo** — `pip install neuralmind &&
   neuralmind demo` by shipping a pre-built sample graph in the wheel.
 - **More integration walkthroughs** — One end-to-end guide per

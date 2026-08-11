@@ -10,7 +10,9 @@ Gate before any edge enters the shared namespace:
 3. Weight threshold — edges below threshold are rejected.
 4. Content-hash dedup — identical bundles aren't re-published.
 
-Governance only activates with a valid license. MIT users are unaffected.
+Governance runs under any valid license, including the auto-issued free
+1-seat license — a paid Team license adds seats (5-50) and support, not
+hidden features. Users who never run ``neuralmind team`` are unaffected.
 
 Example:
     >>> from pathlib import Path
