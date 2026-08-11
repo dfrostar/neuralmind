@@ -7,7 +7,6 @@ from the build/ingest orchestration.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,9 +21,10 @@ class QueryHandler:
     def __init__(self, mind) -> None:
         self._mind = mind
 
-    def wakeup(self) -> "ContextResult":
+    def wakeup(self) -> ContextResult:
         """Generate wake-up context for a new session."""
         from .context_selector import ContextResult
+
         selector = self._mind.selector
         if selector is None:
             return ContextResult(context="", tokens=0, reduction_ratio=1.0, hits=[])
@@ -48,10 +48,9 @@ class QueryHandler:
         """Build hybrid highlights for a question."""
         return self._mind.querying.build_hybrid_highlights(self._mind, question, cached_hits)
 
-    def query(self, question: str, **kwargs) -> "ContextResult":
+    def query(self, question: str, **kwargs) -> ContextResult:
         """Run a full query with synapse reinforcement."""
         from .context_selector import ContextResult
-        from .querying import build_hybrid_highlights
 
         selector = self._mind.selector
         if selector is None:

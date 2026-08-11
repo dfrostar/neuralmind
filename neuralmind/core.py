@@ -37,10 +37,10 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
-from .structural import BLAST_VIEW_RELATION, StructuralIndex
-from .synapses import SynapseStore, default_db_path
-from .synapse_client import SynapseClient
 from .query_handler import QueryHandler
+from .structural import BLAST_VIEW_RELATION, StructuralIndex
+from .synapse_client import SynapseClient
+from .synapses import SynapseStore, default_db_path
 
 logger = logging.getLogger(__name__)
 

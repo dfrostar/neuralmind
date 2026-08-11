@@ -56,17 +56,18 @@ class SynapseClient:
             logger.debug("synapse deactivate failed", exc_info=True)
             return 0
 
-    def reinforce_files(self, file_paths: list[str], nodes: list[dict], strength: float = 1.0) -> int:
+    def reinforce_files(
+        self, file_paths: list[str], nodes: list[dict], strength: float = 1.0
+    ) -> int:
         """Reinforce every node belonging to the given files."""
-        ids = [
-            str(n["id"]) for n in nodes
-            if n.get("source_file") in file_paths
-        ]
+        ids = [str(n["id"]) for n in nodes if n.get("source_file") in file_paths]
         return self.activate(ids, strength=strength)
 
     # ── Spread / recall ────────────────────────────────────────────────────
 
-    def spread(self, seed_ids: list[str], depth: int = 2, top_k: int = 8) -> list[tuple[str, float]]:
+    def spread(
+        self, seed_ids: list[str], depth: int = 2, top_k: int = 8
+    ) -> list[tuple[str, float]]:
         """Spread activation from seeds. Empty on cold graph."""
         if not self.store or not seed_ids:
             return []
@@ -88,7 +89,9 @@ class SynapseClient:
             logger.debug("synapse spread_detailed failed", exc_info=True)
             return [], {}
 
-    def synaptic_neighbors(self, node_id: str, depth: int = 1, top_k: int = 8) -> list[tuple[str, float]]:
+    def synaptic_neighbors(
+        self, node_id: str, depth: int = 1, top_k: int = 8
+    ) -> list[tuple[str, float]]:
         """Get learned neighbors for a single node."""
         return self.spread([node_id], depth=depth, top_k=top_k)
 
@@ -127,12 +130,14 @@ class SynapseClient:
                     self.store.reinforce(file_node_ids + [syn_key], strength=0.8)
                 except Exception:
                     logger.debug("compliance: reinforce failed", exc_info=True)
-                results.append({
-                    "file": fp,
-                    "control_id": ctrl_id,
-                    "framework": framework,
-                    "label": match.get("label", ""),
-                })
+                results.append(
+                    {
+                        "file": fp,
+                        "control_id": ctrl_id,
+                        "framework": framework,
+                        "label": match.get("label", ""),
+                    }
+                )
 
         return results
 
