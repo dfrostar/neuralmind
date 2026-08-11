@@ -150,6 +150,16 @@ See above — the public launch of the MIT + paid tier architecture.
 
 ## Next (~1–2 quarters)
 
+- **Auto-regenerate the public benchmark on drift** — `bench/public/report.md`
+  was generated once at the benchmark's original commit and never rerun since,
+  even as retrieval code changed underneath it (2026-08 audit: a fresh run
+  moved `requests` recall from a published 1.00 to 0.96, and re-running again
+  after merging several months of `main` moved every repo's numbers a second
+  time in the same audit — see [public.md](docs/benchmarks/public.md#the-corpus)
+  for both deltas). Wire `bench-public.yml` to regenerate and diff-check on
+  `evals/public/manifest.json` or retrieval code-path changes, the same way
+  `ci-benchmark.yml` already gates the reference-fixture numbers, so a stale
+  snapshot can't sit uncorrected again.
 - **Self-contained pip-only demo** — `pip install neuralmind &&
   neuralmind demo` by shipping a pre-built sample graph in the wheel.
 - **More integration walkthroughs** — One end-to-end guide per

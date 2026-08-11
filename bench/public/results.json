@@ -37,17 +37,17 @@
           "n": 14,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 606.8,
-          "median_tokens": 651.0,
+          "mean_tokens": 607.4,
+          "median_tokens": 618.0,
           "mean_mrr": 0.9643
         },
         "neuralmind": {
           "n": 14,
-          "mean_recall": 1.0,
-          "found_rate": 1.0,
-          "mean_tokens": 1094.6,
-          "median_tokens": 1067.5,
-          "mean_mrr": 0.9643
+          "mean_recall": 0.9643,
+          "found_rate": 0.9286,
+          "mean_tokens": 930.2,
+          "median_tokens": 919.5,
+          "mean_mrr": 0.9286
         }
       },
       "queries": [
@@ -129,10 +129,9 @@
               ],
               "context_files": [
                 "auth.py",
-                "sessions.py",
-                "api.py"
+                "sessions.py"
               ],
-              "tokens": 1048,
+              "tokens": 924,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -203,8 +202,8 @@
               "context_files": [
                 "utils.py",
                 "structures.py",
-                "models.py",
                 "cookies.py",
+                "models.py",
                 "adapters.py",
                 "status_codes.py"
               ],
@@ -223,12 +222,10 @@
               "context_files": [
                 "utils.py",
                 "structures.py",
-                "models.py",
                 "cookies.py",
-                "adapters.py",
-                "status_codes.py"
+                "models.py"
               ],
-              "tokens": 1060,
+              "tokens": 1025,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -316,7 +313,7 @@
                 "sessions.py",
                 "cookies.py"
               ],
-              "tokens": 1191,
+              "tokens": 852,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -402,7 +399,7 @@
               "context_files": [
                 "exceptions.py"
               ],
-              "tokens": 866,
+              "tokens": 736,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -488,10 +485,9 @@
               ],
               "context_files": [
                 "adapters.py",
-                "sessions.py",
-                "api.py"
+                "sessions.py"
               ],
-              "tokens": 1120,
+              "tokens": 958,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -563,7 +559,7 @@
                 "cookies.py",
                 "utils.py"
               ],
-              "tokens": 483,
+              "tokens": 568,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -576,10 +572,9 @@
                 "cookies.py"
               ],
               "context_files": [
-                "cookies.py",
-                "utils.py"
+                "cookies.py"
               ],
-              "tokens": 1036,
+              "tokens": 912,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -668,11 +663,9 @@
               "context_files": [
                 "models.py",
                 "sessions.py",
-                "adapters.py",
-                "hooks.py",
-                "api.py"
+                "adapters.py"
               ],
-              "tokens": 1196,
+              "tokens": 1114,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -759,13 +752,9 @@
                 "api.py"
               ],
               "context_files": [
-                "api.py",
-                "sessions.py",
-                "_internal_utils.py",
-                "hooks.py",
-                "utils.py"
+                "api.py"
               ],
-              "tokens": 1189,
+              "tokens": 733,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -839,7 +828,7 @@
                 "cookies.py",
                 "utils.py"
               ],
-              "tokens": 708,
+              "tokens": 756,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -853,11 +842,9 @@
               ],
               "context_files": [
                 "status_codes.py",
-                "models.py",
-                "cookies.py",
-                "utils.py"
+                "models.py"
               ],
-              "tokens": 1213,
+              "tokens": 1166,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -942,15 +929,15 @@
                 "utils.py"
               ],
               "context_files": [
-                "utils.py",
                 "models.py",
-                "sessions.py"
+                "utils.py",
+                "_internal_utils.py"
               ],
-              "tokens": 997,
+              "tokens": 915,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -1022,7 +1009,7 @@
                 "cookies.py",
                 "adapters.py"
               ],
-              "tokens": 684,
+              "tokens": 594,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1036,11 +1023,11 @@
                 "adapters.py"
               ],
               "context_files": [
+                "adapters.py",
                 "sessions.py",
-                "cookies.py",
-                "adapters.py"
+                "utils.py"
               ],
-              "tokens": 1314,
+              "tokens": 975,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1115,7 +1102,7 @@
                 "cookies.py",
                 "models.py"
               ],
-              "tokens": 705,
+              "tokens": 671,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1132,7 +1119,7 @@
                 "cookies.py",
                 "models.py"
               ],
-              "tokens": 1075,
+              "tokens": 972,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1224,7 +1211,7 @@
                 "sessions.py",
                 "auth.py"
               ],
-              "tokens": 1020,
+              "tokens": 840,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1314,21 +1301,35 @@
                 "status_codes.py"
               ],
               "context_files": [
-                "models.py",
-                "status_codes.py",
-                "sessions.py",
-                "hooks.py"
+                "models.py"
               ],
-              "tokens": 999,
-              "recall": 1.0,
-              "found": true,
-              "recall_at_5": 1.0,
+              "tokens": 901,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
               "reciprocal_rank": 1.0
             }
           }
         }
       ],
-      "losses": []
+      "losses": [
+        {
+          "query_id": "xfile-status-codes",
+          "backend": "neuralmind",
+          "gold_files": [
+            "models.py",
+            "status_codes.py"
+          ],
+          "context_files": [
+            "models.py"
+          ],
+          "tokens": 901,
+          "recall": 0.5,
+          "found": false,
+          "recall_at_5": 0.5,
+          "reciprocal_rank": 1.0
+        }
+      ]
     },
     {
       "name": "click",
@@ -1358,17 +1359,17 @@
           "n": 7,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 648.6,
-          "median_tokens": 653,
-          "mean_mrr": 0.5952
+          "mean_tokens": 634.3,
+          "median_tokens": 587,
+          "mean_mrr": 0.6667
         },
         "neuralmind": {
           "n": 7,
-          "mean_recall": 1.0,
-          "found_rate": 1.0,
-          "mean_tokens": 924.1,
-          "median_tokens": 914,
-          "mean_mrr": 0.5952
+          "mean_recall": 0.7857,
+          "found_rate": 0.7143,
+          "mean_tokens": 788.4,
+          "median_tokens": 781,
+          "mean_mrr": 0.5238
         }
       },
       "queries": [
@@ -1431,15 +1432,15 @@
                 "core.py"
               ],
               "context_files": [
-                "shell_completion.py",
                 "core.py",
+                "shell_completion.py",
                 "testing.py"
               ],
-              "tokens": 721,
+              "tokens": 712,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 1.0
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -1449,14 +1450,14 @@
               ],
               "context_files": [
                 "shell_completion.py",
-                "core.py",
-                "testing.py"
+                "testing.py",
+                "core.py"
               ],
-              "tokens": 993,
+              "tokens": 727,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 0.3333
             }
           }
         },
@@ -1539,11 +1540,9 @@
               "context_files": [
                 "types.py",
                 "shell_completion.py",
-                "core.py",
-                "exceptions.py",
-                "formatting.py"
+                "core.py"
               ],
-              "tokens": 1046,
+              "tokens": 674,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1612,10 +1611,9 @@
               "context_files": [
                 "decorators.py",
                 "core.py",
-                "formatting.py",
-                "_textwrap.py"
+                "formatting.py"
               ],
-              "tokens": 532,
+              "tokens": 531,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1628,12 +1626,11 @@
                 "formatting.py"
               ],
               "context_files": [
-                "decorators.py",
                 "core.py",
-                "formatting.py",
-                "_textwrap.py"
+                "decorators.py",
+                "formatting.py"
               ],
-              "tokens": 914,
+              "tokens": 862,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1704,10 +1701,9 @@
                 "_termui_impl.py",
                 "utils.py",
                 "globals.py",
-                "_compat.py",
-                "decorators.py"
+                "_compat.py"
               ],
-              "tokens": 653,
+              "tokens": 563,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1722,17 +1718,13 @@
               "context_files": [
                 "termui.py",
                 "_termui_impl.py",
-                "utils.py",
-                "globals.py",
-                "_compat.py",
-                "decorators.py",
-                "exceptions.py"
+                "core.py"
               ],
-              "tokens": 869,
-              "recall": 1.0,
-              "found": true,
-              "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "tokens": 758,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
             }
           }
         },
@@ -1813,12 +1805,9 @@
               ],
               "context_files": [
                 "termui.py",
-                "_termui_impl.py",
-                "globals.py",
-                "_compat.py",
-                "formatting.py"
+                "parser.py"
               ],
-              "tokens": 734,
+              "tokens": 781,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1906,11 +1895,9 @@
               "context_files": [
                 "core.py",
                 "types.py",
-                "formatting.py",
-                "utils.py",
-                "parser.py"
+                "termui.py"
               ],
-              "tokens": 999,
+              "tokens": 846,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1999,14 +1986,2447 @@
               ],
               "context_files": [
                 "decorators.py",
-                "core.py",
-                "formatting.py"
+                "core.py"
               ],
-              "tokens": 914,
+              "tokens": 871,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 0.5
+            }
+          }
+        }
+      ],
+      "losses": [
+        {
+          "query_id": "echo-util",
+          "backend": "neuralmind",
+          "gold_files": [
+            "utils.py"
+          ],
+          "context_files": [
+            "termui.py",
+            "_termui_impl.py",
+            "core.py"
+          ],
+          "tokens": 758,
+          "recall": 0.0,
+          "found": false,
+          "recall_at_5": 0.0,
+          "reciprocal_rank": 0.0
+        },
+        {
+          "query_id": "xfile-command-help",
+          "backend": "neuralmind",
+          "gold_files": [
+            "core.py",
+            "formatting.py"
+          ],
+          "context_files": [
+            "decorators.py",
+            "core.py"
+          ],
+          "tokens": 871,
+          "recall": 0.5,
+          "found": false,
+          "recall_at_5": 0.5,
+          "reciprocal_rank": 0.5
+        }
+      ]
+    },
+    {
+      "name": "flask",
+      "commit": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
+      "language": "python",
+      "n_queries": 10,
+      "retrieval_stack_available": true,
+      "seeds": 1,
+      "summary": {
+        "full-file": {
+          "n": 10,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 59013,
+          "median_tokens": 59013.0,
+          "mean_mrr": 1.0
+        },
+        "ripgrep": {
+          "n": 10,
+          "mean_recall": 0.85,
+          "found_rate": 0.8,
+          "mean_tokens": 26891.1,
+          "median_tokens": 27268.0,
+          "mean_mrr": 0.6533
+        },
+        "embedding-rag": {
+          "n": 10,
+          "mean_recall": 0.95,
+          "found_rate": 0.9,
+          "mean_tokens": 687.1,
+          "median_tokens": 706.5,
+          "mean_mrr": 0.7333
+        },
+        "neuralmind": {
+          "n": 10,
+          "mean_recall": 0.95,
+          "found_rate": 0.9,
+          "mean_tokens": 772.5,
+          "median_tokens": 767.0,
+          "mean_mrr": 0.7833
+        }
+      },
+      "queries": [
+        {
+          "query_id": "application-object",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "application-object",
+              "gold_files": [
+                "app.py"
+              ],
+              "context_files": [
+                "app.py",
+                "__init__.py",
+                "__main__.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "application-object",
+              "gold_files": [
+                "app.py"
+              ],
+              "context_files": [
+                "app.py",
+                "cli.py",
+                "ctx.py",
+                "helpers.py",
+                "blueprints.py"
+              ],
+              "tokens": 30512,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "application-object",
+              "gold_files": [
+                "app.py"
+              ],
+              "context_files": [
+                "app.py",
+                "cli.py",
+                "testing.py"
+              ],
+              "tokens": 769,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "application-object",
+              "gold_files": [
+                "app.py"
+              ],
+              "context_files": [
+                "app.py"
+              ],
+              "tokens": 655,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "blueprint-component",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "blueprint-component",
+              "gold_files": [
+                "blueprints.py"
+              ],
+              "context_files": [
+                "blueprints.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "blueprint-component",
+              "gold_files": [
+                "blueprints.py"
+              ],
+              "context_files": [
+                "blueprints.py",
+                "app.py",
+                "cli.py",
+                "scaffold.py",
+                "tag.py"
+              ],
+              "tokens": 30763,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "blueprint-component",
+              "gold_files": [
+                "blueprints.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "blueprints.py",
+                "app.py",
+                "views.py",
+                "scaffold.py"
+              ],
+              "tokens": 703,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
               "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "blueprint-component",
+              "gold_files": [
+                "blueprints.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "blueprints.py",
+                "app.py"
+              ],
+              "tokens": 886,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "config-object",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "config-object",
+              "gold_files": [
+                "config.py"
+              ],
+              "context_files": [
+                "config.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "config-object",
+              "gold_files": [
+                "config.py"
+              ],
+              "context_files": [
+                "app.py",
+                "config.py",
+                "blueprints.py",
+                "ctx.py",
+                "cli.py"
+              ],
+              "tokens": 28078,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "config-object",
+              "gold_files": [
+                "config.py"
+              ],
+              "context_files": [
+                "config.py",
+                "ctx.py",
+                "sessions.py",
+                "cli.py",
+                "templating.py"
+              ],
+              "tokens": 651,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "config-object",
+              "gold_files": [
+                "config.py"
+              ],
+              "context_files": [
+                "templating.py",
+                "config.py",
+                "__init__.py"
+              ],
+              "tokens": 779,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "app-context",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "app-context",
+              "gold_files": [
+                "ctx.py"
+              ],
+              "context_files": [
+                "ctx.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "app-context",
+              "gold_files": [
+                "ctx.py"
+              ],
+              "context_files": [
+                "app.py",
+                "cli.py",
+                "ctx.py",
+                "helpers.py",
+                "templating.py"
+              ],
+              "tokens": 26965,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "app-context",
+              "gold_files": [
+                "ctx.py"
+              ],
+              "context_files": [
+                "app.py",
+                "ctx.py"
+              ],
+              "tokens": 627,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "app-context",
+              "gold_files": [
+                "ctx.py"
+              ],
+              "context_files": [
+                "ctx.py",
+                "app.py"
+              ],
+              "tokens": 746,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "method-view",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "method-view",
+              "gold_files": [
+                "views.py"
+              ],
+              "context_files": [
+                "views.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "method-view",
+              "gold_files": [
+                "views.py"
+              ],
+              "context_files": [
+                "app.py",
+                "views.py",
+                "tag.py",
+                "scaffold.py",
+                "cli.py"
+              ],
+              "tokens": 27092,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "method-view",
+              "gold_files": [
+                "views.py"
+              ],
+              "context_files": [
+                "views.py",
+                "app.py",
+                "helpers.py",
+                "scaffold.py"
+              ],
+              "tokens": 799,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "method-view",
+              "gold_files": [
+                "views.py"
+              ],
+              "context_files": [
+                "views.py",
+                "scaffold.py"
+              ],
+              "tokens": 860,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "request-wrapper",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "request-wrapper",
+              "gold_files": [
+                "wrappers.py"
+              ],
+              "context_files": [
+                "wrappers.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "request-wrapper",
+              "gold_files": [
+                "wrappers.py"
+              ],
+              "context_files": [
+                "ctx.py",
+                "helpers.py",
+                "scaffold.py",
+                "app.py",
+                "debughelpers.py"
+              ],
+              "tokens": 25064,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "request-wrapper",
+              "gold_files": [
+                "wrappers.py"
+              ],
+              "context_files": [
+                "app.py",
+                "helpers.py",
+                "wrappers.py"
+              ],
+              "tokens": 795,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "request-wrapper",
+              "gold_files": [
+                "wrappers.py"
+              ],
+              "context_files": [
+                "app.py",
+                "wrappers.py"
+              ],
+              "tokens": 787,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "cli-group",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "cli-group",
+              "gold_files": [
+                "cli.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "cli-group",
+              "gold_files": [
+                "cli.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "blueprints.py",
+                "app.py",
+                "testing.py",
+                "sessions.py"
+              ],
+              "tokens": 27444,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "cli-group",
+              "gold_files": [
+                "cli.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "app.py",
+                "testing.py"
+              ],
+              "tokens": 789,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "cli-group",
+              "gold_files": [
+                "cli.py"
+              ],
+              "context_files": [
+                "cli.py",
+                "testing.py",
+                "app.py"
+              ],
+              "tokens": 755,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "session-interface",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "session-interface",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "session-interface",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "ctx.py",
+                "helpers.py",
+                "testing.py",
+                "scaffold.py"
+              ],
+              "tokens": 20890,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "session-interface",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "tag.py"
+              ],
+              "tokens": 535,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "session-interface",
+              "gold_files": [
+                "sessions.py"
+              ],
+              "context_files": [
+                "sessions.py",
+                "tag.py"
+              ],
+              "tokens": 683,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "url-building",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "url-building",
+              "gold_files": [
+                "helpers.py"
+              ],
+              "context_files": [
+                "helpers.py",
+                "__init__.py",
+                "__main__.py",
+                "app.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "ctx.py",
+                "debughelpers.py",
+                "globals.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "url-building",
+              "gold_files": [
+                "helpers.py"
+              ],
+              "context_files": [
+                "blueprints.py",
+                "app.py",
+                "scaffold.py",
+                "cli.py",
+                "helpers.py"
+              ],
+              "tokens": 33830,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.2
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "url-building",
+              "gold_files": [
+                "helpers.py"
+              ],
+              "context_files": [
+                "app.py",
+                "helpers.py",
+                "scaffold.py",
+                "wrappers.py",
+                "blueprints.py",
+                "cli.py"
+              ],
+              "tokens": 710,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "url-building",
+              "gold_files": [
+                "helpers.py"
+              ],
+              "context_files": [
+                "app.py",
+                "scaffold.py",
+                "helpers.py",
+                "blueprints.py"
+              ],
+              "tokens": 901,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            }
+          }
+        },
+        {
+          "query_id": "xfile-dispatch-context",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-dispatch-context",
+              "gold_files": [
+                "app.py",
+                "ctx.py"
+              ],
+              "context_files": [
+                "app.py",
+                "ctx.py",
+                "__init__.py",
+                "__main__.py",
+                "blueprints.py",
+                "cli.py",
+                "config.py",
+                "debughelpers.py",
+                "globals.py",
+                "helpers.py",
+                "logging.py",
+                "provider.py",
+                "scaffold.py",
+                "sessions.py",
+                "signals.py",
+                "tag.py",
+                "templating.py",
+                "testing.py",
+                "typing.py",
+                "views.py",
+                "wrappers.py"
+              ],
+              "tokens": 59013,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-dispatch-context",
+              "gold_files": [
+                "app.py",
+                "ctx.py"
+              ],
+              "context_files": [
+                "ctx.py",
+                "views.py",
+                "scaffold.py",
+                "debughelpers.py",
+                "helpers.py"
+              ],
+              "tokens": 18273,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-dispatch-context",
+              "gold_files": [
+                "app.py",
+                "ctx.py"
+              ],
+              "context_files": [
+                "views.py",
+                "app.py"
+              ],
+              "tokens": 493,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-dispatch-context",
+              "gold_files": [
+                "app.py",
+                "ctx.py"
+              ],
+              "context_files": [
+                "app.py",
+                "views.py"
+              ],
+              "tokens": 673,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
+              "reciprocal_rank": 1.0
+            }
+          }
+        }
+      ],
+      "losses": [
+        {
+          "query_id": "xfile-dispatch-context",
+          "backend": "neuralmind",
+          "gold_files": [
+            "app.py",
+            "ctx.py"
+          ],
+          "context_files": [
+            "app.py",
+            "views.py"
+          ],
+          "tokens": 673,
+          "recall": 0.5,
+          "found": false,
+          "recall_at_5": 0.5,
+          "reciprocal_rank": 1.0
+        }
+      ]
+    },
+    {
+      "name": "rich",
+      "commit": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf",
+      "language": "python",
+      "n_queries": 9,
+      "retrieval_stack_available": true,
+      "seeds": 1,
+      "summary": {
+        "full-file": {
+          "n": 9,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 232483,
+          "median_tokens": 232483,
+          "mean_mrr": 1.0
+        },
+        "ripgrep": {
+          "n": 9,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 43437.2,
+          "median_tokens": 44350,
+          "mean_mrr": 0.75
+        },
+        "embedding-rag": {
+          "n": 9,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 677.3,
+          "median_tokens": 708,
+          "mean_mrr": 0.9444
+        },
+        "neuralmind": {
+          "n": 9,
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 905.4,
+          "median_tokens": 903,
+          "mean_mrr": 0.7963
+        }
+      },
+      "queries": [
+        {
+          "query_id": "console-core",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "console-core",
+              "gold_files": [
+                "console.py"
+              ],
+              "context_files": [
+                "console.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "console-core",
+              "gold_files": [
+                "console.py"
+              ],
+              "context_files": [
+                "console.py",
+                "pretty.py",
+                "progress.py",
+                "__init__.py",
+                "__main__.py"
+              ],
+              "tokens": 44872,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "console-core",
+              "gold_files": [
+                "console.py"
+              ],
+              "context_files": [
+                "console.py",
+                "screen.py",
+                "__init__.py"
+              ],
+              "tokens": 737,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "console-core",
+              "gold_files": [
+                "console.py"
+              ],
+              "context_files": [
+                "console.py",
+                "__init__.py",
+                "pretty.py"
+              ],
+              "tokens": 991,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "table-renderable",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "table-renderable",
+              "gold_files": [
+                "table.py"
+              ],
+              "context_files": [
+                "table.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "table-renderable",
+              "gold_files": [
+                "table.py"
+              ],
+              "context_files": [
+                "table.py",
+                "console.py",
+                "progress.py",
+                "live.py",
+                "columns.py"
+              ],
+              "tokens": 46506,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "table-renderable",
+              "gold_files": [
+                "table.py"
+              ],
+              "context_files": [
+                "columns.py",
+                "table.py",
+                "layout.py"
+              ],
+              "tokens": 708,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "table-renderable",
+              "gold_files": [
+                "table.py"
+              ],
+              "context_files": [
+                "columns.py",
+                "layout.py",
+                "table.py"
+              ],
+              "tokens": 999,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
+            }
+          }
+        },
+        {
+          "query_id": "styled-text",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "styled-text",
+              "gold_files": [
+                "text.py"
+              ],
+              "context_files": [
+                "text.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "styled-text",
+              "gold_files": [
+                "text.py"
+              ],
+              "context_files": [
+                "style.py",
+                "text.py",
+                "console.py",
+                "default_styles.py",
+                "syntax.py"
+              ],
+              "tokens": 46772,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "styled-text",
+              "gold_files": [
+                "text.py"
+              ],
+              "context_files": [
+                "text.py",
+                "padding.py",
+                "style.py",
+                "syntax.py",
+                "segment.py"
+              ],
+              "tokens": 880,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "styled-text",
+              "gold_files": [
+                "text.py"
+              ],
+              "context_files": [
+                "text.py",
+                "style.py"
+              ],
+              "tokens": 895,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "panel-box",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "panel-box",
+              "gold_files": [
+                "panel.py"
+              ],
+              "context_files": [
+                "panel.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "panel-box",
+              "gold_files": [
+                "panel.py"
+              ],
+              "context_files": [
+                "console.py",
+                "box.py",
+                "table.py",
+                "panel.py",
+                "align.py"
+              ],
+              "tokens": 36664,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.25
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "panel-box",
+              "gold_files": [
+                "panel.py"
+              ],
+              "context_files": [
+                "panel.py",
+                "padding.py",
+                "console.py",
+                "box.py",
+                "screen.py",
+                "layout.py"
+              ],
+              "tokens": 872,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "panel-box",
+              "gold_files": [
+                "panel.py"
+              ],
+              "context_files": [
+                "panel.py",
+                "padding.py",
+                "console.py",
+                "box.py"
+              ],
+              "tokens": 929,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "color-model",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "color-model",
+              "gold_files": [
+                "color.py"
+              ],
+              "context_files": [
+                "color.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "color-model",
+              "gold_files": [
+                "color.py"
+              ],
+              "context_files": [
+                "color.py",
+                "default_styles.py",
+                "syntax.py",
+                "style.py",
+                "console.py"
+              ],
+              "tokens": 41626,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "color-model",
+              "gold_files": [
+                "color.py"
+              ],
+              "context_files": [
+                "color.py",
+                "color_triplet.py"
+              ],
+              "tokens": 490,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "color-model",
+              "gold_files": [
+                "color.py"
+              ],
+              "context_files": [
+                "color.py",
+                "color_triplet.py"
+              ],
+              "tokens": 697,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "syntax-highlight",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "syntax-highlight",
+              "gold_files": [
+                "syntax.py"
+              ],
+              "context_files": [
+                "syntax.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "syntax-highlight",
+              "gold_files": [
+                "syntax.py"
+              ],
+              "context_files": [
+                "console.py",
+                "syntax.py",
+                "traceback.py",
+                "theme.py",
+                "live.py"
+              ],
+              "tokens": 37797,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "syntax-highlight",
+              "gold_files": [
+                "syntax.py"
+              ],
+              "context_files": [
+                "syntax.py",
+                "highlighter.py",
+                "markdown.py"
+              ],
+              "tokens": 448,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "syntax-highlight",
+              "gold_files": [
+                "syntax.py"
+              ],
+              "context_files": [
+                "syntax.py",
+                "highlighter.py",
+                "live.py"
+              ],
+              "tokens": 878,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "progress-bars",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "progress-bars",
+              "gold_files": [
+                "progress.py"
+              ],
+              "context_files": [
+                "progress.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "progress-bars",
+              "gold_files": [
+                "progress.py"
+              ],
+              "context_files": [
+                "progress.py",
+                "console.py",
+                "markdown.py",
+                "default_styles.py",
+                "layout.py"
+              ],
+              "tokens": 44350,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "progress-bars",
+              "gold_files": [
+                "progress.py"
+              ],
+              "context_files": [
+                "progress.py",
+                "progress_bar.py"
+              ],
+              "tokens": 553,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "progress-bars",
+              "gold_files": [
+                "progress.py"
+              ],
+              "context_files": [
+                "progress.py"
+              ],
+              "tokens": 895,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            }
+          }
+        },
+        {
+          "query_id": "markdown-render",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "markdown-render",
+              "gold_files": [
+                "markdown.py"
+              ],
+              "context_files": [
+                "markdown.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "console.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "table.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "markdown-render",
+              "gold_files": [
+                "markdown.py"
+              ],
+              "context_files": [
+                "console.py",
+                "markdown.py",
+                "live.py",
+                "align.py",
+                "table.py"
+              ],
+              "tokens": 39648,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "markdown-render",
+              "gold_files": [
+                "markdown.py"
+              ],
+              "context_files": [
+                "markdown.py",
+                "text.py",
+                "screen.py",
+                "console.py"
+              ],
+              "tokens": 608,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "markdown-render",
+              "gold_files": [
+                "markdown.py"
+              ],
+              "context_files": [
+                "screen.py",
+                "markdown.py",
+                "__init__.py"
+              ],
+              "tokens": 903,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.5
+            }
+          }
+        },
+        {
+          "query_id": "xfile-console-table",
+          "results": {
+            "full-file": {
+              "backend": "full-file",
+              "query_id": "xfile-console-table",
+              "gold_files": [
+                "console.py",
+                "table.py"
+              ],
+              "context_files": [
+                "console.py",
+                "table.py",
+                "__init__.py",
+                "__main__.py",
+                "_cell_widths.py",
+                "_emoji_codes.py",
+                "_emoji_replace.py",
+                "_export_format.py",
+                "_extension.py",
+                "_fileno.py",
+                "_inspect.py",
+                "_log_render.py",
+                "_loop.py",
+                "_null_file.py",
+                "_palettes.py",
+                "_pick.py",
+                "_ratio.py",
+                "_spinners.py",
+                "_stack.py",
+                "_timer.py",
+                "_win32_console.py",
+                "_windows.py",
+                "_windows_renderer.py",
+                "_wrap.py",
+                "abc.py",
+                "align.py",
+                "ansi.py",
+                "bar.py",
+                "box.py",
+                "cells.py",
+                "color.py",
+                "color_triplet.py",
+                "columns.py",
+                "constrain.py",
+                "containers.py",
+                "control.py",
+                "default_styles.py",
+                "diagnose.py",
+                "emoji.py",
+                "errors.py",
+                "file_proxy.py",
+                "filesize.py",
+                "highlighter.py",
+                "json.py",
+                "jupyter.py",
+                "layout.py",
+                "live.py",
+                "live_render.py",
+                "logging.py",
+                "markdown.py",
+                "markup.py",
+                "measure.py",
+                "padding.py",
+                "pager.py",
+                "palette.py",
+                "panel.py",
+                "pretty.py",
+                "progress.py",
+                "progress_bar.py",
+                "prompt.py",
+                "protocol.py",
+                "region.py",
+                "repr.py",
+                "rule.py",
+                "scope.py",
+                "screen.py",
+                "segment.py",
+                "spinner.py",
+                "status.py",
+                "style.py",
+                "styled.py",
+                "syntax.py",
+                "terminal_theme.py",
+                "text.py",
+                "theme.py",
+                "themes.py",
+                "traceback.py",
+                "tree.py"
+              ],
+              "tokens": 232483,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "ripgrep": {
+              "backend": "ripgrep",
+              "query_id": "xfile-console-table",
+              "gold_files": [
+                "console.py",
+                "table.py"
+              ],
+              "context_files": [
+                "console.py",
+                "table.py",
+                "segment.py",
+                "progress.py",
+                "markdown.py"
+              ],
+              "tokens": 52700,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "embedding-rag": {
+              "backend": "embedding-rag",
+              "query_id": "xfile-console-table",
+              "gold_files": [
+                "console.py",
+                "table.py"
+              ],
+              "context_files": [
+                "console.py",
+                "table.py",
+                "segment.py",
+                "layout.py",
+                "text.py"
+              ],
+              "tokens": 800,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 1.0
+            },
+            "neuralmind": {
+              "backend": "neuralmind",
+              "query_id": "xfile-console-table",
+              "gold_files": [
+                "console.py",
+                "table.py"
+              ],
+              "context_files": [
+                "segment.py",
+                "text.py",
+                "table.py",
+                "console.py"
+              ],
+              "tokens": 962,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
             }
           }
         }

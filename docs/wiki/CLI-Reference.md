@@ -546,11 +546,13 @@ This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 published table to the token.
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **100% gold-file recall at 38–85× fewer tokens** than
-pasting files, and beats `ripgrep` on *both* recall and cost. The benchmark also
-reports, without hiding it, that a well-tuned vector RAG is excellent at
-*findability* too (and cheaper on raw tokens). Full methodology, results, honest
-caveats, and "where NeuralMind loses" are published at
+— NeuralMind reaches **79–100% gold-file recall (93.75% mean) at 45–257× fewer
+tokens** than pasting files, and beats `ripgrep` on cost on every repo; on
+recall it's ahead on 2 of 4 repos and ties exactly on the other 2. The
+benchmark also reports, without hiding it, that a well-tuned vector RAG ties
+or beats it at *findability* too (and cheaper on raw tokens), and that `click`
+is NeuralMind's weakest repo in the corpus. Full methodology,
+results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
 runner is `.github/workflows/bench-public.yml`.

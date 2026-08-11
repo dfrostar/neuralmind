@@ -51,7 +51,7 @@ You'll likely see real benefit if **all** of these are true:
 - Your codebase is **>10K lines** and growing. Below that, modern
   long-context models can hold the whole thing.
 - You hit context-limit errors mid-task at least weekly, OR your
-  monthly LLM bill is large enough that a 3–10× reduction is worth
+  monthly LLM bill is large enough that a ~1.6–3× reduction is worth
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.

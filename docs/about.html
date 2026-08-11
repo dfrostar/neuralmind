@@ -84,7 +84,7 @@
         <section>
             <h2>What is NeuralMind?</h2>
             <p>NeuralMind is a semantic code intelligence layer for AI coding agents. It learns your codebase from how you actually use it — file co-edits, queries, tool calls — and uses that learned context to answer future code questions in ~800 tokens instead of 50,000+.</p>
-            <p>The 12-50× figure is a retrieval-stage range measured against a naive "dump all files" baseline (~30K tokens). Against a realistic 10K-token human baseline, the measured range is 12-25×. End-to-end bill reduction is typically 3-10×.</p>
+            <p>The 12-50× figure is a retrieval-stage range measured against a naive "dump all files" baseline (~30K tokens). Against a realistic 10K-token human baseline, the measured range is 12-25×. End-to-end bill reduction is typically ~1.6-3× — retrieval is one cost slice among generation, conversation history, and tool results, not all of them. See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/BUSINESS-CASE.md">business case</a> for the full derivation.</p>
         </section>
         <section>
             <h2>How it works</h2>
@@ -536,10 +536,12 @@ $ neuralmind query . "CMMC gap analysis"
             <h3>The result (reproduce it yourself)</h3>
             <p>Gold-file recall &mdash; an objective <strong>def-site</strong> oracle, no LLM judge &mdash; vs. context tokens (tiktoken <code>o200k_base</code>, deterministic):</p>
             <ul>
-                <li><strong><code>requests</code>:</strong> NeuralMind reaches <strong>1.00 recall at 1,095 tokens/query</strong> &mdash; <strong>38×</strong> fewer than pasting files (41,729). ripgrep manages only 0.79 recall at 26,543 tokens.</li>
-                <li><strong><code>click</code>:</strong> NeuralMind reaches <strong>1.00 recall at 924 tokens/query</strong> &mdash; <strong>85×</strong> fewer than pasting files (78,514). ripgrep again lands 0.79 recall at 45,059 tokens.</li>
+                <li><strong><code>requests</code>:</strong> NeuralMind reaches <strong>0.96 recall at 930 tokens/query</strong> &mdash; <strong>44.9×</strong> fewer than pasting files (41,729). Misses 1 of 14 (a two-file cross-file query). ripgrep manages only 0.79 recall at 26,543 tokens.</li>
+                <li><strong><code>click</code>:</strong> NeuralMind reaches <strong>0.79 recall at 788 tokens/query</strong> &mdash; <strong>99.6×</strong> fewer than pasting files (78,514), but is the weakest repo in the corpus (misses 2 of 7). ripgrep lands 0.79 recall at 45,059 tokens — a rare case where NeuralMind doesn't clearly beat it on recall.</li>
+                <li><strong><code>flask</code>:</strong> NeuralMind reaches <strong>0.95 recall at 772 tokens/query</strong> &mdash; <strong>76.4×</strong> fewer than pasting files (59,013). Misses 1 of 10. ripgrep manages 0.85 recall at 26,891 tokens.</li>
+                <li><strong><code>rich</code>:</strong> NeuralMind reaches <strong>1.00 recall at 905 tokens/query</strong> &mdash; <strong>256.8×</strong> fewer than pasting files (232,483). ripgrep also reaches 1.00 recall here, at 43,437 tokens.</li>
             </ul>
-            <p><strong>Honest headline:</strong> against what agents actually do today &mdash; paste files or grep &mdash; NeuralMind hits <strong>100% gold-file recall at 38–85× fewer tokens</strong>, and beats ripgrep on <em>both</em> recall and cost. We also show, without hiding it, that a well-tuned vector RAG is excellent at <em>findability</em> too (and cheaper on raw tokens) &mdash; credibility comes from reporting the losses, not just the wins.</p>
+            <p><strong>Honest headline:</strong> against what agents actually do today &mdash; paste files or grep &mdash; NeuralMind hits <strong>79&ndash;100% gold-file recall (93.75% mean) at 45&ndash;257× fewer tokens</strong>, and beats ripgrep on cost on every repo; on recall it's ahead on 2 of 4 and ties exactly on the other 2 (<code>click</code> and <code>rich</code>). We also show, without hiding it, that a well-tuned vector RAG ties or beats it at <em>findability</em> too (and cheaper on raw tokens), and that <code>click</code> is NeuralMind's weakest repo in the corpus &mdash; credibility comes from reporting the losses, not just the wins.</p>
             <h3>Why it's hard to dismiss</h3>
             <ul>
                 <li><strong>Real pinned repos</strong>, not our fixtures &mdash; <code>git checkout &lt;sha&gt;</code> and audit.</li>
@@ -734,7 +736,7 @@ $ neuralmind query . "CMMC gap analysis"
             <ul>
                 <li><strong><code>neuralmind eval --onboarding</code>.</strong> A cold-vs-onboarded A/B over the gold queries, sharing one built index and differing only in synapse recall (off vs on over a committed team baseline). Scored by the same offline judge as the faithfulness eval; the headline is the <strong>top-k module hit-rate lift</strong> — the slice associative recall re-ranks within — with fact-recall and grounding reported as honest secondaries (at a fixed budget fact-recall is budget-traded and full-context grounding saturates).</li>
                 <li><strong>Committed, transparent baseline.</strong> <code>evals/onboarding/seed_history.json</code> is a regenerable record of co-edit sessions replayed through the real reinforcement path — no binary <code>synapses.db</code> committed.</li>
-                <li><strong>CI-gated.</strong> The benchmark job averages a few runs (to absorb ChromaDB HNSW jitter) and fails if inheriting committed memory ever lowers the top-k module hit-rate (lift ≥ 0; a deterministic +6.5 points on the reference fixture). 13 stdlib tests.</li>
+                <li><strong>CI-gated.</strong> The benchmark job averages a few runs (to absorb ChromaDB HNSW jitter) and fails if inheriting committed memory ever lowers the top-k module hit-rate (lift ≥ 0; a deterministic +0.9 points on the reference fixture — small because the cold-path baseline has itself improved since this figure was first measured, leaving less headroom for the memory layer). 13 stdlib tests.</li>
             </ul>
             <h3>Why this matters — the moat</h3>
             <p>AST-derived code graphs are table stakes now. NeuralMind's durable edge is usage memory — the synapse layer that learns what your team edits together. This release makes that edge measurable and regression-gated, formalising the self-benchmark's Phase-3 synapse A/B into a committed-baseline eval.</p>

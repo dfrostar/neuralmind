@@ -4,7 +4,7 @@
 
 Key facts, each backed by a runnable eval (raw traces committed):
 
-- Cheaper context: 100% gold-file recall at 38–85× fewer tokens than pasting files; beats ripgrep on both recall and cost (public benchmark on `requests` and `click`).
+- Cheaper context: 79–100% gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–257× fewer tokens than pasting files; beats ripgrep on cost on every repo, and on recall beats it on 2 of 4 repos and ties exactly on the other 2 (public benchmark on `requests`, `click`, `flask`, `rich`; `click` is NeuralMind's weakest repo at 0.79 recall). Caveat: a bare vector-RAG baseline ties or beats NeuralMind on recall at fewer tokens — see "Where NeuralMind loses" in docs/benchmarks/public.md.
 - Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (pure retrieval ranking, reproducible).
 - Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate +6.1 points, budget-neutral (reference fixture A/B).
 - Better-grounded answers: faithfulness +0.143 at a matched token budget (reference fixture parity gate).

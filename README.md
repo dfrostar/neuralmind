@@ -282,9 +282,9 @@ Measured, not marketed — the numbers are produced by CI on every commit
 (every merged PR carries a sticky benchmark comment) and reproduce locally
 with `python -m tests.benchmark.run`:
 
-- **100% gold-file recall at 38–85× fewer tokens** on the public benchmark.
+- **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** on the public benchmark.
 - **Synapse recall A/B:** +6.1 points top-k hit rate at ±0 token cost.
-- **Onboarding lift:** +6.1 points top-k module hit-rate from committed team baseline ([field report](https://neuralmind.uk/effectiveness/)).
+- **Onboarding lift:** +6.5 points top-k module hit-rate from committed team baseline (a distinct eval from synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
 - **6.1× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
