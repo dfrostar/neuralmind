@@ -66,6 +66,7 @@ def cmd_health(args) -> None:
     if synapse_path.exists():
         try:
             from neuralmind.synapses import SynapseStore
+
             stats = SynapseStore(synapse_path).stats()
             synapse_count = stats.get("edges", 0)
         except Exception:
@@ -93,7 +94,9 @@ def cmd_health(args) -> None:
         print(f"{status_icon} NeuralMind Health — {project_path.name}")
         print(f"  Status:       {'healthy' if not is_stale else 'stale (index >= 24h old)'}")
         print(f"  Nodes:        {node_count}")
-        print(f"  Last build:    {time.strftime('%Y-%m-%d %H:%M', time.localtime(last_build)) if last_build else 'unknown'}")
+        print(
+            f"  Last build:    {time.strftime('%Y-%m-%d %H:%M', time.localtime(last_build)) if last_build else 'unknown'}"
+        )
         print(f"  Index age:    {age_hours:.1f} hours")
         print(f"  Synapse edges: {synapse_count}")
         print(f"  Disk usage:   {disk_mb:.1f} MB")

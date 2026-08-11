@@ -240,6 +240,7 @@ def _is_ignored(rel_path: str, patterns: frozenset[str]) -> bool:
     if not patterns:
         return False
     from fnmatch import fnmatch
+
     parts = rel_path.split("/")
     for pattern in patterns:
         # Match against full path
