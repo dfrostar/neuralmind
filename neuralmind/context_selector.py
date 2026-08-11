@@ -1148,8 +1148,11 @@ class ContextSelector:
                 include_l1=True,
                 include_l2=True,
                 include_l3=True,
-                query_type=query_type,
             )
+            # Apply type-aware re-ranking based on query intent
+            if query_type != "auto":
+                intent = self._detect_intent(query)
+                result.top_search_hits = self._apply_intent_boost(result.top_search_hits, intent)
             if self._trace is not None:
                 result.trace = self._trace.to_dict()
             return result
