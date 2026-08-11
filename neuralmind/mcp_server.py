@@ -182,6 +182,7 @@ def tool_health(project_path: str) -> dict[str, Any]:
     if synapse_path.exists():
         try:
             from neuralmind.synapses import SynapseStore
+
             synapse_count = SynapseStore(synapse_path).stats().get("edges", 0)
         except Exception:
             pass
