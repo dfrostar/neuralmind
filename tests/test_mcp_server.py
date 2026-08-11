@@ -363,10 +363,10 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 20 tools: previous 19 + neuralmind_ingest_document."""
+        """TOOLS should define 21 tools: previous 20 + neuralmind_health."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 20
+        assert len(TOOLS) == 21
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -414,6 +414,8 @@ class TestToolDefinitions:
             "neuralmind_compliance_report",
             # v1.12.0 document ingestion via MCP
             "neuralmind_ingest_document",
+            # v3.1.3 health check endpoint
+            "neuralmind_health",
         }
         assert tool_names == expected
 
