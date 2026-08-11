@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.3](https://github.com/dfrostar/neuralmind/compare/v3.1.2...v3.1.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* **docs:** reconcile drifted benchmark numbers across all doc surfaces ([#430](https://github.com/dfrostar/neuralmind/issues/430)) ([7488474](https://github.com/dfrostar/neuralmind/commit/748847499f4dd6b95b73b4c719b4848a8086dfdd))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([49a9fde](https://github.com/dfrostar/neuralmind/commit/49a9fdeed7791304b4d0ffcf13ef0b570cd23dc9))
+
 ## [3.1.2](https://github.com/dfrostar/neuralmind/compare/v3.1.1...v3.1.2) (2026-08-09)
 
 
