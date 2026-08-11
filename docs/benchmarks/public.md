@@ -60,52 +60,108 @@ raw per-query data in [`bench/public/results.json`](../../bench/public/results.j
 
 ### `requests` @ `0e322af877` — 14 pre-registered queries
 
-| backend | gold-file recall | found-rate | mean tokens/query | vs full-file |
-|---|---:|---:|---:|---:|
-| `full-file` | 1.00 | 100% | 41,729 | 1× |
-| `ripgrep` | 0.79 | 71% | 26,543 | 1.6× |
-| `embedding-rag` | 1.00 | 100% | 607 | 69× |
-| **`neuralmind`** | **1.00** | **100%** | **1,095** | **38×** |
+| backend | gold-file recall | found-rate | mean tokens/query | MRR | vs full-file |
+|---|---:|---:|---:|---:|---:|
+| `full-file` | 1.00 | 100% | 41,729 | 1.00 | 1× |
+| `ripgrep` | 0.79 | 71% | 26,543 | 0.60 | 1.6× |
+| `embedding-rag` | 1.00 | 100% | 607 | 0.96 | 69× |
+| **`neuralmind`** | **0.93** | **86%** | **933** | **0.96** | **44.7×** |
+
+**Where it missed** (2 of 14 — both are two-file cross-file queries where
+NeuralMind's context included only one of the two gold files):
+
+| query | gold files | files it retrieved |
+|---|---|---|
+| `xfile-redirect-auth` | `sessions.py`, `auth.py` | `sessions.py` |
+| `xfile-status-codes` | `models.py`, `status_codes.py` | `models.py` |
 
 ### `click` @ `874ca2bc1c` — 7 pre-registered queries
 
-| backend | gold-file recall | found-rate | mean tokens/query | vs full-file |
-|---|---:|---:|---:|---:|
-| `full-file` | 1.00 | 100% | 78,514 | 1× |
-| `ripgrep` | 0.79 | 71% | 45,059 | 1.7× |
-| `embedding-rag` | 1.00 | 100% | 649 | 121× |
-| **`neuralmind`** | **1.00** | **100%** | **924** | **85×** |
+| backend | gold-file recall | found-rate | mean tokens/query | MRR | vs full-file |
+|---|---:|---:|---:|---:|---:|
+| `full-file` | 1.00 | 100% | 78,514 | 1.00 | 1× |
+| `ripgrep` | 0.79 | 71% | 45,059 | 0.60 | 1.7× |
+| `embedding-rag` | 1.00 | 100% | 634 | 0.67 | 123.8× |
+| **`neuralmind`** | **1.00** | **100%** | **729** | **0.67** | **107.7×** |
+
+No NeuralMind gold-file misses on this repo.
+
+### `flask` @ `c12a5d874c` — 10 pre-registered queries
+
+| backend | gold-file recall | found-rate | mean tokens/query | MRR | vs full-file |
+|---|---:|---:|---:|---:|---:|
+| `full-file` | 1.00 | 100% | 59,013 | 1.00 | 1× |
+| `ripgrep` | 0.85 | 80% | 26,891 | 0.65 | 2.2× |
+| `embedding-rag` | 0.95 | 90% | 687 | 0.73 | 85.9× |
+| **`neuralmind`** | **0.85** | **80%** | **754** | **0.70** | **78.3×** |
+
+**Where it missed** (2 of 10):
+
+| query | gold files | files it retrieved |
+|---|---|---|
+| `request-wrapper` | `wrappers.py` | `app.py`, `helpers.py` |
+| `xfile-dispatch-context` | `app.py`, `ctx.py` | `views.py`, `app.py` |
+
+### `rich` @ `7f580bdc70` — 9 pre-registered queries
+
+| backend | gold-file recall | found-rate | mean tokens/query | MRR | vs full-file |
+|---|---:|---:|---:|---:|---:|
+| `full-file` | 1.00 | 100% | 232,483 | 1.00 | 1× |
+| `ripgrep` | 1.00 | 100% | 43,437 | 0.75 | 5.4× |
+| `embedding-rag` | 1.00 | 100% | 677 | 0.94 | 343.2× |
+| **`neuralmind`** | **1.00** | **100%** | **897** | **0.94** | **259.1×** |
+
+No NeuralMind gold-file misses on this repo.
+
+### Aggregate across all 4 repos (40 queries)
+
+**85–100% gold-file recall (93.75% weighted mean), 90% found-rate, 44.7×–259.1×
+fewer tokens than pasting whole files.** Neither number is uniform across
+repos — that's the honest picture, not a single cherry-picked ratio.
 
 ---
 
 ## What the numbers honestly say
 
 1. **Against what developers actually do today — paste files or grep — NeuralMind
-   is a large, real win.** It reaches **100% gold-file recall at 38–85× fewer
-   tokens** than pasting the files, and it beats `ripgrep` on *both* axes (full
-   recall vs grep's 0.79, at fewer tokens). Most agents don't have a tuned
+   is a large, real win, but not a perfect one.** It reaches **85–100% gold-file
+   recall (93.75% mean) at 44.7–259.1× fewer tokens** than pasting the files, and
+   it beats `ripgrep` on *both* axes on every repo (ripgrep's recall ranges
+   0.79–1.00, always at far more tokens). Most agents don't have a tuned
    function-level vector index sitting there; they read files or grep. That is
-   the baseline NeuralMind replaces.
+   the baseline NeuralMind replaces. It is not a claim of zero misses — see
+   "Where NeuralMind loses" below.
 
 2. **A well-tuned vector RAG is also excellent at *findability* — and we show it.**
-   On these repos `embedding-rag` matches NeuralMind's recall at fewer tokens.
-   We do not hide this. Two honest caveats: (a) that baseline *is* NeuralMind's
-   own encoder doing function-level retrieval, and (b) its "cost" is the bare
-   retrieved chunks — NeuralMind spends its extra tokens assembling a *structured,
-   readable* context (project map, signatures, call edges) an agent uses to
-   **answer**, not just to locate the file. Pure gold-file recall measures
-   locating, not answering.
+   On three of four repos `embedding-rag` matches or beats NeuralMind's recall,
+   always at fewer tokens (on `flask` it's the only backend besides `full-file`
+   above 90% recall). We do not hide this. Two honest caveats: (a) that baseline
+   *is* NeuralMind's own encoder doing function-level retrieval, and (b) its
+   "cost" is the bare retrieved chunks — NeuralMind spends its extra tokens
+   assembling a *structured, readable* context (project map, signatures, call
+   edges) an agent uses to **answer**, not just to locate the file. Pure
+   gold-file recall measures locating, not answering.
 
-3. **`ripgrep` is the cautionary tale.** Cheap-ish, but it *misses the right file
-   29% of the time* (recall 0.79) — keyword search has no notion of meaning.
+3. **`ripgrep` is the cautionary tale on 3 of 4 repos.** Cheap-ish, but on
+   `requests` and `click` it *misses the right file 21–29% of the time* (recall
+   0.79) — keyword search has no notion of meaning. It only reaches 1.00 recall
+   on `rich`, where the query vocabulary happens to overlap the code closely.
 
 ### Where NeuralMind loses
 
-On both repos NeuralMind missed **zero** gold files (found-rate 100%). The one
-axis where it is *not* the leader is **token cost vs. a bare top-k vector
-retrieval** — it spends ~1.5–2× the tokens of `embedding-rag` to deliver
-assembled context at the same recall. We report that plainly; if your only need
-is "which file," a bare vector index is cheaper.
+Two loss modes, reported plainly:
+
+- **Gold-file misses on 2 of 4 repos.** On `requests` and `flask`, 2 queries
+  each (4 of 40 total) are two-file cross-file questions where NeuralMind's
+  retrieved context included only one of the two gold files — recall drops to
+  0.93 and 0.85 respectively on those repos. `click` and `rich` show zero
+  misses. Full per-query detail in the tables above and in
+  [`bench/public/results.json`](../../bench/public/results.json).
+- **Token cost vs. a bare top-k vector retrieval.** Where `embedding-rag` also
+  hits 100% recall (`click`, `rich`, and partially `requests`), NeuralMind
+  spends ~1.2–1.5× the tokens to deliver assembled context at the same or
+  lower recall. We report that plainly; if your only need is "which file," a
+  bare vector index is cheaper.
 
 ## What this benchmark does *not* measure (on purpose)
 
@@ -113,7 +169,7 @@ is "which file," a bare vector index is cheaper.
   usage-dependent — they learn from how *you* work — so they cannot be part of a
   *fixed, reproducible* public number. Injection is OFF here. The learning lift
   is measured separately and reproducibly by the **synapse A/B eval**
-  (`tests/benchmark/run.py`, Phase 2): **+11.7 points** top-k hit-rate, budget-
+  (`tests/benchmark/run.py`, Phase 2): **+14 points** top-k hit-rate, budget-
   neutral, on the reference fixture. That is the differentiator a static index
   structurally cannot copy.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*
@@ -156,19 +212,32 @@ judge model is one viewpoint (disclosed, transcripts committed so anyone can
 re-score with another); and it's a *secondary* signal — the recall-at-N×-tokens
 headline stays primary.
 
-## Extending the corpus
+## The corpus
 
 The corpus spans **four pinned repos / 40 pre-registered queries**: `requests`
-(14) and `click` (7) — the original headline pair, with committed numbers above
-— plus **`flask` @ `c12a5d87` (10)** and **`rich` @ `7f580bdc` (9)**, added to
-harden the "you picked easy repos" critique with two more household-name
-projects. Every `flask`/`rich` query's gold file is the **objective definition
-site** of its named symbol, verified with `rg` against the pinned commit (e.g.
-`class Flask` in `app.py`, `class Console` in `console.py`) — pre-registered in
+(14) and `click` (7) — the original headline pair — plus **`flask` @
+`c12a5d874c` (10)** and **`rich` @ `7f580bdc70` (9)**, added to harden the "you
+picked easy repos" critique with two more household-name projects. Every
+`flask`/`rich` query's gold file is the **objective definition site** of its
+named symbol, verified with `rg` against the pinned commit (e.g. `class Flask`
+in `app.py`, `class Console` in `console.py`) — pre-registered in
 `evals/public/manifest.json` *before* any run, exactly as the methodology
-requires (gold first, numbers second). Their cost+correctness rows regenerate
-with `python -m evals.public.run` (the committed `requests`/`click` snapshot
-stays a subset of the manifest, so nothing is fabricated in between).
+requires (gold first, numbers second). All four repos' cost+correctness rows
+above are committed, current numbers from `python -m evals.public.run`, not a
+projection.
+
+Note for anyone diffing against an older copy of this page: earlier snapshots
+showed 1.00 recall on `requests` (38× fewer tokens). That snapshot was
+generated once, at the commit that first introduced this benchmark, and was
+never regenerated afterward even as the retrieval code changed underneath it
+— the query set itself (including the two-file cross-file queries
+`xfile-redirect-auth` and `xfile-status-codes`) has been unchanged since that
+first commit. The 0.93 recall / 2-miss result above is a fresh run against
+the current code, not a harder corpus. We have not bisected which change
+between then and now moved the number; what's committed here is what
+`python -m evals.public.run` produces today. This snapshot going stale again
+the same way is a known gap — see [ROADMAP.md](../../ROADMAP.md) for automated
+regeneration on manifest/retrieval-path changes.
 
 Add a repo the same way: append to `evals/public/manifest.json` (pin the commit,
 give each query an objective def-site gold file) and re-run. Community-contributed

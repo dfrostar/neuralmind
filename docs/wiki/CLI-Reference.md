@@ -539,18 +539,19 @@ python -m evals.public.run
 ```
 
 The run is **deterministic** — synapse injection is **OFF** (session-dependent
-learning can't be a fixed, reproducible public number; its **+11.7pt** lift is
+learning can't be a fixed, reproducible public number; its **+14pt** lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running matches the
 published table to the token.
 
 **Honest headline:** against what agents actually do today — paste files or grep
-— NeuralMind reaches **100% gold-file recall at 38–85× fewer tokens** than
-pasting files, and beats `ripgrep` on *both* recall and cost. The benchmark also
-reports, without hiding it, that a well-tuned vector RAG is excellent at
-*findability* too (and cheaper on raw tokens). Full methodology, results, honest
-caveats, and "where NeuralMind loses" are published at
+— NeuralMind reaches **85–100% gold-file recall (93.75% mean) at 45–259× fewer
+tokens** than pasting files, and beats `ripgrep` on *both* recall and cost on
+every repo. The benchmark also reports, without hiding it, that a well-tuned
+vector RAG ties or beats it at *findability* too (and cheaper on raw tokens),
+and that 4 of 40 queries show partial gold-file misses. Full methodology,
+results, honest caveats, and "where NeuralMind loses" are published at
 [`docs/benchmarks/public.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md);
 raw per-query data is committed at `bench/public/results.json`, and the forkable
 runner is `.github/workflows/bench-public.yml`.
@@ -1006,7 +1007,7 @@ Learning is now handled entirely by the **synapse layer**, which learns
 continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. A 2×2 A/B on the
 benchmark fixture showed the old reranker added 0.0 points to top-k hit
-rate while the synapse layer alone adds +11.6 points.
+rate while the synapse layer alone adds +14 points.
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale

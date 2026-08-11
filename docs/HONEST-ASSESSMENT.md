@@ -54,7 +54,7 @@ You'll likely see real benefit if **all** of these are true:
 - Your codebase is **>10K lines** and growing. Below that, modern
   long-context models can hold the whole thing.
 - You hit context-limit errors mid-task at least weekly, OR your
-  monthly LLM bill is large enough that a 3–10× reduction is worth
+  monthly LLM bill is large enough that a ~1.6–3× reduction is worth
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.
@@ -205,7 +205,7 @@ We'd downgrade our own claims if:
 - Community benchmarks (n ≥ 10 outside repos) show median
   reduction below 5×. (Currently directionally above this on n=2.)
 - Top-k retrieval hit rate on a real-world query set falls below
-  60%. (Currently 71.7% cold / 83.3% warm on the reference fixture — the
+  60%. (Currently 72% cold / 86% warm on the reference fixture — the
   warm number reflects the learned synapse boost.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.

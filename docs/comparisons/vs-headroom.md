@@ -104,7 +104,7 @@ sessions. Nothing in either tool conflicts with the other.
   there is no contest — use Headroom.
 - NeuralMind's 12-50× headline is retrieval-input reduction, not total
   bill reduction; see our [honest assessment](../HONEST-ASSESSMENT.md)
-  for the 3–10× end-to-end framing. Headroom's 60–95% is their claim
+  for the ~1.6–3× end-to-end framing. Headroom's 60–95% is their claim
   under their eval suite — we have not independently reproduced it.
 - Both projects ultimately compete with the same baseline: long context
   plus prompt caching. Headroom embraces caching (CacheAligner);

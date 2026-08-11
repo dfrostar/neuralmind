@@ -479,6 +479,13 @@ def cmd_savings(args):
     to compute how many tokens NeuralMind has saved across all logged queries.
     This lets you verify the savings claim against your own real usage.
 
+    Measures your actual logged queries against a fixed 50K-token reference
+    baseline (BASELINE_TOKENS_PER_QUERY) — not the same thing as the
+    what-if ROI formula in docs/BUSINESS-CASE.md, which uses different
+    stated assumptions (8K tok/query, $3/MTok). The two are not meant to
+    match; this command reports what actually happened, the doc projects
+    what could happen.
+
     The aggregation lives in neuralmind.savings.compute_savings so the MCP
     server and daemon can serve the same report.
     """

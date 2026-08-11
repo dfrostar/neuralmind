@@ -156,6 +156,18 @@ neuralmind benchmark . --contribute   # generates a paste-ready submission
 Here's the ROI calculation. Plug in your numbers; the structure
 holds regardless.
 
+**CLI vs. formula — these are two different measurements, not one
+number expressed two ways.** `neuralmind savings` (see
+[`neuralmind/savings.py`](../neuralmind/savings.py)) reports what
+actually happened: your real logged queries measured against a fixed
+50K-token reference baseline. The formula below is a *what-if*
+projection with its own stated assumptions (8,000 tok/query baseline,
+$3/MTok, 30 q/day) that you're meant to override with your own
+numbers. Don't expect the CLI's number and the formula's number to
+match on the same repo — they're answering different questions
+("what did NeuralMind actually save me?" vs. "what would NeuralMind
+save a team like mine?").
+
 ### Inputs (you change these)
 
 | Variable | Default | Source |

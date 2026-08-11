@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Benchmarks — CI-verified &amp; community-submitted · NeuralMind</title>
-    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (100% gold-file recall at 38–85× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
+    <meta name="description" content="NeuralMind benchmarks: a deterministic public benchmark on pinned real OSS repos (85–100% gold-file recall at 45–259× fewer tokens), plus community-submitted token-reduction numbers from real codebases. Reproducible, auditable, no synthetic claims.">
     <meta name="keywords" content="neuralmind, benchmark, token reduction, gold-file recall, claude code, mcp, llm cost optimization, real-world numbers, community benchmarks, code retrieval benchmark">
     <link rel="canonical" href="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://docs.neuralmind.uk/benchmarks/">
     <meta property="og:title" content="NeuralMind Benchmarks — real numbers from real codebases">
-    <meta property="og:description" content="100% gold-file recall at 38–85× fewer tokens on pinned real OSS repos, re-run in CI on every commit — plus community-submitted measurements you can reproduce with one command.">
+    <meta property="og:description" content="85–100% gold-file recall at 45–259× fewer tokens on pinned real OSS repos, reproducible with one command — plus community-submitted measurements.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="NeuralMind Benchmarks — real numbers from real codebases">
@@ -79,9 +79,9 @@
 
 <div class="stats-band">
     <div class="container band-grid">
-        <div class="band-stat"><b>100%</b><span>gold-file recall on pinned real OSS repos</span></div>
-        <div class="band-stat"><b>38–85×</b><span>fewer tokens than pasting whole files</span></div>
-        <div class="band-stat"><b>21</b><span>pre-registered queries — every one reported</span></div>
+        <div class="band-stat"><b>85–100%</b><span>gold-file recall on pinned real OSS repos</span></div>
+        <div class="band-stat"><b>45–259×</b><span>fewer tokens than pasting whole files</span></div>
+        <div class="band-stat"><b>40</b><span>pre-registered queries — every one reported</span></div>
         <div class="band-stat"><b>46–66×</b><span>community-measured reduction on real repos</span></div>
     </div>
 </div>
@@ -94,7 +94,7 @@
         <div class="cards">
             <div class="card">
                 <h3>Real, pinned repos</h3>
-                <p>Household-name OSS — <code>requests</code>, <code>click</code> — pinned to exact commit SHAs. Anyone can <code>git checkout</code> and audit; no vendor fixture.</p>
+                <p>Household-name OSS — <code>requests</code>, <code>click</code>, <code>flask</code>, <code>rich</code> — pinned to exact commit SHAs. Anyone can <code>git checkout</code> and audit; no vendor fixture.</p>
             </div>
             <div class="card">
                 <h3>Objective gold, no LLM judge</h3>
@@ -123,10 +123,11 @@
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">41,729</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">26,543</td><td class="num">1.6×</td></tr>
                             <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">607</td><td class="num">69×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">1,095</td><td class="num"><span class="win">38×</span></td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num">0.93</td><td class="num">933</td><td class="num"><span class="win">44.7×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
+                <p class="result-meta">Misses 2 of 14 (two-file cross-file queries, one of two gold files retrieved).</p>
             </div>
             <div class="result-block">
                 <h3><code>click</code> @ <code>874ca2bc1c</code></h3>
@@ -139,14 +140,51 @@
                         <tbody>
                             <tr><td>full-file</td><td class="num">1.00</td><td class="num">78,514</td><td class="num">1×</td></tr>
                             <tr><td>ripgrep</td><td class="num">0.79</td><td class="num">45,059</td><td class="num">1.7×</td></tr>
-                            <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">649</td><td class="num">121×</td></tr>
-                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">924</td><td class="num"><span class="win">85×</span></td></tr>
+                            <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">634</td><td class="num">123.8×</td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">729</td><td class="num"><span class="win">107.7×</span></td></tr>
                         </tbody>
                     </table>
                 </div>
+                <p class="result-meta">No NeuralMind gold-file misses on this repo.</p>
+            </div>
+            <div class="result-block">
+                <h3><code>flask</code> @ <code>c12a5d874c</code></h3>
+                <p class="result-meta">10 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Backend</th><th class="num">Gold-file recall</th><th class="num">Mean tokens/query</th><th class="num">vs full-file</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>full-file</td><td class="num">1.00</td><td class="num">59,013</td><td class="num">1×</td></tr>
+                            <tr><td>ripgrep</td><td class="num">0.85</td><td class="num">26,891</td><td class="num">2.2×</td></tr>
+                            <tr><td>embedding-rag</td><td class="num">0.95</td><td class="num">687</td><td class="num">85.9×</td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num">0.85</td><td class="num">754</td><td class="num"><span class="win">78.3×</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="result-meta">Misses 2 of 10.</p>
+            </div>
+            <div class="result-block">
+                <h3><code>rich</code> @ <code>7f580bdc70</code></h3>
+                <p class="result-meta">9 pre-registered queries · tokenizer: tiktoken <code>o200k_base</code></p>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Backend</th><th class="num">Gold-file recall</th><th class="num">Mean tokens/query</th><th class="num">vs full-file</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>full-file</td><td class="num">1.00</td><td class="num">232,483</td><td class="num">1×</td></tr>
+                            <tr><td>ripgrep</td><td class="num">1.00</td><td class="num">43,437</td><td class="num">5.4×</td></tr>
+                            <tr><td>embedding-rag</td><td class="num">1.00</td><td class="num">677</td><td class="num">343.2×</td></tr>
+                            <tr class="nm"><td>neuralmind</td><td class="num"><span class="win">1.00</span></td><td class="num">897</td><td class="num"><span class="win">259.1×</span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="result-meta">No NeuralMind gold-file misses on this repo.</p>
             </div>
         </div>
-        <p class="note"><b>Read the losses too:</b> <code>embedding-rag</code> is NeuralMind's own vector-retrieval core in isolation, and it's cheaper on raw tokens — the gap is what the progressive-disclosure assembly layer (project map + symbols + call edges) adds on top of raw top-k chunks. Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>.</p>
+        <p class="note"><b>Read the losses too:</b> across all 4 repos (40 queries), NeuralMind's weighted mean recall is 93.75% (90% found-rate) — 4 queries on <code>requests</code> and <code>flask</code> show a partial gold-file miss. Where <code>embedding-rag</code> also hits full recall, it's NeuralMind's own vector-retrieval core in isolation, and it's cheaper on raw tokens — the gap is what the progressive-disclosure assembly layer (project map + symbols + call edges) adds on top of raw top-k chunks. Scoring reuses <code>neuralmind/quality.py</code> verbatim — the same metric code the CI quality gate runs. Full method, baselines, and raw per-query data in the <a href="public.md">methodology</a>.</p>
 
         <div class="codeblock">
             <button class="copy-btn" data-copy="git clone https://github.com/dfrostar/neuralmind && cd neuralmind

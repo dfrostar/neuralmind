@@ -135,8 +135,8 @@ Measured, not marketed — the numbers are produced by CI on every commit
 (every merged PR carries a sticky benchmark comment) and reproduce locally
 with `python -m tests.benchmark.run`:
 
-- **100% gold-file recall at 38–85× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** +11 points top-k hit rate at ±0 token cost.
+- **85–100% gold-file recall (93.75% mean) at 45–259× fewer tokens** on the public benchmark.
+- **Synapse recall A/B:** +14 points top-k hit rate at ±0 token cost.
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
 - Backend parity gate: the built-in tree-sitter backend is held within

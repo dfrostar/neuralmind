@@ -179,7 +179,7 @@ weak ones; the tools compose.
 Carried over from [`HONEST-ASSESSMENT.md`](https://github.com/dfrostar/neuralmind/blob/main/docs/HONEST-ASSESSMENT.md#what-we-havent-measured-well-yet)
 so it lives next to the limits it qualifies:
 
-- **End-to-end cost** is **3–10×** on a real workload, *not* 12-50× — the headline
+- **End-to-end cost** is **~1.6–3×** on a real workload, *not* 12-50× — the headline
   is a *retrieval-input-token* reduction, not a total-bill reduction.
 - **Per-language answer quality** is gated *structurally*, not *for answer
   faithfulness* — the faithfulness gold set is Python-first.

@@ -309,8 +309,8 @@ next query re-ordered its L3 hits by a `+0.3` cooccurrence boost.
 
 **It was removed** after a 2×2 A/B on the benchmark fixture showed it
 added **0.0 points** to top-k hit rate whether the synapse layer was on
-or off (71.7% → 71.7% cold, 83.3% → 83.3% warm), while the synapse layer
-alone added **+11.6 points**. The reranker was also runtime-inert on the
+or off (72% → 72% cold, 86% → 86% warm), while the synapse layer
+alone added **+14 points**. The reranker was also runtime-inert on the
 warm path — the synapse boost re-sort discarded its ordering anyway — it
 required the manual `neuralmind learn` step to populate, and its JSON
 captured a snapshot that went stale between runs. The synapse layer is

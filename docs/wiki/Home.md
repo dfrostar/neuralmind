@@ -14,13 +14,16 @@ smaller-scope.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **100% gold-file recall at 38–85× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost | Public benchmark, **real OSS repos** (`requests`, `click`) |
+| 💸 | **Cheaper context** | **85–100% gold-file recall (93.75% mean) at 45–259× fewer tokens** than pasting files — and beats `ripgrep` on *both* recall and cost on every repo | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+11.7 points (71.7%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+14 points (72%→86%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
 | 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
-(fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the **learning** and **grounding** rows are
+(fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the "beats ripgrep" claim is specifically
+against ripgrep — a bare vector-RAG baseline ties NeuralMind's recall at fewer
+tokens, see ["Where NeuralMind loses"](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md#where-neuralmind-loses);
+the **learning** and **grounding** rows are
 committed A/Bs on the bundled reference fixture, so they're real but
 smaller-scope. We report where NeuralMind *doesn't* win too — a well-tuned
 vector RAG ties it on pure findability and is cheaper on raw tokens; that's in
@@ -134,7 +137,7 @@ The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**:
 
 `neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (a measured **+6.5 points** on the reference fixture), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
 
-> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +12 pts, onboarding +11.6 pts, ChromaDB-free parity) with reproduction commands.
+> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +14 pts, onboarding +6.5 pts, ChromaDB-free parity) with reproduction commands.
 
 ### v0.14.0 — Measure faithfulness
 
@@ -234,7 +237,7 @@ sections.
 || **[Multi-Project-Scoping](Multi-Project-Scoping.md)** | Working across multiple codebases — isolation rules for NeuralMind, memU, and agent memory |
 || **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
-| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +12 pts, onboarding +11.6 pts, ChromaDB-free parity — with reproduction commands |
+| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +14 pts, onboarding +6.5 pts, ChromaDB-free parity — with reproduction commands |
 
 ### Enterprise & Deployment
 

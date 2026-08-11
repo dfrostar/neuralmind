@@ -18,6 +18,12 @@ from neuralmind import memory
 # NeuralMind's internal reference baseline per query (tokens a naive
 # "load everything relevant" turn would spend). Kept identical to the CLI's
 # historical constant so numbers don't shift between surfaces.
+#
+# This is deliberately NOT the same baseline docs/BUSINESS-CASE.md's ROI
+# formula uses (8,000 tok/query, $3/MTok). This constant measures your real
+# logged usage against a fixed reference point; the doc's formula is a
+# what-if projection with its own stated assumptions. The two numbers are
+# not meant to match — see "CLI vs. formula" in BUSINESS-CASE.md.
 BASELINE_TOKENS_PER_QUERY = 50_000
 
 
