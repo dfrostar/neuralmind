@@ -160,23 +160,23 @@ def tool_health(project_path: str) -> dict[str, Any]:
     """Lightweight health check for CI/CD, Docker, systemd."""
     import time
     from pathlib import Path
-    
+
     nm_dir = Path(project_path) / ".neuralmind"
     ir_path = nm_dir / "index_ir.json"
-    
+
     if not ir_path.exists():
         return {"status": "no_index", "healthy": False, "exit_code": 2}
-    
+
     try:
         ir_meta = json.loads(ir_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         ir_meta = {}
-    
+
     last_build = ir_meta.get("built_at", 0) or ir_path.stat().st_mtime
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
-    
+
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
-    
+
     synapse_count = 0
     synapse_path = nm_dir / "synapses.db"
     if synapse_path.exists():
@@ -185,7 +185,7 @@ def tool_health(project_path: str) -> dict[str, Any]:
             synapse_count = SynapseStore(synapse_path).stats().get("edges", 0)
         except Exception:
             pass
-    
+
     return {
         "status": "stale" if age_hours >= 24 else "healthy",
         "healthy": age_hours < 24,
