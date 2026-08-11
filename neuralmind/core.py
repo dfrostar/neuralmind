@@ -23,6 +23,7 @@ Usage:
 """
 
 import json
+import logging
 import os
 import threading
 from datetime import datetime
@@ -38,6 +39,8 @@ from .context_selector import ContextResult, ContextSelector
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapses import SynapseStore, default_db_path
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_HYBRID_HIGHLIGHT_COUNT = 3
 
@@ -279,6 +282,7 @@ class NeuralMind:
         try:
             return store.reinforce(node_ids, strength=strength)
         except Exception:
+            logger.debug("synapse_feedback.feed() failed", exc_info=True)
             return 0
 
     def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
@@ -345,7 +349,7 @@ class NeuralMind:
                         if nid:
                             file_node_ids.append(str(nid))
             except Exception:
-                pass
+                logger.debug("file node lookup failed for %s", fp, exc_info=True)
 
             if not file_node_ids:
                 continue
@@ -359,7 +363,7 @@ class NeuralMind:
                 try:
                     self.synapses.reinforce(file_node_ids + [syn_key], strength=0.8)
                 except Exception:
-                    pass
+                    logger.debug("compliance synapse reinforce failed", exc_info=True)
 
                 results.append(
                     {
@@ -1402,6 +1406,7 @@ class NeuralMind:
         try:
             return store.spread(seed_ids, depth=depth, top_k=top_k)
         except Exception:
+            logger.debug("_recall_for_selection spread failed", exc_info=True)
             return []
 
     def _recall_for_selection_detailed(
@@ -1419,6 +1424,7 @@ class NeuralMind:
         try:
             return store.spread_with_contributions(seed_ids, depth=depth, top_k=top_k)
         except Exception:
+            logger.debug("_recall_for_selection_detailed spread failed", exc_info=True)
             return [], {}
 
     def synaptic_neighbors(

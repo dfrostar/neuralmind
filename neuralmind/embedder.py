@@ -14,6 +14,7 @@ Key Features:
 
 import hashlib
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,8 @@ from chromadb.config import Settings
 
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
+
+logger = logging.getLogger(__name__)
 
 
 def _silence_chroma_telemetry() -> None:
