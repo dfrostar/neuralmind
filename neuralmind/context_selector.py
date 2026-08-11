@@ -793,10 +793,99 @@ class ContextSelector:
             node["_structural_recalled"] = True
         return kept + fetched
 
+    def _detect_intent(self, query: str) -> str:
+        """Detect query intent: 'code', 'docs', or 'hybrid'."""
+        query_lower = query.lower()
+        
+        # Code-framed indicators
+        code_keywords = [
+            'implement', 'function', 'class', 'method', 'code', 'source',
+            'file', 'def ', 'class ', 'import ', 'from ', 'module',
+            'component', 'handler', 'service', 'controller', 'model',
+            'route', 'endpoint', 'api', 'config', 'constant', 'type',
+            'interface', 'schema', 'query', 'mutation', 'migration',
+        ]
+        code_extensions = ['.py', '.ts', '.js', '.java', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.c', '.cpp', '.h', '.hpp', '.cs', '.scala', '.m', '.mm']
+        
+        # Doc-framed indicators
+        doc_keywords = [
+            'explain', 'what is', 'how does', 'documentation', 'readme', 'guide',
+            'tutorial', 'why', 'when should', 'concept', 'overview', 'architecture',
+            'design', 'pattern', 'principle', 'best practice', 'introduction',
+        ]
+        
+        # Check for code indicators
+        code_score = 0
+        for kw in code_keywords:
+            if kw in query_lower:
+                code_score += 1
+        for ext in code_extensions:
+            if ext in query_lower:
+                code_score += 2  # File extension is strong signal
+        
+        # Check for doc indicators
+        doc_score = 0
+        for kw in doc_keywords:
+            if kw in query_lower:
+                doc_score += 1
+        
+        # Check for file path patterns (strong code signal)
+        import re
+        if re.search(r'[a-zA-Z0-9_/\\]+\.[a-zA-Z]{2,4}\b', query):
+            code_score += 3
+        if re.search(r'\b(def|class|function|method|func)\s+\w+', query):
+            code_score += 3
+        
+        # Classify
+        threshold = float(os.environ.get("NEURALMIND_INTENT_THRESHOLD", "0.6"))
+        if code_score > doc_score * (1 + threshold):
+            return "code"
+        elif doc_score > code_score * (1 + threshold):
+            return "docs"
+        return "hybrid"
+
+    def _apply_intent_boost(self, results: list[dict], intent: str) -> list[dict]:
+        """Apply type-aware boost based on query intent."""
+        if intent == "hybrid":
+            return results
+        
+        # Boost factors (configurable via env vars)
+        code_boost = float(os.environ.get("NEURALMIND_CODE_BOOST", "3.0"))
+        doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
+        
+        for result in results:
+            meta = result.get("metadata", {})
+            file_type = meta.get("file_type", "")
+            source_file = meta.get("source_file", "")
+            
+            # Determine if node is code or doc
+            is_code = file_type == "code" or bool(source_file) and not source_file.endswith(('.md', '.markdown', '.txt', '.rst', '.org'))
+            is_doc = file_type in ("rationale", "document") or source_file.endswith(('.md', '.markdown', '.txt', '.rst', '.org'))
+            
+            if intent == "code":
+                if is_code:
+                    result["score"] = result.get("score", 0) * code_boost
+                    result["_intent_boost"] = code_boost
+                elif is_doc:
+                    result["score"] = result.get("score", 0) * 0.5
+                    result["_intent_boost"] = 0.5
+            elif intent == "docs":
+                if is_doc:
+                    result["score"] = result.get("score", 0) * doc_boost
+                    result["_intent_boost"] = doc_boost
+                elif is_code:
+                    result["score"] = result.get("score", 0) * 0.7
+                    result["_intent_boost"] = 0.7
+        
+        # Re-rank by boosted score
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        return results
+
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:
         """
         Layer 3: Deep semantic search results.
         Applies live synapse co-activation boosts when the graph is warm.
+        Applies type-aware re-ranking based on query intent.
 
         Returns:
             Tuple of (search_results_text, number of hits)
@@ -816,6 +905,10 @@ class ContextSelector:
         # co-activated with this query's top hits get a relevance nudge, so
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
+
+        # Apply type-aware re-ranking based on query intent
+        intent = self._detect_intent(query)
+        results = self._apply_intent_boost(results, intent)
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
         # relevance sidecar built from it) carry the same synapse_boost /

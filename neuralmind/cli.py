@@ -3953,7 +3953,7 @@ def main():
         "--type",
         choices=["auto", "code", "docs"],
         default="auto",
-        help="Filter results: 'code' restricts to source code, 'docs' to documentation, 'auto' includes both (default: auto)",
+        help="Filter results: 'code' restricts to source code, 'docs' to documentation, 'auto' detects intent (default: auto)",
     )
     query_p.add_argument(
         "--projects",
