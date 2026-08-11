@@ -39,6 +39,8 @@ from .context_selector import ContextResult, ContextSelector
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapses import SynapseStore, default_db_path
+from .synapse_client import SynapseClient
+from .query_handler import QueryHandler
 
 logger = logging.getLogger(__name__)
 
@@ -188,6 +190,8 @@ class NeuralMind:
         self.enable_synapses = enable_synapses
         self._synapses: SynapseStore | None = None
         self._synapses_lock = threading.Lock()
+        self._synapse_client: SynapseClient | None = None
+        self._query_handler: QueryHandler | None = None
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
         self._head_fingerprint: str | None = None
@@ -268,22 +272,23 @@ class NeuralMind:
                     self._synapses = store
         return store
 
-    def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
-        """Feed an activation signal into the synapse layer.
+    @property
+    def synapse_client(self) -> SynapseClient:
+        """Return the synapse client, creating it on first use."""
+        if self._synapse_client is None:
+            self._synapse_client = SynapseClient(self.synapses, Path(self.project_path))
+        return self._synapse_client
 
-        Hooks (UserPromptSubmit, PostToolUse) and the file watcher call
-        this with the nodes that fired together so the synapse store can
-        reinforce their pairwise edges. Returns the number of pairs touched,
-        or 0 when synapses are disabled.
-        """
-        store = self.synapses
-        if store is None or not node_ids:
-            return 0
-        try:
-            return store.reinforce(node_ids, strength=strength)
-        except Exception:
-            logger.debug("synapse_feedback.feed() failed", exc_info=True)
-            return 0
+    @property
+    def query_handler(self) -> QueryHandler:
+        """Return the query handler, creating it on first use."""
+        if self._query_handler is None:
+            self._query_handler = QueryHandler(self)
+        return self._query_handler
+
+    def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
+        """Feed an activation signal into the synapse layer."""
+        return self.synapse_client.activate(node_ids, strength=strength)
 
     def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
         """Co-activate every node in the touched files as one batch.
