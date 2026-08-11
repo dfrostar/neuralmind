@@ -118,6 +118,22 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
             re.IGNORECASE | re.VERBOSE,
         ),
     ),
+    # SOC 2: CC6.1, CC7.2, P1.1, PI1.4, etc. (Trust Services Criteria)
+    (
+        "SOC2",
+        re.compile(
+            r"""
+            (?:SOC\s*2?[:\s]+)?         # optional "SOC2" or "SOC 2" prefix
+            (?P<control_id>
+                [A-Z]{1,3}\d+\.\d+       # e.g. CC6.1, CC7.2, P1.1, PI1.4
+            )
+            [:\s]+
+            (?P<label>.+?)
+            (?:$|[.\n\r])
+            """,
+            re.IGNORECASE | re.VERBOSE,
+        ),
+    ),
 ]
 
 

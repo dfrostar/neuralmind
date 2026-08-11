@@ -82,6 +82,7 @@ EDGE_RELATIONS: frozenset[str] = frozenset(
         "rationale_for",
         "references",
         "defines",
+        "describes",
     }
 )
 

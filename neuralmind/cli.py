@@ -13,6 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
+from neuralmind.cli_feedback_status import cmd_feedback_bad, cmd_feedback_good, cmd_status
+from neuralmind.cli_health import cmd_health
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.metrics_pipeline import MetricsCollector
@@ -242,6 +244,12 @@ def cmd_build(args):
         print(f"Build failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
 
+    # Hint: auto-rebuild on commit to prevent stale-index drift
+    if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
+        print()
+        print("  💡 Keep the index fresh: neuralmind init-hook .  (auto-rebuild on every commit)")
+        print("     Or run: neuralmind watch .  (continuous file watcher + decay)")
+
 
 def _try_daemon():
     """Return a connected DaemonClient, or None to fall back to direct mode.
@@ -331,9 +339,71 @@ def _print_explain(result) -> None:
         print("  Tip: add --trace to see per-layer synapse firing detail.")
 
 
+def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
+    """Query across multiple projects and merge results."""
+    from pathlib import Path
+
+    trace = getattr(args, "trace", False) is True
+    explain = getattr(args, "explain", False) is True
+    if explain and not trace:
+        trace = True
+
+    all_hits = []
+    total_tokens = 0
+    errors = []
+    for proj_path in project_paths:
+        try:
+            mind = create_mind(proj_path, auto_build=True)
+            result = mind.query(args.question, trace=trace)
+            total_tokens += result.budget.total
+            for hit in result.top_search_hits:
+                hit["_project"] = Path(proj_path).name
+                all_hits.append(hit)
+        except Exception as e:
+            errors.append(f"{proj_path}: {e}")
+            continue
+
+    if errors:
+        print(f"⚠ {len(errors)} project(s) failed:", file=sys.stderr)
+        for e in errors:
+            print(f"   {e}", file=sys.stderr)
+    seen = {}
+    for hit in all_hits:
+        hid = hit.get("id", hit.get("label", ""))
+        if hid not in seen or hit.get("score", 0) > seen[hid].get("score", 0):
+            seen[hid] = hit
+    unique_hits = list(seen.values())
+
+    if args.json:
+        output = {
+            "query": args.question,
+            "projects": project_paths,
+            "tokens": total_tokens,
+            "results": len(unique_hits),
+            "hits": unique_hits[:20],
+        }
+        print(json.dumps(output, indent=2, default=str))
+    else:
+        print(f"Query: {args.question}  (cross-project: {len(project_paths)} repos)")
+        print(f"Tokens: {total_tokens} | Results: {len(unique_hits)}")
+        print("=" * 60)
+        for i, hit in enumerate(unique_hits[:20]):
+            score = hit.get("score", 0)
+            project = hit.get("_project", "?")
+            label = hit.get("label", hit.get("id", ""))[:60]
+            print(f"  {i+1}. [{project}] {label}  ({score:.3f})")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     _increment_wakeup_count()
+
+    # Handle cross-project query
+    projects_arg = getattr(args, "projects", None)
+    if projects_arg:
+        project_paths = [p.strip() for p in projects_arg.split(",") if p.strip()]
+        if len(project_paths) > 1:
+            return _cmd_query_cross_project(args, project_paths)
 
     # Migration check: warn on version mismatch before slow reindex
     _migrate_warning = _check_version_mismatch(args.project_path or ".")
@@ -351,11 +421,11 @@ def cmd_query(args):
     if explain and not trace:
         trace = True
 
-    # --relevance (sidecar from ContextResult.top_search_hits) and --explain
-    # (full per-layer breakdown) both need the full result object, which the
-    # daemon's thin query response does not carry — fall back to direct mode
-    # when either is requested.
-    client = None if (relevance or explain) else _try_daemon()
+    # --relevance, --explain, and --type all need the full result object,
+    # which the daemon's thin query response does not carry — fall back to
+    # direct mode when any is requested.
+    query_type = getattr(args, "type", "auto")
+    client = None if (relevance or explain or query_type != "auto") else _try_daemon()
     if client is not None:
         try:
             out = client.query(
@@ -388,12 +458,19 @@ def cmd_query(args):
                     print("=" * 60)
                     if trace:
                         _print_trace(out.get("trace"))
-                return
+                return None
         except Exception:
             pass  # fall through to direct mode
 
     mind = create_mind(args.project_path, auto_build=True)
-    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose)
+
+    # Apply type filter if specified
+    query_type = getattr(args, "type", "auto")
+
+    result = mind.query(
+        args.question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
+    )
+
     if args.json:
         output = {
             "query": args.question,
@@ -418,6 +495,7 @@ def cmd_query(args):
             _print_explain(result)
         elif trace:
             _print_trace(result.trace)
+    return None
 
 
 def _maybe_prompt_for_memory_opt_in():
@@ -1469,6 +1547,43 @@ def cmd_eval(args):
     print(harness.render_json(report) if args.json else harness.render_markdown(report))
 
 
+def cmd_synapse_prune(args) -> None:
+    """Prune stale synapses older than N days."""
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    db = Path(default_db_path(args.project_path))
+    if not db.exists():
+        print(f"No synapse store at {db}", file=sys.stderr)
+        sys.exit(1)
+    store = SynapseStore(db)
+    pruned = store.prune_stale(age_days=args.days)
+    if args.json:
+        print(json.dumps({"pruned": pruned, "age_days": args.days}))
+    else:
+        print(f"✓ Pruned {pruned} synapses older than {args.days} days")
+
+
+def cmd_synapse_stats(args) -> None:
+    """Show detailed synapse stats."""
+    from neuralmind.synapses import SynapseStore, default_db_path
+
+    db = Path(default_db_path(args.project_path))
+    if not db.exists():
+        print(f"No synapse store at {db}", file=sys.stderr)
+        sys.exit(1)
+    store = SynapseStore(db)
+    stats = store.stats_detailed()
+    if args.json:
+        print(json.dumps(stats, indent=2))
+        return
+    print(f"Synapse Stats — {stats['db_path']}")
+    print(f"  Edges:          {stats['edges']} ({stats['ltp_protected']} LTP-protected)")
+    print(f"  Stale (30d):    {stats.get('stale_30d', 0)}")
+    print(f"  Dormant:        {stats.get('dormant', 0)}")
+    print(f"  Transitions:    {stats['transitions']}")
+    print(f"  Total weight:   {stats['total_weight']:.2f}")
+
+
 def cmd_next(args):
     """Show what typically follows a node (file path or node id) in the
     learned directional-transition graph."""
@@ -1588,6 +1703,34 @@ def cmd_audit_verify(args):
             file=sys.stderr,
         )
         sys.exit(1)
+
+
+def cmd_audit_recent(args):
+    """Show recent audit events — quick operational visibility."""
+    trail = AuditTrail(args.project_path)
+    events = trail.search(
+        category=args.category,
+        action=args.action,
+        actor=args.actor,
+        since=args.since,
+        limit=args.limit,
+    )
+    if args.json:
+        print(json.dumps(events, indent=2, default=str))
+        return
+    if not events:
+        print("No audit events found.")
+        return
+    print(f"Recent audit events ({len(events)} shown):")
+    print(f"  {'Timestamp':<24} {'Category':<12} {'Action':<20} {'Actor':<12} Target")
+    print("  " + "-" * 80)
+    for evt in events:
+        ts = evt.get("timestamp", "")[:19]
+        cat = evt.get("category", "")[:11]
+        act = evt.get("action", "")[:19]
+        actor = evt.get("actor", "")[:11]
+        target = str(evt.get("target", ""))[:30]
+        print(f"  {ts:<24} {cat:<12} {act:<20} {actor:<12} {target}")
 
 
 def cmd_memory(args):
@@ -3800,6 +3943,16 @@ def main():
         "token savings, layers used, communities loaded, top search hits, "
         "and which synapses fired.",
     )
+    query_p.add_argument(
+        "--type",
+        choices=["auto", "code", "docs"],
+        default="auto",
+        help="Filter results: 'code' restricts to source code, 'docs' to documentation, 'auto' detects intent (default: auto)",
+    )
+    query_p.add_argument(
+        "--projects",
+        help="Comma-separated list of project paths to query (cross-project). If specified, overrides project_path.",
+    )
     query_p.set_defaults(func=cmd_query)
 
     wakeup_p = subparsers.add_parser("wakeup", help="Get wake-up context")
@@ -3986,6 +4139,15 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    # health command — lightweight health check for CI/CD
+    health_p = subparsers.add_parser(
+        "health",
+        help="Check NeuralMind health (exit 0=healthy, 1=stale, 2=no index)",
+    )
+    health_p.add_argument("project_path", nargs="?", default=".")
+    health_p.add_argument("--json", "-j", action="store_true")
+    health_p.set_defaults(func=cmd_health)
 
     metrics_p = subparsers.add_parser(
         "metrics",
@@ -4199,12 +4361,51 @@ def main():
     audit_verify.add_argument("--json", "-j", action="store_true")
     audit_verify.set_defaults(func=cmd_audit_verify)
 
+    audit_recent = audit_sub.add_parser(
+        "recent",
+        help="Show recent audit events (last N, or filter by category/action/actor)",
+    )
+    audit_recent.add_argument("project_path", nargs="?", default=".")
+    audit_recent.add_argument(
+        "-n", "--limit", type=int, default=20, help="Number of events to show (default: 20)"
+    )
+    audit_recent.add_argument("--category", help="Filter by category (substring)")
+    audit_recent.add_argument("--action", help="Filter by action (substring)")
+    audit_recent.add_argument("--actor", help="Filter by actor (substring)")
+    audit_recent.add_argument("--since", help="ISO-8601 lower bound on timestamp")
+    audit_recent.add_argument("--json", "-j", action="store_true")
+    audit_recent.set_defaults(func=cmd_audit_recent)
+
     # memory command group — namespace controls over learned memory (PRD 4)
     memory_p = subparsers.add_parser(
         "memory",
         help="Inspect, reset, export, or import learned synapse memory by namespace",
     )
     memory_sub = memory_p.add_subparsers(dest="memory_cmd", required=True)
+
+    # feedback command — explicit good/bad adjustment of last-reinforced edges
+    feedback_p = subparsers.add_parser(
+        "feedback",
+        help="Adjust the last query's reinforced edges: 'good' boosts, 'bad' penalizes",
+    )
+    feedback_sub = feedback_p.add_subparsers(dest="feedback_cmd", required=True)
+    feedback_good_p = feedback_sub.add_parser("good", help="Last result was useful (+0.60)")
+    feedback_good_p.add_argument("project_path", nargs="?", default=".")
+    feedback_good_p.add_argument("--json", "-j", action="store_true")
+    feedback_good_p.set_defaults(func=cmd_feedback_good)
+    feedback_bad_p = feedback_sub.add_parser("bad", help="Last result was wrong (-0.30)")
+    feedback_bad_p.add_argument("project_path", nargs="?", default=".")
+    feedback_bad_p.add_argument("--json", "-j", action="store_true")
+    feedback_bad_p.set_defaults(func=cmd_feedback_bad)
+
+    # status command — synapse dashboard + 'is it learning?' diagnostic
+    status_p = subparsers.add_parser(
+        "status",
+        help="Show synapse memory health: edge counts, weight distribution, and whether the layer is actively learning",
+    )
+    status_p.add_argument("project_path", nargs="?", default=".")
+    status_p.add_argument("--json", "-j", action="store_true")
+    status_p.set_defaults(func=cmd_status)
 
     mem_inspect = memory_sub.add_parser(
         "inspect", help="Show learned memory contribution by namespace"
@@ -4286,6 +4487,30 @@ def main():
     mem_review_reject.add_argument("project_path", nargs="?", default=".")
     mem_review_reject.add_argument("--json", "-j", action="store_true")
     mem_review_reject.set_defaults(func=cmd_memory)
+
+    # synapse command group — prune + detailed stats
+    synapse_p = subparsers.add_parser(
+        "synapse",
+        help="Prune stale synapses and view detailed stats",
+    )
+    synapse_sub = synapse_p.add_subparsers(dest="synapse_cmd", required=True)
+
+    synapse_prune = synapse_sub.add_parser(
+        "prune",
+        help="Remove synapses older than N days (default: 30)",
+    )
+    synapse_prune.add_argument("project_path", nargs="?", default=".")
+    synapse_prune.add_argument("--days", type=int, default=30, help="Age threshold in days")
+    synapse_prune.add_argument("--json", "-j", action="store_true")
+    synapse_prune.set_defaults(func=cmd_synapse_prune)
+
+    synapse_stats = synapse_sub.add_parser(
+        "stats",
+        help="Show detailed synapse stats (total, active, stale, LTP)",
+    )
+    synapse_stats.add_argument("project_path", nargs="?", default=".")
+    synapse_stats.add_argument("--json", "-j", action="store_true")
+    synapse_stats.set_defaults(func=cmd_synapse_stats)
 
     mem_staleness_scan = memory_sub.add_parser(
         "staleness-scan",

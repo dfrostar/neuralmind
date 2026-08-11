@@ -213,9 +213,59 @@ def _make_parser(language: str = "python"):
         return parser
 
 
+def _parse_ignore_file(project_path: Path) -> frozenset[str]:
+    """Load `.neuralmindignore` patterns if present.
+
+    Supports `.gitignore`-style glob patterns. Lines starting with ``#``
+    are comments; blank lines are ignored.
+    """
+    ignore_path = project_path / ".neuralmindignore"
+    if not ignore_path.exists():
+        return frozenset()
+    try:
+        content = ignore_path.read_text(encoding="utf-8")
+    except OSError:
+        return frozenset()
+    patterns: set[str] = set()
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.add(line)
+    return frozenset(patterns)
+
+
+def _is_ignored(rel_path: str, patterns: frozenset[str]) -> bool:
+    """Check if a project-relative path matches any ignore pattern."""
+    if not patterns:
+        return False
+    from fnmatch import fnmatch
+
+    parts = rel_path.split("/")
+    for pattern in patterns:
+        # Match against full path
+        if fnmatch(rel_path, pattern):
+            return True
+        # Match against filename alone
+        if fnmatch(parts[-1], pattern):
+            return True
+        # Match directory prefix (e.g., "docs/" matches "docs/foo.md")
+        if pattern.endswith("/") and len(parts) > 1:
+            if fnmatch(rel_path, pattern[:-1]):
+                return True
+            if any(fnmatch(p, pattern[:-1]) for p in parts[:-1]):
+                return True
+    return False
+
+
 def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -> list[Path]:
-    """All files under ``root`` with a suffix in ``suffixes``, skipping ignores."""
+    """All files under ``root`` with a suffix in ``suffixes``, skipping ignores.
+
+    Honors ``.neuralmindignore`` if present — ``.gitignore``-style patterns
+    that exclude files from the index (e.g. ``docs/``, ``*.md``, ``tests/``).
+    """
     out: list[Path] = []
+    extra_ignores = _parse_ignore_file(root)
 
     def walk(d: Path) -> None:
         try:
@@ -223,16 +273,18 @@ def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -
         except (OSError, PermissionError):
             return
         for p in entries:
+            rel = p.relative_to(root).as_posix()
             if p.name in ignores or p.name.startswith("."):
                 # Skip dot-directories and ignored names; files matching a
                 # wanted suffix still pass below even if dotfile-named (rare).
                 if p.is_dir():
                     continue
             if p.is_dir():
-                if p.name not in ignores:
+                if p.name not in ignores and not _is_ignored(rel, extra_ignores):
                     walk(p)
             elif p.suffix in suffixes:
-                out.append(p)
+                if not _is_ignored(rel, extra_ignores):
+                    out.append(p)
 
     walk(root)
     return out

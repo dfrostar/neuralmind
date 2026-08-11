@@ -664,6 +664,71 @@ class SynapseStore:
 
         return len(pairs)
 
+    def penalize(
+        self,
+        node_ids: Iterable[str],
+        penalty: float = 0.3,
+        now: float | None = None,
+        namespace: str | None = None,
+    ) -> int:
+        """Anti-Hebbian: reduce weights on every pairwise edge in node_ids.
+
+        The explicit-feedback 'bad' path: when a user flags the last query
+        as unhelpful, the edges it reinforced are penalized so they surface
+        less on future similar queries. Weights floor at 0 (never go
+        negative). Edges that decay below PRUNE_THRESHOLD are deleted.
+
+        Returns the number of pairs touched. Self-pairs and duplicates are
+        ignored. Each node's activation counter is NOT incremented —
+        penalization is a pure weight reduction, not an activation signal.
+        """
+        ids = [n for n in dict.fromkeys(node_ids) if n]
+        if not ids:
+            return 0
+        ns = normalize_namespace(namespace) if namespace else self.namespace
+        penalty = max(0.0, min(penalty, WEIGHT_CAP))
+
+        pairs: list[tuple[str, str]] = []
+        for i, a in enumerate(ids):
+            for b in ids[i + 1 :]:
+                pair = _canonical(a, b)
+                if pair is not None:
+                    pairs.append(pair)
+
+        if not pairs:
+            return 0
+
+        with self._connect() as conn:
+            conn.execute("BEGIN")
+            try:
+                conn.executemany(
+                    """
+                    UPDATE synapses
+                    SET weight = MAX(0.0, weight - ?)
+                    WHERE node_a = ? AND node_b = ? AND namespace = ?
+                    """,
+                    [(penalty, a, b, ns) for a, b in pairs],
+                )
+                # Delete only penalized edges that fell below prune threshold
+                # LTP-protected edges (activation_count >= LTP_THRESHOLD) are preserved
+                placeholders = ",".join(["(?,?)"] * len(pairs))
+                flat = [item for pair in pairs for item in pair]
+                conn.execute(
+                    f"""
+                    DELETE FROM synapses
+                    WHERE namespace = ?
+                    AND weight <= ?
+                    AND activation_count < ?
+                    AND (node_a, node_b) IN ({placeholders})
+                    """,
+                    (ns, PRUNE_THRESHOLD, LTP_THRESHOLD, *flat),
+                )
+                conn.execute("COMMIT")
+            except Exception:
+                conn.execute("ROLLBACK")
+                raise
+        return len(pairs)
+
     def record_sequence(
         self,
         ordered_ids: Iterable[str],
@@ -2198,6 +2263,42 @@ class SynapseStore:
             "transitions": int(transitions),
             "activations": int(activations),
         }
+
+    def prune_stale(self, age_days: int | None = None) -> int:
+        """Remove synapses older than N days.
+
+        LTP-protected edges (activation_count >= LTP_THRESHOLD) are preserved
+        to maintain learned associations.
+        """
+        if age_days is None:
+            return 0
+        cutoff = time.time() - (age_days * 86400)
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                DELETE FROM synapses
+                WHERE last_activated < ?
+                AND activation_count < ?
+                """,
+                (cutoff, LTP_THRESHOLD),
+            )
+            return cur.rowcount
+
+    def stats_detailed(self) -> dict:
+        """Detailed synapse stats for diagnostics."""
+        basic = self.stats()
+        with self._connect() as conn:
+            stale = conn.execute(
+                "SELECT COUNT(*) FROM synapses WHERE last_activated < ?",
+                (time.time() - 30 * 86400,),
+            ).fetchone()[0]
+            dormant = conn.execute(
+                "SELECT COUNT(*) FROM synapses WHERE activation_count <= 1",
+            ).fetchone()[0]
+        basic["stale_30d"] = int(stale)
+        basic["dormant"] = int(dormant)
+        basic["ltp_protected"] = basic.get("ltp_edges", 0)
+        return basic
 
     def reset(self) -> None:
         """Drop all synapses, transitions, and activations. Useful for
