@@ -3,7 +3,7 @@
 const dataPoints = [
     { metric: 'Query Latency', value: '0.81s', detail: 'on 1,486-node repo (TurboVec)' },
     { metric: 'Token Reduction', value: '63.6×', detail: 'on live production codebase' },
-    { metric: 'Gold-File Recall', value: '100%', detail: 'on public benchmark (requests, click)' },
+    { metric: 'Gold-File Recall', value: '79-100%', detail: 'on public benchmark (requests, click, flask, rich)' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command' },
     { metric: 'Ongoing overhead', value: '~0', detail: 'post-commit hook auto-rebuilds' },
 ];

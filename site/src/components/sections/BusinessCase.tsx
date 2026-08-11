@@ -17,7 +17,7 @@ const cards = [
         title: 'Fewer wrong answers, faster teams',
         accent: 'text-electric',
         points: [
-            '100% gold-file recall on the public benchmark (requests, click).',
+            '79-100% gold-file recall (93.75% mean) on the public benchmark (requests, click, flask, rich).',
             'Team dashboard shows synapse memory health, ingestion status, savings, latency trends — all read-only, all local.',
             'Self-documenting code: DocEvolver finds undocumented methods and evolves JSDoc that actually improves retrieval.',
             '100% local with zero code egress — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
