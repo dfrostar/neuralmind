@@ -796,24 +796,80 @@ class ContextSelector:
     def _detect_intent(self, query: str) -> str:
         """Detect query intent: 'code', 'docs', or 'hybrid'."""
         query_lower = query.lower()
-        
+
         # Code-framed indicators
         code_keywords = [
-            'implement', 'function', 'class', 'method', 'code', 'source',
-            'file', 'def ', 'class ', 'import ', 'from ', 'module',
-            'component', 'handler', 'service', 'controller', 'model',
-            'route', 'endpoint', 'api', 'config', 'constant', 'type',
-            'interface', 'schema', 'query', 'mutation', 'migration',
+            "implement",
+            "function",
+            "class",
+            "method",
+            "code",
+            "source",
+            "file",
+            "def ",
+            "class ",
+            "import ",
+            "from ",
+            "module",
+            "component",
+            "handler",
+            "service",
+            "controller",
+            "model",
+            "route",
+            "endpoint",
+            "api",
+            "config",
+            "constant",
+            "type",
+            "interface",
+            "schema",
+            "query",
+            "mutation",
+            "migration",
         ]
-        code_extensions = ['.py', '.ts', '.js', '.java', '.go', '.rs', '.rb', '.php', '.swift', '.kt', '.c', '.cpp', '.h', '.hpp', '.cs', '.scala', '.m', '.mm']
-        
+        code_extensions = [
+            ".py",
+            ".ts",
+            ".js",
+            ".java",
+            ".go",
+            ".rs",
+            ".rb",
+            ".php",
+            ".swift",
+            ".kt",
+            ".c",
+            ".cpp",
+            ".h",
+            ".hpp",
+            ".cs",
+            ".scala",
+            ".m",
+            ".mm",
+        ]
+
         # Doc-framed indicators
         doc_keywords = [
-            'explain', 'what is', 'how does', 'documentation', 'readme', 'guide',
-            'tutorial', 'why', 'when should', 'concept', 'overview', 'architecture',
-            'design', 'pattern', 'principle', 'best practice', 'introduction',
+            "explain",
+            "what is",
+            "how does",
+            "documentation",
+            "readme",
+            "guide",
+            "tutorial",
+            "why",
+            "when should",
+            "concept",
+            "overview",
+            "architecture",
+            "design",
+            "pattern",
+            "principle",
+            "best practice",
+            "introduction",
         ]
-        
+
         # Check for code indicators
         code_score = 0
         for kw in code_keywords:
@@ -822,25 +878,26 @@ class ContextSelector:
         for ext in code_extensions:
             if ext in query_lower:
                 code_score += 2  # File extension is strong signal
-        
+
         # Check for doc indicators
         doc_score = 0
         for kw in doc_keywords:
             if kw in query_lower:
                 doc_score += 1
-        
+
         # Check for file path patterns (strong code signal)
         import re
-        if re.search(r'[a-zA-Z0-9_/\\]+\.[a-zA-Z]{2,4}\b', query):
+
+        if re.search(r"[a-zA-Z0-9_/\\]+\.[a-zA-Z]{2,4}\b", query):
             code_score += 3
-        if re.search(r'\b(def|class|function|method|func)\s+\w+', query):
+        if re.search(r"\b(def|class|function|method|func)\s+\w+", query):
             code_score += 3
-        
+
         # Classify
         threshold = float(os.environ.get("NEURALMIND_INTENT_THRESHOLD", "0.6"))
         if code_score > doc_score * (1 + threshold):
             return "code"
-        elif doc_score > code_score * (1 + threshold):
+        if doc_score > code_score * (1 + threshold):
             return "docs"
         return "hybrid"
 
@@ -848,7 +905,7 @@ class ContextSelector:
         """Apply type-aware boost based on query intent."""
         if intent == "hybrid":
             return results
-        
+
         # Boost factors (configurable via env vars)
         code_boost = float(os.environ.get("NEURALMIND_CODE_BOOST", "3.0"))
         doc_boost = float(os.environ.get("NEURALMIND_DOC_BOOST", "2.0"))
@@ -856,11 +913,13 @@ class ContextSelector:
             meta = result.get("metadata", {})
             file_type = meta.get("file_type", "")
             source_file = meta.get("source_file", "")
-            
+
             # Determine if node is code or doc (mutually exclusive)
-            is_doc = file_type in ("rationale", "document") or source_file.endswith(('.md', '.markdown', '.txt', '.rst', '.org'))
+            is_doc = file_type in ("rationale", "document") or source_file.endswith(
+                (".md", ".markdown", ".txt", ".rst", ".org")
+            )
             is_code = not is_doc and (file_type == "code" or bool(source_file))
-            
+
             if intent == "code":
                 if is_code:
                     result["score"] = result.get("score", 0) * code_boost
@@ -875,7 +934,7 @@ class ContextSelector:
                 else:
                     result["score"] = result.get("score", 0) * 0.7
                     result["_intent_boost"] = 0.7
-        
+
         # Re-rank by boosted score
         results.sort(key=lambda x: x.get("score", 0), reverse=True)
         return results

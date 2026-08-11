@@ -342,7 +342,7 @@ def _print_explain(result) -> None:
 def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
     """Query across multiple projects and merge results."""
     from pathlib import Path
-    
+
     trace = getattr(args, "trace", False) is True
     explain = getattr(args, "explain", False) is True
     if explain and not trace:
@@ -458,17 +458,19 @@ def cmd_query(args):
                     print("=" * 60)
                     if trace:
                         _print_trace(out.get("trace"))
-                return
+                return None
         except Exception:
             pass  # fall through to direct mode
 
     mind = create_mind(args.project_path, auto_build=True)
-    
+
     # Apply type filter if specified
     query_type = getattr(args, "type", "auto")
-    
-    result = mind.query(args.question, trace=trace, trace_verbose=trace_verbose, query_type=query_type)
-    
+
+    result = mind.query(
+        args.question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
+    )
+
     if args.json:
         output = {
             "query": args.question,
@@ -493,6 +495,7 @@ def cmd_query(args):
             _print_explain(result)
         elif trace:
             _print_trace(result.trace)
+    return None
 
 
 def _maybe_prompt_for_memory_opt_in():
@@ -4363,7 +4366,9 @@ def main():
         help="Show recent audit events (last N, or filter by category/action/actor)",
     )
     audit_recent.add_argument("project_path", nargs="?", default=".")
-    audit_recent.add_argument("-n", "--limit", type=int, default=20, help="Number of events to show (default: 20)")
+    audit_recent.add_argument(
+        "-n", "--limit", type=int, default=20, help="Number of events to show (default: 20)"
+    )
     audit_recent.add_argument("--category", help="Filter by category (substring)")
     audit_recent.add_argument("--action", help="Filter by action (substring)")
     audit_recent.add_argument("--actor", help="Filter by actor (substring)")

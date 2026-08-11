@@ -1225,7 +1225,11 @@ class NeuralMind:
         return result
 
     def query(
-        self, question: str, trace: bool = False, trace_verbose: bool = False, query_type: str = "auto"
+        self,
+        question: str,
+        trace: bool = False,
+        trace_verbose: bool = False,
+        query_type: str = "auto",
     ) -> ContextResult:
         """
         Get optimized context for answering a question.
@@ -1245,7 +1249,9 @@ class NeuralMind:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        result = self.selector.get_query_context(question, trace=trace, trace_verbose=trace_verbose, query_type=query_type)
+        result = self.selector.get_query_context(
+            question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
+        )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:

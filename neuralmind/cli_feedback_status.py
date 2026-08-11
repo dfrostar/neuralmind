@@ -11,8 +11,8 @@ import json
 import sys
 from pathlib import Path
 
-from .synapses import LEARNING_RATE, SynapseStore, default_db_path
 from .namespaces import resolve_namespace
+from .synapses import LEARNING_RATE, SynapseStore, default_db_path
 
 
 def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
@@ -20,8 +20,8 @@ def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
 
     Returns (node_ids, error_message). On success error_message is "".
     """
-    from .recent_queries import read_recent
     from .core import NeuralMind
+    from .recent_queries import read_recent
 
     recent_path = project_path / ".neuralmind" / NeuralMind.RECENT_QUERIES_FILENAME
     records = read_recent(recent_path, n=1)
@@ -31,7 +31,10 @@ def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
     top_hits = record.get("top_hits", [])
     node_ids = [h["id"] for h in top_hits if h.get("id")]
     if len(node_ids) < 2:
-        return None, f"Last query ({record.get('question', '?')[:60]!r}) has <2 hits — nothing to adjust."
+        return (
+            None,
+            f"Last query ({record.get('question', '?')[:60]!r}) has <2 hits — nothing to adjust.",
+        )
     return node_ids, ""
 
 
@@ -45,7 +48,10 @@ def cmd_feedback_good(args) -> None:
 
     db = default_db_path(project_path)
     if not db.exists():
-        print(f"No synapse store at {db}. Run `neuralmind build {project_path}` first.", file=sys.stderr)
+        print(
+            f"No synapse store at {db}. Run `neuralmind build {project_path}` first.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     ns = resolve_namespace(project_path)
@@ -78,7 +84,10 @@ def cmd_feedback_bad(args) -> None:
 
     db = default_db_path(project_path)
     if not db.exists():
-        print(f"No synapse store at {db}. Run `neuralmind build {project_path}` first.", file=sys.stderr)
+        print(
+            f"No synapse store at {db}. Run `neuralmind build {project_path}` first.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     ns = resolve_namespace(project_path)
@@ -189,6 +198,6 @@ def cmd_status(args) -> None:
     print()
     print(f"  {diagnosis}")
     if result["top_hubs"]:
-        print(f"\n  Top hubs:")
+        print("\n  Top hubs:")
         for hub in result["top_hubs"][:5]:
             print(f"    {hub['node'][:40]:40s}  degree {hub['degree']}")

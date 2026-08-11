@@ -686,7 +686,6 @@ class SynapseStore:
         if not ids:
             return 0
         ns = normalize_namespace(namespace) if namespace else self.namespace
-        ts = now if now is not None else time.time()
         penalty = max(0.0, min(penalty, WEIGHT_CAP))
 
         pairs: list[tuple[str, str]] = []
@@ -2267,7 +2266,7 @@ class SynapseStore:
 
     def prune_stale(self, age_days: int | None = None) -> int:
         """Remove synapses older than N days.
-        
+
         LTP-protected edges (activation_count >= LTP_THRESHOLD) are preserved
         to maintain learned associations.
         """
