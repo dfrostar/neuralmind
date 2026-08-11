@@ -40,6 +40,13 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_health",
         "neuralmind_benchmark",
         "neuralmind_skeleton",
+        "neuralmind_savings",
+        "neuralmind_compliance_report",
+        "neuralmind_structural_gaps",
+        "neuralmind_synapse_stats",
+        "neuralmind_synapse_decay",
+        "neuralmind_export_synapse_memory",
+        "neuralmind_feedback",
     },
 }
 
