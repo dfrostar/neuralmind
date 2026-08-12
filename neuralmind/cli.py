@@ -348,6 +348,10 @@ def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
     if explain and not trace:
         trace = True
 
+    if not project_paths or len(project_paths) < 2:
+        print("Error: --projects requires at least 2 project paths", file=sys.stderr)
+        sys.exit(2)
+
     all_hits = []
     total_tokens = 0
     errors = []
