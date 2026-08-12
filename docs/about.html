@@ -200,6 +200,28 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v314">
+            <h2>What's New in v3.1.4 — Dogfood Fixes + Code/Document Scoring</h2>
+            <p><strong>All 12 dogfood issues from v3.1.2 resolved.</strong> Plus: automatic code/document intent detection, health check endpoint, synapse pruning, and cross-project search.</p>
+            <h3>What's fixed</h3>
+            <ul>
+                <li><strong>P0:</strong> Role-gated MCP tools, auto-rebuild hint, incremental build</li>
+                <li><strong>P1:</strong> <code>.neuralmindignore</code> support, markdown bloat cleanup</li>
+                <li><strong>P2:</strong> Unknown edge relations, audit trail queries, SOC2 detection, type filter, cross-project search</li>
+                <li><strong>P3:</strong> Synapse pruning, health check endpoint</li>
+            </ul>
+            <h3>What's new</h3>
+            <ul>
+                <li><strong>Intent detection</strong> — auto-detects code vs doc queries, boosts relevant nodes 2-3×</li>
+                <li><strong>Health check</strong> — <code>neuralmind health</code> with exit codes (0/1/2) for CI/CD</li>
+                <li><strong>Synapse pruning</strong> — <code>neuralmind synapse prune/stats</code> with LTP protection</li>
+                <li><strong>Cross-project search</strong> — <code>neuralmind query --projects a,b "question"</code></li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.1.4.md">v3.1.4 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v1110">
             <h2>What's New in v1.11.0 — Non-code ingestion</h2>
             <p><strong>Code intelligence is only half the picture.</strong> Teams have compliance guides, product specs, tribal knowledge in PDFs and Markdown — documents the agent can't see. <code>neuralmind learn &lt;file&gt;</code> ingests PDFs, Markdown, and plain text into the same vector space as code, so queries surface documents alongside symbols.</p>

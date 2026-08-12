@@ -45,6 +45,24 @@ Graded relevance (0-3) + standard IR metrics (nDCG@5, MRR, recall@k, precision@k
 
 `seed_from_documents()` builds deterministic, LLM-free associations between business documents (decisions, SOPs, meeting notes, policies) and your code graph. Compound matches require adjacency in text (not just presence), title-reference cross-linking connects related business docs, and frequency-capped tags prevent common terms from dominating. 56 tests. This is the backbone of the "second brain" expansion (N-06 scope decision).
 
+### v3.1.4 — Dogfood Fixes + Code/Document Scoring (August 2026)
+
+v3.1.4 resolves all 12 dogfood issues from v3.1.2 and introduces **code/document scoring** for better retrieval precision.
+
+**What's fixed:**
+- P0: Role-gated tools, auto-rebuild hint, incremental build
+- P1: `.neuralmindignore`, markdown bloat
+- P2: Unknown edge relations, audit queries, SOC2, type filter, cross-project
+- P3: Synapse pruning, health check endpoint
+
+**What's new:**
+- **Intent detection** — auto-detects code vs doc queries, boosts relevant nodes 2-3×
+- **Health check** — `neuralmind health` with exit codes (0/1/2) for CI/CD
+- **Synapse pruning** — `neuralmind synapse prune/stats` with LTP protection
+- **Cross-project search** — `neuralmind query --projects a,b "question"`
+
+Full details: [RELEASE_NOTES_v3.1.4.md](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.1.4.md)
+
 ### v3.0.2 — Post-Extraction Cleanup (August 2026)
 
 The self-improving loop (signal→insight→experiment→promote) was extracted to a private repo (`dfrostar/agencyOS`). NeuralMind is now pure code intelligence — the public package ships only what your agent needs.

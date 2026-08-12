@@ -19,6 +19,7 @@ together, what you usually touch next — and remembers it across sessions.
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
 > - Receives PostToolUse compression automatically (Bash output → errors + signals)
 > - Queries your codebase in ~800 tokens instead of ~50,000
+> - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 >
 > **Works with every IDE your team already uses.**
 

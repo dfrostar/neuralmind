@@ -72,6 +72,41 @@ neuralmind query --help
 
 ## Commands
 
+### audit recent *(v3.1.4+)*
+
+Query recent audit trail events.
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `-n` | No | `10` | Number of events to show |
+| `--category` | No | — | Filter by category (backend, compliance, audit) |
+| `--action` | No | — | Filter by action (build, query, export) |
+| `--actor` | No | — | Filter by actor |
+| `--since` | No | — | Filter by timestamp (ISO 8601) |
+
+#### Output
+
+Recent audit events in tabular format.
+
+#### Examples
+
+```bash
+# Show last 10 audit events
+neuralmind audit recent
+
+# Show last 20 events since a specific date
+neuralmind audit recent -n 20 --since "2026-08-01"
+
+# Show only backend builds
+neuralmind audit recent --category backend --action build
+```
+
+#### Prerequisites
+
+Requires an initialized project with audit trail.
+
 ### build
 
 Build or rebuild the neural index from a knowledge graph.
@@ -148,6 +183,26 @@ Query the codebase with natural language and get optimized context.
 ```bash
 neuralmind query <project_path> "<question>" [OPTIONS]
 ```
+
+#### Type Filter *(v3.1.4+)*
+
+Filter results by node type:
+
+| Flag | Description |
+|------|-------------|
+| `--type code` | Restrict to source code only |
+| `--type docs` | Restrict to documentation only |
+| `--type auto` | Auto-detect intent (default) |
+
+#### Cross-Project Search *(v3.1.4+)*
+
+Query across multiple indexed projects:
+
+```bash
+neuralmind query --projects /repo/a,/repo/b "authentication logic"
+```
+
+Results are tagged with source project and deduplicated by ID.
 
 #### Arguments
 
@@ -740,6 +795,74 @@ neuralmind stats <project_path> [OPTIONS]
 Displays:
 - Node counts by type
 - Community statistics
+- Synapse edge count and total weight
+- Embedding model and backend info
+
+#### Examples
+
+```bash
+neuralmind stats .
+neuralmind stats /path/to/project --json
+```
+
+### synapse prune *(v3.1.4+)*
+
+Remove stale synapses older than N days.
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+
+#### Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--days` | None | Age threshold in days (required) |
+| `--json`, `-j` | False | Output as JSON |
+
+#### Output
+
+Number of synapses pruned.
+
+#### Notes
+
+LTP-protected edges (≥5 activations) are preserved to maintain learned associations.
+
+#### Examples
+
+```bash
+# Prune synapses older than 30 days
+neuralmind synapse prune . --days 30
+
+# Preview what would be pruned (use stats first)
+neuralmind synapse stats .
+```
+
+### synapse stats *(v3.1.4+)*
+
+Detailed synapse diagnostics.
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | Yes | Path to project root |
+
+#### Output
+
+- Total edges
+- LTP-protected count
+- Stale (30+ days inactive)
+- Dormant (≤1 activation)
+- Total weight
+
+#### Examples
+
+```bash
+neuralmind synapse stats .
+```
 - Embedding information
 - Index storage size
 - Last build timestamp
@@ -1843,15 +1966,75 @@ Subjects: `resolveOrgId`, `authMiddleware`
 
 - `resolveOrgId`, `authMiddleware`: resolveOrgId is per-handler, not middleware —
   avoids Prisma on /health, /metrics, /token; keeps tests simple. (see commit ba25fed)
+### doctor *(v0.12.0+)*
+
+Run diagnostic checks on the index.
+
+### eval *(v0.14.0+)*
+
+Evaluate retrieval quality.
+
+### feedback good/bad *(v3.1.4+)*
+
+Provide explicit feedback on the last query's results.
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--json` | No | `false` | Output as JSON |
+
+#### Output
+
+Confirmation of edges boosted or penalized.
+
+#### Examples
+
+```bash
+# Boost edges from last query (good feedback)
+neuralmind feedback good .
+
+# Penalize edges from last query (bad feedback)
+neuralmind feedback bad .
 ```
 
-At prompt time the same decisions are injected automatically on `UserPromptSubmit` when their subjects appear in the agent's prompt (toggle with `NEURALMIND_PROVENANCE_INJECT`).
+#### Prerequisites
 
-### gaps *(v0.44.0+)*
+Requires a synapse store with edges from a previous query.
 
-Find endpoints tested only in mock mode — the coverage that reads as "green" but never exercises the live database.
+### health *(v3.1.4+)*
 
-Scans a project's JS/TS source for Express route registrations and its test files for the routes they exercise, then classifies each endpoint. An endpoint that passes only under a mocked store (accepts any string where Postgres would reject a non-UUID foreign key) is the shape that ships a `P2003` to a live smoke test.
+Check NeuralMind health status.
+
+#### Arguments
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `--json` | No | `false` | Output as JSON |
+
+#### Output
+
+Health status: healthy, stale (index ≥24h old), or no index.
+
+#### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Healthy |
+| 1 | Stale (index ≥24h old) |
+| 2 | No index |
+
+#### Examples
+
+```bash
+# Check health
+neuralmind health .
+
+# Use in CI/CD
+neuralmind health . || echo "Index needs rebuild"
+```
+
+### learn — document ingestion *(v1.11.0+)*
 
 ```bash
 neuralmind gaps [project_path]
