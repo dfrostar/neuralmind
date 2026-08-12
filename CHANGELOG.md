@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.4](https://github.com/dfrostar/neuralmind/compare/v3.1.3...v3.1.4) (2026-08-11)
+
+
+### Bug Fixes
+
+* **dogfood:** resolve P0-P3 issues from v3.1.2 dogfood + code/doc scoring ([#433](https://github.com/dfrostar/neuralmind/issues/433)) ([1a15c81](https://github.com/dfrostar/neuralmind/commit/1a15c813b8a830cbd3d8090a176ad66fd72fb82d))
+
 ## [3.1.3](https://github.com/dfrostar/neuralmind/compare/v3.1.2...v3.1.3) (2026-08-11)
 
 
