@@ -133,7 +133,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (zero code egress, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that makes no network calls of its own, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -355,7 +355,8 @@ read the number. If it's not worth it, uninstall — and see the
 tier adds governance, audit, and seat management for organizations.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (zero code egress, audit log, RBAC). Certification is on the roadmap.
+patterns (no network calls of its own, audit log, RBAC). Certification is on
+the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 
 **What about SSO/SAML?** Roadmap-only. Not available today. See

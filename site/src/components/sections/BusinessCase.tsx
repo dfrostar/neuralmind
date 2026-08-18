@@ -6,10 +6,10 @@ const cards = [
         title: 'The savings are free',
         accent: 'text-proton',
         points: [
-            'The 65.6× token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
-            'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone (at 65.6×).',
+            'Token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
+            'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone. The figure barely moves with the exact ratio — 48.8× and 65.6× differ by under 1% of the saving, because both already remove ~98% of the tokens.',
             'The bigger line is time: ~$1,650/mo per 50-dev team recovered from context-limit thrashing and re-prompting, at a $50/hr fully-loaded rate.',
-            'Sub-second queries (0.81s) mean no more waiting 8+ seconds per question. That compounds across every developer, every day.',
+            'Recall is a local index lookup, not another model call — nothing in the loop between "I need to know X" and "I know X" waits on an API. That compounds across every developer, every day.',
         ],
     },
     {
@@ -17,10 +17,10 @@ const cards = [
         title: 'Fewer wrong answers, faster teams',
         accent: 'text-electric',
         points: [
-            '100% gold-file recall on the public benchmark (requests, click).',
+            '93.75% gold-file recall across 40 pre-registered queries on four public repos — 79–100% per repo, with every miss published rather than dropped.',
             'Team dashboard shows synapse memory health, ingestion status, savings, latency trends — all read-only, all local.',
             'Self-documenting code: DocEvolver finds undocumented methods and evolves JSDoc that actually improves retrieval.',
-            '100% local with zero code egress — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
+            'The engine makes no network calls of its own and sends no telemetry — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
         ],
     },
 ];

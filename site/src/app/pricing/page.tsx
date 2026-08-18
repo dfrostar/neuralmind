@@ -74,7 +74,7 @@ const faqs = [
     },
     {
         q: 'Where is my team data stored?',
-        a: 'All synapse data is stored locally. Team memory bundles publish and import through your own git repository — no relay, no server of ours in the path. Enterprise can run fully air-gapped in your infrastructure. We never train on your code.',
+        a: 'All synapse data is stored locally. Team memory bundles publish and import through your own git repository — no relay, no server of ours in the path. Enterprise is air-gap installable in your infrastructure. We never train on your code.',
     },
 ];
 

@@ -3,8 +3,8 @@
 const featureList = [
     {
         icon: '⚡',
-        title: 'Sub-Second Retrieval',
-        desc: 'TurboVec backend: 0.81s per query on a 1,486-node repo. ChromaDB-free, 8× smaller index vectors (4-bit quantized).',
+        title: 'Local Retrieval, No Model Call',
+        desc: 'Recall is a local index lookup, not another round trip to a model. The ChromaDB-free TurboVec backend keeps 4-bit quantized vectors 8–16× smaller with fact recall 0.800 vs 0.744 for float32 — parity gated in CI.',
         badge: 'TurboVec',
     },
     {
@@ -16,8 +16,8 @@ const featureList = [
     {
         icon: '🔄',
         title: 'Progressive L0–L3 Disclosure',
-        desc: 'Retrieves exact bytes needed. Never pastes the whole repo. 65.6× compression measured on a 241-node production codebase.',
-        badge: '63.6×',
+        desc: 'Retrieves the exact bytes needed. Never pastes the whole repo. 45–257× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
+        badge: '45–257×',
     },
     {
         icon: '📊',

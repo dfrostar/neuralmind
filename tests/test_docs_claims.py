@@ -91,7 +91,9 @@ FORBIDDEN = [
         ),
     ),
     (
-        re.compile(r"\b(zero|no)\s+(data\s+)?egress\b", re.IGNORECASE),
+        # Any qualifier — "zero data egress", "zero code egress", "no egress" —
+        # makes the same inaccurate absolute about the whole agent workflow.
+        re.compile(r"\b(zero|no)\s+(\w+\s+)?egress\b", re.IGNORECASE),
         "Absolute egress claim. NeuralMind minimizes egress, doesn't eliminate it.",
     ),
     (

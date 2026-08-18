@@ -40,7 +40,7 @@ export default async function TeamPage() {
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto">
                         Shared codebase intelligence that learns how your team works —
-                        with governance controls so nothing leaves your control.
+                        with governance controls over what each developer publishes to the shared memory.
                     </p>
                     <p className="text-slate-500 text-sm mt-3">
                         Available in Team and Enterprise tiers •{' '}
