@@ -27,6 +27,7 @@ Complete command-line interface documentation for NeuralMind.
   - [last](#last-v0100)
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
+  - [drift](#drift-v320)
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
@@ -1635,10 +1636,16 @@ then exposes NeuralMind's MCP tools (`wakeup`, `query`, `search`, `skeleton`,
 
 ### init-hook
 
-Install (or update) a Git post-commit hook that rebuilds the neural index automatically after every commit. Safe and idempotent — re-running only updates the NeuralMind block without touching other hooks.
+Install (or update) two Git hooks, both idempotent and both appended to any
+existing hook script rather than overwriting it:
+
+- **`post-commit`** rebuilds the neural index automatically after every commit.
+- **`pre-commit`** *(v3.2.0+)* runs `neuralmind drift . --staged` over the
+  staged diff — the commit-time drift guard described under
+  [`drift`](#drift-v320) below.
 
 ```bash
-neuralmind init-hook [project_path]
+neuralmind init-hook [project_path] [--no-drift] [--strict]
 ```
 
 #### Arguments
@@ -1646,16 +1653,89 @@ neuralmind init-hook [project_path]
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `project_path` | No | Project root (default: current directory) |
+| `--no-drift` | No | Skip installing the pre-commit drift guard; post-commit rebuild only |
+| `--strict` | No | Make the installed drift guard block commits instead of warning |
 
 #### Examples
 
 ```bash
-# Install hook in current project
+# Install both hooks (drift guard warns, never blocks)
 neuralmind init-hook .
 
-# Install hook for a specific project
-neuralmind init-hook /path/to/project
+# Install both hooks, with drift blocking the commit
+neuralmind init-hook . --strict
+
+# Install only the post-commit rebuild, no drift guard
+neuralmind init-hook . --no-drift
 ```
+
+---
+
+### drift *(v3.2.0+)*
+
+Flag changed symbols that skip a pattern their peers share — the commit-time
+half of the cohesion outlier check (`NEURALMIND_SYNAPSE_OUTLIERS`, see
+[Environment Variables](#environment-variables)), which runs the same
+consensus math at query time instead of diff time. Reads a git diff, maps the changed lines onto graph symbols, groups each
+changed symbol with its siblings in the same file or class, and asks whether
+the symbol you just touched omits an association a strong majority of that
+group makes (e.g. nine of ten `*_endpoint` handlers call `verify_session()`
+and the tenth doesn't).
+
+Only symbols **in the diff** are ever reported — pre-existing outliers
+elsewhere in the graph are silently ignored, so the check never blames a
+commit for drift it didn't introduce. Warn-only and exit-0 by default so it
+is safe to wire into `pre-commit`; `--strict` makes it exit non-zero.
+
+```bash
+neuralmind drift [project_path] [--staged] [--diff BASE] [--strict]
+                  [--cohesion N] [--min-peers N] [--max-findings N]
+                  [--no-refresh] [--json]
+```
+
+#### Arguments
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `project_path` | No | Project root (default: current directory) |
+| `--staged` | No | Check staged changes against `HEAD` — what `pre-commit` sees |
+| `--diff BASE` | No | Diff the working tree against `BASE` instead of `HEAD` |
+| `--strict` | No | Exit non-zero when drift is found (default: warn only) |
+| `--cohesion N` | No | Fraction of a peer group that must share an association before a dissenter is flagged (default: `0.6`) |
+| `--min-peers N` | No | Minimum peers required for a peer group to be judged (default: `3`) |
+| `--max-findings N` | No | Cap on reported findings (default: `10`) |
+| `--no-refresh` | No | Skip re-parsing changed files; judge against the graph exactly as last built |
+| `--json` | No | Output JSON |
+
+#### Examples
+
+```bash
+# What a pre-commit hook runs
+neuralmind drift . --staged
+
+# Check everything since a branch diverged from main
+neuralmind drift . --diff main
+
+# Be stricter about what counts as consensus, and block on it
+neuralmind drift . --staged --cohesion 0.75 --strict
+```
+
+```
+## NeuralMind drift check (warning) — 1 finding(s)
+
+- api/routes.py:67 — `delete_me_endpoint()` skips `verify_session()`, which 3 of its 9 peers (33%) use. Confirm this is deliberate.
+
+Warning only — the commit proceeds. Use --strict to block on drift.
+```
+
+Requires a built graph (`neuralmind build .`) — without one, `drift` reports
+"No code graph found" and exits 0 rather than failing the commit. When
+tree-sitter is installed (the `graphgen` optional extra), the graph is
+transparently refreshed for just the changed files before judging, so a
+brand-new function in the diff is visible even though the persisted index
+predates it; pass `--no-refresh` to skip that and judge against the index
+exactly as it was last built. Stdlib-only otherwise, same as
+`neuralmind/cohesion.py` — no ChromaDB or embedder work.
 
 ---
 
@@ -2334,6 +2414,7 @@ Run without --dry-run to evolve JSDoc for these methods.
 | `NEURALMIND_STRUCTURAL_RECALL` | `0` | *(v0.42.0+)* Opt-in (`== "1"`). Fold a query hit's structural neighbors (callers/callees/base classes) into L3 retrieval, budget-neutrally (displacement, not addition). **Off by default** because the structural signal can saturate top-k recall and crowd out the learned synapse reranker on some graphs; the always-on structural **query tools** carry the value with zero effect on the tuned retrieval stack. |
 | `NEURALMIND_STRUCTURAL_MIN_CONFIDENCE` | `0.0` | *(v0.42.0+)* Drop structural edges whose `confidence_score` is below this value when building the index. Raise toward `1.0` to trust only compiler-accurate edges (pair with `NEURALMIND_PRECISION`). |
 | `NEURALMIND_STRUCTURAL_HUB_DEGREE` | `50` | *(v0.42.0+)* Per-relation degree cap for structural recall and blast-radius. Above the cap, an over-connected utility's neighbors are down-weighted (recall) or truncated (blast-radius) so one hub can't dominate. |
+| `NEURALMIND_DRIFT_REFRESH` | `1` | *(v3.2.0+)* Set to `0` to make `neuralmind drift` judge strictly against the last-built graph, skipping the transparent re-parse of changed files (same effect as `--no-refresh`). The re-parse needs tree-sitter (the `graphgen` extra); without it this is already a no-op. |
 
 ---
 
