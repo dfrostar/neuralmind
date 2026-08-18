@@ -27,6 +27,8 @@ from __future__ import annotations
 import hashlib
 import os
 import tarfile
+import time
+import urllib.error
 import urllib.request
 from functools import cached_property
 from pathlib import Path
@@ -40,6 +42,7 @@ _ARCHIVE_URL = "https://chroma-onnx-models.s3.amazonaws.com/all-MiniLM-L6-v2/onn
 _ARCHIVE_SHA256 = "913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3"
 _MAX_TOKENS = 256
 _BATCH = 32
+_DOWNLOAD_RETRIES = 3
 
 _NM_CACHE = Path.home() / ".cache" / "neuralmind" / "onnx_models" / _MODEL_NAME / "onnx"
 _CHROMA_CACHE = Path.home() / ".cache" / "chroma" / "onnx_models" / _MODEL_NAME / "onnx"
@@ -99,7 +102,15 @@ class OnnxMiniLMEmbedder:
         root = dest_onnx_dir.parent
         root.mkdir(parents=True, exist_ok=True)
         archive = root / "onnx.tar.gz"
-        urllib.request.urlretrieve(_ARCHIVE_URL, archive)  # noqa: S310 - pinned https URL
+        for attempt in range(1, _DOWNLOAD_RETRIES + 1):
+            try:
+                urllib.request.urlretrieve(_ARCHIVE_URL, archive)  # noqa: S310 - pinned https URL
+                break
+            except (urllib.error.URLError, OSError):
+                archive.unlink(missing_ok=True)
+                if attempt >= _DOWNLOAD_RETRIES:
+                    raise
+                time.sleep(0.5 * attempt)
         actual = _sha256(archive)
         if actual != _ARCHIVE_SHA256:
             archive.unlink(missing_ok=True)

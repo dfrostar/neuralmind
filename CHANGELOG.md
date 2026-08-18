@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.5](https://github.com/dfrostar/neuralmind/compare/v3.1.4...v3.1.5) (2026-08-12)
+
+
+### Documentation
+
+* **v3.1.4:** propagate release notes, CLI ref, use cases, SEO ([6d1071a](https://github.com/dfrostar/neuralmind/commit/6d1071a1e5a9c2ef972fd2854eab592920284058))
+
 ## [3.1.4](https://github.com/dfrostar/neuralmind/compare/v3.1.3...v3.1.4) (2026-08-11)
 
 
