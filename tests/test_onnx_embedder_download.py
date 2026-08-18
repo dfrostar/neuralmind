@@ -1,5 +1,5 @@
-from urllib.error import URLError
 from unittest.mock import patch
+from urllib.error import URLError
 
 import pytest
 
