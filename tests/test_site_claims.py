@@ -76,12 +76,49 @@ PERFECT_RECALL_RE = re.compile(
 )
 
 
+# A ratio is only right in company with the repo it was measured on and the
+# evidence level it carries. The shipped defect was not a wrong number — 65.6 is
+# a real community submission — it was that number bolted to a "1,486-node
+# production codebase" that appears in no dataset. Checking membership in a set
+# of floats would have passed it, so these two patterns bind each occurrence to
+# its context.
+NODE_ATTR_RE = re.compile(r"([\d,]+)\s*-\s*node", re.IGNORECASE)
+CI_GATED_RE = re.compile(
+    r"CI[-\s]gated|gated in CI|recomputed by CI|produced by CI|asserted on every",
+    re.IGNORECASE,
+)
+# "method reproducible, not CI-gated" is the copy doing its job — disclosing the
+# evidence level rather than inflating it. A guard that fires on correct copy is
+# worse than no guard, so a negated mention doesn't count as a claim.
+NEGATION_RE = re.compile(r"\b(not|never|isn't|is not|rather than)\s*$", re.IGNORECASE)
+# The site rounds ("~9,300-node" for a 9,293-node repo); a mis-attribution is
+# off by orders of magnitude, never by a rounding step.
+NODE_TOLERANCE = 0.02
+
+
 def _claims() -> dict:
     return json.loads(CLAIMS_FILE.read_text(encoding="utf-8"))
 
 
 def _allowed_ratios() -> set[float]:
     return {float(entry["value"]) for entry in _claims()["ratios"]}
+
+
+def _claims_ci_gating(line: str) -> bool:
+    """True if the line asserts CI gating, rather than disclaiming it."""
+    return any(
+        not NEGATION_RE.search(line[max(0, m.start() - 12) : m.start()])
+        for m in CI_GATED_RE.finditer(line)
+    )
+
+
+def _entries_for(value: float) -> list[dict]:
+    return [e for e in _claims()["ratios"] if float(e["value"]) == value]
+
+
+def _nodes_in(line: str) -> list[int]:
+    """Node counts the copy attributes on this line ("1,486-node" -> 1486)."""
+    return [int(m.group(1).replace(",", "")) for m in NODE_ATTR_RE.finditer(line)]
 
 
 def _site_files(patterns: tuple[str, ...] | None = None) -> list[Path]:
@@ -200,3 +237,96 @@ def test_guards_actually_trip_on_known_bad_copy() -> None:
     marked = [f"// {ALLOW_MARKER}", "title: 'Zero code egress',", "unmarked line"]
     assert _exempt(marked, 1)
     assert not _exempt(marked, 2)
+
+
+def test_site_ratios_are_attributed_to_the_repo_they_were_measured_on() -> None:
+    """A ratio quoted next to the wrong repo size is the defect, not the value.
+
+    `65.6× ... on a 1,486-node production codebase` shipped for weeks and would
+    pass a value-only check, because 65.6 is a real number — measured on a
+    241-node repo. Where the copy states both a ratio and a node count, the pair
+    must exist in the manifest.
+    """
+    violations: list[str] = []
+    for path in _site_files(RATIO_GATED):
+        for lineno, line in enumerate(_prose(path).splitlines(), start=1):
+            claimed_nodes = _nodes_in(line)
+            if not claimed_nodes:
+                continue
+            for _, ratio in _ratios_in(line):
+                if ratio < MIN_CLAIM_RATIO:
+                    continue
+                declared = [e["nodes"] for e in _entries_for(ratio) if "nodes" in e]
+                if not declared:
+                    continue
+                if any(
+                    abs(claimed - d) <= NODE_TOLERANCE * d
+                    for claimed in claimed_nodes
+                    for d in declared
+                ):
+                    continue
+                rel = path.relative_to(REPO_ROOT)
+                violations.append(
+                    f"{rel}:{lineno}: {ratio:g}× attributed to "
+                    f"{claimed_nodes} nodes; measured on {declared}"
+                )
+    assert not violations, (
+        "A ratio is quoted against a repo size it was not measured on. This is the "
+        "original defect: the number is real, the attribution is invented:\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_site_does_not_upgrade_a_ratios_evidence_level() -> None:
+    """Calling a field report or community submission 'CI-gated' is drift too.
+
+    Evidence level is part of the claim: `48.8×` is one maintainer's field
+    report, and presenting it as recomputed-by-CI overstates it exactly as
+    surely as changing the digits would.
+    """
+    violations: list[str] = []
+    for path in _site_files(RATIO_GATED):
+        for lineno, line in enumerate(_prose(path).splitlines(), start=1):
+            if not _claims_ci_gating(line):
+                continue
+            for _, ratio in _ratios_in(line):
+                if ratio < MIN_CLAIM_RATIO:
+                    continue
+                entries = _entries_for(ratio)
+                if not entries or any(e["evidence"] == "ci-gated" for e in entries):
+                    continue
+                rel = path.relative_to(REPO_ROOT)
+                levels = sorted({e["evidence"] for e in entries})
+                violations.append(
+                    f"{rel}:{lineno}: {ratio:g}× presented as CI-gated; it is {levels}"
+                )
+    assert not violations, (
+        "A ratio is presented as CI-gated when its manifest evidence level says "
+        "otherwise. Say which kind of evidence it actually is:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_attribution_guards_trip_on_the_copy_that_shipped() -> None:
+    # The exact line that was live, which the value-only check passed.
+    shipped = "desc: '65.6× compression measured on a 1,486-node production codebase.',"
+    assert _nodes_in(shipped) == [1486]
+    ratios = [r for _, r in _ratios_in(shipped)]
+    assert ratios == [65.6]
+    declared = [e["nodes"] for e in _entries_for(65.6) if "nodes" in e]
+    assert declared and all(
+        abs(1486 - d) > NODE_TOLERANCE * d for d in declared
+    ), "the 1,486-node attribution must not match the repo 65.6× came from"
+
+    # ...and the correct attribution, including the site's rounded form, passes.
+    assert any(abs(241 - d) <= NODE_TOLERANCE * d for d in declared)
+    field = [e["nodes"] for e in _entries_for(48.8) if "nodes" in e]
+    assert any(abs(9300 - d) <= NODE_TOLERANCE * d for d in field), "~9,300 ≈ 9,293"
+
+    # Evidence-level upgrade: 48.8× is a field report, not a CI gate.
+    assert _claims_ci_gating("a CI-gated 48.8× on a ~9,300-node codebase")
+    assert all(e["evidence"] != "ci-gated" for e in _entries_for(48.8))
+    # ...but disclosing the level honestly must keep passing. This exact line is
+    # live on the site and an earlier draft of this guard failed it.
+    assert not _claims_ci_gating(
+        "'48.8×', detail: '~9,300-node codebase — method reproducible, not CI-gated'"
+    )
