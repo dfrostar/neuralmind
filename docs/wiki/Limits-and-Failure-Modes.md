@@ -34,7 +34,7 @@ question NeuralMind is built to answer:
 **Where it's enough.** Locating the right files/symbols, understanding one
 subsystem, answering "how does X work", seeding a focused change. The faithfulness
 eval shows that at a **matched budget**, smart selection beats naive truncation
-(**+0.143 expected-fact recall**, [Benchmarks](Benchmarks)) — i.e. the ~2.5K
+(**expected-fact recall delta CI-gated ≥ 0; +0.013 to +0.143 observed across runs**, [Benchmarks](Benchmarks)) — i.e. the ~2.5K
 tokens are *better-chosen* tokens, not just fewer.
 
 **Where it gets thin.** A single ~2.5K-token window is a poor fit for work that

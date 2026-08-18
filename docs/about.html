@@ -569,7 +569,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Real pinned repos</strong>, not our fixtures &mdash; <code>git checkout &lt;sha&gt;</code> and audit.</li>
                 <li><strong>Objective gold, no LLM judge</strong> &mdash; each gold file is a symbol's definition site, verifiable with one <code>rg</code>; scoring reuses the same <code>neuralmind/quality.py</code> the CI gate runs.</li>
                 <li><strong>Cost + correctness jointly</strong>, never a lone reduction ratio; pre-registered queries, every one reported including losses.</li>
-                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its <strong>+6.1pt</strong> lift is measured separately by the synapse A/B eval). Re-running matches to the token.</li>
+                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its lift is measured separately by the synapse A/B eval, which CI gates on direction rather than magnitude). Re-running matches to the token.</li>
                 <li><strong>Forkable</strong> &mdash; <code>.github/workflows/bench-public.yml</code> regenerates the table on demand; raw per-query data at <code>bench/public/results.json</code>.</li>
             </ul>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">Full methodology, caveats, and where NeuralMind loses →</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.31.0.md">v0.31.0 release notes →</a></p>
@@ -665,7 +665,7 @@ $ neuralmind query . "CMMC gap analysis"
             <h2>What's New in v0.25.0 — one learning system: the synapse layer</h2>
             <p><strong>NeuralMind now has a single learning signal.</strong> The old <code>learned_patterns</code> cooccurrence reranker is removed, and <code>neuralmind learn</code> becomes an exit-0 deprecation no-op. The Hebbian <strong>synapse layer</strong> — which already learns continuously from your queries, edits, and tool calls, and lets unused edges decay — is now the only thing that adapts retrieval to how you actually use the codebase. One system instead of two means automatic learning instead of a manual step, and decay instead of staleness. This is a removal, not a regression: warm-path recall is synapse-driven exactly as it was in v0.24.</p>
             <h3>The A/B evidence</h3>
-            <p>A 2&times;2 on the benchmark fixture measured top-k hit rate with the reranker on vs. off, crossed with synapses on vs. off. The reranker moved the number by <strong>0.0 points</strong> in both rows (77.2% &rarr; 77.2% cold, 83.3% &rarr; 83.3% warm), while the synapse layer alone moved it by <strong>+6.1 points</strong>. The reranker was also runtime-inert on the warm path — the synapse boost re-sort discarded its ordering anyway — required the manual <code>neuralmind learn</code> step to populate, and went stale between runs. The learning that matters is the synapse layer's, and that is the signal NeuralMind keeps.</p>
+            <p>A 2&times;2 on the benchmark fixture measured top-k hit rate with the reranker on vs. off, crossed with synapses on vs. off. The reranker moved the number by <strong>0.0 points</strong> in both rows (77.2% &rarr; 77.2% cold, 83.3% &rarr; 83.3% warm), while the synapse layer alone moved it (+3.5 to +14 points across runs — the absolute levels jitter on a fixture this small, so the finding is the reranker's 0.0, not the levels). The reranker was also runtime-inert on the warm path — the synapse boost re-sort discarded its ordering anyway — required the manual <code>neuralmind learn</code> step to populate, and went stale between runs. The learning that matters is the synapse layer's, and that is the signal NeuralMind keeps.</p>
             <h3>What the agent actually sees</h3>
             <ul>
                 <li><strong>No warm-path behavior change.</strong> Recall is synapse-driven exactly as before, through both the CLI and MCP. Claude Code, Cursor, Cline, and generic MCP clients all see the same results.</li>
@@ -777,7 +777,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Zero machine-specific config.</strong> The launch spec is just <code>{"command": "neuralmind-mcp"}</code> — the MCP tools take a <code>project_path</code> per call, so there's nothing to bake in.</li>
             </ul>
             <h3>Why this matters — the moat</h3>
-            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate 77.2% → 83.3%, +6.1 points with recall on, at a neutral token budget). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
+            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate lifts with recall on, at a neutral token budget; +3.5 to +14 points across runs, CI-gated on direction). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.19.0.md">Full v0.19.0 release notes →</a></p>
         </div>
     </section>
@@ -1119,7 +1119,7 @@ $ neuralmind query . "CMMC gap analysis"
         <div class="container">
             <h2>Status & Roadmap</h2>
             <h3>Current Release: v0.19.0 — One-command MCP setup</h3>
-            <p>The latest release leans into the distribution moat: <code>neuralmind install-mcp --all</code> auto-detects your installed agents (Claude Code, Cursor, Cline, Claude Desktop) and registers NeuralMind's MCP server with each — a non-destructive, idempotent merge. The learned synapse layer's uplift is already measured by the self-benchmark's Phase-3 A/B (top-k hit rate 77.2% → 83.3% with recall on). See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.19.0.md">v0.19.0 release notes</a> or the <a href="#whats-new-v0190">summary above</a>.</p>
+            <p>The latest release leans into the distribution moat: <code>neuralmind install-mcp --all</code> auto-detects your installed agents (Claude Code, Cursor, Cline, Claude Desktop) and registers NeuralMind's MCP server with each — a non-destructive, idempotent merge. The learned synapse layer's uplift is already measured by the self-benchmark's Phase-3 A/B (top-k hit rate lifts with recall on — +3.5 to +14 points across runs). See the <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.19.0.md">v0.19.0 release notes</a> or the <a href="#whats-new-v0190">summary above</a>.</p>
 
             <h3>Future Releases</h3>
             <ul>

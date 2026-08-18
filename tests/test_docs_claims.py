@@ -111,6 +111,91 @@ FORBIDDEN = [
 ]
 
 
+# Point estimates that must never come back as bare claims.
+#
+# The synapse-recall and faithfulness A/Bs run against a ~500-line fixture
+# behind a ChromaDB HNSW index, so their deltas jitter between runs — CI
+# averages the onboarding lift over three runs for exactly that reason, and
+# gates both A/Bs on *direction* (on >= off, delta >= 0), never on a magnitude.
+# Published as fixed figures, they go stale within days: the synapse lift was
+# written as +12 pts (2026-08-06), +6.1 pts (2026-08-11, in a commit whose own
+# message reported +14 from its fresh run), and measured +3.5 pts in CI on
+# 2026-08-18. The onboarding lift simultaneously read +11.6, +6.5, and +0.9 pts
+# on three different surfaces, two of them in the same README.
+#
+# So these patterns match the *bare point-estimate* form only. Quoting the
+# observed band ("+0.013 to +0.143 across runs") is the correct phrasing and
+# deliberately still passes.
+SUPERSEDED_FIGURES = [
+    (
+        re.compile(r"\+?6\.1\s*(pts|points|pt)\b", re.IGNORECASE),
+        (
+            "The synapse-recall lift is run-dependent (+3.5 to +14 pts observed). "
+            "Quote the CI gate — recall-on >= recall-off — and the observed band."
+        ),
+    ),
+    (
+        re.compile(r"77\.2\s*%\s*(→|->|to)\s*83\.3\s*%"),
+        (
+            "These hit-rate levels are one run's output, not a stable result. "
+            "Quote the gate and the band instead."
+        ),
+    ),
+    (
+        re.compile(r"faithfulness\s*\+0\.143", re.IGNORECASE),
+        (
+            "The faithfulness delta is run-dependent (+0.013 to +0.143 observed) "
+            "and CI gates it at >= 0, not at a magnitude."
+        ),
+    ),
+    (
+        re.compile(r"\+?11\.6\s*(pts|points)\b|\+?6\.5\s*points\b", re.IGNORECASE),
+        (
+            "The onboarding lift is run-dependent (+0.9 to +11.6 pts observed) and "
+            "was simultaneously published as three different values."
+        ),
+    ),
+]
+
+# The public benchmark's mean is 93.75% and its per-repo floor is 0.79. A bare
+# "100% gold-file recall" shipped in the README for weeks while the same file's
+# later section correctly reported the range.
+PERFECT_RECALL_RE = re.compile(
+    r"100\s*%[^.\n]{0,40}?gold-file\s+recall|gold-file\s+recall[^.\n]{0,40}?100\s*%",
+    re.IGNORECASE,
+)
+
+# A figure quoted as one end of a band ("+0.9 to +11.6 pts", "79-100%") is the
+# correct phrasing, not the defect. Blank those spans before matching so the
+# guards catch bare point estimates only.
+_RANGE_RES = (
+    re.compile(
+        r"\+?\d+(?:\.\d+)?\s*(?:to|–|—|-|&ndash;|&mdash;)\s*\+?\d+(?:\.\d+)?\s*(?:pts|points|%)?",
+        re.IGNORECASE,
+    ),
+)
+
+
+# "100% gold-file recall" is accurate for the disclosed, off-by-default
+# competitor eval, which runs on `requests`/`click` only. The defect is
+# attaching it to the 4-repo public benchmark, whose mean is 93.75%. Lines that
+# name the competitor comparison within a short window are making the narrower,
+# true claim.
+COMPETITOR_SCOPE_RE = re.compile(r"codebase-memory-mcp|competitor", re.IGNORECASE)
+_SCOPE_WINDOW = 3
+
+
+def _scoped_to_competitor_eval(lines: list[str], index: int) -> bool:
+    window = lines[max(0, index - _SCOPE_WINDOW) : index + _SCOPE_WINDOW + 1]
+    return any(COMPETITOR_SCOPE_RE.search(line) for line in window)
+
+
+def _without_ranges(line: str) -> str:
+    for pattern in _RANGE_RES:
+        line = pattern.sub(" ", line)
+    return line
+
+
 def _published_paths() -> list[Path]:
     paths: list[Path] = []
     for rel in PUBLISHED_FILES:
@@ -143,3 +228,75 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     # refactor can't neuter it into a silent no-op.
     bad = "100% local — your code never leaves your machine."
     assert any(p.search(bad) for p, _ in FORBIDDEN)
+
+
+def test_published_surfaces_do_not_quote_superseded_point_estimates() -> None:
+    violations: list[str] = []
+    for path in _published_paths():
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for lineno, raw in enumerate(text.splitlines(), start=1):
+            line = _without_ranges(raw)
+            for pattern, reason in SUPERSEDED_FIGURES:
+                m = pattern.search(line)
+                if m:
+                    rel = path.relative_to(REPO_ROOT)
+                    violations.append(f"{rel}:{lineno}: {m.group(0)!r} — {reason}")
+    assert not violations, (
+        "A run-dependent A/B magnitude is published as a fixed figure. CI gates "
+        "these on direction, not size — quote the gate and the observed band:\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:
+    violations: list[str] = []
+    for path in _published_paths():
+        text = path.read_text(encoding="utf-8", errors="replace")
+        lines = text.splitlines()
+        for index, raw in enumerate(lines):
+            if not PERFECT_RECALL_RE.search(_without_ranges(raw)):
+                continue
+            if _scoped_to_competitor_eval(lines, index):
+                continue
+            rel = path.relative_to(REPO_ROOT)
+            violations.append(f"{rel}:{index + 1}: {raw.strip()[:110]}")
+    assert not violations, (
+        "A published surface claims 100% gold-file recall. The public benchmark "
+        "reports 93.75% mean across 40 queries (0.96 / 0.79 / 0.95 / 1.00) and "
+        "publishes every miss:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_superseded_figure_guards_trip_on_the_copy_that_shipped() -> None:
+    # Each pattern must fire on the exact text that was live, and must NOT fire
+    # on the band phrasing that replaced it — otherwise the guard either rots
+    # into a no-op or blocks the correct wording.
+    bad = [
+        "hit-rate **+6.1 points (77.2%→83.3%), budget-neutral**",
+        "faithfulness +0.143, grounding 1.00",
+        "| **Onboarding lift** | — | — | **+11.6 pts** |",
+        "- **Onboarding lift:** +6.5 points top-k module hit-rate",
+    ]
+    for line in bad:
+        assert any(p.search(line) for p, _ in SUPERSEDED_FIGURES), line
+
+    good = [
+        "recall-on >= recall-off, at a neutral token budget | **+3.5 to +14 pts**",
+        "delta **>= 0** | **+0.013 to +0.143**",
+        "lift **>= 0**, averaged over 3 runs | **+0.9 to +11.6 pts** across runs",
+    ]
+    for line in good:
+        stripped = _without_ranges(line)
+        assert not any(p.search(stripped) for p, _ in SUPERSEDED_FIGURES), line
+
+    assert PERFECT_RECALL_RE.search("**100% gold-file recall, MRR 0.96** on the public benchmark")
+    assert not PERFECT_RECALL_RE.search(
+        _without_ranges("**79-100% gold-file recall (93.75% mean)**")
+    )
+    assert not PERFECT_RECALL_RE.search(_without_ranges("79–100% gold-file recall"))
+    assert not PERFECT_RECALL_RE.search(_without_ranges("79&ndash;100% gold-file recall"))
+    # The narrower competitor-eval claim is true and stays allowed; the same
+    # sentence without that scope is the defect.
+    scoped = ["100% gold-file recall, MRR 0.96", "beats codebase-memory-mcp 0.96 vs 0.23"]
+    assert _scoped_to_competitor_eval(scoped, 0)
+    assert not _scoped_to_competitor_eval(["100% gold-file recall on the public benchmark"], 0)

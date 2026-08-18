@@ -594,7 +594,7 @@ python -m evals.public.run
 ```
 
 The run is **deterministic** — synapse injection is **OFF** (session-dependent
-learning can't be a fixed, reproducible public number; its **+6.1pt** lift is
+learning can't be a fixed, reproducible public number; its lift is
 measured separately by the synapse A/B eval, `tests/benchmark/run.py` Phase 2).
 This reuses the same `NEURALMIND_SYNAPSE_INJECT=0` toggle documented in the
 [Environment Variables](#environment-variables) table. Re-running matches the
@@ -1131,7 +1131,8 @@ Learning is now handled entirely by the **synapse layer**, which learns
 continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. A 2×2 A/B on the
 benchmark fixture showed the old reranker added 0.0 points to top-k hit
-rate while the synapse layer alone adds +6.1 points.
+rate while the synapse layer alone moves it (+3.5 to +14 points across
+runs; CI gates the direction, not the magnitude).
 
 To see what's been learned, use [`neuralmind stats`](#stats) or
 [`neuralmind memory inspect`](#neuralmind-memory). For the full rationale

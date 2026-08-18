@@ -16,8 +16,8 @@ smaller-scope.
 |---|---|---|---|
 | 💸 | **Cheaper context** | **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** than pasting files — beats `ripgrep` on cost on every repo, and on recall beats it on 2 of 4 and ties exactly on the other 2 | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate **+6.1 points (77.2%→83.3%)**, **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
-| 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00** | Faithfulness/parity gate (**reference fixture** — smaller scope) |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **delta CI-gated ≥ 0, +0.013 to +0.143 observed**, grounding 1.00 | Faithfulness/parity gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
 (fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the "beats ripgrep" claim is specifically
@@ -173,9 +173,9 @@ The opt-in `turbovec` backend can now **embed *and* search with zero ChromaDB**:
 
 ### v0.20.0 — Measure the onboarding lift
 
-`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (currently **+0.9 points** on the reference fixture — down from the +6.5 points measured at this feature's introduction, because the cold-path baseline has itself gotten better since, leaving less headroom for the memory layer to add), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
+`neuralmind eval --onboarding` turns NeuralMind's differentiator into a number: does an agent that inherits a **committed team memory** retrieve better on its *first* queries than a cold agent? The headline is the **top-k module hit-rate lift** (run-dependent: **+0.9 to +11.6 points** observed across runs on the reference fixture, and trending toward the low end of that band as the cold-path baseline itself improves, leaving less headroom for the memory layer to add), with fact-recall + grounding as honest secondaries; budget-neutral, gated in CI at lift ≥ 0. Full details: [v0.20.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.20.0.md).
 
-> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse +6.1 pts, onboarding +0.9 pts, ChromaDB-free parity) with reproduction commands.
+> 📊 New: a single **[Benchmarks & Results](Benchmarks)** page collects every measured, CI-gated number (token reduction, faithfulness delta, synapse and onboarding lift, pts, ChromaDB-free parity) with reproduction commands.
 
 ### v0.14.0 — Measure faithfulness
 
@@ -275,7 +275,7 @@ sections.
 || **[Multi-Project-Scoping](Multi-Project-Scoping.md)** | Working across multiple codebases — isolation rules for NeuralMind, memU, and agent memory |
 || **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
-| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse +6.1 pts, onboarding +0.9 pts, ChromaDB-free parity — with reproduction commands |
+| **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse and onboarding lift, ChromaDB-free parity — with reproduction commands |
 
 ### Enterprise & Deployment
 

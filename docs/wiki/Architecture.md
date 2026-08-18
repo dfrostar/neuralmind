@@ -736,7 +736,7 @@ NeuralMind once had a second learning mechanism, the `learned_patterns`
 cooccurrence **reranker** (v0.3.2). **It was removed in v0.25.0** after a
 2×2 A/B on the benchmark fixture showed it added 0.0 points to top-k hit
 rate whether the synapse layer was on or off (77.2% → 77.2% cold, 83.3% →
-83.3% warm), while the synapse layer alone added +6.1 points. The
+83.3% warm — these are the levels that one run produced; the absolute hit rates move between runs, so the finding is the 0.0-point delta, not the levels), while the synapse layer alone moved it. The
 reranker was also runtime-inert on the warm path — the synapse boost
 re-sort discarded its ordering anyway. The architectural reason the two
 were never equivalent:
