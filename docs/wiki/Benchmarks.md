@@ -26,10 +26,11 @@ on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
-how you work** — the Hebbian synapse layer lifts top-k
-hit-rate **+6.1 points (77.2%→83.3%), budget-neutral** (reference fixture);
-**(4) Better-grounded answers** — at a matched budget, **faithfulness +0.143,
-grounding 1.00** (reference fixture). We report where NeuralMind *doesn't* win
+how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neutral**
+(reference fixture; +3.5 to +14 points across runs, CI gates the direction);
+**(4) Better-grounded answers** — at a matched budget its context carries more gold
+facts than naive truncation (reference fixture; delta +0.013 to +0.143 across runs,
+CI gates it at ≥ 0, grounding 1.00). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
 cheaper on raw tokens, two repos have partial gold-file misses (see the public
 benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
@@ -59,13 +60,16 @@ Yes, and it's measured. The **faithfulness eval** compares NeuralMind's selected
 context against naive truncation **at the same token budget** — the honest
 comparison, not "small context vs the whole repo."
 
-| Metric (built-in backend, gold set) | NeuralMind | Matched-budget naive | Delta |
-|---|---:|---:|---:|
-| Expected-fact recall | **0.717** | 0.574 | **+0.143** |
-| Grounding (right modules cited) | **1.000** | — | — |
+| Metric (built-in backend, gold set) | What CI enforces | Observed across runs |
+|---|---|---|
+| Expected-fact recall vs matched-budget naive | delta **≥ 0** | **+0.013 to +0.143** |
+| Grounding (right modules cited) | not gated — saturates on this fixture | 1.000 |
 
-A positive delta means smart selection beats dumb truncation **at equal cost**.
-Gated in CI at delta ≥ 0.
+A positive delta means smart selection beats dumb truncation **at equal cost**, and
+that is what CI guarantees. The *size* of the delta is not a fixed property: on a
+~500-line fixture behind an HNSW index it moves between runs, so we publish the
+gate and the observed band rather than a point estimate that goes stale the week
+after it is written.
 
 ## The learned memory layer (the differentiator)
 
@@ -73,10 +77,10 @@ NeuralMind's moat is usage memory: a Hebbian **synapse layer** that learns what
 your team edits together and surfaces it on future queries. Both effects are
 measured by isolated A/Bs:
 
-| Effect | Off | On | Lift |
-|---|---:|---:|---:|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 77.2% | **83.3%** | **+6.1 pts** |
-| **Onboarding lift** — top-k module hit-rate from a committed team baseline | 81.5% | **82.4%** | **+0.9 pts** |
+| Effect | What CI enforces | Observed across runs |
+|---|---|---|
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on **≥** recall-off, at a neutral token budget | **+3.5 to +14 pts** |
+| **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift **≥ 0**, averaged over 3 runs | **+0.9 to +11.6 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits
 rather than adding tokens. The onboarding lift is the answer to "does an agent

@@ -52,6 +52,33 @@ builds it.
   that a hardcoded `v0.42.0` caused. Same rule for SBOM/tarball/release
   links: derive them from the release tag, don't pin a literal version.
 
+### `site/claims.json` is canon for site numbers
+
+Same contract as `commercial-terms.json`: **change the JSON first, then the
+copy**. Every performance ratio quoted on the homepage sections, `page.tsx`,
+or `layout.tsx` metadata must have an entry there naming where it was measured
+and the command that reproduces it. CI enforces it
+(`tests/test_site_claims.py`, stdlib-only), along with two rules the docs
+guard already applied everywhere *except* the site — no absolute privacy
+claims, and no naming a private client whose field report the docs anonymize.
+
+Rules that follow from it:
+
+- **No number without a measurement.** If the copy wants to say something the
+  repo can't measure, write the benchmark first
+  (`tests/benchmark/latency.py` exists because the site was quoting a query
+  latency nothing produced). Mechanism claims — "a local index lookup, not
+  another model call" — are fine unquantified; invented figures are not.
+- **Say which kind of evidence it is.** CI-gated, reproducible-on-demand, a
+  one-repo field report, and a community submission are not the same strength
+  of claim, and the site says which is which.
+- **Quote the mean and the range, publish the misses.** Gold-file recall is
+  93.75% mean / 79–100% per repo, not "100%". The docs already report where
+  NeuralMind loses; the site must not round that away.
+- A page that quotes a forbidden phrase in order to *disown* it (the
+  effectiveness page's list of overclaims) marks the line
+  `claims-guard:allow`.
+
 ## Internal docs — routed to the marketing repo
 
 Pure internal strategy material (BRDs, TRDs, competitive analysis) lives in

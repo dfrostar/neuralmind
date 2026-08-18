@@ -1,11 +1,15 @@
 'use client';
 
+// Sourced in site/claims.json; gated by tests/test_site_claims.py. Each row
+// says which kind of evidence it is — a CI gate, an on-demand reproduction, or
+// a single-repo field report — because they are not the same strength of claim.
 const dataPoints = [
-    { metric: 'Query Latency', value: '0.81s', detail: 'on 1,486-node repo (TurboVec)' },
-    { metric: 'Token Reduction', value: '63.6×', detail: 'on live production codebase' },
-    { metric: 'Gold-File Recall', value: '100%', detail: 'on public benchmark (requests, click)' },
-    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command' },
-    { metric: 'Ongoing overhead', value: '~0', detail: 'post-commit hook auto-rebuilds' },
+    { metric: 'Gold-file recall', value: '93.75%', detail: '40 pre-registered queries, 4 pinned OSS repos (79–100% per repo)' },
+    { metric: 'Tokens vs. pasting files', value: '45–257×', detail: 'same 40 queries; cheaper than ripgrep on every repo' },
+    { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
+    { metric: 'vs. naive truncation', value: 'Never worse', detail: 'CI asserts our selection beats truncation at an equal budget. Both magnitudes vary by repo — run them for yours' },
+    { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase — method reproducible, not CI-gated' },
+    { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
 ];
 
 export default function Benchmarks() {
@@ -22,7 +26,9 @@ export default function Benchmarks() {
                         Benchmarks
                     </h2>
                     <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-xl mx-auto">
-                        Every number is produced by CI on every commit. Run <code className="text-electric font-mono text-sm">neuralmind benchmark .</code> to verify.
+                        Two of these are recomputed by CI on every commit; the rest reproduce from a
+                        fresh clone with one command. Where a number comes from a single repo, it says so.
+                        Run <code className="text-electric font-mono text-sm">neuralmind benchmark .</code> for your own.
                     </p>
                 </div>
 

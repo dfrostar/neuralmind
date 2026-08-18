@@ -1,0 +1,185 @@
+{
+  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.75% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
+  "_evidence_levels": {
+    "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
+    "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number.",
+    "field-report": "One repo, one developer, maintainer-measured. Reproducible in method, not in number. Must be labelled as such wherever it appears.",
+    "community": "Submitted to docs/community-benchmarks.json by a named submitter. n is small; treat as directional."
+  },
+  "ratios": [
+    {
+      "value": 45,
+      "context": "Low end of 'fewer tokens than pasting whole files', across the 40-query public benchmark (requests, at 44.9x, rounded down).",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 257,
+      "context": "High end of the same range (rich, at 256.8x, rounded up).",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 44.9,
+      "context": "requests @ 0e322af877 — tokens vs full-file baseline.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 99.6,
+      "context": "click @ 874ca2bc1c — tokens vs full-file baseline.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 76.4,
+      "context": "flask @ c12a5d874c — tokens vs full-file baseline.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 256.8,
+      "context": "rich @ 7f580bdc70 — tokens vs full-file baseline.",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 12,
+      "context": "Low end of the published real-repo positioning range. Directional, not a guarantee — the docs say so explicitly.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "neuralmind benchmark <your repo>",
+      "evidence": "field-report"
+    },
+    {
+      "value": 50,
+      "context": "High end of the published real-repo positioning range.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "neuralmind benchmark <your repo>",
+      "evidence": "field-report"
+    },
+    {
+      "value": 48.8,
+      "context": "Field report: anonymized ~9,300-node private TypeScript SaaS platform. Never name the client — the docs and the community-benchmark entry are both anonymized on purpose.",
+      "source": "docs/use-cases/measure-memory-across-a-refactor.md",
+      "reproduce": "neuralmind benchmark <your repo>",
+      "evidence": "field-report"
+    },
+    {
+      "value": 65.6,
+      "context": "Community-submitted: project-alpha, JavaScript, 241 nodes. NOT a 1,486-node repo — that attribution was invented on the site and matches nothing in the data.",
+      "source": "docs/community-benchmarks.json",
+      "reproduce": "neuralmind benchmark . --json",
+      "evidence": "community"
+    },
+    {
+      "value": 46,
+      "context": "Community-submitted: project-beta, Python, 1,626 nodes.",
+      "source": "docs/community-benchmarks.json",
+      "reproduce": "neuralmind benchmark . --json",
+      "evidence": "community"
+    },
+    {
+      "value": 6.2,
+      "context": "Hermetic CI fixture (~500 lines) token reduction. Deliberately a floor of a floor.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m tests.benchmark.run",
+      "evidence": "ci-gated"
+    },
+    {
+      "value": 4.0,
+      "context": "CI regression floor — the build fails below this.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m tests.benchmark.run",
+      "evidence": "ci-gated"
+    },
+    {
+      "value": 5.5,
+      "context": "Average reduction printed by scripts/demo.sh across its 3 bundled-fixture queries.",
+      "source": "scripts/demo.sh",
+      "reproduce": "bash scripts/demo.sh",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 5.7,
+      "context": "Single-query reduction in the same demo transcript.",
+      "source": "scripts/demo.sh",
+      "reproduce": "bash scripts/demo.sh",
+      "evidence": "reproducible"
+    },
+    {
+      "value": 8,
+      "context": "Low end of TurboVec 4-bit index vector shrink vs float32.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m evals.parity.run",
+      "evidence": "ci-gated"
+    },
+    {
+      "value": 16,
+      "context": "High end of the same shrink range.",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m evals.parity.run",
+      "evidence": "ci-gated"
+    }
+  ],
+  "non_ratio_headline_claims": [
+    {
+      "claim": "93.75% gold-file recall (mean), 79-100% per repo, 90% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
+      "source": "docs/benchmarks/public.md",
+      "reproduce": "python -m evals.public.run",
+      "evidence": "reproducible",
+      "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.96 / 0.79 / 0.95 / 1.00; click is the weakest and every miss is published."
+    },
+    {
+      "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m tests.benchmark.run",
+      "evidence": "ci-gated",
+      "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number."
+    },
+    {
+      "claim": "NeuralMind's selection beats naive truncation at a matched token budget",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m evals.faithfulness.runner --run",
+      "evidence": "ci-gated",
+      "note": "Also DIRECTIONAL: ci-benchmark.yml asserts faithfulness_delta >= 0.0 on the shipped built-in backend. The +0.143 in docs/wiki/ is not the current measurement — this PR's parity gate reports a built-in delta of +0.013. Same rule: quote the gate, not a stale magnitude."
+    },
+    {
+      "claim": "TurboVec fact recall 0.800 vs chroma float32 0.744, identical top-k hit@4",
+      "source": "docs/wiki/Benchmarks.md",
+      "reproduce": "python -m evals.parity.run",
+      "evidence": "ci-gated"
+    }
+  ],
+  "unsourced_do_not_use": [
+    {
+      "claim": "0.81s query latency",
+      "why": "No measurement anywhere in the repo produces this number. There is per-query latency instrumentation (neuralmind/metrics_pipeline.py) but no committed benchmark result, so the figure cannot be defended. Speed claims must be mechanism-based ('a local index lookup, not another model call') until a latency benchmark is committed."
+    },
+    {
+      "claim": "63.6x token reduction",
+      "why": "A transcription error for the 65.6x community submission. There is no 63.6x measurement."
+    },
+    {
+      "claim": "1,486-node production codebase",
+      "why": "Matches no repo in any dataset. 65.6x came from a 241-node repo; the 1,626-node repo measured 46.0x; the field report repo has ~9,300 nodes."
+    },
+    {
+      "claim": "100% gold-file recall on the public benchmark",
+      "why": "Contradicted by the current public benchmark: 0.96 on requests, 0.79 on click. The 100% figure came from an older, narrower competitor eval that the docs already flag as not re-verified against the expanded corpus."
+    },
+    {
+      "claim": "'+6.1 pts' or '+0.143' labelled CI-gated",
+      "why": "Both CI gates assert direction only (on >= off, delta >= 0.0), never a magnitude, and both published magnitudes are contradicted by current CI output. Quoting a number as gated when only its sign is gated is the same defect as quoting a number with no measurement at all."
+    }
+  ],
+  "private_names_never_publish": [
+    "Level2Logic",
+    "cmmc20"
+  ]
+}

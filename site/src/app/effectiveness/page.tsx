@@ -35,6 +35,7 @@ const honestyGate = [
         body: 'No co-view signal yet. Structural seeds exist, but synaptic learning needs weeks of sessions.',
     },
     {
+        // claims-guard:allow — this entry exists to disown the phrase, not to make it.
         title: 'Zero code egress',
         body: 'Overclaim. The agent layer still talks to its model. NeuralMind makes no network calls of its own.',
     },

@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 
 const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
+// Every figure here is registered in site/claims.json with its source and
+// reproduction command, and gated by tests/test_site_claims.py.
 const heroStats = [
-    { label: 'Query Latency', value: '<1s', highlight: true },
-    { label: 'Token Reduction', value: '65.6×', highlight: false },
-    { label: 'Gold-File Recall', value: '100%', highlight: false },
+    { label: 'Gold-file recall', value: '93.75%', highlight: true },
+    { label: 'vs. pasting files', value: '45–257×', highlight: false },
+    { label: 'Pre-registered queries', value: '40', highlight: false },
     { label: 'Free Tier', value: 'Auto-provisioned', highlight: false },
 ];
 
@@ -43,9 +45,10 @@ export default function Hero() {
                     <span className="gradient-text">Now it remembers your codebase.</span>
                 </h1>
                 <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                    Persistent neural memory for AI agents. Local-first synapse layer.{' '}
-                    <span className="text-white font-semibold">Works with every IDE your team already uses.</span>{' '}
-                    100% local, no telemetry.
+                    Persistent neural memory for AI agents. Your agent opens the right file
+                    first — <span className="text-white font-semibold">93.75% gold-file recall across 40
+                    pre-registered queries on four public repos</span>, at 45–257× fewer tokens than
+                    pasting those files in. Local-first, no telemetry.
                 </p>
 
                 {/* CTA buttons */}

@@ -220,8 +220,9 @@ We'd downgrade our own claims if:
 - Community benchmarks (n ≥ 10 outside repos) show median
   reduction below 5×. (Currently directionally above this on n=2.)
 - Top-k retrieval hit rate on a real-world query set falls below
-  60%. (Currently 77.2% cold / 83.3% warm on the reference fixture — the
-  warm number reflects the learned synapse boost.)
+  60%. (Recent runs land in a 72–83% cold / 78–86% warm band on the
+  reference fixture — the warm number reflects the learned synapse boost.
+  The band is wide because the fixture is tiny and the index is jittery.)
 - A long-context + prompt-caching baseline closes the cost gap to
   within 1.5× on representative workloads.
 - A major agent vendor ships learned, git-portable **team** memory

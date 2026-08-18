@@ -1,7 +1,7 @@
 'use client';
 
 const assessmentIncludes = [
-    'A measured token-reduction ratio on one of your own repos — run locally, nothing leaves your machine',
+    'A measured token-reduction ratio on one of your own repos — run locally, with no network calls of its own',
     'A spend model in your numbers: per-seat subscriptions, usage-based API (OpenRouter, Bedrock, Vertex), and self-hosted GPU',
     'A productivity model: hours lost to context-limit thrashing and re-prompting, valued at your fully-loaded rate',
     'An honest fit verdict — if your workload is generation-heavy or caching already covers you, we say so',

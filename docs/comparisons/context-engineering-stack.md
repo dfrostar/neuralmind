@@ -36,7 +36,7 @@ The removal of the reranker highlights the efficacy of the synapse layer as a st
 | Memory Engine Configuration | Top-k Hit Rate (Cold Path) | Top-k Hit Rate (Warm Path) | Accuracy Gain |
 |---|---|---|---|
 | Synapses Off | 77.2% | 77.2% | 0.0 |
-| Synapses On | 83.3% | 83.3% | +6.1 pts |
+| Synapses On | 83.3% | 83.3% | positive |
 
 Reproduce locally: `python -m tests.benchmark.run`
 

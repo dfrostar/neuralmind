@@ -2,12 +2,13 @@ import './globals.css';
 import { getLatestRelease } from '@/lib/release';
 
 export const metadata = {
-    title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents | 65.6× Token Reduction',
+    title: 'NeuralMind — Code Memory for AI Coding Agents | 93.75% Gold-File Recall',
     description:
-        'Sub-second retrieval for AI coding agents. 65.6× token reduction on a 1,486-node production codebase. Local-first, zero telemetry.',
+        'Memory for AI coding agents that opens the right file first: 93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens than pasting them in. Local-first, no telemetry.',
     keywords: [
         'AI coding agent memory',
-        'sub-second code retrieval',
+        'gold-file recall',
+        'local code retrieval',
         'token reduction',
         'semantic code search',
         'context compression',
@@ -29,9 +30,9 @@ export const metadata = {
         canonical: '/',
     },
     openGraph: {
-        title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents',
+        title: 'NeuralMind — Code Memory for AI Coding Agents',
         description:
-            'Sub-second retrieval on a 1,486-node repo. 65.6× token reduction. Local-first, zero telemetry, honest benchmarks.',
+            '93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens. Local-first, no telemetry, honest benchmarks — every miss published.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -41,15 +42,15 @@ export const metadata = {
                 url: '/social-preview.png',
                 width: 1200,
                 height: 630,
-                alt: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents',
+                alt: 'NeuralMind — Code Memory for AI Coding Agents',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'NeuralMind — Sub-Second Retrieval for AI Coding Agents',
+        title: 'NeuralMind — Code Memory for AI Coding Agents',
         description:
-            'Sub-second retrieval on a 1,486-node repo. 65.6× token reduction. Local-first, zero telemetry.',
+            '93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens. Local-first, no telemetry.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -91,8 +92,8 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
             keywords:
                 'AI coding agent memory, code intelligence, token reduction, RAG, MCP server, knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
-                'Sub-second retrieval (0.81s/query) via TurboVec 4-bit quantized index',
-                '65.6× per-query token reduction measured on 1,486-node production codebase',
+                'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
+                '45–257× fewer tokens than full-file context across 40 pre-registered queries on four public repos',
                 'Read-only team dashboard with synapse memory, ingestion, and latency trends',
                 'DocEvolver: evolutionary JSDoc optimization for undocumented methods',
                 'Brain-like Hebbian synapse layer that learns associations from how you use the codebase',

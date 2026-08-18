@@ -96,20 +96,22 @@ The fixture number is the *floor of a floor*: small repo, conservative gate. The
 
 NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what your team edits together and surfaces it on future queries.
 
-| Effect | Off | On | Lift |
-|--------|-----|-----|------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | 77.2% | **83.3%** | **+6.1 pts** |
-| **Onboarding lift** — top-k module hit-rate from a committed team baseline | — | — | **+11.6 pts** |
+| Effect | What CI enforces | Observed magnitude |
+|--------|------------------|--------------------|
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
+| **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift ≥ 0, averaged over 3 runs | **+0.9 to +11.6 pts** across runs |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
 
+**Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI guarantees is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
+
 ### 3. Finds the right code (not just less of it)
 
-**100% gold-file recall, MRR 0.96** on the public benchmark (`requests`, `click`). Beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23). Reproducible — `python -m evals.public.run`.
+**93.75% mean gold-file recall (79–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
 ### 4. Better-grounded answers (not just shorter)
 
-At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation: **faithfulness +0.143, grounding 1.00**.
+At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation. CI gates the delta at **≥ 0**; the measured delta has ranged **+0.013 to +0.143** across runs on the reference fixture, with grounding at 1.00. Same caveat as above — the gate is the guarantee, the magnitude moves.
 
 ---
 
@@ -133,7 +135,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (zero code egress, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that makes no network calls of its own, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -284,8 +286,8 @@ Measured, not marketed — the numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`:
 
 - **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** +6.1 points top-k hit rate at ±0 token cost.
-- **Onboarding lift:** +6.5 points top-k module hit-rate from committed team baseline (a distinct eval from synapse recall A/B above — see `evals/onboarding/`).
+- **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
+- **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
 - **6.1× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
@@ -355,7 +357,8 @@ read the number. If it's not worth it, uninstall — and see the
 tier adds governance, audit, and seat management for organizations.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (zero code egress, audit log, RBAC). Certification is on the roadmap.
+patterns (no network calls of its own, audit log, RBAC). Certification is on
+the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 
 **What about SSO/SAML?** Roadmap-only. Not available today. See
