@@ -8,7 +8,7 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 const heroStats = [
     { label: 'Gold-file recall', value: '93.75%', highlight: true },
     { label: 'vs. pasting files', value: '45–257×', highlight: false },
-    { label: 'Synapse recall lift', value: '+6.1 pts', highlight: false },
+    { label: 'Pre-registered queries', value: '40', highlight: false },
     { label: 'Free Tier', value: 'Auto-provisioned', highlight: false },
 ];
 

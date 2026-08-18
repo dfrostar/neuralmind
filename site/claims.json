@@ -136,16 +136,18 @@
       "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.96 / 0.79 / 0.95 / 1.00; click is the weakest and every miss is published."
     },
     {
-      "claim": "Synapse recall lift +6.1 points top-k hit rate (77.2% -> 83.3%), budget-neutral",
+      "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
-      "evidence": "ci-gated"
+      "evidence": "ci-gated",
+      "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number."
     },
     {
-      "claim": "Faithfulness +0.143 expected-fact recall vs naive truncation at a matched token budget; grounding 1.00",
+      "claim": "NeuralMind's selection beats naive truncation at a matched token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m evals.faithfulness.runner --run",
-      "evidence": "ci-gated"
+      "evidence": "ci-gated",
+      "note": "Also DIRECTIONAL: ci-benchmark.yml asserts faithfulness_delta >= 0.0 on the shipped built-in backend. The +0.143 in docs/wiki/ is not the current measurement — this PR's parity gate reports a built-in delta of +0.013. Same rule: quote the gate, not a stale magnitude."
     },
     {
       "claim": "TurboVec fact recall 0.800 vs chroma float32 0.744, identical top-k hit@4",
@@ -170,6 +172,10 @@
     {
       "claim": "100% gold-file recall on the public benchmark",
       "why": "Contradicted by the current public benchmark: 0.96 on requests, 0.79 on click. The 100% figure came from an older, narrower competitor eval that the docs already flag as not re-verified against the expanded corpus."
+    },
+    {
+      "claim": "'+6.1 pts' or '+0.143' labelled CI-gated",
+      "why": "Both CI gates assert direction only (on >= off, delta >= 0.0), never a magnitude, and both published magnitudes are contradicted by current CI output. Quoting a number as gated when only its sign is gated is the same defect as quoting a number with no measurement at all."
     }
   ],
   "private_names_never_publish": [
