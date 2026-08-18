@@ -161,7 +161,9 @@ def main() -> None:
     )
     print(f"{'operation':<12}{'p50 (ms)':>12}{'p95 (ms)':>12}{'max (ms)':>12}")
     for op in report["operations"]:
-        print(f"{op['operation']:<12}{op['p50_ms']:>12.2f}{op['p95_ms']:>12.2f}{op['max_ms']:>12.2f}")
+        print(
+            f"{op['operation']:<12}{op['p50_ms']:>12.2f}{op['p95_ms']:>12.2f}{op['max_ms']:>12.2f}"
+        )
 
 
 if __name__ == "__main__":

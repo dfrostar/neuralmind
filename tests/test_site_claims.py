@@ -71,7 +71,9 @@ SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*×")
 
 # "100% recall" in any word order within a short window. The public
 # benchmark's mean is 93.75% and its per-repo floor is 0.79.
-PERFECT_RECALL_RE = re.compile(r"100\s*%[^.<>{}]{0,40}?recall|recall[^.<>{}]{0,40}?100\s*%", re.IGNORECASE)
+PERFECT_RECALL_RE = re.compile(
+    r"100\s*%[^.<>{}]{0,40}?recall|recall[^.<>{}]{0,40}?100\s*%", re.IGNORECASE
+)
 
 
 def _claims() -> dict:
