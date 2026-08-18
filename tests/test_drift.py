@@ -73,10 +73,7 @@ class TestParseDiffHunks:
         assert parse_diff_hunks(diff) == {}
 
     def test_multiple_files(self):
-        diff = (
-            "--- a/a.py\n+++ b/a.py\n@@ -1,0 +1,2 @@\n"
-            "--- a/b.py\n+++ b/b.py\n@@ -20 +20 @@\n"
-        )
+        diff = "--- a/a.py\n+++ b/a.py\n@@ -1,0 +1,2 @@\n--- a/b.py\n+++ b/b.py\n@@ -20 +20 @@\n"
         ranges = parse_diff_hunks(diff)
         assert ranges == {"a.py": [(1, 2)], "b.py": [(20, 20)]}
 
@@ -151,7 +148,12 @@ class TestPeerGroup:
             links.append({"source": "f.py", "target": name, "relation": "contains"})
         view = GraphView({"nodes": nodes, "links": links})
         group = peer_group(view, "create_endpoint", min_peers=3)
-        assert set(group) == {"create_endpoint", "update_endpoint", "delete_endpoint", "read_endpoint"}
+        assert set(group) == {
+            "create_endpoint",
+            "update_endpoint",
+            "delete_endpoint",
+            "read_endpoint",
+        }
         assert "helper" not in group
 
 
@@ -230,15 +232,27 @@ class TestFormatDrift:
 
     def test_share_property(self):
         finding = DriftFinding(
-            node="n", label="n", source_file="f.py", line=1,
-            associate="a", associate_label="a", peers=9, group_size=10,
+            node="n",
+            label="n",
+            source_file="f.py",
+            line=1,
+            associate="a",
+            associate_label="a",
+            peers=9,
+            group_size=10,
         )
         assert finding.share == 1.0  # 9 of 9 *other* members
 
     def test_to_dict_roundtrip(self):
         finding = DriftFinding(
-            node="n", label="n()", source_file="f.py", line=5,
-            associate="a", associate_label="a()", peers=3, group_size=4,
+            node="n",
+            label="n()",
+            source_file="f.py",
+            line=5,
+            associate="a",
+            associate_label="a()",
+            peers=3,
+            group_size=4,
         )
         d = finding.to_dict()
         assert d["node"] == "n"
@@ -257,7 +271,17 @@ class TestCheckProject:
 
         subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
         subprocess.run(
-            ["git", "-c", "user.email=t@t.com", "-c", "user.name=t", "commit", "--allow-empty", "-m", "init"],
+            [
+                "git",
+                "-c",
+                "user.email=t@t.com",
+                "-c",
+                "user.name=t",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "init",
+            ],
             cwd=tmp_path,
             check=True,
             capture_output=True,

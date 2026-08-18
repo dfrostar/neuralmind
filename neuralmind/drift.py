@@ -150,9 +150,7 @@ def parse_diff_hunks(diff_text: str) -> dict[str, list[tuple[int, int]]]:
     return dict(ranges)
 
 
-def diff_text(
-    project_path: str | Path, *, base: str | None = None, staged: bool = False
-) -> str:
+def diff_text(project_path: str | Path, *, base: str | None = None, staged: bool = False) -> str:
     """Return unified diff text for the requested comparison, or ``""``.
 
     ``staged=True`` diffs the index against ``HEAD`` — what a
@@ -172,9 +170,7 @@ def diff_text(
     if base is not None:
         cmd.append(base)
     try:
-        return subprocess.check_output(
-            cmd, stderr=subprocess.DEVNULL, text=True, errors="replace"
-        )
+        return subprocess.check_output(cmd, stderr=subprocess.DEVNULL, text=True, errors="replace")
     except (subprocess.CalledProcessError, OSError):
         return ""
 
@@ -507,11 +503,7 @@ def refresh_graph(project_path: str | Path, graph: dict, paths: list[str]) -> di
             return graph
         root = Path(project_path).resolve()
         indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
-        changed = [
-            rel
-            for rel in paths
-            if Path(rel).suffix in indexable and (root / rel).is_file()
-        ]
+        changed = [rel for rel in paths if Path(rel).suffix in indexable and (root / rel).is_file()]
         if not changed:
             return graph
         refreshed, _ = graphgen.update_files(project_path, copy.deepcopy(graph), changed, [])
