@@ -187,6 +187,45 @@ class TurboVecBackendTests(unittest.TestCase):
         self.assertGreaterEqual(stats["communities"], 1)
         be.close()
 
+    def test_unreadable_index_is_quarantined_and_rebuilt(self) -> None:
+        """An index file no current turbovec build can decode (e.g. written by
+        a pre-v5 version, or corrupted) must not crash the backend: it is
+        quarantined to ``.stale`` and the next embed rebuilds from source
+        vectors — the exact failure mode of upgrading turbovec over an old
+        on-disk index (stale demo/fixture indexes broke CI this way)."""
+        be = self._backend()
+        be.embed_nodes()
+        index_path = be._index_path
+        be.close()
+
+        index_path.write_bytes(b"not a turbovec index")
+        reopened = self._backend()
+        stats = reopened.embed_nodes()  # force=False: recovery must not rely on force
+        self.assertEqual(stats["updated"], 5)
+        self.assertEqual(stats["skipped"], 0)
+        self.assertTrue(index_path.with_name(index_path.name + ".stale").exists())
+        results = reopened.search("authenticate_user", n=1)
+        self.assertEqual(results[0]["id"], "n_auth")
+        reopened.close()
+
+    def test_missing_index_with_surviving_rows_reembeds(self) -> None:
+        """If the index file vanishes while SQLite rows survive, a force=False
+        embed must repopulate the fresh index instead of skipping everything
+        and persisting an empty index that the store claims is populated."""
+        be = self._backend()
+        be.embed_nodes()
+        index_path = be._index_path
+        be.close()
+
+        index_path.unlink()
+        reopened = self._backend()
+        stats = reopened.embed_nodes()
+        self.assertEqual(stats["updated"], 5)
+        self.assertEqual(stats["skipped"], 0)
+        results = reopened.search("send_invoice", n=1)
+        self.assertEqual(results[0]["id"], "n_invoice")
+        reopened.close()
+
     def test_prefers_numpy_native_embed_over_tolist(self) -> None:
         """An embedder exposing ``embed()`` is used numpy-native, skipping the
         ``__call__`` → ``list[list[float]]`` round-trip that inflated peak RSS.
