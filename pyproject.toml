@@ -43,6 +43,9 @@ keywords = [
     "developer-tools",
     "team-memory",
     "impact-analysis",
+    "code-drift-detection",
+    "pre-commit-hook",
+    "pattern-consistency",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

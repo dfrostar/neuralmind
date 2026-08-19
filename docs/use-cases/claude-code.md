@@ -51,6 +51,7 @@ Returns the function list, rationales, call graph, and cross-file edges — ~88%
 | `npm test` dumps 800 lines into the agent | Hook keeps errors + last 3 lines (~91% smaller) |
 | `grep -r "foo"` floods with 200 matches | Capped at 25 with "N more hidden" pointer |
 | Every commit drifts the index | `post-commit` hook rebuilds incrementally |
+| An eleventh handler quietly skips the auth check the other ten share *(v3.2.0+)* | `pre-commit` drift guard flags it before the commit lands |
 | "What should I open next?" is guesswork *(v0.11.0+)* | `neuralmind next . path/to/file.py` returns the files most often edited after this one, ranked by probability |
 
 ## Predict the next file *(v0.11.0+)*
@@ -130,6 +131,32 @@ Co-break candidates for 3 changed files:
 ```
 
 Same data via the `neuralmind_review` MCP tool — Claude Code can call it automatically after editing a file, before a commit or push.
+
+## Flag a commit that drifts from its own patterns *(v3.2.0+)*
+
+`review` (above) answers "what else might this change break?" It says
+nothing about whether the change itself fits the pattern its siblings
+follow. `neuralmind drift` closes that gap: it reads the diff, maps
+changed lines to graph symbols, and flags a symbol that skips an
+association a strong majority of its peer group shares.
+
+```bash
+neuralmind drift . --staged
+```
+
+```
+## NeuralMind drift check (warning) — 1 finding(s)
+
+- api/routes.py:67 — `delete_me_endpoint()` skips `verify_session()`, which
+  3 of its 9 peers (33%) use. Confirm this is deliberate.
+
+Warning only — the commit proceeds. Use --strict to block on drift.
+```
+
+Only symbols the diff actually touched are ever reported — a pre-existing
+outlier elsewhere in the graph never gets blamed on your commit.
+`neuralmind init-hook .` installs this as a `pre-commit` hook automatically
+(warn-only; pass `--strict` to `init-hook` to make it block instead).
 
 ## Track cumulative savings *(v0.39.0+, requires NEURALMIND_MEMORY=1)*
 
