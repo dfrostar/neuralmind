@@ -30,3 +30,35 @@ A dark, editorial tech-illustration on a near-black navy background (#070b15). A
 | Manifest + CI gate | PR #437, "fix(site): source every marketing number, gate the site against claim drift" (2026-08-18) |
 | Same-day hardening (repo + evidence level, not just value) | PR #440, "fix(tests): bind site ratios to their repo and evidence level" (2026-08-18) |
 | Free-tier terms | `commercial-terms.json` (canon; no trial language, per `do_not_market`) |
+
+## Correction post — for the prior LinkedIn post
+
+Standalone post to run alongside (or as a comment on) the earlier infographic post, explicitly naming what changed and why — per "Correct it, and say so."
+
+### Post text
+
+A correction to our last post.
+
+Before: "Sub-second retrieval — 0.81s."
+After: Retrieval is a local index lookup, not another model call.
+Why: We couldn't find a benchmark anywhere in our repo that produces 0.81s. It didn't measure anything, so we removed it rather than requote it more carefully.
+
+Before: "12–50x Average Token Reduction."
+After: 12–50x token reduction on real repos — the low and high end of a range, not an average.
+Why: 12 and 50 are real, field-reported numbers. Calling them an "average" implied a calculation that was never done.
+
+Before: "Zero telemetry or code egress — your IP never leaves your machine."
+After: No telemetry. No calls home. NeuralMind itself makes no network calls of its own.
+Why: Your agent still sends its chosen context to its model — that hasn't changed. The absolute claim overstated what we actually control.
+
+The same audit that caught these produced the CI gate in this week's post: every number on our site now has to name its source and evidence level before it ships. This is that same discipline, applied backward to our own back catalog.
+
+#AIagents #DeveloperTools #EngineeringCulture
+
+### Source check for each line
+
+| Before → After | Source |
+|---|---|
+| 0.81s → "local index lookup, not another model call" | `site/claims.json`, `unsourced_do_not_use`: "No measurement anywhere in the repo produces this number... Speed claims must be mechanism-based." The replacement phrase is quoted directly from that entry. |
+| "Average" 12-50x → "range, low/high end, not an average" | `site/claims.json` `ratios`, entries `value: 12` / `value: 50`, `evidence: "field-report"`, "Directional, not a guarantee." |
+| "Never leaves your machine / zero code egress" → "no network calls of its own" | `tests/test_docs_claims.py` FORBIDDEN patterns (`egress`, `never leaves... machine`) and its prescribed replacement phrasing; `site/src/app/effectiveness/page.tsx`'s own "honesty gate" disclaims "zero code egress" as an overclaim. |
