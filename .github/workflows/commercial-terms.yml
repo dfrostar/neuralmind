@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual trigger for release-please's branch, whose GITHUB_TOKEN pushes
+  # can't fire pull_request workflows — see ci.yml (#98).
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -5,6 +5,11 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  # Manual trigger for branches whose pull_request events can't fire —
+  # release-please force-pushes its release branch with GITHUB_TOKEN, and
+  # GitHub's anti-recursion guard suppresses workflow runs for those pushes,
+  # so the release PR otherwise shows these checks as never-started (#98).
+  workflow_dispatch:
 
 jobs:
   lint:
