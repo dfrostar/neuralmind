@@ -15,8 +15,10 @@ from neuralmind import __version__, memory
 from neuralmind.audit import AuditTrail
 from neuralmind.cli_feedback_status import cmd_feedback_bad, cmd_feedback_good, cmd_status
 from neuralmind.cli_health import cmd_health
+from neuralmind.cohesion import DEFAULT_COHESION, DEFAULT_MIN_PEERS
 from neuralmind.core import GraphNotBuiltError, NeuralMind, create_mind
 from neuralmind.doc_evolver import BlindSpot, DocEvolver
+from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
@@ -3710,6 +3712,52 @@ def _cmd_gaps_structural(args):
         print(format_structural_gaps(gaps))
 
 
+def cmd_drift(args):
+    """Flag changed symbols that break a pattern their peers share.
+
+    The commit-time half of the cohesion check: instead of judging
+    whatever cluster a query surfaced, it reads the diff, maps the
+    changed lines onto graph symbols, and asks whether anything you just
+    touched skips an association a strong majority of its siblings make.
+
+    Warn-only by default so it can sit in a ``pre-commit`` hook without
+    ever standing between a developer and their commit; ``--strict``
+    turns findings into a non-zero exit.
+    """
+    from .drift import check_project, format_drift
+
+    project_path = getattr(args, "project_path", ".")
+    strict = getattr(args, "strict", False)
+
+    result = check_project(
+        project_path,
+        base=getattr(args, "diff", None),
+        staged=getattr(args, "staged", False),
+        cohesion=args.cohesion,
+        min_peers=args.min_peers,
+        max_findings=args.max_findings,
+        refresh=not getattr(args, "no_refresh", False),
+    )
+    findings = result.pop("_findings", [])
+
+    if args.json:
+        print(json.dumps(result, indent=2))
+    elif not result["changed_files"]:
+        print("No changes to check. (Nothing staged, or an empty diff.)")
+    elif result["graph"] == "missing":
+        print("No code graph found. Run `neuralmind build .` first — drift needs the graph.")
+    elif not findings:
+        print(
+            f"✓ No drift. Checked {result['symbols_checked']} changed "
+            f"symbol(s) across {len(result['changed_files'])} file(s)."
+        )
+    else:
+        print(format_drift(findings, strict=strict))
+
+    if findings and strict:
+        sys.exit(1)
+
+
 def cmd_gaps(args):
     """Find endpoints tested only in mock mode — the coverage that lies.
 
@@ -3783,14 +3831,61 @@ def cmd_why(args):
     print(format_decisions(hits))
 
 
-def cmd_init_hook(args):
-    """Initialize Git post-commit hook for automatic updates.
+def _splice_hook_block(existing: str, block: str) -> tuple[str, str]:
+    """Merge a neuralmind block into an existing hook script.
 
-    Safe: appends to an existing post-commit hook rather than overwriting
-    it, and is idempotent — re-running only updates the neuralmind block.
+    Returns ``(new_content, action)``. The block is delimited by sentinels
+    so re-runs replace it in place and coexist with other tools' hook
+    contributions (e.g. ``graphify hook install``) instead of clobbering
+    them.
     """
+    if "# neuralmind-hook-start" in existing and "# neuralmind-hook-end" in existing:
+        # Idempotent replacement of just our block.
+        pre, _, rest = existing.partition("# neuralmind-hook-start")
+        _, _, post = rest.partition("# neuralmind-hook-end")
+        return pre.rstrip("\n") + "\n\n" + block + post.lstrip("\n"), "updated"
+    if existing.strip():
+        # Append to an existing hook without clobbering it.
+        if not existing.endswith("\n"):
+            existing += "\n"
+        return existing + "\n" + block, "appended to"
+    return "#!/bin/sh\n" + block, "created"
+
+
+def _write_hook(hook_path: str, block: str) -> str:
+    """Write a hook file with the block spliced in; return the action taken."""
     import os
     import stat
+
+    existing = ""
+    if os.path.exists(hook_path):
+        with open(hook_path) as f:
+            existing = f.read()
+    new_content, action = _splice_hook_block(existing, block)
+    with open(hook_path, "w") as f:
+        f.write(new_content)
+    # Make executable (no-op on Windows but harmless).
+    current_mode = os.stat(hook_path).st_mode
+    os.chmod(hook_path, current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return action
+
+
+def cmd_init_hook(args):
+    """Initialize the Git hooks that keep the index fresh and the code honest.
+
+    Installs two hooks, both idempotent and both appended to any existing
+    script rather than overwriting it:
+
+    - ``post-commit`` rebuilds the index so it never drifts stale;
+    - ``pre-commit`` runs the drift check over the staged diff, so a
+      symbol that skips a pattern its peers share gets flagged while the
+      change is still in your hands.
+
+    The pre-commit guard warns and exits 0 by default — a check that
+    blocks commits on a heuristic loses its welcome fast. ``--strict``
+    makes it blocking; ``--no-drift`` skips it entirely.
+    """
+    import os
     import sys
 
     project_path = getattr(args, "project_path", ".")
@@ -3823,40 +3918,45 @@ fi
 # neuralmind-hook-end
 """
 
-    existing = ""
-    if os.path.exists(hook_path):
-        with open(hook_path) as f:
-            existing = f.read()
-
-    if "# neuralmind-hook-start" in existing and "# neuralmind-hook-end" in existing:
-        # Idempotent replacement of just our block
-        pre, _, rest = existing.partition("# neuralmind-hook-start")
-        _, _, post = rest.partition("# neuralmind-hook-end")
-        # post starts right after the sentinel; strip the trailing newline
-        # from our pre-slice if it produced one, then splice
-        new_content = pre.rstrip("\n") + "\n\n" + nm_block + post.lstrip("\n")
-        action = "updated"
-    elif existing.strip():
-        # Append to existing hook without clobbering
-        if not existing.endswith("\n"):
-            existing += "\n"
-        new_content = existing + "\n" + nm_block
-        action = "appended to"
-    else:
-        # Fresh hook
-        new_content = "#!/bin/sh\n" + nm_block
-        action = "created"
-
     try:
-        with open(hook_path, "w") as f:
-            f.write(new_content)
-        # Make executable (no-op on Windows but harmless)
-        current_mode = os.stat(hook_path).st_mode
-        os.chmod(hook_path, current_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        action = _write_hook(hook_path, nm_block)
         print(f"✓ NeuralMind post-commit hook {action} at {hook_path}")
         print("  The index will rebuild automatically after every commit.")
     except Exception as e:
         print(f"Error installing hook: {e}")
+        sys.exit(1)
+
+    if getattr(args, "no_drift", False):
+        print("  Drift guard skipped (--no-drift).")
+        return
+
+    # The pre-commit guard reads the staged diff and the last-built graph.
+    # `|| true` in warn mode is deliberate belt-and-braces: `drift` already
+    # exits 0 without --strict, but a hook that can never block a commit by
+    # accident is one people leave installed.
+    strict = getattr(args, "strict", False)
+    drift_cmd = "neuralmind drift . --staged" + (" --strict" if strict else "")
+    tail = "" if strict else " || true"
+    drift_block = f"""# neuralmind-hook-start
+# Flag staged changes that drift from a pattern their peers share.
+# Managed by `neuralmind init-hook`.
+if command -v neuralmind >/dev/null 2>&1; then
+    {drift_cmd}{tail}
+fi
+# neuralmind-hook-end
+"""
+
+    pre_commit_path = os.path.join(git_hooks_dir, "pre-commit")
+    try:
+        action = _write_hook(pre_commit_path, drift_block)
+        print(f"✓ NeuralMind pre-commit drift guard {action} at {pre_commit_path}")
+        if strict:
+            print("  Commits are BLOCKED when a staged change drifts from its peers.")
+        else:
+            print("  Drift is reported as a warning; commits are never blocked.")
+            print("  Re-run with --strict to make it blocking.")
+    except Exception as e:
+        print(f"Error installing pre-commit hook: {e}")
         sys.exit(1)
 
 
@@ -4556,9 +4656,66 @@ def main():
     )
     ingest_cmmc_p.set_defaults(func=cmd_ingest_cmmc)
 
+    # Drift command — commit-time pattern-drift guard
+    drift_p = subparsers.add_parser(
+        "drift",
+        help="Flag changed symbols that skip a pattern their peers share",
+    )
+    drift_p.add_argument(
+        "project_path",
+        nargs="?",
+        default=".",
+        help="Project root to check (default: current directory)",
+    )
+    drift_p.add_argument(
+        "--staged",
+        action="store_true",
+        help="Check staged changes against HEAD (what a pre-commit hook sees)",
+    )
+    drift_p.add_argument(
+        "--diff",
+        metavar="BASE",
+        default=None,
+        help="Git ref to diff the working tree against (default: HEAD)",
+    )
+    drift_p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero when drift is found (default: warn only)",
+    )
+    drift_p.add_argument(
+        "--cohesion",
+        type=float,
+        default=DEFAULT_COHESION,
+        help=(
+            "Fraction of a peer group that must share an association before a "
+            f"dissenter is flagged (default: {DEFAULT_COHESION})"
+        ),
+    )
+    drift_p.add_argument(
+        "--min-peers",
+        type=int,
+        default=DEFAULT_MIN_PEERS,
+        help=f"Minimum peers that must agree (default: {DEFAULT_MIN_PEERS})",
+    )
+    drift_p.add_argument(
+        "--max-findings",
+        type=int,
+        default=DEFAULT_MAX_FINDINGS,
+        help=f"Cap on reported findings (default: {DEFAULT_MAX_FINDINGS})",
+    )
+    drift_p.add_argument(
+        "--no-refresh",
+        action="store_true",
+        help="Skip re-parsing changed files; use the graph exactly as last built",
+    )
+    drift_p.add_argument("--json", action="store_true", help="Output JSON")
+    drift_p.set_defaults(func=cmd_drift)
+
     # Init-hook command
     init_parser = subparsers.add_parser(
-        "init-hook", help="Initialize Git post-commit hook for auto-updates"
+        "init-hook",
+        help="Install Git hooks: post-commit index rebuild + pre-commit drift guard",
     )
     init_parser.add_argument(
         "project_path",
@@ -4566,6 +4723,16 @@ def main():
         nargs="?",
         default=".",
         help="Path to the project (defaults to current directory)",
+    )
+    init_parser.add_argument(
+        "--no-drift",
+        action="store_true",
+        help="Skip the pre-commit drift guard; install the post-commit rebuild only",
+    )
+    init_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Make the pre-commit drift guard block the commit instead of warning",
     )
     init_parser.set_defaults(func=cmd_init_hook)
 

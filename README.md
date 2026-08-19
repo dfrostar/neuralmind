@@ -20,6 +20,7 @@ together, what you usually touch next — and remembers it across sessions.
 > - Receives PostToolUse compression automatically (Bash output → errors + signals)
 > - Queries your codebase in ~800 tokens instead of ~50,000
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
+> - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 >
 > **Works with every IDE your team already uses.**
 
@@ -121,6 +122,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 |-----------|------|
 | Cut AI inference costs on code Q&A | [Cost optimization](docs/use-cases/cost-optimization.md) |
 | Set up Claude Code hooks | [Claude Code walkthrough](docs/use-cases/claude-code.md) |
+| Catch code that drifts from its own patterns before it ships | [Review before push](docs/use-cases/review-before-push.md) |
 | Measure savings on my own repo | [Benchmark your repo](docs/use-cases/benchmark-your-repo.md) |
 | Always-on synapse learning (24/7) | [Always-on](docs/use-cases/always-on.md) |
 | Run across multiple codebases | [Multi-project scoping](docs/wiki/Multi-Project-Scoping.md) |
@@ -253,6 +255,11 @@ neuralmind benchmark .
 - **Team memory.** `neuralmind memory publish` commits a learned-weights
   bundle (no source code) that teammates' agents inherit on their next
   session — a fresh clone starts with the team's earned intuition.
+- **Commit-time drift guard.** `neuralmind drift` reads your staged diff,
+  maps changed lines to graph symbols, and flags one that skips a pattern a
+  strong majority of its siblings share — before it ships, not after a
+  query happens to surface the cluster. `neuralmind init-hook` wires it into
+  `pre-commit` automatically (warn by default; `--strict` to block).
 - **MCP server for any agent.** Claude Code, Codex, Cursor, Cline, Continue,
   or anything MCP-compatible: `neuralmind install-mcp --all`.
 - **Graph view.** `neuralmind serve` renders the index as a force-directed,

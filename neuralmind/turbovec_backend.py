@@ -182,7 +182,16 @@ class TurboVecEmbedder(EmbeddingBackend):
         if self._index_path.exists():
             import turbovec
 
-            self._index = turbovec.IdMapIndex.load(str(self._index_path))
+            try:
+                self._index = turbovec.IdMapIndex.load(str(self._index_path))
+            except (OSError, ValueError):
+                # Written by an incompatible turbovec version (e.g. a pre-v5
+                # index after upgrading) or corrupted. Quarantine it so the
+                # next embed_nodes() rebuilds from the source vectors.
+                self._index_path.replace(
+                    self._index_path.with_name(self._index_path.name + ".stale")
+                )
+                return None
             self._dirty = False
         return self._index
 
@@ -430,6 +439,15 @@ class TurboVecEmbedder(EmbeddingBackend):
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
         if not self.nodes and not self.load_graph():
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
+
+        if self._load_index() is None:
+            row = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()
+            if int(row["c"]) > 0:
+                # The index is gone (quarantined as unreadable, or deleted)
+                # while node metadata survives. Skipping unchanged nodes would
+                # persist an empty index that SQLite claims is populated, so
+                # re-embed everything into the fresh index.
+                force = True
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         pending: list[tuple[str, int, str, dict, str, bool]] = (

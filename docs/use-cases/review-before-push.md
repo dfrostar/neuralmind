@@ -71,9 +71,26 @@ The agent can call this automatically after editing a file, get the co-break can
 
 > **Want the static side of this?** `neuralmind review` ranks co-break candidates by *learned association* (what you edit together). For the *structural* answer — the exact callers, importers, and subclasses a change would touch, straight from the code graph and available with no editing history — run [`neuralmind structural <symbol> --blast-radius`](blast-radius-before-a-rename.md) (v0.42.0+). Structure says what *can* break; synapses say what *usually* co-changes. Use both before a risky refactor.
 
+> **Want to know if the change itself is off, not just what it touches?** `neuralmind review` and `--blast-radius` both answer "what else does this affect?" — they say nothing about whether the change you made is internally consistent with its own siblings. For that, [`neuralmind drift`](claude-code.md#flag-a-commit-that-drifts-from-its-own-patterns-v320) (v3.2.0+) reads the same diff and flags a changed symbol that skips an association a strong majority of its peers share — the eleventh handler that quietly forgot the auth check the other ten all have. Run it alongside `review`: one tells you what a change might break elsewhere, the other tells you if the change is drifting from the pattern it's supposed to follow.
+
+## As a pre-commit hook
+
+Both `review` and `drift` are diff-aware, so both fit naturally into a git hook instead of a manual pre-push habit:
+
+```bash
+neuralmind init-hook .   # installs post-commit rebuild + pre-commit drift guard
+```
+
+`init-hook` wires `neuralmind drift . --staged` into `pre-commit` (warn-only
+by default, `--strict` to block). `review` isn't installed automatically —
+its co-break candidates are advisory judgment calls, better suited to a
+manual check before opening a PR than a hook every commit runs through.
+
 ## See also
 
 - [Blast radius before a rename](blast-radius-before-a-rename.md) — the static-graph complement: every caller/importer/subclass a change would touch (v0.42.0+)
+- [`neuralmind drift`](claude-code.md#flag-a-commit-that-drifts-from-its-own-patterns-v320) — flag a changed symbol that breaks a pattern its peers share, at commit time (v3.2.0+)
 - [`neuralmind query --explain`](claude-code.md#understand-why-a-retrieval-answered-the-way-it-did-v0400) — understand why a specific retrieval answered the way it did
 - [`neuralmind savings`](claude-code.md#track-cumulative-savings-v0400-requires-neuralmind_memory1) — track cumulative token savings across sessions
 - [Full v0.39.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.39.0.md)
+- [Full v3.2.0 release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.2.0.md)

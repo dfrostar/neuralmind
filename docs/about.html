@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, and a 100% local ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, and a 100% local ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -196,6 +196,21 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v320">
+            <h2>What's New in v3.2.0 — Drift, caught at commit time</h2>
+            <p><strong>The cohesion outlier check moves from query time to commit time.</strong> <code>neuralmind drift</code> reads your staged diff, maps changed lines onto the code graph, and flags a changed symbol that skips a pattern a strong majority of its siblings share — before the commit lands, not after a query happens to surface the cluster.</p>
+            <h3>What's new</h3>
+            <ul>
+                <li><strong><code>neuralmind drift</code></strong> — commit-time pattern-drift check over a git diff, warn-only by default</li>
+                <li><strong><code>init-hook</code> pre-commit guard</strong> — installs the drift check automatically alongside the existing post-commit index rebuild</li>
+                <li><strong><code>--strict</code></strong> — opt in to blocking the commit instead of warning</li>
+            </ul>
+            <p>Only symbols actually touched by the diff are ever reported — pre-existing outliers elsewhere in the graph are silently ignored, so the check never blames a commit for drift it didn't introduce.</p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.2.0.md">v3.2.0 release notes</a></p>
         </div>
     </section>
 
