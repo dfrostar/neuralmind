@@ -13,6 +13,8 @@ We corrected the numbers, then removed our ability to repeat the mistake. Every 
 
 93.75% mean, 79-100% per repo, is the number we publish now instead of the rounder one. Anyone can reproduce it from a clean clone (python -m evals.public.run).
 
+The same discipline caught something subtler days later: our CI benchmark produced two different results for identical code — not randomly, but depending on which cloud machine the job landed on. Bit-identical outputs on the same hardware, a different answer on the next. Floating-point kernels differ across CPU generations, and one near-tied ranking decision flipped with them. A number you can't reproduce across machines isn't a measurement yet. That's on our fix list now too — in public, like the rest.
+
 If you're evaluating AI dev tooling for your organization, that's the standard worth asking every vendor for — us included. The manifest is public: github.com/dfrostar/neuralmind/blob/main/site/claims.json. Free tier: one seat, no signup, never expires, same code path as Enterprise — no feature gate, only a seat limit.
 
 #AIagents #DeveloperTools #EngineeringCulture
@@ -30,6 +32,7 @@ A dark, editorial tech-illustration on a near-black navy background (#070b15). A
 | Manifest + CI gate | PR #437, "fix(site): source every marketing number, gate the site against claim drift" (2026-08-18) |
 | Same-day hardening (repo + evidence level, not just value) | PR #440, "fix(tests): bind site ratios to their repo and evidence level" (2026-08-18) |
 | Free-tier terms | `commercial-terms.json` (canon; no trial language, per `do_not_market`) |
+| Machine-dependent benchmark result (bit-identical per host, divergent across hosts) | Same commit, same deps, same tokenizer, same fixture graph: benchmark job 96172087928 (Phase 2 on = 72.81%) vs job 96164961807 (Phase 2 on = 78.07%); off-phase identical (74.56%) in both. Local A/B ruled out content, hash seed, and docs-file causes. No specific values quoted in the post — they're single-run outputs (see `tests/test_docs_claims.py` SUPERSEDED_FIGURES rationale). |
 
 ## Correction post — for the prior LinkedIn post
 
