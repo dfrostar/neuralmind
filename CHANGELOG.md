@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.2.0](https://github.com/dfrostar/neuralmind/compare/v3.1.5...v3.2.0) (2026-08-19)
+
+
+### Features
+
+* **drift:** commit-time pattern-drift detection ([#438](https://github.com/dfrostar/neuralmind/issues/438)) ([833b7e2](https://github.com/dfrostar/neuralmind/commit/833b7e266bccc34ee9d26023cbcebbb14b1987f0))
+
+
+### Bug Fixes
+
+* **site:** source every marketing number, gate the site against claim drift ([#437](https://github.com/dfrostar/neuralmind/issues/437)) ([04594d1](https://github.com/dfrostar/neuralmind/commit/04594d136057635e3ea90e9a76105ce9bc095201))
+* **tests:** bind site ratios to their repo and evidence level, not just value ([#440](https://github.com/dfrostar/neuralmind/issues/440)) ([64e5cfa](https://github.com/dfrostar/neuralmind/commit/64e5cfab6fd008fbba43d749040c7634c77c2c03))
+* **turbovec:** auto-recover from an index no current turbovec build can decode ([#443](https://github.com/dfrostar/neuralmind/issues/443)) ([e6fa9e4](https://github.com/dfrostar/neuralmind/commit/e6fa9e4b808759d78b5c078fa4dd06ea44d9dae2))
+
 ## [3.1.5](https://github.com/dfrostar/neuralmind/compare/v3.1.4...v3.1.5) (2026-08-12)
 
 
