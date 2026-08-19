@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   push:
     branches: [main, master]
+  # Manual trigger for release-please's branch, whose GITHUB_TOKEN pushes
+  # can't fire pull_request workflows — see ci.yml (#98).
+  workflow_dispatch:
 
 # The composite action posts its summary as a PR comment; the default
 # GITHUB_TOKEN here is read-only, which made that step 403 and fail the
