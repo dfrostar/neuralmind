@@ -54,7 +54,28 @@ PUBLISHED_GLOBS = (
     # likewise unscanned.
     "docs/benchmarks/*.md",
     "docs/benchmarks/*.html",
+    # Social copy (LinkedIn posts + their image prompts) is the surface class
+    # where the worst historical overclaims shipped: one infographic carried an
+    # unsourced latency figure and a "never leaves your machine" absolute at
+    # once. Posts are drafted in-repo precisely so this guard vets them BEFORE
+    # they're pasted somewhere no CI can reach.
+    "docs/social/*.md",
 )
+
+# A post may legitimately *quote* a forbidden phrase in order to correct it —
+# the correction post renders the old claim as "Before:" beside its fix. Same
+# mechanism as tests/test_site_claims.py: mark the line (or the line above it)
+# with the marker and the guards skip that line only. The marker is an audit
+# trail, not an off switch — an unmarked reappearance still fails the build.
+ALLOW_MARKER = "claims-guard:allow"
+
+
+def _allowed(lines: list[str], index: int) -> bool:
+    """True when ``lines[index]`` (0-based) carries or follows the allow marker."""
+    if ALLOW_MARKER in lines[index]:
+        return True
+    return index > 0 and ALLOW_MARKER in lines[index - 1]
+
 
 # Each entry: (compiled pattern, why it's forbidden / what to say instead).
 # Patterns target whole misleading phrases, case-insensitive.
@@ -222,12 +243,17 @@ def test_published_surfaces_have_no_forbidden_absolute_claims() -> None:
     violations: list[str] = []
     for path in _published_paths():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for lineno, line in enumerate(text.splitlines(), start=1):
+        lines = text.splitlines()
+        for index, line in enumerate(lines):
+            if _allowed(lines, index):
+                continue
             for pattern, reason in FORBIDDEN:
                 m = pattern.search(line)
                 if m:
                     rel = path.relative_to(REPO_ROOT)
-                    violations.append(f"{rel}:{lineno}: forbidden claim {m.group(0)!r} — {reason}")
+                    violations.append(
+                        f"{rel}:{index + 1}: forbidden claim {m.group(0)!r} — {reason}"
+                    )
     assert not violations, (
         "Forbidden absolute claim(s) found on published surfaces "
         "(NeuralMind minimizes egress, it does not eliminate it):\n  " + "\n  ".join(violations)
@@ -243,17 +269,44 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search("100% local: no code leaves the machine") for p, _ in FORBIDDEN)
 
 
+def test_social_copy_is_scanned() -> None:
+    # docs/social/ went unscanned while it held finished LinkedIn copy — the
+    # exact surface class the 0.81s infographic shipped from. Pin the coverage
+    # so a glob refactor can't silently drop it.
+    assert any(
+        p.parts[-2:] == ("docs", "social") or "social" in p.parts for p in _published_paths()
+    )
+
+
+def test_allow_marker_exempts_quoted_disavowals_only() -> None:
+    # A correction post quotes the old claim beside its fix; the marker skips
+    # that line — and only that line. Unmarked reappearances still fail.
+    quoted = [
+        "<!-- claims-guard:allow — quoting the retracted claim to correct it -->",
+        'Before: "your IP never leaves your machine."',
+        "After: NeuralMind makes no network calls of its own.",
+    ]
+    assert _allowed(quoted, 1), "marker on the previous line must exempt the quote"
+    assert not _allowed(quoted, 2), "the line after the quote is not exempt"
+    unmarked = ['Before: "your IP never leaves your machine."']
+    assert not _allowed(unmarked, 0)
+    assert any(p.search(unmarked[0]) for p, _ in FORBIDDEN)
+
+
 def test_published_surfaces_do_not_quote_superseded_point_estimates() -> None:
     violations: list[str] = []
     for path in _published_paths():
         text = path.read_text(encoding="utf-8", errors="replace")
-        for lineno, raw in enumerate(text.splitlines(), start=1):
+        lines = text.splitlines()
+        for index, raw in enumerate(lines):
+            if _allowed(lines, index):
+                continue
             line = _without_ranges(raw)
             for pattern, reason in SUPERSEDED_FIGURES:
                 m = pattern.search(line)
                 if m:
                     rel = path.relative_to(REPO_ROOT)
-                    violations.append(f"{rel}:{lineno}: {m.group(0)!r} — {reason}")
+                    violations.append(f"{rel}:{index + 1}: {m.group(0)!r} — {reason}")
     assert not violations, (
         "A run-dependent A/B magnitude is published as a fixed figure. CI gates "
         "these on direction, not size — quote the gate and the observed band:\n  "
@@ -268,6 +321,8 @@ def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:
         lines = text.splitlines()
         for index, raw in enumerate(lines):
             if not PERFECT_RECALL_RE.search(_without_ranges(raw)):
+                continue
+            if _allowed(lines, index):
                 continue
             if _scoped_to_competitor_eval(lines, index):
                 continue
