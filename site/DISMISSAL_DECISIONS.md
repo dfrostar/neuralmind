@@ -144,3 +144,21 @@ Re-evaluate this decision when:
 - `site/middleware.ts` / `middleware.js` — **does not exist**
 
 End of document.
+
+---
+
+## 2026-08-20 — Remediation (not dismissal): post-15.5.18 advisory batch cleared
+
+**Performed by:** Claude (AI assistant, user directive — dfrostar)
+**State before:** `npm audit` reported 4 findings (GitHub surfaced 3 open alerts): `next` 15.5.18 (8 advisories, all fixed in 15.5.21 — DoS/SSRF/cache-confusion class), direct `postcss` ≤8.5.22 (sourceMappingURL arbitrary-file-read chain), transitive `nanoid` ≤3.3.17 (infinite-loop), transitive `sharp` <0.35.0 (libvips CVEs).
+
+Unlike the 2025-07-17 batch above, patched releases exist inside the current major, so these were **fixed, not dismissed**:
+
+- `next` ^15.5.18 → **^15.5.23** (non-major; covers every `<15.5.21` advisory)
+- `postcss` (direct devDep) → **^8.5.26**
+- `nanoid` (transitive) → ≥3.3.18 via `npm audit fix`
+- `overrides: { postcss: ^8.5.26, sharp: ^0.35.0 }` — next 15's own tree pins vulnerable ranges of both; npm's only in-tree remedy is next 16 (semver-major), declined. Overrides force the patched versions; both are build-time-only for this static export (no runtime image optimizer, first-party CSS), so the override risk surface is the build itself, which was validated.
+
+**Validation:** `npm audit` → 0 vulnerabilities; `npm run build` → all 17 pages prerendered, static export intact.
+**Python side:** `pip-audit` on `requirements-pinned.txt` reports only chromadb PYSEC-2026-311 — the documented no-fix-exists case (see requirements-pinned.txt header); no new findings.
+**Revisit:** drop the `sharp`/`postcss` overrides when the site moves to next 16, which carries patched ranges natively.
