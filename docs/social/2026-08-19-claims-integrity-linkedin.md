@@ -50,6 +50,7 @@ Before: "12–50x Average Token Reduction."
 After: 12–50x token reduction on real repos — the low and high end of a range, not an average.
 Why: 12 and 50 are real, field-reported numbers. Calling them an "average" implied a calculation that was never done.
 
+<!-- claims-guard:allow — quoting the retracted claim to correct it -->
 Before: "Zero telemetry or code egress — your IP never leaves your machine."
 After: No telemetry. No calls home. NeuralMind itself makes no network calls of its own.
 Why: Your agent still sends its chosen context to its model — that hasn't changed. The absolute claim overstated what we actually control.
@@ -64,4 +65,4 @@ The same audit that caught these produced the CI gate in this week's post: every
 |---|---|
 | 0.81s → "local index lookup, not another model call" | `site/claims.json`, `unsourced_do_not_use`: "No measurement anywhere in the repo produces this number... Speed claims must be mechanism-based." The replacement phrase is quoted directly from that entry. |
 | "Average" 12-50x → "range, low/high end, not an average" | `site/claims.json` `ratios`, entries `value: 12` / `value: 50`, `evidence: "field-report"`, "Directional, not a guarantee." |
-| "Never leaves your machine / zero code egress" → "no network calls of its own" | `tests/test_docs_claims.py` FORBIDDEN patterns (`egress`, `never leaves... machine`) and its prescribed replacement phrasing; `site/src/app/effectiveness/page.tsx`'s own "honesty gate" disclaims "zero code egress" as an overclaim. |
+| "Never leaves your machine / zero code egress" → "no network calls of its own" | `tests/test_docs_claims.py` FORBIDDEN patterns (`egress`, `never leaves... machine`) and its prescribed replacement phrasing; `site/src/app/effectiveness/page.tsx`'s own "honesty gate" disclaims "zero code egress" as an overclaim. | <!-- claims-guard:allow — row quotes the retracted claim it corrects -->
