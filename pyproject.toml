@@ -83,7 +83,14 @@ dependencies = [
     # pre-2.28 glibc) Linux still resolve to turbovec and need a toolchain or
     # `pip install "neuralmind[chromadb]"`; use a glibc base image (python:slim)
     # rather than python:alpine. See docs/prd/chromadb-free-by-default.md.
-    "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    # HOLD: capped <1 on 2026-08-18. turbovec 1.0.0 ships a v5 index rotation
+    # change that refuses to decode the v3 `index.tvim` files committed under
+    # tests/fixtures/*/graphify-out/neuralmind_turbovec/, so every CI run that
+    # resolved the new major failed with "predates the v5 rotation change and
+    # cannot be decoded by any current build". Verified directly: 1.0.0 raises
+    # on the committed fixture, 0.8.0 loads it. Lift the cap in the same change
+    # that regenerates those fixtures at v5.
+    "turbovec>=0.7,<1; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "numpy>=1.20",

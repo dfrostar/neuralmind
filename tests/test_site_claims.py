@@ -239,6 +239,33 @@ def test_guards_actually_trip_on_known_bad_copy() -> None:
     assert not _exempt(marked, 2)
 
 
+def test_site_node_attributions_name_a_repo_that_exists() -> None:
+    """Every repo size the copy cites must be one we actually measured.
+
+    The first version of the attribution check only fired when a ratio shared
+    the line, so `Sub-second on a 1,486-node repo` — the same invented repo,
+    minus the ratio — survived the sweep it was written to catch. A node count
+    is a factual claim about provenance whether or not a number rides along.
+    """
+    declared = [e["nodes"] for e in _claims()["ratios"] if "nodes" in e]
+    violations: list[str] = []
+    for path in _site_files(RATIO_GATED):
+        for lineno, line in enumerate(_prose(path).splitlines(), start=1):
+            for claimed in _nodes_in(line):
+                if any(abs(claimed - d) <= NODE_TOLERANCE * d for d in declared):
+                    continue
+                rel = path.relative_to(REPO_ROOT)
+                violations.append(
+                    f"{rel}:{lineno}: cites a {claimed:,}-node repo; "
+                    f"measured repos are {sorted(declared)}"
+                )
+    assert not violations, (
+        "The site cites a repo size that appears in no dataset. Cite a repo we "
+        "measured, or add it to site/claims.json with its measurement:\n  "
+        + "\n  ".join(violations)
+    )
+
+
 def test_site_ratios_are_attributed_to_the_repo_they_were_measured_on() -> None:
     """A ratio quoted next to the wrong repo size is the defect, not the value.
 
@@ -316,6 +343,10 @@ def test_attribution_guards_trip_on_the_copy_that_shipped() -> None:
     assert declared and all(
         abs(1486 - d) > NODE_TOLERANCE * d for d in declared
     ), "the 1,486-node attribution must not match the repo 65.6× came from"
+
+    # The bare node count — no ratio on the line — is the shape that slipped
+    # through the first attempt and shipped to production.
+    assert _nodes_in("Sub-second on a 1,486-node repo.") == [1486]
 
     # ...and the correct attribution, including the site's rounded form, passes.
     assert any(abs(241 - d) <= NODE_TOLERANCE * d for d in declared)

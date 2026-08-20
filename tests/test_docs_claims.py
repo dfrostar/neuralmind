@@ -41,11 +41,19 @@ PUBLISHED_FILES = (
     "docs/DEPLOYMENT-GUIDE.md",
     "docs/ENTERPRISE.md",
     "docs/BUSINESS-CASE.md",
+    # Written for models to read, and the one surface nothing scanned: it was
+    # still carrying two superseded magnitudes and "no code leaves the machine"
+    # long after every gated surface had been corrected.
+    "docs/llms.txt",
 )
 PUBLISHED_GLOBS = (
     "docs/comparisons/*.md",
     "docs/use-cases/*.md",
     "docs/wiki/*.md",
+    # docs/benchmarks/ is where the numbers themselves live, and it was
+    # likewise unscanned.
+    "docs/benchmarks/*.md",
+    "docs/benchmarks/*.html",
 )
 
 # Each entry: (compiled pattern, why it's forbidden / what to say instead).
@@ -69,7 +77,10 @@ FORBIDDEN = [
         ),
     ),
     (
-        re.compile(r"\bno\s+data\s+leaves?\s+your\b", re.IGNORECASE),
+        # "no data leaves your machine" and "no code leaves the machine" make
+        # the identical absolute; only the noun and article differ, and the
+        # narrower pattern let the second ship on docs/llms.txt.
+        re.compile(r"\bno\s+(code|logic|data)\s+leaves?\s+(your|the)\b", re.IGNORECASE),
         "Absolute claim — reword to NeuralMind's own local processing.",
     ),
     (
@@ -228,6 +239,8 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     # refactor can't neuter it into a silent no-op.
     bad = "100% local — your code never leaves your machine."
     assert any(p.search(bad) for p, _ in FORBIDDEN)
+    # The variant that shipped on llms.txt while the narrower pattern watched.
+    assert any(p.search("100% local: no code leaves the machine") for p, _ in FORBIDDEN)
 
 
 def test_published_surfaces_do_not_quote_superseded_point_estimates() -> None:

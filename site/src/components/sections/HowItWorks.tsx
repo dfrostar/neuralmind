@@ -10,8 +10,8 @@ const steps = [
     {
         icon: '🧠',
         title: 'Query',
-        desc: 'Your agent asks a question. Progressive L0–L3 disclosure pulls exactly the right amount of context. Sub-second on a 1,486-node repo.',
-        time: '<1s',
+        desc: 'Your agent asks a question. Progressive L0–L3 disclosure pulls exactly the right amount of context — a local index lookup, not another model call.',
+        time: 'local lookup',
     },
     {
         icon: '🔮',
