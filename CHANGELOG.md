@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.2.1](https://github.com/dfrostar/neuralmind/compare/v3.2.0...v3.2.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **docs:** remove misfiled v1.9.1 draft, close three claim-guard blind spots ([#441](https://github.com/dfrostar/neuralmind/issues/441)) ([85b2606](https://github.com/dfrostar/neuralmind/commit/85b260684b0e9fc342643093384fa25f8bb49400))
+* **site:** clear all open npm security advisories without a major bump ([#446](https://github.com/dfrostar/neuralmind/issues/446)) ([9bb3a05](https://github.com/dfrostar/neuralmind/commit/9bb3a0590a888fad99c738ecd9b427204c01135a))
+
+
+### Documentation
+
+* **social:** add claims-integrity LinkedIn post for week of 2026-08-19 ([#442](https://github.com/dfrostar/neuralmind/issues/442)) ([0971db4](https://github.com/dfrostar/neuralmind/commit/0971db47cfaff808f2ecf9b8cccaec005ca5e7b9))
+
 ## [3.2.0](https://github.com/dfrostar/neuralmind/compare/v3.1.5...v3.2.0) (2026-08-19)
 
 
