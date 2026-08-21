@@ -1053,11 +1053,11 @@ class NeuralMind:
             print(f"[neuralmind] built-in graph backend failed: {exc}", file=sys.stderr)
             return
 
-        # Only materialize a graph when there's real code to index. An empty or
-        # non-Python project must keep falling through to the existing "no
-        # graph" guidance rather than producing a 0-node index that silently
-        # "succeeds".
-        if not any(n.get("file_type") == "code" for n in graph.get("nodes", [])):
+        # Only materialize a graph when there's real content to index. An empty
+        # project keeps falling through to the existing "no graph" guidance
+        # rather than producing a 0-node index that silently "succeeds".
+        # Books are document-only (markdown chapters, reports) — accept any node.
+        if not graph.get("nodes"):
             return
 
         # Optional SCIP precision pass: when NEURALMIND_PRECISION is set and a
