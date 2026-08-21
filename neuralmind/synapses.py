@@ -1506,12 +1506,16 @@ class SynapseStore:
         if not content_nodes:
             return 0
 
-        # Step 1: Filter business nodes
+        # Step 1: Filter business nodes (anything that's not code or engine metadata)
         business_nodes: list[dict] = []
         for n in content_nodes:
             meta = n.get("metadata")
-            if isinstance(meta, dict) and meta.get("content_category") == "business_context":
-                business_nodes.append(n)
+            if isinstance(meta, dict):
+                cc = meta.get("content_category", "")
+                # Business nodes: book chapters, claims, reports, decisions, etc.
+                # Exclude: engine code/docs, config, marketing, progress logs
+                if cc not in ("engine", "", "marketing", "progress", "research", "plan", "architecture", "kanban", "readme"):
+                    business_nodes.append(n)
         if not business_nodes:
             return 0
 

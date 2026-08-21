@@ -355,7 +355,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             text = node.get("content_text", self._node_to_text(node))
             content_hash = self._content_hash(text)
             row = self._conn.execute(
-                "SELECT uid, content_hash FROM nodes WHERE node_id = ?", (node_id,)
+                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?", (node_id,)
             ).fetchone()
 
             if row is not None:
@@ -365,13 +365,18 @@ class TurboVecEmbedder(EmbeddingBackend):
                 uid = int(row["uid"])
                 is_update = True
                 stats["updated"] += 1
+                existing_cc = row["content_category"] or ""
             else:
                 uid = next_uid
                 next_uid += 1
                 is_update = False
                 stats["added"] += 1
+                existing_cc = ""
 
             meta = self._content_node_metadata(node)
+            # Don't overwrite content_category from DB with empty graph value
+            if existing_cc and not meta.get("content_category"):
+                meta["content_category"] = existing_cc
             meta["content_hash"] = content_hash
             meta["embedded_at"] = datetime.now().isoformat()
             pending.append((node_id, uid, text, meta, content_hash, is_update))
@@ -462,7 +467,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             text = self._node_to_text(node)
             content_hash = self._content_hash(text)
             row = self._conn.execute(
-                "SELECT uid, content_hash FROM nodes WHERE node_id = ?", (node_id,)
+                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?", (node_id,)
             ).fetchone()
 
             if row is not None:
@@ -472,13 +477,21 @@ class TurboVecEmbedder(EmbeddingBackend):
                 uid = int(row["uid"])
                 is_update = True
                 stats["updated"] += 1
+                # Preserve content_category from existing row if graph node lacks it
+                existing_cc = row["content_category"] or ""
             else:
                 uid = next_uid
                 next_uid += 1
                 is_update = False
                 stats["added"] += 1
+                existing_cc = ""
 
-            pending.append((node_id, uid, text, self._node_metadata(node), content_hash, is_update))
+            meta = self._node_metadata(node)
+            # Don't overwrite content_category from DB with empty graph value
+            if existing_cc and not meta.get("content_category"):
+                meta["content_category"] = existing_cc
+
+            pending.append((node_id, uid, text, meta, content_hash, is_update))
 
         if not pending:
             self._persist_index()
@@ -623,6 +636,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             "source_file": row["source_file"],
             "community": row["community"],
             "node_id": row["node_id"],
+            "content_category": row["content_category"] or "",
         }
 
     def get_nodes_by_ids(self, node_ids: list[str]) -> list[dict]:
