@@ -1514,7 +1514,17 @@ class SynapseStore:
                 cc = meta.get("content_category", "")
                 # Business nodes: book chapters, claims, reports, decisions, etc.
                 # Exclude: engine code/docs, config, marketing, progress logs
-                if cc not in ("engine", "", "marketing", "progress", "research", "plan", "architecture", "kanban", "readme"):
+                if cc not in (
+                    "engine",
+                    "",
+                    "marketing",
+                    "progress",
+                    "research",
+                    "plan",
+                    "architecture",
+                    "kanban",
+                    "readme",
+                ):
                     business_nodes.append(n)
         if not business_nodes:
             return 0

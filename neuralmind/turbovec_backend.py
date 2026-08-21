@@ -355,7 +355,8 @@ class TurboVecEmbedder(EmbeddingBackend):
             text = node.get("content_text", self._node_to_text(node))
             content_hash = self._content_hash(text)
             row = self._conn.execute(
-                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?", (node_id,)
+                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
+                (node_id,),
             ).fetchone()
 
             if row is not None:
@@ -467,7 +468,8 @@ class TurboVecEmbedder(EmbeddingBackend):
             text = self._node_to_text(node)
             content_hash = self._content_hash(text)
             row = self._conn.execute(
-                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?", (node_id,)
+                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
+                (node_id,),
             ).fetchone()
 
             if row is not None:
