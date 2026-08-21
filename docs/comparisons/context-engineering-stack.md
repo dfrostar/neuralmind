@@ -25,7 +25,7 @@ NeuralMind functions as a local-first semantic memory engine designed to model a
 
 ### Core Mechanism: AST Parsing and the Hebbian Synapse Layer
 
-NeuralMind employs Abstract Syntax Tree (AST) parsing natively for **Python, TypeScript, and Go** via its built-in tree-sitter backend. Additional language support is available through the optional [graphify](https://github.com/safishamsi/graphify) backend — any language graphify supports feeds the same retrieval pipeline. Relationships are stored in an offline ChromaDB instance (or the dependency-free turbovec backend), providing a secure, local-first processing boundary: NeuralMind itself makes no external calls, so it adds no network calls of its own to your agent's workflow.
+NeuralMind employs Abstract Syntax Tree (AST) parsing natively for **Python, TypeScript, and Go** via its built-in tree-sitter backend. Additional language support is available through the optional [graphify](https://github.com/Graphify-Labs/graphify) backend — any language graphify supports feeds the same retrieval pipeline. Relationships are stored in an offline ChromaDB instance (or the dependency-free turbovec backend), providing a secure, local-first processing boundary: NeuralMind itself makes no external calls, so it adds no network calls of its own to your agent's workflow.
 
 The system's primary learning signal is the **Hebbian Synapse Layer**. This layer continuously records user queries and file edits, allowing active associations to strengthen while unused connections naturally decay. In the v0.25.0 release, the previous co-occurrence reranker was deprecated and removed; internal benchmarks confirmed it was "runtime-inert on the warm path," adding 0.0 points to accuracy while increasing complexity.
 

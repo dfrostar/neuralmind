@@ -66,7 +66,7 @@ The sections below remain the deep reference — system requirements, dependency
 1. **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/)
 2. **pip** (or [pipx](https://pipx.pypa.io/) / [uv](https://docs.astral.sh/uv/)): Usually included with Python
 3. **git** (optional): For source installation
-4. **graphify** (optional): since v0.15.0 NeuralMind generates the code graph itself with a built-in tree-sitter backend (Python, TypeScript, Go). Install [graphify](https://github.com/safishamsi/graphify) (`pip install graphifyy`) only if you want its richer graph — it takes priority automatically when present.
+4. **graphify** (optional): since v0.15.0 NeuralMind generates the code graph itself with a built-in tree-sitter backend (Python, TypeScript, Go). Install [graphify](https://github.com/Graphify-Labs/graphify) (`pip install graphifyy`) only if you want its richer graph — it takes priority automatically when present.
 
 ---
 
