@@ -205,7 +205,7 @@ export default function ServicesPage() {
                                 </li>
                             ))}
                         </ul>
-                        <p className="text-slate-500 text-xs leading-relaxed">
+                        <p className="text-faint text-xs leading-relaxed">
                             An engagement supports your evidence needs; it is not legal
                             advice, and no tool by itself makes an organization
                             compliant with any regulation.
@@ -225,7 +225,7 @@ export default function ServicesPage() {
                                     key={item}
                                     className="flex items-start gap-2 text-sm text-slate-300"
                                 >
-                                    <span className="text-slate-500 mt-0.5">✕</span>
+                                    <span className="text-faint mt-0.5">✕</span>
                                     <span>{item}</span>
                                 </li>
                             ))}
@@ -245,7 +245,7 @@ export default function ServicesPage() {
                     >
                         hello@neuralmind.uk
                     </a>
-                    <p className="text-slate-500 text-sm mt-6">
+                    <p className="text-faint text-sm mt-6">
                         Looking for self-serve? The software is free at 1 seat and the
                         Team tier is on the <a href="/pricing" className="text-electric hover:text-electric-bright">pricing page</a>.
                     </p>

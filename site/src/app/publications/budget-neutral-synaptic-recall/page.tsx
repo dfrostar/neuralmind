@@ -97,7 +97,7 @@ export default function PublicationPage() {
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
                         <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
-                        <span className="text-slate-500 text-sm">August 7, 2026</span>
+                        <span className="text-faint text-sm">August 7, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         Budget-Neutral Synaptic Recall
@@ -203,7 +203,7 @@ export default function PublicationPage() {
                             Recall seeds energy at query-relevant nodes and propagates it outward for 2 hops. Edge weights merge across memory namespaces before propagation (active branch 1.0, personal 0.8, shared 0.5):
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3 space-y-1 overflow-x-auto">
-                            <p>hub_factor(n) = sqrt(<span className="text-electric-bright">50</span> / degree(n))  <span className="text-slate-500">if degree(n) &gt; 50 else 1.0</span></p>
+                            <p>hub_factor(n) = sqrt(<span className="text-electric-bright">50</span> / degree(n))  <span className="text-faint">if degree(n) &gt; 50 else 1.0</span></p>
                             <p>propagated = energy × merged_weight × <span className="text-electric-bright">0.6</span> × hub_factor</p>
                         </div>
                         <p className="text-slate-300">
@@ -218,9 +218,9 @@ export default function PublicationPage() {
                             Activation energies fold into the vector result list under a hard invariant — <strong className="text-white">the result count never grows</strong>:
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3 space-y-1 overflow-x-auto">
-                            <p><span className="text-slate-500">(a) BOOST:</span> score += <span className="text-electric-bright">0.3</span> × energy <span className="text-slate-500">for nodes already present; re-sort</span></p>
-                            <p><span className="text-slate-500">(b) DISPLACE:</span> swap ≤ <span className="text-electric-bright">2</span> absent nodes with energy ≥ <span className="text-electric-bright">0.15</span></p>
-                            <p className="ml-4"><span className="text-slate-500">in for the weakest vector hits, one-for-one; keep ≥ 1 original hit</span></p>
+                            <p><span className="text-faint">(a) BOOST:</span> score += <span className="text-electric-bright">0.3</span> × energy <span className="text-faint">for nodes already present; re-sort</span></p>
+                            <p><span className="text-faint">(b) DISPLACE:</span> swap ≤ <span className="text-electric-bright">2</span> absent nodes with energy ≥ <span className="text-electric-bright">0.15</span></p>
+                            <p className="ml-4"><span className="text-faint">in for the weakest vector hits, one-for-one; keep ≥ 1 original hit</span></p>
                         </div>
                         <p className="text-slate-300">
                             Because injection is one-for-one displacement, the context assembled downstream spends exactly the same token budget with or without the associative layer. When recall is unwired, disabled, or the graph is cold, output is <strong className="text-white">byte-identical</strong> to a build without a synapse store.
@@ -258,9 +258,9 @@ shared 0.5 × 0.5 = 0.25
                     </div>
 
                     <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
-                        <p><span className="text-slate-500">Result:</span> 8 hits in, 8 hits out — same token budget</p>
-                        <p><span className="text-slate-500">Gained:</span> <span className="text-electric-bright">config/secrets.py::load_keys</span> — lexically unrelated to &quot;auth&quot;, learned from co-use</p>
-                        <p><span className="text-slate-500">Dropped:</span> a docstring stub that matched on the word &quot;auth&quot;</p>
+                        <p><span className="text-faint">Result:</span> 8 hits in, 8 hits out — same token budget</p>
+                        <p><span className="text-faint">Gained:</span> <span className="text-electric-bright">config/secrets.py::load_keys</span> — lexically unrelated to &quot;auth&quot;, learned from co-use</p>
+                        <p><span className="text-faint">Dropped:</span> a docstring stub that matched on the word &quot;auth&quot;</p>
                     </div>
                 </section>
 
@@ -325,7 +325,7 @@ shared 0.5 × 0.5 = 0.25
 
                 {/* Footer */}
                 <footer className="mt-12 pt-8 border-t border-carbon-border text-center">
-                    <p className="text-slate-500 text-sm mb-2">
+                    <p className="text-faint text-sm mb-2">
                         This publication establishes prior art for the techniques described herein.
                     </p>
                     <a

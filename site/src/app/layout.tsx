@@ -1,5 +1,6 @@
 import './globals.css';
 import { getLatestRelease } from '@/lib/release';
+import { fontVariables } from '@/lib/fonts';
 
 export const metadata = {
     title: 'NeuralMind — Code Memory for AI Coding Agents | 93.75% Gold-File Recall',
@@ -121,13 +122,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     const rel = await getLatestRelease();
     const jsonLd = buildJsonLd(rel.tag.replace(/^v/, ''), rel.date);
     return (
-        <html lang="en">
+        <html lang="en" className={fontVariables}>
             <head>
                 <link rel="icon" href="/favicon.ico" sizes="any" />
                 <link rel="icon" href="/icon.svg" type="image/svg+xml" />
                 <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
                 <link rel="manifest" href="/site.webmanifest" />
-                <meta name="theme-color" content="#0c0c0c" />
+                <meta name="theme-color" content="#0a0b0d" />
                 {!process.env.NODE_ENV || process.env.NODE_ENV === 'production' ? (
                     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "97b18db165e64f6e8d1d75b5e4e16447"}'></script>
                 ) : null}
@@ -136,7 +137,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             </head>
-            <body className="bg-carbon text-slate-200 antialiased">{children}</body>
+            <body className="bg-carbon text-slate-200 font-sans antialiased">{children}</body>
         </html>
     );
 }

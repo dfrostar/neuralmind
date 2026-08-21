@@ -95,7 +95,7 @@ export default function PublicationPage() {
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
                         <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
-                        <span className="text-slate-500 text-sm">July 22, 2026</span>
+                        <span className="text-faint text-sm">July 22, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         Quality-Weighted Merge with Conflict-Driven Decay
@@ -205,12 +205,12 @@ export default function PublicationPage() {
                             When two bundles contain edges for the same <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">(source, target)</code> pair:
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3 space-y-1 overflow-x-auto">
-                            <p><span className="text-slate-500">resolve(existing, incoming):</span></p>
-                            <p className="ml-4"><span className="text-slate-500">if</span> |existing.score − incoming.score| &lt; <span className="text-electric-bright">0.05</span> <span className="text-slate-500">AND</span> max(existing.score, incoming.score) &lt; <span className="text-electric-bright">0.30</span>:</p>
-                            <p className="ml-8"><span className="text-slate-500">return</span> CONTEST  <span className="text-slate-500">→ escalate to review</span></p>
-                            <p className="ml-4"><span className="text-slate-500">else:</span></p>
+                            <p><span className="text-faint">resolve(existing, incoming):</span></p>
+                            <p className="ml-4"><span className="text-faint">if</span> |existing.score − incoming.score| &lt; <span className="text-electric-bright">0.05</span> <span className="text-faint">AND</span> max(existing.score, incoming.score) &lt; <span className="text-electric-bright">0.30</span>:</p>
+                            <p className="ml-8"><span className="text-faint">return</span> CONTEST  <span className="text-faint">→ escalate to review</span></p>
+                            <p className="ml-4"><span className="text-faint">else:</span></p>
                             <p className="ml-8">winner = argmax(existing.score, incoming.score)</p>
-                            <p className="ml-8"><span className="text-slate-500">return</span> winner  <span className="text-slate-500">→ loser is dropped</span></p>
+                            <p className="ml-8"><span className="text-faint">return</span> winner  <span className="text-faint">→ loser is dropped</span></p>
                         </div>
                     </div>
 
@@ -252,7 +252,7 @@ export default function PublicationPage() {
                             Decay is applied as a <strong className="text-white">constant per-pass factor</strong> (not a cumulative formula):
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 mb-3">
-                            <p><span className="text-slate-500">decay_factor</span> = 2<sup>(−fast_decay / half_life)</sup> = 2<sup>(−5/30)</sup> ≈ 0.891 <span className="text-slate-500">per pass</span></p>
+                            <p><span className="text-faint">decay_factor</span> = 2<sup>(−fast_decay / half_life)</sup> = 2<sup>(−5/30)</sup> ≈ 0.891 <span className="text-faint">per pass</span></p>
                         </div>
                         <p className="text-slate-300">
                             After 30 daily passes: <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">0.891³⁰ = 2<sup>−5</sup> = 1/32</code> — exactly 5× normal decay, <strong className="text-white">no compounding explosion</strong>.
@@ -291,9 +291,9 @@ export default function PublicationPage() {
                     </div>
 
                     <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 space-y-1 mb-4">
-                        <p><span className="text-slate-500">Difference:</span> 0.743 − 0.387 = 0.356 (&gt; 0.05, no contest)</p>
-                        <p><span className="text-slate-500">Winner:</span> Alice's edge (score 0.743)</p>
-                        <p><span className="text-slate-500">Result:</span> Bob's edge is excluded from the <span className="text-electric-bright">shared</span> namespace</p>
+                        <p><span className="text-faint">Difference:</span> 0.743 − 0.387 = 0.356 (&gt; 0.05, no contest)</p>
+                        <p><span className="text-faint">Winner:</span> Alice's edge (score 0.743)</p>
+                        <p><span className="text-faint">Result:</span> Bob's edge is excluded from the <span className="text-electric-bright">shared</span> namespace</p>
                     </div>
                 </section>
 
@@ -353,7 +353,7 @@ export default function PublicationPage() {
 
                 {/* Footer */}
                 <footer className="mt-12 pt-8 border-t border-carbon-border text-center">
-                    <p className="text-slate-500 text-sm mb-2">
+                    <p className="text-faint text-sm mb-2">
                         This publication establishes prior art for the techniques described herein.
                     </p>
                     <a

@@ -47,10 +47,6 @@ export default function EffectivenessPage() {
             <Navbar />
             <main>
                 <section className="relative pt-32 pb-16 md:py-40 px-4 md:px-6 overflow-hidden">
-                    <div className="absolute inset-0 -z-10">
-                        <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-electric/5 rounded-full blur-[120px]" />
-                        <div className="absolute bottom-1/4 -right-1/4 w-[600px] h-[600px] bg-proton/5 rounded-full blur-[120px]" />
-                    </div>
                     <div className="max-w-4xl mx-auto text-center">
                         <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">
                             Measured, Not Marketed
@@ -66,12 +62,11 @@ export default function EffectivenessPage() {
                 </section>
 
                 <section className="relative py-16 md:py-32 px-4 md:px-6">
-                    <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-proton/3 rounded-full blur-[200px] -z-10" />
                     <div className="max-w-5xl mx-auto">
                         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             {headlineStats.map((s) => (
-                                <div key={s.label} className="glow-card rounded-2xl p-6">
-                                    <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">{s.label}</p>
+                                <div key={s.label} className="card rounded-2xl p-6">
+                                    <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">{s.label}</p>
                                     <p className={`font-display text-3xl font-bold mb-1 ${s.gradient ? 'gradient-text' : 'text-white'}`}>{s.value}</p>
                                     <p className="text-slate-400 text-sm">{s.detail}</p>
                                 </div>
@@ -81,7 +76,6 @@ export default function EffectivenessPage() {
                 </section>
 
                 <section className="relative py-16 md:py-32 px-4 md:px-6">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-electric/3 rounded-full blur-[200px] -z-10" />
                     <div className="max-w-5xl mx-auto">
                         <div className="text-center mb-12 md:mb-16">
                             <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">Before / After</span>
@@ -90,7 +84,7 @@ export default function EffectivenessPage() {
                                 Full rebuild on a real production CRM codebase
                             </p>
                         </div>
-                        <div className="glow-card rounded-2xl p-6 md:p-8 overflow-hidden">
+                        <div className="card rounded-2xl p-6 md:p-8 overflow-hidden">
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-carbon-border">
@@ -104,7 +98,7 @@ export default function EffectivenessPage() {
                                     {beforeAfter.map((row, i) => (
                                         <tr key={row.metric} className={i < beforeAfter.length - 1 ? 'border-b border-carbon-border/50' : ''}>
                                             <td className="py-3 px-4">{row.metric}</td>
-                                            <td className="py-3 px-4 text-right font-mono text-slate-500">{row.before}</td>
+                                            <td className="py-3 px-4 text-right font-mono text-faint">{row.before}</td>
                                             <td className="py-3 px-4 text-right font-mono">{row.after}</td>
                                             <td className="py-3 px-4 text-right font-mono text-electric-bright">{row.change}</td>
                                         </tr>
@@ -124,13 +118,13 @@ export default function EffectivenessPage() {
                             </h2>
                         </div>
                         <div className="grid md:grid-cols-2 gap-4">
-                            <div className="glow-card rounded-2xl p-6">
-                                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Full Rebuild</p>
+                            <div className="card rounded-2xl p-6">
+                                <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Full Rebuild</p>
                                 <p className="font-display text-3xl font-bold text-white mb-1">326s</p>
                                 <p className="text-slate-400 text-sm">All nodes, edges, embeddings</p>
                             </div>
-                            <div className="glow-card rounded-2xl p-6">
-                                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Incremental (after)</p>
+                            <div className="card rounded-2xl p-6">
+                                <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Incremental (after)</p>
                                 <p className="font-display text-3xl font-bold text-white mb-1">~30s</p>
                                 <p className="text-slate-400 text-sm">Changed files + dependents only</p>
                             </div>
@@ -148,7 +142,7 @@ export default function EffectivenessPage() {
                         </div>
                         <div className="space-y-3">
                             {honestyGate.map((item) => (
-                                <div key={item.title} className="glow-card rounded-2xl p-6">
+                                <div key={item.title} className="card rounded-2xl p-6">
                                     <h3 className="font-display text-xl font-bold text-white mb-2">{item.title}</h3>
                                     <p className="text-slate-400 text-sm">{item.body}</p>
                                 </div>
@@ -159,7 +153,7 @@ export default function EffectivenessPage() {
 
                 <section className="relative py-16 md:py-32 px-4 md:px-6">
                     <div className="max-w-5xl mx-auto">
-                        <div className="glow-card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div>
                                 <h3 className="font-display text-2xl font-bold text-white mb-2">See it in 30 seconds</h3>
                                 <p className="text-slate-400 text-sm">

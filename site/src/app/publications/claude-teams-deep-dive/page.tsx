@@ -95,7 +95,7 @@ export default function PublicationPage() {
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
                         <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">Research Report</span>
-                        <span className="text-slate-500 text-sm">July 26, 2026</span>
+                        <span className="text-faint text-sm">July 26, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         NeuralMind + Claude Teams
@@ -413,7 +413,7 @@ export default function PublicationPage() {
 
                 {/* Footer */}
                 <footer className="mt-12 pt-8 border-t border-carbon-border text-center">
-                    <p className="text-slate-500 text-sm mb-2">
+                    <p className="text-faint text-sm mb-2">
                         This report was verified against the live codebase and corrected by DeepSeek v4 Pro QA.
                     </p>
                     <a

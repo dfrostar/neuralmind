@@ -146,7 +146,7 @@ export default function FieldReportPage() {
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4 flex-wrap">
                         <span className="px-3 py-1 rounded-lg bg-proton/10 text-proton text-xs font-mono">Field Report — not CI-gated</span>
-                        <span className="text-slate-500 text-sm">July 20, 2026</span>
+                        <span className="text-faint text-sm">July 20, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         Measuring AI agent memory across a major refactor
@@ -173,18 +173,18 @@ export default function FieldReportPage() {
                 {/* Headline stats */}
                 <section className="mb-10">
                     <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="glow-card rounded-2xl p-6">
-                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
+                        <div className="card rounded-2xl p-6">
+                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">48.8×</p>
                             <p className="text-slate-400 text-sm">~1,033 tokens/query vs 50K+ naive</p>
                         </div>
-                        <div className="glow-card rounded-2xl p-6">
-                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
+                        <div className="card rounded-2xl p-6">
+                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">36 → 135</p>
                             <p className="text-slate-400 text-sm">the learning layer tracked the new code</p>
                         </div>
-                        <div className="glow-card rounded-2xl p-6">
-                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">Full rebuild</p>
+                        <div className="card rounded-2xl p-6">
+                            <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Full rebuild</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">326 s</p>
                             <p className="text-slate-400 text-sm">then back to ~30 s incremental</p>
                         </div>
@@ -305,7 +305,7 @@ export default function FieldReportPage() {
                             <h3 className="text-lg font-semibold text-white mb-2">1. Snapshot before you start</h3>
                             <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
                                 <p>neuralmind stats . --json &gt; .neuralmind-before.json</p>
-                                <p>neuralmind benchmark .      <span className="text-slate-500"># baseline reduction number</span></p>
+                                <p>neuralmind benchmark .      <span className="text-faint"># baseline reduction number</span></p>
                             </div>
                         </div>
                         <div>
@@ -315,7 +315,7 @@ export default function FieldReportPage() {
                             </p>
                             <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
                                 <p>neuralmind install-hooks .</p>
-                                <p>neuralmind watch &amp;   <span className="text-slate-500"># optional: always-on learning from edits</span></p>
+                                <p>neuralmind watch &amp;   <span className="text-faint"># optional: always-on learning from edits</span></p>
                             </div>
                         </div>
                         <div>
@@ -328,8 +328,8 @@ export default function FieldReportPage() {
                         <div>
                             <h3 className="text-lg font-semibold text-white mb-2">4. Re-benchmark and price it</h3>
                             <div className="bg-carbon rounded-lg p-4 font-mono text-sm text-slate-300 overflow-x-auto">
-                                <p>neuralmind benchmark .   <span className="text-slate-500"># reduction on the post-refactor graph</span></p>
-                                <p>neuralmind savings .     <span className="text-slate-500"># what your logged queries cost vs naive</span></p>
+                                <p>neuralmind benchmark .   <span className="text-faint"># reduction on the post-refactor graph</span></p>
+                                <p>neuralmind savings .     <span className="text-faint"># what your logged queries cost vs naive</span></p>
                             </div>
                         </div>
                         <p className="text-slate-300 leading-relaxed">

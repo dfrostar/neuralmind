@@ -83,7 +83,7 @@ export default async function SecurityPage() {
                         </p>
                         <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 break-all overflow-x-auto">
                             <p className="mb-1">curl -sL {tarballUrl} | sha256sum</p>
-                            <p className="text-slate-500">Compare against the SHA-256 on the GitHub release page.</p>
+                            <p className="text-faint">Compare against the SHA-256 on the GitHub release page.</p>
                         </div>
                     </div>
                 </section>
@@ -146,7 +146,7 @@ export default async function SecurityPage() {
                 </section>
 
                 <div className="mt-12 pt-8 border-t border-carbon-border text-center">
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-faint text-sm">
                         This page is updated quarterly, or on significant security events.
                     </p>
                     <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright text-sm transition-colors">

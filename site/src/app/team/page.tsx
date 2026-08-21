@@ -42,7 +42,7 @@ export default async function TeamPage() {
                         Shared codebase intelligence that learns how your team works —
                         with governance controls over what each developer publishes to the shared memory.
                     </p>
-                    <p className="text-slate-500 text-sm mt-3">
+                    <p className="text-faint text-sm mt-3">
                         Available in Team and Enterprise tiers •{' '}
                         <a
                             href="/pricing"
@@ -235,28 +235,28 @@ export default async function TeamPage() {
                         style={cardStyle}
                     >
                         <div className="font-mono text-sm text-slate-300 space-y-2">
-                            <p className="text-slate-500"># Add a team member</p>
+                            <p className="text-faint"># Add a team member</p>
                             <p>
                                 <span className="text-electric">$</span> neuralmind
                                 seats add --email developer@team.org --role member
                             </p>
-                            <p className="text-slate-500 mt-4"># List active seats</p>
+                            <p className="text-faint mt-4"># List active seats</p>
                             <p>
                                 <span className="text-electric">$</span> neuralmind
                                 seats list --format json
                             </p>
-                            <p className="text-slate-500 mt-4"># Remove a seat</p>
+                            <p className="text-faint mt-4"># Remove a seat</p>
                             <p>
                                 <span className="text-electric">$</span> neuralmind
                                 seats remove --email former@team.org
                             </p>
-                            <p className="text-slate-500 mt-4"># Sync signed manifest</p>
+                            <p className="text-faint mt-4"># Sync signed manifest</p>
                             <p>
                                 <span className="text-electric">$</span> neuralmind
                                 seats sync --verify-ed25519 --org acme-corp
                             </p>
                         </div>
-                        <p className="text-slate-500 text-xs mt-4">
+                        <p className="text-faint text-xs mt-4">
                             Signed manifest verification uses Ed25519 key signatures.
                             Each seat has a unique keypair; the admin&apos;s public key
                             signs the manifest that travels with shared synapses.
@@ -313,22 +313,22 @@ export default async function TeamPage() {
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-3 px-4">Self-hosted deployment</td>
-                                    <td className="text-center py-3 px-4 text-slate-600">—</td>
+                                    <td className="text-center py-3 px-4 text-faint">—</td>
                                     <td className="text-center py-3 px-4 text-proton">✓</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-3 px-4">SSO / SAML</td>
-                                    <td className="text-center py-3 px-4 text-slate-600">—</td>
+                                    <td className="text-center py-3 px-4 text-faint">—</td>
                                     <td className="text-center py-3 px-4 text-proton">✓</td>
                                 </tr>
                                 <tr className="border-b border-carbon-border/50">
                                     <td className="py-3 px-4">Real-time cross-machine sync</td>
-                                    <td className="text-center py-3 px-4 text-slate-600">—</td>
+                                    <td className="text-center py-3 px-4 text-faint">—</td>
                                     <td className="text-center py-3 px-4 text-proton">✓</td>
                                 </tr>
                                 <tr>
                                     <td className="py-3 px-4">Custom SLA</td>
-                                    <td className="text-center py-3 px-4 text-slate-600">—</td>
+                                    <td className="text-center py-3 px-4 text-faint">—</td>
                                     <td className="text-center py-3 px-4 text-proton">✓</td>
                                 </tr>
                             </tbody>

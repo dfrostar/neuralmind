@@ -83,7 +83,7 @@ export default function Terms() {
                                 </ul>
                             )}
                             {s.emphasize && (
-                                <p className="text-electric-mono text-sm mt-2 font-semibold">{s.emphasize}</p>
+                                <p className="text-electric text-sm mt-2 font-semibold">{s.emphasize}</p>
                             )}
                         </div>
                     ))}
