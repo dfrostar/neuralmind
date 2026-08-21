@@ -1506,26 +1506,18 @@ class SynapseStore:
         if not content_nodes:
             return 0
 
-        # Step 1: Filter business nodes (anything that's not code or engine metadata)
+        # Step 1: Filter business nodes — only book chapters and their direct content
+        # Reports/sources can match code; exclude config, plan, progress, claims
         business_nodes: list[dict] = []
         for n in content_nodes:
             meta = n.get("metadata")
             if isinstance(meta, dict):
                 cc = meta.get("content_category", "")
-                # Business nodes: book chapters, claims, reports, decisions, etc.
-                # Exclude: engine code/docs, config, marketing, progress logs
-                if cc not in (
-                    "engine",
-                    "",
-                    "marketing",
-                    "progress",
-                    "research",
-                    "plan",
-                    "architecture",
-                    "kanban",
-                    "readme",
-                ):
-                    business_nodes.append(n)
+                # Only book chapters, their reports, and their sources are "business"
+                ft = meta.get("file_type", "")
+                if cc in ("ai-agent-playbook", "peptide-patient-guide", "business_context"):
+                    if ft in ("book-chapter", "report", "source", "document", "book", ""):
+                        business_nodes.append(n)
         if not business_nodes:
             return 0
 
@@ -1551,8 +1543,10 @@ class SynapseStore:
         if not all_node_ids:
             return 0
 
-        # Step 3: Build stopword blacklist — components in >30% of nodes
-        # Require minimum 2 occurrences so small test graphs don't over-blacklist
+        # Step 3: Build stopword blacklist
+        # Only apply percentage-based stopword detection when there are enough
+        # nodes (>= 10) for the percentage to be meaningful. Small test graphs
+        # (2-3 nodes) have every component at 33-50% — would over-blacklist.
         component_freq: dict[str, int] = {}
         for _nid, comps in node_components.items():
             for c in set(comps):
@@ -1560,13 +1554,13 @@ class SynapseStore:
 
         total_nodes = len(all_node_ids)
         stopwords: set[str] = set()
-        for c, count in component_freq.items():
-            if count >= 2 and count / total_nodes > 0.30:
-                stopwords.add(c)
+        if total_nodes >= 10:
+            for c, count in component_freq.items():
+                if count >= 2 and count / total_nodes > 0.10:
+                    stopwords.add(c)
         # Hardcoded common tokens (code + prose)
         stopwords.update(
             {
-                "server",
                 "test",
                 "tests",
                 "py",
@@ -1754,12 +1748,18 @@ class SynapseStore:
                     continue
 
                 # Single non-stopword component match (weight 0.20)
+                # Only if component is rare to avoid 125k+ false positives
+                # from common prose words ("book", "system", "engine")
                 for c in comps_filtered:
                     if c in text_tokens:
-                        pair = _canonical(biz_id, nid)
-                        if pair is not None:
-                            edges[pair] = max(edges.get(pair, 0.0), 0.20)
-                        break
+                        freq = component_freq.get(c, 0)
+                        # Use 5% threshold — allows specific terms (audit, postgres)
+                        # but blocks common prose words appearing in >5% of nodes
+                        if freq < total_nodes * 0.05 or total_nodes < 20:
+                            pair = _canonical(biz_id, nid)
+                            if pair is not None:
+                                edges[pair] = max(edges.get(pair, 0.0), 0.20)
+                            break
 
         # Step 6: Cross-link business nodes via shared specific tags and title references
         biz_tag_freq: dict[str, int] = {}
