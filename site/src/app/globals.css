@@ -31,8 +31,10 @@
 
 html {
     scroll-behavior: smooth;
-    /* The fixed navbar is 65px tall; without this every in-page anchor lands
-       with its heading tucked underneath it. */
+    /* The fixed navbar is 65px tall (h-16 plus its hairline), so without this
+       every in-page anchor lands with its heading tucked underneath it. The
+       value is deliberately larger than the bar: clearing it exactly leaves
+       the heading flush against the bar with no breathing room. */
     scroll-padding-top: 6rem;
     background: var(--bg);
     color: var(--text);

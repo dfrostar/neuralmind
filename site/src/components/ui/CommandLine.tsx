@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Icon from './Icon';
 
 /**
@@ -14,12 +14,25 @@ import Icon from './Icon';
  */
 export default function CommandLine({ command }: { command: string }) {
     const [copied, setCopied] = useState(false);
+    const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Clear on unmount so the reset cannot fire against a gone component.
+    useEffect(
+        () => () => {
+            if (resetTimer.current) clearTimeout(resetTimer.current);
+        },
+        [],
+    );
 
     const copy = async () => {
         try {
             await navigator.clipboard.writeText(command);
             setCopied(true);
-            setTimeout(() => setCopied(false), 1600);
+            // Cancel the previous reset first. Without this, two clicks 800ms
+            // apart leave the first timer running, and it clears the tick
+            // 800ms into the second click's window instead of 1600ms.
+            if (resetTimer.current) clearTimeout(resetTimer.current);
+            resetTimer.current = setTimeout(() => setCopied(false), 1600);
         } catch {
             // Clipboard is unavailable over plain http and in some locked-down
             // browsers. The text is selectable either way, so fail quietly.
