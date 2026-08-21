@@ -1,7 +1,8 @@
 # Competitor benchmarks — what's reproducibly scorable, and what isn't
 
 The recurring critique asks for scored head-to-heads vs Bloop, Sourcegraph Cody,
-Continue/Cline, and Tejas Headroom. We run exactly one **live, scored** competitor
+Continue/Cline, Tejas Headroom, and (as of August 2026) graphify. We run exactly
+one **live, scored** competitor
 today (`codebase-memory-mcp`) and we're honest about why the others aren't here yet:
 a fair, *reproducible* retrieval benchmark needs a competitor that can be driven
 **headless, on a pinned repo, with no account**, and that returns ranked files we
@@ -20,6 +21,7 @@ exact blocker is named so a contributor knows what it would take.
 | **Sourcegraph Cody** | ✗ **account-gated** | Server-hosted, org-wide code context | Cody's context API requires a Sourcegraph instance + auth token; results depend on server-side indexing we can't pin per-commit. Not reproducible without an account, so any number would be unauditable. |
 | **Continue / Cline** | ✗ **no headless retrieval** | IDE agent runtimes (VS Code / JetBrains extensions) | These are *agent runtimes* that consume a context layer; they expose no headless "retrieve files for this query" CLI to score in isolation. The honest comparison is architectural (see [`docs/comparisons/vs-continue-cline.md`](../../docs/comparisons/vs-continue-cline.md)), not a retrieval head-to-head. |
 | **Tejas Headroom** | ✗ **wrong axis** | Universal context **compression** proxy | Headroom compresses what flows to the model; it is not a code *retriever* and returns no ranked file list, so gold-file recall doesn't apply. The right comparison is **compression ratio at fixed fidelity**, a different benchmark — tracked separately. See [`docs/comparisons/vs-headroom.md`](../../docs/comparisons/vs-headroom.md). |
+| **graphify** (Graphify-Labs) | ◐ **not yet integrated** | General corpus→knowledge-graph engine (Apache 2.0), now with an unpriced enterprise merge-gate/code-review tier | Its extraction pipeline runs an LLM in the loop for the semantic pass (per its own docs), not just a static headless binary — pinning a single fair, reproducible run needs more care than `codebase-memory-mcp`'s single-invocation binary and hasn't been attempted yet. Capability comparison only for now: [`docs/comparisons/vs-graphify.md`](../../docs/comparisons/vs-graphify.md). Contribution-ready if someone works out a reproducible invocation. |
 
 ## The fairness contract (any new competitor must meet it)
 
