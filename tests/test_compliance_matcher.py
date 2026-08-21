@@ -82,6 +82,37 @@ def test_soc2_does_not_match_toolchain_and_milestone_identifiers() -> None:
         assert _controls(text, "SOC2") == set(), text
 
 
+def test_soc2_marker_must_be_a_whole_word() -> None:
+    """The marker is matched with word boundaries, not as a substring.
+
+    Raised by Copilot review on #453. Without boundaries, "noncompliance" —
+    a word that appears constantly in compliance prose — ends in the generic
+    marker, and "SOC 20" matches the real marker then absorbs the stray digit
+    as intervening text.
+    """
+    for text in (
+        "SOC 20 CC6.1: fabricated\n",
+        "noncompliance: CC6.1: fabricated\n",
+        "Our noncompliance with CC6.1: fabricated\n",
+    ):
+        assert _controls(text, "SOC2") == set(), text
+
+
+def test_soc2_control_ids_are_case_sensitive() -> None:
+    """Pins the scoped ``(?-i:)`` on the control id.
+
+    The SVG tests above carry no marker, so they pass on the marker rule alone
+    and would still pass if the case-sensitivity modifier were deleted. These
+    supply a marker, so only the modifier can reject them — which matters
+    because SVG path verbs are as often lowercase as upper.
+    """
+    for text in (
+        "# Compliance: m13.5 3H7a2 2 0 0 0-2 2v14\n",
+        "# Compliance: cc6.1 lowercase is not a control id\n",
+    ):
+        assert _controls(text, "SOC2") == set(), text
+
+
 # --------------------------------------------------------------------------- #
 # ISO 27001 — same latent flaw, found while fixing SOC 2
 # --------------------------------------------------------------------------- #
@@ -97,6 +128,17 @@ def test_iso27001_does_not_match_minified_svg_arcs() -> None:
     """`a.5.5 0 0 1` is legal SVG arc shorthand; it parsed as control A.5.5."""
     markup = '<path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8Z"/>'
     assert find_compliance_annotations(markup) == []
+
+
+def test_iso27001_marker_must_be_a_whole_word_and_control_id_case_sensitive() -> None:
+    """Same two guards as SOC 2, on the pattern that shares the flaw."""
+    for text in (
+        "ISO 270010 A.9.2.1: fabricated\n",
+        "Our noncompliance with A.9.2.1: fabricated\n",
+        # Marker present, lowercase arc verb — only the scoped (?-i:) rejects this.
+        "# Compliance: a.5.5 0 0 1 .5-.5h7\n",
+    ):
+        assert _controls(text, "ISO 27001") == set(), text
 
 
 # --------------------------------------------------------------------------- #

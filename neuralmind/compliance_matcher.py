@@ -109,7 +109,7 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
         "ISO 27001",
         re.compile(
             r"""
-            (?:ISO\s*27001|COMPLIANCE)   # required marker
+            (?:\bISO\s*27001|\bCOMPLIANCE)\b   # required marker, whole word
             [^\n]{0,32}?                  # optional intervening words, same line
             \b
             (?P<control_id>
@@ -137,11 +137,17 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     # marker may be the framework name or the generic ``Compliance:`` keyword,
     # and intervening words are allowed so the documented form
     # ``**SOC 2 Control:** CC6.1`` keeps working.
+    #
+    # The marker needs word boundaries or it matches as a substring: without
+    # them ``noncompliance: CC6.1`` matches on the tail of "noncompliance" —
+    # a word that appears constantly in compliance prose — and ``SOC 20`` /
+    # ``ISO 270010`` match the real marker and absorb the trailing digit as
+    # intervening text.
     (
         "SOC2",
         re.compile(
             r"""
-            (?:SOC\s*2|COMPLIANCE)      # required marker
+            (?:\bSOC\s*2|\bCOMPLIANCE)\b  # required marker, whole word
             [^\n]{0,32}?                 # optional intervening words, same line
             \b
             (?P<control_id>
