@@ -301,7 +301,7 @@ fails, `neuralmind doctor` will tell you which piece is missing.
 
 NeuralMind's built-in tree-sitter backend covers Python, TypeScript,
 and Go standalone, proven at parity with graphify by a CI gate. If you
-prefer [graphify](https://github.com/safishamsi/graphify)'s richer
+prefer [graphify](https://github.com/Graphify-Labs/graphify)'s richer
 graph, install it and it takes priority automatically:
 
 ```bash

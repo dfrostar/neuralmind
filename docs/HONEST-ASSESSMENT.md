@@ -55,7 +55,7 @@ You'll likely see real benefit if **all** of these are true:
   ~30 min of setup.
 - You use an **AI agent** (Claude Code, Cursor, Cline, Continue) for
   multi-step code work — not just inline completions.
-- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/safishamsi/graphify) is optional and takes priority where present.
+- Your codebase is in a language the **built-in tree-sitter backend** parses well (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) — coverage drops outside that set. [graphify](https://github.com/Graphify-Labs/graphify) is optional and takes priority where present.
 
 If you check 3 of 5, marginal. If you check 4–5, run
 `bash scripts/demo.sh` and then `neuralmind benchmark .` on your repo.

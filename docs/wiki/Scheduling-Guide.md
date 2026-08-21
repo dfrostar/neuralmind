@@ -355,7 +355,7 @@ jobs:
       - name: Install NeuralMind and graphify
         run: |
           pip install neuralmind
-          git clone https://github.com/safishamsi/graphify.git
+          git clone https://github.com/Graphify-Labs/graphify.git
           cd graphify && pip install -e .
       
       - name: Generate code graph
@@ -417,7 +417,7 @@ jobs:
       - name: Install NeuralMind and graphify
         run: |
           pip install neuralmind
-          git clone https://github.com/safishamsi/graphify.git
+          git clone https://github.com/Graphify-Labs/graphify.git
           cd graphify && pip install -e .
       
       - name: Generate graph and index for ${{ matrix.project.name }}

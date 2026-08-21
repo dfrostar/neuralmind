@@ -90,7 +90,7 @@ processes.
 
 ## Graphify Integration
 
-NeuralMind generates its own code graph — `neuralmind build` uses the built-in tree-sitter backend (ten languages), so no external install is required. [graphify](https://github.com/safishamsi/graphify) (MIT, by Safi Shamsi) is an optional alternative graph producer: it analyzes a corpus (code, docs, papers, images) into a richer structured graph, and where a graphify-generated `graph.json` is present it takes priority automatically.
+NeuralMind generates its own code graph — `neuralmind build` uses the built-in tree-sitter backend (ten languages), so no external install is required. [graphify](https://github.com/Graphify-Labs/graphify) (Apache-2.0; originally by Safi Shamsi, now under the Graphify-Labs org) is an optional alternative graph producer: it analyzes a corpus (code, docs, papers, images) into a richer structured graph, and where a graphify-generated `graph.json` is present it takes priority automatically.
 
 ### Installing Graphify
 
