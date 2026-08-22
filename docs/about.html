@@ -199,6 +199,22 @@
     </section>
 
     <section>
+        <div class="container" id="whats-new-v330">
+            <h2>What's New in v3.3.0 — The surfaces people judge you on</h2>
+            <p><strong>Two outward-facing surfaces were producing wrong output, and had been since they were written.</strong> The marketing site rendered every heading in the browser's default serif because the fonts it declared were never loaded. The compliance scanner matched 96 SOC 2 &ldquo;controls&rdquo; on this repository, of which 7 were real.</p>
+            <h3>What's fixed</h3>
+            <ul>
+                <li><strong>Webfonts actually load</strong> — Inter, Inter Tight and JetBrains Mono are self-hosted through <code>next/font</code>; 113 headings across 25 files had been falling through to Times New Roman</li>
+                <li><strong>SOC 2 annotation matching</strong> — the framework marker is now required and word-anchored, so version strings (<code>v0.13</code>), SVG path data (<code>M13.5</code>) and <code>python3.10</code> stop being reported as Trust Services Criteria</li>
+                <li><strong>Document-only projects build</strong> — a book or a policy set with no code now produces a graph</li>
+                <li><strong><code>content_category</code> survives a re-embed</strong> — the <code>--type</code> filter stays stable across rebuilds</li>
+            </ul>
+            <p>The site work also replaced the emoji iconography with a drawn 24&times;24 SVG set, lifted body text on nine pages to the WCAG AA 4.5:1 contrast floor, and fixed a mobile layout that scrolled horizontally.</p>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.3.0.md">v3.3.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
         <div class="container" id="whats-new-v320">
             <h2>What's New in v3.2.0 — Drift, caught at commit time</h2>
             <p><strong>The cohesion outlier check moves from query time to commit time.</strong> <code>neuralmind drift</code> reads your staged diff, maps changed lines onto the code graph, and flags a changed symbol that skips a pattern a strong majority of its siblings share — before the commit lands, not after a query happens to surface the cluster.</p>

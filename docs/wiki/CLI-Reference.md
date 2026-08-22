@@ -28,6 +28,9 @@ Complete command-line interface documentation for NeuralMind.
   - [install-hooks](#install-hooks)
   - [init-hook](#init-hook)
   - [drift](#drift-v320)
+  - [compliance](#compliance-v314)
+  - [ci-check](#ci-check-v314)
+  - [export](#export-v314)
   - [watch](#watch-v040)
   - [serve](#serve-v054-live-feed-v060)
   - [daemon](#daemon-v0230)
@@ -1737,6 +1740,130 @@ brand-new function in the diff is visible even though the persisted index
 predates it; pass `--no-refresh` to skip that and judge against the index
 exactly as it was last built. Stdlib-only otherwise, same as
 `neuralmind/cohesion.py` — no ChromaDB or embedder work.
+
+---
+
+### compliance *(v3.1.4+)*
+
+Scan a project for **compliance annotations** written in comments or prose,
+and reinforce a synapse between the annotated code node and the control it
+names — so `neuralmind query "what implements CC6.1"` can find it later.
+
+```bash
+neuralmind compliance [project_path] [--watch] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `project_path` | `.` | Project root to scan |
+| `--watch` | off | Stay resident; re-detect as files change and reinforce synapses live |
+| `--json`, `-j` | off | Machine-readable output |
+
+```
+$ neuralmind compliance .
+
+Found 27 compliance annotations across neuralmind:
+
+  [      SOC2] CC6.1
+             Logical access controls.
+             docs/compliance/ACCESS_CONTROL.md
+
+  [      NIST] AC-1
+             Access control policy
+             neuralmind/compliance_matcher.py
+```
+
+#### Annotation syntax — each framework needs its own marker
+
+This is the part that bites people. **A control id alone never matches.**
+Every framework requires a marker, on the *same line* as the id:
+
+| Framework | Marker required | Example |
+|-----------|-----------------|---------|
+| **CMMC** | optional — the id shape is unambiguous | `// AC.L2-3.1.1: Authorized access control` |
+| **NIST SP 800-53** | `NIST` or `NIST SP 800-53` | `# NIST AC-1: Access control policy` |
+| **SOX ITGC** | optional — the `ITGC-` prefix is unambiguous | `# ITGC-CM-001: Change approved via CAB` |
+| **HIPAA** | optional — the `164.` id shape is unambiguous | `/* 164.312(a)(1): Access control required */` |
+| **SOC 2** | `SOC 2` **or** `Compliance:` | `**SOC 2 Control:** CC6.1 — Logical access` |
+| **ISO 27001** | `ISO 27001` **or** `Compliance:` | `# ISO 27001 A.9.2.1: User registration` |
+
+Two consequences worth stating plainly:
+
+- **`Compliance:` is a SOC 2 / ISO 27001 marker, not a universal one.**
+  `# Compliance: AC-1: Access control policy` matches **nothing** — NIST
+  needs its own prefix.
+- **A bare `CC6.1` in a prose table does not match.** The marker may sit up
+  to 32 characters before the id on the same line, which is what makes
+  `**SOC 2 Control:** CC6.1` work, but a control id on its own is
+  indistinguishable from a version string and is ignored. This tightening
+  landed in v3.3.0 after the looser pattern matched `v0.13`, `M13.5` (an
+  SVG path command) and `python3.10` as Trust Services Criteria.
+
+#### What gets scanned
+
+Code **and** prose: `.py .js .jsx .ts .tsx .go .java .rb .php .cs .c .cpp
+.h .rs .md .mdx .rst .txt`. Skipped: `.git`, `node_modules`, `.venv`,
+`venv`, `__pycache__`, `.next`, `out`, `htmlcov`, `.neuralmind`.
+
+*(Before v3.3.1 the CLI read only source files, so annotations kept in
+markdown — the usual place for a policy document — were invisible to this
+command even though the matcher supported them.)*
+
+---
+
+### ci-check *(v3.1.4+)*
+
+Run the same detection against a **git diff** instead of the whole tree, so
+a pipeline can report which compliance-annotated code a change touches.
+
+```bash
+neuralmind ci-check [project_path] [--framework NAME] [--diff REF] [--fail-on-warning] [--json]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--framework` | `all` | `cmmc`, `nist`, `sox`, `hipaa`, `iso`, `soc2`, or `all` |
+| `--diff` | `HEAD` | Git ref to diff against; `HEAD` means uncommitted changes |
+| `--fail-on-warning` | off | Exit non-zero when warnings exist |
+| `--json`, `-j` | off | Structured output suitable for a PR comment |
+
+```
+$ neuralmind ci-check . --framework soc2 --diff HEAD~1
+
+NeuralMind CI Compliance Check
+Framework: SOC2
+Base ref: HEAD~1
+Changed files: 3
+
+No compliance annotations affected by this diff.
+```
+
+`--framework` accepts the friendly spellings (`sox` → `SOX ITGC`, `iso` →
+`ISO 27001`, `soc`/`soc 2` → `SOC2`). *(Before v3.3.1 the flag was echoed in
+the header but never applied — findings from every framework were reported
+regardless of what you passed.)*
+
+---
+
+### export *(v3.1.4+)*
+
+Write NeuralMind state out as an auditor-ready artifact.
+
+```bash
+neuralmind export [project_path] [--format csv|pdf] [--controls] [--nodes] [--output FILE]
+```
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `--format` | `csv` | `csv` or `pdf` |
+| `--controls` | off | Compliance-control-to-code mappings (CSV only) |
+| `--nodes` | off | All graph nodes with metadata (CSV only) |
+| `--output` | `neuralmind_export.csv` / `.pdf` | Output path |
+| `--report` | `ssp` | Report type for PDF export |
+
+`--controls` is the flag people submit as evidence, so it inherits the
+annotation rules above exactly: what `neuralmind compliance` finds is what
+lands in the CSV, including its `label` column.
 
 ---
 

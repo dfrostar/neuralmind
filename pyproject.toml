@@ -46,6 +46,9 @@ keywords = [
     "code-drift-detection",
     "pre-commit-hook",
     "pattern-consistency",
+    "compliance-annotations",
+    "control-mapping",
+    "audit-evidence",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
