@@ -21,7 +21,7 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-07-31",
+      "dateModified": "2026-08-22",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -35,7 +35,7 @@
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "1.11.0",
+        "softwareVersion": "3.3.0",
         "downloadUrl": "https://pypi.org/project/neuralmind/",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
@@ -67,6 +67,7 @@
             header h1 { font-size: 1.5rem; }
             h2 { font-size: 1.3rem; }
         }
+    </style>
 </head>
 <body>
     <header>
@@ -101,11 +102,9 @@
             <p>100% local. No cloud lock-in. No telemetry. MIT-licensed.</p>
         </section>
     </div>
-    <footer>
-        <p>© 2026 Darren Frost · MIT-licensed · <a href="https://github.com/dfrostar/neuralmind" style="color: #667eea;">View on GitHub</a></p>
-    </footer>
-</body>
-</html>
+    <section>
+        <div class="container">
+            <ul>
                 <li><strong>100% local engine.</strong> NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool; no telemetry by default.</li>
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
