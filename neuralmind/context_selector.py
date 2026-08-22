@@ -721,13 +721,13 @@ class ContextSelector:
         tail = results[-(len(fetched)) :]  # weakest len(fetched) vector hits
         admissible = [
             (node, tail_r)
-            for node, tail_r in zip(fetched, tail)
+            for node, tail_r in zip(fetched, tail, strict=False)
             if node["score"] >= tail_r.get("score", 0.0)
         ]
         if not admissible:
             return results
 
-        swap_nodes, _ = zip(*admissible)
+        swap_nodes, _ = zip(*admissible, strict=False)
         kept = results[: len(results) - len(swap_nodes)]
         return list(kept) + list(swap_nodes)
 
