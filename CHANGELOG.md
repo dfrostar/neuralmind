@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.1](https://github.com/dfrostar/neuralmind/compare/v3.3.0...v3.3.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **compliance:** make the compliance surfaces actually find annotations ([47e6e45](https://github.com/dfrostar/neuralmind/commit/47e6e4527436f7a29c2cb9dd4e6784d9fd2ee6bc))
+* **docs:** repair about.html — the published page renders completely blank ([55e6a79](https://github.com/dfrostar/neuralmind/commit/55e6a793fe490e86ff683f72cc707eeda0be35ef))
+
 ## [3.3.0](https://github.com/dfrostar/neuralmind/compare/v3.2.1...v3.3.0) (2026-08-22)
 
 
