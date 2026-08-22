@@ -165,6 +165,71 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
 
 
 # --------------------------------------------------------------------------- #
+# What counts as a scannable file
+# --------------------------------------------------------------------------- #
+
+#: Suffixes every compliance surface scans.
+#:
+#: This lived twice, differently: ``neuralmind compliance`` had a code-only
+#: allowlist and ``neuralmind_compliance_report`` did ``rglob("*.py")``.
+#: Neither included ``.md`` — and every genuine annotation in this repository
+#: lives in ``docs/compliance/*.md``, so both surfaces reported zero while
+#: seven real annotations sat on disk. Defined once here so the two cannot
+#: drift apart again.
+SCANNABLE_SUFFIXES: frozenset[str] = frozenset(
+    {
+        # source
+        ".py",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".cs",
+        ".rb",
+        ".php",
+        ".c",
+        ".cpp",
+        ".h",
+        # policy and evidence documents — where control annotations actually live
+        ".md",
+        ".mdx",
+        ".rst",
+        ".txt",
+    }
+)
+
+#: Directories never worth scanning.
+SCAN_EXCLUDE_DIRS: frozenset[str] = frozenset(
+    {
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".neuralmind",
+        ".next",
+        "out",
+        "htmlcov",
+        ".venv",
+        "venv",
+    }
+)
+
+
+def iter_scannable_files(root):
+    """Yield every scannable file under ``root``, skipping noise directories."""
+    from pathlib import Path as _Path
+
+    for f in _Path(root).rglob("*"):
+        if not f.is_file() or f.suffix not in SCANNABLE_SUFFIXES:
+            continue
+        if any(part in SCAN_EXCLUDE_DIRS for part in f.parts):
+            continue
+        yield f
+
+
+# --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
 
@@ -192,7 +257,7 @@ def find_compliance_annotations(text: str) -> list[dict]:
     for framework, pattern in _PATTERNS:
         for m in pattern.finditer(text):
             control_id = m.group("control_id").strip().upper()
-            label = m.group("label").strip()
+            label = _same_line_label(text, m)
             key = (control_id, framework)
             if key not in seen:
                 seen.add(key)
@@ -200,6 +265,23 @@ def find_compliance_annotations(text: str) -> list[dict]:
                     {
                         "framework": framework,
                         "control_id": control_id,
+                        "label": label,
+                        "match_text": m.group(0).strip(),
+                        "span": (m.start(), m.end()),
+                    }
+                )
+
+            # Comma-separated lists: the pattern can only accept one id per
+            # match, so pick up the rest from the line it already validated.
+            for sibling in _sibling_control_ids(text, m, framework):
+                sib_key = (sibling.upper(), framework)
+                if sib_key in seen:
+                    continue
+                seen.add(sib_key)
+                results.append(
+                    {
+                        "framework": framework,
+                        "control_id": sibling.upper(),
                         "label": label,
                         "match_text": m.group(0).strip(),
                         "span": (m.start(), m.end()),
@@ -216,6 +298,54 @@ def find_compliance_annotations_in_file(file_path: str | Path) -> list[dict]:
     except OSError:
         return []
     return find_compliance_annotations(text)
+
+
+def _same_line_label(text: str, m: re.Match) -> str:
+    r"""Return the label, but only if it is on the same line as the control id.
+
+    The ``label`` group is ``.+?``, and ``.`` does not match a newline — but the
+    separator before it (``[:\s]+``) does. So when a control id ends its line,
+    the separator swallows the newline and the label is captured from the line
+    *below*. Every one of this repository's seven genuine SOC 2 annotations is
+    written as ``**SOC 2 Control:** CC6.1`` followed by a markdown rule, and so
+    every one of them exported ``label='---'`` into ``neuralmind export
+    --audit``, the CSV evidence column, and the ci-check findings table.
+    """
+    line_end = text.find("\n", m.end("control_id"))
+    if line_end == -1:
+        line_end = len(text)
+    tail = text[m.end("control_id") : line_end]
+    # Drop a leading separator (": ", " - ", " — ") before the description.
+    tail = re.sub(r"^[\s:\-\u2013\u2014]+", "", tail)
+    return tail.strip().rstrip(".").strip()
+
+
+#: Control-id shapes for the frameworks that permit comma-separated lists.
+#: Uppercase-only and boundary-anchored, matching the strictness of the main
+#: patterns — these run only on a line that already carried a valid marker.
+_SIBLING_ID_RES: dict[str, re.Pattern] = {
+    "SOC2": re.compile(r"(?<![A-Za-z0-9.])([A-Z]{1,3}\d+\.\d+)(?![\d.])"),
+    "ISO 27001": re.compile(r"(?<![A-Za-z0-9.])(A\.\d+(?:\.\d+)+)(?![\d.])"),
+}
+
+
+def _sibling_control_ids(text: str, m: re.Match, framework: str) -> list[str]:
+    r"""Other control ids listed on the same line as an accepted match.
+
+    ``**SOC 2 Controls:** CC3.1, CC8.1, A1.1`` yielded only ``A1.1``: the
+    pattern requires ``[:\s]+`` after the id and a comma is neither, so the
+    engine walked past the first two. Rather than loosen the pattern — which is
+    what let version strings and SVG path data in — this re-reads the line the
+    match already validated and picks up its siblings.
+    """
+    sib_re = _SIBLING_ID_RES.get(framework)
+    if sib_re is None:
+        return []
+    line_start = text.rfind("\n", 0, m.start("control_id")) + 1
+    line_end = text.find("\n", m.end("control_id"))
+    if line_end == -1:
+        line_end = len(text)
+    return sib_re.findall(text[line_start:line_end])
 
 
 def compliance_synapse_key(control_id: str, framework: str) -> str:

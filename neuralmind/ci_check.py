@@ -51,7 +51,7 @@ def _detect_framework(framework_arg: str) -> list[str]:
     """
     framework = (framework_arg or "").upper().strip()
     if framework == "ALL" or not framework:
-        return ["CMMC", "NIST", "SOX ITGC", "HIPAA", "ISO 27001"]
+        return ["CMMC", "NIST", "SOX ITGC", "HIPAA", "ISO 27001", "SOC2"]
     # Map user input to registered pattern names
     framework_map = {
         "CMMC": "CMMC",
@@ -61,6 +61,9 @@ def _detect_framework(framework_arg: str) -> list[str]:
         "HIPAA": "HIPAA",
         "ISO": "ISO 27001",
         "ISO 27001": "ISO 27001",
+        "SOC": "SOC2",
+        "SOC2": "SOC2",
+        "SOC 2": "SOC2",
     }
     mapped = framework_map.get(framework)
     return [mapped] if mapped else [framework]
@@ -92,12 +95,21 @@ def run_ci_check(
     affected_controls: set[str] = set()
     files_with_annotations: list[str] = []
 
+    # _detect_framework existed but was never called, so `--framework cmmc`
+    # printed "Framework: CMMC" and then reported findings from every
+    # framework anyway.
+    wanted_frameworks = set(_detect_framework(framework))
+
     for rel_path in changed_files:
         full_path = project_path / rel_path
         if not full_path.is_file():
             continue
 
-        matches = find_compliance_annotations_in_file(full_path)
+        matches = [
+            m
+            for m in find_compliance_annotations_in_file(full_path)
+            if m.get("framework", "") in wanted_frameworks
+        ]
         if matches:
             files_with_annotations.append(rel_path)
             for m in matches:

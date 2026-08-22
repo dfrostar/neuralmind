@@ -3076,7 +3076,10 @@ def cmd_compliance(args):
     use_watch = getattr(args, "watch", False)
 
     # Scan files for compliance annotations
-    from neuralmind.compliance_matcher import find_compliance_annotations_in_file
+    from neuralmind.compliance_matcher import (
+        find_compliance_annotations_in_file,
+        iter_scannable_files,
+    )
 
     if use_watch:
         # Watch mode: run a watcher that checks every file change
@@ -3121,29 +3124,16 @@ def cmd_compliance(args):
     matches_total = 0
     results: list[dict] = []
 
-    for f in path.rglob("*"):
-        if f.is_file() and f.suffix in {
-            ".py",
-            ".ts",
-            ".tsx",
-            ".js",
-            ".jsx",
-            ".go",
-            ".rs",
-            ".java",
-            ".cs",
-            ".rb",
-            ".php",
-            ".c",
-            ".cpp",
-            ".h",
-        }:
-            matches = find_compliance_annotations_in_file(f)
-            if matches:
-                matches_total += len(matches)
-                for m in matches:
-                    rel = f.relative_to(path)
-                    results.append({"file": str(rel), **m})
+    # iter_scannable_files includes .md — this allowlist was code-only, so a
+    # scan of this very repository reported zero of its seven real annotations,
+    # all of which live in docs/compliance/*.md.
+    for f in iter_scannable_files(path):
+        matches = find_compliance_annotations_in_file(f)
+        if matches:
+            matches_total += len(matches)
+            for m in matches:
+                rel = f.relative_to(path)
+                results.append({"file": str(rel), **m})
 
     if getattr(args, "json", False):
         print(json.dumps(results, indent=2))
