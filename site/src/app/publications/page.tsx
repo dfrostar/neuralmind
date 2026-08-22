@@ -100,7 +100,7 @@ export default function PublicationsIndex() {
                         >
                             <div className="flex items-center gap-3 mb-3">
                                 <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">{pub.type}</span>
-                                <span className="text-slate-500 text-sm">{pub.date}</span>
+                                <span className="text-faint text-sm">{pub.date}</span>
                             </div>
                             <h2 className="font-display text-xl font-bold text-white mb-2 group-hover:text-electric transition-colors">
                                 {pub.title}

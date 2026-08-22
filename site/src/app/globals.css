@@ -2,11 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   Palette. Mirrors tailwind.config.ts so raw CSS below and Tailwind classes
+   in components can never drift apart.
+   --------------------------------------------------------------------------- */
 :root {
-    --bg: #070b15;
-    --bg-raised: #0c1322;
-    --bg-card: #0e1626;
-    --border: #1b2740;
+    --bg: #0a0b0d;
+    --bg-raised: #0f1114;
+    --bg-card: #131518;
+    --border: #22262c;
+    --border-strong: #2e333b;
+
+    --text: #e8eaed;
+    --text-muted: #9aa3af;
+    --text-faint: #7e8794;
+
+    --accent: #5b8cff;
+    --accent-bright: #93b4ff;
+    --accent-dim: #1b2742;
+
+    --evidence: #4fd1a5;
 }
 
 * {
@@ -16,68 +31,204 @@
 
 html {
     scroll-behavior: smooth;
+    /* The fixed navbar is 65px tall (h-16 plus its hairline), so without this
+       every in-page anchor lands with its heading tucked underneath it. The
+       value is deliberately larger than the bar: clearing it exactly leaves
+       the heading flush against the bar with no breathing room. */
+    scroll-padding-top: 6rem;
     background: var(--bg);
-    color: #e2e8f0;
+    color: var(--text);
 }
 
 body {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
     background: var(--bg);
+    /* Inter's tabular figures make every measured number on the site line up
+       column-to-column instead of wobbling on the 1s. */
+    font-feature-settings: 'cv05' 1, 'ss01' 1;
 }
 
-.gradient-text {
-    background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 40%, #f472b6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+/* ---------------------------------------------------------------------------
+   Typography
+   --------------------------------------------------------------------------- */
+
+h1, h2, h3, h4 {
+    letter-spacing: -0.03em;
+    /* Stops the last word of a headline from stranding on its own line. */
+    text-wrap: balance;
 }
 
-.glow-card {
-    background: linear-gradient(135deg, rgba(14, 22, 38, 0.9) 0%, rgba(12, 19, 34, 0.9) 100%);
-    border: 1px solid rgba(27, 39, 64, 0.6);
-    backdrop-filter: blur(12px);
-    transition: all 0.3s ease;
+h1 {
+    letter-spacing: -0.045em;
 }
 
-.glow-card:hover {
-    border-color: rgba(96, 165, 250, 0.4);
-    box-shadow: 0 0 40px rgba(96, 165, 250, 0.08);
+p {
+    text-wrap: pretty;
 }
+
+code, pre, kbd {
+    font-feature-settings: 'zero' 1;
+}
+
+::selection {
+    background: rgba(91, 140, 255, 0.28);
+    color: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus. The previous stylesheet had no focus treatment at all, so keyboard
+   users navigated the site by the browser's default outline over a dark
+   background — effectively invisible.
+   --------------------------------------------------------------------------- */
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Surfaces
+
+   `.card` replaces the old `.glow-card`: no backdrop blur, no coloured drop
+   shadow, no 40px halo on hover. A hairline that brightens is enough to say
+   "this is a distinct thing", and it survives being repeated fifteen times
+   down a page, which a glow does not.
+   --------------------------------------------------------------------------- */
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.card:hover {
+    border-color: var(--border-strong);
+    background: #16191d;
+}
+
+/* Non-interactive panels: same surface, no hover affordance, because a card
+   that lights up but cannot be clicked is a lie about what it does. */
+.panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+}
+
+.panel-accent {
+    background: linear-gradient(180deg, rgba(91, 140, 255, 0.07) 0%, var(--bg-card) 60%);
+    border: 1px solid var(--accent-dim);
+}
+
+/* A hairline rule that fades at both ends — used to separate major sections
+   without drawing a hard box around them. */
+.rule {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border) 25%, var(--border) 75%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons
+   --------------------------------------------------------------------------- */
 
 .btn-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: var(--accent);
+    color: #05070d;
     font-weight: 600;
-    padding: 0.75rem 2rem;
-    border-radius: 0.75rem;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+    letter-spacing: -0.01em;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 30px rgba(59, 130, 246, 0.5);
+    background: var(--accent-bright);
+}
+
+.btn-primary:active {
+    background: #4a7bee;
 }
 
 .btn-secondary {
-    background: rgba(255, 255, 255, 0.04);
-    color: #e2e8f0;
-    font-weight: 600;
-    padding: 0.75rem 2rem;
-    border-radius: 0.75rem;
-    border: 1px solid var(--border);
-    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: var(--text);
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-strong);
+    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .btn-secondary:hover {
-    border-color: rgba(96, 165, 250, 0.4);
-    color: #ffffff;
+    background: rgba(255, 255, 255, 0.035);
+    border-color: #3a414a;
+}
+
+/* ---------------------------------------------------------------------------
+   Text emphasis
+
+   Was a blue → violet → pink clip-path gradient. That three-stop gradient is
+   the single most recognisable marker of a generated landing page, and it
+   made the site's headline numbers — the ones the whole positioning rests on
+   — look decorative rather than measured. Emphasis is now a solid colour.
+   --------------------------------------------------------------------------- */
+
+.gradient-text {
+    color: var(--accent-bright);
+}
+
+/* Numbers that were measured. Mono + tabular figures, so a table of them
+   aligns and reads as data rather than as marketing. */
+.metric {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+}
+
+/* Small uppercase section label. */
+.eyebrow {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   Texture
+
+   Replaces the six 200px-blurred blue and purple radial blobs that sat behind
+   every section. A 72px hairline grid reads as instrumentation rather than
+   atmosphere, and it does not cost a repaint on scroll.
+   --------------------------------------------------------------------------- */
+
+.grid-bg {
+    background-image:
+        linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 20%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, #000 20%, transparent 75%);
 }
 
 .section-reveal {
     opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.6s ease;
+    transform: translateY(12px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .section-reveal.visible {
@@ -86,17 +237,22 @@ body {
 }
 
 .tag-rotate {
-    animation: tagRoll 0.5s ease-out;
     display: inline-block;
+    animation: tagRoll 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes tagRoll {
-    0% { opacity: 0; transform: translateY(20px); }
+    0% { opacity: 0; transform: translateY(8px); }
     100% { opacity: 1; transform: translateY(0); }
 }
 
+/* ---------------------------------------------------------------------------
+   Scrollbar
+   --------------------------------------------------------------------------- */
+
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -105,9 +261,34 @@ body {
 
 ::-webkit-scrollbar-thumb {
     background: var(--border);
-    border-radius: 4px;
+    border: 2px solid var(--bg);
+    border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(96, 165, 250, 0.4);
+    background: var(--border-strong);
+}
+
+/* ---------------------------------------------------------------------------
+   Motion preferences. Previously unhandled: the hero's pulsing status dot and
+   every reveal animated regardless of the OS setting.
+   --------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .section-reveal {
+        opacity: 1;
+        transform: none;
+    }
 }

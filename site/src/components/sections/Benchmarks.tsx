@@ -1,5 +1,7 @@
 'use client';
 
+import SectionHeader from '@/components/ui/SectionHeader';
+
 // Sourced in site/claims.json; gated by tests/test_site_claims.py. Each row
 // says which kind of evidence it is — a CI gate, an on-demand reproduction, or
 // a single-repo field report — because they are not the same strength of claim.
@@ -14,41 +16,38 @@ const dataPoints = [
 
 export default function Benchmarks() {
     return (
-        <section id="benchmarks" className="relative py-16 md:py-32 px-4 md:px-6">
-            <div className="absolute top-1/3 right-0 w-[500px] h-[500px] bg-proton/3 rounded-full blur-[200px] -z-10" />
+        <section id="benchmarks" className="relative py-20 md:py-28 px-4 md:px-6">
+            <div className="max-w-6xl mx-auto">
+                <SectionHeader eyebrow="Measured, not marketed" title="Benchmarks">
+                    Two of these are recomputed by CI on every commit; the rest reproduce from a
+                    fresh clone with one command. Where a number comes from a single repo, it says so.
+                    Run <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">neuralmind benchmark .</code> for your own.
+                </SectionHeader>
 
-            <div className="max-w-5xl mx-auto">
-                <div className="text-center mb-12 md:mb-16">
-                    <span className="text-proton text-sm font-semibold tracking-wider uppercase mb-3 block">
-                        Measured, not marketed
-                    </span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                        Benchmarks
-                    </h2>
-                    <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-xl mx-auto">
-                        Two of these are recomputed by CI on every commit; the rest reproduce from a
-                        fresh clone with one command. Where a number comes from a single repo, it says so.
-                        Run <code className="text-electric font-mono text-sm">neuralmind benchmark .</code> for your own.
-                    </p>
-                </div>
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Same ruled matrix as the hero stats and the feature grid, so a
+                    figure looks the same wherever it appears on the page. */}
+                <dl className="grid sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-carbon-border rounded-sm overflow-hidden">
                     {dataPoints.map((dp) => (
-                        <div
-                            key={dp.metric}
-                            className="glow-card rounded-2xl p-6"
-                        >
-                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mb-2">
+                        <div key={dp.metric} className="border-b border-r border-carbon-border p-6">
+                            <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">
                                 {dp.metric}
-                            </p>
-                            <p className="font-display text-3xl font-bold text-white mb-1">{dp.value}</p>
-                            <p className="text-slate-400 text-sm">{dp.detail}</p>
+                            </dt>
+                            <dd>
+                                <p className={`text-white mb-2 leading-none ${
+                                    /^[~\d]/.test(dp.value)
+                                        ? 'metric text-[1.75rem]'
+                                        : 'font-display text-2xl font-semibold tracking-tight'
+                                }`}>
+                                    {dp.value}
+                                </p>
+                                <p className="text-slate-400 text-sm leading-relaxed">{dp.detail}</p>
+                            </dd>
                         </div>
                     ))}
-                </div>
+                </dl>
 
                 {/* Field report — hand-measured, deliberately outside the CI-gated tiles above */}
-                <p className="mt-8 text-center text-slate-400 text-sm">
+                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
                     Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
                     <span className="text-white font-semibold">48.8×</span> on a real ~9,300-node TypeScript SaaS
                     platform, through a major rebuild.{' '}
@@ -58,10 +57,10 @@ export default function Benchmarks() {
                 </p>
 
                 {/* Demo callout */}
-                <div className="mt-12 p-6 rounded-2xl border border-carbon-border bg-carbon-raised/50 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div>
-                        <h3 className="font-display text-xl font-bold text-white mb-1">See it in 30 seconds</h3>
-                        <p className="text-slate-400 text-sm">
+                <div className="mt-12 p-6 md:p-7 rounded-xl panel-accent flex flex-col md:flex-row md:items-center justify-between gap-5">
+                    <div className="max-w-2xl">
+                        <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-1.5">See it in 30 seconds</h3>
+                        <p className="text-slate-400 text-sm leading-relaxed">
                             Clone the repo, run the demo, get numbers on YOUR codebase. Then email the
                             output to hello@neuralmind.uk with your team size for a free full spend model.
                         </p>

@@ -96,7 +96,7 @@ export default function PublicationPage() {
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <div className="flex items-center gap-3 mb-4">
                         <span className="px-3 py-1 rounded-lg bg-electric/10 text-electric text-xs font-mono">Defensive Publication</span>
-                        <span className="text-slate-500 text-sm">August 6, 2026</span>
+                        <span className="text-faint text-sm">August 6, 2026</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
                         Hebbian Co-Activation with Long-Term Potentiation and Hub-Normalized Spreading Activation
@@ -260,7 +260,7 @@ export default function PublicationPage() {
                     </div>
                 </section>
 
-                <div className="border-t border-carbon-border pt-8 text-sm text-slate-500 italic">
+                <div className="border-t border-carbon-border pt-8 text-sm text-faint italic">
                     This publication establishes prior art for the techniques described herein. It is provided for defensive purposes and as technical documentation for the NeuralMind open-source project.
                 </div>
             </main>

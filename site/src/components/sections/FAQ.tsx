@@ -1,5 +1,7 @@
 'use client';
 
+import SectionHeader from '@/components/ui/SectionHeader';
+
 import { useState } from 'react';
 
 const faqs = [
@@ -55,20 +57,13 @@ export default function FAQ() {
     return (
         <section id="faq" className="relative py-16 md:py-32 px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
-                <div className="text-center mb-12 md:mb-16">
-                    <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">
-                        FAQ
-                    </span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                        Common questions
-                    </h2>
-                </div>
+                <SectionHeader eyebrow="FAQ" title="Common questions" />
 
                 <div className="space-y-3">
                     {faqs.map((faq, i) => (
                         <div
                             key={i}
-                            className="glow-card rounded-xl overflow-hidden"
+                            className="card rounded-xl overflow-hidden"
                         >
                             <button
                                 onClick={() => setOpenIndex(openIndex === i ? null : i)}

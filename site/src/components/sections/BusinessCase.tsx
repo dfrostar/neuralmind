@@ -1,5 +1,7 @@
 'use client';
 
+import SectionHeader from '@/components/ui/SectionHeader';
+
 const cards = [
     {
         audience: 'For the CFO',
@@ -28,25 +30,16 @@ const cards = [
 export default function BusinessCase() {
     return (
         <section id="business-case" className="relative py-16 md:py-32 px-4 md:px-6">
-            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-proton/3 rounded-full blur-[200px] -z-10" />
 
             <div className="max-w-5xl mx-auto">
-                <div className="text-center mb-12 md:mb-16">
-                    <span className="text-proton text-sm font-semibold tracking-wider uppercase mb-3 block">
-                        The business case
-                    </span>
-                    <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-                        The savings are free. The tier is control.
-                    </h2>
-                    <p className="text-slate-400 text-base sm:text-lg md:text-xl max-w-2xl mx-auto">
-                        Dollar figures below are modeled, with published assumptions — the free
-                        assessment runs the same model in your numbers.
-                    </p>
-                </div>
+                <SectionHeader eyebrow="The business case" title="The savings are free. The tier is control.">
+                    Dollar figures below are modeled, with published assumptions — the free
+                    assessment runs the same model in your numbers.
+                </SectionHeader>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10">
                     {cards.map((card) => (
-                        <div key={card.audience} className="glow-card rounded-2xl p-6 md:p-8">
+                        <div key={card.audience} className="card rounded-2xl p-6 md:p-8">
                             <span className={`text-xs font-semibold uppercase tracking-wider ${card.accent} mb-2 block`}>
                                 {card.audience}
                             </span>
