@@ -405,6 +405,7 @@ def tool_compliance_report(project_path: str, format: str = "json") -> dict[str,
     from neuralmind.compliance_matcher import (
         compliance_synapse_key,
         find_compliance_annotations_in_file,
+        iter_scannable_files,
     )
 
     mind = get_mind(project_path, auto_build=False)
@@ -413,10 +414,10 @@ def tool_compliance_report(project_path: str, format: str = "json") -> dict[str,
     annotations = []
     control_ids_found = set()
 
-    # Scan Python source files in the project for compliance annotations
-    for fpath in sorted(project_root.rglob("*.py")):
-        if ".neuralmind" in fpath.parts or "__pycache__" in fpath.parts:
-            continue
+    # Scan the project for compliance annotations. This was rglob("*.py"),
+    # which cannot see the policy documents where control annotations are
+    # actually written — the tool reported zero on a repo holding seven.
+    for fpath in sorted(iter_scannable_files(project_root)):
         try:
             results = find_compliance_annotations_in_file(str(fpath))
             for r in results:

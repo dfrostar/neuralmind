@@ -17,7 +17,11 @@ set.
 
 from __future__ import annotations
 
-from neuralmind.compliance_matcher import find_compliance_annotations
+from neuralmind.compliance_matcher import (
+    SCANNABLE_SUFFIXES,
+    find_compliance_annotations,
+    iter_scannable_files,
+)
 
 
 def _controls(text: str, framework: str) -> set[str]:
@@ -169,3 +173,116 @@ def test_plain_source_code_yields_nothing() -> None:
         '    return {"status": 200, "version": "v1.2"}\n'
     )
     assert find_compliance_annotations(source) == []
+
+
+# --------------------------------------------------------------------------- #
+# Scan scope, label capture and comma lists
+#
+# These three shipped broken together and are what made the compliance surfaces
+# report nothing useful on a repo that holds real annotations.
+# --------------------------------------------------------------------------- #
+
+
+def test_markdown_is_scannable() -> None:
+    """Policy documents are where control annotations actually live.
+
+    `neuralmind compliance` had a code-only suffix allowlist and
+    `neuralmind_compliance_report` did rglob("*.py"). Neither could see
+    docs/compliance/*.md, so both reported zero while seven real annotations
+    sat on disk.
+    """
+    for suffix in (".md", ".mdx", ".rst", ".txt"):
+        assert suffix in SCANNABLE_SUFFIXES, suffix
+    # source files must keep working too
+    for suffix in (".py", ".ts", ".go", ".rs"):
+        assert suffix in SCANNABLE_SUFFIXES, suffix
+
+
+def test_scanner_skips_noise_directories(tmp_path) -> None:
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "policy.md").write_text("**SOC 2 Control:** CC6.1\n")
+    (tmp_path / "node_modules").mkdir()
+    (tmp_path / "node_modules" / "junk.md").write_text("**SOC 2 Control:** CC6.1\n")
+
+    found = {f.name for f in iter_scannable_files(tmp_path)}
+    assert "policy.md" in found
+    assert "junk.md" not in found
+
+
+def test_label_is_never_taken_from_the_next_line() -> None:
+    """The documented form puts the id last on its line, followed by a rule.
+
+    The separator before the label group matches newlines, so every one of this
+    repo's genuine annotations exported label='---' — the markdown rule beneath
+    it — straight into `neuralmind export --audit` and its CSV label column.
+    """
+    hits = find_compliance_annotations("**SOC 2 Control:** CC6.1\n---\n")
+    assert [h["control_id"] for h in hits] == ["CC6.1"]
+    assert hits[0]["label"] == ""
+
+
+def test_same_line_label_is_still_captured() -> None:
+    hits = find_compliance_annotations(
+        "# Compliance: CC6.1: Logical access controls restrict access.\n"
+    )
+    assert hits[0]["label"] == "Logical access controls restrict access"
+
+
+def test_comma_separated_control_lists_yield_every_id() -> None:
+    """`**SOC 2 Controls:** CC3.1, CC8.1, A1.1` used to yield only A1.1.
+
+    The pattern requires a separator after the id and a comma is not one, so
+    the engine walked past the first two. docs/compliance/SDLC_POLICY.md and
+    CHANGE_MANAGEMENT.md were each under-reporting two controls.
+    """
+    hits = find_compliance_annotations("**SOC 2 Controls:** CC3.1, CC8.1, A1.1\n---\n")
+    assert {h["control_id"] for h in hits} == {"CC3.1", "CC8.1", "A1.1"}
+
+
+def test_comma_list_recovery_does_not_reintroduce_false_positives() -> None:
+    """The sibling pass only reads lines a real marker already validated."""
+    for text in (
+        "Shipped in v0.13.0, v2.0 and v0.22 today.\n",
+        '<path d="M13.5 3H7a2 2 0 0 0-2 2v14, M3.2 12h17" />\n',
+        "noncompliance: CC3.1, CC8.1, A1.1\n",
+    ):
+        assert find_compliance_annotations(text) == [], text
+
+
+# --------------------------------------------------------------------------- #
+# ci-check --framework
+# --------------------------------------------------------------------------- #
+
+
+def test_detect_framework_maps_user_input() -> None:
+    from neuralmind.ci_check import _detect_framework
+
+    assert _detect_framework("cmmc") == ["CMMC"]
+    assert _detect_framework("soc2") == ["SOC2"]
+    assert _detect_framework("soc 2") == ["SOC2"]
+    assert _detect_framework("iso") == ["ISO 27001"]
+    # "all" must include SOC2 — it was omitted, so wiring the filter without
+    # this would have silently dropped every SOC 2 finding.
+    assert "SOC2" in _detect_framework("all")
+
+
+def test_ci_check_framework_actually_filters(tmp_path, monkeypatch) -> None:
+    """`--framework` was accepted, echoed, and ignored.
+
+    _detect_framework had zero callers, so `ci-check --framework cmmc` printed
+    "Framework: CMMC" and then reported findings from every framework.
+    """
+    from neuralmind import ci_check
+
+    (tmp_path / "policy.md").write_text(
+        "**SOC 2 Control:** CC6.1\n// CMMC AC.L2-3.1.1: Authorized Access Control\n"
+    )
+    monkeypatch.setattr(ci_check, "_get_diff_files", lambda *a, **k: ["policy.md"])
+
+    every = ci_check.run_ci_check(tmp_path, framework="all")
+    frameworks = {f["framework"] for f in every["findings"]}
+    assert {"SOC2", "CMMC"} <= frameworks, frameworks
+
+    only_cmmc = ci_check.run_ci_check(tmp_path, framework="cmmc")
+    assert {f["framework"] for f in only_cmmc["findings"]} == {"CMMC"}
+    assert "CC6.1" not in only_cmmc["affected_controls"]
