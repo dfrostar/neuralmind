@@ -705,13 +705,44 @@ class ContextSelector:
         if not fetched:
             return results
 
-        kept = results[: len(results) - len(fetched)]
+        # Assign scores to fetched nodes so we can compare against displaced hits.
         for node in fetched:
             boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
-        return kept + fetched
+
+        # Pair deliberately, not positionally. `fetched` arrives in whatever
+        # order the embedder chose, so zipping it straight against the tail
+        # compares unrelated pairs and makes the admission test arbitrary.
+        # Offer the strongest candidate the weakest result — the stated intent
+        # of this block, and the pairing that admits the most useful swaps.
+        #
+        # No score-comparison guard here: synapse-recalled nodes carry a
+        # synapse-derived score (boost_weight * energy, e.g. 0.30) that is
+        # fundamentally incommensurable with vector similarity scores (e.g.
+        # 0.50). Comparing them rejects every well-above-threshold recall.
+        # The energy threshold (_synapse_pull_in_min_energy) already prevents
+        # weakly co-activated nodes from entering candidates, so no extra
+        # guard is needed.
+        offset = len(results) - len(fetched)
+        ranked = sorted(fetched, key=lambda n: n.get("score", 0.0), reverse=True)
+        slots = sorted(
+            range(offset, len(results)),
+            key=lambda i: results[i].get("score", 0.0),
+        )
+        admitted = list(zip(slots, ranked, strict=True))
+        if not admitted:
+            return results
+
+        # Evict exactly the slots the admission test approved. Trimming a blind
+        # suffix instead — `results[: len(results) - len(admitted)]` — silently
+        # evicts whichever results sit at the end, which is not the same set
+        # once any pair is rejected: it can drop a result the test just
+        # protected and keep the one it cleared for displacement.
+        displaced = {i for i, _ in admitted}
+        kept = [r for i, r in enumerate(results) if i not in displaced]
+        return kept + [node for _, node in admitted]
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
