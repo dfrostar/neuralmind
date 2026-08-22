@@ -730,8 +730,17 @@ class ContextSelector:
         admitted = [
             (i, node)
             # Equal lengths by construction: both are len(fetched).
+            # Use the raw synapse energy (not the boost-weighted score) for the
+            # admissibility comparison: `node["score"]` is `energy * boost_weight`
+            # (max ~0.3) whereas vector hit scores are cosine similarities
+            # (typically 0.4–0.95), so the two scales are incomparable and the
+            # score comparison would almost always reject high-quality recall
+            # candidates.  The energy threshold (SYNAPSE_PULL_IN_MIN_ENERGY)
+            # already gates quality; here we check that the raw energy of the
+            # recall candidate exceeds the cosine score of the hit it would
+            # displace.
             for i, node in zip(slots, ranked, strict=True)
-            if node.get("score", 0.0) >= results[i].get("score", 0.0)
+            if energy_by_id.get(node.get("id"), 0.0) >= results[i].get("score", 0.0)
         ]
         if not admitted:
             return results
