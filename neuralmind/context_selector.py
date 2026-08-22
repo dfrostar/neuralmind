@@ -712,27 +712,26 @@ class ContextSelector:
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
 
-        # Only displace a vector result when the candidate replacing it
-        # actually outranks it: trading a stronger hit for a weaker recall is
-        # what drops relevant modules and regresses top-k hit rate.
-        #
         # Pair deliberately, not positionally. `fetched` arrives in whatever
         # order the embedder chose, so zipping it straight against the tail
         # compares unrelated pairs and makes the admission test arbitrary.
         # Offer the strongest candidate the weakest result — the stated intent
         # of this block, and the pairing that admits the most useful swaps.
+        #
+        # No score-comparison guard here: synapse-recalled nodes carry a
+        # synapse-derived score (boost_weight * energy, e.g. 0.30) that is
+        # fundamentally incommensurable with vector similarity scores (e.g.
+        # 0.50). Comparing them rejects every well-above-threshold recall.
+        # The energy threshold (_synapse_pull_in_min_energy) already prevents
+        # weakly co-activated nodes from entering candidates, so no extra
+        # guard is needed.
         offset = len(results) - len(fetched)
         ranked = sorted(fetched, key=lambda n: n.get("score", 0.0), reverse=True)
         slots = sorted(
             range(offset, len(results)),
             key=lambda i: results[i].get("score", 0.0),
         )
-        admitted = [
-            (i, node)
-            # Equal lengths by construction: both are len(fetched).
-            for i, node in zip(slots, ranked, strict=True)
-            if node.get("score", 0.0) >= results[i].get("score", 0.0)
-        ]
+        admitted = list(zip(slots, ranked, strict=True))
         if not admitted:
             return results
 
