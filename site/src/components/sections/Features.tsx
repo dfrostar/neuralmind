@@ -84,13 +84,13 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
     {
         icon: 'shield-check',
         title: 'Compliance Annotation Engine',
-        desc: 'Scans code for `Compliance:` annotations, maps them to CMMC 2.0 / NIST SP 800-53 controls. Ingest CMMC assessment guides, export audit reports, gate CI on annotation health.',
+        desc: 'Scans code and docs for annotations across CMMC 2.0, NIST SP 800-53, SOX ITGC, HIPAA, SOC 2 and ISO 27001. Each framework carries its own marker on the line — `# NIST AC-1:`, `# CMMC AC.L2-3.1.1:`. Ingest CMMC assessment guides, export control mappings, gate CI on annotation health.',
         badge: 'v2.0.0',
     },
     {
         icon: 'export',
         title: 'Audit Export & CI/CD Check',
-        desc: '`neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission. `neuralmind ci-check` gates builds on annotation health.',
+        desc: '`neuralmind export --controls` produces control-to-code mappings as CSV for evidence submission, or an SSP report with `--format pdf`. `neuralmind ci-check` gates builds on annotation health.',
         badge: 'v2.0.0',
     },
     {

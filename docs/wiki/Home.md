@@ -80,9 +80,9 @@ New compliance capabilities for regulated teams, plus a one-command project init
 | Feature | What |
 |---------|------|
 | `neuralmind init` | One-command project setup — auto-detects structure, installs hooks, builds index, all at once |
-| Compliance annotation detection | Scans code for `# Compliance:` / `// Compliance:` annotations — flags each against CMMC 2.0 / NIST SP 800-53 controls |
+| Compliance annotation detection | Scans code **and docs** for annotations across CMMC 2.0, NIST SP 800-53, SOX ITGC, HIPAA, SOC 2 and ISO 27001. Each framework needs its own marker on the same line — `# NIST AC-1: …`, `# CMMC AC.L2-3.1.1: …`. `Compliance:` is a SOC 2 / ISO 27001 marker and does **not** match NIST ids; see [CLI-Reference](CLI-Reference.md#compliance-v314) |
 | CMMC content ingestion | `neuralmind ingest-cmmc` imports CMMC 2.0 assessment guides + POA&M templates into the doc index |
-| Audit export | `neuralmind export --audit` produces flat compliance reports (CSV/JSON) for evidence submission |
+| Audit export | `neuralmind export --controls` produces control-to-code mappings as CSV for evidence submission; `--format pdf` renders an SSP report |
 | CI/CD compliance check | `neuralmind ci-check` gates builds on compliance annotation health |
 | MCP tool | `neuralmind_compliance_report` — live compliance stance via any MCP-compatible agent |
 | Savings recalibration | 12–50× typical (44× avg vs 30K naive baseline; 12–25× vs realistic 10K human baseline) |
