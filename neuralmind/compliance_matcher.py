@@ -103,13 +103,17 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
         ),
     ),
     # ISO 27001: A.9.2.1, A.12.6.1, etc.
+    # Marker required — see the SOC 2 note below. Without one, minified SVG arc
+    # shorthand (``a.5.5 0 0 1``) parses as control ``A.5.5``.
     (
         "ISO 27001",
         re.compile(
             r"""
-            (?:ISO\s*27001[:\s]+)?
+            (?:\bISO\s*27001|\bCOMPLIANCE)\b   # required marker, whole word
+            [^\n]{0,32}?                  # optional intervening words, same line
+            \b
             (?P<control_id>
-                A\.\d+(?:\.\d+)+     # e.g. A.9.2.1
+                (?-i:A)\.\d+(?:\.\d+)+   # e.g. A.9.2.1 — never lowercase
             )
             [:\s]+
             (?P<label>.+?)
@@ -119,13 +123,36 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
         ),
     ),
     # SOC 2: CC6.1, CC7.2, P1.1, PI1.4, etc. (Trust Services Criteria)
+    #
+    # The marker is REQUIRED. It used to be optional, which left the pattern as
+    # "any 1-3 letters, digits, a dot, digits" — a shape that matches far more
+    # than SOC 2 criteria. Scanning this repo produced 147 SOC 2 "annotations"
+    # of which 129 were noise: 67 version strings (``v0.13``, ``v2.0``), 39 SVG
+    # path commands (``M13.5``, ``A1.5`` — ``M``/``L``/``C``/``A``/``S`` are
+    # path verbs), 18 eval milestone ids (``E1.4``), plus ``python3.10``,
+    # ``TLSv1.2`` and ``llama3.1``. Those flowed into ``neuralmind export
+    # --audit``, which users submit as compliance evidence.
+    #
+    # NIST above already required its prefix for exactly this reason. The
+    # marker may be the framework name or the generic ``Compliance:`` keyword,
+    # and intervening words are allowed so the documented form
+    # ``**SOC 2 Control:** CC6.1`` keeps working.
+    #
+    # The marker needs word boundaries or it matches as a substring: without
+    # them ``noncompliance: CC6.1`` matches on the tail of "noncompliance" —
+    # a word that appears constantly in compliance prose — and ``SOC 20`` /
+    # ``ISO 270010`` match the real marker and absorb the trailing digit as
+    # intervening text.
     (
         "SOC2",
         re.compile(
             r"""
-            (?:SOC\s*2?[:\s]+)?         # optional "SOC2" or "SOC 2" prefix
+            (?:\bSOC\s*2|\bCOMPLIANCE)\b  # required marker, whole word
+            [^\n]{0,32}?                 # optional intervening words, same line
+            \b
             (?P<control_id>
-                [A-Z]{1,3}\d+\.\d+       # e.g. CC6.1, CC7.2, P1.1, PI1.4
+                (?-i:[A-Z]{1,3})\d+\.\d+  # e.g. CC6.1 — never lowercase, so
+                                          # ``v0.13`` and ``m13.5`` cannot match
             )
             [:\s]+
             (?P<label>.+?)
