@@ -705,13 +705,31 @@ class ContextSelector:
         if not fetched:
             return results
 
-        kept = results[: len(results) - len(fetched)]
+        # Assign scores to fetched nodes so we can compare against displaced hits.
         for node in fetched:
             boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
-        return kept + fetched
+
+        # Only displace a vector result if the synapse candidate that would
+        # replace it actually outranks it.  Displacing a higher-scored result
+        # for a lower-scored recall candidate is the root cause of hit-rate
+        # regression: the displaced slot may hold a relevant module while the
+        # inserted one does not.  We trim fetched first (lowest-energy
+        # candidates) to match what was actually displaced.
+        tail = results[-(len(fetched)) :]  # weakest len(fetched) vector hits
+        admissible = [
+            (node, tail_r)
+            for node, tail_r in zip(fetched, tail)
+            if node["score"] >= tail_r.get("score", 0.0)
+        ]
+        if not admissible:
+            return results
+
+        swap_nodes, _ = zip(*admissible)
+        kept = results[: len(results) - len(swap_nodes)]
+        return list(kept) + list(swap_nodes)
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
