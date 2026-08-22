@@ -21,6 +21,7 @@ together, what you usually touch next — and remembers it across sessions.
 > - Queries your codebase in ~800 tokens instead of ~50,000
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
+> - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 >
 > **Works with every IDE your team already uses.**
 
