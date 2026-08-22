@@ -712,24 +712,38 @@ class ContextSelector:
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
 
-        # Only displace a vector result if the synapse candidate that would
-        # replace it actually outranks it.  Displacing a higher-scored result
-        # for a lower-scored recall candidate is the root cause of hit-rate
-        # regression: the displaced slot may hold a relevant module while the
-        # inserted one does not.  We trim fetched first (lowest-energy
-        # candidates) to match what was actually displaced.
-        tail = results[-(len(fetched)) :]  # weakest len(fetched) vector hits
-        admissible = [
-            (node, tail_r)
-            for node, tail_r in zip(fetched, tail)
-            if node["score"] >= tail_r.get("score", 0.0)
+        # Only displace a vector result when the candidate replacing it
+        # actually outranks it: trading a stronger hit for a weaker recall is
+        # what drops relevant modules and regresses top-k hit rate.
+        #
+        # Pair deliberately, not positionally. `fetched` arrives in whatever
+        # order the embedder chose, so zipping it straight against the tail
+        # compares unrelated pairs and makes the admission test arbitrary.
+        # Offer the strongest candidate the weakest result — the stated intent
+        # of this block, and the pairing that admits the most useful swaps.
+        offset = len(results) - len(fetched)
+        ranked = sorted(fetched, key=lambda n: n.get("score", 0.0), reverse=True)
+        slots = sorted(
+            range(offset, len(results)),
+            key=lambda i: results[i].get("score", 0.0),
+        )
+        admitted = [
+            (i, node)
+            # Equal lengths by construction: both are len(fetched).
+            for i, node in zip(slots, ranked, strict=True)
+            if node.get("score", 0.0) >= results[i].get("score", 0.0)
         ]
-        if not admissible:
+        if not admitted:
             return results
 
-        swap_nodes, _ = zip(*admissible)
-        kept = results[: len(results) - len(swap_nodes)]
-        return list(kept) + list(swap_nodes)
+        # Evict exactly the slots the admission test approved. Trimming a blind
+        # suffix instead — `results[: len(results) - len(admitted)]` — silently
+        # evicts whichever results sit at the end, which is not the same set
+        # once any pair is rejected: it can drop a result the test just
+        # protected and keep the one it cleared for displacement.
+        displaced = {i for i, _ in admitted}
+        kept = [r for i, r in enumerate(results) if i not in displaced]
+        return kept + [node for _, node in admitted]
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
