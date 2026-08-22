@@ -1,5 +1,26 @@
 # Changelog
 
+## [3.3.0](https://github.com/dfrostar/neuralmind/compare/v3.2.1...v3.3.0) (2026-08-22)
+
+
+### Features
+
+* **site:** rebuild the marketing site design system ([#452](https://github.com/dfrostar/neuralmind/issues/452)) ([667bf6a](https://github.com/dfrostar/neuralmind/commit/667bf6a5732ff3e87ba30d5836e009177b61386d))
+
+
+### Bug Fixes
+
+* **compliance:** stop parsing version strings and SVG paths as SOC 2 controls ([#453](https://github.com/dfrostar/neuralmind/issues/453)) ([6f8d2ef](https://github.com/dfrostar/neuralmind/commit/6f8d2ef4d9da0414eb6517f8dcb65641f2704deb))
+* **core:** allow document-only projects (books) to build graphs ([beb33f8](https://github.com/dfrostar/neuralmind/commit/beb33f88d676a01f4327e7bfb37e49e49a1f2619))
+* correct graphify attribution — moved to Graphify-Labs org, relicensed Apache-2.0 ([87971ea](https://github.com/dfrostar/neuralmind/commit/87971eae8e552eacd3c3f336e4416ea721d840f3))
+* preserve content_category on re-embed, fix N-13 category filter, include content_category in node metadata ([a741809](https://github.com/dfrostar/neuralmind/commit/a741809d6c45fbc12cf9aa02a5aa2fb17d28cfdc))
+* **tests:** extend the claims guard to docs/social and add an allow marker ([#447](https://github.com/dfrostar/neuralmind/issues/447)) ([5fd7027](https://github.com/dfrostar/neuralmind/commit/5fd702703b16490af19045276257c4f3f884166e))
+
+
+### Documentation
+
+* reposition graphify as a tracked competitor, not a complementary backend ([d668821](https://github.com/dfrostar/neuralmind/commit/d668821007e5556de6bd61afdc760b7b36aad552))
+
 ## [3.2.1](https://github.com/dfrostar/neuralmind/compare/v3.2.0...v3.2.1) (2026-08-20)
 
 
