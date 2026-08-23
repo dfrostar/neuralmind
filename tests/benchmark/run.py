@@ -390,6 +390,50 @@ def _dollars_saved(naive_tokens: int, neuralmind_tokens: int, queries_per_day: i
     return per_query_savings * queries_per_day * 30
 
 
+def _environment_fingerprint() -> dict:
+    """Capture what differs between machines but not between runs on one.
+
+    Phase 2 is deterministic within a job — three consecutive A/B runs return
+    the identical delta — yet the same commit and the same turbovec build have
+    produced -1.8 and +4.0 on different runners. So the variable is the host,
+    not the sample, and averaging inside one job cannot see it. turbovec is a
+    SIMD quantized index and onnxruntime picks kernels per CPU, so the vector
+    path is the obvious place for a machine to change a ranking; this records
+    enough to correlate an outcome with a host instead of guessing.
+    """
+    import platform
+
+    def _version(name: str) -> str:
+        try:
+            import importlib.metadata as md
+
+            return md.version(name)
+        except Exception:
+            return "absent"
+
+    flags = ""
+    try:
+        for line in Path("/proc/cpuinfo").read_text().splitlines():
+            if line.startswith("flags"):
+                interesting = {
+                    "avx", "avx2", "avx512f", "avx512vnni", "fma", "sse4_2", "neon",
+                }
+                flags = " ".join(sorted(set(line.split(":", 1)[1].split()) & interesting))
+                break
+    except Exception:
+        pass
+
+    return {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "python": platform.python_version(),
+        "cpu_flags": flags,
+        "turbovec": _version("turbovec"),
+        "onnxruntime": _version("onnxruntime"),
+        "numpy": _version("numpy"),
+    }
+
+
 def _mean(values) -> float:
     vals = list(values)
     return sum(vals) / len(vals) if vals else 0.0
@@ -430,6 +474,7 @@ def write_results(
             "on_hit_rate_runs": [r.avg_hit_rate for r in on_runs],
             "queries": [asdict(q) for q in on_runs[-1].queries],
         },
+        "environment": _environment_fingerprint(),
         "regression_floor": REDUCTION_FLOOR,
         "pass": phase1.avg_reduction >= REDUCTION_FLOOR,
         "estimated_monthly_savings_usd": _dollars_saved(
@@ -577,6 +622,11 @@ def main() -> int:
     per_run = ", ".join(
         f"{(on.avg_hit_rate - off.avg_hit_rate) * 100:+.1f}"
         for off, on in zip(off_runs, on_runs, strict=True)
+    )
+    env = _environment_fingerprint()
+    print(
+        f"Env: turbovec {env['turbovec']}, onnxruntime {env['onnxruntime']}, "
+        f"numpy {env['numpy']}, {env['machine']} [{env['cpu_flags'] or 'n/a'}]"
     )
     print(
         f"Phase 2: synapse off {off_mean * 100:.0f}% → "
