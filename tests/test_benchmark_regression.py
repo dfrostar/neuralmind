@@ -71,11 +71,25 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     same warm graph, recall on must surface at least as many expected
     modules as recall off.
 
-    Read from the mean of several A/B runs, not one. This measurement moves:
-    the same commit and the same turbovec build have produced both -1.75 and
-    +4.0 points, and the two outcomes recur bit-for-bit rather than spreading,
-    so a single draw decided the gate by luck. The per-run values are in
-    `off_hit_rate_runs` / `on_hit_rate_runs` when a failure needs diagnosing.
+    Read from the mean of several A/B runs, not one — but do not mistake that
+    mean for a fix. This measurement is bimodal: the same commit on the same
+    runner image has produced both -1.75 and +4.0 points, and it lands on one
+    mode or the other *per job*, returning that mode bit-for-bit on every
+    in-process repeat. So the mean of N runs inside one job is the mean of N
+    copies of a single draw, and averaging cannot make it converge.
+
+    What the repeat actually buys is the published spread. `off_hit_rate_runs`
+    / `on_hit_rate_runs` are what showed the runs were identical rather than
+    scattered, which is how the variance was localised to between jobs; they
+    are also the tripwire that would catch genuine within-job jitter if it
+    ever appears. Read them first when this gate fails.
+
+    Ruled out as the cause so far, each by measurement rather than argument:
+    CPU/SIMD feature set, PYTHONHASHSEED, the graph partition (seeded Louvain,
+    stable across rebuilds), Python patch version, resolved dependency
+    versions, neighbour-row order out of the un-ORDER BY'd synapse query, and
+    the recall ranking reverted in #464 — the identical failing pair
+    (74.56% -> 72.81%) occurs both with that change and without it.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
@@ -93,12 +107,14 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
 
 
 def test_synapse_ab_is_averaged_over_several_runs(benchmark_results):
-    """The gate above is only meaningful if it reads more than one sample.
+    """The gate above is only meaningful if it publishes more than one sample.
 
-    Without this, dropping the repeat — or setting NEURALMIND_SYNAPSE_AB_RUNS=1
-    to make a red build go green — would silently restore the single-draw
-    behaviour that made the directional claim a coin toss, and nothing would
-    say so.
+    Not because the mean converges — it does not, see above — but because the
+    per-run list is the evidence that distinguishes "this job drew the low
+    mode" from "retrieval genuinely regressed". Dropping the repeat, or
+    setting NEURALMIND_SYNAPSE_AB_RUNS=1 to make a red build go green, would
+    throw away exactly the signal needed to tell those two apart, and nothing
+    else would say so.
     """
     p3 = benchmark_results["phase2_synapse"]
     assert p3.get("ab_runs", 1) >= 2, (
