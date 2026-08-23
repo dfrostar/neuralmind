@@ -11,7 +11,7 @@
 ### Bug Fixes
 
 * **benchmark:** decide the synapse gate on a mean, and publish the spread ([95d7b67](https://github.com/dfrostar/neuralmind/commit/95d7b67626444031713ae608eefd5509b46b3a4e))
-* **context_selector:** revert synapse recall ranking — it regressed the hit-rate gate ([#464](https://github.com/dfrostar/neuralmind/issues/464)) ([e1e5254](https://github.com/dfrostar/neuralmind/commit/e1e5254d13f4ec533ec6219c66bfc1eef5bcaeea))
+* **context_selector:** revert synapse recall ranking ([#464](https://github.com/dfrostar/neuralmind/issues/464)) ([e1e5254](https://github.com/dfrostar/neuralmind/commit/e1e5254d13f4ec533ec6219c66bfc1eef5bcaeea)) — the commit subject claims this change regressed the hit-rate gate. It did not. The gate is bimodal per job, and the identical failing pair appears both with this change (`fcae016`) and without it (`aaf3166`, `25dcb58`), so it was neither necessary nor sufficient. The cause remains open — see [c700ce1](https://github.com/dfrostar/neuralmind/commit/c700ce1f32ba15644cd13a29e1526182f8f210d8).
 * **ingest-content:** emit the full JSON shape for an empty corpus ([1015eb8](https://github.com/dfrostar/neuralmind/commit/1015eb8b959f8815ef0f24c496be189dfc3a9ea3))
 
 
