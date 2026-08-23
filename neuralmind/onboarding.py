@@ -19,6 +19,7 @@ from __future__ import annotations
 import getpass
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,12 +44,48 @@ def _is_quiet(args) -> bool:
     return bool(getattr(args, "quick", False))
 
 
+def _os_user() -> str:
+    """Current OS username, or ``"unknown"`` where it can't be determined.
+
+    ``getpass.getuser()`` raises when no LOGNAME/USER/LNAME/USERNAME is set
+    and the uid has no passwd entry — common in slim containers.
+    """
+    try:
+        return getpass.getuser()
+    except Exception:
+        return "unknown"
+
+
+def _stdin_is_tty() -> bool:
+    """True only when stdin is a real terminal we can prompt on.
+
+    ``isatty()`` raises on a closed or detached stdin, which is exactly
+    the shape of a CI runner or an agent shell — the environment that
+    produced ``tcsetattr: Inappropriate ioctl for device``. Treating any
+    failure as "not a terminal" keeps the wizard on its non-interactive
+    path instead of blocking on a prompt nobody can answer.
+    """
+    try:
+        return bool(sys.stdin is not None and sys.stdin.isatty())
+    except Exception:
+        return False
+
+
+def _interactive(args) -> bool:
+    """Whether to prompt at all: not ``--quick``, and stdin is a terminal."""
+    return not _is_quiet(args) and _stdin_is_tty()
+
+
 def _yes(args, prompt: str, default: bool = True) -> bool:
-    if _is_quiet(args):
+    if not _interactive(args):
         return default
     suffix = " [Y/n]" if default else " [y/N]"
     while True:
-        ans = input(prompt + suffix + " ").strip().lower()
+        try:
+            ans = input(prompt + suffix + " ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return default
         if not ans:
             return default
         if ans in ("y", "yes"):
@@ -59,10 +96,14 @@ def _yes(args, prompt: str, default: bool = True) -> bool:
 
 
 def _ask(args, prompt: str, default: str = "") -> str:
-    if _is_quiet(args):
+    if not _interactive(args):
         return default
     suffix = f" [{default}]" if default else ""
-    ans = input(prompt + suffix + " ").strip()
+    try:
+        ans = input(prompt + suffix + " ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print()
+        return default
     return ans or default
 
 
@@ -149,7 +190,7 @@ def _cmd_onboarding_eula(args) -> int:
         acceptance = {
             "accepted_at": datetime.now(timezone.utc).isoformat(),
             "agreement_version": "1.0",
-            "acceptor": getpass.getuser(),
+            "acceptor": _os_user(),
         }
         with open(eula_path, "w") as f:
             json.dump(acceptance, f, indent=2)
@@ -214,8 +255,10 @@ def _cmd_onboarding_admin(args) -> int:
     _step(4, 5, "Admin setup")
     config = load_config(getattr(args, "config_path", None))
 
-    # Detect current user email from OS
-    default_user = f"{getpass.getuser()}@local" if _is_quiet(args) else ""
+    # Detect current user email from OS. Non-interactive runs (--quick, or a
+    # pipe/CI/agent shell with no TTY) can't answer the prompt, so they need
+    # the derived default rather than an empty answer.
+    default_user = f"{_os_user()}@local" if not _interactive(args) else ""
     email = _ask(
         args,
         "Admin email (used for governance audit trail)",

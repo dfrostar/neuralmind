@@ -49,6 +49,9 @@ keywords = [
     "compliance-annotations",
     "control-mapping",
     "audit-evidence",
+    "content-ingestion",
+    "incremental-indexing",
+    "markdown-corpus-search",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

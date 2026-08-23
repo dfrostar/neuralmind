@@ -104,7 +104,9 @@ def prompt_for_memory_consent() -> bool:
         response = input(  # noqa: A001
             "Enable local NeuralMind memory logging to improve retrieval over time? [y/N]: "
         ).strip()
-    except EOFError:
+    except (EOFError, KeyboardInterrupt, OSError):
+        # A detached stdin raises OSError here rather than EOFError; either
+        # way "no answer" means don't opt in.
         return False
     return response.lower() in {"y", "yes"}
 

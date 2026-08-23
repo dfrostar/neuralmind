@@ -1,18 +1,30 @@
 """Feedback + status commands for the NeuralMind CLI.
 
 Adds explicit good/bad feedback on the last query's reinforced edges,
-and a synapse-memory health dashboard with an 'is it learning?'
-diagnostic.
+and a status dashboard covering both halves of a project's state: what
+is *indexed* (code nodes, ingested content, when it was last built) and
+what has been *learned* (synapse edges, and an 'is it learning?'
+diagnostic).
+
+The index half answers "did my ingest actually land, and how stale is
+it?" without running a query or a rebuild.
 """
 
 from __future__ import annotations
 
 import json
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
+from .content_manifest import ContentManifest
 from .namespaces import resolve_namespace
 from .synapses import LEARNING_RATE, SynapseStore, default_db_path
+
+# An IR larger than this is summarized as "unknown" rather than parsed:
+# `status` is a glance at project state and must stay fast.
+MAX_IR_PARSE_BYTES = 64 * 1024 * 1024
 
 
 def _get_last_reinforced(project_path: Path) -> tuple[list[str] | None, str]:
@@ -110,10 +122,108 @@ def cmd_feedback_bad(args) -> None:
     print("  Those edges will surface less on future similar queries.")
 
 
+def _dir_size_bytes(path: Path) -> int:
+    """Total size of the files under ``path``. 0 when unreadable."""
+    total = 0
+    try:
+        for item in path.rglob("*"):
+            try:
+                if item.is_file():
+                    total += item.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        return 0
+    return total
+
+
+def _index_snapshot(project_path: Path) -> dict:
+    """What the project currently has indexed, read straight off disk.
+
+    Deliberately avoids importing the vector backend: `status` should
+    answer in milliseconds, and the IR plus the content manifest already
+    carry the counts and timestamps a user is asking about.
+    """
+    nm_dir = project_path / ".neuralmind"
+    ir_path = nm_dir / "index_ir.json"
+    snapshot: dict = {
+        "exists": ir_path.exists(),
+        "path": str(ir_path),
+        "nodes": None,
+        "edges": None,
+        "built_at": None,
+        "age_hours": None,
+        "disk_mb": round(_dir_size_bytes(nm_dir) / (1024 * 1024), 2) if nm_dir.exists() else 0.0,
+    }
+    if not snapshot["exists"]:
+        return snapshot
+
+    try:
+        stat = ir_path.stat()
+    except OSError:
+        return snapshot
+
+    if stat.st_size <= MAX_IR_PARSE_BYTES:
+        try:
+            payload = json.loads(ir_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            payload = {}
+        if isinstance(payload, dict):
+            nodes = payload.get("nodes")
+            edges = payload.get("edges")
+            snapshot["nodes"] = len(nodes) if isinstance(nodes, list) else None
+            snapshot["edges"] = len(edges) if isinstance(edges, list) else None
+            created = payload.get("created_at")
+            if isinstance(created, str) and created:
+                snapshot["built_at"] = created
+
+    if not snapshot["built_at"]:
+        snapshot["built_at"] = datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat()
+    snapshot["age_hours"] = round((time.time() - stat.st_mtime) / 3600, 1)
+    return snapshot
+
+
+def _content_snapshot(project_path: Path) -> dict:
+    """Ingested-content counts from the incremental manifest."""
+    summary = ContentManifest.load(project_path).summary()
+    summary["tracked"] = summary["files"] > 0
+    return summary
+
+
+def _print_index_section(index: dict, content: dict) -> None:
+    """Render the index half of the status dashboard."""
+    if not index["exists"]:
+        print("  Index:        none — run `neuralmind build .` or `neuralmind ingest-content`")
+    else:
+        nodes = "unknown" if index["nodes"] is None else f"{index['nodes']}"
+        edges = "unknown" if index["edges"] is None else f"{index['edges']}"
+        age = "unknown" if index["age_hours"] is None else f"{index['age_hours']}h ago"
+        # Named "code nodes" so it doesn't read as a total: a content-only
+        # project legitimately has zero of these and thousands of chunks.
+        suffix = " — content-only project" if index["nodes"] == 0 and content["tracked"] else ""
+        print(f"  Code nodes:   {nodes} ({edges} edges){suffix}")
+        print(f"  Last build:   {age}")
+        print(f"  Disk:         {index['disk_mb']} MB")
+    if content["tracked"]:
+        last = content["last_indexed_at"] or "unknown"
+        print(
+            f"  Content:      {content['files']} file(s), "
+            f"{content['chunks']} chunks, {content['nodes']} nodes"
+        )
+        print(f"  Last ingest:  {last}")
+
+
 def cmd_status(args) -> None:
-    """Synapse memory health dashboard + 'is it learning?' diagnostic."""
+    """Index + synapse-memory dashboard, and an 'is it learning?' diagnostic.
+
+    Two independent halves, both reported even when only one exists: a
+    project can be freshly ingested with no synapses yet, or carry months
+    of learned edges over an index that was never rebuilt.
+    """
     project_path = Path(args.project_path).resolve()
     db = default_db_path(project_path)
+    index = _index_snapshot(project_path)
+    content = _content_snapshot(project_path)
 
     if not db.exists():
         result = {
@@ -121,12 +231,16 @@ def cmd_status(args) -> None:
             "project": project_path.name,
             "message": f"No synapse store at {db}. Run `neuralmind build {project_path}` to create one.",
             "is_learning": False,
+            "index": index,
+            "content": content,
         }
         if args.json:
             print(json.dumps(result, indent=2))
-        else:
-            print(f"No synapse memory yet for {project_path.name}.")
-            print(f"  Run: neuralmind build {project_path}")
+            return
+        print(f"═══ NeuralMind Status — {project_path.name} ═══")
+        _print_index_section(index, content)
+        print()
+        print(f"  No synapse memory yet. Run: neuralmind build {project_path}")
         return
 
     ns = resolve_namespace(project_path)
@@ -181,13 +295,17 @@ def cmd_status(args) -> None:
             "db_path": str(db),
         },
         "top_hubs": [{"node": n, "degree": d} for n, d in stats.get("top_hubs", [])],
+        "index": index,
+        "content": content,
     }
 
     if args.json:
         print(json.dumps(result, indent=2))
         return
 
-    print(f"═══ NeuralMind Synapse Status — {project_path.name} ═══")
+    print(f"═══ NeuralMind Status — {project_path.name} ═══")
+    _print_index_section(index, content)
+    print()
     print(f"  Status:       {'🟢' if is_learning else '🟡'} {learning_status}")
     print(f"  Namespace:    {ns}")
     print(f"  Edges:        {edges} ({ltp_edges} LTP-protected)")

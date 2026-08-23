@@ -17,6 +17,7 @@ Complete command-line interface documentation for NeuralMind.
   - [validate](#validate-v0230)
   - [doctor](#doctor-v0120)
   - [eval](#eval-v0140)
+  - [ingest-content](#ingest-content-v340)
   - [learn — document ingestion](#learn-document-ingestion-v1110)
   - [learn (deprecated, pre-v1.11.0)](#learn-deprecated-v0250)
   - [self-improve status](#self-improve-status-v0260)
@@ -1093,6 +1094,118 @@ index; without them it degrades with an actionable message. `--selfcheck`
 needs neither. From an installed wheel (where the `evals/` package isn't
 bundled), run it from a source checkout instead:
 `python -m evals.faithfulness.runner --run`.
+
+---
+
+### ingest-content *(v3.4.0+)*
+
+Index a corpus of prose — a book's `chapters/`, a docs tree, a research
+folder — into its own content index. Unlike [`learn`](#learn-document-ingestion-v1110),
+which mixes documents into a code project's graph, `ingest-content` is built
+for corpora that are *only* content, and for re-running as that corpus grows.
+
+```bash
+neuralmind ingest-content chapters                       # index a folder of .md/.txt
+neuralmind ingest-content chapters --content-only        # skip the code-graph build
+neuralmind ingest-content chapters --dry-run             # preview files + chunk counts
+neuralmind ingest-content chapters --project-path book   # pin the index location
+neuralmind ingest-content chapters --json                # machine-readable result
+```
+
+**Where the index goes.** The project root is resolved from the nearest
+`.neuralmind/` or `.git` marker **above the content path**, then the cwd. Point
+it at `book/chapters` inside a git repo with no NeuralMind index and it resolves
+to the repo root — which is rarely what you want for a book — so it says so and
+names the flag:
+
+```
+Note: indexing into /repo — the nearest project marker above /repo/book/chapters
+      (a git root, with no NeuralMind index of its own).
+      To keep this corpus self-contained, re-run with --project-path /repo/book/chapters
+```
+
+`--project-path` pins it explicitly. After the first run the directory carries
+its own `.neuralmind/index_ir.json`, so later runs resolve there on their own.
+
+**Skipping the code graph.** By default the ingest builds the project's code
+graph first, which for a folder of Markdown is pure cost — and used to require
+writing a throwaway `_content_seed.py` to give the build something to parse.
+`--content-only` skips generating a graph entirely (an *existing* graph is still
+loaded, so code nodes stay in the keyword index) and writes a valid empty IR to
+mark the directory as a project. No seed file.
+
+**Incremental by default.** Every embedded file's SHA-256 and chunk parameters
+are recorded in `<project>/.neuralmind/content_manifest.json`. A re-run
+re-embeds only what changed:
+
+```
+Ingested 1 file(s) → 9 chunks → 9 nodes (33 unchanged, skipped)
+Corpus: 34 file(s), 306 chunks
+Wall time: 0.6s | Embed time: 0.46s
+```
+
+Chunk ids are positional, so a chapter that *shrinks* would otherwise leave
+orphaned chunks behind. The manifest records each file's node ids, so shortened
+and deleted files have their stale chunks evicted from the index. `--force`
+re-embeds everything; changing `--chunk-size`/`--overlap` invalidates the
+manifest on its own, since new parameters mean new chunk boundaries.
+
+**Progress.** On a terminal you get an in-place bar with an ETA. Off one — CI
+logs, an agent shell, a redirect — you get plain milestone lines instead, so a
+long embed shows movement rather than looking hung. Progress goes to **stderr**,
+so `--json` on stdout stays parseable. `--no-progress` (or
+`NEURALMIND_NO_PROGRESS=1`) turns it off.
+
+**Timeouts.** `--timeout N` stops cleanly after N seconds: the manifest is
+written for what did land, so the next run resumes instead of starting the
+corpus over. A timed-out run exits `1` and reports `"timed_out": true` in JSON.
+Files it never reached are *not* treated as deleted.
+
+| Flag | Description |
+|------|-------------|
+| `--project-path PATH` | Project root to index into. Skips marker resolution. |
+| `--content-only` | Skip the code-graph build; index only the content files. |
+| `--chunk-size N` | Max characters per chunk (default `500`, or `$NEURALMIND_CHUNK_SIZE`). |
+| `--overlap N` | Character overlap between chunks (default `50`, or `$NEURALMIND_OVERLAP`). Must be less than the chunk size. |
+| `--force`, `-f` | Re-embed every file, ignoring the incremental manifest. |
+| `--dry-run` | Print the files, byte sizes, chunk counts, and per-file status; embed nothing and write nothing. |
+| `--timeout N` | Stop cleanly after N seconds (default unlimited, or `$NEURALMIND_INGEST_TIMEOUT`). |
+| `--verbose`, `-v` | Per-file diagnostics on stderr: resolved root, chunk params, per-file timings, evictions. |
+| `--no-progress` | Suppress the progress bar. |
+| `--json`, `-j` | Machine-readable result on stdout. |
+| `--quiet`, `-q` | Suppress human progress output. |
+
+**JSON output:**
+
+```json
+{
+  "success": true,
+  "project_path": "/repo/book",
+  "content_only": true,
+  "incremental": true,
+  "files_processed": 1,
+  "files_skipped": 33,
+  "files_total": 34,
+  "total_chunks": 306,
+  "chunks_embedded": 9,
+  "total_nodes": 9,
+  "orphans_removed": 0,
+  "chunk_size": 500,
+  "overlap": 50,
+  "wall_time_seconds": 0.6,
+  "embed_time_seconds": 0.46,
+  "timed_out": false,
+  "errors": []
+}
+```
+
+`--dry-run --json` returns a different shape: `dry_run: true`, a `files` array
+of `{file, path, bytes, chunks, status}`, and `chunks_would_embed`.
+
+**Exit codes:** `0` success · `1` one or more files failed, or the run timed
+out · `2` invalid chunk parameters.
+
+Check the result any time with [`neuralmind status <path>`](#status-v314-index-reporting-v340).
 
 ---
 
@@ -2242,6 +2355,51 @@ neuralmind health .
 neuralmind health . || echo "Index needs rebuild"
 ```
 
+### status *(v3.1.4+; index reporting v3.4.0+)*
+
+Two independent halves of a project's state in one glance: what is **indexed**
+(code nodes, ingested content, when it was last built) and what has been
+**learned** (synapse edges, and an "is it learning?" diagnostic). Both are
+reported even when only one exists — a freshly ingested corpus has no synapses
+yet, and a long-lived project can carry months of learned edges over an index
+nobody has rebuilt.
+
+```bash
+neuralmind status .          # human-readable dashboard
+neuralmind status . --json   # machine-readable
+```
+
+```
+═══ NeuralMind Status — book ═══
+  Code nodes:   0 (0 edges) — content-only project
+  Last build:   0.4h ago
+  Disk:         2.1 MB
+  Content:      34 file(s), 306 chunks, 306 nodes
+  Last ingest:  2026-08-23T13:19:14+00:00
+
+  Status:       🟢 active
+  Namespace:    personal
+  Edges:        318 (12 LTP-protected)
+  ...
+```
+
+"Code nodes" is named that way so it doesn't read as a total: a content-only
+project legitimately has zero of them and thousands of chunks.
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project_path` | No | `.` | Project to inspect |
+| `--json`, `-j` | No | `false` | Output as JSON |
+
+The JSON adds an `index` object (`exists`, `path`, `nodes`, `edges`,
+`built_at`, `age_hours`, `disk_mb`) and a `content` object (`files`, `chunks`,
+`nodes`, `last_indexed_at`, `tracked`) alongside the existing synapse keys.
+
+Reads the IR and the content manifest straight off disk and never constructs a
+vector backend, so it answers in milliseconds. An IR above 64 MB is summarized
+rather than parsed — `nodes` comes back `null` and the build timestamp still
+reports.
+
 ### learn — document ingestion *(v1.11.0+)*
 
 ```bash
@@ -2544,6 +2702,10 @@ Run without --dry-run to evolve JSDoc for these methods.
 | `NEURALMIND_STRUCTURAL_MIN_CONFIDENCE` | `0.0` | *(v0.42.0+)* Drop structural edges whose `confidence_score` is below this value when building the index. Raise toward `1.0` to trust only compiler-accurate edges (pair with `NEURALMIND_PRECISION`). |
 | `NEURALMIND_STRUCTURAL_HUB_DEGREE` | `50` | *(v0.42.0+)* Per-relation degree cap for structural recall and blast-radius. Above the cap, an over-connected utility's neighbors are down-weighted (recall) or truncated (blast-radius) so one hub can't dominate. |
 | `NEURALMIND_DRIFT_REFRESH` | `1` | *(v3.2.0+)* Set to `0` to make `neuralmind drift` judge strictly against the last-built graph, skipping the transparent re-parse of changed files (same effect as `--no-refresh`). The re-parse needs tree-sitter (the `graphgen` extra); without it this is already a no-op. |
+| `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
+| `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
+| `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
+| `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`). Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one — so this is for golden-output tests and log-sensitive CI jobs. |
 
 ---
 
