@@ -705,27 +705,13 @@ class ContextSelector:
         if not fetched:
             return results
 
-        # Assign scores to fetched nodes so we can compare against displaced hits.
+        kept = results[: len(results) - len(fetched)]
         for node in fetched:
             boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
-
-        # Replace the weakest hits with the recalled nodes, strongest first.
-        # `results` is score-ordered, so the tail is the weakest slice and
-        # trimming it spends exactly the least-relevant hits. `fetched` comes
-        # back in whatever order the embedder chose, so it is ranked here
-        # rather than relied on.
-        #
-        # There is deliberately no score comparison gating individual swaps.
-        # A recalled node's score is `boost_weight * energy` (~0.30 at the
-        # default weight) while a vector hit carries a cosine similarity
-        # (~0.50+); the two are incommensurable, and comparing them rejects
-        # every candidate that clears the energy bar. `_synapse_pull_in_min_energy`
-        # is the gate, and it compares energy against energy.
-        ranked = sorted(fetched, key=lambda n: n.get("score", 0.0), reverse=True)
-        return results[: len(results) - len(ranked)] + ranked
+        return kept + fetched
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
