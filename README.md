@@ -22,6 +22,7 @@ together, what you usually touch next — and remembers it across sessions.
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
+> - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 >
 > **Works with every IDE your team already uses.**
 
@@ -175,6 +176,23 @@ neuralmind serve .          # Obsidian-style graph view in your browser
 neuralmind savings . --cost # measured token savings, priced for your model
 neuralmind doctor           # verify the install end to end
 ```
+
+### Index prose, not just code *(v3.4.0+)*
+
+A book, a docs tree, a research folder — `ingest-content` indexes a corpus of
+Markdown/text into its own project, so it never gets folded into the enclosing
+repo:
+
+```bash
+neuralmind ingest-content chapters --dry-run       # preview: files, sizes, chunk counts
+neuralmind ingest-content chapters --content-only  # index the prose, skip the code graph
+neuralmind status book                             # nodes indexed, chunks, last ingest
+```
+
+Re-runs are incremental — only files whose content changed are re-embedded, and
+chunks from shortened or deleted files are evicted. Long embeds show a progress
+bar with an ETA on a terminal, and plain milestone lines off one (CI, an agent
+shell), so a slow run is never mistaken for a hung one.
 
 ### Wire up your agent
 

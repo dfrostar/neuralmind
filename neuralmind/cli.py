@@ -505,7 +505,12 @@ def cmd_query(args):
 
 
 def _maybe_prompt_for_memory_opt_in():
-    is_tty = sys.stdin.isatty() and sys.stdout.isatty()
+    from neuralmind.progress import stream_is_tty
+
+    # stream_is_tty() swallows the isatty() failures a detached or closed
+    # stdin raises under CI and agent shells — the consent prompt must never
+    # be the thing that breaks a non-interactive run.
+    is_tty = stream_is_tty(sys.stdin) and stream_is_tty(sys.stdout)
     if not memory.should_prompt_for_consent(is_tty=is_tty):
         return
 
@@ -1195,12 +1200,14 @@ def _emit_community_submission(args, benchmark_result: dict, mind) -> None:
 
 def _prompt(label: str, default: str = "") -> str:
     """Interactive prompt. Returns default if stdin isn't a TTY."""
-    if not sys.stdin.isatty():
+    from neuralmind.progress import stream_is_tty
+
+    if not stream_is_tty(sys.stdin):
         return default
     suffix = f" [{default}]" if default else ""
     try:
         response = input(f"{label}{suffix}: ").strip()
-    except EOFError:
+    except (EOFError, KeyboardInterrupt):
         return default
     return response or default
 
@@ -1961,33 +1968,49 @@ def cmd_memory(args):
         return
 
 
-def _resolve_project_path(file_path: Path, args) -> Path | None:
-    """Resolve the project root from args or by walking up from file_path.
+def _has_project_marker(path: Path) -> bool:
+    """True when ``path`` is a NeuralMind project root or a git repo root."""
+    return (
+        (path / ".neuralmind" / "index_ir.json").exists()
+        or (path / ".neuralmind" / "synapses.db").exists()
+        or (path / ".git").exists()
+    )
 
-    Returns None if no project marker (.neuralmind/, .git) is found.
+
+def _resolve_project_path(file_path: Path, args) -> Path | None:
+    """Resolve the project root for an ingest target.
+
+    Precedence:
+
+    1. An explicit ``--project-path``.
+    2. The nearest marker walking **up from the target** — a directory
+       carrying its own ``.neuralmind/`` is its own project even when it
+       sits inside a larger repo.
+    3. The cwd, when it carries a marker.
+
+    The target is consulted before the cwd on purpose. The other order
+    meant that ingesting ``book/chapters`` from anywhere inside a git
+    repo resolved to the repo root and indexed the entire codebase
+    alongside the prose. Ingesting into a specific project from a
+    different one had the same failure.
+
+    Returns None if no marker is found anywhere, leaving the fallback to
+    the caller.
     """
     explicit_project = getattr(args, "project_path", None)
     if explicit_project:
         return Path(explicit_project).resolve()
 
-    cwd = Path.cwd()
-    if (
-        (cwd / ".neuralmind" / "index_ir.json").exists()
-        or (cwd / ".neuralmind" / "synapses.db").exists()
-        or (cwd / ".git").exists()
-    ):
-        return cwd
-
-    # Walk up from file to find project markers
+    # Walk up from the target to find project markers
     project_path = file_path.parent if file_path.is_file() else file_path
     while project_path.parent != project_path:
-        if (
-            (project_path / ".neuralmind" / "index_ir.json").exists()
-            or (project_path / ".neuralmind" / "synapses.db").exists()
-            or (project_path / ".git").exists()
-        ):
+        if _has_project_marker(project_path):
             return project_path
         project_path = project_path.parent
+
+    cwd = Path.cwd()
+    if _has_project_marker(cwd):
+        return cwd
 
     return None
 
@@ -2016,17 +2039,154 @@ def _scan_files_for_ingest(dir_path: Path) -> list[Path]:
     return files
 
 
+_CONTENT_EXTS: tuple[str, ...] = (".md", ".markdown", ".mkd", ".txt", ".text")
+DEFAULT_CHUNK_SIZE = 500
+DEFAULT_CHUNK_OVERLAP = 50
+
+
+def _env_int_option(name: str, default: int, *, minimum: int = 0) -> int:
+    """Read an integer tuning knob from the environment.
+
+    A malformed value warns and falls back instead of crashing: env vars
+    get set once in a shell profile and forgotten, and a typo in one
+    shouldn't take down a corpus ingest halfway through.
+    """
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = int(raw.strip())
+    except ValueError:
+        print(f"Warning: {name}={raw!r} is not an integer — using {default}.", file=sys.stderr)
+        return default
+    if value < minimum:
+        print(
+            f"Warning: {name}={value} is below the minimum {minimum} — using {default}.",
+            file=sys.stderr,
+        )
+        return default
+    return value
+
+
+def _resolve_chunk_params(args) -> tuple[int, int]:
+    """Chunk size/overlap from flags → env vars → built-in defaults.
+
+    Flags win, so a one-off run can override; ``NEURALMIND_CHUNK_SIZE`` /
+    ``NEURALMIND_OVERLAP`` cover the "same settings every time" case
+    without retyping the flags on every invocation.
+    """
+    chunk_size = getattr(args, "chunk_size", None)
+    if chunk_size is None:
+        chunk_size = _env_int_option("NEURALMIND_CHUNK_SIZE", DEFAULT_CHUNK_SIZE, minimum=1)
+    overlap = getattr(args, "overlap", None)
+    if overlap is None:
+        overlap = _env_int_option("NEURALMIND_OVERLAP", DEFAULT_CHUNK_OVERLAP, minimum=0)
+    chunk_size, overlap = int(chunk_size), int(overlap)
+    if chunk_size <= overlap:
+        # The chunker rejects this too (it would loop forever), but failing
+        # here names the flags and exits before any project is touched.
+        print(
+            f"Error: chunk size ({chunk_size}) must be greater than overlap ({overlap}). "
+            f"Set --chunk-size/--overlap or NEURALMIND_CHUNK_SIZE/NEURALMIND_OVERLAP.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    return chunk_size, overlap
+
+
+def _configure_verbose_logging(enabled: bool) -> None:
+    """Send NeuralMind's loggers to stderr at DEBUG when ``--verbose`` is set.
+
+    Diagnostics go to stderr so ``--json`` on stdout stays parseable, and
+    the handler is tagged so repeated calls in one process don't stack
+    duplicate output.
+    """
+    if not enabled:
+        return
+    import logging
+
+    logger = logging.getLogger("neuralmind")
+    for handler in list(logger.handlers):
+        if getattr(handler, "_neuralmind_verbose", False):
+            logger.removeHandler(handler)
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s %(levelname)-5s %(name)s: %(message)s", datefmt="%H:%M:%S")
+    )
+    handler._neuralmind_verbose = True  # type: ignore[attr-defined]
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+
+
+def _ensure_content_project_marker(project_path: Path) -> Path | None:
+    """Make ``project_path`` resolvable as a project root of its own.
+
+    A content corpus (a book's ``chapters/``) has no code graph to
+    materialize an IR from, so nothing marks it as a project — and
+    :func:`_resolve_project_path` walks up to the enclosing git root and
+    indexes the whole repository. Writing a valid *empty* IR fixes that
+    properly, replacing the hand-rolled
+    ``echo '{"is_content_project": true}' > .neuralmind/index_ir.json``
+    workaround, which isn't a loadable IR.
+
+    Returns the marker path, or None if it couldn't be written (the
+    ingest itself still works — the next run just has to be told the
+    project path again).
+    """
+    from neuralmind import ir as ir_mod
+
+    marker = project_path / ".neuralmind" / "index_ir.json"
+    if marker.exists():
+        return marker
+    try:
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        ir_mod.IndexIR(generated_by="neuralmind.ingest-content", source_backend="content").write(
+            marker
+        )
+    except (OSError, ValueError):
+        return None
+    return marker
+
+
+def _delete_content_nodes(mind, node_ids: list[str]) -> int:
+    """Evict node ids from the vector index and the in-memory node list.
+
+    Backends that predate ``delete_nodes`` simply keep the stale chunks —
+    a slightly larger index, never a failed ingest.
+    """
+    if not node_ids:
+        return 0
+    deleter = getattr(mind.embedder, "delete_nodes", None)
+    removed = 0
+    if callable(deleter):
+        try:
+            removed = int(deleter(node_ids) or 0)
+        except Exception:
+            removed = 0
+    stale = set(node_ids)
+    mind.embedder.nodes = [n for n in mind.embedder.nodes if str(n.get("id", "")) not in stale]
+    return removed
+
+
 def cmd_ingest_content(args):
     """Ingest a directory of Markdown chapters into a pure content index.
 
-    Optimized for book/content benchmarking: ingests only .md/.txt files,
-    chunks them with configurable size/overlap, and builds a pure content
-    index (no code nodes). Reports files ingested, total chunks, node count.
+    Optimized for book/content corpora: ingests only .md/.txt files,
+    chunks them with configurable size/overlap, and embeds them into the
+    project's vector index.
+
+    Re-runs are incremental — a manifest of per-file content hashes at
+    ``.neuralmind/content_manifest.json`` means only changed files are
+    re-embedded. Unchanged files are still parsed (cheap) so the BM25
+    keyword index stays complete, but skip the embedding pass (the part
+    that costs seconds per file). ``--force`` re-embeds everything.
     """
     import time
 
+    from neuralmind.content_manifest import ContentManifest
     from neuralmind.core import create_mind
     from neuralmind.document_ingestion import parse_document
+    from neuralmind.progress import ProgressReporter, format_duration
 
     content_path = Path(args.content_path).resolve()
     if not content_path.exists():
@@ -2034,60 +2194,187 @@ def cmd_ingest_content(args):
         sys.exit(1)
 
     quiet = getattr(args, "quiet", False)
-    chunk_size = args.chunk_size
-    overlap = args.overlap
+    as_json = getattr(args, "json", False)
+    verbose = getattr(args, "verbose", False) and not as_json
+    dry_run = getattr(args, "dry_run", False)
+    force = getattr(args, "force", False)
+    content_only = getattr(args, "content_only", False)
+    show_progress = not getattr(args, "no_progress", False) and not quiet
+    timeout = getattr(args, "timeout", None)
+    if timeout is None:
+        timeout = _env_int_option("NEURALMIND_INGEST_TIMEOUT", 0, minimum=0)
+    timeout = max(0, int(timeout))
+
+    _configure_verbose_logging(verbose)
+    chunk_size, overlap = _resolve_chunk_params(args)
+
+    def say(message: str = "") -> None:
+        """Human-facing progress line — silenced by --quiet and --json."""
+        if not quiet and not as_json:
+            print(message)
+
+    def detail(message: str) -> None:
+        """Verbose diagnostic — stderr, so --json stdout stays clean."""
+        if verbose:
+            print(f"  · {message}", file=sys.stderr)
 
     # Collect files
     if content_path.is_file():
         files_to_ingest = [content_path]
     else:
-        # Only .md and .txt for content indexing
-        files_to_ingest = _scan_files_for_ingest(content_path)
         files_to_ingest = [
-            f
-            for f in files_to_ingest
-            if f.suffix.lower() in (".md", ".markdown", ".mkd", ".txt", ".text")
+            f for f in _scan_files_for_ingest(content_path) if f.suffix.lower() in _CONTENT_EXTS
         ]
 
     if not files_to_ingest:
-        if not quiet:
+        if as_json:
+            # Same shape as a real run, so a consumer parsing the result
+            # doesn't have to special-case an empty corpus.
+            print(
+                json.dumps(
+                    {
+                        "success": True,
+                        "project_path": None,
+                        "content_only": bool(content_only),
+                        "incremental": not force,
+                        "files_processed": 0,
+                        "files_skipped": 0,
+                        "files_total": 0,
+                        "total_chunks": 0,
+                        "chunks_embedded": 0,
+                        "total_nodes": 0,
+                        "orphans_removed": 0,
+                        "chunk_size": chunk_size,
+                        "overlap": overlap,
+                        "wall_time_seconds": 0.0,
+                        "embed_time_seconds": 0.0,
+                        "timed_out": False,
+                        "errors": [],
+                        "message": "No supported content files found (.md, .txt).",
+                    },
+                    indent=2,
+                )
+            )
+        elif not quiet:
             print("No supported content files found (.md, .txt).")
         sys.exit(0)
 
     # Resolve project root
     project_path = _resolve_project_path(content_path, args)
+    resolution = "explicit" if getattr(args, "project_path", None) else "detected"
     if project_path is None:
-        # Use content_path's parent as project if it's a directory
-        project_path = content_path.parent if content_path.is_dir() else content_path.parent
+        project_path = content_path if content_path.is_dir() else content_path.parent
+        resolution = "fallback"
+    detail(f"project root: {project_path} ({resolution})")
 
-    if not quiet:
-        print(f"Content indexer: {len(files_to_ingest)} file(s) from {content_path}")
-        print(f"Chunk size: {chunk_size}, overlap: {overlap}")
-        print(f"Project: {project_path}")
-        print()
-
-    # Create a seed Python file if the project has no code files (required for build)
-    seed_file = project_path / "_content_seed.py"
-    if not any(project_path.rglob("*.py")):
-        seed_file.write_text(
-            "# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n"
+    # Resolving to an enclosing repo that NeuralMind has never indexed is
+    # almost never what someone ingesting a book folder wants: the index
+    # lands beside the code, and without --content-only the build walks the
+    # whole repository first. Say so instead of doing it silently.
+    content_dir = content_path if content_path.is_dir() else content_path.parent
+    if (
+        resolution == "detected"
+        and project_path != content_dir
+        and not (project_path / ".neuralmind").exists()
+    ):
+        print(
+            f"Note: indexing into {project_path} — the nearest project marker above "
+            f"{content_path} (a git root, with no NeuralMind index of its own).\n"
+            f"      To keep this corpus self-contained, re-run with "
+            f"--project-path {content_dir}",
+            file=sys.stderr,
         )
+    detail(f"chunk size {chunk_size}, overlap {overlap}, timeout {timeout or 'none'}")
 
-    mind = create_mind(str(project_path), auto_build=True)
-    if not mind._built:
-        print("Error: failed to build NeuralMind index.", file=sys.stderr)
-        sys.exit(1)
+    # Partition into work vs. already-indexed
+    manifest = ContentManifest.load(project_path)
+    detail(f"manifest: {len(manifest)} file(s) previously indexed")
+    unchanged: list[Path] = []
+    if not force:
+        unchanged = [
+            f
+            for f in files_to_ingest
+            if manifest.is_unchanged(f, chunk_size=chunk_size, overlap=overlap)
+        ]
+
+    say(f"Content indexer: {len(files_to_ingest)} file(s) from {content_path}")
+    say(f"Chunk size: {chunk_size}, overlap: {overlap}")
+    say(f"Project: {project_path}")
+    if unchanged:
+        say(f"Unchanged since last ingest: {len(unchanged)} file(s) — skipping re-embed")
+    say()
+
+    if dry_run:
+        _ingest_content_dry_run(
+            args,
+            files_to_ingest=files_to_ingest,
+            unchanged=set(unchanged),
+            content_path=content_path,
+            project_path=project_path,
+            chunk_size=chunk_size,
+            overlap=overlap,
+        )
+        return
+
+    # Open the project. --content-only skips the code-graph build entirely:
+    # generating a tree-sitter graph for a folder of Markdown is pure cost.
+    # An *existing* graph is still loaded (a cheap JSON read) so the BM25
+    # rebuild at the end of embedding doesn't drop code nodes.
+    if content_only:
+        mind = create_mind(str(project_path), auto_build=False)
+        if not mind.embedder.load_graph():
+            detail("no existing index — writing an empty IR marker for this content project")
+            _ensure_content_project_marker(project_path)
+        else:
+            detail(f"loaded existing index: {len(mind.embedder.nodes)} node(s)")
+    else:
+        seed_file = project_path / "_content_seed.py"
+        if not any(project_path.rglob("*.py")):
+            seed_file.write_text(
+                "# Auto-generated seed for content indexing\ndef _content_seed():\n    pass\n"
+            )
+        mind = create_mind(str(project_path), auto_build=True)
+        if not mind._built:
+            print("Error: failed to build NeuralMind index.", file=sys.stderr)
+            sys.exit(1)
 
     total_nodes = 0
     total_chunks = 0
+    chunks_embedded = 0
+    orphans_removed = 0
     total_embed_time = 0.0
+    embedded_files = 0
     errors: list[tuple[str, str]] = []
     wall_start = time.time()
+    deadline = wall_start + timeout if timeout else None
+    timed_out = False
 
-    for idx, fpath in enumerate(files_to_ingest, 1):
-        if not quiet and len(files_to_ingest) > 1:
-            rel = fpath.relative_to(content_path) if content_path.is_dir() else fpath.name
-            print(f"  [{idx}/{len(files_to_ingest)}] {rel}...", end="", flush=True)
+    def label_for(fpath: Path) -> str:
+        if content_path.is_dir():
+            try:
+                return str(fpath.relative_to(content_path))
+            except ValueError:
+                pass
+        return fpath.name
+
+    unchanged_set = set(unchanged)
+    bar = ProgressReporter(
+        len(files_to_ingest),
+        label="Ingesting",
+        enabled=show_progress and len(files_to_ingest) > 1,
+    )
+
+    for fpath in files_to_ingest:
+        rel = label_for(fpath)
+        if deadline is not None and time.time() >= deadline:
+            timed_out = True
+            bar.clear()
+            print(
+                f"Timeout after {format_duration(time.time() - wall_start)} "
+                f"(--timeout {timeout}s): stopping before {rel}.",
+                file=sys.stderr,
+            )
+            break
 
         try:
             content_nodes = [
@@ -2102,59 +2389,108 @@ def cmd_ingest_content(args):
             ]
             if not content_nodes:
                 errors.append((str(fpath), "No content extracted"))
-                if not quiet and len(files_to_ingest) > 1:
-                    print(" no content")
+                bar.advance(detail=f"{rel} — no content")
                 continue
 
-            # Sync to embedder nodes list (avoid duplicates)
+            total_chunks += len(content_nodes)
+
+            # Every file's nodes join the in-memory list: the BM25 index is
+            # rebuilt from it wholesale, so omitting the unchanged files here
+            # would silently shrink the keyword index on an incremental run.
             existing_ids = {n.get("id", "") for n in mind.embedder.nodes}
             new_nodes = [cn for cn in content_nodes if cn.get("id", "") not in existing_ids]
             mind.embedder.nodes.extend(new_nodes)
 
-            # Embed
+            if fpath in unchanged_set:
+                detail(f"{rel}: unchanged ({len(content_nodes)} chunks) — embed skipped")
+                bar.advance(detail=f"{rel} — unchanged")
+                continue
+
+            # Chunk ids are positional, so a file that lost its tail leaves
+            # orphaned chunks in the index. Diff against what the last run
+            # recorded and evict the difference.
+            current_ids = [str(cn.get("id", "")) for cn in content_nodes if cn.get("id")]
+            stale_ids = [i for i in manifest.node_ids(fpath) if i not in set(current_ids)]
+            if stale_ids:
+                removed = _delete_content_nodes(mind, stale_ids)
+                orphans_removed += removed
+                detail(f"{rel}: evicted {removed} stale chunk(s) from a previous ingest")
+
             embed_start = time.time()
             mind.embedder.embed_content(new_nodes)
             embed_elapsed = time.time() - embed_start
 
             n = len(new_nodes) if new_nodes else len(content_nodes)
             total_nodes += n
-            total_chunks += len(content_nodes)
+            chunks_embedded += len(content_nodes)
             total_embed_time += embed_elapsed
-
-            if not quiet and len(files_to_ingest) > 1:
-                print(f" {n} node(s)")
+            embedded_files += 1
+            manifest.record(
+                fpath,
+                chunk_size=chunk_size,
+                overlap=overlap,
+                chunks=len(content_nodes),
+                nodes=n,
+                node_ids=current_ids,
+            )
+            detail(f"{rel}: {len(content_nodes)} chunks → {n} nodes in {embed_elapsed:.2f}s")
+            bar.advance(detail=f"{rel} — {n} node(s)")
 
         except (ValueError, RuntimeError) as e:
             errors.append((str(fpath), str(e)))
-            if not quiet:
-                if len(files_to_ingest) > 1:
-                    print(" ERROR")
-                    print(f"    {e}")
-                else:
-                    print(f"Error: {e}", file=sys.stderr)
-        except Exception as e:
+            bar.advance(detail=f"{rel} — ERROR")
+            if not quiet and not as_json:
+                print(f"  {rel}: {e}", file=sys.stderr)
+        except Exception as e:  # noqa: BLE001 — one bad file must not end the batch
             errors.append((str(fpath), f"{type(e).__name__}: {e}"))
-            if not quiet:
-                if len(files_to_ingest) > 1:
-                    print(" ERROR")
-                    print(f"    {type(e).__name__}: {e}")
-                else:
-                    print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+            bar.advance(detail=f"{rel} — ERROR")
+            if not quiet and not as_json:
+                print(f"  {rel}: {type(e).__name__}: {e}", file=sys.stderr)
+
+    bar.clear()
+
+    # Files deleted from the corpus since the last ingest are still in the
+    # vector index. Drop them — only on a complete run, since a timeout means
+    # we never looked at part of the corpus.
+    if not timed_out:
+        forgotten, orphan_ids = manifest.prune_missing()
+        if orphan_ids:
+            removed = _delete_content_nodes(mind, orphan_ids)
+            orphans_removed += removed
+            detail(f"evicted {removed} chunk(s) from {len(forgotten)} deleted file(s)")
 
     wall_time = time.time() - wall_start
 
-    if args.json:
+    # Persist what we got, even on timeout: a partial run must still let the
+    # next one resume instead of starting the whole corpus over.
+    try:
+        manifest.save()
+    except OSError as e:
+        detail(f"could not write content manifest: {e}")
+
+    files_skipped = len(unchanged_set)
+    if as_json:
         output = {
-            "success": len(errors) == 0,
-            "files_processed": len(files_to_ingest),
+            "success": len(errors) == 0 and not timed_out,
+            "project_path": str(project_path),
+            "content_only": bool(content_only),
+            "incremental": not force,
+            "files_processed": embedded_files,
+            "files_skipped": files_skipped,
+            "files_total": len(files_to_ingest),
             "total_chunks": total_chunks,
+            "chunks_embedded": chunks_embedded,
             "total_nodes": total_nodes,
+            "orphans_removed": orphans_removed,
+            "chunk_size": chunk_size,
+            "overlap": overlap,
             "wall_time_seconds": round(wall_time, 2),
             "embed_time_seconds": round(total_embed_time, 2),
+            "timed_out": timed_out,
             "errors": [{"file": str(f), "error": e} for f, e in errors],
         }
         print(json.dumps(output, indent=2))
-        if errors:
+        if errors or timed_out:
             sys.exit(1)
         return
 
@@ -2169,9 +2505,136 @@ def cmd_ingest_content(args):
     if not quiet:
         print()
         print(
-            f"Ingested {len(files_to_ingest)} file(s) → {total_chunks} chunks → {total_nodes} nodes"
+            f"Ingested {embedded_files} file(s) → {chunks_embedded} chunks → {total_nodes} nodes"
+            + (f" ({files_skipped} unchanged, skipped)" if files_skipped else "")
         )
+        print(f"Corpus: {len(files_to_ingest)} file(s), {total_chunks} chunks")
+        if orphans_removed:
+            print(f"Evicted {orphans_removed} stale chunk(s) from removed or shortened files")
         print(f"Wall time: {wall_time:.1f}s | Embed time: {total_embed_time:.2f}s")
+        print(f"Check the index any time with: neuralmind status {project_path}")
+
+    if timed_out:
+        sys.exit(1)
+
+
+def _ingest_content_dry_run(
+    args,
+    *,
+    files_to_ingest: list[Path],
+    unchanged: set[Path],
+    content_path: Path,
+    project_path: Path,
+    chunk_size: int,
+    overlap: int,
+):
+    """Preview an ingest: which files, how many chunks, what would be skipped.
+
+    Parses each file (cheap) but never embeds and never touches the
+    project's index or manifest — the point is to see the shape of a
+    corpus, and what a re-run would actually cost, before paying for it.
+    """
+    from neuralmind.document_ingestion import parse_document
+    from neuralmind.progress import ProgressReporter
+
+    quiet = getattr(args, "quiet", False)
+    as_json = getattr(args, "json", False)
+    show_progress = not getattr(args, "no_progress", False) and not quiet and not as_json
+
+    rows: list[dict] = []
+    errors: list[tuple[str, str]] = []
+    bar = ProgressReporter(
+        len(files_to_ingest),
+        label="Scanning",
+        enabled=show_progress and len(files_to_ingest) > 1,
+    )
+    for fpath in files_to_ingest:
+        try:
+            rel = str(fpath.relative_to(content_path)) if content_path.is_dir() else fpath.name
+        except ValueError:
+            rel = fpath.name
+        try:
+            chunks = len(
+                parse_document(
+                    fpath,
+                    root=project_path,
+                    content_type="auto",
+                    chunk_size=chunk_size,
+                    overlap=overlap,
+                )
+            )
+            rows.append(
+                {
+                    "file": rel,
+                    "path": str(fpath),
+                    "bytes": fpath.stat().st_size,
+                    "chunks": chunks,
+                    "status": "unchanged" if fpath in unchanged else "would-index",
+                }
+            )
+        except Exception as e:  # noqa: BLE001 — preview reports errors, never raises
+            errors.append((str(fpath), f"{type(e).__name__}: {e}"))
+            rows.append(
+                {
+                    "file": rel,
+                    "path": str(fpath),
+                    "bytes": fpath.stat().st_size if fpath.exists() else 0,
+                    "chunks": 0,
+                    "status": "error",
+                }
+            )
+        bar.advance(detail=rel)
+    bar.clear()
+
+    would_index = [r for r in rows if r["status"] == "would-index"]
+    total_chunks = sum(r["chunks"] for r in rows)
+    pending_chunks = sum(r["chunks"] for r in would_index)
+
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "success": not errors,
+                    "dry_run": True,
+                    "project_path": str(project_path),
+                    "chunk_size": chunk_size,
+                    "overlap": overlap,
+                    "files_total": len(rows),
+                    "files_would_index": len(would_index),
+                    "files_skipped": len(rows) - len(would_index) - len(errors),
+                    "total_chunks": total_chunks,
+                    "chunks_would_embed": pending_chunks,
+                    "files": rows,
+                    "errors": [{"file": f, "error": e} for f, e in errors],
+                },
+                indent=2,
+            )
+        )
+        if errors:
+            sys.exit(1)
+        return
+
+    if not quiet:
+        width = max((len(r["file"]) for r in rows), default=4)
+        width = min(width, 60)
+        print(f"{'FILE'.ljust(width)}  {'BYTES':>8}  {'CHUNKS':>6}  STATUS")
+        for row in rows:
+            name = row["file"]
+            if len(name) > width:
+                name = "…" + name[-(width - 1) :]
+            print(f"{name.ljust(width)}  {row['bytes']:>8}  {row['chunks']:>6}  {row['status']}")
+        print()
+        print(
+            f"Dry run: {len(would_index)} of {len(rows)} file(s) would be embedded "
+            f"({pending_chunks} of {total_chunks} chunks). Nothing was written."
+        )
+        if errors:
+            print(f"{len(errors)} file(s) would fail to parse:", file=sys.stderr)
+            for f, err in errors[:10]:
+                print(f"  - {Path(f).name}: {err}", file=sys.stderr)
+
+    if errors:
+        sys.exit(1)
 
 
 def cmd_ingest(args):
@@ -4313,6 +4776,14 @@ def main():
     ingest_p.add_argument(
         "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
     )
+    ingest_p.add_argument(
+        "--project-path",
+        default=None,
+        help=(
+            "Project root to ingest into. Without it the root is resolved from "
+            "the nearest .neuralmind/ or .git marker above the target"
+        ),
+    )
     ingest_p.set_defaults(func=cmd_ingest)
 
     # ingest-content: dedicated content indexer for books/markdown corpora
@@ -4325,16 +4796,58 @@ def main():
         help="Path to a directory of .md files (chapters) or a single file",
     )
     ingest_content_p.add_argument(
+        "--project-path",
+        default=None,
+        help=(
+            "Project root to index into. Without it the root is resolved from "
+            "the nearest .neuralmind/ or .git marker above the content path"
+        ),
+    )
+    ingest_content_p.add_argument(
+        "--content-only",
+        action="store_true",
+        help=(
+            "Skip the code-graph build — index only the content files. "
+            "An existing graph is still loaded, never generated"
+        ),
+    )
+    ingest_content_p.add_argument(
         "--chunk-size",
         type=int,
-        default=500,
-        help="Max characters per chunk (default: 500)",
+        default=None,
+        help="Max characters per chunk (default: 500, or $NEURALMIND_CHUNK_SIZE)",
     )
     ingest_content_p.add_argument(
         "--overlap",
         type=int,
-        default=50,
-        help="Character overlap between chunks (default: 50)",
+        default=None,
+        help="Character overlap between chunks (default: 50, or $NEURALMIND_OVERLAP)",
+    )
+    ingest_content_p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Re-embed every file, ignoring the incremental manifest",
+    )
+    ingest_content_p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show the files and chunk counts that would be indexed, without embedding",
+    )
+    ingest_content_p.add_argument(
+        "--timeout",
+        type=int,
+        default=None,
+        help=(
+            "Stop cleanly after N seconds, keeping what was indexed "
+            "(default: unlimited, or $NEURALMIND_INGEST_TIMEOUT)"
+        ),
+    )
+    ingest_content_p.add_argument(
+        "--verbose", "-v", action="store_true", help="Per-file diagnostics on stderr"
+    )
+    ingest_content_p.add_argument(
+        "--no-progress", action="store_true", help="Suppress the progress bar"
     )
     ingest_content_p.add_argument("--json", "-j", action="store_true", help="Output JSON")
     ingest_content_p.add_argument(
@@ -4359,6 +4872,14 @@ def main():
     learn_p.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
     learn_p.add_argument(
         "--no-recursive", action="store_true", help="Do not recurse into subdirectories"
+    )
+    learn_p.add_argument(
+        "--project-path",
+        default=None,
+        help=(
+            "Project root to ingest into. Without it the root is resolved from "
+            "the nearest .neuralmind/ or .git marker above the target"
+        ),
     )
     learn_p.set_defaults(func=cmd_ingest)
 

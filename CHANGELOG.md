@@ -6,7 +6,7 @@
 ### Bug Fixes
 
 * **context_selector:** rank synapse recalls before they displace hits ([#461](https://github.com/dfrostar/neuralmind/issues/461)) ([d188768](https://github.com/dfrostar/neuralmind/commit/d1887684e24639b1b25c7b1b232ea2ffbaff7add))
-* **deps:** lift the turbovec &lt;1 cap — recovery handles it, pinning doesn't ([#460](https://github.com/dfrostar/neuralmind/issues/460)) ([9192ddf](https://github.com/dfrostar/neuralmind/commit/9192ddf482388be3438ccb4a68add36677693dcb))
+* **deps:** lift the turbovec <1 cap — recovery handles it, pinning doesn't ([#460](https://github.com/dfrostar/neuralmind/issues/460)) ([9192ddf](https://github.com/dfrostar/neuralmind/commit/9192ddf482388be3438ccb4a68add36677693dcb))
 
 
 ### Documentation
@@ -213,7 +213,7 @@
 * **ci:** let compliance-check post its PR comment, and never fail on it ([5250165](https://github.com/dfrostar/neuralmind/commit/5250165bba0ba0bc86aa26934da6f8e59a419d7c))
 * **cli:** use args.project_path for learn command project root detection ([d7de0e1](https://github.com/dfrostar/neuralmind/commit/d7de0e1d49b49ba01064a1e2f6916c11429e5fac))
 * demo index gate, honest pricing page, and commercial-terms alignment ([#410](https://github.com/dfrostar/neuralmind/issues/410)) ([fc82505](https://github.com/dfrostar/neuralmind/commit/fc825055bcaf59c9ca6d1e535d0c7c86971e3063))
-* **deps:** cap mcp &lt;2 — SDK 2.0 removes the server's decorator API ([#420](https://github.com/dfrostar/neuralmind/issues/420)) ([1630e00](https://github.com/dfrostar/neuralmind/commit/1630e00152e5cf146ec302d73f3c48b783f01175))
+* **deps:** cap mcp <2 — SDK 2.0 removes the server's decorator API ([#420](https://github.com/dfrostar/neuralmind/issues/420)) ([1630e00](https://github.com/dfrostar/neuralmind/commit/1630e00152e5cf146ec302d73f3c48b783f01175))
 * doc synapse seeding warn + tests + CMMC co-activation ([a276df1](https://github.com/dfrostar/neuralmind/commit/a276df1b6c5c5196b5746b606a9b63a64dd60a3a))
 * **docs-site:** remove docs/.nojekyll — it disabled the wiki entirely ([0f550d5](https://github.com/dfrostar/neuralmind/commit/0f550d5eb50a78aac120e02017db6cb3ea47439d))
 * improve repo root detection for learn command ([71dca4f](https://github.com/dfrostar/neuralmind/commit/71dca4f659d8ab4a460d05bbbbbf029d5fe3590b))
@@ -223,7 +223,7 @@
 * **release:** simplify smoke test to import + CLI only (10min timeout) ([032b001](https://github.com/dfrostar/neuralmind/commit/032b001a9083b57dc76caa0ddbe3739779baf5ae))
 * show document content in query results ([8016fa0](https://github.com/dfrostar/neuralmind/commit/8016fa024153455931da2e49c21a3aa6805b76c1))
 * **site:** current version on every release + verified PyPI/SBOM links again ([902866d](https://github.com/dfrostar/neuralmind/commit/902866d4c53373d98e9f5a171014605d100deb5d))
-* **site:** nav label 'Team' -&gt; 'Teams' ([a401fe8](https://github.com/dfrostar/neuralmind/commit/a401fe8a423e7c9c9028a65f2adaddd2bf76487a))
+* **site:** nav label 'Team' -> 'Teams' ([a401fe8](https://github.com/dfrostar/neuralmind/commit/a401fe8a423e7c9c9028a65f2adaddd2bf76487a))
 * **test:** update test_patch_winners_handles_write_failure for new patch_winners impl ([2dc3eac](https://github.com/dfrostar/neuralmind/commit/2dc3eac655696f48bf038ab50cdb33781bafc611))
 * **type-verifier:** support both 'edges' and 'links' graph formats, extract func names from labels ([8de5a72](https://github.com/dfrostar/neuralmind/commit/8de5a72bd6cc0d3fce4b41952ee973382fda05da))
 * **type-verifier:** thread-pool, AST cache, any severity, func index, persist batch ([0d4633e](https://github.com/dfrostar/neuralmind/commit/0d4633ed6cf25e6bf20b81ca0c5f93d210be95d8))
@@ -318,7 +318,7 @@
 * **docs-site:** remove docs/.nojekyll — it disabled the wiki entirely ([705d261](https://github.com/dfrostar/neuralmind/commit/705d26178346b84bb2d7360000d5967c1f8efb13))
 * neuralmind savings now reads audit_events.jsonl (always written) ([08ef7d3](https://github.com/dfrostar/neuralmind/commit/08ef7d3a56d7494a0b6a8e3ce4eb1b1f68670e90))
 * **site:** current version on every release + verified PyPI/SBOM links again ([757c4ea](https://github.com/dfrostar/neuralmind/commit/757c4ea317ffd3e6934b7eb1cbfc1a879a462e31))
-* **site:** nav label 'Team' -&gt; 'Teams' ([b5f3ad0](https://github.com/dfrostar/neuralmind/commit/b5f3ad0126f028b24234eabbff5b44626a31ec46))
+* **site:** nav label 'Team' -> 'Teams' ([b5f3ad0](https://github.com/dfrostar/neuralmind/commit/b5f3ad0126f028b24234eabbff5b44626a31ec46))
 
 
 ### Reverts
