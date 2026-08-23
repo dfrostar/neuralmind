@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.3.2](https://github.com/dfrostar/neuralmind/compare/v3.3.1...v3.3.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **context_selector:** rank synapse recalls before they displace hits ([#461](https://github.com/dfrostar/neuralmind/issues/461)) ([d188768](https://github.com/dfrostar/neuralmind/commit/d1887684e24639b1b25c7b1b232ea2ffbaff7add))
+* **deps:** lift the turbovec &lt;1 cap — recovery handles it, pinning doesn't ([#460](https://github.com/dfrostar/neuralmind/issues/460)) ([9192ddf](https://github.com/dfrostar/neuralmind/commit/9192ddf482388be3438ccb4a68add36677693dcb))
+
+
+### Documentation
+
+* correct the NIST annotation claim and a CLI flag that never existed ([#458](https://github.com/dfrostar/neuralmind/issues/458)) ([b644876](https://github.com/dfrostar/neuralmind/commit/b6448762138a259545cfe5cc3ae297533533d1f8))
+
 ## [3.3.1](https://github.com/dfrostar/neuralmind/compare/v3.3.0...v3.3.1) (2026-08-22)
 
 
