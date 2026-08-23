@@ -416,7 +416,13 @@ def _environment_fingerprint() -> dict:
         for line in Path("/proc/cpuinfo").read_text().splitlines():
             if line.startswith("flags"):
                 interesting = {
-                    "avx", "avx2", "avx512f", "avx512vnni", "fma", "sse4_2", "neon",
+                    "avx",
+                    "avx2",
+                    "avx512f",
+                    "avx512vnni",
+                    "fma",
+                    "sse4_2",
+                    "neon",
                 }
                 flags = " ".join(sorted(set(line.split(":", 1)[1].split()) & interesting))
                 break
