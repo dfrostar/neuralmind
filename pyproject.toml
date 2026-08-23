@@ -86,14 +86,18 @@ dependencies = [
     # pre-2.28 glibc) Linux still resolve to turbovec and need a toolchain or
     # `pip install "neuralmind[chromadb]"`; use a glibc base image (python:slim)
     # rather than python:alpine. See docs/prd/chromadb-free-by-default.md.
-    # HOLD: capped <1 on 2026-08-18. turbovec 1.0.0 ships a v5 index rotation
-    # change that refuses to decode the v3 `index.tvim` files committed under
-    # tests/fixtures/*/graphify-out/neuralmind_turbovec/, so every CI run that
-    # resolved the new major failed with "predates the v5 rotation change and
-    # cannot be decoded by any current build". Verified directly: 1.0.0 raises
-    # on the committed fixture, 0.8.0 loads it. Lift the cap in the same change
-    # that regenerates those fixtures at v5.
-    "turbovec>=0.7,<1; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    # Deliberately uncapped across the 1.0 major. turbovec 1.0.0 stops decoding
+    # pre-v5 indexes, which is a real break — but it is handled at runtime, not
+    # by pinning: _load_index quarantines an index it cannot read to
+    # `index.tvim.stale` and embed_nodes escalates to force=True so the index is
+    # rebuilt from the surviving SQLite rows (see #443). 1.0.0 signals this as
+    # OSError, which is exactly what that handler catches, so the v3 fixtures
+    # still committed under tests/fixtures/*/graphify-out/neuralmind_turbovec/
+    # are recovered rather than fatal. A `<1` cap here would freeze every
+    # installation on the 0.x line to paper over a case the code already
+    # handles; if a future major breaks something recovery cannot absorb, cap
+    # it then, against that evidence.
+    "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "numpy>=1.20",
