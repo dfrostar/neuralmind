@@ -16,7 +16,7 @@ Usage:
         node_id="cmc:AC.L2-3.1.1",
         label="Authorized Access Control",
         content_type="cmmc_practice",
-        text="AC.L2-3.1.1: Authorized Access Control - Limit system access...",
+        text="AC.L2-3.1.1: Authorized Access Control - Limit system access...",  # neuralmind:example
         metadata={"domain": "AC", "framework": "CMMC"},
     )
 

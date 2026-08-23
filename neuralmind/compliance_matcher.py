@@ -234,6 +234,31 @@ def iter_scannable_files(root):
 # --------------------------------------------------------------------------- #
 
 
+#: Opt-out markers.
+#:
+#: Documentation and tests have to *show* what an annotation looks like, and a
+#: shown annotation is byte-identical to a real one. That is how this repository
+#: came to report 37 annotations of which only 12 were evidence: the other 25
+#: were worked examples in docstrings, the CLI reference and the test suite,
+#: all flowing into ``neuralmind export --controls``.
+#:
+#: ``neuralmind:example`` on the same line drops that one annotation.
+#: ``neuralmind:example-file`` anywhere in the text drops the whole file.
+#:
+#: A file that merely *mentions* ``neuralmind:example-file`` therefore silences
+#: itself. That is intended rather than tolerated: a file explaining how to
+#: write an annotation is a file that shows one, and it is not evidence.
+EXAMPLE_FILE_MARKER = "neuralmind:example-file"
+_EXAMPLE_LINE_RE = re.compile(r"neuralmind:example(?!-file)")
+
+
+def _line_containing(text: str, pos: int) -> str:
+    """Return the whole line ``pos`` falls on, without its newline."""
+    start = text.rfind("\n", 0, pos) + 1
+    end = text.find("\n", pos)
+    return text[start : len(text) if end == -1 else end]
+
+
 def find_compliance_annotations(text: str) -> list[dict]:
     """Scan ``text`` for compliance annotations of any supported framework.
 
@@ -251,11 +276,19 @@ def find_compliance_annotations(text: str) -> list[dict]:
 
     Empty list when nothing matches.
     """
+    # Whole-file opt-out, checked before any pattern runs.
+    if EXAMPLE_FILE_MARKER in text:
+        return []
+
     results: list[dict] = []
     seen: set[tuple[str, str]] = set()  # dedup (framework, control_id)
 
     for framework, pattern in _PATTERNS:
         for m in pattern.finditer(text):
+            # Per-line opt-out. Tested against the line the control id sits on,
+            # not the match start: a match may run to the following newline.
+            if _EXAMPLE_LINE_RE.search(_line_containing(text, m.start("control_id"))):
+                continue
             control_id = m.group("control_id").strip().upper()
             label = _same_line_label(text, m)
             key = (control_id, framework)
