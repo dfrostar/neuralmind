@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 from collections.abc import Callable
@@ -43,6 +44,8 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+
+logger = logging.getLogger(__name__)
 
 # Inner-product metric → cosine on unit-normalised vectors (ChromaDB uses cosine).
 _DEFAULT_BIT_WIDTH = 4  # 4-bit keeps recall close to float32; 2-bit ~2x smaller.
@@ -186,14 +189,76 @@ class TurboVecEmbedder(EmbeddingBackend):
                 self._index = turbovec.IdMapIndex.load(str(self._index_path))
             except (OSError, ValueError):
                 # Written by an incompatible turbovec version (e.g. a pre-v5
-                # index after upgrading) or corrupted. Quarantine it so the
-                # next embed_nodes() rebuilds from the source vectors.
+                # index after upgrading) or corrupted. Quarantine it, then
+                # rebuild from the rows we already persisted.
                 self._index_path.replace(
                     self._index_path.with_name(self._index_path.name + ".stale")
                 )
+                if self._rebuild_index_from_store():
+                    return self._index
                 return None
             self._dirty = False
         return self._index
+
+    def _rebuild_index_from_store(self) -> int:
+        """Re-embed every persisted row into a fresh index. Returns the count.
+
+        Quarantining an unreadable index is only half a recovery. ``embed_nodes``
+        escalates to ``force=True`` when the index has gone, but it re-embeds
+        ``self.nodes`` — the graph — so anything ingested through
+        ``embed_content`` (docs, compliance practices) is left behind: its rows
+        survive in SQLite asserting a ``content_hash`` that makes the next
+        ``embed_content`` skip them, while its vectors no longer exist. Searches
+        then silently return nothing for that content, and a document-only store
+        has no graph for ``embed_nodes`` to rebuild from at all.
+
+        The ``document`` column holds the exact text each vector was built from,
+        so the store is sufficient to rebuild every vector regardless of how it
+        was ingested. Doing it here means any entry point — ``search``,
+        ``embed_nodes``, ``embed_content`` — recovers on first touch instead of
+        depending on the caller to know it must force a re-ingest.
+
+        Best-effort: if embedding is unavailable (no ONNX runtime, no model),
+        this returns 0 and the caller falls back to the previous behaviour
+        rather than turning a degraded search into a crash.
+        """
+        rows = self._conn.execute(
+            "SELECT uid, document FROM nodes "
+            "WHERE document IS NOT NULL AND document != '' ORDER BY uid"
+        ).fetchall()
+        if not rows:
+            return 0
+
+        try:
+            import turbovec
+
+            vectors = _l2_normalize(self._embed_matrix([r["document"] for r in rows]))
+            uids = np.array([int(r["uid"]) for r in rows], dtype=np.uint64)
+            # Built directly rather than via _ensure_index: that calls
+            # _load_index, and we are inside it.
+            idx = turbovec.IdMapIndex(dim=vectors.shape[1], bit_width=self.bit_width)
+            idx.add_with_ids(vectors, uids)
+        except Exception:
+            logger.warning(
+                "Could not rebuild the vector index for %s after quarantining an "
+                "unreadable one; %d stored node(s) stay unsearchable until the "
+                "next forced re-embed.",
+                self._index_path.parent,
+                len(rows),
+            )
+            return 0
+
+        self._index = idx
+        self._meta_set("dim", str(vectors.shape[1]))
+        self._meta_set("bit_width", str(self.bit_width))
+        self._conn.commit()
+        self._dirty = True
+        self._persist_index()
+        logger.info(
+            "Rebuilt %d vector(s) from the node store after an unreadable index.",
+            len(rows),
+        )
+        return len(rows)
 
     def _ensure_index(self, dim: int):
         idx = self._load_index()

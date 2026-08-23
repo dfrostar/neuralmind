@@ -200,12 +200,19 @@ class TurboVecBackendTests(unittest.TestCase):
 
         index_path.write_bytes(b"not a turbovec index")
         reopened = self._backend()
+        # Asserted as an outcome, not a mechanism. Recovery used to happen here,
+        # via embed_nodes escalating to force=True; it now happens when the
+        # unreadable index is quarantined, because embed_nodes can only rebuild
+        # the code graph and leaves embed_content rows stranded (see
+        # tests/test_index_recovery.py). Either way what must hold is that the
+        # bad file is kept, a fresh index exists, and every node is retrievable
+        # again without the caller knowing to force anything.
         stats = reopened.embed_nodes()  # force=False: recovery must not rely on force
-        self.assertEqual(stats["updated"], 5)
-        self.assertEqual(stats["skipped"], 0)
+        self.assertNotIn("error", stats)
         self.assertTrue(index_path.with_name(index_path.name + ".stale").exists())
-        results = reopened.search("authenticate_user", n=1)
-        self.assertEqual(results[0]["id"], "n_auth")
+        self.assertTrue(index_path.exists())
+        self.assertEqual(reopened.search("authenticate_user", n=1)[0]["id"], "n_auth")
+        self.assertEqual(reopened.search("send_invoice", n=1)[0]["id"], "n_invoice")
         reopened.close()
 
     def test_missing_index_with_surviving_rows_reembeds(self) -> None:
