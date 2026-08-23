@@ -70,11 +70,45 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     hit for a co-activated-but-wrong one. This gate catches that: with the
     same warm graph, recall on must surface at least as many expected
     modules as recall off.
+
+    Read from the mean of several A/B runs, not one. This measurement moves:
+    the same commit and the same turbovec build have produced both -1.75 and
+    +4.0 points, and the two outcomes recur bit-for-bit rather than spreading,
+    so a single draw decided the gate by luck. The per-run values are in
+    `off_hit_rate_runs` / `on_hit_rate_runs` when a failure needs diagnosing.
     """
     p3 = benchmark_results["phase2_synapse"]
+    runs = ", ".join(
+        f"{(on - off) * 100:+.1f}"
+        for off, on in zip(
+            p3.get("off_hit_rate_runs", []), p3.get("on_hit_rate_runs", []), strict=False
+        )
+    )
     assert p3["on_avg_top_k_hit_rate"] >= p3["off_avg_top_k_hit_rate"] - 1e-9, (
         f"Synapse recall lowered hit rate: {p3['off_avg_top_k_hit_rate']:.2%} off → "
-        f"{p3['on_avg_top_k_hit_rate']:.2%} on. Displacement is dropping relevant hits."
+        f"{p3['on_avg_top_k_hit_rate']:.2%} on, averaged over "
+        f"{p3.get('ab_runs', 1)} run(s) [{runs}] points. "
+        "Displacement is dropping relevant hits."
+    )
+
+
+def test_synapse_ab_is_averaged_over_several_runs(benchmark_results):
+    """The gate above is only meaningful if it reads more than one sample.
+
+    Without this, dropping the repeat — or setting NEURALMIND_SYNAPSE_AB_RUNS=1
+    to make a red build go green — would silently restore the single-draw
+    behaviour that made the directional claim a coin toss, and nothing would
+    say so.
+    """
+    p3 = benchmark_results["phase2_synapse"]
+    assert p3.get("ab_runs", 1) >= 2, (
+        f"Phase-2 A/B ran {p3.get('ab_runs', 1)} time(s). The hit-rate gate "
+        "decides a directional claim from a metric that moves between runs, so "
+        "it must average at least two."
+    )
+    assert len(p3.get("on_hit_rate_runs", [])) == p3.get("ab_runs", 1), (
+        "Per-run hit rates must be published alongside the mean — a mean that "
+        "hides its own spread is what let this metric look stable."
     )
 
 

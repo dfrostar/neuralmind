@@ -56,6 +56,9 @@ REPORT_PATH = REPO_ROOT / "tests" / "benchmark" / "report.md"
 # regressions (retriever returning the whole graph, dropping to ~1×),
 # not a missed optimization on a toy input.
 REDUCTION_FLOOR = 4.0
+# Phase-2 A/B repeats: one draw of a metric that moves decides the gate by
+# luck. Three matches the onboarding gate's existing averaging.
+SYNAPSE_AB_RUNS = int(os.environ.get("NEURALMIND_SYNAPSE_AB_RUNS", "3"))
 
 # Pricing used for the dollars-saved estimate in the report.
 # Claude 3.5 Sonnet input price, per 1M tokens, at the time of writing.
@@ -387,10 +390,15 @@ def _dollars_saved(naive_tokens: int, neuralmind_tokens: int, queries_per_day: i
     return per_query_savings * queries_per_day * 30
 
 
+def _mean(values) -> float:
+    vals = list(values)
+    return sum(vals) / len(vals) if vals else 0.0
+
+
 def write_results(
     phase1: PhaseResult,
-    synapse_off: PhaseResult,
-    synapse_on: PhaseResult,
+    off_runs: list[PhaseResult],
+    on_runs: list[PhaseResult],
     synapse_edges: int,
 ) -> None:
     """Write the JSON payload consumed by the chart script and CI."""
@@ -405,13 +413,22 @@ def write_results(
         },
         "phase2_synapse": {
             "synapse_edges": synapse_edges,
-            "off_avg_reduction_ratio": synapse_off.avg_reduction,
-            "off_avg_top_k_hit_rate": synapse_off.avg_hit_rate,
-            "on_avg_reduction_ratio": synapse_on.avg_reduction,
-            "on_avg_top_k_hit_rate": synapse_on.avg_hit_rate,
-            "uplift_hit_rate": synapse_on.avg_hit_rate - synapse_off.avg_hit_rate,
-            "reduction_delta": synapse_on.avg_reduction - synapse_off.avg_reduction,
-            "queries": [asdict(q) for q in synapse_on.queries],
+            # Means across SYNAPSE_AB_RUNS. The gate reads these; the per-run
+            # lists below keep the spread visible rather than averaged away.
+            "ab_runs": len(on_runs),
+            "off_avg_reduction_ratio": _mean(r.avg_reduction for r in off_runs),
+            "off_avg_top_k_hit_rate": _mean(r.avg_hit_rate for r in off_runs),
+            "on_avg_reduction_ratio": _mean(r.avg_reduction for r in on_runs),
+            "on_avg_top_k_hit_rate": _mean(r.avg_hit_rate for r in on_runs),
+            "uplift_hit_rate": (
+                _mean(r.avg_hit_rate for r in on_runs) - _mean(r.avg_hit_rate for r in off_runs)
+            ),
+            "reduction_delta": (
+                _mean(r.avg_reduction for r in on_runs) - _mean(r.avg_reduction for r in off_runs)
+            ),
+            "off_hit_rate_runs": [r.avg_hit_rate for r in off_runs],
+            "on_hit_rate_runs": [r.avg_hit_rate for r in on_runs],
+            "queries": [asdict(q) for q in on_runs[-1].queries],
         },
         "regression_floor": REDUCTION_FLOOR,
         "pass": phase1.avg_reduction >= REDUCTION_FLOOR,
@@ -430,8 +447,8 @@ def write_results(
 
 def write_report(
     phase1: PhaseResult,
-    synapse_off: PhaseResult,
-    synapse_on: PhaseResult,
+    off_runs: list[PhaseResult],
+    on_runs: list[PhaseResult],
     synapse_edges: int,
 ) -> None:
     """Write the human-readable Markdown report posted as a PR comment."""
@@ -470,14 +487,25 @@ def write_report(
         "",
         f"- Synapse edges after seeding co-editing sessions: `{synapse_edges}`",
         (
-            f"- Top-k hit rate: **{_fmt_pct(synapse_off.avg_hit_rate)}** off → "
-            f"**{_fmt_pct(synapse_on.avg_hit_rate)}** on "
-            f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.1f} points)"
+            f"- Top-k hit rate: **{_fmt_pct(_mean(r.avg_hit_rate for r in off_runs))}** off → "
+            f"**{_fmt_pct(_mean(r.avg_hit_rate for r in on_runs))}** on "
+            f"(Δ {(_mean(r.avg_hit_rate for r in on_runs) - _mean(r.avg_hit_rate for r in off_runs)) * 100:+.1f} "
+            f"points, mean of {len(on_runs)} runs)"
         ),
         (
-            f"- Reduction ratio: **{synapse_off.avg_reduction:.1f}×** off → "
-            f"**{synapse_on.avg_reduction:.1f}×** on "
-            f"(Δ {synapse_on.avg_reduction - synapse_off.avg_reduction:+.2f}× — "
+            "- Per-run deltas: "
+            + ", ".join(
+                f"`{(on.avg_hit_rate - off.avg_hit_rate) * 100:+.1f}`"
+                for off, on in zip(off_runs, on_runs, strict=True)
+            )
+            + " points — published because this metric moves between runs, and a"
+            " mean that hides its own spread is how a directional claim gets"
+            " decided by luck."
+        ),
+        (
+            f"- Reduction ratio: **{_mean(r.avg_reduction for r in off_runs):.1f}×** off → "
+            f"**{_mean(r.avg_reduction for r in on_runs):.1f}×** on "
+            f"(Δ {_mean(r.avg_reduction for r in on_runs) - _mean(r.avg_reduction for r in off_runs):+.2f}× — "
             "budget-neutral by design)"
         ),
         "",
@@ -519,25 +547,44 @@ def main() -> int:
     # Reinforce co-editing sessions, then measure the same queries with
     # synapse recall off vs on. Verifies the boost is budget-neutral
     # (reduction holds) while associative recall lifts the hit rate.
-    reset_memory()
-    nm = NeuralMind(str(FIXTURE_DIR))
-    synapse_edges = seed_synapses(nm)
-    synapse_off = run_synapse_phase(nm, queries, naive_total, inject=False)
-    synapse_on = run_synapse_phase(nm, queries, naive_total, inject=True)
-
-    write_results(phase1, synapse_off, synapse_on, synapse_edges)
-    write_report(phase1, synapse_off, synapse_on, synapse_edges)
+    # Repeated, because a single draw does not settle a directional claim.
+    # This A/B has returned both -1.75 and +4.0 points from the *same* commit
+    # and the same turbovec build, and the two outcomes recur bit-for-bit
+    # rather than spreading — so one sample decides the gate by luck. The
+    # sibling onboarding gate in ci-benchmark.yml already averages three runs
+    # for the same reason ("Averaged to absorb any ChromaDB HNSW query-time
+    # jitter"). Every run is published below, so the spread stays visible
+    # instead of being hidden behind its own mean.
+    off_runs: list[PhaseResult] = []
+    on_runs: list[PhaseResult] = []
+    synapse_edges = 0
+    for _ in range(SYNAPSE_AB_RUNS):
+        reset_memory()
+        nm = NeuralMind(str(FIXTURE_DIR))
+        synapse_edges = seed_synapses(nm)
+        off_runs.append(run_synapse_phase(nm, queries, naive_total, inject=False))
+        on_runs.append(run_synapse_phase(nm, queries, naive_total, inject=True))
+    write_results(phase1, off_runs, on_runs, synapse_edges)
+    write_report(phase1, off_runs, on_runs, synapse_edges)
 
     print(
         f"Phase 1: {phase1.avg_reduction:.1f}× reduction, "
         f"{phase1.avg_hit_rate * 100:.0f}% top-k hit rate "
         f"({phase1_seconds:.1f}s)"
     )
+    off_mean = _mean(r.avg_hit_rate for r in off_runs)
+    on_mean = _mean(r.avg_hit_rate for r in on_runs)
+    per_run = ", ".join(
+        f"{(on.avg_hit_rate - off.avg_hit_rate) * 100:+.1f}"
+        for off, on in zip(off_runs, on_runs, strict=True)
+    )
     print(
-        f"Phase 2: synapse off {synapse_off.avg_hit_rate * 100:.0f}% → "
-        f"on {synapse_on.avg_hit_rate * 100:.0f}% hit rate "
-        f"(Δ {(synapse_on.avg_hit_rate - synapse_off.avg_hit_rate) * 100:+.0f}pts), "
-        f"reduction {synapse_off.avg_reduction:.1f}× → {synapse_on.avg_reduction:.1f}×, "
+        f"Phase 2: synapse off {off_mean * 100:.0f}% → "
+        f"on {on_mean * 100:.0f}% hit rate "
+        f"(Δ {(on_mean - off_mean) * 100:+.0f}pts, mean of {len(on_runs)}; "
+        f"runs [{per_run}]), "
+        f"reduction {_mean(r.avg_reduction for r in off_runs):.1f}× → "
+        f"{_mean(r.avg_reduction for r in on_runs):.1f}×, "
         f"{synapse_edges} edges"
     )
 
