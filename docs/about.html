@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, and a 100% local ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, local-first, open source">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, incremental content ingestion for books and docs corpora, and a 100% local ten-language code graph.">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -195,6 +195,24 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v340">
+            <h2>What&rsquo;s New in v3.4.0 &mdash; Indexing a book without indexing the repo</h2>
+            <p><strong>Someone indexed a book with <code>neuralmind ingest-content</code> and had to hand-write a fake index file to stop it walking up to the git root and indexing the whole repository alongside the prose.</strong> The project-root resolver checked the current directory before it checked the path being ingested, so from anywhere inside a repo, the repo won.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong>The ingest target decides where the index goes</strong> &mdash; resolution order is <code>--project-path</code>, then the nearest marker above the content path, then the cwd. A folder carrying its own <code>.neuralmind/</code> is its own project, even inside a larger repo; landing on an unindexed git root now prints a note naming the flag instead of doing it silently</li>
+                <li><strong><code>--content-only</code></strong> &mdash; skips generating a code graph for a folder that contains no code, and drops the throwaway <code>_content_seed.py</code> stub the old path wrote into your book folder</li>
+                <li><strong>Incremental re-runs</strong> &mdash; a manifest of per-file content hashes means only changed files are re-embedded; chunks from shortened or deleted files are evicted rather than left searchable</li>
+                <li><strong>Progress with an ETA</strong> &mdash; an in-place bar on a terminal, plain milestone lines off one (CI, an agent shell), so a 70-second embed is never mistaken for a hang. Every terminal probe is guarded, which also clears the <code>tcsetattr: Inappropriate ioctl for device</code> noise</li>
+                <li><strong><code>--dry-run</code>, <code>--verbose</code>, <code>--timeout</code></strong> &mdash; preview a corpus before paying for it, see per-file timings and evictions, or stop cleanly at a deadline and resume next run</li>
+                <li><strong><code>neuralmind status</code> reports the index</strong> &mdash; nodes, last build, content files and chunks, last ingest, next to the synapse diagnostic it already had</li>
+                <li><strong>Content reaches keyword search immediately</strong> &mdash; the default backend&rsquo;s content ingestion never refreshed the BM25 index, so freshly ingested prose was invisible to hybrid retrieval until the next full build</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.4.0.md">v3.4.0 release notes</a></p>
         </div>
     </section>
 

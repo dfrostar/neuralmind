@@ -440,6 +440,12 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._dirty = True
         self._persist_index()
         self._conn.commit()
+
+        # Refresh the keyword index, the same way embed_nodes() does. Without
+        # this, freshly ingested content is invisible to BM25 — and so to
+        # hybrid retrieval — until the next full build. A content-only corpus
+        # feels that hardest: it may never run one.
+        self.build_bm25_index()
         return stats
 
     def embed_nodes(self, force: bool = False) -> dict[str, int]:
