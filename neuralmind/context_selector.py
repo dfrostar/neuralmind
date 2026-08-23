@@ -705,13 +705,20 @@ class ContextSelector:
         if not fetched:
             return results
 
-        kept = results[: len(results) - len(fetched)]
         for node in fetched:
             boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
             node["_synapse_boost"] = boost
             node["_synapse_recalled"] = True
-        return kept + fetched
+        # Merge and keep the top len(results) by score so synapse nodes only
+        # displace vector hits when they actually score higher — never drops a
+        # relevant hit in favour of a lower-scoring synapse candidate.
+        merged = sorted(
+            results + fetched,
+            key=lambda r: r.get("score", 0.0),
+            reverse=True,
+        )
+        return merged[: len(results)]
 
     def _apply_structural_expansion(self, results: list[dict]) -> list[dict]:
         """Fold the static code graph's wiring into L3 hits.
