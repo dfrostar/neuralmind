@@ -440,6 +440,42 @@ def _environment_fingerprint() -> dict:
     }
 
 
+def _graph_fingerprint(nm) -> dict:
+    """Identify the graph the A/B actually ran against.
+
+    Phase 1 and the synapse edge count are identical between a passing and a
+    failing CI job, and so is the environment fingerprint — yet Phase 2's "on"
+    number differs. Whatever changes is rebuilt per job and fixed within it.
+    CI runs `graphify update` before the benchmark, and community detection is
+    randomised clustering: a partition that lands differently while producing
+    the same node and edge counts would move community-driven selection without
+    moving anything else measured here.
+
+    So this records the partition, not just its size — a stable digest over
+    (node_id, community). Two jobs whose digests differ have not run the same
+    experiment, whatever else matches.
+    """
+    import hashlib
+
+    try:
+        embedder = nm.embedder
+        stats = embedder.get_stats()
+        rows = sorted(
+            (str(n.get("id", "")), int(n.get("metadata", {}).get("community", -1)))
+            for n in embedder.get_all_nodes()
+        )
+        digest = hashlib.sha256(
+            "\n".join(f"{nid}:{comm}" for nid, comm in rows).encode()
+        ).hexdigest()[:16]
+        return {
+            "nodes": stats.get("total_nodes"),
+            "communities": stats.get("communities"),
+            "community_partition_sha256_16": digest,
+        }
+    except Exception as exc:  # diagnostics must never fail the benchmark
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
 def _mean(values) -> float:
     vals = list(values)
     return sum(vals) / len(vals) if vals else 0.0
@@ -450,6 +486,7 @@ def write_results(
     off_runs: list[PhaseResult],
     on_runs: list[PhaseResult],
     synapse_edges: int,
+    graph_fp: dict | None = None,
 ) -> None:
     """Write the JSON payload consumed by the chart script and CI."""
     payload = {
@@ -481,6 +518,7 @@ def write_results(
             "queries": [asdict(q) for q in on_runs[-1].queries],
         },
         "environment": _environment_fingerprint(),
+        "graph": graph_fp or {},
         "regression_floor": REDUCTION_FLOOR,
         "pass": phase1.avg_reduction >= REDUCTION_FLOOR,
         "estimated_monthly_savings_usd": _dollars_saved(
@@ -613,9 +651,10 @@ def main() -> int:
         reset_memory()
         nm = NeuralMind(str(FIXTURE_DIR))
         synapse_edges = seed_synapses(nm)
+        graph_fp = _graph_fingerprint(nm)
         off_runs.append(run_synapse_phase(nm, queries, naive_total, inject=False))
         on_runs.append(run_synapse_phase(nm, queries, naive_total, inject=True))
-    write_results(phase1, off_runs, on_runs, synapse_edges)
+    write_results(phase1, off_runs, on_runs, synapse_edges, graph_fp)
     write_report(phase1, off_runs, on_runs, synapse_edges)
 
     print(
@@ -630,6 +669,10 @@ def main() -> int:
         for off, on in zip(off_runs, on_runs, strict=True)
     )
     env = _environment_fingerprint()
+    print(
+        f"Graph: {graph_fp.get('nodes')} nodes, {graph_fp.get('communities')} communities, "
+        f"partition {graph_fp.get('community_partition_sha256_16')}"
+    )
     print(
         f"Env: turbovec {env['turbovec']}, onnxruntime {env['onnxruntime']}, "
         f"numpy {env['numpy']}, {env['machine']} [{env['cpu_flags'] or 'n/a'}]"
