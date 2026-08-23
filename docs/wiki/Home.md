@@ -1,3 +1,4 @@
+<!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # 🧠 NeuralMind Wiki
 
 **Reduce Claude, GPT, and Gemini token costs 12–50× on code questions.** Local semantic codebase index + MCP server + PostToolUse compression hooks for Claude Code, Cursor, Cline, Continue, and any LLM.

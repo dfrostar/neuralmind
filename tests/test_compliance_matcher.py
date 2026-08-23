@@ -7,12 +7,15 @@ commands, and milestone ids. Scanning this repo produced 147 SOC 2
 "annotations" of which 129 were noise.
 
 That matters more than a noisy scan: these annotations feed ``neuralmind
-export --audit``, documented as producing "flat compliance reports (CSV/JSON)
-for evidence submission". A fabricated control in an audit export is a
+export --controls``, documented as producing control-to-code mappings for
+evidence submission. A fabricated control in an audit export is a
 materially worse failure than a missed one, so these tests pin precision.
 
 Stdlib-only, like the other guard modules, so they run without the full dep
 set.
+
+neuralmind:example-file — every annotation in this file is a fixture, not
+evidence, and must not reach ``neuralmind export --controls``.
 """
 
 from __future__ import annotations
@@ -286,3 +289,50 @@ def test_ci_check_framework_actually_filters(tmp_path, monkeypatch) -> None:
     only_cmmc = ci_check.run_ci_check(tmp_path, framework="cmmc")
     assert {f["framework"] for f in only_cmmc["findings"]} == {"CMMC"}
     assert "CC6.1" not in only_cmmc["affected_controls"]
+
+
+# --------------------------------------------------------------------------- #
+# Opt-out markers
+# --------------------------------------------------------------------------- #
+# Documentation has to *show* an annotation, and a shown one is byte-identical
+# to a real one. This repo reported 37 annotations of which 12 were evidence.
+# The markers are spelled by concatenation here so this file's own tests do not
+# trip the file-level marker before it is under test.
+
+_LINE = "neuralmind:" + "example"
+_FILE = "neuralmind:" + "example-file"
+
+
+def test_same_line_marker_drops_that_annotation() -> None:
+    assert find_compliance_annotations(f"# NIST AC-1: Access policy  {_LINE}") == []
+
+
+def test_same_line_marker_leaves_other_lines_alone() -> None:
+    text = f"# NIST AC-1: Access policy  {_LINE}\n# NIST AU-3: Audit review"
+    assert [a["control_id"] for a in find_compliance_annotations(text)] == ["AU-3"]
+
+
+def test_file_marker_drops_every_annotation_in_the_text() -> None:
+    text = f"{_FILE}\n# NIST AC-1: x\n# CMMC AC.L2-3.1.1: y"
+    assert find_compliance_annotations(text) == []
+
+
+def test_markers_do_not_themselves_match() -> None:
+    assert find_compliance_annotations(f"{_LINE} {_FILE}") == []
+
+
+def test_marker_suppresses_a_whole_comma_list() -> None:
+    """The #455 sibling pass must not resurrect ids from a suppressed line."""
+    text = f"**SOC 2 Controls:** CC3.1, CC8.1, A1.1 - change mgmt  {_LINE}"
+    assert find_compliance_annotations(text) == []
+
+
+def test_unsuppressed_comma_list_still_yields_every_id() -> None:
+    text = "**SOC 2 Controls:** CC3.1, CC8.1, A1.1 - change mgmt"
+    assert len(find_compliance_annotations(text)) == 3
+
+
+def test_markers_do_not_weaken_the_false_positive_guards() -> None:
+    """The #453 guards must survive the marker work."""
+    assert find_compliance_annotations("Shipped in v0.13.0, v2.0 and v0.22 today.") == []
+    assert find_compliance_annotations("noncompliance: CC3.1, CC8.1 - nope") == []

@@ -1,3 +1,4 @@
+// neuralmind:example-file — annotations here are syntax examples, not evidence.
 'use client';
 
 import Icon, { type IconName } from '@/components/ui/Icon';

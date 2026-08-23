@@ -1,3 +1,4 @@
+<!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # CLI Reference
 
 Complete command-line interface documentation for NeuralMind.

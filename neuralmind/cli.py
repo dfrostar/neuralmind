@@ -3606,8 +3606,9 @@ def cmd_compliance(args):
         print(f"No compliance annotations found in {path}.")
         print(
             "Tip: add annotations like:\n"
-            "  // CMMC AC.L2-3.1.1: Authorized Access Control\n"
-            "  # SOX ITGC-CM-001: Change approved via CAB\n"
+            # The two samples below are help text, not annotations on this file.
+            "  // CMMC AC.L2-3.1.1: Authorized Access Control\n"  # neuralmind:example
+            "  # SOX ITGC-CM-001: Change approved via CAB\n"  # neuralmind:example
         )
         return
 
