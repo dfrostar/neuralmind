@@ -468,6 +468,50 @@ class TestIngest:
         assert payload["files_processed"] == 0
         assert payload["success"] is True
 
+    def test_empty_corpus_json_matches_the_normal_shape(
+        self, book_repo: Path, tmp_path: Path, monkeypatch, capsys
+    ):
+        """A consumer shouldn't have to special-case an empty corpus."""
+        book = book_repo / "book"
+        run_cli(
+            monkeypatch,
+            "ingest-content",
+            str(book / "chapters"),
+            "--project-path",
+            str(book),
+            "--content-only",
+            "--no-progress",
+            "--dry-run",
+            "--json",
+        )
+        capsys.readouterr()
+
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        run_cli(monkeypatch, "ingest-content", str(empty), "--json")
+        empty_payload = json.loads(capsys.readouterr().out)
+
+        expected = {
+            "success",
+            "project_path",
+            "content_only",
+            "incremental",
+            "files_processed",
+            "files_skipped",
+            "files_total",
+            "total_chunks",
+            "chunks_embedded",
+            "total_nodes",
+            "orphans_removed",
+            "chunk_size",
+            "overlap",
+            "wall_time_seconds",
+            "embed_time_seconds",
+            "timed_out",
+            "errors",
+        }
+        assert expected <= set(empty_payload)
+
     def test_missing_path_errors(self, tmp_path: Path, monkeypatch, capsys):
         code = run_cli(monkeypatch, "ingest-content", str(tmp_path / "nope"))
         assert code == 1
