@@ -1923,6 +1923,40 @@ Code **and** prose: `.py .js .jsx .ts .tsx .go .java .rb .php .cs .c .cpp
 markdown — the usual place for a policy document — were invisible to this
 command even though the matcher supported them.)*
 
+#### Showing an annotation without becoming evidence
+
+Documentation, tests and marketing copy have to *show* what an annotation
+looks like. Before v3.4.1 every one of those examples was counted as a real
+annotation — on this repository the scan reported 37 controls, 25 of which
+were syntax samples in the very pages that document the syntax, and all 37
+flowed into `neuralmind export --controls`, which users submit as audit
+evidence.
+
+Two opt-out markers fix that. Neither is a comment syntax of its own — put
+the text anywhere a given file lets you put text (an HTML comment in
+markdown, a `#` or `//` comment in code, prose in a docstring):
+
+| Marker | Scope | Use it when |
+|--------|-------|-------------|
+| `neuralmind:example-file` | the whole file, wherever it appears | the file is *about* the syntax — a reference page, a test fixture |
+| `neuralmind:example` | the one line it sits on | a single sample inside a file whose other annotations are real |
+
+```markdown
+<!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
+# CLI Reference
+```
+
+```python
+help="e.g. # NIST AC-1: Access control policy",  # neuralmind:example
+```
+
+The file-level marker is checked before any pattern runs, so an opted-out
+file costs nothing to scan. The line-level marker is tested against the
+whole line the control id sits on, not the start of the match.
+
+Both markers are inert everywhere else — nothing else in NeuralMind reads
+them, and a file carrying one still indexes, embeds and queries normally.
+
 ---
 
 ### ci-check *(v3.1.4+)*
