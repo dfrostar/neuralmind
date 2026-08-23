@@ -2228,14 +2228,27 @@ def cmd_ingest_content(args):
 
     if not files_to_ingest:
         if as_json:
+            # Same shape as a real run, so a consumer parsing the result
+            # doesn't have to special-case an empty corpus.
             print(
                 json.dumps(
                     {
                         "success": True,
+                        "project_path": None,
+                        "content_only": bool(content_only),
+                        "incremental": not force,
                         "files_processed": 0,
                         "files_skipped": 0,
+                        "files_total": 0,
                         "total_chunks": 0,
+                        "chunks_embedded": 0,
                         "total_nodes": 0,
+                        "orphans_removed": 0,
+                        "chunk_size": chunk_size,
+                        "overlap": overlap,
+                        "wall_time_seconds": 0.0,
+                        "embed_time_seconds": 0.0,
+                        "timed_out": False,
                         "errors": [],
                         "message": "No supported content files found (.md, .txt).",
                     },
