@@ -33,6 +33,7 @@ from tests.secret_fixtures import (
     PG_PASSWORD,
     SLACK_TOKEN,
     STRIPE_KEY,
+    TRUNCATING_PASSWORD,
     pem_begin,
     pem_end,
 )
@@ -647,3 +648,60 @@ class TestPrefilterShortCircuitsRealLogs:
         """Narrowing the prefilter must not lose a scheme."""
         assert _may_contain_secret(url), "prefilter would skip this scheme"
         assert [m.kind for m in scan_text(url)] == ["connection-string-password"]
+
+
+# Passwords containing the characters that TRUNCATE the generic-assignment
+# value pattern ([^\\s"\',;]{8,}). These are the shapes that exposed the
+# overlap bug — an earlier fuzz missed it entirely because none of its
+# fixture secrets contained ";" or ",".
+TRUNCATING_PASSWORDS = [
+    TRUNCATING_PASSWORD,
+    "aX9;kQ2mZ7pRvT",
+    "se;cretValue123",
+    "p4ss,w0rdValue99",
+    "qu'oteInside123",
+    "semi;;doubleValue1",
+]
+
+
+class TestOverlapIsMergedNotDropped:
+    """Overlapping spans take the union; the loser is never discarded.
+
+    The resolution loop used to keep whichever span started earliest and
+    drop the rest. A generic-assignment value stops at ";", so
+    `password=redis://default:<pw with a ";">@host` produced a short
+    heuristic span that started first and discarded the longer
+    connection-string span behind it — emitting the marker followed by the
+    remainder of the password, in the clear.
+    """
+
+    @pytest.mark.parametrize("password", TRUNCATING_PASSWORDS)
+    @pytest.mark.parametrize("keyword", ["password", "credentials", "api_key"])
+    def test_no_fragment_survives(self, keyword, password):
+        text = f"export {keyword}=redis://default:{password}@cache:6379/db"
+        out, matches = redact_text(text)
+        assert matches, "nothing matched at all"
+        for i in range(max(1, len(password) - 6)):
+            fragment = password[i : i + 6]
+            if fragment.strip(";,\"'"):
+                assert fragment not in out, f"leaked {fragment!r} from {password!r}"
+
+    def test_merged_span_keeps_the_high_confidence_label(self):
+        """The union is labelled by the more informative pattern."""
+        text = f"export password=redis://default:{TRUNCATING_PASSWORD}@cache:6379"
+        out, matches = redact_text(text)
+        assert [m.kind for m in matches] == ["connection-string-password"]
+        assert "[REDACTED:connection-string-password]" in out
+
+    def test_contained_span_does_not_duplicate_a_marker(self):
+        text = f"api_key = {ANTHROPIC_KEY}"
+        out, matches = redact_text(text)
+        assert len(matches) == 1
+        assert out.count("[REDACTED:") == 1
+
+    def test_merging_does_not_widen_onto_clean_text(self):
+        """The union must not swallow surrounding non-secret text."""
+        text = f"before password=redis://d:{TRUNCATING_PASSWORD}@cache:6379 after"
+        out, _ = redact_text(text)
+        assert out.startswith("before ")
+        assert out.endswith(" after")

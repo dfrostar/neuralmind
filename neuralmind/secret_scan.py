@@ -526,16 +526,39 @@ def scan_text(text: str, include_heuristic: bool = True) -> list[SecretMatch]:
                 )
             )
 
-    # High-confidence wins ties; then earliest start, then longest span.
-    candidates.sort(key=lambda s: (s.start, s.confidence != "high", -(s.end - s.start)))
+    # Overlaps are MERGED, never dropped. Dropping the loser used to leave
+    # the tail of a longer credential in the clear: the generic-assignment
+    # value stops at ";", so
+    #     password=redis://default:{pw-containing-a-semicolon}@cache:6379
+    # produced a short heuristic span starting first, which discarded the
+    # longer connection-string-password span behind it and emitted the
+    # marker followed by the rest of that password, still in the clear.
+    # (The example uses a braced placeholder deliberately: a literal DSN
+    # here would be a finding in this project's own self-scan.)
+    # Taking the union of any overlapping run guarantees full coverage
+    # regardless of which pattern happened to start earliest.
+    candidates.sort(key=lambda s: (s.start, -(s.end - s.start)))
 
     accepted: list[SecretMatch] = []
-    last_end = -1
     for match in candidates:
-        if match.start < last_end:
-            continue  # overlaps an already-accepted span
-        accepted.append(match)
-        last_end = match.end
+        if accepted and match.start < accepted[-1].end:
+            prev = accepted[-1]
+            if match.end <= prev.end:
+                continue  # fully contained in the span already accepted
+            # Extend to the union, keeping the more informative label.
+            kind = prev.kind if prev.confidence == "high" else match.kind
+            confidence = (
+                "high" if "high" in (prev.confidence, match.confidence) else prev.confidence
+            )
+            accepted[-1] = SecretMatch(
+                kind=kind,
+                confidence=confidence,
+                start=prev.start,
+                end=match.end,
+                preview=_mask(text[prev.start : match.end]),
+            )
+        else:
+            accepted.append(match)
     return accepted
 
 

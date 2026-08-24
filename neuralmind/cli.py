@@ -304,7 +304,14 @@ def cmd_build(args):
     if getattr(args, "redact_secrets", False) is True:
         # Consumed by embedder/document_ingestion via secret_scan.redaction_enabled().
         os.environ["NEURALMIND_REDACT_SECRETS"] = "1"
-        print("Secret redaction: on (credentials scrubbed from indexed text)")
+        print(
+            "Secret redaction: on — scrubs embedded text (document chunks and "
+            "node descriptions).\n"
+            "  Not covered: node labels, graphify-out/graph.json and "
+            ".neuralmind/index_ir.json,\n"
+            "  which are written before embedding. Remove and rotate the "
+            "credential at the source."
+        )
 
     mind = NeuralMind(project_path)
     # Wire --bootstrap into the NeuralMind instance

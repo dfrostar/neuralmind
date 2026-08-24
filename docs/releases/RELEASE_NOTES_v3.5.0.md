@@ -138,9 +138,18 @@ Scrubs detected credentials out of text on its way into the index — document
 chunks and node descriptions both. Off by default, because redacting costs
 recall on legitimately secret-shaped identifiers.
 
-This is a **backstop, not a fix.** The credential is still in your working
-tree, still in your git history, and still valid. Remove it and rotate it;
-use the flag to keep an already-exposed value out of the index while you do.
+Scrubs **embedded text** — document chunks and node descriptions — on all
+three backends (turbovec, in_memory, chroma).
+
+It does **not** cover node labels, `graphify-out/graph.json`, or
+`.neuralmind/index_ir.json`, which are written before the embedding step: a
+credential inside a symbol name or docstring still reaches those verbatim.
+That is a pre-existing gap on every backend, not something this release
+introduced, and it is called out here rather than papered over.
+
+So: a **backstop, not a fix.** The credential is still in your working tree,
+still in your git history, and still valid. Remove it and rotate it; use the
+flag to keep an already-exposed value out of the vector store while you do.
 
 ## What the agent sees post-install
 
@@ -153,6 +162,9 @@ use the flag to keep an already-exposed value out of the index while you do.
 
 ## Honest scope
 
+- **`--redact-secrets` covers embedded text only.** Node labels, `graph.json`
+  and `index_ir.json` are written pre-embedding and keep the raw value.
+  `grep -r '<secret>' graphify-out/ .neuralmind/` after a build if it matters.
 - **Redaction is pattern-based.** It catches the vendor shapes listed above
   and high-entropy assignments. A bespoke internal token format with no
   distinctive prefix will not be detected. Do not treat a clean scan as proof
