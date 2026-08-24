@@ -42,5 +42,5 @@ mypy==1.20.2
 # sphinx-rtd-theme==2.0.0
 
 # Benchmarking
-tiktoken==0.13.0
+tiktoken==0.14.0
 matplotlib==3.10.9
