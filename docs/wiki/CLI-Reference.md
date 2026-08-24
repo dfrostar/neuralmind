@@ -180,7 +180,11 @@ Backend precedence:
 3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.
-6. **Secret redaction (opt-in):** `--redact-secrets` (or `NEURALMIND_REDACT_SECRETS=1`) replaces detected credentials with `[REDACTED:<kind>]` in text on its way into the index. Off by default, because redacting costs recall on legitimately secret-shaped identifiers. Run `neuralmind scan-for-secrets .` first — removing and rotating the credential is the actual fix. The build also warns if git is already tracking files under `.neuralmind/`.
+6. **Secret redaction (opt-in):** `--redact-secrets` (or `NEURALMIND_REDACT_SECRETS=1`) replaces detected credentials with `[REDACTED:<kind>]` in **embedded text** — document chunks and node descriptions — on all three backends. Off by default, because redacting costs recall on legitimately secret-shaped identifiers.
+
+   **What it does not cover.** Node *labels*, `graphify-out/graph.json` and `.neuralmind/index_ir.json` are written before the embedding step, so a credential inside a symbol name or docstring still reaches those files verbatim (on every backend — this is not backend-specific). Verify with `grep -r '<the-secret>' graphify-out/ .neuralmind/` after a build if it matters to you.
+
+   The flag is a backstop for text that reaches the vector store, not a guarantee that no artifact under the project holds the credential. Run `neuralmind scan-for-secrets .` first — removing and rotating is the actual fix. The build also warns if git is already tracking files under `.neuralmind/`.
 
 ---
 

@@ -324,10 +324,16 @@ it would skip the places credentials actually sit. Pass
 neuralmind build . --redact-secrets
 ```
 
-Secrets are replaced with `[REDACTED:<kind>]`. This is a **backstop, not
-a substitute** for removing the credential — the value still exists in
-your working tree, and redacting the index costs recall on any
-legitimately secret-shaped identifier. Fix the source first.
+Secrets are replaced with `[REDACTED:<kind>]` in **embedded text**
+(document chunks and node descriptions), on all three backends.
+
+It does **not** cover node labels, `graphify-out/graph.json`, or
+`.neuralmind/index_ir.json` — those are written before the embedding step,
+so a credential inside a symbol name or docstring still reaches them
+verbatim. This is a **backstop, not a substitute** for removing the
+credential: the value still exists in your working tree, and redacting the
+index costs recall on any legitimately secret-shaped identifier. Fix the
+source first.
 
 `NEURALMIND_REDACT_SECRETS=1` is equivalent to the flag.
 

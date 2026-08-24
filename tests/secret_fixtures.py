@@ -38,6 +38,9 @@ JWT = _j(
     "dozjgNryP4J3jVmNHl0w5N_XgL0",
 )
 PG_PASSWORD = "sup3rS3cretPw"
+# A password containing ";", which truncates the generic-assignment value
+# pattern. Split so no contiguous DSN literal sits in a test file.
+TRUNCATING_PASSWORD = _j("pa;", "ssw0rdLongEnough")
 PEM_BLOCK = _j(
     "-----BEGIN ",
     "RSA PRIVATE KEY-----\n",
