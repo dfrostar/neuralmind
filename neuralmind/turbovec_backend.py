@@ -44,6 +44,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -339,7 +340,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         norm_label = node.get("norm_label", "")
         if norm_label and norm_label != label:
             parts.append(f"Normalized: {norm_label}")
-        return "\n".join(parts)
+        return redact_if_enabled("\n".join(parts))
 
     def _node_metadata(self, node: dict) -> dict[str, Any]:
         return {
@@ -417,7 +418,8 @@ class TurboVecEmbedder(EmbeddingBackend):
             node_id = str(node.get("id", node.get("label", "")))
             if not node_id:
                 continue
-            text = node.get("content_text", self._node_to_text(node))
+            content_text = node.get("content_text", "")
+            text = redact_if_enabled(content_text) if content_text else self._node_to_text(node)
             content_hash = self._content_hash(text)
             row = self._conn.execute(
                 "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",

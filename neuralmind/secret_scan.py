@@ -162,16 +162,22 @@ class _Pattern:
 # Patterns
 # ---------------------------------------------------------------------------
 
+# Every vendor pattern is \b-anchored. This is load-bearing, not cosmetic:
+# without it ``sk-`` matches inside ta**sk-**, di**sk-**, ri**sk-**,
+# ma**sk-**, de**sk-**, fla**sk-**, da**sk-**, so an ordinary branch name
+# ("feature/task-management-refactor-v2") or k8s pod name
+# ("my-task-runner-7d8f9c5b4-xk2mp") gets shredded in the default-on output
+# cache. See TestNoFalsePositivesOnBuildOutput for the regression suite.
 _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
     _Pattern(
         "anthropic-api-key",
-        re.compile(r"sk-ant-[A-Za-z0-9_\-]{16,}"),
+        re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{16,}"),
         "high",
     ),
     # Negative lookahead keeps this from double-matching an Anthropic key.
     _Pattern(
         "openai-api-key",
-        re.compile(r"sk-(?!ant-)(?:proj-)?[A-Za-z0-9_\-]{20,}"),
+        re.compile(r"\bsk-(?!ant-)(?:proj-)?[A-Za-z0-9_\-]{20,}"),
         "high",
     ),
     _Pattern(
