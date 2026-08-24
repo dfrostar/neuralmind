@@ -60,6 +60,10 @@ PUBLISHED_GLOBS = (
     # once. Posts are drafted in-repo precisely so this guard vets them BEFORE
     # they're pasted somewhere no CI can reach.
     "docs/social/*.md",
+    # Shipped to Hermes-Agent taps, OpenClaw's ClawHub and the Agent Zero
+    # index — read by models in other people's runtimes, where no CI of ours
+    # can reach it. Same argument as docs/llms.txt above.
+    "skills/*/SKILL.md",
 )
 
 # A post may legitimately *quote* a forbidden phrase in order to correct it —

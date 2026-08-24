@@ -5,7 +5,10 @@
     ".": {
       "release-type": "python",
       "changelog-path": "CHANGELOG.md",
-      "version-file": "neuralmind/__init__.py"
+      "version-file": "neuralmind/__init__.py",
+      "extra-files": [
+        "skills/neuralmind/SKILL.md"
+      ]
     }
   }
 }

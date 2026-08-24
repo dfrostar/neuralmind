@@ -1,7 +1,7 @@
 ---
 name: neuralmind
 description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall.
-version: 0.5.2
+version: 3.4.1 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:
@@ -180,6 +180,42 @@ not for routine question-answering.
   repo wasn't indexed at sufficient depth. Try `neuralmind_search` with the
   most distinctive term from the question.
 - **`built: false`:** stop and tell the user. See *Prerequisite check*.
+
+## Host notes (Hermes-Agent, OpenClaw, Agent Zero)
+
+The decision tree above is identical in every host. What differs is how
+NeuralMind reaches you, and what to do when it hasn't.
+
+**Hermes-Agent.** Hermes has a built-in MCP client and discovers servers at
+startup, so the `neuralmind_*` tools arrive as first-class tools alongside
+`terminal` and `read_file` — no bridge CLI. If they are absent, the server
+isn't registered: the user runs `hermes mcp add` (or edits
+`~/.hermes/config.yaml`) and confirms with `hermes mcp test neuralmind`.
+This file also installs as a Hermes skill *without* the MCP server —
+`hermes skills install dfrostar/neuralmind/skills/neuralmind` — in which
+case drive the `neuralmind` CLI through `terminal` instead. See
+*Failure modes*.
+
+**OpenClaw.** Registered once with:
+
+```bash
+openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path/to/project"]}'
+```
+
+`openclaw mcp show neuralmind` confirms the connection.
+
+**Agent Zero.** Reached through its MCP configuration, pointed at the same
+`neuralmind-mcp` command. The `plugin.yaml` in this repo's root is the
+plugin-index manifest for the registry listing — it is not runtime config,
+so its presence tells you nothing about whether the server is wired up.
+Check for the tools.
+
+**One brain, several hosts.** Every host pointed at the same project path
+reinforces the same `.neuralmind/synapses.db`. Associations the user's other
+agents built are visible to you, and yours to them — so
+`neuralmind_synaptic_neighbors` can legitimately surface code this session
+never touched. That is the feature, not a stale index. Don't rebuild to
+"clear" it.
 
 ## Environment toggles (for reference)
 
