@@ -192,3 +192,47 @@ class TestSecretRedaction:
         guard = tmp_path / ".neuralmind" / ".gitignore"
         assert guard.exists()
         assert "*" in guard.read_text().splitlines()
+
+
+class TestLegacyCacheScrubbedOnRead:
+    """A cache written before redaction existed must not be handed back raw.
+
+    An upgrade does not rewrite the file, so without scrubbing on read the
+    first `neuralmind last` after upgrading returns the very credential the
+    upgrade was meant to protect.
+    """
+
+    def _write_legacy(self, tmp_path, stdout):
+        import json
+
+        state = tmp_path / ".neuralmind"
+        state.mkdir(parents=True, exist_ok=True)
+        (state / "last_output.json").write_text(
+            json.dumps(
+                {"ts": 1, "command": "printenv", "exit_code": 0, "stdout": stdout, "stderr": ""}
+            )
+        )
+
+    def test_legacy_stdout_is_scrubbed(self, tmp_path):
+        self._write_legacy(tmp_path, f"ANTHROPIC_API_KEY={ANTHROPIC_KEY}")
+        data = read_last_output(tmp_path)
+        assert ANTHROPIC_KEY not in data["stdout"]
+        assert data["redacted"] == ["anthropic-api-key"]
+
+    def test_scrubbing_on_read_is_idempotent(self, tmp_path):
+        write_last_output(tmp_path, stdout=f"KEY={AWS_KEY_ID}\n", stderr="", exit_code=0)
+        first = read_last_output(tmp_path)
+        second = read_last_output(tmp_path)
+        assert first["stdout"] == second["stdout"]
+        assert first["redacted"] == second["redacted"]
+
+    def test_clean_legacy_cache_is_untouched(self, tmp_path):
+        self._write_legacy(tmp_path, "7 passed\n")
+        data = read_last_output(tmp_path)
+        assert data["stdout"] == "7 passed\n"
+        assert data["redacted"] == []
+
+    def test_opt_out_returns_the_raw_legacy_cache(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_OUTPUT_REDACT", "0")
+        self._write_legacy(tmp_path, f"ANTHROPIC_API_KEY={ANTHROPIC_KEY}")
+        assert ANTHROPIC_KEY in read_last_output(tmp_path)["stdout"]

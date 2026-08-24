@@ -292,12 +292,21 @@ def cmd_build(args):
     ensure_state_dir(project_path)
     already_tracked = tracked_state_files(project_path)
     if already_tracked:
+        # `git -C <project>` rather than a bare `git rm`: the build target is
+        # not necessarily the shell's cwd, and a copied bare command would
+        # act on whatever repo the user happens to be standing in — or fail —
+        # leaving the tracked state, and any cached credential, untouched.
+        # shlex.quote so a path with spaces survives the copy-paste.
+        import shlex
+
+        quoted = shlex.quote(str(Path(project_path).resolve()))
         print(
             f"\n⚠  git is already tracking {len(already_tracked)} file(s) under "
             ".neuralmind/ — the ignore rule does not apply to files already in "
             "the index.\n   These can contain cached command output, including "
             "credentials. Untrack them with:\n"
-            "     git rm -r --cached .neuralmind/\n",
+            f"     git -C {quoted} rm -r --cached .neuralmind/\n"
+            "   Then rotate any credential that could have reached a commit.\n",
             file=sys.stderr,
         )
 

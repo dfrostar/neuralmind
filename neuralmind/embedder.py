@@ -654,8 +654,12 @@ class GraphEmbedder(EmbeddingBackend):
             if not node_id:
                 continue
             ids.append(node_id)
-            # Use content text for documents, node text for code
-            text = node.get("content_text", self._node_to_text(node))
+            # Must go through _content_to_text, not the raw content_text
+            # field: that field is unredacted, and BM25 persists it to
+            # .neuralmind/bm25_index.json. Reading it directly wrote the
+            # credential to disk in the clear even with redaction enabled,
+            # while the vector document beside it was scrubbed.
+            text = self._content_to_text(node)
             texts.append(text)
             metas.append(self._node_metadata(node))
         idx.add_documents(ids, texts, metas)

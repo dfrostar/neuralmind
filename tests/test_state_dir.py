@@ -238,3 +238,65 @@ class TestGuardWriteIsConstrained:
         """The state dir gains exactly one file from the guard."""
         d = ensure_state_dir(tmp_path)
         assert sorted(x.name for x in d.iterdir()) == [".gitignore"]
+
+
+class TestExistingGuardIsValidated:
+    """An existing .gitignore is not proof of protection.
+
+    The idempotency rule ("don't clobber user edits") quietly became
+    "accept no protection at all" when the file was empty or narrowly
+    scoped, while this function still reported success.
+    """
+
+    def _guard(self, tmp_path):
+        return state_dir(tmp_path) / ".gitignore"
+
+    def test_empty_guard_gains_the_catch_all(self, tmp_path):
+        state_dir(tmp_path).mkdir(parents=True)
+        self._guard(tmp_path).write_text("")
+        ensure_state_dir(tmp_path)
+        assert "*" in self._guard(tmp_path).read_text().split()
+
+    def test_narrow_guard_keeps_user_rules_and_gains_the_catch_all(self, tmp_path):
+        state_dir(tmp_path).mkdir(parents=True)
+        self._guard(tmp_path).write_text("# my rules\n*.tmp\n")
+        ensure_state_dir(tmp_path)
+        text = self._guard(tmp_path).read_text()
+        assert "*.tmp" in text, "user rules were discarded"
+        assert "# my rules" in text
+        assert any(line.strip() == "*" for line in text.splitlines())
+
+    def test_effective_guard_is_left_alone(self, tmp_path):
+        state_dir(tmp_path).mkdir(parents=True)
+        self._guard(tmp_path).write_text("# mine\n*\n")
+        ensure_state_dir(tmp_path)
+        assert self._guard(tmp_path).read_text() == "# mine\n*\n"
+
+    def test_repeated_calls_do_not_stack_rules(self, tmp_path):
+        state_dir(tmp_path).mkdir(parents=True)
+        self._guard(tmp_path).write_text("*.tmp\n")
+        for _ in range(3):
+            ensure_state_dir(tmp_path)
+        text = self._guard(tmp_path).read_text()
+        assert [line.strip() for line in text.splitlines()].count("*") == 1
+
+
+@requires_git
+class TestNarrowGuardActuallyProtects:
+    """End-to-end: the repaired guard has to stop a real `git add -A`."""
+
+    def test_repaired_guard_blocks_staging(self, tmp_path):
+        _git("init", "-q", ".", cwd=tmp_path)
+        _git("config", "user.email", "t@t.t", cwd=tmp_path)
+        _git("config", "user.name", "t", cwd=tmp_path)
+        (tmp_path / "app.py").write_text("print('hi')\n")
+
+        nm = state_dir(tmp_path)
+        nm.mkdir(parents=True)
+        (nm / ".gitignore").write_text("*.tmp\n")  # narrow: does not protect
+        (nm / "last_output.json").write_text('{"stdout": "secret"}')
+
+        ensure_state_dir(tmp_path)
+        _git("add", "-A", cwd=tmp_path)
+        staged = _git("diff", "--cached", "--name-only", cwd=tmp_path).stdout.split()
+        assert staged == ["app.py"]

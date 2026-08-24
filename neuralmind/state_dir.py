@@ -27,6 +27,13 @@ STATE_DIR_NAME = ".neuralmind"
 # a constant even though the directory it lands in is caller-supplied.
 GUARD_FILENAME = ".gitignore"
 
+# Appended when a .gitignore already exists but does not ignore everything.
+_MANAGED_RULE = """
+# Added by NeuralMind: without a catch-all this directory is stageable, and
+# it holds per-machine state including a cache of recent command output.
+*
+"""
+
 # A ``.gitignore`` containing ``*`` ignores every entry in its own
 # directory, itself included, so the whole tree stays untracked with a
 # single file and no entry in the host project's .gitignore.
@@ -72,6 +79,17 @@ def _install_guard(target: Path) -> None:
         guard = resolved / GUARD_FILENAME
         if not guard.exists():
             guard.write_text(_GUARD_CONTENTS, encoding="utf-8")
+            return
+        # An existing file is not proof of protection. An empty or
+        # narrowly-scoped .gitignore left the directory stageable while this
+        # function reported success, so the documented guarantee quietly did
+        # not hold. Preserve whatever the user wrote and append the managed
+        # catch-all rather than replacing their rules.
+        existing = guard.read_text(encoding="utf-8")
+        if any(line.strip() == "*" for line in existing.splitlines()):
+            return
+        separator = "" if existing.endswith("\n") or not existing else "\n"
+        guard.write_text(existing + separator + _MANAGED_RULE, encoding="utf-8")
     except OSError:
         pass  # read-only checkout, permission denied — never fatal
 

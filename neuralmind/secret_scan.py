@@ -83,6 +83,12 @@ _SCAN_IGNORE_DIRS: frozenset[str] = frozenset(
 # config file, not a 50 MB fixture, and scanning those is pure latency.
 MAX_SCAN_BYTES = 5 * 1024 * 1024
 
+# The state directory is excluded from the walk, but this one file inside it
+# can hold a plaintext credential written by a pre-redaction version, so it
+# is scanned explicitly. Kept in sync with output_cache.CACHE_FILENAME.
+STATE_DIR_NAME = ".neuralmind"
+LEGACY_CACHE_FILENAME = "last_output.json"
+
 # Values that match a secret-shaped assignment but are obviously inert.
 _PLACEHOLDERS: frozenset[str] = frozenset(
     {
@@ -382,9 +388,19 @@ def _shannon_entropy(value: str) -> float:
     return -sum((c / n) * math.log2(c / n) for c in counts.values())
 
 
+# Prefix of a marker this module already wrote. Recognised so redaction is
+# idempotent: `[REDACTED:anthropic-api-key]` is itself a keyword-shaped,
+# high-entropy assignment value, so scrubbing already-scrubbed text used to
+# replace the marker with `[REDACTED:generic-secret-assignment]` and lose
+# which kind had been removed.
+_REDACTION_PREFIX = REDACTION_TEMPLATE.split("{", 1)[0]
+
+
 def _is_placeholder(value: str) -> bool:
     """True when a secret-shaped value is obviously inert."""
     stripped = value.strip().strip("\"'")
+    if stripped.startswith(_REDACTION_PREFIX):
+        return True  # already redacted — never re-redact a marker
     low = stripped.lower()
     if low in _PLACEHOLDERS:
         return True
@@ -557,7 +573,20 @@ def scan_text(text: str, include_heuristic: bool = True) -> list[SecretMatch]:
         if accepted and match.start < accepted[-1].end:
             prev = accepted[-1]
             if match.end <= prev.end:
-                continue  # fully contained in the span already accepted
+                # Coverage is already guaranteed by the enclosing span, but
+                # a contained *high-confidence* match must still promote the
+                # label. Otherwise API_KEY=AKIA...-extra is reported as
+                # heuristic only, and `scan-for-secrets` — which exits
+                # non-zero only on high — silently passes the CI gate.
+                if match.confidence == "high" and prev.confidence != "high":
+                    accepted[-1] = SecretMatch(
+                        kind=match.kind,
+                        confidence="high",
+                        start=prev.start,
+                        end=prev.end,
+                        preview=prev.preview,
+                    )
+                continue
             # Extend to the union, keeping the more informative label.
             kind = prev.kind if prev.confidence == "high" else match.kind
             confidence = (
@@ -731,6 +760,24 @@ def scan_project(
     ignores = ignore_dirs if ignore_dirs is not None else _SCAN_IGNORE_DIRS
     globs = _load_neuralmindignore(root_path) if respect_ignore_file else []
     findings: list[SecretFinding] = []
+
+    # The state directory is pruned below, but a cache written by a version
+    # before redaction existed is plaintext and untracked — so neither
+    # `scan-for-secrets` nor `git ls-files` would surface it, and the
+    # documented upgrade path would report all-clear while `neuralmind last`
+    # still handed the credential back. Scan that one file explicitly.
+    legacy_cache = root_path / STATE_DIR_NAME / LEGACY_CACHE_FILENAME
+    if legacy_cache.is_file():
+        for finding in scan_file(legacy_cache, include_heuristic=include_heuristic):
+            findings.append(
+                SecretFinding(
+                    path=f"{STATE_DIR_NAME}/{LEGACY_CACHE_FILENAME}",
+                    line=finding.line,
+                    kind=finding.kind,
+                    confidence=finding.confidence,
+                    preview=finding.preview,
+                )
+            )
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         dirnames[:] = sorted(d for d in dirnames if d not in ignores)
