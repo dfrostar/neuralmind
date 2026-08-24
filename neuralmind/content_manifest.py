@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .state_dir import ensure_parent_dir
+
 __all__ = ["ContentManifest", "MANIFEST_FILENAME", "file_digest", "manifest_path"]
 
 MANIFEST_FILENAME = "content_manifest.json"
@@ -97,7 +99,7 @@ class ContentManifest:
     def save(self) -> Path:
         """Write the manifest atomically. Returns the path written."""
         path = manifest_path(self.root)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_parent_dir(path)
         payload = {
             "schema_version": SCHEMA_VERSION,
             "updated_at": _now(),
