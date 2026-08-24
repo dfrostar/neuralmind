@@ -264,30 +264,75 @@ server {
 
 ### Detecting Secrets in Code
 
-**NeuralMind scans for secrets during indexing:**
+Scanning is a **separate, explicit step** — `neuralmind build` does not
+scan or redact by default. Run the scanner before you index, so that
+credentials get removed and rotated at the source rather than scrubbed
+downstream:
 
 ```bash
-# Scan for exposed secrets
+# Scan for exposed credentials
 neuralmind scan-for-secrets .
 
 # Output:
-# ⚠️  Detected 5 potential secrets:
-# 
-# [HIGH] AWS_ACCESS_KEY_ID in config/prod.py:12
-# [HIGH] GITHUB_TOKEN in .github/workflows/ci.yml:15
-# [HIGH] DATABASE_PASSWORD in src/db.py:34
-# [MEDIUM] API_KEY in tests/fixtures.py:89
-# [LOW] stripe_pk_test in docs/example.md:42
+# NeuralMind secret scan — /home/dev/myproject
+#
+#   [HIGH ] .env:1  anthropic-api-key  (sk-a…(43 chars))
+#   [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))
+#   [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))
+#
+#   2 high-confidence, 1 heuristic.
 ```
 
-**Automatic Redaction:**
+Two confidence tiers. `HIGH` means a vendor-specific shape (`sk-ant-`,
+`AKIA`, a PEM block, a JWT, a connection-string password) — these
+effectively never fire on prose. `maybe` means a generic
+`SECRET=value` assignment that cleared an entropy threshold and a
+placeholder denylist, so `password = "changeme"` is not reported.
+
+Previews are truncated to a short prefix and never include the tail of
+the secret, so scan output is safe to paste into an issue or a CI log.
+
+**Exit codes** (so CI can gate on it):
+
+| Condition | Exit |
+|-----------|------|
+| No findings | `0` |
+| Heuristic findings only | `0` (`1` with `--strict`) |
+| Any high-confidence finding | `1` |
+| Path does not exist | `2` |
+
+Useful flags: `--json` for machine-readable output,
+`--high-confidence-only` to suppress the heuristic tier, `--strict` to
+fail on heuristic findings too.
+
+**Redaction at index time:**
 
 ```bash
-# Build index with secrets redacted
+# Scrub detected credentials from text before it enters the index
 neuralmind build . --redact-secrets
-
-# Secrets are replaced with: [REDACTED:SECRET_TYPE]
 ```
+
+Secrets are replaced with `[REDACTED:<kind>]`. This is a **backstop, not
+a substitute** for removing the credential — the value still exists in
+your working tree, and redacting the index costs recall on any
+legitimately secret-shaped identifier. Fix the source first.
+
+`NEURALMIND_REDACT_SECRETS=1` is equivalent to the flag.
+
+### What is scrubbed automatically
+
+One thing *is* redacted with no flag: the PostToolUse Bash recovery
+cache (`.neuralmind/last_output.json`). It stores whatever your commands
+printed, so `printenv`, `aws configure list`, or a `curl -H
+"Authorization: Bearer …"` would otherwise write a live credential to a
+plaintext file. Credentials are stripped before the payload is written,
+and the entry records which kinds were removed. Opt out with
+`NEURALMIND_OUTPUT_REDACT=0` (not recommended).
+
+`.neuralmind/` also carries its own `.gitignore` containing `*`, written
+when the directory is created, so the state directory cannot be
+committed by a `git add -A` even in a project whose own `.gitignore`
+says nothing about it.
 
 ### Managing Secrets Properly
 

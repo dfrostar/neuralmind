@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 from .content_node import ContentNode
+from .secret_scan import redact_if_enabled
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_DIR_DEPTH = 10
@@ -251,6 +252,10 @@ def parse_document(
 
     if not text.strip():
         raise ValueError(f"Empty document: {path}")
+
+    # Scrub credentials before chunking so a secret can't be split across
+    # two chunks and survive in halves.
+    text = redact_if_enabled(text)
 
     # Chunk if large
     chunks = _chunk_text(text, chunk_size=chunk_size, overlap=overlap)

@@ -299,18 +299,40 @@ neuralmind-mcp . --rbac-enabled \
 ### "How do I ensure no secrets leak into the index?"
 
 ```bash
-# 1. Scan for secrets before building
+# 1. Scan for credentials before building (exits 1 on a high-confidence hit)
 neuralmind scan-for-secrets .
 
-# 2. Fix exposed secrets
-# (Remove from code, regenerate tokens)
+# 2. Fix what it finds — remove from code AND rotate the credential.
+#    A key that reached your git history is already compromised.
 
-# 3. Build with redaction enabled
+# 3. Optional backstop: scrub anything still present out of the index
 neuralmind build . --redact-secrets
 
 # 4. Verify
-neuralmind search . "password"  # Should return no results
+neuralmind scan-for-secrets .   # should report no findings
 ```
+
+The scanner reads files directly, so it sees `.env` and other files the
+indexer never touches. Two tiers: `HIGH` for vendor shapes (`sk-ant-`,
+`AKIA`, PEM blocks, JWTs, connection-string passwords) and `maybe` for
+generic `SECRET=value` assignments that pass an entropy check. Previews
+never include the tail of a secret, so the output is safe to paste into
+an issue.
+
+Two protections need no flag:
+
+- **The Bash recovery cache is redacted.**
+  `.neuralmind/last_output.json` stores whatever your commands printed —
+  `printenv` or a curl with an `Authorization` header would otherwise
+  leave a live key in a plaintext file. Credentials are stripped before
+  the write. Opt out with `NEURALMIND_OUTPUT_REDACT=0`.
+- **`.neuralmind/` cannot be committed.** The directory is created with
+  its own `.gitignore` containing `*`, so `git add -A` skips it even if
+  your project's `.gitignore` says nothing about it. If you built with
+  an older version, check whether it is already tracked —
+  `git ls-files .neuralmind/` — and untrack it with
+  `git rm -r --cached .neuralmind/`. `neuralmind build` warns when it
+  detects this.
 
 ---
 

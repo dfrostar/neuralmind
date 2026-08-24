@@ -24,6 +24,7 @@ from chromadb.config import Settings
 
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
+from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +185,7 @@ class GraphEmbedder(EmbeddingBackend):
         if norm_label and norm_label != label:
             parts.append(f"Normalized: {norm_label}")
 
-        return "\n".join(parts)
+        return redact_if_enabled("\n".join(parts))
 
     def _content_to_text(self, content_node: dict) -> str:
         """Convert a content node (non-code) to searchable text representation.
@@ -196,7 +197,9 @@ class GraphEmbedder(EmbeddingBackend):
         """
         content_text = content_node.get("content_text", "")
         if content_text:
-            return content_text
+            # Content nodes carry raw document text — the one embedded field
+            # that can hold a verbatim credential from a runbook or spec.
+            return redact_if_enabled(content_text)
         return self._node_to_text(content_node)
 
     def embed_content(self, content_nodes: list[dict], force: bool = False) -> dict[str, int]:
