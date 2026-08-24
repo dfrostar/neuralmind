@@ -157,6 +157,15 @@ use the flag to keep an already-exposed value out of the index while you do.
   and high-entropy assignments. A bespoke internal token format with no
   distinctive prefix will not be detected. Do not treat a clean scan as proof
   a repo is secret-free.
+- **Token boundaries are anchored.** Vendor patterns require a word boundary
+  so `AKIA`+16 chars does not fire inside a longer hex or base64 blob — build
+  logs are full of hashes, and this runs on every Bash output. The price is
+  that two credentials concatenated with *no* delimiter at all
+  (`AKIA…EXAMPLEghp_…`) match neither. Every realistic separator works —
+  whitespace, newline, `=`, `:`, `,`, quotes, brackets, URL parameters — and
+  a token abutting another alphanumeric is not well-formed at that boundary
+  anyway. Recorded as a deliberate trade rather than patched, because
+  dropping the anchor costs more than it buys.
 - **The gitignore guard is not retroactive** — see §1.
 - **`--redact-secrets` does not clean your working tree**, your git history,
   or a key that already leaked. Rotation is the only fix for an exposed
