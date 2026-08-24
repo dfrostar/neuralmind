@@ -2221,12 +2221,13 @@ def _ensure_content_project_marker(project_path: Path) -> Path | None:
     project path again).
     """
     from neuralmind import ir as ir_mod
+    from neuralmind.state_dir import ensure_parent_dir
 
     marker = project_path / ".neuralmind" / "index_ir.json"
     if marker.exists():
         return marker
     try:
-        marker.parent.mkdir(parents=True, exist_ok=True)
+        ensure_parent_dir(marker)
         ir_mod.IndexIR(generated_by="neuralmind.ingest-content", source_backend="content").write(
             marker
         )

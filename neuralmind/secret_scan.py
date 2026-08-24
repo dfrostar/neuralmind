@@ -181,7 +181,10 @@ class _Pattern:
     kind: str
     regex: re.Pattern
     confidence: str
-    group: int = 0  # which capture group holds the secret itself
+    # Which capture group holds the secret. A tuple means "the first of
+    # these that matched" — needed where one pattern has alternatives for
+    # double-quoted, single-quoted and bare values.
+    group: int | tuple[int, ...] = 0
     # Run the placeholder denylist even on a high-confidence pattern. Needed
     # where the "secret" is an arbitrary string rather than a vendor-issued
     # token: documentation is full of postgres://user:password@host and
@@ -302,10 +305,17 @@ _HEURISTIC: tuple[_Pattern, ...] = (
             # mypassword, where a letter precedes the keyword.
             r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|apikey|secret|secret[_-]?key|"
             r"access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd|"
-            r"credentials?|private[_-]?key)\b[ \t]*[:=][ \t]*[\"']?([^\s\"',;]{8,})"
+            r"credentials?|private[_-]?key)\b[ \t]*[:=][ \t]*"
+            # Quoted values run to their closing quote. A bare value stops at
+            # whitespace or a delimiter. Parsing them with one character class
+            # truncated quoted secrets at an interior comma or semicolon, so
+            # password="Ab9xQ2mZ;SUPERSECRETTAIL" persisted its tail in the
+            # output cache — a partial credential left on disk, under a marker
+            # claiming it had been redacted.
+            r"(?:\"([^\"\n]{8,})\"|'([^'\n]{8,})'|([^\s\"',;]{8,}))"
         ),
         "heuristic",
-        group=1,
+        group=(1, 2, 3),
     ),
 )
 
@@ -509,19 +519,22 @@ def scan_text(text: str, include_heuristic: bool = True) -> list[SecretMatch]:
         )
 
     for pattern in patterns:
+        groups = pattern.group if isinstance(pattern.group, tuple) else (pattern.group,)
         for m in pattern.regex.finditer(text):
-            try:
-                value = m.group(pattern.group)
-            except IndexError:  # pragma: no cover - group always exists
+            # With alternatives, exactly one branch participates in the match;
+            # take the first that did.
+            index = next((g for g in groups if m.group(g) is not None), None)
+            if index is None:
                 continue
+            value = m.group(index)
             if not value or not _accept(pattern, value):
                 continue
             candidates.append(
                 SecretMatch(
                     kind=pattern.kind,
                     confidence=pattern.confidence,
-                    start=m.start(pattern.group),
-                    end=m.end(pattern.group),
+                    start=m.start(index),
+                    end=m.end(index),
                     preview=_mask(value),
                 )
             )

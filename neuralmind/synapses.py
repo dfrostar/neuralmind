@@ -60,6 +60,8 @@ from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
 
+from .state_dir import ensure_parent_dir
+
 LEARNING_RATE = 0.30
 WEIGHT_CAP = 1.0
 PRUNE_THRESHOLD = 0.01
@@ -368,7 +370,7 @@ class SynapseStore:
         """
         self.db_path = Path(db_path)
         self.namespace = normalize_namespace(namespace) if namespace else DEFAULT_NAMESPACE
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        ensure_parent_dir(self.db_path)
         self._init_schema()
 
     @contextmanager

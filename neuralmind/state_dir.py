@@ -45,22 +45,54 @@ def state_dir(project_path: str | Path) -> Path:
     return Path(project_path).resolve() / STATE_DIR_NAME
 
 
-def ensure_state_dir(project_path: str | Path) -> Path:
-    """Create the state directory and make it self-ignoring.
+def _install_guard(target: Path) -> None:
+    """Write the self-ignoring ``.gitignore`` into ``target``.
 
-    Idempotent: an existing ``.gitignore`` is left alone so a user who
-    deliberately edited it keeps their version. Returns the directory
-    path; never raises.
+    Idempotent: an existing file is left alone so a user who deliberately
+    edited it keeps their version. Never raises.
     """
-    target = state_dir(project_path)
     try:
-        target.mkdir(parents=True, exist_ok=True)
         guard = target / ".gitignore"
         if not guard.exists():
             guard.write_text(_GUARD_CONTENTS, encoding="utf-8")
     except OSError:
         pass  # read-only checkout, permission denied — never fatal
+
+
+def ensure_state_dir(project_path: str | Path) -> Path:
+    """Create ``<project>/.neuralmind`` and make it self-ignoring.
+
+    Returns the directory path; never raises.
+    """
+    target = state_dir(project_path)
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return target  # read-only checkout — nothing to guard
+    _install_guard(target)
     return target
+
+
+def ensure_parent_dir(file_path: str | Path) -> Path:
+    """Create the parent directory of a file, guarding it if it is state.
+
+    Every module that writes into ``.neuralmind/`` goes through here rather
+    than calling ``mkdir`` itself. The guard is only useful if it is
+    installed by *whichever* flow creates the directory first — and for many
+    users that is not ``build``. A fresh repo running ``neuralmind ingest``,
+    or a hook initialising the synapse store, would otherwise materialise an
+    unguarded state directory that the next ``git add -A`` happily stages.
+
+    Returns the parent path; never raises.
+    """
+    parent = Path(file_path).parent
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return parent
+    if parent.name == STATE_DIR_NAME:
+        _install_guard(parent)
+    return parent
 
 
 def tracked_state_files(project_path: str | Path) -> list[str]:

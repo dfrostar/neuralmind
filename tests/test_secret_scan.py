@@ -705,3 +705,68 @@ class TestOverlapIsMergedNotDropped:
         out, _ = redact_text(text)
         assert out.startswith("before ")
         assert out.endswith(" after")
+
+
+class TestQuotedAssignmentValues:
+    """A quoted value must be redacted through its closing quote.
+
+    Regression for a partial-leak: one character class served both quoted
+    and bare values, and it excluded `,` and `;` so a bare value would stop
+    at a delimiter. Inside quotes that truncated the secret —
+    password="Ab9xQ2mZ;SUPERSECRETTAIL" persisted its tail in the output
+    cache *under a marker claiming the value had been redacted*, which is
+    worse than not redacting at all. A shorter head could miss the 8-char
+    floor entirely and leak the whole value.
+    """
+
+    @pytest.mark.parametrize(
+        "line,tail",
+        [
+            ('password="Ab9xQ2mZ;SUPERSECRETTAIL"', "SUPERSECRETTAIL"),
+            ("api_key='Kd8fJ2p,REMAINDEROFKEY123'", "REMAINDEROFKEY123"),
+            ('client_secret="9f8Kd2mQ;xZ7pLw3RtY6vNbHj4sA1"', "xZ7pLw3RtY6vNbHj4sA1"),
+            ('DB_PASSWORD="pre;post,more12345"', "post,more12345"),
+            ("access_token='a1b2c3d4;e5f6g7h8,i9j0k1l2'", "e5f6g7h8"),
+        ],
+    )
+    def test_no_part_of_a_quoted_value_survives(self, line, tail):
+        out, matches = redact_text(line)
+        assert matches, f"not detected at all: {line}"
+        assert tail not in out, f"leaked tail: {out}"
+
+    @pytest.mark.parametrize("quote", ['"', "'"])
+    def test_redaction_stops_at_the_closing_quote(self, quote):
+        line = f"password={quote}{GENERIC_SECRET}{quote} and_then=visible"
+        out, _ = redact_text(line)
+        assert GENERIC_SECRET not in out
+        assert "and_then=visible" in out, "consumed past the closing quote"
+
+    def test_bare_value_still_stops_at_a_delimiter(self):
+        """A bare value must not swallow the rest of a comma-separated list."""
+        line = f"password={GENERIC_SECRET},next=keepme"
+        out, _ = redact_text(line)
+        assert GENERIC_SECRET not in out
+        assert "next=keepme" in out
+
+    def test_two_quoted_secrets_on_one_line(self):
+        line = f'password="{GENERIC_SECRET}" api_key="{GENERIC_SECRET}"'
+        out, matches = redact_text(line)
+        assert len(matches) == 2
+        assert GENERIC_SECRET not in out
+
+    def test_bare_token_keyword_is_deliberately_not_matched(self):
+        """`token=` alone is not a keyword — `?token=` is in every URL.
+
+        The alternation requires a qualifier (access_token, auth_token).
+        Widening it would fire on ordinary query strings in build logs,
+        which is the failure mode the anchoring work already had to undo
+        once. Recorded so the omission reads as a decision.
+        """
+        assert scan_text(f"token='{GENERIC_SECRET}'") == []
+        assert scan_text(f"access_token='{GENERIC_SECRET}'")
+        assert scan_text(f"auth_token='{GENERIC_SECRET}'")
+
+    def test_quoted_placeholder_is_still_not_a_finding(self):
+        """Parsing quotes properly must not bypass the placeholder gate."""
+        assert scan_text('password="changeme"') == []
+        assert scan_text('api_key="your_api_key_here"') == []
