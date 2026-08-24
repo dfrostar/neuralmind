@@ -336,13 +336,23 @@ _HEURISTIC: tuple[_Pattern, ...] = (
 #
 # Pairing instead costs two linear passes plus a binary search per BEGIN.
 # ``BLOCK`` covers PGP, whose armor reads "PRIVATE KEY BLOCK-----".
-_PEM_BEGIN_RE = re.compile(r"-----BEGIN [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
-_PEM_END_RE = re.compile(r"-----END [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
+# The key type is captured so BEGIN and END are paired by label. Accepting
+# the first END regardless of type reported `BEGIN RSA ... END EC` as a
+# block and consumed the range, which could swallow a genuine block that
+# started inside it.
+_PEM_BEGIN_RE = re.compile(r"-----BEGIN ([A-Z ]{0,40}?)PRIVATE KEY( BLOCK)?-----")
+_PEM_END_RE = re.compile(r"-----END ([A-Z ]{0,40}?)PRIVATE KEY( BLOCK)?-----")
 
 # An RSA-4096 PEM is roughly 3.2 KB, so this leaves ~2.5x headroom while
 # stopping a stray BEGIN marker from pairing with an unrelated END far away
 # (which is how a source file discussing PEM formats false-positives).
-MAX_PEM_BLOCK_CHARS = 8192
+# Raised from 8 KB now that pairing is label-aware: a mismatched marker no
+# longer consumes the range, so a longer window is safe. Covers RSA-4096
+# (~3.2 KB) with room to spare and typical PGP blocks. A *documented* limit
+# remains — a multi-key PGP keyring larger than this is not paired, and its
+# body stays in the clear. Raising it further trades against long-range
+# spurious pairing in files that merely discuss PEM formats.
+MAX_PEM_BLOCK_CHARS = 32768
 
 
 def _find_pem_blocks(text: str) -> list[tuple[int, int]]:
@@ -354,21 +364,34 @@ def _find_pem_blocks(text: str) -> list[tuple[int, int]]:
     begins = list(_PEM_BEGIN_RE.finditer(text))
     if not begins:
         return []
-    ends = list(_PEM_END_RE.finditer(text))
-    if not ends:
-        return []
 
-    end_starts = [m.start() for m in ends]
+    def label(match: re.Match) -> str:
+        """Normalised key type, e.g. "RSA", "PGP BLOCK", "" for a bare block."""
+        return f"{match.group(1).strip()}{match.group(2) or ''}"
+
+    # End markers bucketed by key type, so a BEGIN only ever pairs with an
+    # END of the same type.
+    ends_by_label: dict[str, list[re.Match]] = {}
+    for end in _PEM_END_RE.finditer(text):
+        ends_by_label.setdefault(label(end), []).append(end)
+    if not ends_by_label:
+        return []
+    starts_by_label = {k: [m.start() for m in v] for k, v in ends_by_label.items()}
+
     blocks: list[tuple[int, int]] = []
     consumed_to = -1
 
     for begin in begins:
         if begin.start() < consumed_to:
             continue  # already inside a block we emitted
-        idx = bisect.bisect_left(end_starts, begin.end())
-        if idx >= len(ends):
-            continue  # no END after this BEGIN
-        end_match = ends[idx]
+        key = label(begin)
+        candidates = ends_by_label.get(key)
+        if not candidates:
+            continue  # no END of this key type anywhere
+        idx = bisect.bisect_left(starts_by_label[key], begin.end())
+        if idx >= len(candidates):
+            continue  # no matching END after this BEGIN
+        end_match = candidates[idx]
         if end_match.start() - begin.end() > MAX_PEM_BLOCK_CHARS:
             continue  # too far apart to be one block
         blocks.append((begin.start(), end_match.end()))
@@ -454,17 +477,6 @@ def _accept(pattern: _Pattern, value: str) -> bool:
 # would be a missed secret, so **any new pattern must add its literal
 # here**, lowercased.
 _PREFILTER_LITERALS: tuple[str, ...] = (
-    "sk-",  # anthropic, openai
-    "sk_",
-    "rk_",  # stripe
-    "akia",
-    "asia",
-    "agpa",
-    "aida",
-    "aroa",
-    "aipa",
-    "anpa",
-    "anva",  # aws key id prefixes
     "ghp_",
     "gho_",
     "ghu_",
@@ -504,10 +516,31 @@ _PREFILTER_LITERALS: tuple[str, ...] = (
 )
 
 
+# Vendor prefixes that are also substrings of ordinary words, so a plain
+# `in` test fires constantly on real logs: "sk-" lives inside ta**sk-**,
+# di**sk-**, ri**sk-**, ma**sk-**, de**sk-**, fla**sk-**, da**sk-**, and
+# "asia" inside eur**asia**n. Twelve of the eighteen lines in the
+# build-output regression corpus tripped the substring form and paid the
+# full sweep for nothing — the corpus that exists *because* of the sk-
+# anchoring bug was the one defeating the optimisation meant to avoid it.
+#
+# The corresponding patterns are all \b-anchored, so requiring the same
+# boundary here stays a superset. Measured on 2 MB of "task-" lines: 34 ms
+# for this regex versus ~370 ms for the sweep it now skips.
+_BOUNDARY_PREFILTER = re.compile(
+    r"\b(?:sk-|sk_|rk_|akia|asia|agpa|aida|aroa|aipa|anpa|anva)",
+    re.IGNORECASE,
+)
+
+
 def _may_contain_secret(text: str) -> bool:
     """Fast negative check — True means "run the full sweep"."""
     lowered = text.lower()
-    return any(literal in lowered for literal in _PREFILTER_LITERALS)
+    if any(literal in lowered for literal in _PREFILTER_LITERALS):
+        return True
+    # Only reached when no unambiguous literal is present, so the extra pass
+    # is paid on exactly the logs it saves the full sweep for.
+    return bool(_BOUNDARY_PREFILTER.search(text))
 
 
 def scan_text(text: str, include_heuristic: bool = True) -> list[SecretMatch]:

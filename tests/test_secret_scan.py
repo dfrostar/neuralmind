@@ -207,6 +207,33 @@ class TestScanProject:
         assert scan_project(tmp_path) == []
 
 
+# One probe per registered *regex* pattern. TestPrefilter asserts this map
+# covers the registry exactly, so adding a pattern without a probe fails the
+# suite rather than silently opting out of the prefilter invariant.
+#
+# private-key-block is deliberately absent: PEM blocks are found by
+# _find_pem_blocks, not by an entry in the pattern registry, so it has its
+# own prefilter test below.
+PATTERN_PROBES = {
+    "anthropic-api-key": f"KEY={ANTHROPIC_KEY}",
+    "openai-api-key": f"KEY={OPENAI_KEY}",
+    "aws-access-key-id": f"KEY={AWS_KEY_ID}",
+    "aws-secret-access-key": f"aws_secret_access_key = {AWS_SECRET}",
+    "github-token": f"KEY={GITHUB_TOKEN}",
+    "github-fine-grained-pat": "KEY=github_pat_" + "A" * 60,
+    "slack-token": f"KEY={SLACK_TOKEN}",
+    "google-api-key": f"KEY={GOOGLE_KEY}",
+    "stripe-secret-key": f"KEY={STRIPE_KEY}",
+    "pypi-token": "KEY=pypi-" + "AgEIcHlwaS5vcmc" * 2,
+    "npm-token": "KEY=npm_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8",
+    "jwt": f"KEY={JWT}",
+    "bearer-token": f"Authorization: Bearer {GITHUB_TOKEN}",
+    "basic-auth-header": f"Authorization: Basic {BASIC_AUTH_B64}",
+    "connection-string-password": f"postgres://admin:{PG_PASSWORD}@db:5432/app",
+    "generic-secret-assignment": f'client_secret: "{GENERIC_SECRET}"',
+}
+
+
 class TestPrefilter:
     """The prefilter is a performance shortcut that must never lose a match.
 
@@ -219,19 +246,31 @@ class TestPrefilter:
     def test_every_positive_passes_the_prefilter(self, label, text, kind):
         assert _may_contain_secret(text), f"{label}: prefilter would skip a real secret"
 
-    def test_every_registered_pattern_is_covered(self):
-        """Each pattern must have a literal, proven via a string it matches."""
-        uncovered = []
-        for pattern in _HIGH_CONFIDENCE + _HEURISTIC:
-            # Build a probe from the shared corpus that this pattern matches,
-            # then assert the prefilter admits it.
-            probes = [t for _, t, _ in HIGH_CONFIDENCE_CASES] + [
-                f'client_secret: "{GENERIC_SECRET}"'
-            ]
-            matched = [p for p in probes if pattern.regex.search(p)]
-            if matched and not all(_may_contain_secret(p) for p in matched):
-                uncovered.append(pattern.kind)
-        assert uncovered == [], f"patterns not covered by the prefilter: {uncovered}"
+    def test_every_registered_pattern_has_a_probe(self):
+        """No pattern may be silently exempt from the coverage check.
+
+        The earlier version skipped any pattern none of its probes matched,
+        so a pattern with no probe counted as covered — which quietly
+        exempted the fine-grained GitHub, PyPI and npm patterns and both
+        header forms. A missing prefilter literal on those would not have
+        been caught.
+        """
+        registered = {p.kind for p in _HIGH_CONFIDENCE + _HEURISTIC}
+        probed = set(PATTERN_PROBES)
+        assert (
+            registered - probed == set()
+        ), f"patterns with no probe: {sorted(registered - probed)}"
+        assert (
+            probed - registered == set()
+        ), f"probes for patterns that no longer exist: {sorted(probed - registered)}"
+
+    @pytest.mark.parametrize("kind", sorted(PATTERN_PROBES))
+    def test_every_registered_pattern_is_covered(self, kind):
+        """Each pattern's own probe must match it *and* pass the prefilter."""
+        probe = PATTERN_PROBES[kind]
+        pattern = next(p for p in _HIGH_CONFIDENCE + _HEURISTIC if p.kind == kind)
+        assert pattern.regex.search(probe), f"{kind}: probe does not match its pattern"
+        assert _may_contain_secret(probe), f"{kind}: prefilter would skip a real secret"
 
     def test_ordinary_output_is_skipped(self):
         """The common case — no literal, no sweep."""
@@ -441,15 +480,24 @@ class TestNoFalsePositivesOnBuildOutput:
 # Vendor patterns where the credential itself is the whole match. The
 # contextual ones (aws_secret_access_key=…, Authorization: …) are excluded:
 # they are anchored by the surrounding keyword, not by a token boundary.
+# Patterns anchored by surrounding context rather than a token boundary —
+# the keyword *is* the anchor, so a mid-identifier probe is meaningless.
+CONTEXTUAL_KINDS = {
+    "aws-secret-access-key",
+    "bearer-token",
+    "basic-auth-header",
+    "connection-string-password",
+    "generic-secret-assignment",
+}
+
+# Derived from the registry rather than hand-listed, so a new vendor pattern
+# cannot skip the anchoring invariant by being forgotten here. The earlier
+# hand-written list omitted github-fine-grained-pat, pypi-token and npm-token
+# while the docstring claimed every vendor pattern was checked.
 ANCHORED_FIXTURES = [
-    ("anthropic-api-key", ANTHROPIC_KEY),
-    ("openai-api-key", OPENAI_KEY),
-    ("aws-access-key-id", AWS_KEY_ID),
-    ("github-token", GITHUB_TOKEN),
-    ("slack-token", SLACK_TOKEN),
-    ("google-api-key", GOOGLE_KEY),
-    ("stripe-secret-key", STRIPE_KEY),
-    ("jwt", JWT),
+    (kind, PATTERN_PROBES[kind].split("=", 1)[-1])
+    for kind in sorted(PATTERN_PROBES)
+    if kind not in CONTEXTUAL_KINDS
 ]
 
 
@@ -869,3 +917,45 @@ class TestRedactionIsIdempotent:
 
     def test_a_marker_in_input_text_is_not_a_finding(self):
         assert scan_text("api_key=[REDACTED:anthropic-api-key]") == []
+
+
+class TestPemPrefilterCoverage:
+    """PEM blocks bypass the pattern registry, so they need their own check.
+
+    _find_pem_blocks runs inside scan_text, which returns early when the
+    prefilter rejects the text — so a missing "-----begin" literal would
+    silently disable private-key detection with no registry pattern to
+    catch it.
+    """
+
+    @pytest.mark.parametrize("kind", ["RSA", "OPENSSH", "EC", "DSA", "PGP"])
+    def test_prefilter_admits_every_key_type(self, kind):
+        block = f"{pem_begin(kind)}\nAAAA\n{pem_end(kind)}"
+        assert _may_contain_secret(block)
+        assert [m.kind for m in scan_text(block)] == ["private-key-block"]
+
+
+class TestPemLabelPairing:
+    """BEGIN and END must agree on the key type.
+
+    Accepting the first END regardless of type reported `BEGIN RSA ... END
+    EC` as a block *and consumed the range*, which could swallow a genuine
+    block starting inside it.
+    """
+
+    def test_mismatched_markers_are_not_a_block(self):
+        text = f"{pem_begin('RSA')}\nAAAA\n{pem_end('EC')}"
+        assert scan_text(text) == []
+
+    @pytest.mark.parametrize("kind", ["RSA", "OPENSSH", "EC", "DSA", "PGP"])
+    def test_matched_markers_pair(self, kind):
+        text = f"{pem_begin(kind)}\nAAAA\n{pem_end(kind)}"
+        assert [m.kind for m in scan_text(text)] == ["private-key-block"]
+
+    def test_a_later_matching_block_is_still_found(self):
+        """A mismatched pair must not consume the range and hide the next one."""
+        text = (
+            f"{pem_begin('RSA')}\nAAAA\n{pem_end('EC')}\n"
+            f"{pem_begin('OPENSSH')}\nBBBB\n{pem_end('OPENSSH')}"
+        )
+        assert [m.kind for m in scan_text(text)] == ["private-key-block"]
