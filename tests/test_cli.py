@@ -1559,3 +1559,94 @@ class TestCLIDemo:
         assert "How does authentication work" in captured.out
         assert "API endpoints" in captured.out
         assert "billing flow" in captured.out
+
+
+class TestCmdScanForSecrets:
+    """The exit-code contract is a CI gate, so it needs CLI-level cover.
+
+    The engine has unit tests, but nothing invoked the subcommand itself —
+    so a regression in argument wiring or exit codes could silently make the
+    gate pass, or change the machine-readable output, without a test
+    noticing.
+    """
+
+    @staticmethod
+    def _args(path, **overrides):
+        from argparse import Namespace
+
+        base = {
+            "project_path": str(path),
+            "high_confidence_only": False,
+            "strict": False,
+            "use_neuralmindignore": False,
+            "json": False,
+        }
+        base.update(overrides)
+        return Namespace(**base)
+
+    @staticmethod
+    def _run(args):
+        """Invoke the handler, returning its exit code (0 when it returns)."""
+        from neuralmind.cli import cmd_scan_for_secrets
+
+        try:
+            cmd_scan_for_secrets(args)
+        except SystemExit as exc:  # noqa: PT012 - the exit code is the contract
+            return exc.code
+        return 0
+
+    def test_clean_project_exits_zero(self, tmp_path):
+        (tmp_path / "main.py").write_text("def main():\n    return 0\n")
+        assert self._run(self._args(tmp_path)) == 0
+
+    def test_high_confidence_finding_exits_one(self, tmp_path):
+        (tmp_path / ".env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
+        assert self._run(self._args(tmp_path)) == 1
+
+    def test_heuristic_only_exits_zero_by_default(self, tmp_path):
+        (tmp_path / "conf.py").write_text('client_secret = "9f8Kd2mQxZ7pLw3RtY6vNbHj4sA1"\n')
+        assert self._run(self._args(tmp_path)) == 0
+
+    def test_heuristic_only_exits_one_under_strict(self, tmp_path):
+        (tmp_path / "conf.py").write_text('client_secret = "9f8Kd2mQxZ7pLw3RtY6vNbHj4sA1"\n')
+        assert self._run(self._args(tmp_path, strict=True)) == 1
+
+    def test_missing_path_exits_two(self, tmp_path):
+        assert self._run(self._args(tmp_path / "nope")) == 2
+
+    def test_high_confidence_only_suppresses_the_heuristic_tier(self, tmp_path, capsys):
+        (tmp_path / "conf.py").write_text('client_secret = "9f8Kd2mQxZ7pLw3RtY6vNbHj4sA1"\n')
+        code = self._run(self._args(tmp_path, high_confidence_only=True, json=True))
+        payload = json.loads(capsys.readouterr().out)
+        assert code == 0
+        assert payload["findings"] == []
+        assert payload["heuristic"] == 0
+
+    def test_json_output_shape(self, tmp_path, capsys):
+        (tmp_path / ".env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
+        self._run(self._args(tmp_path, json=True))
+        payload = json.loads(capsys.readouterr().out)
+
+        assert payload["high_confidence"] == 1
+        assert payload["project"] == str(tmp_path.resolve())
+        finding = payload["findings"][0]
+        assert finding["path"] == ".env"
+        assert finding["line"] == 1
+        assert finding["kind"] == "aws-access-key-id"
+        assert finding["confidence"] == "high"
+
+    def test_preview_never_carries_the_whole_secret(self, tmp_path, capsys):
+        secret = "AKIA" + "IOSFODNN7EXAMPLE"
+        (tmp_path / ".env").write_text(f"AWS_ACCESS_KEY_ID={secret}\n")
+        self._run(self._args(tmp_path, json=True))
+        out = capsys.readouterr().out
+        assert secret not in out, "the scanner printed a full credential"
+
+    def test_neuralmindignore_is_ignored_by_default(self, tmp_path):
+        """The retrieval ignore file must not silence the scanner unasked."""
+        (tmp_path / ".neuralmindignore").write_text("secrets/\n")
+        (tmp_path / "secrets").mkdir()
+        (tmp_path / "secrets" / "k.env").write_text("AWS_ACCESS_KEY_ID=AKIA" + "IOSFODNN7EXAMPLE\n")
+
+        assert self._run(self._args(tmp_path)) == 1
+        assert self._run(self._args(tmp_path, use_neuralmindignore=True)) == 0

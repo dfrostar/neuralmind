@@ -189,9 +189,14 @@ class TestScanProject:
         assert [f.kind for f in scan_project(tmp_path)] == ["anthropic-api-key"]
 
     def test_skips_ignored_directories(self, tmp_path):
+        """Vendored trees are pruned; state files other than the cache too.
+
+        `last_output.json` is deliberately *not* pruned — see
+        TestLegacyOutputCacheIsScanned — so this uses a different state file.
+        """
         state = tmp_path / ".neuralmind"
         state.mkdir()
-        (state / "last_output.json").write_text(AWS_KEY_ID)
+        (state / "synapses.db").write_text(AWS_KEY_ID)
         vendored = tmp_path / "node_modules"
         vendored.mkdir()
         (vendored / "x.js").write_text(AWS_KEY_ID)
@@ -770,3 +775,97 @@ class TestQuotedAssignmentValues:
         """Parsing quotes properly must not bypass the placeholder gate."""
         assert scan_text('password="changeme"') == []
         assert scan_text('api_key="your_api_key_here"') == []
+
+
+class TestContainedHighConfidenceMatch:
+    """A contained high match must still set the label.
+
+    Overlapping spans are merged (so no credential fragment escapes), but a
+    fully contained match used to be dropped outright — taking its
+    confidence with it. `API_KEY=AKIA...-extra` then reported as heuristic
+    only, and `scan-for-secrets`, which exits non-zero only on high, passed
+    the CI gate on a real AWS key.
+    """
+
+    def test_contained_high_match_promotes_the_label(self):
+        text = f"API_KEY={AWS_KEY_ID}-extra"
+        matches = scan_text(text)
+        assert matches
+        assert any(m.confidence == "high" for m in matches), "high confidence lost"
+        assert any(m.kind == "aws-access-key-id" for m in matches)
+
+    def test_coverage_is_still_the_union(self):
+        """Promoting the label must not shrink what gets redacted."""
+        text = f"API_KEY={AWS_KEY_ID}-extra"
+        out, _ = redact_text(text)
+        assert AWS_KEY_ID not in out
+        assert "-extra" not in out, "the merged span should cover the tail too"
+
+    def test_heuristic_only_input_stays_heuristic(self):
+        matches = scan_text(f'client_secret="{GENERIC_SECRET}"')
+        assert matches
+        assert all(m.confidence == "heuristic" for m in matches)
+
+
+class TestLegacyOutputCacheIsScanned:
+    """`.neuralmind/` is pruned, but one file inside it must still be read.
+
+    A cache written before redaction existed is plaintext and untracked, so
+    neither the walk nor `git ls-files` would surface it — the documented
+    upgrade path would report all-clear while `neuralmind last` still handed
+    the credential back.
+    """
+
+    def test_legacy_cache_is_surfaced(self, tmp_path):
+        state = tmp_path / ".neuralmind"
+        state.mkdir()
+        (state / "last_output.json").write_text(
+            '{"stdout": "ANTHROPIC_API_KEY=' + ANTHROPIC_KEY + '"}'
+        )
+        findings = scan_project(tmp_path)
+        assert [f.path for f in findings] == [".neuralmind/last_output.json"]
+        assert findings[0].kind == "anthropic-api-key"
+
+    def test_other_state_files_are_still_pruned(self, tmp_path):
+        state = tmp_path / ".neuralmind"
+        state.mkdir()
+        (state / "synapses.db").write_text(AWS_KEY_ID)
+        (state / "events.jsonl").write_text(AWS_KEY_ID)
+        assert scan_project(tmp_path) == []
+
+    def test_clean_state_dir_yields_nothing(self, tmp_path):
+        state = tmp_path / ".neuralmind"
+        state.mkdir()
+        (state / "last_output.json").write_text('{"stdout": "7 passed"}')
+        assert scan_project(tmp_path) == []
+
+
+class TestRedactionIsIdempotent:
+    """Scrubbing already-scrubbed text must be a no-op.
+
+    The marker is itself a keyword-shaped, high-entropy assignment value,
+    so a second pass replaced `[REDACTED:anthropic-api-key]` with
+    `[REDACTED:generic-secret-assignment]` — losing which kind had been
+    removed. This matters because the output cache now scrubs on read as
+    well as on write, so most text is scanned twice.
+    """
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "ANTHROPIC_API_KEY={k}",
+            'password="{k}"',
+            "export AWS_ACCESS_KEY_ID={k}",
+            "Authorization: Bearer {k}",
+        ],
+    )
+    def test_second_pass_changes_nothing(self, line):
+        text = line.format(k=ANTHROPIC_KEY)
+        once, first_hits = redact_text(text)
+        twice, second_hits = redact_text(once)
+        assert once == twice
+        assert second_hits == [], "a marker was treated as a new secret"
+        assert first_hits
+
+    def test_a_marker_in_input_text_is_not_a_finding(self):
+        assert scan_text("api_key=[REDACTED:anthropic-api-key]") == []

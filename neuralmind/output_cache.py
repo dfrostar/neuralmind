@@ -138,7 +138,17 @@ def write_last_output(
 
 
 def read_last_output(project_path: str | Path) -> dict | None:
-    """Return the most recent cached bash output, or ``None`` if missing."""
+    """Return the most recent cached bash output, or ``None`` if missing.
+
+    Redacts on the way out as well as on the way in. A cache written by a
+    version from before redaction existed is plaintext on disk, and an
+    upgrade does not rewrite it — so without this, the first
+    ``neuralmind last`` after upgrading would hand back the very credential
+    the upgrade was meant to protect. Scrubbing here is idempotent: text
+    already redacted at write time has nothing left to find.
+
+    Honours the same ``NEURALMIND_OUTPUT_REDACT=0`` opt-out as the writer.
+    """
     try:
         text = cache_path(project_path).read_text(encoding="utf-8")
         data = json.loads(text)
@@ -146,4 +156,18 @@ def read_last_output(project_path: str | Path) -> dict | None:
         return None
     if not isinstance(data, dict) or "stdout" not in data:
         return None
+
+    if os.environ.get("NEURALMIND_OUTPUT_REDACT") == "0":
+        return data
+
+    kinds: set[str] = set(data.get("redacted") or [])
+    for field in ("stdout", "stderr", "command"):
+        value = data.get(field)
+        if not isinstance(value, str) or not value:
+            continue
+        scrubbed, hits = redact_text(value)
+        if hits:
+            data[field] = scrubbed
+            kinds.update(m.kind for m in hits)
+    data["redacted"] = sorted(kinds)
     return data

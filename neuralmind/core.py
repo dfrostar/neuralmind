@@ -29,6 +29,8 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
+from neuralmind.state_dir import ensure_parent_dir
+
 from . import ir as ir_mod
 from . import namespaces as ns_mod
 from . import querying, synapse_feedback
@@ -710,7 +712,7 @@ class NeuralMind:
 
             summary["neuralmind_version"] = _nm_version
 
-            self.ir_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_parent_dir(self.ir_path)
             index_ir.write(self.ir_path)
             self.ir_meta_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
             return summary
