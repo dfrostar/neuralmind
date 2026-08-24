@@ -17,6 +17,11 @@ Design:
   so the error-bearing tail survives.
 - **Atomic writes.** Temp-file + rename so concurrent hook invocations
   can't leave a half-written cache behind.
+- **Redacted.** Credentials are stripped before the payload touches
+  disk (``neuralmind.secret_scan``). The cache records whatever a
+  command printed, so ``printenv``, ``aws configure list``, or a curl
+  with an ``Authorization`` header would otherwise land a live key in
+  a plaintext file. Opt out with ``NEURALMIND_OUTPUT_REDACT=0``.
 - **Fail-open.** Cache failures never disrupt the hook; they just
   leave ``neuralmind last`` empty.
 """
@@ -28,6 +33,9 @@ import os
 import tempfile
 import time
 from pathlib import Path
+
+from .secret_scan import redact_text
+from .state_dir import ensure_state_dir
 
 CACHE_FILENAME = "last_output.json"
 DEFAULT_MAX_BYTES = int(os.environ.get("NEURALMIND_OUTPUT_CACHE_MAX", str(2 * 1024 * 1024)))
@@ -68,6 +76,16 @@ def write_last_output(
     if os.environ.get("NEURALMIND_OUTPUT_CACHE") == "0":
         return None
 
+    # Strip credentials *before* truncation so a secret can never survive
+    # in a kept head/tail slice, and before the size math so the budget is
+    # computed against what actually gets written.
+    redacted_kinds: list[str] = []
+    if os.environ.get("NEURALMIND_OUTPUT_REDACT") != "0":
+        stdout, out_hits = redact_text(stdout)
+        stderr, err_hits = redact_text(stderr)
+        command, cmd_hits = redact_text(command)
+        redacted_kinds = sorted({m.kind for m in (*out_hits, *err_hits, *cmd_hits)})
+
     cap = max_bytes if max_bytes is not None else DEFAULT_MAX_BYTES
     total = len(stdout) + len(stderr)
     if total > cap:
@@ -90,11 +108,17 @@ def write_last_output(
         "exit_code": exit_code,
         "stdout": stdout,
         "stderr": stderr,
+        # Surfaced by `neuralmind last` so a developer knows the output was
+        # scrubbed and can re-run the command themselves if they need it.
+        "redacted": redacted_kinds,
     }
 
     try:
         target = cache_path(project_path)
-        target.parent.mkdir(parents=True, exist_ok=True)
+        # ensure_state_dir also drops the self-ignoring .gitignore, so the
+        # cache cannot be committed even if this is the first thing that
+        # ever creates .neuralmind/ in the project.
+        ensure_state_dir(project_path)
         # Atomic write: temp-file in same dir, then rename.
         fd, tmp = tempfile.mkstemp(prefix=".last_output.", suffix=".tmp", dir=str(target.parent))
         try:

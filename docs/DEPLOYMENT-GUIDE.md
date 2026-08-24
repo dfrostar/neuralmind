@@ -351,18 +351,24 @@ kubectl create secret generic neuralmind-db --from-literal=password=...
 ```
 
 **2. Secret Scanning in Indexes**
+
+Scanning is explicit, not automatic — run it before you index. It exits
+non-zero on high-confidence findings, so it works as a CI gate:
+
 ```bash
-# NeuralMind automatically detects and redacts secrets
 neuralmind scan-for-secrets .
 
 # Output:
-# ⚠️  Found 3 potential secrets:
-#   - AWS_SECRET_ACCESS_KEY in src/config.py:42
-#   - GITHUB_TOKEN in .env (already in .gitignore)
-#   - STRIPE_API_KEY in tests/fixtures.py:10
+# NeuralMind secret scan — /srv/myproject
+#
+#   [HIGH ] src/config.py:42  aws-secret-access-key  (wJal…(40 chars))
+#   [HIGH ] .env:3  github-token  (ghp_…(40 chars))
+#
+#   2 high-confidence, 0 heuristic.
 
-# Fix secrets before building index
-neuralmind build . --exclude-secrets
+# Remove and rotate those, then build. --redact-secrets is a backstop
+# that scrubs anything still present out of the indexed text.
+neuralmind build . --redact-secrets
 ```
 
 ---

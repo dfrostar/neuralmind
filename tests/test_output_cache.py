@@ -9,6 +9,7 @@ from neuralmind.output_cache import (
     read_last_output,
     write_last_output,
 )
+from tests.secret_fixtures import ANTHROPIC_KEY, AWS_KEY_ID, GITHUB_TOKEN
 
 
 class TestWriteLastOutput:
@@ -109,3 +110,85 @@ class TestReadLastOutput:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps([1, 2, 3]))
         assert read_last_output(tmp_path) is None
+
+
+class TestSecretRedaction:
+    """The cache records raw command output, so it must scrub credentials.
+
+    Without this, `printenv` or a curl with an Authorization header lands a
+    live key in a plaintext file inside the project.
+    """
+
+    def test_secret_in_stdout_is_redacted(self, tmp_path):
+        write_last_output(
+            tmp_path,
+            stdout=f"ANTHROPIC_API_KEY={ANTHROPIC_KEY}\n",
+            stderr="",
+            exit_code=0,
+            command="printenv",
+        )
+        data = read_last_output(tmp_path)
+        assert ANTHROPIC_KEY not in data["stdout"]
+        assert "[REDACTED:anthropic-api-key]" in data["stdout"]
+        assert data["redacted"] == ["anthropic-api-key"]
+
+    def test_secret_in_stderr_is_redacted(self, tmp_path):
+        write_last_output(
+            tmp_path,
+            stdout="",
+            stderr=f"auth failed for {AWS_KEY_ID}\n",
+            exit_code=1,
+        )
+        data = read_last_output(tmp_path)
+        assert AWS_KEY_ID not in data["stderr"]
+        assert data["redacted"] == ["aws-access-key-id"]
+
+    def test_secret_in_command_is_redacted(self, tmp_path):
+        """The command line leaks too — `curl -H "Authorization: Bearer ..."`."""
+        write_last_output(
+            tmp_path,
+            stdout="ok\n",
+            stderr="",
+            exit_code=0,
+            command=f'curl -H "Authorization: Bearer {GITHUB_TOKEN}" u',
+        )
+        data = read_last_output(tmp_path)
+        assert GITHUB_TOKEN not in data["command"]
+        assert "github-token" in data["redacted"]
+
+    def test_raw_file_on_disk_holds_no_secret(self, tmp_path):
+        """Belt and braces: assert against the bytes, not the parsed payload."""
+        secret = ANTHROPIC_KEY
+        write_last_output(tmp_path, stdout=f"KEY={secret}\n", stderr="", exit_code=0)
+        assert secret not in cache_path(tmp_path).read_text()
+
+    def test_clean_output_is_untouched(self, tmp_path):
+        write_last_output(tmp_path, stdout="7 passed\n", stderr="", exit_code=0)
+        data = read_last_output(tmp_path)
+        assert data["stdout"] == "7 passed\n"
+        assert data["redacted"] == []
+
+    def test_redaction_can_be_disabled(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("NEURALMIND_OUTPUT_REDACT", "0")
+        write_last_output(tmp_path, stdout=f"KEY={AWS_KEY_ID}\n", stderr="", exit_code=0)
+        assert AWS_KEY_ID in read_last_output(tmp_path)["stdout"]
+
+    def test_secret_survives_nothing_under_truncation(self, tmp_path):
+        """Redaction runs before truncation, so no secret hides in a kept slice."""
+        secret = AWS_KEY_ID
+        noise = "x" * 5000
+        write_last_output(
+            tmp_path,
+            stdout=f"{secret}\n{noise}\n{secret}\n",
+            stderr="",
+            exit_code=0,
+            max_bytes=2048,
+        )
+        assert secret not in cache_path(tmp_path).read_text()
+
+    def test_cache_directory_is_self_ignoring(self, tmp_path):
+        """Writing the cache must also drop the .gitignore guard."""
+        write_last_output(tmp_path, stdout="hi\n", stderr="", exit_code=0)
+        guard = tmp_path / ".neuralmind" / ".gitignore"
+        assert guard.exists()
+        assert "*" in guard.read_text().splitlines()

@@ -99,11 +99,14 @@ NeuralMind processes code from your projects. Here's what you should know:
    - Synapse store + directional transitions + namespaces: `<project>/.neuralmind/synapses.db`
    - BM25 keyword index (v0.38+): `<project>/.neuralmind/bm25_index.json`
    - Auto-memory file consumed by Claude Code: `<project>/.neuralmind/SYNAPSE_MEMORY.md`
-   - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes)
+   - PostToolUse Bash recovery cache (v0.10+): `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap, atomic writes, **credential-redacted** — see note 5)
    - Event log for the graph-view stream (v0.6+): `<project>/.neuralmind/events.jsonl`
    - MCP audit trail (v0.41): `<project>/.neuralmind/audit_events.jsonl`
    - **Committed** team-memory bundle (v0.30+, opt-in): `<project>/.neuralmind-team-memory.json` — travels with `git clone` (learned weights only, no source)
-4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped), and MCP audit events. Source code itself is **not** duplicated into these files — only references (node ids, file paths). The committed team-memory bundle holds learned associations, not code.
+4. **What gets persisted.** Edge weights, transition counts, BM25 token postings, the most recent Bash command's stdout/stderr (capped and redacted), and MCP audit events. Source code itself is **not** duplicated into these files — only references (node ids, file paths). The committed team-memory bundle holds learned associations, not code.
+5. **Credential hygiene on persisted output.** The Bash recovery cache records whatever a command printed, which can include credentials (`printenv`, `aws configure list`, a `curl -H "Authorization: Bearer …"`). Detected secrets are replaced with `[REDACTED:<kind>]` **before** the payload is written, and the cache entry lists which kinds were removed. Redaction runs before truncation, so a secret cannot survive inside a kept head/tail slice. Opt out with `NEURALMIND_OUTPUT_REDACT=0` (not recommended).
+6. **The state directory cannot be committed.** `<project>/.neuralmind/` is created with its own `.gitignore` containing `*`, so it stays out of `git add -A` regardless of what the host project's `.gitignore` says. This matters because the directory is per-machine state, and the recovery cache within it reflects command output. Files committed by an **older version** remain tracked — the ignore rule does not apply retroactively. Check with `git ls-files .neuralmind/` and untrack with `git rm -r --cached .neuralmind/`; `neuralmind build` warns when it detects already-tracked state. Rotate any credential that reached a commit.
+7. **Pre-index scanning.** `neuralmind scan-for-secrets .` reports credentials in the working tree (including files the indexer skips, such as `.env`) and exits non-zero on high-confidence findings so it can gate CI. `neuralmind build . --redact-secrets` scrubs detected credentials from indexed text as a backstop — it is not a substitute for removing and rotating the credential.
 
 ### Best Practices for Enterprise Deployments
 
@@ -114,11 +117,22 @@ NeuralMind processes code from your projects. Here's what you should know:
    chmod 700 .neuralmind/                      # synapse store + memory + caches
    ```
 
-2. Both directories are already in the bundled `.gitignore`, but confirm if you forked or copied this project's `.gitignore` selectively:
+2. `.neuralmind/` protects itself — it is created with its own `.gitignore`
+   containing `*`, so it stays out of `git add -A` in **your** project with no
+   entry in your project's `.gitignore`. Confirm the index directory too, which
+   has no such guard:
    ```
    graphify-out/neuralmind_db/
-   .neuralmind/
    ```
+   If you first built with a version earlier than the one that added the guard,
+   check whether state is already tracked — the ignore rule does not apply to
+   files already in the git index:
+   ```bash
+   git ls-files .neuralmind/          # expect no output
+   git rm -r --cached .neuralmind/    # untrack if it returned anything
+   ```
+   Then rotate any credential that could have reached a commit. `neuralmind
+   build` prints a warning when it detects already-tracked state.
 
 **For enterprise/shared environments:**
 
@@ -130,11 +144,11 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 2. **Secrets Management**
    - NeuralMind never transmits code externally, but be cautious when processing repositories containing:
-     - API keys or secrets (use `.gitignore` or secret scanning first)
+     - API keys or secrets (run `neuralmind scan-for-secrets .` first)
      - Credentials
      - Proprietary algorithms
      - Personal data (PII)
-   - Recommendation: Strip or mask secrets before indexing if at all possible
+   - Recommendation: strip and **rotate** secrets before indexing. `neuralmind scan-for-secrets .` finds them; `--redact-secrets` on build scrubs the index as a backstop.
 
 3. **Compliance & Audit Trails**
    - Log which teams/users access the index

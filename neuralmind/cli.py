@@ -173,6 +173,61 @@ def _check_version_mismatch(project_path: str) -> str | None:
     return None
 
 
+def cmd_scan_for_secrets(args):
+    """Report credentials found in a project's files.
+
+    Runs *before* a build so a developer can strip secrets rather than
+    index them. Exits non-zero when high-confidence credentials are
+    present so CI can gate on it; heuristic-only findings warn but pass
+    unless ``--strict`` is given.
+    """
+    from neuralmind.secret_scan import scan_project
+
+    project_path = args.project_path or "."
+    path = Path(project_path)
+    if not path.exists():
+        print(f"Scan failed: path does not exist: {project_path}", file=sys.stderr)
+        sys.exit(2)
+
+    include_heuristic = not args.high_confidence_only
+    findings = scan_project(project_path, include_heuristic=include_heuristic)
+
+    high = [f for f in findings if f.confidence == "high"]
+    heuristic = [f for f in findings if f.confidence != "high"]
+
+    if args.json:
+        print(
+            json.dumps(
+                {
+                    "project": str(path.resolve()),
+                    "findings": [f.to_dict() for f in findings],
+                    "high_confidence": len(high),
+                    "heuristic": len(heuristic),
+                },
+                indent=2,
+            )
+        )
+    else:
+        print(f"NeuralMind secret scan — {path.resolve()}")
+        print()
+        if not findings:
+            print("  No credentials detected.")
+        else:
+            for f in findings:
+                tag = "HIGH " if f.confidence == "high" else "maybe"
+                print(f"  [{tag}] {f.path}:{f.line}  {f.kind}  ({f.preview})")
+            print()
+            print(f"  {len(high)} high-confidence, {len(heuristic)} heuristic.")
+            print()
+            print("  Previews are truncated — no full secret is printed.")
+            print("  Remove these and rotate the credentials before building.")
+            print("  To keep a file out of the index entirely, add it to .neuralmindignore.")
+            print("  To scrub secrets from the index itself: neuralmind build . --redact-secrets")
+
+    if high or (args.strict and heuristic):
+        sys.exit(1)
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
 
@@ -225,6 +280,27 @@ def cmd_build(args):
             f"\n⚠  {_migrate_warning}\n",
             file=sys.stderr,
         )
+
+    # Create .neuralmind/ with its self-ignoring .gitignore before anything
+    # writes state into it, so the directory can never be committed.
+    from neuralmind.state_dir import ensure_state_dir, tracked_state_files
+
+    ensure_state_dir(project_path)
+    already_tracked = tracked_state_files(project_path)
+    if already_tracked:
+        print(
+            f"\n⚠  git is already tracking {len(already_tracked)} file(s) under "
+            ".neuralmind/ — the ignore rule does not apply to files already in "
+            "the index.\n   These can contain cached command output, including "
+            "credentials. Untrack them with:\n"
+            "     git rm -r --cached .neuralmind/\n",
+            file=sys.stderr,
+        )
+
+    if getattr(args, "redact_secrets", False) is True:
+        # Consumed by embedder/document_ingestion via secret_scan.redaction_enabled().
+        os.environ["NEURALMIND_REDACT_SECRETS"] = "1"
+        print("Secret redaction: on (credentials scrubbed from indexed text)")
 
     mind = NeuralMind(project_path)
     # Wire --bootstrap into the NeuralMind instance
@@ -3715,6 +3791,11 @@ def cmd_last(args):
     This command surfaces that cache so an agent can fetch the dropped
     middle on demand instead of re-running an expensive command with
     NEURALMIND_BYPASS=1.
+
+    Credentials are redacted on the way into the cache, so a value shown
+    as ``[REDACTED:<kind>]`` here was never written to disk. The header
+    names which kinds were removed; re-run the command yourself if you
+    need the real value.
     """
     import datetime
 
@@ -3740,6 +3821,9 @@ def cmd_last(args):
     print(f"# cached: {when}   exit={data.get('exit_code', 0)}")
     if data.get("command"):
         print(f"# command: {data['command']}")
+    redacted = data.get("redacted") or []
+    if redacted:
+        print(f"# redacted: {', '.join(redacted)} (re-run the command to see real values)")
     print()
     stdout = data.get("stdout") or ""
     stderr = data.get("stderr") or ""
@@ -4469,8 +4553,36 @@ def main():
         action="store_true",
         help="Scan the project and estimate token savings without building the index.",
     )
+    build_p.add_argument(
+        "--redact-secrets",
+        dest="redact_secrets",
+        action="store_true",
+        help="Scrub detected credentials from text before it enters the index "
+        "(equivalent to NEURALMIND_REDACT_SECRETS=1). Run `neuralmind "
+        "scan-for-secrets` first to find and remove them at the source.",
+    )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.set_defaults(func=cmd_build)
+
+    scan_secrets_p = subparsers.add_parser(
+        "scan-for-secrets",
+        help="Scan a project for credentials before indexing or committing",
+    )
+    scan_secrets_p.add_argument("project_path", nargs="?", default=".")
+    scan_secrets_p.add_argument(
+        "--high-confidence-only",
+        dest="high_confidence_only",
+        action="store_true",
+        help="Report only vendor-shaped credentials (sk-ant-, AKIA, PEM blocks), "
+        "skipping generic SECRET=value heuristics.",
+    )
+    scan_secrets_p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Also exit non-zero on heuristic findings (default: high-confidence only).",
+    )
+    scan_secrets_p.add_argument("--json", "-j", action="store_true")
+    scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
 
     query_p = subparsers.add_parser("query", help="Query the knowledge base")
     query_p.add_argument("project_path")

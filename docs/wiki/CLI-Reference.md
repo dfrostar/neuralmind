@@ -9,6 +9,7 @@ Complete command-line interface documentation for NeuralMind.
 - [Global Options](#global-options)
 - [Commands](#commands)
   - [build](#build)
+  - [scan-for-secrets](#scan-for-secrets)
   - [query](#query)
   - [wakeup](#wakeup)
   - [search](#search)
@@ -179,6 +180,67 @@ Backend precedence:
 3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.
+6. **Secret redaction (opt-in):** `--redact-secrets` (or `NEURALMIND_REDACT_SECRETS=1`) replaces detected credentials with `[REDACTED:<kind>]` in text on its way into the index. Off by default, because redacting costs recall on legitimately secret-shaped identifiers. Run `neuralmind scan-for-secrets .` first — removing and rotating the credential is the actual fix. The build also warns if git is already tracking files under `.neuralmind/`.
+
+---
+
+### scan-for-secrets
+
+Report credentials present in a project's files, so they can be removed and
+rotated **before** they reach the index, a commit, or an agent's context.
+
+```bash
+neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict] [--json]
+```
+
+| Option | Effect |
+|--------|--------|
+| `PROJECT_PATH` | Project root (default `.`). |
+| `--high-confidence-only` | Report only vendor-shaped credentials; suppress the generic-assignment heuristic. |
+| `--strict` | Exit non-zero on heuristic findings too (default: high-confidence only). |
+| `--json` / `-j` | Machine-readable output. |
+
+```
+NeuralMind secret scan — /home/dev/myproject
+
+  [HIGH ] .env:1  anthropic-api-key  (sk-a…(43 chars))
+  [HIGH ] src/config.py:8  aws-access-key-id  (AKIA…(20 chars))
+  [maybe] src/db.py:34  generic-secret-assignment  (9f8K…(28 chars))
+
+  2 high-confidence, 1 heuristic.
+```
+
+**Two confidence tiers.** `HIGH` matches a vendor-specific shape and
+effectively never fires on prose: Anthropic and OpenAI keys, AWS access
+key IDs and secret keys, GitHub tokens and fine-grained PATs, Slack
+tokens, Google API keys, Stripe keys, PyPI and npm tokens, PEM private-key
+blocks, JWTs, `Authorization: Bearer`/`Basic` headers, and passwords
+embedded in database connection strings. `maybe` matches a generic
+`SECRET=value` assignment that cleared a Shannon-entropy threshold and a
+placeholder denylist — so `password = "changeme"`,
+`api_key = os.environ["X"]`, and `KEY=${VAR}` are not reported.
+
+**Previews never include the tail of a secret** — only a short prefix and
+a length — so scan output is safe to paste into an issue or a CI log.
+
+**Exit codes**, so this works as a CI gate:
+
+| Condition | Exit |
+|-----------|------|
+| No findings | `0` |
+| Heuristic findings only | `0` (`1` with `--strict`) |
+| Any high-confidence finding | `1` |
+| Path does not exist | `2` |
+
+The scanner reads files directly rather than going through the indexer, so
+it sees `.env` and other files `build` never parses. It skips the usual
+vendored/build directories (`node_modules`, `.venv`, `dist`, `target`,
+`.git`, `.neuralmind`), binary files, and anything over 5 MB.
+
+Related: `neuralmind build . --redact-secrets` scrubs detected credentials
+out of indexed text as a backstop — it does not remove the credential from
+your working tree, and it is not a substitute for rotating a key that has
+already been exposed.
 
 ---
 
@@ -1647,6 +1709,22 @@ neuralmind last
 
 ---
 
+**Credential redaction (v3.5.0+).** Secrets are stripped before the cache is
+written, so a value shown as `[REDACTED:<kind>]` was never stored on disk. The
+header lists which kinds were removed:
+
+```
+# cached: 2026-08-24T13:47:44   exit=0
+# command: printenv
+# redacted: anthropic-api-key (re-run the command to see real values)
+
+ANTHROPIC_API_KEY=[REDACTED:anthropic-api-key]
+```
+
+Re-run the command yourself if you need the real value. Disable with
+`NEURALMIND_OUTPUT_REDACT=0` (not recommended — the cache lives in a plaintext
+file inside your project).
+
 ### install-hooks
 
 Install or uninstall Claude Code lifecycle hooks. As of v0.4.0 this
@@ -2706,6 +2784,8 @@ Run without --dry-run to evolve JSDoc for these methods.
 | `NEURALMIND_MEMORY` | `1` | Set to `0` to disable query memory logging |
 | `NEURALMIND_LEARNING` | `1` | *(deprecated, v0.25.0)* Formerly disabled the `learned_patterns` cooccurrence reranker, which was removed in v0.25.0. Now inert — recognized but ignored. To disable the synapse layer's prompt-time recall, use `NEURALMIND_SYNAPSE_INJECT=0`. |
 | `NEURALMIND_BYPASS` | unset | Set to `1` to bypass PostToolUse hook compression temporarily |
+| `NEURALMIND_OUTPUT_REDACT` | `1` | Set to `0` to stop redacting credentials from the PostToolUse Bash recovery cache (`.neuralmind/last_output.json`). The cache stores whatever a command printed, so with redaction off a `printenv` or an `Authorization: Bearer` header can land a live key in a plaintext file. Not recommended. |
+| `NEURALMIND_REDACT_SECRETS` | unset | Set to `1` to scrub detected credentials from text before it enters the index — equivalent to `neuralmind build . --redact-secrets`. Off by default because redacting the index costs recall on legitimately secret-shaped identifiers. A backstop, not a substitute for removing and rotating the credential. |
 | `NEURALMIND_TYPE_CHECK` | unset | *(v3.0.0+)* Set to `1` to confirm inferred return types with `mypy` during the build's type-verification pass. Slower but more precise; without it, inference is AST/tree-sitter only. The pass itself runs whenever the synapse layer is enabled and is fail-open — type metadata is observability, never a gate on the build. |
 | `NEURALMIND_SYNAPSE_INJECT` | `1` | *(v0.4.0+)* Set to `0` to disable spreading-activation context injection in the `UserPromptSubmit` hook |
 | `NEURALMIND_PROVENANCE_INJECT` | `1` | *(v0.43.0+)* Set to `0` to disable decision-provenance injection in the `UserPromptSubmit` hook. When enabled (default), `Decision:` git trailers whose subjects appear in the prompt are surfaced as context alongside synapse recall. Reads git history (the trailer is the store — no separate DB); fails open, so a provenance miss never disrupts the prompt. Query the same data directly with `neuralmind why`. |
