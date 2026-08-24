@@ -190,7 +190,8 @@ Report credentials present in a project's files, so they can be removed and
 rotated **before** they reach the index, a commit, or an agent's context.
 
 ```bash
-neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict] [--json]
+neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict]
+                            [--use-neuralmindignore] [--json]
 ```
 
 | Option | Effect |
@@ -198,6 +199,7 @@ neuralmind scan-for-secrets [PROJECT_PATH] [--high-confidence-only] [--strict] [
 | `PROJECT_PATH` | Project root (default `.`). |
 | `--high-confidence-only` | Report only vendor-shaped credentials; suppress the generic-assignment heuristic. |
 | `--strict` | Exit non-zero on heuristic findings too (default: high-confidence only). |
+| `--use-neuralmindignore` | Also apply `.neuralmindignore` globs. **Off by default** — see below. |
 | `--json` / `-j` | Machine-readable output. |
 
 ```
@@ -236,6 +238,13 @@ The scanner reads files directly rather than going through the indexer, so
 it sees `.env` and other files `build` never parses. It skips the usual
 vendored/build directories (`node_modules`, `.venv`, `dist`, `target`,
 `.git`, `.neuralmind`), binary files, and anything over 5 MB.
+
+**`.neuralmindignore` is not applied by default.** That file is tuned for
+retrieval quality, not security — NeuralMind's own copy excludes `docs/`,
+`*.md` and `tests/` because markdown dilutes code retrieval. A scanner that
+inherited it would skip exactly where credentials tend to sit and report a
+false all-clear. Pass `--use-neuralmindignore` if you want those globs
+applied anyway.
 
 Related: `neuralmind build . --redact-secrets` scrubs detected credentials
 out of indexed text as a backstop — it does not remove the credential from

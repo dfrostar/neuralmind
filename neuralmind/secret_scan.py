@@ -93,7 +93,11 @@ _PLACEHOLDERS: frozenset[str] = frozenset(
         "fake",
         "none",
         "null",
+        "pass",
+        "passwd",
+        "password",
         "placeholder",
+        "pwd",
         "redacted",
         "sample",
         "secret",
@@ -107,6 +111,28 @@ _PLACEHOLDERS: frozenset[str] = frozenset(
         "yourkeyhere",
         "your_api_key",
         "your_key_here",
+    }
+)
+
+# Whole tokens that mark a separator-joined value as descriptive rather than
+# secret: "secure_password", "my-api-key". Matched per token, so a real
+# high-entropy password ("sup3rS3cretPw") is untouched.
+_PLACEHOLDER_TOKENS: frozenset[str] = frozenset(
+    {
+        "password",
+        "passwd",
+        "pass",
+        "pwd",
+        "secret",
+        "key",
+        "token",
+        "changeme",
+        "example",
+        "placeholder",
+        "dummy",
+        "sample",
+        "here",
+        "value",
     }
 )
 
@@ -156,6 +182,12 @@ class _Pattern:
     regex: re.Pattern
     confidence: str
     group: int = 0  # which capture group holds the secret itself
+    # Run the placeholder denylist even on a high-confidence pattern. Needed
+    # where the "secret" is an arbitrary string rather than a vendor-issued
+    # token: documentation is full of postgres://user:password@host and
+    # postgres://user:****@host, and flagging those as HIGH — the tier that
+    # exits non-zero — turns the CI gate into noise.
+    check_placeholder: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +220,7 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
     _Pattern(
         "aws-secret-access-key",
         re.compile(
-            r"(?i)aws_secret_access_key\s*[:=]\s*[\"']?([A-Za-z0-9/+=]{40})",
+            r"(?i)aws_secret_access_key[ \t]*[:=][ \t]*[\"']?([A-Za-z0-9/+=]{40})",
         ),
         "high",
         group=1,
@@ -255,6 +287,7 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
         ),
         "high",
         group=1,
+        check_placeholder=True,
     ),
 )
 
@@ -269,7 +302,7 @@ _HEURISTIC: tuple[_Pattern, ...] = (
             # mypassword, where a letter precedes the keyword.
             r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|apikey|secret|secret[_-]?key|"
             r"access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd|"
-            r"credentials?|private[_-]?key)\b\s*[:=]\s*[\"']?([^\s\"',;]{8,})"
+            r"credentials?|private[_-]?key)\b[ \t]*[:=][ \t]*[\"']?([^\s\"',;]{8,})"
         ),
         "heuristic",
         group=1,
@@ -290,9 +323,10 @@ _HEURISTIC: tuple[_Pattern, ...] = (
 _PEM_BEGIN_RE = re.compile(r"-----BEGIN [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
 _PEM_END_RE = re.compile(r"-----END [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
 
-# An RSA-4096 PEM is roughly 3.2 KB; this is a generous ceiling on how far an
-# END marker may sit from its BEGIN before we stop treating them as a pair.
-MAX_PEM_BLOCK_CHARS = 65536
+# An RSA-4096 PEM is roughly 3.2 KB, so this leaves ~2.5x headroom while
+# stopping a stray BEGIN marker from pairing with an unrelated END far away
+# (which is how a source file discussing PEM formats false-positives).
+MAX_PEM_BLOCK_CHARS = 8192
 
 
 def _find_pem_blocks(text: str) -> list[tuple[int, int]]:
@@ -345,7 +379,7 @@ def _is_placeholder(value: str) -> bool:
     if low in _PLACEHOLDERS:
         return True
     # Env-var indirection is a reference, not a secret.
-    if stripped.startswith(("$", "<", "{{")) or "${" in stripped:
+    if stripped.startswith(("$", "<", "{", "%")) or "${" in stripped:
         return True
     if low.startswith(("your_", "your-", "my_", "insert_", "replace_", "example")):
         return True
@@ -353,6 +387,12 @@ def _is_placeholder(value: str) -> bool:
         return True
     # All-same-character masks: xxxxxxxx, ********, --------.
     if len(set(stripped)) <= 2:
+        return True
+    # Separator-joined values naming the thing rather than being it:
+    # secure_password, my-api-key, db_secret. Documentation is full of these.
+    # A real credential containing "password" as a whole token is a bad
+    # credential, so the trade favours a quiet high-confidence tier.
+    if any(token in _PLACEHOLDER_TOKENS for token in re.split(r"[-_.]+", low) if token):
         return True
     return False
 
@@ -367,7 +407,9 @@ def _mask(value: str) -> str:
 def _accept(pattern: _Pattern, value: str) -> bool:
     """Confidence gate for a candidate span."""
     if pattern.confidence == "high":
-        return True
+        # Vendor-shaped tokens are self-evidencing; patterns whose captured
+        # value is free-form still have to clear the placeholder denylist.
+        return not (pattern.check_placeholder and _is_placeholder(value))
     if _is_placeholder(value):
         return False
     return _shannon_entropy(value) >= _MIN_ENTROPY
@@ -584,25 +626,80 @@ def scan_file(path: str | Path, include_heuristic: bool = True) -> list[SecretFi
     ]
 
 
+def _load_neuralmindignore(root: Path) -> list[str]:
+    """Read ``.neuralmindignore`` globs, if present.
+
+    **Opt-in only.** ``.neuralmindignore`` is tuned for retrieval quality,
+    not for security — this very repository excludes ``docs/``, ``*.md``
+    and ``tests/`` from it because markdown dilutes code retrieval. Letting
+    a secret scanner inherit that list would silently skip the places
+    credentials most often sit and report a false all-clear. The scanner
+    therefore reads everything by default; a caller must ask for these
+    globs explicitly.
+    """
+    path = root / ".neuralmindignore"
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return []
+    return [
+        line.strip()
+        for line in content.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def _matches_ignore(rel_path: str, patterns: list[str]) -> bool:
+    """``.gitignore``-style glob match against a project-relative path."""
+    if not patterns:
+        return False
+    from fnmatch import fnmatch
+
+    parts = rel_path.split("/")
+    for pattern in patterns:
+        cleaned = pattern.rstrip("/")
+        if fnmatch(rel_path, pattern) or fnmatch(parts[-1], pattern):
+            return True
+        # A directory pattern matches everything beneath it.
+        if any(fnmatch(part, cleaned) for part in parts[:-1]):
+            return True
+        if rel_path.startswith(cleaned + "/"):
+            return True
+    return False
+
+
 def scan_project(
     root: str | Path,
     include_heuristic: bool = True,
     ignore_dirs: frozenset[str] | None = None,
+    respect_ignore_file: bool = False,
 ) -> list[SecretFinding]:
-    """Walk ``root`` and scan every non-ignored, non-binary file.
+    """Walk ``root`` and scan every non-binary file.
 
-    Paths in the result are project-relative so output is stable across
-    machines (and safe to paste into an issue).
+    Reads everything except vendored/build directories. ``.neuralmindignore``
+    is honoured **only** when ``respect_ignore_file`` is True — see
+    :func:`_load_neuralmindignore` for why that is not the default. Paths in
+    the result are project-relative so output is stable across machines (and
+    safe to paste into an issue).
     """
     root_path = Path(root).resolve()
     ignores = ignore_dirs if ignore_dirs is not None else _SCAN_IGNORE_DIRS
+    globs = _load_neuralmindignore(root_path) if respect_ignore_file else []
     findings: list[SecretFinding] = []
 
     for dirpath, dirnames, filenames in os.walk(root_path):
         dirnames[:] = sorted(d for d in dirnames if d not in ignores)
+        if globs:
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if not _matches_ignore((Path(dirpath) / d).relative_to(root_path).as_posix(), globs)
+            ]
         for name in sorted(filenames):
             fpath = Path(dirpath) / name
             if fpath.is_symlink():
+                continue
+            if globs and _matches_ignore(fpath.relative_to(root_path).as_posix(), globs):
                 continue
             for finding in scan_file(fpath, include_heuristic=include_heuristic):
                 try:
