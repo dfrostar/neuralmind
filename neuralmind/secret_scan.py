@@ -33,6 +33,7 @@ Design:
 
 from __future__ import annotations
 
+import bisect
 import math
 import os
 import re
@@ -211,11 +212,6 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
         "high",
     ),
     _Pattern(
-        "private-key-block",
-        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
-        "high",
-    ),
-    _Pattern(
         "jwt",
         re.compile(r"\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"),
         "high",
@@ -224,13 +220,13 @@ _HIGH_CONFIDENCE: tuple[_Pattern, ...] = (
     # keeping "Authorization: Bearer" visible preserves the debugging signal.
     _Pattern(
         "bearer-token",
-        re.compile(r"(?i)authorization\s*:\s*bearer\s+([A-Za-z0-9._\-+/=]{12,})"),
+        re.compile(r"(?i)authorization[ \t]*:[ \t]*bearer[ \t]+([A-Za-z0-9._\-+/=]{12,})"),
         "high",
         group=1,
     ),
     _Pattern(
         "basic-auth-header",
-        re.compile(r"(?i)authorization\s*:\s*basic\s+([A-Za-z0-9+/=]{12,})"),
+        re.compile(r"(?i)authorization[ \t]*:[ \t]*basic[ \t]+([A-Za-z0-9+/=]{12,})"),
         "high",
         group=1,
     ),
@@ -257,6 +253,55 @@ _HEURISTIC: tuple[_Pattern, ...] = (
         group=1,
     ),
 )
+
+
+# PEM private-key blocks are matched by pairing BEGIN/END markers rather than
+# with a single regex. The obvious pattern —
+# ``-----BEGIN ... -----[\s\S]*?-----END ... -----`` — is quadratic: every
+# unmatched BEGIN marker scans the rest of the buffer looking for an END that
+# is not there. Measured on the output-cache hot path, 2 MB of text carrying
+# repeated BEGIN markers with no END took **100 seconds**, which would hang the
+# PostToolUse hook on something as ordinary as cat-ing a malformed cert bundle.
+#
+# Pairing instead costs two linear passes plus a binary search per BEGIN.
+_PEM_BEGIN_RE = re.compile(r"-----BEGIN [A-Z ]{0,40}PRIVATE KEY-----")
+_PEM_END_RE = re.compile(r"-----END [A-Z ]{0,40}PRIVATE KEY-----")
+
+# An RSA-4096 PEM is roughly 3.2 KB; this is a generous ceiling on how far an
+# END marker may sit from its BEGIN before we stop treating them as a pair.
+MAX_PEM_BLOCK_CHARS = 65536
+
+
+def _find_pem_blocks(text: str) -> list[tuple[int, int]]:
+    """Locate ``BEGIN…END`` private-key blocks as (start, end) offsets.
+
+    Linear in the size of the text. An unterminated BEGIN marker yields
+    nothing rather than scanning to the end of the buffer.
+    """
+    begins = list(_PEM_BEGIN_RE.finditer(text))
+    if not begins:
+        return []
+    ends = list(_PEM_END_RE.finditer(text))
+    if not ends:
+        return []
+
+    end_starts = [m.start() for m in ends]
+    blocks: list[tuple[int, int]] = []
+    consumed_to = -1
+
+    for begin in begins:
+        if begin.start() < consumed_to:
+            continue  # already inside a block we emitted
+        idx = bisect.bisect_left(end_starts, begin.end())
+        if idx >= len(ends):
+            continue  # no END after this BEGIN
+        end_match = ends[idx]
+        if end_match.start() - begin.end() > MAX_PEM_BLOCK_CHARS:
+            continue  # too far apart to be one block
+        blocks.append((begin.start(), end_match.end()))
+        consumed_to = end_match.end()
+
+    return blocks
 
 
 def _shannon_entropy(value: str) -> float:
@@ -376,6 +421,18 @@ def scan_text(text: str, include_heuristic: bool = True) -> list[SecretMatch]:
 
     patterns = _HIGH_CONFIDENCE + (_HEURISTIC if include_heuristic else ())
     candidates: list[SecretMatch] = []
+
+    # PEM blocks are paired separately — see _find_pem_blocks for why.
+    for start, end in _find_pem_blocks(text):
+        candidates.append(
+            SecretMatch(
+                kind="private-key-block",
+                confidence="high",
+                start=start,
+                end=end,
+                preview=_mask(text[start:end]),
+            )
+        )
 
     for pattern in patterns:
         for m in pattern.regex.finditer(text):

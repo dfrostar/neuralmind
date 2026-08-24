@@ -232,3 +232,75 @@ class TestPrefilter:
     def test_prefilter_is_case_insensitive(self):
         assert _may_contain_secret("AUTHORIZATION: BEARER abc")
         assert _may_contain_secret("authorization: bearer abc")
+
+
+class TestPemBlocks:
+    """PEM pairing is hand-rolled because the obvious regex is quadratic."""
+
+    def test_detects_a_block(self):
+        text = f"prefix\n{PEM_BLOCK}\nsuffix"
+        matches = scan_text(text)
+        assert [m.kind for m in matches] == ["private-key-block"]
+
+    def test_detects_multiple_blocks(self):
+        text = f"{PEM_BLOCK}\n\n{PEM_BLOCK}"
+        assert [m.kind for m in scan_text(text)] == [
+            "private-key-block",
+            "private-key-block",
+        ]
+
+    def test_redaction_preserves_surrounding_text(self):
+        out, _ = redact_text(f"before\n{PEM_BLOCK}\nafter")
+        assert out == "before\n[REDACTED:private-key-block]\nafter"
+
+    def test_unterminated_begin_marker_yields_nothing(self):
+        assert scan_text("-----BEGIN RSA PRIVATE KEY-----\nAAAA\n") == []
+
+    def test_end_too_far_away_is_not_paired(self):
+        from neuralmind.secret_scan import MAX_PEM_BLOCK_CHARS
+
+        text = (
+            "-----BEGIN RSA PRIVATE KEY-----\n"
+            + "A" * (MAX_PEM_BLOCK_CHARS + 10)
+            + "\n-----END RSA PRIVATE KEY-----"
+        )
+        assert scan_text(text) == []
+
+    def test_unterminated_markers_do_not_blow_up(self):
+        """Regression: the quadratic pattern took 100s on this input.
+
+        Many BEGIN markers with no END made every marker scan the rest of
+        the buffer. On the output-cache hot path that hung the PostToolUse
+        hook. The bound is deliberately loose — it only needs to catch a
+        return to quadratic behaviour, not police normal variance.
+        """
+        import time
+
+        unit = "-----BEGIN RSA PRIVATE KEY-----\n" + ("A" * 64 + "\n") * 4
+        text = unit * (1_000_000 // len(unit))  # ~1 MB
+
+        start = time.perf_counter()
+        matches = scan_text(text)
+        elapsed = time.perf_counter() - start
+
+        assert matches == []
+        assert elapsed < 5.0, f"scan took {elapsed:.1f}s — quadratic behaviour is back"
+
+
+class TestHeaderTokens:
+    def test_bearer_does_not_span_a_newline(self):
+        """Regression: \\s+ let the token match the *next* line's text."""
+        text = "Authorization: Bearer \nAuthorization: Bearer \n"
+        assert scan_text(text) == []
+
+    def test_bearer_still_matches_on_one_line(self):
+        matches = scan_text(f"Authorization: Bearer {GITHUB_TOKEN}")
+        assert matches
+        assert matches[0].kind == "github-token"
+
+    def test_basic_auth_header(self):
+        matches = scan_text("Authorization: Basic dXNlcjpwYXNzd29yZDEyMw==")
+        assert [m.kind for m in matches] == ["basic-auth-header"]
+
+    def test_basic_does_not_span_a_newline(self):
+        assert scan_text("Authorization: Basic \nQUJDREVGR0hJSktM\n") == []
