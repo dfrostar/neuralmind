@@ -37,7 +37,10 @@ JWT = _j(
     "eyJzdWIiOiIxMjM0NTY3ODkwIn0.",
     "dozjgNryP4J3jVmNHl0w5N_XgL0",
 )
-PG_PASSWORD = "sup3rS3cretPw"
+# Assembled like the rest: unsplit, this is a high-entropy value after a
+# `password`-family keyword, so the repository's own `--strict` self-scan
+# reported it.
+PG_PASSWORD = _j("sup3r", "S3cret", "Pw")
 # A password containing ";", which truncates the generic-assignment value
 # pattern. Split so no contiguous DSN literal sits in a test file.
 TRUNCATING_PASSWORD = _j("pa;", "ssw0rdLongEnough")

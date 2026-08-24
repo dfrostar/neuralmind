@@ -2,9 +2,11 @@
 output_cache.py — Single-slot cache of the most recent bash output
 ==================================================================
 
-When NeuralMind compresses a Bash tool output, the raw stdout/stderr is
+When NeuralMind compresses a Bash tool output, the stdout/stderr is
 stashed to ``<project>/.neuralmind/last_output.json`` so an agent can
-recover the dropped middle without re-running the command. This turns
+recover the dropped middle without re-running the command. It is
+**credential-scrubbed** on the way in and again on the way out — see
+"Redacted" below; nothing here writes raw command output to disk. This turns
 ``NEURALMIND_BYPASS=1`` from a "re-run from scratch" escape hatch into
 a free lookup for the common "wait, I need to see what was elided"
 pattern — which is what costs real time on expensive commands like
