@@ -134,6 +134,7 @@ neuralmind build <project_path> [OPTIONS]
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
 | `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
+| `--redact-secrets` | False | Replace detected credentials with a `[REDACTED:kind]` marker in text entering the index, on all three backends. Equivalent to `NEURALMIND_REDACT_SECRETS=1`. Off by default because redacting costs recall on legitimately secret-shaped identifiers — run `neuralmind scan-for-secrets` first; removing and rotating the credential is the actual fix. |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
