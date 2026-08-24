@@ -6,7 +6,6 @@
 ### Bug Fixes
 
 * **compliance:** let documentation show an annotation without becoming evidence ([4325e06](https://github.com/dfrostar/neuralmind/commit/4325e063e100a1a41bb4c45137b4a106bf9e5440))
-* **context_selector:** merge-sort synapse displacement to preserve higher-scoring vector hits ([c4391af](https://github.com/dfrostar/neuralmind/commit/c4391afb27de5ecde888fb298475e1dcc8378053))
 * **turbovec:** rebuild the index from the node store, not just the graph ([52d7a97](https://github.com/dfrostar/neuralmind/commit/52d7a97c9bce203cd2097ba105b8e15b580244be))
 
 
