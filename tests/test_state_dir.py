@@ -186,3 +186,55 @@ class TestGuardInstalledByNonBuildFlows:
         _git("add", "-A", cwd=repo)
         staged = _git("diff", "--cached", "--name-only", cwd=repo).stdout.split()
         assert staged == ["app.py"]
+
+
+class TestGuardWriteIsConstrained:
+    """The guard write is pinned to one filename in one directory name.
+
+    The directory reaching `_install_guard` derives from a caller-supplied
+    project path — a CLI argument, or an MCP tool input an agent chose — so
+    the sink is constrained rather than trusting the caller. CodeQL flags
+    this flow (argv -> path -> write); the invariant is what makes it safe,
+    and these tests are what keep it true.
+    """
+
+    def test_guard_is_never_written_outside_a_state_dir(self, tmp_path):
+        from neuralmind.state_dir import _install_guard
+
+        for name in ["src", "docs", ".git", "neuralmind", ".neuralmind-backup"]:
+            d = tmp_path / name
+            d.mkdir()
+            _install_guard(d)
+            assert not (d / ".gitignore").exists(), f"wrote a guard into {name}/"
+
+    def test_guard_is_written_into_a_state_dir(self, tmp_path):
+        from neuralmind.state_dir import _install_guard
+
+        d = tmp_path / ".neuralmind"
+        d.mkdir()
+        _install_guard(d)
+        assert (d / ".gitignore").exists()
+
+    def test_missing_directory_is_not_created_by_the_guard(self, tmp_path):
+        """_install_guard writes; it does not create. Must not raise either."""
+        from neuralmind.state_dir import _install_guard
+
+        _install_guard(tmp_path / ".neuralmind")
+        assert not (tmp_path / ".neuralmind").exists()
+
+    def test_dotdot_in_the_path_cannot_escape(self, tmp_path):
+        """A `..` segment resolves before use rather than walking out."""
+        nested = tmp_path / "a" / "b"
+        nested.mkdir(parents=True)
+        target = nested / ".." / ".." / ".neuralmind" / "synapses.db"
+        parent = ensure_parent_dir(target)
+
+        assert parent == (tmp_path / ".neuralmind").resolve()
+        assert (parent / ".gitignore").exists()
+        # nothing was created under the nested path
+        assert not (nested / ".neuralmind").exists()
+
+    def test_only_gitignore_is_ever_written(self, tmp_path):
+        """The state dir gains exactly one file from the guard."""
+        d = ensure_state_dir(tmp_path)
+        assert sorted(x.name for x in d.iterdir()) == [".gitignore"]
