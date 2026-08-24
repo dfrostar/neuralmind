@@ -262,9 +262,14 @@ _HEURISTIC: tuple[_Pattern, ...] = (
     _Pattern(
         "generic-secret-assignment",
         re.compile(
-            r"(?i)\b(?:api[_-]?key|apikey|secret|secret[_-]?key|access[_-]?token|"
-            r"auth[_-]?token|client[_-]?secret|password|passwd|credentials?|"
-            r"private[_-]?key)\b\s*[:=]\s*[\"']?([^\s\"',;]{8,})"
+            # (?<![A-Za-z0-9]) rather than \b: `_` is a word character, so \b
+            # never fires after one and db_password / DB_PASSWORD /
+            # PROD_API_KEY / my_access_token were all invisible — the most
+            # common shape a real credential takes. This still rejects
+            # mypassword, where a letter precedes the keyword.
+            r"(?i)(?<![A-Za-z0-9])(?:api[_-]?key|apikey|secret|secret[_-]?key|"
+            r"access[_-]?token|auth[_-]?token|client[_-]?secret|password|passwd|"
+            r"credentials?|private[_-]?key)\b\s*[:=]\s*[\"']?([^\s\"',;]{8,})"
         ),
         "heuristic",
         group=1,
@@ -281,8 +286,9 @@ _HEURISTIC: tuple[_Pattern, ...] = (
 # PostToolUse hook on something as ordinary as cat-ing a malformed cert bundle.
 #
 # Pairing instead costs two linear passes plus a binary search per BEGIN.
-_PEM_BEGIN_RE = re.compile(r"-----BEGIN [A-Z ]{0,40}PRIVATE KEY-----")
-_PEM_END_RE = re.compile(r"-----END [A-Z ]{0,40}PRIVATE KEY-----")
+# ``BLOCK`` covers PGP, whose armor reads "PRIVATE KEY BLOCK-----".
+_PEM_BEGIN_RE = re.compile(r"-----BEGIN [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
+_PEM_END_RE = re.compile(r"-----END [A-Z ]{0,40}PRIVATE KEY(?: BLOCK)?-----")
 
 # An RSA-4096 PEM is roughly 3.2 KB; this is a generous ceiling on how far an
 # END marker may sit from its BEGIN before we stop treating them as a pair.

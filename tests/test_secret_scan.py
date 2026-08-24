@@ -526,3 +526,72 @@ class TestIndexRedactionCoversEveryBackend:
 
         monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
         assert "[REDACTED" in self._node_to_text(TurboVecEmbedder)
+
+
+class TestKeywordPrefixes:
+    """`db_password` is the commonest shape a real credential takes.
+
+    The heuristic keyword was `\\b`-anchored, but `_` is a word character,
+    so `\\b` never fires after one — every PREFIX_SECRET name was invisible.
+    A `.env` full of DB_PASSWORD=... scanned completely clean.
+    """
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "db_password",
+            "DB_PASSWORD",
+            "MYSQL_PASSWORD",
+            "app_secret",
+            "PROD_API_KEY",
+            "my_access_token",
+            "client-secret",
+            "SERVICE_AUTH_TOKEN",
+            "password",
+            "API_KEY",
+        ],
+    )
+    def test_prefixed_keyword_is_detected(self, name):
+        matches = scan_text(f'{name} = "{GENERIC_SECRET}"')
+        assert matches, f"{name} not detected"
+        assert matches[0].kind == "generic-secret-assignment"
+
+    @pytest.mark.parametrize("name", ["mypassword", "thesecret", "notoken", "xapikey"])
+    def test_letter_prefixed_keyword_is_not_a_finding(self, name):
+        """The lookbehind still rejects a keyword glued to a letter."""
+        assert scan_text(f'{name} = "{GENERIC_SECRET}"') == []
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            'password = os.environ["DB_PASSWORD"]',
+            'db_password = os.getenv("DB_PASSWORD")',
+            "DB_PASSWORD=${DB_PASSWORD}",
+            "my_access_token = None",
+            "PROD_API_KEY: <set-me>",
+            "# db_password is read from vault",
+            'client_secret = ""',
+            "api_key: changeme",
+            'AWS_SECRET_ACCESS_KEY="your_key_here"',
+        ],
+    )
+    def test_named_but_valueless_config_is_not_a_finding(self, line):
+        """Looser keyword matching must not cost the placeholder guard."""
+        assert scan_text(line) == []
+
+
+class TestPgpKeyBlocks:
+    """PGP armor reads `PRIVATE KEY BLOCK-----`, not `PRIVATE KEY-----`."""
+
+    def test_pgp_block_detected(self):
+        block = (
+            "-----BEGIN PGP PRIVATE KEY BLOCK-----\n"
+            "lQOYBFxyz123\n"
+            "-----END PGP PRIVATE KEY BLOCK-----"
+        )
+        assert [m.kind for m in scan_text(block)] == ["private-key-block"]
+
+    @pytest.mark.parametrize("kind", ["RSA", "OPENSSH", "EC", "DSA", "ENCRYPTED"])
+    def test_other_key_types_still_detected(self, kind):
+        block = f"-----BEGIN {kind} PRIVATE KEY-----\nAAAA\n-----END {kind} PRIVATE KEY-----"
+        assert [m.kind for m in scan_text(block)] == ["private-key-block"]
