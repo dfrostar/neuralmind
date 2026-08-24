@@ -236,3 +236,57 @@ class TestLegacyCacheScrubbedOnRead:
         monkeypatch.setenv("NEURALMIND_OUTPUT_REDACT", "0")
         self._write_legacy(tmp_path, f"ANTHROPIC_API_KEY={ANTHROPIC_KEY}")
         assert ANTHROPIC_KEY in read_last_output(tmp_path)["stdout"]
+
+
+class TestCmdLastSurfacesRedaction:
+    """`neuralmind last` must say when it handed back scrubbed output.
+
+    The marker alone is ambiguous — a reader cannot tell whether the value
+    was a secret that got removed or output that always looked like that.
+    The header line is the signal, and nothing was asserting it.
+    """
+
+    @staticmethod
+    def _args(path, json_mode=False):
+        from argparse import Namespace
+
+        return Namespace(project_path=str(path), json=json_mode)
+
+    def test_header_lists_the_removed_kinds(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_last
+
+        write_last_output(
+            tmp_path,
+            stdout=f"ANTHROPIC_API_KEY={ANTHROPIC_KEY}\n",
+            stderr="",
+            exit_code=0,
+            command="printenv",
+        )
+        cmd_last(self._args(tmp_path))
+        out = capsys.readouterr().out
+
+        assert "# redacted: anthropic-api-key" in out
+        assert "[REDACTED:anthropic-api-key]" in out
+        assert ANTHROPIC_KEY not in out
+
+    def test_no_header_when_nothing_was_removed(self, tmp_path, capsys):
+        from neuralmind.cli import cmd_last
+
+        write_last_output(tmp_path, stdout="7 passed\n", stderr="", exit_code=0)
+        cmd_last(self._args(tmp_path))
+        out = capsys.readouterr().out
+
+        assert "# redacted:" not in out
+        assert "7 passed" in out
+
+    def test_json_mode_carries_the_kinds(self, tmp_path, capsys):
+        import json as _json
+
+        from neuralmind.cli import cmd_last
+
+        write_last_output(tmp_path, stdout=f"KEY={AWS_KEY_ID}\n", stderr="", exit_code=0)
+        cmd_last(self._args(tmp_path, json_mode=True))
+        payload = _json.loads(capsys.readouterr().out)
+
+        assert payload["redacted"] == ["aws-access-key-id"]
+        assert AWS_KEY_ID not in payload["stdout"]

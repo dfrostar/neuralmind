@@ -573,6 +573,50 @@ class TestIndexRedactionCoversEveryBackend:
             assert ANTHROPIC_KEY not in text, f"{name} leaked the key with redaction on"
             assert "[REDACTED:anthropic-api-key]" in text, f"{name} did not mark the redaction"
 
+    def test_content_path_redacts_on_chroma(self, monkeypatch):
+        """The content path is separate from _node_to_text and needs cover.
+
+        Only _node_to_text was exercised, so removing redaction from
+        _content_to_text — the path that carries raw document text — would
+        have left these tests green.
+        """
+        pytest.importorskip("chromadb")
+        from neuralmind.embedder import GraphEmbedder
+
+        node = {"id": "n1", "label": "doc", "content_text": f"KEY = {ANTHROPIC_KEY}"}
+        inst = GraphEmbedder.__new__(GraphEmbedder)
+
+        monkeypatch.delenv("NEURALMIND_REDACT_SECRETS", raising=False)
+        assert ANTHROPIC_KEY in GraphEmbedder._content_to_text(inst, node)
+
+        monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
+        scrubbed = GraphEmbedder._content_to_text(inst, node)
+        assert ANTHROPIC_KEY not in scrubbed
+        assert "[REDACTED:anthropic-api-key]" in scrubbed
+
+    def test_bm25_index_on_disk_is_scrubbed(self, monkeypatch, tmp_path):
+        """The regression test for the BM25 bypass.
+
+        build_bm25_index read the raw content_text field, so the credential
+        was persisted to .neuralmind/bm25_index.json even though the vector
+        document beside it had been redacted. Asserting against the file is
+        the only way to catch that — the in-memory node still holds the
+        secret by design.
+        """
+        pytest.importorskip("chromadb")
+        from neuralmind.embedder import GraphEmbedder
+
+        inst = GraphEmbedder.__new__(GraphEmbedder)
+        inst.nodes = [{"id": "n1", "label": "doc", "content_text": f"KEY = {ANTHROPIC_KEY}"}]
+        inst._bm25_path = tmp_path / "bm25_index.json"
+        monkeypatch.setattr(GraphEmbedder, "_node_metadata", lambda self, node: {"id": node["id"]})
+        monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
+
+        GraphEmbedder.build_bm25_index(inst)
+
+        written = inst._bm25_path.read_text(encoding="utf-8")
+        assert ANTHROPIC_KEY not in written, "BM25 persisted the raw credential"
+
     def test_turbovec_is_covered_not_just_chroma(self, monkeypatch):
         """Pins the specific gap: turbovec is the default, chroma is opt-in."""
         from neuralmind.turbovec_backend import TurboVecEmbedder
