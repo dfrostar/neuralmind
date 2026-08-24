@@ -452,7 +452,16 @@ _PREFILTER_LITERALS: tuple[str, ...] = (
     "-----begin",  # pem blocks
     "eyj",  # jwt
     "authorization",  # bearer / basic headers
-    "://",  # connection strings
+    # Connection strings: match the scheme words, not "://". Every URL in
+    # every build log contains "://", so that literal short-circuited
+    # almost nothing — an npm log paid the full sweep (460 ms/2 MB) for it.
+    # The pattern cannot match without one of these schemes, so this stays
+    # a superset while letting ordinary URL-bearing output skip the sweep.
+    "postgres",  # also covers postgresql
+    "mysql",
+    "mongodb",  # also covers mongodb+srv
+    "redis",  # also covers rediss
+    "amqp",
     # generic assignment keywords (also covers aws_secret_access_key,
     # access_token, auth_token, client_secret)
     "apikey",

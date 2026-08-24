@@ -590,3 +590,60 @@ class TestPgpKeyBlocks:
     def test_other_key_types_still_detected(self, kind):
         block = f"{pem_begin(kind)}\nAAAA\n{pem_end(kind)}"
         assert [m.kind for m in scan_text(block)] == ["private-key-block"]
+
+
+# Realistic command output, one line per tool. Reused to assert the
+# prefilter actually short-circuits the kind of text the hook really sees.
+REAL_LOG_LINES = {
+    "npm": "npm WARN deprecated har-validator@5.1.5: no longer supported\n"
+    "npm http fetch GET 200 https://registry.npmjs.org/react 214ms\n",
+    "pip": "Collecting numpy>=1.24\n  Downloading numpy-2.4.6-cp311.whl (18.2 MB)\n",
+    "pytest": "tests/test_core.py::TestBuild::test_incremental PASSED   [ 42%]\n",
+    "docker": "Step 4/12 : RUN apt-get update && apt-get install -y curl\n",
+    "git": "remote: Enumerating objects: 1234, done.\nTo https://github.com/org/repo.git\n",
+    "gcc": "src/parser.c:142:9: warning: unused variable 'tmp' [-Wunused-variable]\n",
+}
+
+
+class TestPrefilterShortCircuitsRealLogs:
+    """The prefilter has to help on output the hook actually sees.
+
+    An earlier version listed "://" for connection strings. Every URL in
+    every build log contains it, so an npm log matched the prefilter and
+    paid the full ~18-pattern sweep — 460 ms per 2 MB — for nothing. The
+    scheme words (postgres, mysql, mongodb, redis, amqp) are a superset of
+    what the pattern can match and are absent from ordinary logs.
+    """
+
+    @pytest.mark.parametrize("tool", sorted(REAL_LOG_LINES))
+    def test_ordinary_output_short_circuits(self, tool):
+        assert not _may_contain_secret(
+            REAL_LOG_LINES[tool] * 50
+        ), f"{tool} output triggers the full sweep for no reason"
+
+    @pytest.mark.parametrize("tool", sorted(REAL_LOG_LINES))
+    def test_ordinary_output_is_never_redacted(self, tool):
+        blob = REAL_LOG_LINES[tool] * 50
+        out, matches = redact_text(blob)
+        assert matches == []
+        assert out is blob
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            # Interpolated, not literal: a contiguous scheme://user:pass@host
+            # in this file is a HIGH finding in the repo's own self-scan.
+            # See tests/secret_fixtures.py.
+            f"postgres://admin:{PG_PASSWORD}@db:5432/app",
+            f"postgresql://admin:{PG_PASSWORD}@db:5432/app",
+            f"mongodb+srv://u:{PG_PASSWORD}@c.mongodb.net",
+            f"mysql://u:{PG_PASSWORD}@h/db",
+            f"redis://user:{PG_PASSWORD}@cache:6379",
+            f"rediss://user:{PG_PASSWORD}@cache:6379",
+            f"amqp://u:{PG_PASSWORD}@rabbit:5672",
+        ],
+    )
+    def test_every_scheme_still_reaches_the_pattern(self, url):
+        """Narrowing the prefilter must not lose a scheme."""
+        assert _may_contain_secret(url), "prefilter would skip this scheme"
+        assert [m.kind for m in scan_text(url)] == ["connection-string-password"]
