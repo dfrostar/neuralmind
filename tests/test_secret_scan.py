@@ -304,3 +304,54 @@ class TestHeaderTokens:
 
     def test_basic_does_not_span_a_newline(self):
         assert scan_text("Authorization: Basic \nQUJDREVGR0hJSktM\n") == []
+
+
+class TestTokenBoundaries:
+    """Vendor patterns are \\b-anchored to avoid firing inside hashes.
+
+    These pin the separators that must keep working, and document the
+    one case the anchoring gives up on.
+    """
+
+    @pytest.mark.parametrize(
+        "label,template",
+        [
+            ("newline", "line\n{s}\nnext"),
+            ("space", "key {s} end"),
+            ("equals", "AWS_ACCESS_KEY_ID={s}"),
+            ("json-quotes", '{{"key":"{s}"}}'),
+            ("url-param", "https://h/?token={s}&x=1"),
+            ("shell-export", "export K={s};"),
+            ("comma", "a,{s},b"),
+            ("tab", "a\t{s}\tb"),
+            ("colon", "aws:{s}"),
+            ("yaml", "  key: {s}"),
+            ("bracket", "[{s}]"),
+            ("end-of-string", "trailing {s}"),
+        ],
+    )
+    def test_realistic_separators_still_match(self, label, template):
+        text = template.format(s=AWS_KEY_ID)
+        assert [m.kind for m in scan_text(text)] == ["aws-access-key-id"], label
+
+    def test_two_secrets_on_one_line_both_match(self):
+        text = f"{AWS_KEY_ID} {GITHUB_TOKEN}"
+        assert {m.kind for m in scan_text(text)} == {
+            "aws-access-key-id",
+            "github-token",
+        }
+
+    def test_documented_limitation_zero_delimiter_concatenation(self):
+        """Known gap: back-to-back credentials with no separator at all.
+
+        Neither token has a word boundary, so neither matches. Dropping
+        the \\b anchor would fix this at the cost of firing inside every
+        hex/base64 hash in a build log — a bad trade on a path that runs
+        on every Bash output. Documented in the module docstring and the
+        security docs rather than silently patched.
+
+        This test exists so the behaviour is a recorded decision rather
+        than an unexamined surprise. If a future change makes these match
+        without regressing the false-positive suite, delete it.
+        """
+        assert scan_text(f"{AWS_KEY_ID}{GITHUB_TOKEN}") == []

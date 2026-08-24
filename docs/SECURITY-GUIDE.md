@@ -292,6 +292,13 @@ placeholder denylist, so `password = "changeme"` is not reported.
 Previews are truncated to a short prefix and never include the tail of
 the secret, so scan output is safe to paste into an issue or a CI log.
 
+**What the anchoring gives up.** Vendor patterns require a word boundary so
+they do not fire inside a longer hex or base64 blob. Consequently two
+credentials concatenated with no delimiter at all (`AKIA…EXAMPLEghp_…`)
+match neither. Every realistic separator works — whitespace, newline, `=`,
+`:`, `,`, quotes, brackets, URL parameters. Treat a clean scan as evidence,
+not proof.
+
 **Exit codes** (so CI can gate on it):
 
 | Condition | Exit |

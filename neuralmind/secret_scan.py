@@ -29,6 +29,17 @@ Design:
   log.
 - **Fail-open on read errors.** A file we cannot decode is skipped, not
   fatal — scanning must never break a build.
+
+Known limitation — token boundaries. Vendor patterns are anchored with
+``\\b`` so ``AKIA``+16 chars does not match inside a longer hex or base64
+blob. Build logs are full of hashes, and this runs on every Bash output,
+so the false-positive cost of dropping the anchor is real. The price is
+that two credentials concatenated with *no* delimiter at all
+(``AKIA…EXAMPLEghp_…``) match neither, since neither has a word boundary.
+Every realistic separator works — whitespace, newline, ``=``, ``:``,
+``,``, quotes, brackets, URL parameters — and a token abutting another
+alphanumeric is not well-formed at that boundary anyway. Treat a clean
+scan as evidence, not proof.
 """
 
 from __future__ import annotations
