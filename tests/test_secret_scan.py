@@ -355,3 +355,174 @@ class TestTokenBoundaries:
         without regressing the false-positive suite, delete it.
         """
         assert scan_text(f"{AWS_KEY_ID}{GITHUB_TOKEN}") == []
+
+
+# Real-world command output that must survive redaction untouched. The
+# output cache redacts every Bash payload by default, so a false positive
+# here silently corrupts what `neuralmind last` gives back.
+#
+# The "sk-" family is deliberately over-represented: an unanchored
+# `sk-` pattern matches inside task-, disk-, risk-, mask-, desk-, flask-,
+# dask-, which shredded 4 of 10 ordinary lines before the \b was added.
+BUILD_OUTPUT_LINES = [
+    "git checkout feature/task-management-refactor-v2",
+    "git branch -D bugfix/disk-usage-reporting-overhaul",
+    "pod/my-task-runner-7d8f9c5b4-xk2mp   Running   0   4d",
+    "  desk-booking-api-prod-deployment   3/3   Running   0   12d",
+    "Downloading disk-utils-2.39.3-linux-amd64.tar.gz",
+    "Installing flask-sqlalchemy-3.1.1-py3-none-any.whl",
+    "npm ERR! dask-distributed-2024.1.0 requires python>=3.9",
+    "WARN  risk-assessment-service-v1.2.0 has a deprecated peer dep",
+    "src/mask-generator/index.ts:42:7 - error TS2322: Type mismatch",
+    "ok  github.com/org/repo/internal/task-queue  0.312s",
+    "PASSED tests/test_foo.py::test_bar",
+    "[INFO] compiling module foo/bar/baz.py ok",
+    "  1234567890abcdef1234567890abcdef12345678  refs/heads/main",
+    "Successfully built 9f8e7d6c5b4a3210fedcba9876543210deadbeef",
+    "  remote: Resolving deltas: 100% (1234/1234), done.",
+    "-rw-r--r--  1 user staff  4096 Aug 24 14:00 database-migration-runner.sql",
+    "docker.io/library/postgres@sha256:abcdef0123456789abcdef0123456789abcdef01",
+    "Run `terraform apply -target=module.disk-encryption-baseline`",
+]
+
+
+class TestNoFalsePositivesOnBuildOutput:
+    """The default-on output cache must not corrupt ordinary command output.
+
+    Regression suite for the unanchored `sk-` pattern, which matched
+    inside task-/disk-/risk-/mask-/desk- and mangled branch names, pod
+    names and package filenames.
+    """
+
+    @pytest.mark.parametrize("line", BUILD_OUTPUT_LINES)
+    def test_line_is_not_redacted(self, line):
+        out, matches = redact_text(line)
+        assert matches == [], f"false positive: {[m.kind for m in matches]}"
+        assert out == line
+
+    def test_whole_corpus_is_untouched(self):
+        blob = "\n".join(BUILD_OUTPUT_LINES)
+        out, matches = redact_text(blob)
+        assert matches == []
+        assert out is blob  # identity — proves the no-op path was taken
+
+    @pytest.mark.parametrize(
+        "word", ["task", "disk", "risk", "mask", "desk", "flask", "dask", "brisk"]
+    )
+    def test_sk_prefixed_words_do_not_match(self, word):
+        """`sk-` inside an ordinary word is not the start of a key."""
+        text = f"{word}-management-refactor-v2-prod-cluster"
+        assert scan_text(text) == []
+
+    def test_sk_prefixed_word_before_ant_does_not_match(self):
+        """The anthropic pattern had the same hole: ta+sk-ant-..."""
+        assert scan_text("task-ant-omation-service-v2-prod") == []
+
+    @pytest.mark.parametrize(
+        "context",
+        ["{k}", "KEY={k}", '"{k}"', "export X={k};", "line\n{k}\nnext", "  key: {k}"],
+    )
+    def test_anchoring_does_not_break_real_anthropic_keys(self, context):
+        assert scan_text(context.format(k=ANTHROPIC_KEY))
+
+    @pytest.mark.parametrize(
+        "context",
+        ["{k}", "KEY={k}", '"{k}"', "export X={k};", "line\n{k}\nnext", "  key: {k}"],
+    )
+    def test_anchoring_does_not_break_real_openai_keys(self, context):
+        assert scan_text(context.format(k=OPENAI_KEY))
+
+
+# Vendor patterns where the credential itself is the whole match. The
+# contextual ones (aws_secret_access_key=…, Authorization: …) are excluded:
+# they are anchored by the surrounding keyword, not by a token boundary.
+ANCHORED_FIXTURES = [
+    ("anthropic-api-key", ANTHROPIC_KEY),
+    ("openai-api-key", OPENAI_KEY),
+    ("aws-access-key-id", AWS_KEY_ID),
+    ("github-token", GITHUB_TOKEN),
+    ("slack-token", SLACK_TOKEN),
+    ("google-api-key", GOOGLE_KEY),
+    ("stripe-secret-key", STRIPE_KEY),
+    ("jwt", JWT),
+]
+
+
+class TestPatternAnchoringInvariant:
+    """Every vendor pattern must require a token boundary.
+
+    This is the invariant whose violation shredded ordinary build output:
+    the `sk-` patterns were written without `\\b`, so they matched inside
+    task-/disk-/risk-. Asserting it behaviourally — rather than claiming
+    it in a docstring, which is what let the bug through — means a new
+    pattern added without an anchor fails here.
+    """
+
+    @pytest.mark.parametrize("kind,secret", ANCHORED_FIXTURES)
+    def test_not_matched_mid_identifier(self, kind, secret):
+        """A credential shape inside a longer identifier is not a credential."""
+        kinds = [m.kind for m in scan_text(f"deploybot{secret}")]
+        assert kind not in kinds, f"{kind} matched without a leading boundary"
+
+    @pytest.mark.parametrize("kind,secret", ANCHORED_FIXTURES)
+    def test_still_matched_at_a_boundary(self, kind, secret):
+        """The anchor must not cost a real detection."""
+        kinds = [m.kind for m in scan_text(f"value = {secret}")]
+        assert kind in kinds, f"{kind} lost at a legitimate boundary"
+
+
+class TestIndexRedactionCoversEveryBackend:
+    """`--redact-secrets` must apply on whichever backend is actually in use.
+
+    turbovec is the shipped default (v0.46.0+); ChromaDB is the opt-in
+    extra. Wiring redaction into only one of them would leave the flag a
+    silent no-op for most users, which is worse than not offering it.
+    """
+
+    @staticmethod
+    def _node():
+        return {
+            "label": f"KEY = {ANTHROPIC_KEY}",
+            "file_type": "code",
+            "source_file": "cfg.py",
+        }
+
+    def _node_to_text(self, cls):
+        # _node_to_text touches no instance state, so an uninitialised
+        # instance is enough and avoids requiring the backend's runtime.
+        return cls._node_to_text(cls.__new__(cls), self._node())
+
+    def _backends(self):
+        from neuralmind.in_memory_backend import InMemoryEmbeddingBackend
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+
+        backends = [
+            ("turbovec", TurboVecEmbedder),  # shipped default
+            ("in_memory", InMemoryEmbeddingBackend),  # selectable via config
+        ]
+        try:
+            from neuralmind.embedder import GraphEmbedder
+
+            backends.append(("chroma", GraphEmbedder))
+        except ImportError:  # chromadb is an opt-in extra
+            pass
+        return backends
+
+    def test_off_by_default_on_every_backend(self, monkeypatch):
+        monkeypatch.delenv("NEURALMIND_REDACT_SECRETS", raising=False)
+        for name, cls in self._backends():
+            assert ANTHROPIC_KEY in self._node_to_text(cls), f"{name} redacted while disabled"
+
+    def test_redacts_when_enabled_on_every_backend(self, monkeypatch):
+        monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
+        for name, cls in self._backends():
+            text = self._node_to_text(cls)
+            assert ANTHROPIC_KEY not in text, f"{name} leaked the key with redaction on"
+            assert "[REDACTED:anthropic-api-key]" in text, f"{name} did not mark the redaction"
+
+    def test_turbovec_is_covered_not_just_chroma(self, monkeypatch):
+        """Pins the specific gap: turbovec is the default, chroma is opt-in."""
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+
+        monkeypatch.setenv("NEURALMIND_REDACT_SECRETS", "1")
+        assert "[REDACTED" in self._node_to_text(TurboVecEmbedder)

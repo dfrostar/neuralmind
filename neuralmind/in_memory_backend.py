@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embedding_backend import EmbeddingBackend
+from .secret_scan import redact_if_enabled
 
 
 class InMemoryEmbeddingBackend(EmbeddingBackend):
@@ -67,7 +68,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
             str(node.get("file_type", node.get("type", "unknown"))),
             str(node.get("source_file", "")),
         ]
-        return "\n".join(part for part in parts if part).strip()
+        return redact_if_enabled("\n".join(part for part in parts if part).strip())
 
     def _node_metadata(self, node: dict[str, Any]) -> dict[str, Any]:
         return {
