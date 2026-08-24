@@ -1,5 +1,18 @@
 # Changelog
 
+## [3.4.1](https://github.com/dfrostar/neuralmind/compare/v3.4.0...v3.4.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **compliance:** let documentation show an annotation without becoming evidence ([4325e06](https://github.com/dfrostar/neuralmind/commit/4325e063e100a1a41bb4c45137b4a106bf9e5440))
+* **turbovec:** rebuild the index from the node store, not just the graph ([52d7a97](https://github.com/dfrostar/neuralmind/commit/52d7a97c9bce203cd2097ba105b8e15b580244be))
+
+
+### Documentation
+
+* **compliance:** document the example opt-out markers in the CLI reference ([c5630e2](https://github.com/dfrostar/neuralmind/commit/c5630e231dea251cea1d3c4ee305dd58c8bd9a8e))
+
 ## [3.4.0](https://github.com/dfrostar/neuralmind/compare/v3.3.2...v3.4.0) (2026-08-23)
 
 

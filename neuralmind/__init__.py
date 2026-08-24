@@ -108,7 +108,7 @@ from .team_memory import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "3.4.0"
+__version__ = "3.4.1"
 # Derived so it can never drift from __version__ again (release-please only
 # rewrites the string literal above; the old hardcoded tuple sat at (1, 12, 0)
 # through three releases).
