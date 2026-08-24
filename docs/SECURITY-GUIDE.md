@@ -312,6 +312,11 @@ Useful flags: `--json` for machine-readable output,
 `--high-confidence-only` to suppress the heuristic tier, `--strict` to
 fail on heuristic findings too.
 
+The scanner does **not** apply `.neuralmindignore` by default. That file
+tunes retrieval (it commonly excludes `docs/` and `tests/`), and inheriting
+it would skip the places credentials actually sit. Pass
+`--use-neuralmindignore` to opt in.
+
 **Redaction at index time:**
 
 ```bash

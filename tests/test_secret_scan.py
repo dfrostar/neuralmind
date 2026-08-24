@@ -23,6 +23,7 @@ from tests.secret_fixtures import (
     ANTHROPIC_KEY,
     AWS_KEY_ID,
     AWS_SECRET,
+    BASIC_AUTH_B64,
     GENERIC_SECRET,
     GITHUB_TOKEN,
     GOOGLE_KEY,
@@ -32,6 +33,8 @@ from tests.secret_fixtures import (
     PG_PASSWORD,
     SLACK_TOKEN,
     STRIPE_KEY,
+    pem_begin,
+    pem_end,
 )
 
 # (label, text, expected kind) — one per vendor shape we claim to catch.
@@ -254,16 +257,12 @@ class TestPemBlocks:
         assert out == "before\n[REDACTED:private-key-block]\nafter"
 
     def test_unterminated_begin_marker_yields_nothing(self):
-        assert scan_text("-----BEGIN RSA PRIVATE KEY-----\nAAAA\n") == []
+        assert scan_text(f"{pem_begin()}\nAAAA\n") == []
 
     def test_end_too_far_away_is_not_paired(self):
         from neuralmind.secret_scan import MAX_PEM_BLOCK_CHARS
 
-        text = (
-            "-----BEGIN RSA PRIVATE KEY-----\n"
-            + "A" * (MAX_PEM_BLOCK_CHARS + 10)
-            + "\n-----END RSA PRIVATE KEY-----"
-        )
+        text = f"{pem_begin()}\n" + "A" * (MAX_PEM_BLOCK_CHARS + 10) + f"\n{pem_end()}"
         assert scan_text(text) == []
 
     def test_unterminated_markers_do_not_blow_up(self):
@@ -276,7 +275,7 @@ class TestPemBlocks:
         """
         import time
 
-        unit = "-----BEGIN RSA PRIVATE KEY-----\n" + ("A" * 64 + "\n") * 4
+        unit = f"{pem_begin()}\n" + ("A" * 64 + "\n") * 4
         text = unit * (1_000_000 // len(unit))  # ~1 MB
 
         start = time.perf_counter()
@@ -299,7 +298,7 @@ class TestHeaderTokens:
         assert matches[0].kind == "github-token"
 
     def test_basic_auth_header(self):
-        matches = scan_text("Authorization: Basic dXNlcjpwYXNzd29yZDEyMw==")
+        matches = scan_text(f"Authorization: Basic {BASIC_AUTH_B64}")
         assert [m.kind for m in matches] == ["basic-auth-header"]
 
     def test_basic_does_not_span_a_newline(self):
@@ -584,14 +583,10 @@ class TestPgpKeyBlocks:
     """PGP armor reads `PRIVATE KEY BLOCK-----`, not `PRIVATE KEY-----`."""
 
     def test_pgp_block_detected(self):
-        block = (
-            "-----BEGIN PGP PRIVATE KEY BLOCK-----\n"
-            "lQOYBFxyz123\n"
-            "-----END PGP PRIVATE KEY BLOCK-----"
-        )
+        block = f"{pem_begin('PGP')}\nlQOYBFxyz123\n{pem_end('PGP')}"
         assert [m.kind for m in scan_text(block)] == ["private-key-block"]
 
     @pytest.mark.parametrize("kind", ["RSA", "OPENSSH", "EC", "DSA", "ENCRYPTED"])
     def test_other_key_types_still_detected(self, kind):
-        block = f"-----BEGIN {kind} PRIVATE KEY-----\nAAAA\n-----END {kind} PRIVATE KEY-----"
+        block = f"{pem_begin(kind)}\nAAAA\n{pem_end(kind)}"
         assert [m.kind for m in scan_text(block)] == ["private-key-block"]

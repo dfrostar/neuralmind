@@ -45,3 +45,22 @@ PEM_BLOCK = _j(
     "-----END RSA PRIVATE KEY-----",
 )
 GENERIC_SECRET = "9f8Kd2mQxZ7pLw3RtY6vNbHj4sA1"
+# base64 of a fake "user:password123" — split so the literal is not in source.
+BASIC_AUTH_B64 = _j("dXNlcjpw", "YXNzd29yZDEyMw==")
+
+
+def pem_begin(kind: str = "RSA") -> str:
+    """A PEM/PGP BEGIN marker, assembled so no literal sits in the source.
+
+    Without this, `neuralmind scan-for-secrets .` flags this repository's
+    own test files — and a scanner that cannot give its own project a clean
+    run is hard to recommend to anyone else.
+    """
+    tail = "PRIVATE KEY BLOCK-----" if kind == "PGP" else "PRIVATE KEY-----"
+    return _j("-----BEGIN ", f"{kind} ", tail)
+
+
+def pem_end(kind: str = "RSA") -> str:
+    """The matching END marker for :func:`pem_begin`."""
+    tail = "PRIVATE KEY BLOCK-----" if kind == "PGP" else "PRIVATE KEY-----"
+    return _j("-----END ", f"{kind} ", tail)

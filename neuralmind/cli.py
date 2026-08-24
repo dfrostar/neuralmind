@@ -190,7 +190,11 @@ def cmd_scan_for_secrets(args):
         sys.exit(2)
 
     include_heuristic = not args.high_confidence_only
-    findings = scan_project(project_path, include_heuristic=include_heuristic)
+    findings = scan_project(
+        project_path,
+        include_heuristic=include_heuristic,
+        respect_ignore_file=args.use_neuralmindignore,
+    )
 
     high = [f for f in findings if f.confidence == "high"]
     heuristic = [f for f in findings if f.confidence != "high"]
@@ -4580,6 +4584,14 @@ def main():
         "--strict",
         action="store_true",
         help="Also exit non-zero on heuristic findings (default: high-confidence only).",
+    )
+    scan_secrets_p.add_argument(
+        "--use-neuralmindignore",
+        dest="use_neuralmindignore",
+        action="store_true",
+        help="Also apply .neuralmindignore globs. Off by default: that file is "
+        "tuned for retrieval quality (it commonly excludes docs/ and tests/), "
+        "and inheriting it would skip places credentials actually sit.",
     )
     scan_secrets_p.add_argument("--json", "-j", action="store_true")
     scan_secrets_p.set_defaults(func=cmd_scan_for_secrets)
