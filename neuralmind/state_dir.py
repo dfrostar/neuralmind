@@ -23,6 +23,10 @@ from pathlib import Path
 
 STATE_DIR_NAME = ".neuralmind"
 
+# The only filename this module ever writes. Pinned so the write sink stays
+# a constant even though the directory it lands in is caller-supplied.
+GUARD_FILENAME = ".gitignore"
+
 # A ``.gitignore`` containing ``*`` ignores every entry in its own
 # directory, itself included, so the whole tree stays untracked with a
 # single file and no entry in the host project's .gitignore.
@@ -46,13 +50,26 @@ def state_dir(project_path: str | Path) -> Path:
 
 
 def _install_guard(target: Path) -> None:
-    """Write the self-ignoring ``.gitignore`` into ``target``.
+    """Write the self-ignoring ``.gitignore`` into a state directory.
+
+    Self-validating: refuses any directory not named ``.neuralmind``, and
+    writes only the fixed ``GUARD_FILENAME``. The path reaching here derives
+    from a caller-supplied project path — a CLI argument, or an MCP tool
+    input an agent chose — so the write is pinned to a known filename inside
+    a known directory name rather than trusting that caller. The path is
+    resolved first, so ``..`` segments cannot walk out of the project.
+
+    That makes this the only place a guard file is ever written, and makes a
+    bug in any caller unable to scatter ``.gitignore`` files across a disk.
 
     Idempotent: an existing file is left alone so a user who deliberately
     edited it keeps their version. Never raises.
     """
     try:
-        guard = target / ".gitignore"
+        resolved = target.resolve()
+        if resolved.name != STATE_DIR_NAME or not resolved.is_dir():
+            return
+        guard = resolved / GUARD_FILENAME
         if not guard.exists():
             guard.write_text(_GUARD_CONTENTS, encoding="utf-8")
     except OSError:
@@ -85,13 +102,18 @@ def ensure_parent_dir(file_path: str | Path) -> Path:
 
     Returns the parent path; never raises.
     """
-    parent = Path(file_path).parent
+    # Resolve before use so a ".." segment in a caller-supplied path cannot
+    # walk somewhere unintended. _install_guard re-checks the directory name,
+    # so the guard is never written outside a state directory.
+    try:
+        parent = Path(file_path).resolve().parent
+    except OSError:
+        return Path(file_path).parent
     try:
         parent.mkdir(parents=True, exist_ok=True)
     except OSError:
         return parent
-    if parent.name == STATE_DIR_NAME:
-        _install_guard(parent)
+    _install_guard(parent)
     return parent
 
 
