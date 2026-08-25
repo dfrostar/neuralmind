@@ -62,7 +62,7 @@ Registers `PostToolUse` compression + `SessionStart` / `UserPromptSubmit` /
   "mcpServers": {
     "neuralmind": {
       "command": "neuralmind-mcp",
-      "args": ["/absolute/path/to/project"]
+      "args": []
     }
   }
 }
@@ -71,7 +71,7 @@ Registers `PostToolUse` compression + `SessionStart` / `UserPromptSubmit` /
 **Cursor / Cline / Continue:** Drop a `.mcp.json` at the project root:
 
 ```json
-{ "mcpServers": { "neuralmind": { "command": "neuralmind-mcp", "args": ["."] } } }
+{ "mcpServers": { "neuralmind": { "command": "neuralmind-mcp", "args": [] } } }
 ```
 
 **Hermes-Agent:**
@@ -83,11 +83,14 @@ hermes mcp add  # or edit ~/.hermes/config.yaml
 **OpenClaw:**
 
 ```bash
-openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path/to/project"]}'
+openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'
 ```
 
-All five point at the same project. Same MCP tools (`neuralmind_wakeup`,
-`_query`, `_skeleton`, `_search`, ...). Same `.neuralmind/synapses.db`.
+The launch spec carries no project path — `neuralmind-mcp` takes no
+arguments. Every tool takes its own `project_path`, so what points all five
+at the same brain is passing the same path per call, not the registration.
+Same MCP tools (`neuralmind_wakeup`, `_query`, `_skeleton`, `_search`, ...).
+Same `.neuralmind/synapses.db`.
 
 ## The new v0.6.0 superpower: see the union
 

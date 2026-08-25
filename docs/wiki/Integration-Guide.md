@@ -43,11 +43,20 @@ synapse edges. The brain is one brain.
 
 ### Verifying the shared-brain setup
 
+The launch spec is *not* what scopes the server to a project.
+`neuralmind-mcp` takes no arguments — every MCP tool carries its own
+`project_path`, resolved against the server process's working directory. So
+register it bare in every host, and make the shared brain by passing the same
+absolute project path on each call:
+
 ```bash
 # In each agent's host (Claude Desktop, Hermes, OpenClaw, etc.),
-# the MCP server is registered with the SAME args:
+# the server is registered with NO arguments:
 
-neuralmind-mcp /absolute/path/to/project
+neuralmind-mcp
+
+# What makes it one brain is the per-call argument, identical everywhere:
+#   neuralmind_query(project_path="/absolute/path/to/project", question="…")
 
 # Verify the agent connected:
 hermes mcp test neuralmind          # if using Hermes

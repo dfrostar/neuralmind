@@ -384,7 +384,7 @@ writer (you still get the in-process feed for the agent running
   "mcpServers": {
     "neuralmind": {
       "command": "neuralmind-mcp",
-      "args": ["/path/to/your/project"]
+      "args": []
     }
   }
 }
@@ -682,7 +682,7 @@ pip install neuralmind
   "mcpServers": {
     "neuralmind": {
       "command": "neuralmind-mcp",
-      "args": ["/path/to/your/project"]
+      "args": []
     }
   }
 }
