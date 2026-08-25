@@ -9,6 +9,7 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
 - [MCP Integration](#mcp-integration)
   - [Claude Desktop](#claude-desktop)
   - [Cursor](#cursor)
+  - [Hermes-Agent](#hermes-agent)
   - [Custom MCP Clients](#custom-mcp-clients)
 - [CI/CD Integration](#cicd-integration)
 - [IDE Integration](#ide-integration)
@@ -310,6 +311,45 @@ Create `.cursor/mcp.json` in your project:
   }
 }
 ```
+
+### Hermes-Agent
+
+Hermes ships its own MCP client and discovers configured servers at
+startup, so NeuralMind's tools arrive as first-class tools alongside
+`terminal` and `read_file` — no bridge process.
+
+#### Configuration
+
+```bash
+hermes mcp add                      # interactive
+# …or edit ~/.hermes/config.yaml directly
+hermes mcp test neuralmind          # verify the agent connected
+```
+
+#### Without the MCP server: install the skill
+
+NeuralMind also ships a portable skill at
+[`skills/neuralmind/SKILL.md`](https://github.com/dfrostar/neuralmind/blob/main/skills/neuralmind/SKILL.md).
+Hermes can install it straight from GitHub — no registry submission, no
+release pipeline, just a repo containing a `skills/` directory:
+
+```bash
+# One skill, without subscribing to the whole repo
+hermes skills install dfrostar/neuralmind/skills/neuralmind
+
+# …or add the repo as a tap and get everything under skills/
+hermes skills tap add dfrostar/neuralmind
+```
+
+Both forms follow Hermes's documented
+`owner/repo/skills/<name>` syntax — see
+[Hermes: Skills](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills).
+New taps are assigned community trust, so the first install shows a
+third-party warning panel after the security scan.
+
+The skill drives the `neuralmind` CLI through Hermes's `terminal` tool, so
+it works with or without the MCP server registered. With both, the MCP
+tools take precedence — same retrieval, fewer shell round-trips.
 
 ### Custom MCP Clients
 
