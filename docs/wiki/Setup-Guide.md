@@ -137,7 +137,7 @@ Or add a `.mcp.json` at your project root so Claude Code loads NeuralMind automa
   "mcpServers": {
     "neuralmind": {
       "command": "neuralmind-mcp",
-      "args": ["."]
+      "args": []
     }
   }
 }
@@ -168,7 +168,7 @@ Or add NeuralMind to your Claude Desktop config manually:
   "mcpServers": {
     "neuralmind": {
       "command": "neuralmind-mcp",
-      "args": ["/absolute/path/to/your-project"]
+      "args": []
     }
   }
 }

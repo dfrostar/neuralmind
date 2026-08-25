@@ -199,7 +199,7 @@ case drive the `neuralmind` CLI through `terminal` instead. See
 **OpenClaw.** Registered once with:
 
 ```bash
-openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path/to/project"]}'
+openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'
 ```
 
 `openclaw mcp show neuralmind` confirms the connection.
@@ -209,6 +209,17 @@ openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":["/absolute/path
 plugin-index manifest for the registry listing — it is not runtime config,
 so its presence tells you nothing about whether the server is wired up.
 Check for the tools.
+
+**Pass a real path, not `.`, when the host runs the server detached.**
+`neuralmind-mcp` takes no launch arguments — every tool resolves its own
+`project_path` argument, relative to whatever working directory the *server*
+process happens to have. Under Claude Code and Cursor that is the project, so
+`project_path="."` above is correct. Under a host that starts the server as a
+long-lived background process — Hermes, OpenClaw, Agent Zero — it may not be,
+and `"."` then silently reads the wrong directory or reports `built: false`
+for an index that exists. If `neuralmind_stats(project_path=".")` claims the
+project is unbuilt when the user says it is built, re-run it with the
+absolute project path before telling them to build.
 
 **One brain, several hosts.** Every host pointed at the same project path
 reinforces the same `.neuralmind/synapses.db`. Associations the user's other
