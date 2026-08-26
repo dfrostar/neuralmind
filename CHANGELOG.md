@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.5.0](https://github.com/dfrostar/neuralmind/compare/v3.4.1...v3.5.0) (2026-08-26)
+
+
+### Features
+
+* redact credentials from persisted output and add secret scanning ([49aa9e0](https://github.com/dfrostar/neuralmind/commit/49aa9e071f3a948c47585f16adcd82ed673d3543))
+
+
+### Bug Fixes
+
+* anchor the sk- patterns and redact on every backend, not just chroma ([4e01f40](https://github.com/dfrostar/neuralmind/commit/4e01f40e6a899ce57c43554fab5b20e9a2bc2c70))
+* boundary-aware prefilter, label-paired PEM, and honest invariants ([108b1ee](https://github.com/dfrostar/neuralmind/commit/108b1ee01363c0f543a7a9d718d73c463dbe255c))
+* close six redaction and guard gaps found in review ([8369cd1](https://github.com/dfrostar/neuralmind/commit/8369cd1819aea99efd6cbdddbcf8e4d9dc7f350a))
+* detect PREFIX_PASSWORD names and PGP private-key blocks ([e303c7a](https://github.com/dfrostar/neuralmind/commit/e303c7a28744764542238d7b3264521dca3c35d3))
+* **docs:** stop telling users to pass a project path the MCP server ignores ([5fd9c06](https://github.com/dfrostar/neuralmind/commit/5fd9c0670d25712b0c26067eb2e8d3a8a4acd126))
+* make PEM detection linear and stop bearer matching across newlines ([b3c408b](https://github.com/dfrostar/neuralmind/commit/b3c408b078d82b1da2dc17cc0a12babeb8ebd212))
+* merge overlapping spans so no credential fragment survives redaction ([21bd34d](https://github.com/dfrostar/neuralmind/commit/21bd34dfc42bf3e34c082004be0bb81573a384db))
+* redact whole quoted values, and guard the state dir in every flow ([09fa772](https://github.com/dfrostar/neuralmind/commit/09fa772c0142dca6e932df68721ab87606a28e7f))
+* **skills:** sync SKILL.md version to the release and document the target hosts ([dada32e](https://github.com/dfrostar/neuralmind/commit/dada32ee43312b8f3cf62b61a2e799b80720f74f))
+* stop the scanner flagging documentation and inheriting index ignores ([d47ee39](https://github.com/dfrostar/neuralmind/commit/d47ee39b1837ec0b1ff6a5b016aa7eeca8c9b4c6))
+
+
+### Performance Improvements
+
+* prefilter on DB scheme words, not "://" ([bfdc917](https://github.com/dfrostar/neuralmind/commit/bfdc91798a688c0d3df53f945ab963908a859080))
+
+
+### Documentation
+
+* list Hermes-Agent, OpenClaw, Agent Zero in README host table ([#477](https://github.com/dfrostar/neuralmind/issues/477)) ([4a3b52e](https://github.com/dfrostar/neuralmind/commit/4a3b52eaa5a71c62e6895d76e60b019482aca892))
+* refresh benchmark chart [skip ci] ([9ae45cd](https://github.com/dfrostar/neuralmind/commit/9ae45cd1e9a1dd9aa9fa961be366e1e1188f3715))
+* **wiki:** document the Hermes-Agent integration the skill points at ([db85289](https://github.com/dfrostar/neuralmind/commit/db85289f9b64e48a49ff285ccb74e725cf0a3bce))
+
 ## [3.4.1](https://github.com/dfrostar/neuralmind/compare/v3.4.0...v3.4.1) (2026-08-24)
 
 
