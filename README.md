@@ -76,11 +76,14 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
+| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. | 🔬 Theoretical |
+| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the draft manifest for the `a0-plugins` registry listing. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
 
-Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI.
+Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules, but none has been physically driven end-to-end yet either.
 
 ---
 
