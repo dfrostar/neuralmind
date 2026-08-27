@@ -72,13 +72,21 @@ requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",
     "toml>=0.10",
-    # <2: the 2.0 SDK removes the low-level Server list_tools/call_tool
-    # decorator API that mcp_server.py registers tools with; lift the cap
-    # only when the server is migrated to the 2.x handler API.
-    "mcp>=1.27.2,<2",
-    # Tier 2: license signing, encryption
-    "cryptography>=41.0",
-    "pydantic>=2.0",
+    # Floor is a security floor: 1.28.1 is the first release clear of
+    # CVE-2026-59950 (GHSA-vj7q-gjh5-988w). <2: the 2.0 SDK removes the
+    # low-level Server list_tools/call_tool decorator API that mcp_server.py
+    # registers tools with; lift the cap only when the server is migrated to
+    # the 2.x handler API.
+    "mcp>=1.28.1,<2",
+    # Tier 2: license signing, encryption (Ed25519 sign/verify only).
+    # Security floor: 50.0.0 is the first release clear of every advisory
+    # open against the 41.x-49.x range this floor used to admit — the newest
+    # being CVE-2026-69247 (GHSA-g6cj-pr64-35w5, fixed 50.0.0). The Ed25519
+    # API used by tier2/ is unchanged since 41.x, so the bump is floor-only.
+    "cryptography>=50.0.0",
+    # Security floor: 2.4.0 clears CVE-2024-3772 (GHSA-mr82-8j83-vxmv, ReDoS),
+    # which affects every 2.0.0-2.3.x release the previous floor admitted.
+    "pydantic>=2.4.0",
     # Vector backend — platform-gated so a base `pip install neuralmind` always
     # resolves to prebuilt wheels (no Rust/C++ toolchain needed):
     #   * the ChromaDB-free TurboQuant/ONNX stack is the default WHERE turbovec
@@ -106,7 +114,10 @@ dependencies = [
     "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
-    "numpy>=1.20",
+    # Security floor: 1.22 clears CVE-2021-34141 (GHSA-fpfv-jqm9-f5jm) and
+    # CVE-2021-33430 (GHSA-6p56-wp2h-9hxr), both of which the 1.20/1.21 range
+    # the previous floor admitted is still flagged for.
+    "numpy>=1.22",
     # Fallback vector backend on platforms without a turbovec wheel (the De
     # Morgan complement of the turbovec marker — PEP 508 has no unary `not`).
     "chromadb>=0.4.0; platform_system != 'Linux' and (platform_system != 'Darwin' or platform_machine != 'arm64') and (platform_system != 'Windows' or platform_machine != 'AMD64')",
