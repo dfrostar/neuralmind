@@ -173,7 +173,7 @@ exceptions that policy has accepted.
 1. **ChromaDB (opt-in fallback since v0.29).** ChromaDB is **no longer the default
    backend**. On mainstream platforms (Linux, Apple Silicon, Windows x64) the default
    is the ChromaDB-free `turbovec`/ONNX stack, so ChromaDB's dependency tree — and the
-   advisory below — are **absent from the default install** entirely. ChromaDB is only
+   advisories below — are **absent from the default install** entirely. ChromaDB is only
    pulled in as a transparent fallback on platforms turbovec has no wheel for (Intel
    macOS, Windows ARM) or when you explicitly select the `chroma` backend. If you do
    run ChromaDB, monitor their advisories.
@@ -197,6 +197,37 @@ exceptions that policy has accepted.
      - References: [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-45829) ·
        [GHSA-f4j7-r4q5-qw2c](https://github.com/advisories/GHSA-f4j7-r4q5-qw2c) ·
        [upstream issue](https://github.com/chroma-core/chroma/issues/6717).
+
+   - **CVE-2026-45830, CVE-2026-45831, CVE-2026-45833 — same disposition, same
+     reason.** Three further ChromaDB advisories share the argument above: each
+     one needs a running ChromaDB *server* with multiple tenants and an
+     authenticated caller, and NeuralMind has none of those. Like CVE-2026-45829,
+     *every* published version is affected (`last_affected: 1.5.9`, the current
+     latest), so no version bump resolves them either.
+     - **CVE-2026-45833 / GHSA-36p7-vc44-83pf** (chromadb ≥ 0.4.17, CRITICAL,
+       CWE-94) — authenticated code injection via a malicious model repository
+       when `trust_remote_code=true`. The post-auth sibling of CVE-2026-45829;
+       NeuralMind never sets `trust_remote_code`.
+       `CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` ·
+       [GHSA-36p7-vc44-83pf](https://github.com/advisories/GHSA-36p7-vc44-83pf)
+     - **CVE-2026-45830 / GHSA-2wm9-hf6c-p5cr** (chromadb ≥ 0.4.17, HIGH) —
+       missing authorization validation lets any authenticated user read, write
+       or delete data in *any* tenant's collection. `PersistentClient` is
+       single-tenant, local, on-disk, and has no authenticated callers to
+       escalate between.
+       `CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N` ·
+       [GHSA-2wm9-hf6c-p5cr](https://github.com/advisories/GHSA-2wm9-hf6c-p5cr)
+     - **CVE-2026-45831 / GHSA-xph7-9rjv-w5fr** (chromadb ≥ 0.5.0, HIGH) —
+       `SimpleRBACAuthorizationProvider` checks whether a user holds a
+       permission but never which tenant, database or collection it applies to.
+       NeuralMind configures no authorization provider at all.
+       `CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N` ·
+       [GHSA-xph7-9rjv-w5fr](https://github.com/advisories/GHSA-xph7-9rjv-w5fr)
+
+     All four are watched together by `.github/workflows/chromadb-cve-watch.yml`,
+     which files a tracking issue only once the latest published chromadb is
+     clear of **every** one of them — a partial upstream fix must not read as
+     permission to move the pin.
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened.
