@@ -78,8 +78,37 @@ def get_security_manager(project_path: str) -> MCPSecurityManager:
     return _security_cache[abs_path]
 
 
+def _unindexed_relative_path_hint(project_path: str) -> str | None:
+    """Detached-host guard: a relative project_path resolves against the
+    *server process's* working directory, not the agent's project. Under hosts
+    that spawn the server detached (Hermes-Agent, OpenClaw, Agent Zero, Claude
+    Desktop) that directory is unrelated to the project, and before this guard
+    the result was silent: stats reported an empty index for a project that is
+    built, and query/wakeup auto-built an index of whatever the server's cwd
+    happened to be. A relative path that resolves to a real indexed project
+    (Claude Code / Cursor style hosts, where cwd *is* the project) passes
+    through untouched.
+    """
+    p = Path(project_path)
+    if p.is_absolute():
+        return None
+    resolved = p.resolve()
+    if (resolved / ".neuralmind").exists() or (resolved / "graphify-out").exists():
+        return None
+    return (
+        f"project_path {project_path!r} is relative and was resolved against the MCP "
+        f"server process's working directory to {resolved}, which contains no "
+        "NeuralMind index. Hosts that launch the server as a detached process "
+        "(Hermes-Agent, OpenClaw, Agent Zero, Claude Desktop) need an absolute "
+        "project path on every tool call."
+    )
+
+
 def tool_wakeup(project_path: str) -> dict[str, Any]:
     """Get wake-up context for starting a conversation."""
+    hint = _unindexed_relative_path_hint(project_path)
+    if hint:
+        raise ValueError(hint)
     mind = get_mind(project_path)
     result = mind.wakeup()
     return {
@@ -98,6 +127,9 @@ def tool_query(project_path: str, question: str, include_relevance: bool = False
     downstream compressor can protect the load-bearing spans instead of
     shrinking them away. Off by default to keep responses small.
     """
+    hint = _unindexed_relative_path_hint(project_path)
+    if hint:
+        raise ValueError(hint)
     mind = get_mind(project_path)
     result = mind.query(question)
     out: dict[str, Any] = {
@@ -117,6 +149,9 @@ def tool_query(project_path: str, question: str, include_relevance: bool = False
 
 def tool_search(project_path: str, query: str, n: int = 10) -> list[dict[str, Any]]:
     """Direct semantic search for code entities."""
+    hint = _unindexed_relative_path_hint(project_path)
+    if hint:
+        raise ValueError(hint)
     mind = get_mind(project_path)
     results = mind.search(query, n=n)
     return [
@@ -146,6 +181,11 @@ def tool_build(project_path: str, force: bool = False) -> dict[str, Any]:
 
 def tool_stats(project_path: str) -> dict[str, Any]:
     """Get index statistics for a project."""
+    hint = _unindexed_relative_path_hint(project_path)
+    if hint:
+        # Keep the documented stats contract (built: false, no exception) so
+        # the SKILL.md prerequisite-check flow still works — but say *why*.
+        return {"project": Path(project_path).name, "built": False, "hint": hint}
     mind = get_mind(project_path, auto_build=False)
     try:
         stats = mind.embedder.get_stats()

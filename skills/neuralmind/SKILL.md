@@ -215,11 +215,13 @@ Check for the tools.
 `project_path` argument, relative to whatever working directory the *server*
 process happens to have. Under Claude Code and Cursor that is the project, so
 `project_path="."` above is correct. Under a host that starts the server as a
-long-lived background process — Hermes, OpenClaw, Agent Zero — it may not be,
-and `"."` then silently reads the wrong directory or reports `built: false`
-for an index that exists. If `neuralmind_stats(project_path=".")` claims the
-project is unbuilt when the user says it is built, re-run it with the
-absolute project path before telling them to build.
+long-lived background process — Hermes, OpenClaw, Agent Zero — it is not,
+and the server now says so instead of failing silently: `neuralmind_stats`
+returns `built: false` with a `hint` naming the directory the relative path
+actually resolved to, and `wakeup` / `query` / `search` return that hint as
+an explicit error rather than auto-building an index of the wrong directory.
+When you see it, retry the same call with the absolute project path — do not
+tell the user to build.
 
 **One brain, several hosts.** Every host pointed at the same project path
 reinforces the same `.neuralmind/synapses.db`. Associations the user's other

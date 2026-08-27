@@ -25,7 +25,6 @@ RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
 
 REDUCTION_FLOOR = 4.0  # keep in sync with tests/benchmark/run.py
 HIT_RATE_FLOOR = 0.50  # at least half of expected modules should show up
-SYNAPSE_HIT_RATE_DELTA_FLOOR = -0.02  # tolerate known bimodal runner-level mode
 
 
 @pytest.fixture(scope="module")
@@ -65,32 +64,39 @@ def test_top_k_hit_rate_above_floor(benchmark_results):
 
 
 def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
-    """Synapse recall must not materially make retrieval worse.
+    """Synapse recall must never make retrieval worse.
 
     Budget-neutral displacement could in principle drop a relevant vector
     hit for a co-activated-but-wrong one. This gate catches that: with the
     same warm graph, recall on must surface at least as many expected
-    modules as recall off.
+    modules as recall off. This is the CI enforcement behind the published
+    "recall-on ≥ recall-off" claim (README, site) — loosening it changes
+    what the product is allowed to say, not just what CI tolerates. A -2pt
+    tolerance briefly lived here for the bimodality described below; it was
+    removed when the harness pinned the suspected source instead.
 
-    Read from the mean of several A/B runs, not one — but do not mistake that
-    mean for a fix. This measurement is bimodal: the same commit on the same
-    runner image has produced both -1.75 and +4.0 points, and it lands on one
-    mode or the other *per job*, returning that mode bit-for-bit on every
-    in-process repeat. So the mean of N runs inside one job is the mean of N
-    copies of a single draw, and averaging cannot make it converge.
+    History of that bimodality, kept because it is the map if this ever
+    recurs. The same commit on the same runner image produced both -1.75 and
+    +4.0 points, landing on one mode *per job* and returning it bit-for-bit
+    on every in-process repeat — so the mean of N in-job runs is N copies of
+    one draw, and averaging cannot converge it. `off_hit_rate_runs` /
+    `on_hit_rate_runs` publish the spread; read them first. Ruled out by
+    measurement: CPU/SIMD feature set, PYTHONHASHSEED, the graph partition
+    (identical digest across a passing and a failing job), Python patch
+    version, resolved dependency versions, neighbour-row order out of the
+    un-ORDER BY'd synapse query, and the recall ranking reverted in #464.
 
-    What the repeat actually buys is the published spread. `off_hit_rate_runs`
-    / `on_hit_rate_runs` are what showed the runs were identical rather than
-    scattered, which is how the variance was localised to between jobs; they
-    are also the tripwire that would catch genuine within-job jitter if it
-    ever appears. Read them first when this gate fails.
-
-    Ruled out as the cause so far, each by measurement rather than argument:
-    CPU/SIMD feature set, PYTHONHASHSEED, the graph partition (seeded Louvain,
-    stable across rebuilds), Python patch version, resolved dependency
-    versions, neighbour-row order out of the un-ORDER BY'd synapse query, and
-    the recall ranking reverted in #464 — the identical failing pair
-    (74.56% -> 72.81%) occurs both with that change and without it.
+    What that left was the vector path, and the one machine property none of
+    the fingerprints captured: core count. ORT sizes its intra-op pool to the
+    host, and parallel-summation order moves the last bits of the embedding
+    floats — machine-fixed, rebuild-stable, exactly the observed profile. The
+    harness now pins NEURALMIND_ORT_THREADS=1 and records cpu_count plus an
+    embedding-probe digest (graph.embedding_probe_sha256_16). If this gate
+    fails again: compare that probe digest and per-query hit_modules
+    (phase2_synapse.queries vs .off_queries) against a passing job before
+    anything else — matching probes with a real delta means displacement
+    genuinely regressed; differing probes falsify the thread pin and name
+    the next suspect.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
@@ -99,13 +105,12 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
             p3.get("off_hit_rate_runs", []), p3.get("on_hit_rate_runs", []), strict=False
         )
     )
-    delta = p3["on_avg_top_k_hit_rate"] - p3["off_avg_top_k_hit_rate"]
-    assert delta >= SYNAPSE_HIT_RATE_DELTA_FLOOR, (
+    assert p3["on_avg_top_k_hit_rate"] >= p3["off_avg_top_k_hit_rate"] - 1e-9, (
         f"Synapse recall lowered hit rate: {p3['off_avg_top_k_hit_rate']:.2%} off → "
         f"{p3['on_avg_top_k_hit_rate']:.2%} on, averaged over "
         f"{p3.get('ab_runs', 1)} run(s) [{runs}] points. "
-        f"Observed delta {delta * 100:+.1f}pts crossed floor "
-        f"{SYNAPSE_HIT_RATE_DELTA_FLOOR * 100:+.1f}pts."
+        "Displacement is dropping relevant hits — see this test's docstring "
+        "for the probe-digest diagnosis path before assuming a flake."
     )
 
 

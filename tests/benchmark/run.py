@@ -60,6 +60,15 @@ REDUCTION_FLOOR = 4.0
 # luck. Three matches the onboarding gate's existing averaging.
 SYNAPSE_AB_RUNS = int(os.environ.get("NEURALMIND_SYNAPSE_AB_RUNS", "3"))
 
+# Pin the embedder's ORT thread pool so the benchmark's numbers are not a
+# function of the runner's core count. ORT sizes intra-op threads to the host
+# by default, and the parallel-summation order moves the last bits of the
+# embedding floats — which is exactly the machine-fixed, rebuild-stable
+# variance profile the Phase-2 bimodality showed (identical graph partition
+# across a passing and a failing job; only the vector path left to differ).
+# setdefault so an operator can still override for a threading experiment.
+os.environ.setdefault("NEURALMIND_ORT_THREADS", "1")
+
 # Pricing used for the dollars-saved estimate in the report.
 # Claude 3.5 Sonnet input price, per 1M tokens, at the time of writing.
 # If model pricing shifts, update here only — the rest cascades.
@@ -434,6 +443,13 @@ def _environment_fingerprint() -> dict:
         "machine": platform.machine(),
         "python": platform.python_version(),
         "cpu_flags": flags,
+        # Core count is what sizes ORT's default thread pool — the one
+        # machine property the flags above don't capture, and the direct
+        # suspect for between-job embedding variance. Recorded together with
+        # the pin actually in effect so a future divergent pair can be
+        # attributed (or the thread hypothesis falsified) by inspection.
+        "cpu_count": os.cpu_count(),
+        "ort_threads": os.environ.get("NEURALMIND_ORT_THREADS") or "default",
         "turbovec": _version("turbovec"),
         "onnxruntime": _version("onnxruntime"),
         "numpy": _version("numpy"),
@@ -467,10 +483,22 @@ def _graph_fingerprint(nm) -> dict:
         digest = hashlib.sha256(
             "\n".join(f"{nid}:{comm}" for nid, comm in rows).encode()
         ).hexdigest()[:16]
+        # Fingerprint the *numeric* embedding path directly: embed a fixed
+        # probe string and hash the raw float bytes. Two jobs whose partition
+        # digests match but whose probe digests differ have divergent ORT
+        # numerics — which localizes a bimodal A/B pair to the vector path in
+        # one comparison instead of another round of ruling things out.
+        probe = ""
+        try:
+            vec = embedder._embed_matrix(["neuralmind determinism probe"])
+            probe = hashlib.sha256(vec.tobytes()).hexdigest()[:16]
+        except Exception:
+            pass  # backends without _embed_matrix; never fail the benchmark
         return {
             "nodes": stats.get("total_nodes"),
             "communities": stats.get("communities"),
             "community_partition_sha256_16": digest,
+            "embedding_probe_sha256_16": probe,
         }
     except Exception as exc:  # diagnostics must never fail the benchmark
         return {"error": f"{type(exc).__name__}: {exc}"}
@@ -516,6 +544,11 @@ def write_results(
             "off_hit_rate_runs": [r.avg_hit_rate for r in off_runs],
             "on_hit_rate_runs": [r.avg_hit_rate for r in on_runs],
             "queries": [asdict(q) for q in on_runs[-1].queries],
+            # Same run index as "queries" (the last A/B repeat), recall off.
+            # Diffing hit_modules between the two shows exactly which queries
+            # displacement changed — the first thing to read when the delta
+            # gate fails, before any cross-job comparison.
+            "off_queries": [asdict(q) for q in off_runs[-1].queries],
         },
         "environment": _environment_fingerprint(),
         "graph": graph_fp or {},
