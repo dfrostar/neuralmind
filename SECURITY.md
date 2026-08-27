@@ -224,10 +224,13 @@ exceptions that policy has accepted.
        `CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N` ·
        [GHSA-xph7-9rjv-w5fr](https://github.com/advisories/GHSA-xph7-9rjv-w5fr)
 
-     All four are watched together by `.github/workflows/chromadb-cve-watch.yml`,
-     which files a tracking issue only once the latest published chromadb is
-     clear of **every** one of them — a partial upstream fix must not read as
-     permission to move the pin.
+     All four are watched by `.github/workflows/chromadb-cve-watch.yml`, which
+     tracks each advisory separately and files a tracking issue as soon as
+     **any** one of them stops flagging the latest release — naming which
+     cleared and which remain. A partial fix does not move the pin, but it does
+     change that advisory's disposition from "dismiss, unreachable" to "fix"
+     under the policy, and a dismissed Dependabot alert never re-alerts to say
+     so.
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened.
