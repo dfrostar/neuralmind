@@ -163,6 +163,13 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 ### Known Security Considerations
 
+Third-party dependency vulnerabilities — Dependabot / OSV alerts against
+packages NeuralMind depends on — are triaged under
+[`docs/VULNERABILITY-MANAGEMENT-POLICY.md`](docs/VULNERABILITY-MANAGEMENT-POLICY.md),
+which sets out when an alert is fixed, when a version floor is raised, and the
+evidence required before one is dismissed. The entries below are the standing
+exceptions that policy has accepted.
+
 1. **ChromaDB (opt-in fallback since v0.29).** ChromaDB is **no longer the default
    backend**. On mainstream platforms (Linux, Apple Silicon, Windows x64) the default
    is the ChromaDB-free `turbovec`/ONNX stack, so ChromaDB's dependency tree — and the
@@ -342,6 +349,11 @@ Security updates are announced through:
 
 - [GitHub Security Advisories](https://github.com/dfrostar/neuralmind/security/advisories)
 - [Release Notes](https://github.com/dfrostar/neuralmind/releases)
+
+Vulnerabilities in NeuralMind's **dependencies** follow a separate track —
+see [`docs/VULNERABILITY-MANAGEMENT-POLICY.md`](docs/VULNERABILITY-MANAGEMENT-POLICY.md)
+for dispositions, remediation targets, and the commands to reproduce the audit
+yourself.
 
 ## Auditability & Explainability
 

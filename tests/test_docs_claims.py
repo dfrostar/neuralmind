@@ -38,6 +38,10 @@ PUBLISHED_FILES = (
     "docs/about.html",
     "docs/COMPLIANCE-SUMMARY.md",
     "docs/SECURITY-GUIDE.md",
+    # Dependency-vulnerability dispositions, read by the same CISOs as the two
+    # above — and the surface most likely to grow a reassuring absolute while
+    # explaining why an alert was dismissed.
+    "docs/VULNERABILITY-MANAGEMENT-POLICY.md",
     "docs/DEPLOYMENT-GUIDE.md",
     "docs/ENTERPRISE.md",
     "docs/BUSINESS-CASE.md",
