@@ -29,3 +29,36 @@ updates:
       - "deprioritized:next-eol"
     commit-message:
       prefix: "chore(deps):"
+
+  # GitHub Actions (.github/workflows/**)
+  # Alerts for this ecosystem already reached us without an entry here —
+  # Dependabot's *alerting* is repo-wide, only its PR-raising is configured.
+  # What was missing is the update side, and its absence showed: action
+  # versions drifted apart across workflows — actions/checkout pinned at both
+  # @v4 and @v7, actions/github-script at @v7 and @v9, actions/setup-python at
+  # @v5 and @v6 — and clearing a future supply-chain advisory on a pinned
+  # major would have meant a hand-written PR.
+  #
+  # Grouped into one PR because a single ungrouped bump per action per week
+  # is exactly the noise that justified leaving this ecosystem out before;
+  # `groups` buys the quiet back without giving up the updates.
+  #
+  # Note: pypa/gh-action-pypi-publish is pinned to `release/v1`, a branch
+  # rather than a tag, so Dependabot cannot version-update it — it tracks
+  # upstream on its own. That is deliberate; don't "fix" it into a tag
+  # without checking the publish workflow still authenticates.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "priority: low"
+    commit-message:
+      prefix: "chore(deps):"
