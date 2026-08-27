@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.5.1](https://github.com/dfrostar/neuralmind/compare/v3.5.0...v3.5.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **deps:** raise security floors clearing 20 dependency advisories + add vulnerability management policy ([#478](https://github.com/dfrostar/neuralmind/issues/478)) ([00c6415](https://github.com/dfrostar/neuralmind/commit/00c64157fc91a5c8b1668a12b130bcd1277ef810))
+
+
+### Documentation
+
+* add GOALS.md with project goals and objectives ([1155675](https://github.com/dfrostar/neuralmind/commit/1155675ecb89d49c9a12c0f77529c1e1d3beb503))
+* add GOALS.md with project goals and objectives ([215a4a1](https://github.com/dfrostar/neuralmind/commit/215a4a1a6fc8036c64c75b6f118c3baca5b672a2))
+* add SOTA OKR-based GOALS.md with measurable objectives ([9d3c112](https://github.com/dfrostar/neuralmind/commit/9d3c112c15cde18721d867c54fc0e281a418f638))
+* add SOTA OKR-based GOALS.md with measurable objectives ([6c4f22b](https://github.com/dfrostar/neuralmind/commit/6c4f22b1bba41843b2a25bc8642c4845d0a0014a))
+
 ## [3.5.0](https://github.com/dfrostar/neuralmind/compare/v3.4.1...v3.5.0) (2026-08-26)
 
 
