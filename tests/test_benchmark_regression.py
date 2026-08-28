@@ -80,23 +80,46 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     +4.0 points, landing on one mode *per job* and returning it bit-for-bit
     on every in-process repeat — so the mean of N in-job runs is N copies of
     one draw, and averaging cannot converge it. `off_hit_rate_runs` /
-    `on_hit_rate_runs` publish the spread; read them first. Ruled out by
-    measurement: CPU/SIMD feature set, PYTHONHASHSEED, the graph partition
-    (identical digest across a passing and a failing job), Python patch
-    version, resolved dependency versions, neighbour-row order out of the
-    un-ORDER BY'd synapse query, and the recall ranking reverted in #464.
+    `on_hit_rate_runs` publish the spread; read them first.
 
-    What that left was the vector path, and the one machine property none of
-    the fingerprints captured: core count. ORT sizes its intra-op pool to the
-    host, and parallel-summation order moves the last bits of the embedding
-    floats — machine-fixed, rebuild-stable, exactly the observed profile. The
-    harness now pins NEURALMIND_ORT_THREADS=1 and records cpu_count plus an
-    embedding-probe digest (graph.embedding_probe_sha256_16). If this gate
-    fails again: compare that probe digest and per-query hit_modules
-    (phase2_synapse.queries vs .off_queries) against a passing job before
-    anything else — matching probes with a real delta means displacement
-    genuinely regressed; differing probes falsify the thread pin and name
-    the next suspect.
+    RESOLVED 2026-08-28 (PR #484). Two conclusions previously recorded here
+    were wrong. They are corrected rather than deleted, because each one sent
+    an investigation down a dead end:
+
+    - "Ruled out by measurement: CPU/SIMD feature set" — SIMD in fact
+      correlates perfectly. Every failing run observed was on an avx512f host
+      and every passing run was not. What that earlier measurement got right
+      is narrower than it sounds: SIMD does not reach the *embeddings*.
+    - "What that left was core count" — it did not. One failing and three
+      passing runs all reported cpu_count 4, and NEURALMIND_ORT_THREADS=1 did
+      not stop the failure: a run with the pin active in its step env still
+      failed with the same numbers.
+
+    What the artifacts showed, once `if: always()` began keeping results.json
+    on failing runs: graph.embedding_probe_sha256_16 was IDENTICAL between
+    passing and failing runs, so the embeddings are bit-identical and the
+    embedding path was never the variable. The vector-only baseline
+    (off_queries) matched on all 19 queries. Exactly one query differed with
+    recall on — `refund` lost its single expected module,
+    billing/stripe_client.py, from the kept results. One query of nineteen
+    flipping 1.0 -> 0.0 is 100/19 = 5.26 points, exactly the gap between the
+    two observed modes.
+
+    Cause: the ranking sorts in neuralmind/context_selector.py ordered on a
+    raw float score. _apply_synapse_recall re-sorts the kept results after
+    boosting and then drops the tail to hold the displacement budget, so a
+    last-bit difference in a score decided which node fell off the end — and
+    that difference was host-dependent. Those sites now use _rank_key(), which
+    quantises the score and breaks ties on node id, making the order a
+    function of the data alone. tests/test_rank_determinism.py pins that
+    contract; its two-host case fails against the old sort.
+
+    If this gate fails again: compare the probe digest and per-query
+    hit_modules (phase2_synapse.queries vs .off_queries) against a passing job
+    before anything else. Matching probes with a real delta means displacement
+    regressed again — check whether a ranking site was added without
+    _rank_key(). Differing probes would be genuinely new; the embedding path
+    has been stable across every run measured so far.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
