@@ -561,9 +561,9 @@ class ContextSelector:
         community_budget = min(max_communities, vector_community_count)
 
         # Get top communities
-        top_communities = sorted(
-            community_scores.items(), key=lambda x: _rank_key(x[1], x[0])
-        )[:community_budget]
+        top_communities = sorted(community_scores.items(), key=lambda x: _rank_key(x[1], x[0]))[
+            :community_budget
+        ]
 
         if self._trace is not None and vector_scores is not None:
             self._trace.record_cluster_scores(
@@ -715,9 +715,7 @@ class ContextSelector:
             r["_synapse_boost"] = boost
             boosted = True
         if boosted:
-            results = sorted(
-                results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id"))
-            )
+            results = sorted(results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id")))
 
         # (b) Swap the weakest vector hits for the strongest absent neighbors.
         #     Displacement keeps the result count fixed, so the token budget
@@ -806,9 +804,7 @@ class ContextSelector:
             r["_structural_boost"] = boost
             boosted = True
         if boosted:
-            results = sorted(
-                results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id"))
-            )
+            results = sorted(results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id")))
 
         # (b) Swap the weakest vector hits for the strongest absent structural
         #     neighbors. Displacement keeps the count fixed → token-neutral.
