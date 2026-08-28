@@ -1,5 +1,23 @@
 # Changelog
 
+## [3.6.0](https://github.com/dfrostar/neuralmind/compare/v3.5.1...v3.6.0) (2026-08-28)
+
+
+### Features
+
+* **ecosystem:** stage the a0-plugins index entry, prevalidated against their CI ([ba03116](https://github.com/dfrostar/neuralmind/commit/ba03116a55f1f0dfb74fee66bcd494e94931e7b1))
+
+
+### Bug Fixes
+
+* **claims:** correct unsourced 12-70x in plugin.yaml, gate registry manifests ([fd4c2bd](https://github.com/dfrostar/neuralmind/commit/fd4c2bdaf160f4bf8b6ebecbe9415368641ac603))
+* loud detached-host path guard + deterministic benchmark embeddings ([#479](https://github.com/dfrostar/neuralmind/issues/479)) ([5013b17](https://github.com/dfrostar/neuralmind/commit/5013b178923213db5e77ce7ddea00d49ae9fff90))
+
+
+### Documentation
+
+* move GOALS.md to neuralmind-autopilot ([ad2275f](https://github.com/dfrostar/neuralmind/commit/ad2275ffc027e213615c95a22669620ca1788745))
+
 ## [3.5.1](https://github.com/dfrostar/neuralmind/compare/v3.5.0...v3.5.1) (2026-08-27)
 
 
