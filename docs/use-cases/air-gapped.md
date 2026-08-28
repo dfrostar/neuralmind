@@ -4,13 +4,15 @@
 > outbound network access — no PyPI, no GitHub, no embedding-model
 > downloads from S3 mid-build.
 
-**Does any of my code go over the wire? No.** That is the question this
-page exists to answer, so it is answered first and exactly, rather than
-with a slogan.
+**Does NeuralMind put any of my code on the wire? No.** That is the
+question this page exists to answer, so it is answered first and exactly,
+rather than with a slogan. Note the scope: this is about what *NeuralMind*
+sends. Your agent still forwards whatever context it selects to its own
+model, and nothing on this page changes that.
 
-Never transmitted: your source, file paths, query text, results, or any
-identifier. There is no telemetry, no remote logging and no update check.
-Every outbound-capable path in the package, in full:
+Never transmitted by NeuralMind: your source, file paths, query text,
+results, or any identifier. There is no telemetry, no remote logging and no
+update check. Every outbound-capable path in the package, in full:
 
 | Path | Target | Carries your data? |
 |---|---|---|
@@ -132,13 +134,31 @@ robust option and the one to prefer:
 export NEURALMIND_ONNX_MODEL_DIR=/opt/models/all-MiniLM-L6-v2/onnx
 ```
 
-> **If you deliberately run the ChromaDB backend** — the fallback on
-> platforms with no turbovec wheel (notably Intel macOS and Windows ARM),
-> or `backend: chroma` set explicitly — then the ChromaDB cache at
-> `~/.cache/chroma/onnx_models/` is what matters and `CHROMA_CACHE_DIR`
-> relocates it. `CHROMA_CACHE_DIR` has **no effect** on the default path:
-> `onnx_embedder.py` hardcodes `~/.cache/chroma` as fallback (3). Use
-> `NEURALMIND_ONNX_MODEL_DIR` instead.
+> **If you deliberately run the ChromaDB backend**, the steps above stage
+> the wrong cache and the air-gapped build will still fail. ChromaDB does
+> not consult `~/.cache/neuralmind/`; the resolution order in this section
+> is NeuralMind's embedder's, not ChromaDB's. ChromaDB reads
+> `~/.cache/chroma/onnx_models/` only.
+>
+> This applies on platforms with no turbovec wheel (notably Intel macOS and
+> Windows ARM), where ChromaDB is the automatic fallback, and wherever
+> `backend: chroma` is set explicitly. Warm and stage that tree as well:
+>
+> ```bash
+> # On the connected machine, in addition to the step above:
+> python -c "from chromadb.utils import embedding_functions as ef; ef.DefaultEmbeddingFunction()(['warm'])"
+> tar czf neuralmind-offline-chroma.tgz -C ~/.cache/chroma onnx_models
+>
+> # On the air-gapped machine:
+> mkdir -p ~/.cache/chroma && tar xzf neuralmind-offline-chroma.tgz -C ~/.cache/chroma
+> ```
+>
+> `CHROMA_CACHE_DIR` relocates ChromaDB's cache and is the right switch on
+> that backend. It has **no effect** on the default path, where
+> `onnx_embedder.py` hardcodes `~/.cache/chroma` as its third candidate —
+> there, use `NEURALMIND_ONNX_MODEL_DIR`.
+>
+> Staging both trees is harmless and makes the bundle backend-agnostic.
 
 ---
 

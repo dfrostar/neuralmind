@@ -92,8 +92,11 @@ FORBIDDEN = [
         re.compile(r"\b(code|logic|data)\s+never\s+leaves?\b", re.IGNORECASE),
         (
             "Absolute privacy claim — the agent still egresses its chosen slice. "
-            "Say what NeuralMind itself does: 'sends no telemetry and transmits "
-            "no repository content'."
+            "Say what NeuralMind itself does, scoped to leaving the machine: "
+            "'sends no telemetry and transmits no repository content off your "
+            "machine'. Unscoped, 'transmits no repository content' contradicts "
+            "the adjacent copy, because handing a slice to a local agent is "
+            "transmitting repository content."
         ),
     ),
     (
@@ -137,8 +140,9 @@ FORBIDDEN = [
         ),
         (
             "False on a cold install — neuralmind/onnx_embedder.py downloads the "
-            "embedding model over HTTPS itself. Say the true and stronger thing: "
-            "'sends no telemetry and transmits no repository content'."
+            "embedding model over HTTPS itself. Say the true and stronger thing, "
+            "scoped to leaving the machine: 'sends no telemetry and transmits no "
+            "repository content off your machine'."
         ),
     ),
     (
@@ -318,7 +322,7 @@ def test_allow_marker_exempts_quoted_disavowals_only() -> None:
     quoted = [
         "<!-- claims-guard:allow — quoting the retracted claim to correct it -->",
         'Before: "your IP never leaves your machine."',
-        "After: NeuralMind transmits no repository content.",
+        "After: NeuralMind transmits no repository content off your machine.",
     ]
     assert _allowed(quoted, 1), "marker on the previous line must exempt the quote"
     assert not _allowed(quoted, 2), "the line after the quote is not exempt"

@@ -60,7 +60,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**NeuralMind sends no telemetry and transmits no repository content.** It processes locally and feeds only the relevant code slice to your AI tool. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
+**NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
