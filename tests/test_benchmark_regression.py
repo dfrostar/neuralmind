@@ -143,11 +143,8 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     WHAT DIFFERS. One artifact from each host class, same commit, settles it.
     The embeddings are identical — both the 1-row and the 64-row batch probe
     match (62fa3fea0d93ea3b, 00b1832575ab567e), and locally the outcome does
-    not move under embedding perturbations from 1e-8 to 1e-2. But the stored
-    index does not match, and neither do the scores it returns:
-
-        vector_index_sha256_16   avx512f      d78c9cdf920bb7a7
-                                 non-avx512f  89f8ca8984701435
+    not move under embedding perturbations from 1e-8 to 1e-2. What differs is
+    the scores the vector index returns:
 
         pre-boost results, `refund`
         non-avx512f (passes)                    avx512f (fails)
@@ -161,9 +158,20 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     one was tried at all eight ranking sites and reverted after measuring
     byte-identical failure with it in or out.
 
-    Identical embeddings in, different scores out, means the divergence is
-    introduced by the vector index itself. TurboVec stores vectors quantised;
-    that quantisation, or the search over it, is host-dependent.
+    Two independent avx512f samples — a CI runner and a dev container —
+    produce these scores identically to twelve decimal places, and both differ
+    from the non-avx512f runner in the same direction. Identical embeddings in
+    and different scores out puts the divergence in the vector index itself.
+    TurboVec stores vectors quantised; that quantisation, or the search over
+    it, is host-dependent.
+
+    Do NOT use graph.vector_index_sha256_16 to decide this on its own. An
+    earlier version of this note offered it as the discriminator, on two
+    samples. A third run then produced a third digest (e0199bd2457050f4) while
+    returning scores identical to another avx512f host, so the digest also
+    moves with build conditions and a difference in it does not by itself mean
+    the hosts diverged. graph.refund_decision_probe carries the scores; those
+    are the evidence.
 
     WHY IT SURFACES ONLY WITH RECALL ON. With recall off, all four results
     enter the context whatever their order, so both host classes agree on set
@@ -186,11 +194,11 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     41.400389273295552).
 
     If this gate fails again: check the runner's avx512f flag and compare
-    graph.vector_index_sha256_16 and graph.refund_decision_probe against a
-    passing job. A differing index digest with the batch embedding probe
-    matching is this same open bug, not a new regression. A differing batch
-    probe would be genuinely new — the embedding path has been bit-stable
-    across every run measured so far.
+    graph.refund_decision_probe against a passing job. Scores matching the
+    avx512f column above, with the batch embedding probe still matching, is
+    this same open bug and not a new regression. A differing batch probe would
+    be genuinely new — the embedding path has been bit-stable across every run
+    measured so far.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
