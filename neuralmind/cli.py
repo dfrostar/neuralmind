@@ -4132,10 +4132,11 @@ def _format_expiring(report: dict) -> str:
         return f"  {entry['customer']:<28} {seats_txt:<14} {when}"
 
     n = report["needs_attention"]
-    lines = [
+    header = (
         f"NeuralMind licence renewals — {n} need{'s' * (n == 1)} attention "
-        f"(window: {within} days, {report['total_active']} active).",
-    ]
+        f"(window: {within} days, {report['total_active']} active)."
+    )
+    lines = [header]
     if report["expired"]:
         lines.append("")
         lines.append("EXPIRED")
