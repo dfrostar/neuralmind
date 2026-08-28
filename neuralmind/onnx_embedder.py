@@ -133,13 +133,42 @@ class OnnxMiniLMEmbedder:
         tok.enable_padding(pad_id=0, pad_token="[PAD]", length=_MAX_TOKENS)
         return tok
 
-    @cached_property
-    def _session(self):
+    @staticmethod
+    def _session_options():
+        """Build ORT session options, honoring ``NEURALMIND_ORT_THREADS``.
+
+        By default onnxruntime sizes its intra-op thread pool to the host's
+        core count, and the parallel reduction order changes the last bits of
+        the embedding floats. Downstream, near-tie rankings (and TurboQuant
+        quantization buckets) can flip on those bits — so the same commit can
+        rank two near-equal candidates differently on runners that differ only
+        in core count. ``NEURALMIND_ORT_THREADS=1`` pins the pool for a
+        machine-independent summation order; the benchmark harness sets it so
+        its published numbers are not a function of the runner it drew.
+        Unset (the default) keeps ORT's own sizing — indexing throughput on
+        real repos matters more than bit-stable floats there.
+        """
         import onnxruntime as ort
 
         so = ort.SessionOptions()
         so.log_severity_level = 3
         so.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        threads = os.environ.get("NEURALMIND_ORT_THREADS", "").strip()
+        if threads:
+            try:
+                n = int(threads)
+            except ValueError:
+                n = 0  # invalid value → keep ORT defaults
+            if n > 0:
+                so.intra_op_num_threads = n
+                so.inter_op_num_threads = 1
+        return so
+
+    @cached_property
+    def _session(self):
+        import onnxruntime as ort
+
+        so = self._session_options()
         providers = ort.get_available_providers()
         # CoreML is slower than CPU for this tiny model; prefer CPU when present.
         providers = [p for p in providers if p != "CoreMLExecutionProvider"]

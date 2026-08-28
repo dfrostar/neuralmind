@@ -432,3 +432,52 @@ class TestAsyncToolHandler:
             # PRAGMA busy_timeout is in milliseconds
             row = conn.execute("PRAGMA busy_timeout").fetchone()
             assert row[0] == 30000, f"Expected 30000ms, got {row[0]}"
+
+
+class TestRelativePathGuard:
+    """The detached-host footgun guard on the four first-contact tools.
+
+    Hosts that spawn the MCP server detached (Hermes-Agent, OpenClaw, Agent
+    Zero, Claude Desktop) give it a working directory unrelated to any
+    project, so ``project_path="."`` used to silently read — or worse,
+    auto-build — whatever that directory was. Smoke-tested for real: stats
+    returned a well-formed empty payload (0 nodes) for a built project.
+    """
+
+    def test_stats_dot_in_unindexed_cwd_hints(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        out = tool_stats(".")
+        assert out["built"] is False
+        assert "hint" in out
+        assert str(tmp_path.resolve()) in out["hint"]
+        assert "absolute project path" in out["hint"]
+
+    def test_query_dot_in_unindexed_cwd_refuses_to_autobuild(self, tmp_path, monkeypatch):
+        from neuralmind.mcp_server import tool_query
+
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ValueError, match="absolute project path"):
+            tool_query(".", "how does auth work?")
+        # The refusal must have prevented the wrong-directory auto-build.
+        assert not (tmp_path / ".neuralmind").exists()
+        assert not (tmp_path / "graphify-out").exists()
+
+    def test_wakeup_and_search_refuse_too(self, tmp_path, monkeypatch):
+        from neuralmind.mcp_server import tool_search, tool_wakeup
+
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(ValueError, match="working directory"):
+            tool_wakeup(".")
+        with pytest.raises(ValueError, match="working directory"):
+            tool_search(".", "AuthService")
+
+    def test_relative_path_to_indexed_project_passes_through(self, tmp_path, monkeypatch):
+        """Claude Code / Cursor style hosts, where cwd IS the project."""
+        (tmp_path / ".neuralmind").mkdir()
+        monkeypatch.chdir(tmp_path)
+        out = tool_stats(".")
+        assert "hint" not in out  # proceeded to the normal stats path
+
+    def test_absolute_path_never_hints(self, tmp_path):
+        out = tool_stats(str(tmp_path))
+        assert "hint" not in out
