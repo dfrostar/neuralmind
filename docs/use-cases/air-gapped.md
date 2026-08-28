@@ -25,6 +25,10 @@ the rest of this page is for. The remaining network dependencies are
 install-time only: the PyPI package download, and NeuralMind's own
 first-use embedding-model download.
 
+<!-- claims-guard:allow — names the retired phrase in order to retire it. Note
+     it currently also escapes FORBIDDEN by being line-wrapped, which is the
+     guard's line-by-line matching hole; this marker keeps the disavowal legal
+     once that hole is closed. -->
 > **On wording, for anyone quoting this page.** That fetch is NeuralMind's
 > own code calling `urllib`, not a dependency's, so "NeuralMind makes no
 > network calls of its own" is false on a cold install and should not be

@@ -193,7 +193,7 @@ That exposes 21 tools — query, search, structural and synaptic neighbours, imp
 
 A registry entry is **submitted to `a0-plugins` and awaiting maintainer review** — agent0ai/a0-plugins#499, plugin validator green. Not merged yet, so install is manual for now.
 
-Where it stands on numbers: 93.75% mean gold-file recall, 79-100% per repo (`click` is the weakest at 0.79, 2 of 7 queries missed), 90% found-rate, at 44.9-256.8x fewer tokens than pasting whole files — 40 pre-registered queries across four SHA-pinned OSS repos. Every miss is published, including the repo where a bare vector baseline beats it outright. Reproduce with `python -m evals.public.run`. MIT core, no telemetry, and NeuralMind makes no network calls of its own.
+Where it stands on numbers: 93.75% mean gold-file recall, 79-100% per repo (`click` is the weakest at 0.79, 2 of 7 queries missed), 90% found-rate, at 44.9-256.8x fewer tokens than pasting whole files — 40 pre-registered queries across four SHA-pinned OSS repos. Every miss is published, including the repo where a bare vector baseline beats it outright. Reproduce with `python -m evals.public.run`. MIT core, no telemetry, and no repository content transmitted — one first-build model download aside, pre-seedable.
 
 Source: github.com/dfrostar/neuralmind
 
@@ -307,7 +307,7 @@ produced from CI output alone. Grouped by which post needs it.
 | a0-plugins submitted, validator green, not merged | agent0ai/a0-plugins#499 checks page, "Validate Plugin PR" succeeded 2026-08-28 |
 | Hermes catalog submitted, labels `type/feature` / `tool/mcp` / `P3`, not merged, one non-blocking review | NousResearch/hermes-agent#97207, checked 2026-08-28 20:30Z |
 | The one outbound request: NeuralMind's own embedder fetches the SHA256-pinned all-MiniLM-L6-v2 ONNX archive on first embed when no cached model is found | `neuralmind/onnx_embedder.py` (`_ARCHIVE_URL`, `_download_into`, resolution order `$NEURALMIND_ONNX_MODEL_DIR` → `~/.cache/neuralmind/onnx_models/` → `~/.cache/chroma/onnx_models/` → download). Verified in code 2026-08-28, not taken from the docs |
-| "makes no network calls of its own", no telemetry | `README.md`; the replacement phrasing prescribed by `tests/test_docs_claims.py` FORBIDDEN |
+| "transmits no repository content", no telemetry | `README.md`; `neuralmind/onnx_embedder.py`, `daemon_client.py`, `local_client.py` read directly. The older phrasing is now itself a FORBIDDEN pattern — it was false on a cold install | <!-- claims-guard:allow — row names the retired phrase in order to record its retirement -->
 | Detached-host absolute-path guard and its hint behaviour | `skills/neuralmind/SKILL.md` "Pass a real path, not `.`"; `neuralmind/mcp_server.py` |
 | Host commands (`openclaw mcp set/show`, `hermes mcp add/test`, `hermes skills install`) | `skills/neuralmind/SKILL.md`; `docs/wiki/Integration-Guide.md` |
 | ClawHub install command `openclaw skills install @dfrostar/neuralmind` | The live ClawHub listing page, 2026-08-28 |

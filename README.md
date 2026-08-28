@@ -60,7 +60,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**NeuralMind makes no network calls of its own.** It processes locally and feeds only the relevant code slice to your AI tool.
+**NeuralMind sends no telemetry and transmits no repository content.** It processes locally and feeds only the relevant code slice to your AI tool. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
@@ -142,7 +142,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that makes no network calls of its own, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -334,9 +334,11 @@ Methodology, gold sets, and community submissions:
 
 ## 🔒 Security & Compliance
 
-- **100% local engine.** NeuralMind makes zero network calls of its own and
-  ships no telemetry. Only the minimal relevant slice of code ever reaches
-  your AI tool.
+- **Local engine, no telemetry.** NeuralMind transmits no repository content
+  and ships no telemetry. Only the minimal relevant slice of code ever reaches
+  your AI tool. The single outbound request it makes is a one-time fetch of a
+  public embedding model on first build, carrying nothing about your code;
+  pre-seed it and the install never reaches the network at all.
 - **CycloneDX SBOM per release**, hash-chained audit log (Team tier), signed
   licenses (Ed25519), tarball integrity instructions on every release.
 - Live posture page: [neuralmind.uk/security](https://neuralmind.uk/security/) ·
@@ -386,7 +388,7 @@ read the number. If it's not worth it, uninstall — and see the
 tier adds governance, audit, and seat management for organizations.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (no network calls of its own, audit log, RBAC). Certification is on
+patterns (no repository content transmitted, audit log, RBAC). Certification is on
 the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 

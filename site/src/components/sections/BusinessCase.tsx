@@ -22,7 +22,7 @@ const cards = [
             '93.75% gold-file recall across 40 pre-registered queries on four public repos — 79–100% per repo, with every miss published rather than dropped.',
             'Team dashboard shows synapse memory health, ingestion status, savings, latency trends — all read-only, all local.',
             'Self-documenting code: DocEvolver finds undocumented methods and evolves JSDoc that actually improves retrieval.',
-            'The engine makes no network calls of its own and sends no telemetry — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
+            'The engine transmits no repository content and sends no telemetry — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
         ],
     },
 ];

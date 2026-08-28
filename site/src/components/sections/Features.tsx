@@ -73,7 +73,7 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
     {
         icon: 'offline',
         title: '100% Local Engine',
-        desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
+        desc: 'NeuralMind transmits no repository content — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry. One first-build model download aside, pre-seedable for air-gapped installs.',
         badge: 'Secure',
     },
     {

@@ -325,9 +325,9 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
 
 ### ✅ SOC 2 Type II
-- **Security**: Local processing, no network calls of its own, encrypted at rest (your choice)
+- **Security**: Local processing, no repository content transmitted, encrypted at rest (your choice)
 - **Availability**: No dependencies on external services for core functionality
-- **Confidentiality**: NeuralMind stores and processes locally and makes no external calls of its own
+- **Confidentiality**: NeuralMind stores and processes locally; no repository content is transmitted (its only outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
 - **Integrity**: Deterministic, reproducible indexing from your source code
 - **Privacy**: No collection, no analytics, no tracking
 
