@@ -135,7 +135,7 @@ Two ways in, and they are not the same thing:
 
 **Why it's worth the setup.** Every host pointed at the same project path reinforces the same synapse store. If you also run Claude Code or Hermes on that repo, they share one learned memory — associations another agent built are visible to this one.
 
-On numbers: 93.75% mean gold-file recall (79-100% per repo, `click` weakest at 0.79) at 44.9-256.8x fewer tokens than pasting whole files, across 40 pre-registered queries on 4 pinned repos. Every miss is published, and a bare vector baseline beats it on one of the four. Reproduce with `python -m evals.public.run`. No telemetry; NeuralMind makes no network calls of its own.
+On numbers: 93.75% mean gold-file recall (79-100% per repo, `click` weakest at 0.79) at 44.9-256.8x fewer tokens than pasting whole files, across 40 pre-registered queries on 4 pinned repos. Every miss is published, and a bare vector baseline beats it on one of the four. Reproduce with `python -m evals.public.run`. No telemetry, and NeuralMind makes no network calls of its own at query time — the one exception is the first `neuralmind build` on a machine with no cached embedding model, which downloads it; later builds are offline and the cache can be pre-seeded for air-gapped installs.
 
 Listing: clawhub.ai/dfrostar/skills/neuralmind · Source: github.com/dfrostar/neuralmind
 
@@ -165,7 +165,7 @@ Skipping MCP entirely also works — the portable skill installs straight from G
 
 A catalog entry is **submitted and awaiting merge** — NousResearch/hermes-agent#97207, labelled `type/feature` / `tool/mcp` / `P3`, with one non-blocking review so far. It is not merged, so for now this is a manual `hermes mcp add`.
 
-Numbers, with the losses attached: 93.75% mean gold-file recall (79-100% per repo) at 44.9-256.8x fewer tokens than pasting whole files, over 40 pre-registered queries on 4 SHA-pinned repos; 4 misses, all published; a bare vector-RAG baseline using the same encoder beats it on `click`. Reproduce: `python -m evals.public.run`. No telemetry, and NeuralMind makes no network calls of its own — your model still sees whatever slice the agent picks.
+Numbers, with the losses attached: 93.75% mean gold-file recall (79-100% per repo) at 44.9-256.8x fewer tokens than pasting whole files, over 40 pre-registered queries on 4 SHA-pinned repos; 4 misses, all published; a bare vector-RAG baseline using the same encoder beats it on `click`. Reproduce: `python -m evals.public.run`. No telemetry, and NeuralMind makes no network calls of its own at query time — the first `neuralmind build` on a machine with no cached embedding model does fetch it, which the catalog manifest now spells out after review feedback. And your model still sees whatever slice the agent picks.
 
 Source: github.com/dfrostar/neuralmind
 
