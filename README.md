@@ -76,9 +76,9 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
-| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. | 🔬 Theoretical |
-| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. | 🔬 Theoretical |
-| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) holds the staged, CI-prevalidated `a0-plugins` index entry, not yet submitted. | 🔬 Theoretical |
+| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — awaiting review, not merged. | 🔬 Theoretical |
+| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. The portable skill is also listed on ClawHub (community channel): `openclaw skills install @dfrostar/neuralmind`. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) holds the `a0-plugins` index entry, [submitted as agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499) — their plugin validator passes; awaiting maintainer review, not merged. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
