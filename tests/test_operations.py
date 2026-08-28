@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
 import pytest
 
@@ -80,6 +81,46 @@ class TestIssueLicense:
         assert entry["customer"] == "Acme"
 
 
+class TestTermArithmetic:
+    """Terms are sold in calendar months and must land on the calendar."""
+
+    def test_annual_term_is_a_calendar_year(self, ops):
+        """A 12-month term expires a year out, not 360 days out."""
+        lic = ops.issue_team_license("Acme", 5, 12)
+        issued = datetime.fromisoformat(lic.issued_at)
+        expires = datetime.fromisoformat(lic.expires_at)
+        assert expires.year == issued.year + 1
+        assert (expires.month, expires.day) == (issued.month, issued.day)
+
+    @pytest.mark.parametrize("term", [1, 3, 6, 12, 24, 36])
+    def test_every_offered_term_lands_on_the_calendar(self, ops, term):
+        """Each term the CLI accepts advances by exactly that many months."""
+        lic = ops.issue_team_license(f"Corp{term}", 5, term)
+        issued = datetime.fromisoformat(lic.issued_at)
+        expires = datetime.fromisoformat(lic.expires_at)
+        months = (expires.year - issued.year) * 12 + (expires.month - issued.month)
+        assert months == term
+
+    def test_month_end_issue_date_clamps(self):
+        """31 Jan + 1 month is 28 Feb, not 3 March."""
+        from neuralmind.tier2.operations import _add_months
+
+        assert _add_months(datetime(2027, 1, 31, tzinfo=timezone.utc), 1) == datetime(
+            2027, 2, 28, tzinfo=timezone.utc
+        )
+        assert _add_months(datetime(2028, 1, 31, tzinfo=timezone.utc), 1) == datetime(
+            2028, 2, 29, tzinfo=timezone.utc
+        )
+
+    def test_term_price_covers_the_whole_term(self):
+        """Every offered term bills the flat monthly rate per month."""
+        from neuralmind.tier2.pricing import DEFAULT_PRICING, calculate_price
+
+        for term in (1, 3, 6, 12, 24, 36):
+            assert calculate_price(DEFAULT_PRICING, "team", 5, term) == 29.00 * term * 5
+        assert calculate_price(DEFAULT_PRICING, "free", 1, 12) == 0.0
+
+
 class TestRenewLicense:
     def test_renew_extends_expiry(self, ops):
         """Renewal extends expires_at by term months."""
@@ -87,6 +128,15 @@ class TestRenewLicense:
         old_expiry = lic1.expires_at
         lic2 = ops.renew_license("Acme", 12)
         assert lic2.expires_at > old_expiry
+
+    def test_renew_extends_by_calendar_months(self, ops):
+        """Renewal runs from the old expiry, by calendar months."""
+        lic1 = ops.issue_team_license("Acme", 5, 12)
+        old_expiry = datetime.fromisoformat(lic1.expires_at)
+        lic2 = ops.renew_license("Acme", 12)
+        new_expiry = datetime.fromisoformat(lic2.expires_at)
+        assert new_expiry.year == old_expiry.year + 1
+        assert (new_expiry.month, new_expiry.day) == (old_expiry.month, old_expiry.day)
 
     def test_renew_nonexistent(self, ops):
         """Renewal fails for non-existent customer."""

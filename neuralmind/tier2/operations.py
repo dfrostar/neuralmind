@@ -5,10 +5,11 @@
 
 from __future__ import annotations
 
+import calendar
 import json
 import tempfile
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import license
@@ -17,6 +18,28 @@ from .pricing import calculate_price, load_pricing
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _add_months(start: datetime, months: int) -> datetime:
+    """Add calendar months to ``start``, clamping to the last valid day.
+
+    Terms are sold in months, so they have to land on the calendar. Adding
+    30-day months shortchanged an annual customer by five days and drifted
+    further on longer terms. Day-of-month is clamped, so 31 Jan + 1 month is
+    28/29 Feb rather than rolling into March.
+
+    Args:
+        start: The instant the term runs from.
+        months: Number of calendar months to add.
+
+    Returns:
+        ``start`` advanced by ``months``, at the same time of day.
+    """
+    total = start.month - 1 + months
+    year = start.year + total // 12
+    month = total % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return start.replace(year=year, month=month, day=day)
 
 
 class LicenseOperations:
@@ -156,7 +179,7 @@ class LicenseOperations:
         license_id = self._generate_license_id()
         customer_id = self._generate_customer_id()
         now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(days=30 * term_months)
+        expires_at = _add_months(now, term_months)
 
         # Build license data
         license_data = {
@@ -243,7 +266,7 @@ class LicenseOperations:
         cust = customers["customers"][customer_name]
 
         old_expires = datetime.fromisoformat(cust["expires_at"])
-        new_expires = old_expires + timedelta(days=30 * term_months)
+        new_expires = _add_months(old_expires, term_months)
 
         # H4 fix: Do not revive revoked licenses
         if cust.get("status") == "revoked":
