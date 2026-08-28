@@ -6002,7 +6002,10 @@ def main():
 
     expiring_lp = license_sub.add_parser(
         "expiring",
-        help="List licenses due for renewal (exit 6 = renewals due, 7 = expired)",
+        help=(
+            "List licenses due for renewal "
+            "(exit 6 = renewals due, 7 = expired or unreadable expiry)"
+        ),
     )
     expiring_lp.add_argument(
         "--within",
