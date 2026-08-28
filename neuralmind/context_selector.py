@@ -92,50 +92,6 @@ _DEFAULT_PARAM_FALLBACK = {
 }
 
 
-# Ranking must not depend on float noise.
-#
-# Two scores that differ only in their last bits are the same score for
-# ordering purposes, but a raw float sort lets that difference decide which
-# node survives a fixed displacement budget — and on CI that difference turned
-# out to be host-dependent, so the same commit ranked differently on different
-# runners (see PR #484).
-#
-# What was measured there: passing and failing runs had an IDENTICAL embedding
-# probe digest and an identical cpu_count, so the embeddings were bit-identical
-# and core count was not the variable. The vector-only baseline was identical
-# on all 19 fixture queries. Exactly one query differed once synapse recall was
-# enabled — its single expected module was displaced out of the kept results,
-# which is 1/19 = 5.26 points, exactly the gap between the two observed modes.
-#
-# Quantising the score before comparison, then breaking ties on the node id,
-# makes the order a function of the data alone. This is not a tolerance on any
-# gate: a near-tie between two candidates is a real modelling ambiguity, and
-# the only thing being fixed is that it used to be resolved by float noise.
-_RANK_QUANTUM = 1e-9
-
-
-def _rank_key(score, node_id):
-    """Descending-score sort key with a deterministic tie-break.
-
-    Use with ``sorted(...)`` and **no** ``reverse=True``: the score is negated
-    here so that ties fall through to ``node_id`` ascending. Passing
-    ``reverse=True`` as well would flip the tie-break too, putting it back to
-    being order-dependent.
-
-    Args:
-        score: Numeric ranking score; non-numeric degrades to 0.0.
-        node_id: Stable identifier used to resolve ties.
-
-    Returns:
-        Tuple usable directly as a ``sorted`` key.
-    """
-    try:
-        bucket = round(float(score) / _RANK_QUANTUM)
-    except (TypeError, ValueError):
-        bucket = 0
-    return (-bucket, str(node_id or ""))
-
-
 def _resolve_params(project_path):
     """Fail-open registry read. Returns the effective param map.
 
@@ -321,7 +277,7 @@ class ContextSelector:
                 by_id[nid] = dict(by_id[nid])
                 by_id[nid]["_hybrid_kw_rank"] = rank + 1
 
-        ranked = sorted(scores.items(), key=lambda x: _rank_key(x[1], x[0]))
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         # Normalise RRF score into [0, 1] so downstream score comparisons
         # stay meaningful (same range as the old pure-vector score).
         max_score = ranked[0][1] if ranked else 1.0
@@ -483,9 +439,9 @@ class ContextSelector:
         if community_dist:
             parts.append("### Code Clusters")
             # Sort by size, show top 10
-            sorted_communities = sorted(
-                community_dist.items(), key=lambda x: _rank_key(x[1], x[0])
-            )[:10]
+            sorted_communities = sorted(community_dist.items(), key=lambda x: x[1], reverse=True)[
+                :10
+            ]
 
             for comm_id, count in sorted_communities:
                 # Get sample nodes from this community
@@ -561,7 +517,7 @@ class ContextSelector:
         community_budget = min(max_communities, vector_community_count)
 
         # Get top communities
-        top_communities = sorted(community_scores.items(), key=lambda x: _rank_key(x[1], x[0]))[
+        top_communities = sorted(community_scores.items(), key=lambda x: x[1], reverse=True)[
             :community_budget
         ]
 
@@ -715,7 +671,7 @@ class ContextSelector:
             r["_synapse_boost"] = boost
             boosted = True
         if boosted:
-            results = sorted(results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id")))
+            results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
 
         # (b) Swap the weakest vector hits for the strongest absent neighbors.
         #     Displacement keeps the result count fixed, so the token budget
@@ -734,7 +690,8 @@ class ContextSelector:
                 and not nid.startswith("community_")
                 and e >= self._synapse_pull_in_min_energy
             ),
-            key=lambda x: _rank_key(x[1], x[0]),
+            key=lambda x: x[1],
+            reverse=True,
         )[: self._synapse_pull_in_max]
         if not candidates:
             return results
@@ -804,7 +761,7 @@ class ContextSelector:
             r["_structural_boost"] = boost
             boosted = True
         if boosted:
-            results = sorted(results, key=lambda r: _rank_key(r.get("score", 0.0), r.get("id")))
+            results = sorted(results, key=lambda r: r.get("score", 0.0), reverse=True)
 
         # (b) Swap the weakest vector hits for the strongest absent structural
         #     neighbors. Displacement keeps the count fixed → token-neutral.
@@ -814,7 +771,8 @@ class ContextSelector:
 
         candidates = sorted(
             ((nid, w) for nid, w in recalled.items() if nid not in present),
-            key=lambda x: _rank_key(x[1], x[0]),
+            key=lambda x: x[1],
+            reverse=True,
         )[: self._structural_pull_in_max]
         if not candidates:
             return results
@@ -977,10 +935,8 @@ class ContextSelector:
                     result["score"] = result.get("score", 0) * 0.7
                     result["_intent_boost"] = 0.7
 
-        # Re-rank by boosted score. Deterministic key: the intent boosts are
-        # float multiplications, so two results can land a hair apart and flip
-        # the order that later decides what a displacement budget drops.
-        results.sort(key=lambda x: _rank_key(x.get("score", 0), x.get("id")))
+        # Re-rank by boosted score
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
         return results
 
     def get_l3_search(self, query: str, n: int = 4) -> tuple[str, int]:

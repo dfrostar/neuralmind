@@ -82,44 +82,88 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     one draw, and averaging cannot converge it. `off_hit_rate_runs` /
     `on_hit_rate_runs` publish the spread; read them first.
 
-    RESOLVED 2026-08-28 (PR #484). Two conclusions previously recorded here
-    were wrong. They are corrected rather than deleted, because each one sent
-    an investigation down a dead end:
+    NOT RESOLVED. Reproduced on demand 2026-08-28 (PR #484); the cause is
+    still open. Read the corrections below before forming a hypothesis —
+    three recorded conclusions were wrong, and each one cost an
+    investigation:
 
-    - "Ruled out by measurement: CPU/SIMD feature set" — SIMD in fact
-      correlates perfectly. Every failing run observed was on an avx512f host
-      and every passing run was not. What that earlier measurement got right
-      is narrower than it sounds: SIMD does not reach the *embeddings*.
-    - "What that left was core count" — it did not. One failing and three
-      passing runs all reported cpu_count 4, and NEURALMIND_ORT_THREADS=1 did
-      not stop the failure: a run with the pin active in its step env still
-      failed with the same numbers.
+    - "Ruled out by measurement: CPU/SIMD feature set" — wrong. SIMD
+      correlates perfectly: every failing run observed was on an avx512f
+      host, every passing run was not. What the earlier measurement got
+      right is narrower than it sounds — SIMD does not reach the
+      *embeddings*.
+    - "What that left was core count" — wrong. cpu_count is 4 on both
+      sides, and NEURALMIND_ORT_THREADS=1 did not stop the failure.
+    - "A last-bit float difference decided which node fell off the end"
+      (PR #484's own first hypothesis) — wrong. Every margin at every
+      decision boundary is ~1e-1 to ~1e-3, orders of magnitude above float
+      noise. A 1e-9 quantised sort key with an id tie-break was tried at
+      all eight ranking sites in context_selector.py and measured on an
+      avx512f host: byte-identical -1.75 with the change in or out. It was
+      reverted, because it moved token counts on 3 of 19 queries and hit
+      rate on none (+141 tokens, reduction 5.0096 -> 4.9719).
 
-    What the artifacts showed, once `if: always()` began keeping results.json
-    on failing runs: graph.embedding_probe_sha256_16 was IDENTICAL between
-    passing and failing runs, so the embeddings are bit-identical and the
-    embedding path was never the variable. The vector-only baseline
-    (off_queries) matched on all 19 queries. Exactly one query differed with
-    recall on — `refund` lost its single expected module,
-    billing/stripe_client.py, from the kept results. One query of nineteen
+    HOW TO REPRODUCE (this is the thing that was missing for months). The
+    failure is not flaky — it is a deterministic function of the host, and
+    it reproduces on any avx512f machine:
+
+        pip install ".[dev]" tiktoken matplotlib "graphifyy==0.9.5"
+        graphify update tests/fixtures/sample_project
+        neuralmind build tests/fixtures/sample_project --force
+        NEURALMIND_ORT_THREADS=1 python -m tests.benchmark.run
+
+    On avx512f this returns 0.7456 -> 0.7281 every time; on a host without
+    avx512f, 0.7456 -> 0.7807 every time. Bit-stable across three A/B
+    iterations, each a full index rebuild. Check with:
+    grep -o 'avx512f' /proc/cpuinfo | head -1
+
+    WHAT IS ESTABLISHED. graph.embedding_probe_sha256_16 is IDENTICAL on
+    every run of both classes, so embeddings are bit-identical and the
+    embedding path is not the variable. With recall OFF the two classes
+    agree exactly on all 19 queries. They diverge only with recall ON, and
+    only through _recall_energy. On avx512f the `refund` query loses its
+    single expected module, billing/stripe_client.py; one query of nineteen
     flipping 1.0 -> 0.0 is 100/19 = 5.26 points, exactly the gap between the
-    two observed modes.
+    two modes.
 
-    Cause: the ranking sorts in neuralmind/context_selector.py ordered on a
-    raw float score. _apply_synapse_recall re-sorts the kept results after
-    boosting and then drops the tail to hold the displacement budget, so a
-    last-bit difference in a score decided which node fell off the end — and
-    that difference was host-dependent. Those sites now use _rank_key(), which
-    quantises the score and breaks ties on node id, making the order a
-    function of the data alone. tests/test_rank_determinism.py pins that
-    contract; its two-host case fails against the old sort.
+    The displacement mechanism itself is ordinary and not in doubt.
+    _apply_synapse_boost step (b) drops the tail of the ranked results and
+    appends the strongest absent neighbours:
 
-    If this gate fails again: compare the probe digest and per-query
-    hit_modules (phase2_synapse.queries vs .off_queries) against a passing job
-    before anything else. Matching probes with a real delta means displacement
-    regressed again — check whether a ranking site was added without
-    _rank_key(). Differing probes would be genuinely new; the embedding path
-    has been stable across every run measured so far.
+        results BEFORE boost (4)
+           1.000  api_routes_rationale_86
+           0.948  api_routes_refund_endpoint
+           0.947  billing_stripe_client_rationale_44     <- dropped
+           0.946  billing_stripe_client_rationale_132    <- dropped
+        pull-in candidates (max 2)
+          42.201  users_crud
+          41.927  users_crud_get_user      <== cutoff
+          41.725  users_crud_create_user
+
+    WHERE TO LOOK NEXT. The divergence enters at or after spreading
+    activation, since that is the only stage between an identical vector
+    baseline and a differing result. Instrument SynapseStore._spread and
+    compare the activation map across host classes before anything else.
+    Note that _spread truncates with an untie-broken sort:
+
+        ranked = sorted(activation.items(), key=lambda x: x[1],
+                        reverse=True)[:top_k]
+
+    and exact ties do occur in this data (users_crud_get_user_by_email and
+    users_crud_update_last_login both at 41.400389273295552). That is a
+    genuine latent nondeterminism worth fixing on its own, but it is not
+    this bug: the refund cutoff has a wide margin.
+
+    Finally, note the method is _apply_synapse_boost. An earlier version of
+    this docstring referred to "_apply_synapse_recall", which does not
+    exist.
+
+    If this gate fails again: first check whether the runner has avx512f,
+    then compare the probe digest and per-query hit_modules
+    (phase2_synapse.queries vs .off_queries) against a passing job. A
+    matching probe with a real delta is this same open bug, not a new
+    regression — the embedding path has been bit-stable across every run
+    measured so far. A differing probe would be genuinely new.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
