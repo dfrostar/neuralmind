@@ -2796,7 +2796,27 @@ neuralmind license renew --customer "Acme Corp" --term 12
 neuralmind license revoke --customer "Acme Corp" --reason "non-payment"
 neuralmind license status --customer "Acme Corp"
 neuralmind license list [--partner ID]
+neuralmind license expiring [--within DAYS] [--json] [--quiet]
 ```
+
+**`expiring`** is the exception to the key requirement above: it is
+read-only, needs no issuer key, and exists so a scheduler can watch for
+lapsing licences without holding anything sensitive. Nothing else in the
+system tracks expiry dates. It signals through its exit code so a caller
+never has to parse output to decide whether to alert:
+
+| Exit | Meaning |
+|-----:|---------|
+| 0 | Nothing due inside the window |
+| 6 | Renewals due inside the window |
+| 7 | Already expired, or an expiry that cannot be parsed (takes precedence over 6) |
+
+`--within` sets the look-ahead in days (default 60). `--quiet` suppresses
+output on exit 0, so a cron entry stays silent unless there is news.
+`--json` emits the full report — `expired`, `expiring` and `unknown`
+buckets, each sorted most-urgent first, with `days_remaining` per customer.
+Revoked licences are excluded: they cannot be renewed. See the
+[Billing Runbook](Billing-Runbook.md) for the scheduling recipe.
 
 | Flag | Applies to | Meaning |
 |------|-----------|---------|
@@ -2804,6 +2824,8 @@ neuralmind license list [--partner ID]
 | `--seats` | issue | Seat count (must be positive) |
 | `--term` | issue, renew | Term in months: 1, 3, 6, 12, 24, or 36 |
 | `--partner` | issue, list | Reseller partner ID |
+| `--within` | expiring | Days ahead to look (default: 60) |
+| `--json` / `--quiet` | expiring | Machine-readable output / silence when nothing is due |
 | `--output` | issue | Where to write the signed licence JSON |
 | `--reason` | revoke | Recorded in the audit log |
 
@@ -2836,6 +2858,8 @@ renewed — issue a new one.
 | 3 | graph.json not found |
 | 4 | Index not built (run `build` first) |
 | 5 | Database error |
+| 6 | `license expiring`: renewals due inside the window |
+| 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |
 
 ---
 

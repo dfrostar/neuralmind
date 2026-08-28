@@ -4078,6 +4078,88 @@ def cmd_license_list(args):
         )
 
 
+def cmd_license_expiring(args):
+    """`neuralmind license expiring` — licences due for renewal.
+
+    Nothing else warns that a Team licence is lapsing, so this is the
+    command a scheduler (cron, a systemd timer, autopilot) runs on a
+    recurring basis. It is built to be consumed rather than read: the exit
+    code alone says whether anyone needs to act, so a caller need not parse
+    output to decide whether to raise an alert.
+
+    Exit codes:
+        0: nothing needs attention inside the window.
+        6: renewals are due (expiring inside the window).
+        7: at least one licence has already expired, or has an expiry that
+           cannot be read. Takes precedence over 6.
+
+    Read-only — it needs no issuer private key.
+    """
+    from neuralmind.tier2.operations import LicenseOperations
+
+    storage_path = Path.home() / ".neuralmind"
+    ops = LicenseOperations("", storage_path)
+    try:
+        report = ops.list_expiring_licenses(within_days=args.within)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    if args.json:
+        print(json.dumps(report, indent=2))
+    elif not args.quiet or report["needs_attention"]:
+        print(_format_expiring(report))
+
+    if report["expired"] or report["unknown"]:
+        sys.exit(7)
+    if report["expiring"]:
+        sys.exit(6)
+
+
+def _format_expiring(report: dict) -> str:
+    """Render an expiry report for a human reading a terminal or an email."""
+    within = report["within_days"]
+    if not report["needs_attention"]:
+        active = report["total_active"]
+        return (
+            f"NeuralMind licence renewals — nothing due within {within} days "
+            f"({active} active licence{'s' * (active != 1)} checked)."
+        )
+
+    def row(entry: dict, when: str) -> str:
+        seats = entry.get("seats")
+        seats_txt = f"{seats} seats" if seats is not None else "seats unknown"
+        return f"  {entry['customer']:<28} {seats_txt:<14} {when}"
+
+    n = report["needs_attention"]
+    lines = [
+        f"NeuralMind licence renewals — {n} need{'s' * (n == 1)} attention "
+        f"(window: {within} days, {report['total_active']} active).",
+    ]
+    if report["expired"]:
+        lines.append("")
+        lines.append("EXPIRED")
+        for e in report["expired"]:
+            days = abs(e["days_remaining"])
+            when = "expired today" if days == 0 else f"expired {days} day{'s' * (days != 1)} ago"
+            lines.append(row(e, f"{when} ({e['expires_at'][:10]})"))
+    if report["expiring"]:
+        lines.append("")
+        lines.append("EXPIRING")
+        for e in report["expiring"]:
+            days = e["days_remaining"]
+            when = "expires today" if days == 0 else f"{days} day{'s' * (days != 1)} remaining"
+            lines.append(row(e, f"{when} ({e['expires_at'][:10]})"))
+    if report["unknown"]:
+        lines.append("")
+        lines.append("UNREADABLE EXPIRY — check customers.yaml")
+        for e in report["unknown"]:
+            lines.append(row(e, f"expires_at={e['expires_at']!r}"))
+    lines.append("")
+    lines.append('Renew with: neuralmind license renew --customer "<name>" --term 12')
+    return "\n".join(lines)
+
+
 def cmd_partner_add(args):
     """Add a new partner."""
     from neuralmind.tier2.operations import PartnerOperations
@@ -5916,6 +5998,25 @@ def main():
     list_lp = license_sub.add_parser("list", help="List all licenses")
     list_lp.add_argument("--partner", default=None, help="Filter by partner ID")
     list_lp.set_defaults(func=cmd_license_list)
+
+    expiring_lp = license_sub.add_parser(
+        "expiring",
+        help="List licenses due for renewal (exit 6 = renewals due, 7 = expired)",
+    )
+    expiring_lp.add_argument(
+        "--within",
+        type=int,
+        default=60,
+        help="Days ahead to look (default: 60)",
+    )
+    expiring_lp.add_argument("--json", "-j", action="store_true", help="Machine-readable output")
+    expiring_lp.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Print nothing when nothing needs attention (for cron)",
+    )
+    expiring_lp.set_defaults(func=cmd_license_expiring)
 
     # partner command — add, list, licenses
     partner_p = subparsers.add_parser(
