@@ -74,7 +74,7 @@ I build NeuralMind, a local MCP server that gives coding agents persistent memor
 
 **What it does.** It parses a repo into a weighted graph of symbols, then answers a question with progressive disclosure — project identity, then architecture, then the relevant cluster, then semantic search — instead of pasting files. On top of that sits a Hebbian synapse layer: files that get used together have their edge strengthened, unused edges decay, so retrieval adapts to how you actually work on that repo. Index and synapse store are SQLite plus a local vector store on your disk.
 
-**On "local."** NeuralMind makes no network calls of its own and has no telemetry. Two honest caveats: install pulls from PyPI, and the vector store downloads its ONNX embedding model on first use — both install-time, both avoidable with the documented offline-bundle path. And your agent still sends whatever slice it picks to whatever model you point it at. If that model is local, the whole loop is; if it's an API, NeuralMind changed how *much* leaves, not *whether*.
+**On "local."** No telemetry, no calls home, nothing at query time. I'll be precise about the one exception rather than say "makes no network calls", because that would be false: the first time it embeds on a machine with no cached model, NeuralMind's *own* embedder fetches the all-MiniLM-L6-v2 ONNX archive over HTTPS and verifies it against a pinned SHA256. It checks `$NEURALMIND_ONNX_MODEL_DIR` and two local cache locations first, so pre-seeding either one removes even that request — which is how the air-gapped path works. Plus the obvious one: install pulls from PyPI. And your agent still sends whatever slice it picks to whatever model you point it at. If that model is local, the whole loop is; if it's an API, NeuralMind changed how *much* leaves, not *whether*.
 
 **The benchmark.** 40 queries pre-registered before any tuning, across `requests`, `click`, `flask` and `rich`, each pinned to a fixed commit SHA. The gold file for each query is the definition site of a named symbol — verifiable with one `rg`, no LLM judge in the headline. Cost and correctness are reported together, because a token ratio without a correctness number is meaningless.
 
@@ -135,7 +135,7 @@ Two ways in, and they are not the same thing:
 
 **Why it's worth the setup.** Every host pointed at the same project path reinforces the same synapse store. If you also run Claude Code or Hermes on that repo, they share one learned memory — associations another agent built are visible to this one.
 
-On numbers: 93.75% mean gold-file recall (79-100% per repo, `click` weakest at 0.79) at 44.9-256.8x fewer tokens than pasting whole files, across 40 pre-registered queries on 4 pinned repos. Every miss is published, and a bare vector baseline beats it on one of the four. Reproduce with `python -m evals.public.run`. No telemetry, and NeuralMind makes no network calls of its own at query time — the one exception is the first `neuralmind build` on a machine with no cached embedding model, which downloads it; later builds are offline and the cache can be pre-seeded for air-gapped installs.
+On numbers: 93.75% mean gold-file recall (79-100% per repo, `click` weakest at 0.79) at 44.9-256.8x fewer tokens than pasting whole files, across 40 pre-registered queries on 4 pinned repos. Every miss is published, and a bare vector baseline beats it on one of the four. Reproduce with `python -m evals.public.run`. No telemetry and nothing on the wire at query time. One exception, stated precisely: the first embed on a machine with no cached model has NeuralMind's own embedder fetch the MiniLM ONNX archive over HTTPS, SHA256-pinned. Set `NEURALMIND_ONNX_MODEL_DIR` (or pre-seed `~/.cache/neuralmind/onnx_models/`) and even that goes away.
 
 Listing: clawhub.ai/dfrostar/skills/neuralmind · Source: github.com/dfrostar/neuralmind
 
@@ -165,7 +165,7 @@ Skipping MCP entirely also works — the portable skill installs straight from G
 
 A catalog entry is **submitted and awaiting merge** — NousResearch/hermes-agent#97207, labelled `type/feature` / `tool/mcp` / `P3`, with one non-blocking review so far. It is not merged, so for now this is a manual `hermes mcp add`.
 
-Numbers, with the losses attached: 93.75% mean gold-file recall (79-100% per repo) at 44.9-256.8x fewer tokens than pasting whole files, over 40 pre-registered queries on 4 SHA-pinned repos; 4 misses, all published; a bare vector-RAG baseline using the same encoder beats it on `click`. Reproduce: `python -m evals.public.run`. No telemetry, and NeuralMind makes no network calls of its own at query time — the first `neuralmind build` on a machine with no cached embedding model does fetch it, which the catalog manifest now spells out after review feedback. And your model still sees whatever slice the agent picks.
+Numbers, with the losses attached: 93.75% mean gold-file recall (79-100% per repo) at 44.9-256.8x fewer tokens than pasting whole files, over 40 pre-registered queries on 4 SHA-pinned repos; 4 misses, all published; a bare vector-RAG baseline using the same encoder beats it on `click`. Reproduce: `python -m evals.public.run`. No telemetry and nothing on the wire at query time. The one exception, which the catalog manifest now spells out after review feedback: on a machine with no cached model, NeuralMind's own embedder fetches the MiniLM ONNX archive over HTTPS, SHA256-pinned, the first time it embeds — `NEURALMIND_ONNX_MODEL_DIR` pre-seeds around it. And your model still sees whatever slice the agent picks.
 
 Source: github.com/dfrostar/neuralmind
 
@@ -306,7 +306,7 @@ produced from CI output alone. Grouped by which post needs it.
 | ClawHub live, v1.0.0, community channel, owner `dfrostar` | `clawhub.ai/api/v1/packages/neuralmind`, fetched 2026-08-28 |
 | a0-plugins submitted, validator green, not merged | agent0ai/a0-plugins#499 checks page, "Validate Plugin PR" succeeded 2026-08-28 |
 | Hermes catalog submitted, labels `type/feature` / `tool/mcp` / `P3`, not merged, one non-blocking review | NousResearch/hermes-agent#97207, checked 2026-08-28 20:30Z |
-| Install-time network: PyPI + first-use ONNX embedding model; offline bundle documented | `docs/use-cases/air-gapped.md` |
+| The one outbound request: NeuralMind's own embedder fetches the SHA256-pinned all-MiniLM-L6-v2 ONNX archive on first embed when no cached model is found | `neuralmind/onnx_embedder.py` (`_ARCHIVE_URL`, `_download_into`, resolution order `$NEURALMIND_ONNX_MODEL_DIR` → `~/.cache/neuralmind/onnx_models/` → `~/.cache/chroma/onnx_models/` → download). Verified in code 2026-08-28, not taken from the docs |
 | "makes no network calls of its own", no telemetry | `README.md`; the replacement phrasing prescribed by `tests/test_docs_claims.py` FORBIDDEN |
 | Detached-host absolute-path guard and its hint behaviour | `skills/neuralmind/SKILL.md` "Pass a real path, not `.`"; `neuralmind/mcp_server.py` |
 | Host commands (`openclaw mcp set/show`, `hermes mcp add/test`, `hermes skills install`) | `skills/neuralmind/SKILL.md`; `docs/wiki/Integration-Guide.md` |
