@@ -483,22 +483,50 @@ def _graph_fingerprint(nm) -> dict:
         digest = hashlib.sha256(
             "\n".join(f"{nid}:{comm}" for nid, comm in rows).encode()
         ).hexdigest()[:16]
-        # Fingerprint the *numeric* embedding path directly: embed a fixed
-        # probe string and hash the raw float bytes. Two jobs whose partition
-        # digests match but whose probe digests differ have divergent ORT
-        # numerics — which localizes a bimodal A/B pair to the vector path in
-        # one comparison instead of another round of ruling things out.
+        # Fingerprint the *numeric* embedding path directly: embed fixed probe
+        # strings and hash the raw float bytes. Two jobs whose partition digests
+        # match but whose probe digests differ have divergent ORT numerics.
+        #
+        # Two probes, because the single-row one is not sufficient and reading
+        # it as such cost an investigation. A 1-row inference and a many-row
+        # batch do not share a code path: batched GEMM picks different kernels
+        # and blocking, which is exactly where a CPU's SIMD width shows up. The
+        # 1-row probe matched across a passing and a failing job, which was read
+        # as "the embeddings are bit-identical" — a conclusion it cannot carry.
         probe = ""
+        probe_batch = ""
         try:
             vec = embedder._embed_matrix(["neuralmind determinism probe"])
             probe = hashlib.sha256(vec.tobytes()).hexdigest()[:16]
+            # Batch path: wide enough to be blocked/tiled like the real corpus.
+            batch = [f"neuralmind determinism probe row {i}" for i in range(64)]
+            vecs = embedder._embed_matrix(batch)
+            probe_batch = hashlib.sha256(vecs.tobytes()).hexdigest()[:16]
         except Exception:
             pass  # backends without _embed_matrix; never fail the benchmark
+
+        # Digest the vectors search actually reads. TurboVec stores them
+        # quantised, so a sub-quantum embedding difference is normally erased
+        # — but a value sitting on a bucket boundary flips discretely. That is
+        # the shape of this gate's failure: two stable modes that each recur
+        # bit-for-bit, rather than the spread continuous jitter would give.
+        # If this digest differs across two jobs, the divergence is upstream in
+        # the embeddings; if it matches while the A/B still splits, it is
+        # downstream in the synapse layer.
+        index_digest = ""
+        try:
+            index_path = getattr(embedder, "_index_path", None)
+            if index_path is not None and index_path.exists():
+                index_digest = hashlib.sha256(index_path.read_bytes()).hexdigest()[:16]
+        except Exception:
+            pass  # diagnostics must never fail the benchmark
         return {
             "nodes": stats.get("total_nodes"),
             "communities": stats.get("communities"),
             "community_partition_sha256_16": digest,
             "embedding_probe_sha256_16": probe,
+            "embedding_probe_batch_sha256_16": probe_batch,
+            "vector_index_sha256_16": index_digest,
         }
     except Exception as exc:  # diagnostics must never fail the benchmark
         return {"error": f"{type(exc).__name__}: {exc}"}
