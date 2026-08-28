@@ -82,9 +82,9 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     one draw, and averaging cannot converge it. `off_hit_rate_runs` /
     `on_hit_rate_runs` publish the spread; read them first.
 
-    NOT RESOLVED. Reproduced on demand 2026-08-28 (PR #484); the cause is
-    still open. Read the corrections below before forming a hypothesis —
-    three recorded conclusions were wrong, and each one cost an
+    CAUSE FOUND 2026-08-28 (PR #484), not yet fixed. The vector scores
+    themselves differ by host — see WHAT DIFFERS below. Read the corrections
+    first: three recorded conclusions were wrong, and each cost an
     investigation:
 
     - "Ruled out by measurement: CPU/SIMD feature set" — wrong. SIMD
@@ -140,30 +140,57 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
           41.927  users_crud_get_user      <== cutoff
           41.725  users_crud_create_user
 
-    WHERE TO LOOK NEXT. The divergence enters at or after spreading
-    activation, since that is the only stage between an identical vector
-    baseline and a differing result. Instrument SynapseStore._spread and
-    compare the activation map across host classes before anything else.
-    Note that _spread truncates with an untie-broken sort:
+    WHAT DIFFERS. One artifact from each host class, same commit, settles it.
+    The embeddings are identical — both the 1-row and the 64-row batch probe
+    match (62fa3fea0d93ea3b, 00b1832575ab567e), and locally the outcome does
+    not move under embedding perturbations from 1e-8 to 1e-2. But the stored
+    index does not match, and neither do the scores it returns:
 
-        ranked = sorted(activation.items(), key=lambda x: x[1],
-                        reverse=True)[:top_k]
+        vector_index_sha256_16   avx512f      d78c9cdf920bb7a7
+                                 non-avx512f  89f8ca8984701435
 
-    and exact ties do occur in this data (users_crud_get_user_by_email and
-    users_crud_update_last_login both at 41.400389273295552). That is a
-    genuine latent nondeterminism worth fixing on its own, but it is not
-    this bug: the refund cutoff has a wide margin.
+        pre-boost results, `refund`
+        non-avx512f (passes)                    avx512f (fails)
+        1.000000  api_routes_rationale_86       1.000000  api_routes_rationale_86
+        0.954860  stripe_client_rationale_44    0.948111  api_routes_refund_endpoint
+        0.946315  stripe_client_rationale_132   0.946988  stripe_client_rationale_44
+        0.940239  api_routes_refund_endpoint    0.946315  stripe_client_rationale_132
 
-    Finally, note the method is _apply_synapse_boost. An earlier version of
-    this docstring referred to "_apply_synapse_recall", which does not
-    exist.
+    stripe_client_rationale_44 scores 0.954860 on one host and 0.946988 on
+    the other. That is 0.8%, not float noise, so no tie-break addresses it —
+    one was tried at all eight ranking sites and reverted after measuring
+    byte-identical failure with it in or out.
 
-    If this gate fails again: first check whether the runner has avx512f,
-    then compare the probe digest and per-query hit_modules
-    (phase2_synapse.queries vs .off_queries) against a passing job. A
-    matching probe with a real delta is this same open bug, not a new
-    regression — the embedding path has been bit-stable across every run
-    measured so far. A differing probe would be genuinely new.
+    Identical embeddings in, different scores out, means the divergence is
+    introduced by the vector index itself. TurboVec stores vectors quantised;
+    that quantisation, or the search over it, is host-dependent.
+
+    WHY IT SURFACES ONLY WITH RECALL ON. With recall off, all four results
+    enter the context whatever their order, so both host classes agree on set
+    and token count on all 19 queries — which is why the vector path looked
+    innocent for so long. _apply_synapse_boost keeps only results[:2] and
+    displaces the rest, so order becomes load-bearing: stripe_client sits at
+    rank 1 on the passing host and rank 2 on the failing one, and rank 2 is
+    dropped. The reordering also changes the top-3 seeds, which is why the
+    spreading-activation energies differ wholesale (47.14 vs 42.20) rather
+    than slightly — that is a consequence, not the cause.
+
+    Not fixed here, because the fix is a product decision rather than a test
+    one: either make the index host-deterministic, or accept that ranking is
+    host-dependent and stop letting a 0.8% score difference decide which node
+    a fixed displacement budget discards.
+
+    Noted separately, genuine but not this bug: SynapseStore._spread truncates
+    with an untie-broken sort, and exact ties do occur in that data
+    (users_crud_get_user_by_email and users_crud_update_last_login at
+    41.400389273295552).
+
+    If this gate fails again: check the runner's avx512f flag and compare
+    graph.vector_index_sha256_16 and graph.refund_decision_probe against a
+    passing job. A differing index digest with the batch embedding probe
+    matching is this same open bug, not a new regression. A differing batch
+    probe would be genuinely new — the embedding path has been bit-stable
+    across every run measured so far.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
