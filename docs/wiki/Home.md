@@ -275,6 +275,7 @@ sections.
 || **[Tier2-Operator-Guide](Tier2-Operator-Guide.md)** | Team tier commands, honest scope, troubleshooting |
 || **[Multi-Project-Scoping](Multi-Project-Scoping.md)** | Working across multiple codebases — isolation rules for NeuralMind, memU, and agent memory |
 || **[Upgrade-Guide](Upgrade-Guide.md)** | Free → Team flow, downgrade, troubleshooting |
+|| **[Billing-Runbook](Billing-Runbook.md)** | Operator: quote → invoice → issue → renew, the manual Team sales path |
 | **[Compatibility Matrix](../COMPATIBILITY.md)** | Version compatibility, Python support, known issues, upgrade paths |
 | **[Benchmarks & Results](Benchmarks)** | Every measured, CI-gated number — token reduction, faithfulness delta, synapse and onboarding lift, ChromaDB-free parity — with reproduction commands |
 
