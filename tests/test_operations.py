@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -119,6 +119,143 @@ class TestTermArithmetic:
         for term in (1, 3, 6, 12, 24, 36):
             assert calculate_price(DEFAULT_PRICING, "team", 5, term) == 29.00 * term * 5
         assert calculate_price(DEFAULT_PRICING, "free", 1, 12) == 0.0
+
+
+class TestExpiringLicenses:
+    """Renewal alerting: nothing else in the system watches expiry dates."""
+
+    NOW = datetime(2026, 6, 1, tzinfo=timezone.utc)
+
+    def _seed(self, ops, **customers):
+        """Write customer records directly, with controlled expiry dates."""
+        data = {"customers": {}}
+        for name, (days, status) in customers.items():
+            data["customers"][name] = {
+                "customer_id": f"cus_{name}",
+                "license_id": f"lic_{name}",
+                "seats": 10,
+                "tier": "team",
+                "status": status,
+                "expires_at": (self.NOW + timedelta(days=days)).isoformat(),
+            }
+        ops._save_customers(data)
+
+    def test_buckets_by_urgency(self, ops):
+        """Expired, expiring-within-window, and healthy are separated."""
+        self._seed(
+            ops,
+            lapsed=(-10, "active"),
+            soon=(20, "active"),
+            healthy=(300, "active"),
+        )
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert [e["customer"] for e in r["expired"]] == ["lapsed"]
+        assert [e["customer"] for e in r["expiring"]] == ["soon"]
+        assert r["needs_attention"] == 2
+        assert r["total_active"] == 3
+
+    def test_revoked_excluded(self, ops):
+        """A revoked licence cannot be renewed, so it is not a renewal lead."""
+        self._seed(ops, gone=(-5, "revoked"), live=(10, "active"))
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert r["total_active"] == 1
+        assert all(e["customer"] != "gone" for e in r["expired"] + r["expiring"])
+
+    def test_sorted_most_urgent_first(self, ops):
+        """Ordering is by remaining days so the top line is the worst case."""
+        self._seed(ops, a=(50, "active"), b=(5, "active"), c=(30, "active"))
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert [e["customer"] for e in r["expiring"]] == ["b", "c", "a"]
+
+    def test_window_is_respected(self, ops):
+        """A licence outside the window is not reported."""
+        self._seed(ops, later=(90, "active"))
+        assert ops.list_expiring_licenses(within_days=60, now=self.NOW)["needs_attention"] == 0
+        assert ops.list_expiring_licenses(within_days=120, now=self.NOW)["needs_attention"] == 1
+
+    def test_unreadable_expiry_is_surfaced_not_swallowed(self, ops):
+        """A record we cannot date is an operator problem, not a silent skip."""
+        ops._save_customers(
+            {"customers": {"broken": {"seats": 5, "status": "active", "expires_at": "soon-ish"}}}
+        )
+        r = ops.list_expiring_licenses(now=self.NOW)
+        assert [e["customer"] for e in r["unknown"]] == ["broken"]
+        assert r["needs_attention"] == 1
+
+    def test_never_expires_is_not_an_alert(self, ops):
+        """A perpetual licence is healthy, not overdue."""
+        ops._save_customers(
+            {"customers": {"perpetual": {"seats": 1, "status": "active", "expires_at": "never"}}}
+        )
+        r = ops.list_expiring_licenses(now=self.NOW)
+        assert r["needs_attention"] == 0
+        assert r["total_active"] == 1
+
+    def test_naive_timestamp_treated_as_utc(self, ops):
+        """Older records without a timezone must not raise on comparison."""
+        ops._save_customers(
+            {
+                "customers": {
+                    "legacy": {"seats": 5, "status": "active", "expires_at": "2026-06-20T00:00:00"}
+                }
+            }
+        )
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert [e["customer"] for e in r["expiring"]] == ["legacy"]
+
+    def test_empty_store_is_all_clear(self, ops):
+        """No customers yet is a clean result, not an error."""
+        r = ops.list_expiring_licenses(now=self.NOW)
+        assert r["needs_attention"] == 0
+        assert r["total_active"] == 0
+
+    def test_day_count_truncates_toward_zero(self, ops):
+        """4.1 days past due is 4 days ago, not 5; 17.9 left is 17, not 18."""
+        ops._save_customers(
+            {
+                "customers": {
+                    "past": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW - timedelta(days=4, hours=2)).isoformat(),
+                    },
+                    "future": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW + timedelta(days=17, hours=22)).isoformat(),
+                    },
+                }
+            }
+        )
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert r["expired"][0]["days_remaining"] == -4
+        assert r["expiring"][0]["days_remaining"] == 17
+
+    def test_lapsed_hours_ago_is_expired_not_due(self, ops):
+        """A licence three hours past due must not read as a 0-day renewal."""
+        ops._save_customers(
+            {
+                "customers": {
+                    "justlapsed": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW - timedelta(hours=3)).isoformat(),
+                    }
+                }
+            }
+        )
+        r = ops.list_expiring_licenses(now=self.NOW)
+        assert [e["customer"] for e in r["expired"]] == ["justlapsed"]
+        assert r["expiring"] == []
+
+    def test_negative_window_rejected(self, ops):
+        with pytest.raises(ValueError, match="within_days"):
+            ops.list_expiring_licenses(within_days=-1)
+
+    def test_needs_no_issuer_key(self, temp_storage):
+        """Alerting is read-only, so a scheduler can run it without the key."""
+        readonly = LicenseOperations("", temp_storage)
+        assert readonly.list_expiring_licenses(now=self.NOW)["needs_attention"] == 0
 
 
 class TestRenewLicense:

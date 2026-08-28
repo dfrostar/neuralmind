@@ -151,16 +151,48 @@ you would hand an auditor.
 
 ## Renewals
 
-**Nothing warns you that a licence is expiring.** No cron, no email, no
-dashboard. Until that exists, this is a calendar reminder plus one command:
+A lapsed licence is revenue lost quietly, so this is the one part of the
+path that does not rely on you remembering:
 
 ```bash
-neuralmind license list                          # all customers, status, expiry
-neuralmind license status --customer "Acme Corp" # includes days_remaining
+neuralmind license expiring              # anything due inside 60 days
+neuralmind license expiring --within 90  # widen the window
 ```
 
-Run it monthly. Anything inside 60 days gets a renewal conversation; invoice
-and collect exactly as above, then:
+It is read-only and needs **no issuer key**, so a scheduler can run it
+without holding anything sensitive.
+
+### Wiring it to a scheduler
+
+The command is built to be consumed rather than read: the exit code alone
+says whether anyone needs to act, so a caller never has to parse output to
+decide whether to raise an alert.
+
+| Exit | Meaning | What a scheduler should do |
+|-----:|---------|----------------------------|
+| 0 | Nothing due inside the window | Nothing |
+| 6 | Renewals due | Notify — a conversation needs starting |
+| 7 | Something already expired, or an expiry that cannot be read | Escalate — revenue or data is already broken |
+
+`--quiet` prints nothing on exit 0, which is what makes it well behaved in
+cron (silence unless there is news). `--json` emits the full report —
+`expired`, `expiring` and `unknown` buckets, each sorted most-urgent first,
+with `days_remaining` per customer — for anything that wants to route by
+severity or render its own message.
+
+```bash
+# crontab: mail only when something needs attention
+0 9 * * 1  neuralmind license expiring --quiet || mail -s "NeuralMind renewals" you@example.com
+```
+
+Exit 7 also covers a record whose `expires_at` cannot be parsed. That is
+deliberate: an expiry you cannot read is not a licence you can trust to
+alert on, so it escalates rather than passing silently.
+
+### Doing the renewal
+
+Anything the report names gets a renewal conversation; invoice and collect
+exactly as above, then:
 
 ```bash
 neuralmind license renew --customer "Acme Corp" --term 12
@@ -216,13 +248,15 @@ From the `do_not_market` list in
 | Gap | Consequence today |
 |-----|-------------------|
 | No payment processor | Invoicing and reconciliation happen entirely outside this repo |
-| No renewal alerting | A licence can lapse unnoticed; the monthly check above is the mitigation |
+| No alert *delivery* | `license expiring` reports and signals via exit code, but nothing here sends the mail — a scheduler or autopilot owns delivery |
 | Customer record is one YAML file on one machine | No backup, no history, no second operator |
 | No receipts or dunning | Both are the invoicing tool's job |
 | No self-serve seat purchase | Seat count changes mid-term mean a reissue and a conversation |
 
-The first of these to hurt should be the first one built — most likely
-renewal alerting, since it is the one that loses revenue silently.
+Renewal alerting used to head this list, because it was the one that lost
+revenue silently; `license expiring` closes it. Of what remains, the
+single-file customer record is the most exposed — one machine, no backup,
+no second operator.
 
 ---
 

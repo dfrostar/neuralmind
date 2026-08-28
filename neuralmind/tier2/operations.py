@@ -396,6 +396,93 @@ class LicenseOperations:
             "partner_id": cust.get("partner_id"),
         }
 
+    def list_expiring_licenses(
+        self,
+        within_days: int = 60,
+        now: datetime | None = None,
+    ) -> dict:
+        """Find licences that need a renewal conversation.
+
+        Nothing else in the system watches expiry dates, so this is the
+        query an operator (or a scheduler calling the CLI) runs to find
+        out what is about to lapse. Revoked licences are excluded: they
+        cannot be renewed, so they are not renewal opportunities.
+
+        A record whose ``expires_at`` cannot be parsed is reported under
+        ``unknown`` rather than skipped — an unreadable expiry is a data
+        problem the operator has to see, not one to swallow.
+
+        Args:
+            within_days: How far ahead to look. Must not be negative.
+            now: Evaluation instant; defaults to the current UTC time.
+                Injectable so tests need not manipulate the clock.
+
+        Returns:
+            A dict with ``checked_at``, ``within_days``, ``total_active``,
+            ``needs_attention``, and the ``expired`` / ``expiring`` /
+            ``unknown`` buckets, each sorted most-urgent first.
+        """
+        if within_days < 0:
+            raise ValueError("within_days must not be negative")
+        now = now or datetime.now(timezone.utc)
+
+        expired: list[dict] = []
+        expiring: list[dict] = []
+        unknown: list[dict] = []
+        total_active = 0
+
+        for name, cust in self._load_customers().get("customers", {}).items():
+            if cust.get("status") == "revoked":
+                continue
+            total_active += 1
+
+            expires_at = cust.get("expires_at")
+            entry = {
+                "customer": name,
+                "license_id": cust.get("license_id"),
+                "seats": cust.get("seats"),
+                "expires_at": expires_at,
+                "status": cust.get("status"),
+                "partner_id": cust.get("partner_id"),
+            }
+
+            if expires_at == "never":
+                continue
+            try:
+                exp = datetime.fromisoformat(str(expires_at))
+            except (ValueError, TypeError):
+                unknown.append(entry)
+                continue
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+
+            # int() truncates toward zero, so both directions read naturally:
+            # 17.9 days left is "17 days remaining", and 4.1 days past due is
+            # "expired 4 days ago". timedelta.days would floor the latter to 5.
+            seconds_left = (exp - now).total_seconds()
+            days = int(seconds_left / 86400)
+            entry["days_remaining"] = days
+            # Bucket on the instant rather than the day count, so a licence
+            # that lapsed three hours ago is expired, not a 0-day renewal.
+            if seconds_left < 0:
+                expired.append(entry)
+            elif days <= within_days:
+                expiring.append(entry)
+
+        expired.sort(key=lambda e: e["days_remaining"])
+        expiring.sort(key=lambda e: e["days_remaining"])
+        unknown.sort(key=lambda e: e["customer"])
+
+        return {
+            "checked_at": now.isoformat(),
+            "within_days": within_days,
+            "total_active": total_active,
+            "needs_attention": len(expired) + len(expiring) + len(unknown),
+            "expired": expired,
+            "expiring": expiring,
+            "unknown": unknown,
+        }
+
     def list_customer_licenses(
         self,
         partner_id: str | None = None,
