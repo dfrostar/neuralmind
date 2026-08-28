@@ -520,6 +520,35 @@ def _graph_fingerprint(nm) -> dict:
                 index_digest = hashlib.sha256(index_path.read_bytes()).hexdigest()[:16]
         except Exception:
             pass  # diagnostics must never fail the benchmark
+        # Record the `refund` query's decision inputs verbatim.
+        #
+        # This one query is the whole bimodality: it is the only one whose hit
+        # rate flips between the two modes, and 1/19 flipping 1.0 -> 0.0 is
+        # 5.26 points, exactly the observed gap. Measurements so far place the
+        # divergence downstream of the vector path — with recall off the two
+        # host classes agree on all 19 queries, and locally the outcome does
+        # not move under embedding perturbations up to 1e-2 — so what is worth
+        # capturing is the state the displacement decision actually reads.
+        #
+        # Values, not a digest: a digest only says "differs", and the question
+        # here is *which* number differs and by how much.
+        refund_probe = {}
+        try:
+            sel = nm.selector
+            pre = sel._fetch_search("Show me the refund logic.", n=4)
+            refund_probe["results"] = [
+                [str(r.get("id")), round(float(r.get("score") or 0.0), 12)] for r in pre
+            ]
+            seeds = [r["id"] for r in pre[: sel._synapse_seed_k] if r.get("id")]
+            refund_probe["seeds"] = seeds
+            energy = sel._recall_energy(seeds) or {}
+            refund_probe["energy"] = [
+                [nid, round(float(e), 12)]
+                for nid, e in sorted(energy.items(), key=lambda x: (-x[1], x[0]))[:8]
+            ]
+        except Exception as exc:
+            refund_probe = {"error": f"{type(exc).__name__}: {exc}"}
+
         return {
             "nodes": stats.get("total_nodes"),
             "communities": stats.get("communities"),
@@ -527,6 +556,7 @@ def _graph_fingerprint(nm) -> dict:
             "embedding_probe_sha256_16": probe,
             "embedding_probe_batch_sha256_16": probe_batch,
             "vector_index_sha256_16": index_digest,
+            "refund_decision_probe": refund_probe,
         }
     except Exception as exc:  # diagnostics must never fail the benchmark
         return {"error": f"{type(exc).__name__}: {exc}"}
