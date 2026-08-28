@@ -186,9 +186,20 @@ cron (silence unless there is news). `--json` emits the full report —
 with `days_remaining` per customer — for anything that wants to route by
 severity or render its own message.
 
+Cron already mails whatever a job writes to stdout, so `--quiet` is the
+whole recipe — no output on a clean week, a report when there is one:
+
 ```bash
-# crontab: mail only when something needs attention
-0 9 * * 1  neuralmind license expiring --quiet || mail -s "NeuralMind renewals" you@example.com
+MAILTO=you@example.com
+0 9 * * 1  neuralmind license expiring --quiet
+```
+
+If you would rather call `mail` yourself, capture the report first. Piping
+straight off `||` sends an empty message, because the report went to stdout
+and `mail` inherits cron's empty stdin:
+
+```bash
+0 9 * * 1  report=$(neuralmind license expiring --quiet) || printf '%s\n' "$report" | mail -s "NeuralMind renewals" you@example.com
 ```
 
 Exit 7 also covers a record whose `expires_at` cannot be parsed. That is
