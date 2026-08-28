@@ -1,0 +1,9 @@
+title: NeuralMind — Persistent Codebase Memory
+description: Persistent memory for AI coding agents, served over MCP. NeuralMind indexes a codebase into a weighted code graph, learns which files belong together from real usage (Hebbian co-activation), and returns compressed, ranked context per query — 12-50× per-query token reduction. Local-first, makes no network calls of its own, no telemetry. Point Agent Zero's MCP config at `neuralmind-mcp` and every session shares the same learned memory. Includes a live Obsidian-style graph view.
+github: https://github.com/dfrostar/neuralmind
+tags:
+  - mcp
+  - code
+  - context
+  - local-first
+  - rag

@@ -56,7 +56,7 @@ RATIO_GATED = (
 # plugin.yaml carried an unsourced "12-70×" — a blend of two drafts matching
 # no measurement — until 2026-08-27. Gated for ratio provenance and absolutes
 # alongside the site surfaces.
-REGISTRY_MANIFESTS = ("plugin.yaml",)
+REGISTRY_MANIFESTS = ("plugin.yaml", "integrations/a0-plugins/neuralmind/index.yaml")
 
 # Ratios below this are never performance claims — they're decay weights,
 # merge coefficients, and other worked math in the publications.

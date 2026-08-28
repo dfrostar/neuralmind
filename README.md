@@ -78,7 +78,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
 | **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. | 🔬 Theoretical |
 | **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. | 🔬 Theoretical |
-| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the draft manifest for the `a0-plugins` registry listing. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) holds the staged, CI-prevalidated `a0-plugins` index entry, not yet submitted. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
