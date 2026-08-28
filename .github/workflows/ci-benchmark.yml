@@ -22,6 +22,8 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    env:
+      NEURALMIND_ORT_THREADS: "1"
     steps:
       - uses: actions/checkout@v7
 
