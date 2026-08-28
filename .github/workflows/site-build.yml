@@ -34,6 +34,10 @@ concurrency:
 
 jobs:
   build:
+    # Named explicitly: GitHub labels the check by JOB name, not workflow name,
+    # so this would otherwise show as a bare "build" beside the Python job
+    # "Build Package" in a 20-check list.
+    name: Build site (static export)
     runs-on: ubuntu-latest
     permissions:
       contents: read
