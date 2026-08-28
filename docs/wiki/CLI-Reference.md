@@ -41,6 +41,7 @@ Complete command-line interface documentation for NeuralMind.
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
   - [optimize-docs](#optimize-docs-v172)
+  - [license — issuer-side](#license--issuer-side)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -2775,6 +2776,53 @@ Run without --dry-run to evolve JSDoc for these methods.
 
 - [`neuralmind/doc_evolver.py`](../../neuralmind/doc_evolver.py) — main module (1181 lines)
 - [`tests/test_doc_evolver.py`](../../tests/test_doc_evolver.py) — 44 tests
+
+---
+
+### license — issuer-side
+
+Mints and manages **Team licences**. These are operator commands, not
+customer commands — every subcommand that changes a licence requires the
+Ed25519 issuer private key in `NEURALMIND_ISSUER_PRIVATE_KEY_HEX` and
+exits 1 without it. Customers use `neuralmind team license …` instead
+(see [Tier2-Operator-Guide](Tier2-Operator-Guide.md)).
+
+The end-to-end selling process these fit into — quoting, invoicing,
+delivery, renewals — is the [Billing Runbook](Billing-Runbook.md).
+
+```bash
+neuralmind license issue --customer "Acme Corp" --seats 12 --term 12 [--partner ID] [--output PATH]
+neuralmind license renew --customer "Acme Corp" --term 12
+neuralmind license revoke --customer "Acme Corp" --reason "non-payment"
+neuralmind license status --customer "Acme Corp"
+neuralmind license list [--partner ID]
+```
+
+| Flag | Applies to | Meaning |
+|------|-----------|---------|
+| `--customer` | issue, renew, revoke, status | Customer name; also the licence filename, sanitized |
+| `--seats` | issue | Seat count (must be positive) |
+| `--term` | issue, renew | Term in months: 1, 3, 6, 12, 24, or 36 |
+| `--partner` | issue, list | Reseller partner ID |
+| `--output` | issue | Where to write the signed licence JSON |
+| `--reason` | revoke | Recorded in the audit log |
+
+**Term arithmetic.** Terms advance by calendar months, so a 12-month
+licence issued on 28 August expires on 28 August the following year. A
+day-of-month with no counterpart in the target month clamps to the last
+valid day (31 Jan + 1 month is 28 or 29 Feb). `renew` extends from the
+existing expiry rather than from today, so paying late does not grant free
+months and paying early does not forfeit any. A revoked licence cannot be
+renewed — issue a new one.
+
+**State written.** All under `~/.neuralmind/`:
+
+| File | Contents |
+|------|----------|
+| `<customer>.json` | The signed licence (unless `--output` redirects it) |
+| `customers.yaml` | Customer record: seats, expiry, status, `total_paid` |
+| `partners.yaml` | Reseller registry and accrued commission |
+| `audit_log.jsonl` | Append-only record of every issue, renew and revoke |
 
 ---
 
