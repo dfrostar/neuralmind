@@ -203,10 +203,16 @@ class LicenseOperations:
         if output_path is None:
             safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
             output_path = self.storage / f"{safe_name}.json"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        # Verify the resolved path is still inside storage
+        # Validate before creating anything: a rejected path used to leave its
+        # parent directory behind. The guard covers both inputs that can point
+        # outside storage — the customer name and an explicit output_path — so
+        # the message names both rather than blaming the name.
         if not str(output_path.resolve()).startswith(str(self.storage.resolve())):
-            raise ValueError("Invalid customer name: path traversal detected")
+            raise ValueError(
+                f"Refusing to write outside {self.storage}: {output_path} resolves "
+                "beyond the storage directory (check the output path, or the customer name)"
+            )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=output_path.parent, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -460,13 +466,14 @@ class LicenseOperations:
             # 17.9 days left is "17 days remaining", and 4.1 days past due is
             # "expired 4 days ago". timedelta.days would floor the latter to 5.
             seconds_left = (exp - now).total_seconds()
-            days = int(seconds_left / 86400)
-            entry["days_remaining"] = days
-            # Bucket on the instant rather than the day count, so a licence
-            # that lapsed three hours ago is expired, not a 0-day renewal.
+            entry["days_remaining"] = int(seconds_left / 86400)
+            # Bucket on the instant, never the truncated day count: comparing
+            # days would stretch the window by up to a day (`--within 60`
+            # catching an expiry 60 days 23 hours out) and flip the exit code
+            # to 6 early. The truncated value is for display only.
             if seconds_left < 0:
                 expired.append(entry)
-            elif days <= within_days:
+            elif seconds_left <= within_days * 86400:
                 expiring.append(entry)
 
         expired.sort(key=lambda e: e["days_remaining"])

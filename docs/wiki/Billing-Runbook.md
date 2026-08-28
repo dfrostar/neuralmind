@@ -108,22 +108,28 @@ export NEURALMIND_ISSUER_PRIVATE_KEY_HEX=...   # from your password manager
 neuralmind license issue \
   --customer "Acme Corp" \
   --seats 12 \
-  --term 12 \
-  --output ./acme-corp.json
+  --term 12
 ```
+
+The licence is written to `~/.neuralmind/<sanitized-customer-name>.json` —
+for the above, `~/.neuralmind/acmecorp.json`. **Licences are only ever
+written inside `~/.neuralmind`.** `--output` can rename or relocate the file
+*within* that directory; a path outside it is refused, because the same
+guard stops a hostile customer name from escaping storage. Copy the file out
+afterwards if you want it elsewhere.
 
 Terms accepted: 1, 3, 6, 12, 24, 36 months. Expiry lands on the calendar —
 a 12-month term issued on 28 August expires on 28 August the following
 year.
 
-This writes the signed licence, appends an `issue` record to the audit log,
-and records the customer in `~/.neuralmind/customers.yaml` with
-`total_paid`. That YAML file is your entire customer database right now;
-it lives on one machine and nothing backs it up. Copy it somewhere durable.
+This also appends an `issue` record to the audit log and records the
+customer in `~/.neuralmind/customers.yaml` with `total_paid`. That YAML file
+is your entire customer database right now; it lives on one machine and
+nothing backs it up. Copy it somewhere durable.
 
 ### 6. Deliver
 
-Send the customer the JSON file and the two commands that consume it:
+Send the customer that JSON file and the two commands that consume it:
 
 ```bash
 neuralmind team license activate ./acme-corp.json

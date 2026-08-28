@@ -2826,7 +2826,7 @@ Revoked licences are excluded: they cannot be renewed. See the
 | `--partner` | issue, list | Reseller partner ID |
 | `--within` | expiring | Days ahead to look (default: 60) |
 | `--json` / `--quiet` | expiring | Machine-readable output / silence when nothing is due |
-| `--output` | issue | Where to write the signed licence JSON |
+| `--output` | issue | Filename for the signed licence, **within `~/.neuralmind`** — a path outside it is refused by the same guard that contains hostile customer names. Defaults to `<sanitized-customer-name>.json` |
 | `--reason` | revoke | Recorded in the audit log |
 
 **Term arithmetic.** Terms advance by calendar months, so a 12-month
@@ -2841,7 +2841,7 @@ renewed — issue a new one.
 
 | File | Contents |
 |------|----------|
-| `<customer>.json` | The signed licence (unless `--output` redirects it) |
+| `<customer>.json` | The signed licence (`--output` renames it, still inside this directory) |
 | `customers.yaml` | Customer record: seats, expiry, status, `total_paid` |
 | `partners.yaml` | Reseller registry and accrued commission |
 | `audit_log.jsonl` | Append-only record of every issue, renew and revoke |

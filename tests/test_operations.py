@@ -173,6 +173,53 @@ class TestExpiringLicenses:
         assert ops.list_expiring_licenses(within_days=60, now=self.NOW)["needs_attention"] == 0
         assert ops.list_expiring_licenses(within_days=120, now=self.NOW)["needs_attention"] == 1
 
+    def test_window_boundary_is_exact_not_truncated(self, ops):
+        """`--within N` means N days, not "N days plus change".
+
+        Bucketing on the truncated day count stretched the window by up to a
+        day and flipped the exit code to 6 early.
+        """
+        ops._save_customers(
+            {
+                "customers": {
+                    "outside": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW + timedelta(days=60, hours=23)).isoformat(),
+                    },
+                    "exact": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW + timedelta(days=60)).isoformat(),
+                    },
+                    "inside": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW + timedelta(days=59, hours=23)).isoformat(),
+                    },
+                }
+            }
+        )
+        r = ops.list_expiring_licenses(within_days=60, now=self.NOW)
+        assert sorted(e["customer"] for e in r["expiring"]) == ["exact", "inside"]
+
+    def test_zero_window_looks_no_distance_ahead(self, ops):
+        """`--within 0` must not report tomorrow, nor return the 'due' exit."""
+        ops._save_customers(
+            {
+                "customers": {
+                    "tomorrow": {
+                        "seats": 1,
+                        "status": "active",
+                        "expires_at": (self.NOW + timedelta(hours=23)).isoformat(),
+                    }
+                }
+            }
+        )
+        r = ops.list_expiring_licenses(within_days=0, now=self.NOW)
+        assert r["expiring"] == []
+        assert r["needs_attention"] == 0
+
     def test_unreadable_expiry_is_surfaced_not_swallowed(self, ops):
         """A record we cannot date is an operator problem, not a silent skip."""
         ops._save_customers(
