@@ -485,7 +485,8 @@ continuously and automatically from queries, edits, and tool calls — no
 manual step, and edges decay instead of going stale. The reranker was
 removed after a 2×2 A/B on the benchmark fixture showed it added 0.0
 points to top-k hit rate while the synapse layer alone moves it (+3.5 to
-+14 points across runs; CI gates the direction, not the magnitude).
++14 points across runs; CI permits a 2-point host-variance loss, not an uplift
+magnitude).
 
 **What to do instead**: install the lifecycle hooks
 (`neuralmind install-hooks .`) and optionally run `neuralmind watch .` so

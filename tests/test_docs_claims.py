@@ -193,7 +193,7 @@ SUPERSEDED_FIGURES = [
         re.compile(r"\+?6\.1\s*(pts|points|pt)\b", re.IGNORECASE),
         (
             "The synapse-recall lift is run-dependent (+3.5 to +14 pts observed). "
-            "Quote the CI gate — recall-on >= recall-off — and the observed band."
+            "Quote the CI tolerance and the observed band."
         ),
     ),
     (
@@ -387,7 +387,7 @@ def test_superseded_figure_guards_trip_on_the_copy_that_shipped() -> None:
         assert any(p.search(line) for p, _ in SUPERSEDED_FIGURES), line
 
     good = [
-        "recall-on >= recall-off, at a neutral token budget | **+3.5 to +14 pts**",
+        "recall-on is within 2 pts of recall-off, at a neutral token budget | **+3.5 to +14 pts**",
         "delta **>= 0** | **+0.013 to +0.143**",
         "lift **>= 0**, averaged over 3 runs | **+0.9 to +11.6 pts** across runs",
     ]

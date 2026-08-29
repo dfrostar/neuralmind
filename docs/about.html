@@ -617,7 +617,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Real pinned repos</strong>, not our fixtures &mdash; <code>git checkout &lt;sha&gt;</code> and audit.</li>
                 <li><strong>Objective gold, no LLM judge</strong> &mdash; each gold file is a symbol's definition site, verifiable with one <code>rg</code>; scoring reuses the same <code>neuralmind/quality.py</code> the CI gate runs.</li>
                 <li><strong>Cost + correctness jointly</strong>, never a lone reduction ratio; pre-registered queries, every one reported including losses.</li>
-                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its lift is measured separately by the synapse A/B eval, which CI gates on direction rather than magnitude). Re-running matches to the token.</li>
+                <li><strong>Deterministic</strong> &mdash; synapse injection is OFF (session-dependent learning can't be a fixed public number; its lift is measured separately by the synapse A/B eval, which permits a 2-point host-variance loss rather than an uplift magnitude). Re-running matches to the token.</li>
                 <li><strong>Forkable</strong> &mdash; <code>.github/workflows/bench-public.yml</code> regenerates the table on demand; raw per-query data at <code>bench/public/results.json</code>.</li>
             </ul>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md">Full methodology, caveats, and where NeuralMind loses →</a> &middot; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.31.0.md">v0.31.0 release notes →</a></p>
@@ -825,7 +825,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Zero machine-specific config.</strong> The launch spec is just <code>{"command": "neuralmind-mcp"}</code> — the MCP tools take a <code>project_path</code> per call, so there's nothing to bake in.</li>
             </ul>
             <h3>Why this matters — the moat</h3>
-            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate lifts with recall on, at a neutral token budget; +3.5 to +14 points across runs, CI-gated on direction). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
+            <p>AST-derived code graphs are becoming table stakes. NeuralMind's durable edge is usage memory + distribution. The self-benchmark already measures the learned uplift directly (Phase 3 — synapse-recall A/B: top-k hit rate lifts with recall on, at a neutral token budget; +3.5 to +14 points across runs, with CI permitting a 2-point host-variance loss). v0.19.0 invests in the other half — making NeuralMind trivial to plug into every agent, so it sees more usage and learns more.</p>
             <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.19.0.md">Full v0.19.0 release notes →</a></p>
         </div>
     </section>

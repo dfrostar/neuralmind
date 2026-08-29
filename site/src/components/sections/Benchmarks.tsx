@@ -8,7 +8,7 @@ import SectionHeader from '@/components/ui/SectionHeader';
 const dataPoints = [
     { metric: 'Gold-file recall', value: '93.75%', detail: '40 pre-registered queries, 4 pinned OSS repos (79–100% per repo)' },
     { metric: 'Tokens vs. pasting files', value: '45–257×', detail: 'same 40 queries; cheaper than ripgrep on every repo' },
-    { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
+    { metric: 'Learned recall', value: 'Within 2 pts', detail: 'CI allows at most a 2-point host-variance loss versus no-recall on the same warm graph, at a neutral token budget' },
     { metric: 'vs. naive truncation', value: 'Never worse', detail: 'CI asserts our selection beats truncation at an equal budget. Both magnitudes vary by repo — run them for yours' },
     { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase — method reproducible, not CI-gated' },
     { metric: 'Setup time', value: '~15 min', detail: 'one CLI command; post-commit hook keeps it current' },
