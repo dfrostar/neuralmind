@@ -11,7 +11,7 @@ claim before any of it is pasted somewhere no CI can reach — same reason
 |---|---|---|
 | **ClawHub** (OpenClaw) | **Live.** Community channel, not official. Skill package `neuralmind` v1.0.0, owner `dfrostar`, 51 downloads. | `clawhub.ai/api/v1/packages/neuralmind`; listing at [clawhub.ai/dfrostar/skills/neuralmind](https://clawhub.ai/dfrostar/skills/neuralmind) |
 | **Agent Zero** `a0-plugins` | **Submitted, validator green, awaiting maintainer review.** Not merged. | [agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499) — "Validate Plugin PR" succeeded 2026-08-28 in 12s; no reviewer assigned |
-| **Hermes-Agent** MCP catalog | **Submitted, one non-blocking review, awaiting merge.** Not merged. Labels `type/feature`, `tool/mcp`, `P3`. | [NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207); reviewed by Enough1122 (Contributor) 2026-08-28 — flagged the manifest's network claim as unverified by their CI; corrected and repushed |
+| **Hermes-Agent** MCP catalog | **Submitted, review comments resolved, awaiting merge.** Not merged, and no formal review — the Reviewers panel still reads "No reviews". Labels `type/feature`, `tool/mcp`, `P3`. | [NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207); Enough1122 (Contributor) flagged the manifest's network claim as unverified by their CI 2026-08-28, then confirmed at head `bccabd6` on 2026-08-29 "no further items from me" — a plain comment, not an approving review. Maintainer alt-glitch has labelled it but not reviewed or merged |
 
 **Wording rule that follows:** ClawHub may be described as *listed* /
 *installable today*. Agent Zero and Hermes are **"submitted, validator
@@ -163,7 +163,7 @@ Skipping MCP entirely also works — the portable skill installs straight from G
 
 **Absolute paths matter here.** Hermes runs the server as a long-lived background process, so `project_path="."` resolves against the server's directory, not your repo. Pass the absolute path; the server now returns an explicit hint naming the wrong directory instead of building an index of it.
 
-A catalog entry is **submitted and awaiting merge** — NousResearch/hermes-agent#97207, labelled `type/feature` / `tool/mcp` / `P3`, with one non-blocking review so far. It is not merged, so for now this is a manual `hermes mcp add`.
+A catalog entry is **submitted and awaiting merge** — NousResearch/hermes-agent#97207, labelled `type/feature` / `tool/mcp` / `P3`. A contributor reviewed the manifest, and the points they raised are resolved; that sign-off was a comment rather than a formal approving review, and no maintainer has reviewed or merged it. It is not merged, so for now this is a manual `hermes mcp add`.
 
 Numbers, with the losses attached: 93.75% mean gold-file recall (79-100% per repo) at 44.9-256.8x fewer tokens than pasting whole files, over 40 pre-registered queries on 4 SHA-pinned repos; 4 misses, all published; a bare vector-RAG baseline using the same encoder beats it on `click`. Reproduce: `python -m evals.public.run`. No telemetry and nothing on the wire at query time. The one exception, which the catalog manifest now spells out after review feedback: on a machine with no cached model, NeuralMind's own embedder fetches the MiniLM ONNX archive over HTTPS, SHA256-pinned, the first time it embeds — `NEURALMIND_ONNX_MODEL_DIR` pre-seeds around it. And your model still sees whatever slice the agent picks.
 
@@ -305,7 +305,7 @@ produced from CI output alone. Grouped by which post needs it.
 | 21 MCP tools | `grep -c '^def tool_' neuralmind/mcp_server.py` = 21 |
 | ClawHub live, v1.0.0, community channel, owner `dfrostar` | `clawhub.ai/api/v1/packages/neuralmind`, fetched 2026-08-28 |
 | a0-plugins submitted, validator green, not merged | agent0ai/a0-plugins#499 checks page, "Validate Plugin PR" succeeded 2026-08-28 |
-| Hermes catalog submitted, labels `type/feature` / `tool/mcp` / `P3`, not merged, one non-blocking review | NousResearch/hermes-agent#97207, checked 2026-08-28 20:30Z |
+| Hermes catalog submitted, labels `type/feature` / `tool/mcp` / `P3`, not merged, contributor review resolved, no formal review recorded | NousResearch/hermes-agent#97207, checked 2026-08-29 09:00Z |
 | The one outbound request: NeuralMind's own embedder fetches the SHA256-pinned all-MiniLM-L6-v2 ONNX archive on first embed when no cached model is found | `neuralmind/onnx_embedder.py` (`_ARCHIVE_URL`, `_download_into`, resolution order `$NEURALMIND_ONNX_MODEL_DIR` → `~/.cache/neuralmind/onnx_models/` → `~/.cache/chroma/onnx_models/` → download). Verified in code 2026-08-28, not taken from the docs |
 | "transmits no repository content", no telemetry | `README.md`; `neuralmind/onnx_embedder.py`, `daemon_client.py`, `local_client.py` read directly. The older phrasing is now itself a FORBIDDEN pattern — it was false on a cold install | <!-- claims-guard:allow — row names the retired phrase in order to record its retirement -->
 | Detached-host absolute-path guard and its hint behaviour | `skills/neuralmind/SKILL.md` "Pass a real path, not `.`"; `neuralmind/mcp_server.py` |
