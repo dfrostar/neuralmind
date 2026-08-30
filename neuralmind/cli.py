@@ -352,7 +352,10 @@ def cmd_build(args):
             "credential at the source."
         )
 
-    mind = NeuralMind(project_path, scope=getattr(args, "scope", "all"))
+    _scope = getattr(args, "scope", "all")
+    if _scope not in ("all", "code", "content", "docs"):
+        _scope = "all"
+    mind = NeuralMind(project_path, scope=_scope)
     # Warn for large projects before starting the slow embed loop.
     # Estimate node count from graph.json directly since embedder.nodes
     # is lazy-loaded only inside build().
