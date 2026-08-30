@@ -1,5 +1,32 @@
 # Changelog
 
+## [3.7.0](https://github.com/dfrostar/neuralmind/compare/v3.6.0...v3.7.0) (2026-08-30)
+
+
+### Features
+
+* add project registry for multi-project operator mode ([cbc41f3](https://github.com/dfrostar/neuralmind/commit/cbc41f3a681b9d7df1f7781ed48e91ee93229011))
+* **tier2:** add `license expiring` so renewals stop lapsing silently ([607a674](https://github.com/dfrostar/neuralmind/commit/607a6748a8e4be85a0186328b80b99288de346ea))
+
+
+### Bug Fixes
+
+* **cli:** parenthesize the renewal-report header string ([2f05ae3](https://github.com/dfrostar/neuralmind/commit/2f05ae35073bae2fbad95f4d97b700647edeac80))
+* correct the cron recipe, activation error, and exit-7 help text ([a651639](https://github.com/dfrostar/neuralmind/commit/a651639d722f7473dcde4b4b2c22ff65afd90640))
+* normalize invalid --scope values to 'all' in cmd_build ([f3b2873](https://github.com/dfrostar/neuralmind/commit/f3b28735089bfc78018f1c2e597373db3edaf5ef))
+* **operator:** incremental recovery for index mismatch + progress + enhanced doctor ([b56718f](https://github.com/dfrostar/neuralmind/commit/b56718f8bf017629052e60fd20e79c4591b654fe))
+* per-scope SQLite store naming to prevent cross-scope contamination ([36bb4ae](https://github.com/dfrostar/neuralmind/commit/36bb4ae459184f129c5fce224636da6733e92c78))
+* store.code.sqlite, store.content.sqlite, store.docs.sqlite ([36bb4ae](https://github.com/dfrostar/neuralmind/commit/36bb4ae459184f129c5fce224636da6733e92c78))
+* **tier1:** update migration warning assertion to match new wording ([61f9614](https://github.com/dfrostar/neuralmind/commit/61f961467921d186448ba2b48f7766f021772195))
+* **tier2:** bill and expire licences on the calendar, not 30-day months ([d1a20a8](https://github.com/dfrostar/neuralmind/commit/d1a20a849d38ae5bbd47019079401c7e55b48878))
+* **tier2:** exact renewal window, and a runbook step that could not run ([2a64485](https://github.com/dfrostar/neuralmind/commit/2a6448552b17a077992bf3fef3a2895e83d6d5ef))
+* use tmp_path-based paths in registry tests for cross-platform compat ([ed4572e](https://github.com/dfrostar/neuralmind/commit/ed4572edb0230156c88c2773efb6ccce0586d2b0))
+
+
+### Documentation
+
+* **wiki:** add the Billing Runbook and document the issuer CLI ([98d5bb3](https://github.com/dfrostar/neuralmind/commit/98d5bb367701125df26896d1fee8ba334e2b7f9b))
+
 ## [3.6.0](https://github.com/dfrostar/neuralmind/compare/v3.5.1...v3.6.0) (2026-08-28)
 
 
