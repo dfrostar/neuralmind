@@ -44,7 +44,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
-from .progress import ProgressReporter, format_duration
+from .progress import ProgressReporter
 from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -78,6 +78,43 @@ def _default_embed_fn() -> Callable[[list[str]], list[list[float]]]:
 class TurboVecEmbedder(EmbeddingBackend):
     """EmbeddingBackend backed by a TurboVec index + a SQLite metadata store."""
 
+    # Scope definitions: maps scope name -> set of file_type values to INCLUDE
+    SCOPE_FILTERS: dict[str, frozenset[str]] = {
+        "code": frozenset({"code", "function", "class", "method", "module"}),
+        "content": frozenset(
+            {"document", "rationale", "content", "policy", "sop", "decision", "meeting_note"}
+        ),
+        "docs": frozenset({"document", "rationale"}),
+        "all": frozenset(),  # empty = no filtering
+    }
+
+    # File-type extension-based fallback for when file_type is generic/missing
+    SCOPE_EXTENSIONS: dict[str, frozenset[str]] = {
+        "code": frozenset(
+            {
+                ".py",
+                ".js",
+                ".ts",
+                ".tsx",
+                ".jsx",
+                ".go",
+                ".rs",
+                ".java",
+                ".cs",
+                ".c",
+                ".cpp",
+                ".h",
+                ".rb",
+                ".php",
+                ".swift",
+                ".kt",
+            }
+        ),
+        "content": frozenset({".md", ".mdx", ".txt", ".rst", ".docx", ".pdf"}),
+        "docs": frozenset({".md", ".mdx", ".txt", ".rst"}),
+        "all": frozenset(),
+    }
+
     def __init__(
         self,
         project_path: str,
@@ -85,6 +122,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         *,
         bit_width: int = _DEFAULT_BIT_WIDTH,
         embed_fn: Callable[[list[str]], list[list[float]]] | None = None,
+        scope: str = "all",
     ):
         self._project_path = Path(project_path).resolve()
         self.graph_path = self._project_path / "graphify-out" / "graph.json"
@@ -94,8 +132,14 @@ class TurboVecEmbedder(EmbeddingBackend):
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._index_path = self._dir / "index.tvim"
         self._store_path = self._dir / "store.sqlite"
+
+        # Per-scope index file naming to prevent collisions
+        self._scope = scope
+        if scope != "all":
+            self._index_path = self._dir / f"index.{scope}.tvim"
+        else:
+            self._index_path = self._dir / "index.tvim"
 
         self.bit_width = int(bit_width)
         self._embed_fn = embed_fn  # resolved lazily so tests can inject a fake
@@ -108,6 +152,26 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._conn = sqlite3.connect(str(self._store_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_store()
+
+    def _node_matches_scope(self, node: dict) -> bool:
+        """Check if a node should be included based on the current scope."""
+        if self._scope == "all":
+            return True
+        file_type = str(node.get("file_type", ""))
+        source_file = str(node.get("source_file", ""))
+        ext = Path(source_file).suffix.lower() if source_file else ""
+
+        allowed_types = self.SCOPE_FILTERS.get(self._scope, frozenset())
+        allowed_exts = self.SCOPE_EXTENSIONS.get(self._scope, frozenset())
+
+        # If file_type is set and recognized, use type-based filtering
+        if file_type and file_type in allowed_types:
+            return True
+        # If file_type is missing or unrecognized, fall back to extension
+        if ext and ext in allowed_exts:
+            return True
+        # file_type is set but not in scope, and no extension match
+        return False
 
     # ------------------------------------------------------------------ store
     def _init_store(self) -> None:
@@ -189,13 +253,17 @@ class TurboVecEmbedder(EmbeddingBackend):
         turbovec is not installed.
         """
         try:
-            import turbovec
+            import importlib.util
+
+            if importlib.util.find_spec("turbovec") is None:
+                return None
         except ImportError:
             return None
         # The version is in the dist-info metadata, but the C extension
         # doesn't expose it at runtime. Best effort from packaging metadata.
         try:
             import importlib.metadata
+
             return importlib.metadata.version("turbovec")
         except Exception:
             return "installed"
@@ -578,22 +646,22 @@ class TurboVecEmbedder(EmbeddingBackend):
                 # Try incremental recovery from stored vectors first.
                 logger.info(
                     "Index version mismatch detected. Attempting incremental "
-                    "rebuild from %d stored vectors...", int(row["c"])
+                    "rebuild from %d stored vectors...",
+                    int(row["c"]),
                 )
                 if self._rebuild_index_from_store():
                     # Success — index recovered, proceed with incremental update.
                     stats_rebuilt = int(row["c"])
                     logger.info(
                         "Successfully recovered %d vectors from store. "
-                        "Proceeding with incremental update.", stats_rebuilt
+                        "Proceeding with incremental update.",
+                        stats_rebuilt,
                     )
                     # Fall through to incremental loop below — don't force.
                 else:
                     # Recovery failed (no ONNX, no model). Force full re-embed.
                     force = True
-                    logger.warning(
-                        "Incremental recovery failed. Forcing full re-embedding."
-                    )
+                    logger.warning("Incremental recovery failed. Forcing full re-embedding.")
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         pending: list[tuple[str, int, str, dict, str, bool]] = (
@@ -602,10 +670,16 @@ class TurboVecEmbedder(EmbeddingBackend):
         next_uid = self._next_uid()
 
         total_nodes = len(self.nodes)
+        scope_filtered = 0
         with ProgressReporter(total_nodes, label="Embedding") as bar:
             for node in self.nodes:
                 node_id = str(node.get("id", node.get("label", "")))
                 if not node_id:
+                    continue
+                # Apply scope filter — skip nodes not matching the current scope
+                if not self._node_matches_scope(node):
+                    scope_filtered += 1
+                    bar.advance()
                     continue
                 text = self._node_to_text(node)
                 content_hash = self._content_hash(text)

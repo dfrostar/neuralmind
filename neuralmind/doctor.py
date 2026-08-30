@@ -72,6 +72,7 @@ def _check_graph(project: Path) -> Check:
             elif eh:
                 try:
                     from datetime import datetime
+
                     file_mtime = (project / sf).stat().st_mtime
                     emb_time = datetime.fromisoformat(eh).timestamp()
                     if file_mtime > emb_time:
@@ -290,6 +291,7 @@ def _check_turbovec_version(project: Path) -> Check:
     """Check if the turbovec index is compatible with the installed version."""
     try:
         from neuralmind.turbovec_backend import TurboVecEmbedder
+
         backend = TurboVecEmbedder(str(project))
         stale_path = backend._index_path.with_name(backend._index_path.name + ".stale")
         if stale_path.exists():

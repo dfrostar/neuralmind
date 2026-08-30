@@ -100,6 +100,7 @@ def create_backend(
     backend: str,
     project_path: str,
     db_path: str | None = None,
+    scope: str = "all",
 ) -> EmbeddingBackend:
     normalized = resolve_backend(backend)
     if normalized in {"graph", "chroma", "chromadb"}:
@@ -131,7 +132,7 @@ def create_backend(
         # and import-light. turbovec is the default backend since v0.29.0.
         from .turbovec_backend import TurboVecEmbedder
 
-        return TurboVecEmbedder(project_path, db_path=db_path)
+        return TurboVecEmbedder(project_path, db_path=db_path, scope=scope)
     raise ValueError(f"Unsupported backend: {backend}")
 
 
@@ -143,6 +144,7 @@ class BackendManager:
         project_path: str,
         db_path: str | None = None,
         backend: str | None = None,
+        scope: str = "all",
     ):
         self.project_path = str(Path(project_path).resolve())
         self.config = load_backend_config(self.project_path)
@@ -151,7 +153,9 @@ class BackendManager:
         selected_backend = resolve_backend(backend or self.config.get("backend"))
         selected_db_path = db_path or self.config.get("db_path")
         self.backend_name = selected_backend
-        self.backend = create_backend(selected_backend, self.project_path, selected_db_path)
+        self.backend = create_backend(
+            selected_backend, self.project_path, selected_db_path, scope=scope
+        )
 
     def switch_backend(self, backend: str, db_path: str | None = None) -> EmbeddingBackend:
         if hasattr(self.backend, "close"):

@@ -1,13 +1,8 @@
 """Tests for the project registry module."""
 
-import json
-import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
-import pytest
-
-from neuralmind.project_registry import ProjectRegistry, REGISTRY_PATH
+from neuralmind.project_registry import REGISTRY_PATH, ProjectRegistry
 
 
 def test_default_registry_path():

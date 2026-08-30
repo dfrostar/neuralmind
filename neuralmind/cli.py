@@ -187,6 +187,7 @@ def _check_turbovec_mismatch(project_path: str) -> str | None:
     """
     try:
         from neuralmind.turbovec_backend import TurboVecEmbedder
+
         backend = TurboVecEmbedder(project_path)
         return backend.check_turbovec_compatibility()
     except ImportError:
@@ -351,7 +352,7 @@ def cmd_build(args):
             "credential at the source."
         )
 
-    mind = NeuralMind(project_path)
+    mind = NeuralMind(project_path, scope=getattr(args, "scope", "all"))
     # Warn for large projects before starting the slow embed loop.
     # Estimate node count from graph.json directly since embedder.nodes
     # is lazy-loaded only inside build().
@@ -1547,6 +1548,135 @@ def cmd_validate(args):
     # as well as a failed validation — otherwise `validate --json` would exit 0
     # in CI on a hard error, since those carry no "validation" block.
     if result.get("error") or not result.get("validation", {}).get("ok", True):
+        sys.exit(1)
+
+
+def cmd_build_all(args):
+    """Build indexes for all registered projects."""
+    from neuralmind.project_registry import ProjectRegistry
+
+    override_scope = args.scope
+    force = getattr(args, "force", False)
+
+    # Gather projects: explicit list or registry
+    if args.projects:
+        project_paths = [p.strip() for p in args.projects.split(",") if p.strip()]
+        projects = [{"path": p, "scopes": [override_scope]} for p in project_paths]
+    else:
+        reg = ProjectRegistry()
+        entries = reg.list_projects()
+        if not entries:
+            print(
+                "No projects registered.\n"
+                "Add one with: neuralmind project add <path> [--scope=code,content]"
+            )
+            return
+        projects = []
+        for entry in entries:
+            scopes = [override_scope] if override_scope != "all" else entry.get("scopes", ["all"])
+            projects.append({"path": entry["path"], "scopes": scopes})
+
+    print(f"Building {len(projects)} project(s)...")
+    print()
+
+    summary = []
+    for proj in projects:
+        path = proj["path"]
+        scopes = proj.get("scopes", ["all"])
+        print(f"📁 {path}")
+        for scope in scopes:
+            print(f"   Scope: {scope}...", end=" ", flush=True)
+            try:
+                build_args = argparse.Namespace(
+                    project_path=path,
+                    force=force,
+                    scope=scope,
+                    bootstrap=None,
+                    redact_secrets=False,
+                    dry_run=False,
+                    json=False,
+                )
+                # Suppress child progress bars — they deadlock when both
+                # parent and child share the same pty. NEURALMIND_NO_PROGRESS=1
+                # disables ProgressReporter in embed_nodes().
+                os.environ["NEURALMIND_NO_PROGRESS"] = "1"
+                try:
+                    cmd_build(build_args)
+                finally:
+                    os.environ.pop("NEURALMIND_NO_PROGRESS", None)
+                print("done")
+                summary.append(("✓", path, scope, ""))
+            except SystemExit as e:
+                status = "failed" if e.code != 0 else "done"
+                print(status)
+                summary.append(("✗", path, scope, f"exit {e.code}"))
+            except Exception as e:
+                print(f"error: {e}")
+                summary.append(("✗", path, scope, str(e)))
+        print()
+
+    print("=" * 60)
+    print("Summary:")
+    for mark, p, scope, note in summary:
+        suffix = f" ({note})" if note else ""
+        print(f"  {mark} {p} [{scope}]{suffix}")
+
+
+def cmd_project(args):
+    """Manage registered projects."""
+    from neuralmind.project_registry import ProjectRegistry
+
+    reg = ProjectRegistry()
+    action = args.project_action
+
+    if action == "add":
+        path = args.path
+        scope_str = getattr(args, "scope", "all")
+        scopes = [s.strip() for s in scope_str.split(",")] if scope_str != "all" else ["all"]
+        if not Path(path).exists():
+            print(f"Error: path does not exist: {path}")
+            sys.exit(1)
+        reg.add_project(path, scopes=scopes)
+        print(f"Added: {Path(path).resolve()} (scopes: {', '.join(scopes)})")
+
+    elif action == "remove":
+        path = args.path
+        reg.remove_project(path)
+        print(f"Removed: {Path(path).resolve()}")
+
+    elif action == "list":
+        projects = reg.list_projects()
+        if not projects:
+            print("No projects registered.")
+            print("Add one with: neuralmind project add <path> [--scope=code,content,docs]")
+            return
+        print(f"Registered projects ({len(projects)}):")
+        for p in projects:
+            scopes = ", ".join(p.get("scopes", ["all"]))
+            print(f"  {p['path']}  [{scopes}]")
+
+    elif action == "detect":
+        import glob
+
+        search_path = getattr(args, "path", ".")
+        print(f"Scanning {search_path} for NeuralMind projects...")
+        patterns = [
+            str(Path(search_path) / "**" / "graphify-out" / "graph.json"),
+            str(Path(search_path) / "**" / ".neuralmind" / "ir_meta.json"),
+        ]
+        found = set()
+        for pat in patterns:
+            for hit in glob.glob(pat, recursive=True):
+                found.add(str(Path(hit).parent.parent))
+        if not found:
+            print("No NeuralMind projects found.")
+            return
+        print(f"Found {len(found)} project(s):")
+        for p in sorted(found):
+            print(f"  {p}")
+
+    else:
+        print(f"Unknown project action: {action}")
         sys.exit(1)
 
 
@@ -4713,6 +4843,12 @@ def main():
         "scan-for-secrets` first to find and remove them at the source.",
     )
     build_p.add_argument("--json", "-j", action="store_true")
+    build_p.add_argument(
+        "--scope",
+        choices=["all", "code", "content", "docs"],
+        default="all",
+        help="Index scope: code (source files), content (docs/chapters), docs (markdown only), all (default)",
+    )
     build_p.set_defaults(func=cmd_build)
 
     scan_secrets_p = subparsers.add_parser(
@@ -6068,6 +6204,57 @@ def main():
         help="Print nothing when nothing needs attention (for cron)",
     )
     expiring_lp.set_defaults(func=cmd_license_expiring)
+
+    # ------------------------------------------------------------------
+    # Multi-project operator commands
+    # ------------------------------------------------------------------
+    build_all_p = subparsers.add_parser(
+        "build-all",
+        help="Build all registered projects",
+    )
+    build_all_p.add_argument(
+        "--projects",
+        help="Comma-separated list of project paths (default: use registry)",
+    )
+    build_all_p.add_argument(
+        "--scope",
+        choices=["all", "code", "content", "docs"],
+        default="all",
+        help="Override scope for all projects",
+    )
+    build_all_p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force full re-embedding for all projects",
+    )
+    build_all_p.set_defaults(func=cmd_build_all)
+
+    project_p = subparsers.add_parser(
+        "project",
+        help="Manage registered projects (build-all targets)",
+    )
+    project_sub = project_p.add_subparsers(dest="project_action")
+    project_add = project_sub.add_parser("add", help="Add a project to the registry")
+    project_add.add_argument("path", help="Project directory path")
+    project_add.add_argument(
+        "--scope",
+        default="all",
+        help="Comma-separated scopes: code,content,docs (default: all)",
+    )
+    project_add.set_defaults(func=cmd_project)
+    project_list = project_sub.add_parser("list", help="List registered projects")
+    project_list.set_defaults(func=cmd_project)
+    project_remove = project_sub.add_parser("remove", help="Remove a project from the registry")
+    project_remove.add_argument("path", help="Project directory path")
+    project_remove.set_defaults(func=cmd_project)
+    project_detect = project_sub.add_parser(
+        "detect", help="Auto-detect projects in a directory tree"
+    )
+    project_detect.add_argument(
+        "path", nargs="?", default=".", help="Directory to scan (default: current dir)"
+    )
+    project_detect.set_defaults(func=cmd_project)
 
     # partner command — add, list, licenses
     partner_p = subparsers.add_parser(
