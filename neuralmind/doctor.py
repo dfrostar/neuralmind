@@ -55,7 +55,29 @@ def _check_graph(project: Path) -> Check:
             fix=f"Generate it: neuralmind build {project}",
         )
     try:
-        nodes = len(json.loads(graph.read_text(encoding="utf-8")).get("nodes", []))
+        g = json.loads(graph.read_text(encoding="utf-8"))
+        nodes = len(g.get("nodes", []))
+        stale = 0
+        orphaned = 0
+        embedded_count = 0
+        for node in g.get("nodes", []):
+            eh = node.get("embedded_at")
+            if eh:
+                embedded_count += 1
+            sf = node.get("source_file", "")
+            if not sf:
+                continue
+            if eh and not (project / sf).exists():
+                orphaned += 1
+            elif eh:
+                try:
+                    from datetime import datetime
+                    file_mtime = (project / sf).stat().st_mtime
+                    emb_time = datetime.fromisoformat(eh).timestamp()
+                    if file_mtime > emb_time:
+                        stale += 1
+                except Exception:
+                    pass
     except Exception as e:  # corrupt / truncated graph.json
         return Check(
             "Code graph",
@@ -63,7 +85,21 @@ def _check_graph(project: Path) -> Check:
             f"unreadable ({e})",
             fix=f"Regenerate it: neuralmind build {project}",
         )
-    return Check("Code graph", OK, f"{nodes} nodes at {graph}")
+
+    details = f"{nodes} nodes at {graph}"
+    fixes = []
+    if orphaned > 0:
+        details += f" ({orphaned} orphaned — source file deleted)"
+        fixes.append(f"Rebuild: neuralmind build {project}")
+    if stale > 0:
+        details += f" ({stale} stale — file changed after embedding)"
+        fixes.append("Rebuild: neuralmind build")
+
+    status = FAIL if orphaned > 0 else (WARN if stale > 0 else OK)
+    fix_str = "; ".join(fixes) if fixes else ""
+    if not fix_str and embedded_count == 0 and nodes > 0:
+        fix_str = "Graph not yet embedded — run neuralmind build"
+    return Check("Code graph", status, details, fix=fix_str)
 
 
 def _check_index(project: Path) -> Check:
@@ -250,6 +286,25 @@ def _check_backend(project: Path) -> Check:
     return Check("Backend", OK, f"{resolved} (pinned via neuralmind-backend.yaml; turbovec {tv})")
 
 
+def _check_turbovec_version(project: Path) -> Check:
+    """Check if the turbovec index is compatible with the installed version."""
+    try:
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+        backend = TurboVecEmbedder(str(project))
+        stale_path = backend._index_path.with_name(backend._index_path.name + ".stale")
+        if stale_path.exists():
+            tv_version = backend.turbovec_index_version()
+            return Check(
+                "Turbovec compatibility",
+                FAIL,
+                f"Index quarantined (version mismatch). Installed turbovec: {tv_version or 'unknown'}",
+                fix="Rebuild: neuralmind build (recovery will attempt incremental rebuild from stored vectors)",
+            )
+        return Check("Turbovec compatibility", OK, "Index version compatible")
+    except ImportError:
+        return Check("Turbovec compatibility", WARN, "turbovec not installed — skipping")
+
+
 def run_diagnostics(project_path: str) -> list[Check]:
     """Run every check against ``project_path`` and return the results."""
     project = Path(project_path).resolve()
@@ -262,6 +317,7 @@ def run_diagnostics(project_path: str) -> list[Check]:
         _check_hooks(project),
         _check_memory(),
         _check_doc_code_alignment(project),
+        _check_turbovec_version(project),
     ]
 
 

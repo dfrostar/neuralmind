@@ -155,6 +155,10 @@ def _check_version_mismatch(project_path: str) -> str | None:
     A missing file or a file without a version stamp (pre-v0.46.0 builds)
     yields None — we only warn when there is a concrete mismatch, so users
     who upgrade don't get false alarms on actively-built projects.
+
+    The warning suggests ``neuralmind build`` (without ``--force``): the
+    incremental path skips unchanged nodes, and the turbovec quarantine
+    mechanism handles binary format mismatches transparently.
     """
     ir_meta_path = Path(project_path) / ".neuralmind" / "ir_meta.json"
     if not ir_meta_path.exists():
@@ -167,10 +171,27 @@ def _check_version_mismatch(project_path: str) -> str | None:
     if stored and stored != __version__:
         return (
             f"This project was indexed with NeuralMind v{stored}.\n"
-            f"v{__version__} requires a one-time reindex.\n"
-            f"Run: neuralmind build --force"
+            f"Rebuild recommended (incremental — skips unchanged nodes).\n"
+            f"Run: neuralmind build"
         )
     return None
+
+
+def _check_turbovec_mismatch(project_path: str) -> str | None:
+    """Return a warning string if the turbovec index was quarantined due
+    to version incompatibility.
+
+    This runs in cmd_build BEFORE the slow embed loop so the operator knows
+    a rebuild is coming and why. Recovery itself happens inside
+    embed_nodes via _rebuild_index_from_store.
+    """
+    try:
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+        backend = TurboVecEmbedder(project_path)
+        return backend.check_turbovec_compatibility()
+    except ImportError:
+        # turbovec not installed — skip this check
+        return None
 
 
 def cmd_scan_for_secrets(args):
@@ -285,6 +306,14 @@ def cmd_build(args):
             file=sys.stderr,
         )
 
+    # Turbovec index compatibility check (quarantine detection)
+    _turbovec_warning = _check_turbovec_mismatch(project_path)
+    if _turbovec_warning:
+        print(
+            f"\n⚠  {_turbovec_warning}\n",
+            file=sys.stderr,
+        )
+
     # Create .neuralmind/ with its self-ignoring .gitignore before anything
     # writes state into it, so the directory can never be committed.
     from neuralmind.state_dir import ensure_state_dir, tracked_state_files
@@ -323,6 +352,24 @@ def cmd_build(args):
         )
 
     mind = NeuralMind(project_path)
+    # Warn for large projects before starting the slow embed loop.
+    # Estimate node count from graph.json directly since embedder.nodes
+    # is lazy-loaded only inside build().
+    est_nodes = 0
+    graph_path = Path(project_path) / "graphify-out" / "graph.json"
+    if graph_path.exists():
+        try:
+            est_nodes = len(json.loads(graph_path.read_text(encoding="utf-8")).get("nodes", []))
+        except Exception:
+            pass
+    if est_nodes > 2000:
+        est_min = round(est_nodes / 585)  # ~585 nodes/min rough estimate
+        print(
+            f"\n⚠  Large project: ~{est_nodes:,} nodes. "
+            f"Expected build time: ~{est_min} minutes.\n"
+            f"  Run in background: neuralmind build {project_path} &\n",
+            file=sys.stderr,
+        )
     # Wire --bootstrap into the NeuralMind instance
     if getattr(args, "bootstrap", None):
         mind._bootstrap_bundle_path = args.bootstrap

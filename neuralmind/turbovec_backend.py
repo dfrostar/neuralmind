@@ -44,6 +44,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+from .progress import ProgressReporter, format_duration
 from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -173,6 +174,52 @@ class TurboVecEmbedder(EmbeddingBackend):
     @property
     def project_path(self) -> Path:
         return self._project_path
+
+    def turbovec_index_version(self) -> str | None:
+        """Return the turbovec index version if detectable, else None.
+
+        The ``.tvim`` binary format embeds a version stamp that ``turbovec``
+        checks on load. When the on-disk version is incompatible with the
+        installed turbovec, ``IdMapIndex.load`` raises ``ValueError``. Since the
+        C extension doesn't expose the version directly, we infer it from the
+        quarantine file left behind by ``_load_index``: if a ``.stale`` file
+        exists, the index was quarantined for incompatibility.
+
+        Returns the installed turbovec version string, or ``None`` if
+        turbovec is not installed.
+        """
+        try:
+            import turbovec
+        except ImportError:
+            return None
+        # The version is in the dist-info metadata, but the C extension
+        # doesn't expose it at runtime. Best effort from packaging metadata.
+        try:
+            import importlib.metadata
+            return importlib.metadata.version("turbovec")
+        except Exception:
+            return "installed"
+
+    def check_turbovec_compatibility(self) -> str | None:
+        """Pre-flight check: return a warning string if the turbovec index
+        was quarantined due to version incompatibility, else None.
+
+        This surfaces the issue BEFORE the slow embed loop so the operator
+        knows a rebuild is coming and why. The recovery itself happens in
+        ``embed_nodes`` (via ``_rebuild_index_from_store``) — this check
+        is just the user-visible heads-up.
+        """
+        stale_path = self._index_path.with_name(self._index_path.name + ".stale")
+        if not stale_path.exists():
+            return None
+        tv_version = self.turbovec_index_version()
+        return (
+            f"The vector index was quarantined (likely a turbovec version mismatch).\n"
+            f"Installed turbovec: {tv_version or 'unknown'}.\n"
+            f"The stale index is backed up at: {stale_path.name}\n"
+            f"Recovery will attempt to rebuild from stored vectors. If that fails,\n"
+            f"a full re-embedding will be triggered automatically."
+        )
 
     # ------------------------------------------------------------------ index
     def _dim(self) -> int | None:
@@ -519,14 +566,34 @@ class TurboVecEmbedder(EmbeddingBackend):
         if not self.nodes and not self.load_graph():
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
 
-        if self._load_index() is None:
+        # Detect index version mismatch before the slow embed loop.
+        # If _load_index returns None but the SQLite store has rows, the
+        # index was quarantined as unreadable (version mismatch, corrupt).
+        # Recover incrementally from the stored vectors instead of forcing
+        # a full re-embed.
+        idx = self._load_index()
+        if idx is None:
             row = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()
             if int(row["c"]) > 0:
-                # The index is gone (quarantined as unreadable, or deleted)
-                # while node metadata survives. Skipping unchanged nodes would
-                # persist an empty index that SQLite claims is populated, so
-                # re-embed everything into the fresh index.
-                force = True
+                # Try incremental recovery from stored vectors first.
+                logger.info(
+                    "Index version mismatch detected. Attempting incremental "
+                    "rebuild from %d stored vectors...", int(row["c"])
+                )
+                if self._rebuild_index_from_store():
+                    # Success — index recovered, proceed with incremental update.
+                    stats_rebuilt = int(row["c"])
+                    logger.info(
+                        "Successfully recovered %d vectors from store. "
+                        "Proceeding with incremental update.", stats_rebuilt
+                    )
+                    # Fall through to incremental loop below — don't force.
+                else:
+                    # Recovery failed (no ONNX, no model). Force full re-embed.
+                    force = True
+                    logger.warning(
+                        "Incremental recovery failed. Forcing full re-embedding."
+                    )
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         pending: list[tuple[str, int, str, dict, str, bool]] = (
@@ -534,39 +601,41 @@ class TurboVecEmbedder(EmbeddingBackend):
         )  # (node_id, uid, text, meta, hash, is_update)
         next_uid = self._next_uid()
 
-        for node in self.nodes:
-            node_id = str(node.get("id", node.get("label", "")))
-            if not node_id:
-                continue
-            text = self._node_to_text(node)
-            content_hash = self._content_hash(text)
-            row = self._conn.execute(
-                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
-                (node_id,),
-            ).fetchone()
-
-            if row is not None:
-                if not force and row["content_hash"] == content_hash:
-                    stats["skipped"] += 1
+        total_nodes = len(self.nodes)
+        with ProgressReporter(total_nodes, label="Embedding") as bar:
+            for node in self.nodes:
+                node_id = str(node.get("id", node.get("label", "")))
+                if not node_id:
                     continue
-                uid = int(row["uid"])
-                is_update = True
-                stats["updated"] += 1
-                # Preserve content_category from existing row if graph node lacks it
-                existing_cc = row["content_category"] or ""
-            else:
-                uid = next_uid
-                next_uid += 1
-                is_update = False
-                stats["added"] += 1
-                existing_cc = ""
+                text = self._node_to_text(node)
+                content_hash = self._content_hash(text)
+                row = self._conn.execute(
+                    "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
+                    (node_id,),
+                ).fetchone()
 
-            meta = self._node_metadata(node)
-            # Don't overwrite content_category from DB with empty graph value
-            if existing_cc and not meta.get("content_category"):
-                meta["content_category"] = existing_cc
+                if row is not None:
+                    if not force and row["content_hash"] == content_hash:
+                        stats["skipped"] += 1
+                        bar.advance()
+                        continue
+                    uid = int(row["uid"])
+                    is_update = True
+                    stats["updated"] += 1
+                    existing_cc = row["content_category"] or ""
+                else:
+                    uid = next_uid
+                    next_uid += 1
+                    is_update = False
+                    stats["added"] += 1
+                    existing_cc = ""
 
-            pending.append((node_id, uid, text, meta, content_hash, is_update))
+                meta = self._node_metadata(node)
+                if existing_cc and not meta.get("content_category"):
+                    meta["content_category"] = existing_cc
+
+                pending.append((node_id, uid, text, meta, content_hash, is_update))
+                bar.advance(detail=node_id[:40])
 
         if not pending:
             self._persist_index()

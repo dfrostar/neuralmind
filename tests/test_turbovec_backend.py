@@ -217,8 +217,10 @@ class TurboVecBackendTests(unittest.TestCase):
 
     def test_missing_index_with_surviving_rows_reembeds(self) -> None:
         """If the index file vanishes while SQLite rows survive, a force=False
-        embed must repopulate the fresh index instead of skipping everything
-        and persisting an empty index that the store claims is populated."""
+        embed must repopulate the fresh index by recovering vectors from the
+        stored node data — NOT by re-embedding everything (which is wasteful
+        for large projects). Recovery should happen transparently and search
+        must return correct results."""
         be = self._backend()
         be.embed_nodes()
         index_path = be._index_path
@@ -227,8 +229,13 @@ class TurboVecBackendTests(unittest.TestCase):
         index_path.unlink()
         reopened = self._backend()
         stats = reopened.embed_nodes()
-        self.assertEqual(stats["updated"], 5)
-        self.assertEqual(stats["skipped"], 0)
+        self.assertNotIn("error", stats)
+        # Recovery from store should have repopulated the index without
+        # forcing a full re-embedd: all 5 nodes match content_hash and
+        # are skipped in the incremental loop.
+        self.assertEqual(stats["updated"], 0)
+        self.assertEqual(stats["skipped"], 5)
+        self.assertTrue(index_path.exists())
         results = reopened.search("send_invoice", n=1)
         self.assertEqual(results[0]["id"], "n_invoice")
         reopened.close()
