@@ -155,6 +155,7 @@ class NeuralMind:
         hybrid_context: bool | None = None,
         enable_synapses: bool = True,
         memory_namespace: str | None = None,
+        scope: str = "all",
     ):
         """
         Initialize NeuralMind for a project.
@@ -167,11 +168,12 @@ class NeuralMind:
             memory_namespace: Explicit synapse-memory namespace (PRD 4). When
                 None, resolved from NEURALMIND_NAMESPACE / the backend config's
                 ``memory_namespace`` / the current git branch / ``personal``.
+            scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
         self.project_path = Path(project_path)
         self.db_path = db_path
         self.backend_manager = BackendManager(
-            project_path=str(self.project_path), db_path=db_path, backend=backend_type
+            project_path=str(self.project_path), db_path=db_path, backend=backend_type, scope=scope
         )
         self.hybrid_context = (
             bool(self.backend_manager.config.get("hybrid_context", False))

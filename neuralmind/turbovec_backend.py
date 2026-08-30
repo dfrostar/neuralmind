@@ -132,13 +132,14 @@ class TurboVecEmbedder(EmbeddingBackend):
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._store_path = self._dir / "store.sqlite"
 
-        # Per-scope index file naming to prevent collisions
+        # Per-scope store + index file naming to prevent collisions
         self._scope = scope
         if scope != "all":
+            self._store_path = self._dir / f"store.{scope}.sqlite"
             self._index_path = self._dir / f"index.{scope}.tvim"
         else:
+            self._store_path = self._dir / "store.sqlite"
             self._index_path = self._dir / "index.tvim"
 
         self.bit_width = int(bit_width)
