@@ -683,11 +683,11 @@ def _get_assets_for_file(mind, source_file: str) -> list[dict]:
 
 def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trace_verbose: bool, relevance: bool, explain: bool) -> None:
     """Search both content (chapters) and code scopes, merge results with source labels."""
-    import time
     from pathlib import Path as _Path
 
     path = _Path(project_path)
     chapter_filter = getattr(args, "chapter", None)
+    scope_bias = getattr(args, "scope_bias", "balanced")  # balanced, content, code
 
     # Detect available scopes
     tv_dir = path / "graphify-out" / "neuralmind_turbovec"
@@ -698,8 +698,6 @@ def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trac
 
     # Search content scope (chapters)
     if has_content:
-        content_mind = create_mind(project_path, auto_build=False)
-        # Force scope to content
         content_mind = NeuralMind(project_path, scope="content")
         try:
             content_results = content_mind.embedder.search(question, n=5)
@@ -731,6 +729,16 @@ def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trac
         except Exception:
             pass
 
+    # Apply scope bias to scores
+    if scope_bias == "content":
+        for r in results:
+            if r["source_scope"] == "content":
+                r["score"] = r.get("score", 0) * 1.2  # 20% boost
+    elif scope_bias == "code":
+        for r in results:
+            if r["source_scope"] == "code":
+                r["score"] = r.get("score", 0) * 1.2
+
     # Sort by score descending
     results.sort(key=lambda r: r.get("score", 0), reverse=True)
 
@@ -738,6 +746,7 @@ def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trac
         output = {
             "query": question,
             "type": "unified",
+            "scope_bias": scope_bias,
             "chapter_filter": chapter_filter,
             "results": results,
             "has_content_scope": has_content,
@@ -751,7 +760,7 @@ def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trac
         if has_code:
             scope_info.append("code")
         print(f"Query: {question}")
-        print(f"Mode: unified ({'+'.join(scope_info)})")
+        print(f"Mode: unified ({'+'.join(scope_info)}, bias={scope_bias})")
         if chapter_filter:
             print(f"Chapter: {chapter_filter}")
         print("=" * 60)
@@ -768,6 +777,11 @@ def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trac
             if assets:
                 for asset in assets:
                     print(f"      [asset] {asset['path']} ({asset['type']})")
+            # Show preview snippet
+            doc = r.get("document", "")
+            if doc:
+                preview = doc[:120].replace("\n", " ").strip()
+                print(f"      {preview}...")
         print("=" * 60)
         print(f"Total results: {len(results)}")
 
@@ -5176,6 +5190,12 @@ def main():
         "--chapter",
         default=None,
         help="Filter unified results to a specific chapter (e.g., 'Chapter 1' or 'Chapter 2 — The Corner Pub')",
+    )
+    query_p.add_argument(
+        "--scope-bias",
+        choices=["balanced", "content", "code"],
+        default="balanced",
+        help="Unified mode: boost results from one scope (balanced/content/code)",
     )
     query_p.set_defaults(func=cmd_query)
 

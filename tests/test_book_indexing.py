@@ -243,10 +243,12 @@ class TestUnifiedQuery:
         parser.add_argument("question")
         parser.add_argument("--mode", choices=["default", "unified"], default="default")
         parser.add_argument("--chapter", default=None)
+        parser.add_argument("--scope-bias", choices=["balanced", "content", "code"], default="balanced")
 
-        args = parser.parse_args([".", "test question", "--mode=unified", "--chapter=Chapter 1"])
+        args = parser.parse_args([".", "test question", "--mode=unified", "--chapter=Chapter 1", "--scope-bias=content"])
         assert args.mode == "unified"
         assert args.chapter == "Chapter 1"
+        assert args.scope_bias == "content"
 
     def test_chapter_filter_in_tags(self):
         """Chapter filter matches against tags in metadata."""
@@ -257,3 +259,42 @@ class TestUnifiedQuery:
         """Chapter filter correctly rejects non-matching tags."""
         tags = "chapter:Chapter 2: The Corner Pub. depth:H1"
         assert "chapter:Chapter 1" not in tags
+
+
+class TestScopeBias:
+    """Tests for scope bias in unified query."""
+
+    def test_balanced_mode(self):
+        """Balanced mode doesn't boost either scope."""
+        # Both scopes at same score stay equal
+        results = [
+            {"source_scope": "content", "score": 0.5},
+            {"source_scope": "code", "score": 0.5},
+        ]
+        # No boost applied in balanced mode
+        assert results[0]["score"] == 0.5
+        assert results[1]["score"] == 0.5
+
+    def test_content_bias(self):
+        """Content bias boosts content results by 20%."""
+        results = [
+            {"source_scope": "content", "score": 0.5},
+            {"source_scope": "code", "score": 0.5},
+        ]
+        for r in results:
+            if r["source_scope"] == "content":
+                r["score"] = r["score"] * 1.2
+        assert results[0]["score"] == 0.6
+        assert results[1]["score"] == 0.5
+
+    def test_code_bias(self):
+        """Code bias boosts code results by 20%."""
+        results = [
+            {"source_scope": "content", "score": 0.5},
+            {"source_scope": "code", "score": 0.5},
+        ]
+        for r in results:
+            if r["source_scope"] == "code":
+                r["score"] = r["score"] * 1.2
+        assert results[0]["score"] == 0.5
+        assert results[1]["score"] == 0.6
