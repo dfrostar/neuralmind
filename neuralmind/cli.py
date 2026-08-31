@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -193,6 +194,34 @@ def _check_turbovec_mismatch(project_path: str) -> str | None:
     except ImportError:
         # turbovec not installed — skip this check
         return None
+
+
+def _save_build_stats(project_path: str, result: dict) -> None:
+    """Write build metadata to .neuralmind/build_status.json for
+    `neuralmind build-status` to read without a running build.
+
+    Records delta stats, duration, and timestamp — everything an operator
+    needs to know "what happened in the last build" without re-running it.
+    """
+    state_dir = Path(project_path) / ".neuralmind"
+    if not state_dir.exists():
+        return
+    status_path = state_dir / "build_status.json"
+    status = {
+        "project": result.get("project"),
+        "nodes_total": result.get("nodes_total"),
+        "nodes_added": result.get("nodes_added", 0),
+        "nodes_updated": result.get("nodes_updated", 0),
+        "nodes_skipped": result.get("nodes_skipped", 0),
+        "communities": result.get("communities"),
+        "duration_seconds": result.get("duration_seconds"),
+        "backend": result.get("backend"),
+        "built_at": datetime.now().isoformat(),
+    }
+    try:
+        status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def cmd_scan_for_secrets(args):
@@ -384,6 +413,66 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     print("  Assets: metadata tracked")
 
 
+def cmd_build_status(args):
+    """Show the result of the last build from saved metadata.
+
+    Reads .neuralmind/build_status.json — no daemon, no vector backend,
+    no graph load. Milliseconds, not minutes. Safe to poll from cron.
+    """
+    project_path = Path(args.project_path).resolve()
+    status_path = project_path / ".neuralmind" / "build_status.json"
+    if not status_path.exists():
+        result = {
+            "status": "no_build",
+            "project": project_path.name,
+            "message": f"No build recorded. Run `neuralmind build {project_path}` first.",
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"No build recorded for {project_path.name}")
+            print(f"  Run: neuralmind build {project_path}")
+        return
+
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        result = {
+            "status": "error",
+            "project": project_path.name,
+            "message": f"Could not read build status: {e}",
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Error reading build status: {e}")
+        return
+
+    if args.json:
+        print(json.dumps(status, indent=2, default=str))
+        return
+
+    print(f"═══ Last Build — {status.get('project', project_path.name)} ═══")
+    built_at = status.get("built_at", "unknown")
+    if built_at and built_at != "unknown":
+        # Trim ISO timestamp to human-readable
+        try:
+            from datetime import datetime as dt
+            built_at = dt.fromisoformat(built_at).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+    print(f"  Built:         {built_at}")
+    print(f"  Nodes:         {status.get('nodes_total', 'unknown')}")
+    added = status.get("nodes_added", 0)
+    updated = status.get("nodes_updated", 0)
+    skipped = status.get("nodes_skipped", 0)
+    if added or updated or skipped:
+        print(f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped")
+    print(f"  Communities:   {status.get('communities', 'unknown')}")
+    print(f"  Duration:      {status.get('duration_seconds', 'unknown')}s")
+    print(f"  Backend:       {status.get('backend', 'unknown')}")
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
 
@@ -417,8 +506,13 @@ def cmd_build(args):
         return
 
     force = args.force
+    rebuild_index = getattr(args, "rebuild_index", False)
+    if rebuild_index:
+        force = True  # rebuild-index implies force for the embed loop
     print(f"Building NeuralMind index for: {project_path}")
     print(f"Force rebuild: {force}")
+    if rebuild_index:
+        print(f"Rebuild index: {rebuild_index}")
     print()
 
     path = Path(project_path)
@@ -525,6 +619,14 @@ def cmd_build(args):
         print(f"   Project: {result.get('project')}")
         print(f"   Nodes: {result.get('nodes_total')}")
         print(f"   Communities: {result.get('communities')}")
+        # Delta stats — show what actually changed, not just totals.
+        # For incremental builds this is the whole point: the operator
+        # learns whether the build was cheap (most skipped) or expensive.
+        added = result.get("nodes_added", 0)
+        updated = result.get("nodes_updated", 0)
+        skipped = result.get("nodes_skipped", 0)
+        if added or updated or skipped:
+            print(f"   Delta: +{added} new, ~{updated} updated, ={skipped} skipped")
         ir_meta = result.get("ir")
         if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
             val = ir_meta.get("validation", {})
@@ -534,6 +636,9 @@ def cmd_build(args):
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
+
+    # Save build stats to ir_meta.json for build-status / status commands
+    _save_build_stats(project_path, result)
 
     # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
@@ -5109,6 +5214,11 @@ def main():
     build_p.add_argument("project_path", nargs="?", default=".")
     build_p.add_argument("--force", "-f", action="store_true")
     build_p.add_argument(
+        "--rebuild-index",
+        action="store_true",
+        help="Rebuild the vector index from stored vectors (recovers from version mismatch without full re-embed)",
+    )
+    build_p.add_argument(
         "--bootstrap",
         default=None,
         help="Path to a synapse bundle JSON for cold-start seeding",
@@ -6512,6 +6622,17 @@ def main():
         help="Print nothing when nothing needs attention (for cron)",
     )
     expiring_lp.set_defaults(func=cmd_license_expiring)
+
+    # ------------------------------------------------------------------
+    # Build status command
+    # ------------------------------------------------------------------
+    build_status_p = subparsers.add_parser(
+        "build-status",
+        help="Show the result of the last build (reads saved build metadata)",
+    )
+    build_status_p.add_argument("project_path", nargs="?", default=".")
+    build_status_p.add_argument("--json", "-j", action="store_true")
+    build_status_p.set_defaults(func=cmd_build_status)
 
     # ------------------------------------------------------------------
     # Multi-project operator commands
