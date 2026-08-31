@@ -29,7 +29,7 @@ numpy, so this keeps running in the dependency-light test job.
 
 from __future__ import annotations
 
-from neuralmind.context_selector import _displace, _module_of
+from neuralmind.context_selector import _COVERAGE_MARGIN, _displace, _module_of
 
 
 def _hit(node_id, module, score):
@@ -121,12 +121,41 @@ def test_all_unique_modules_falls_back_to_weakest_first():
 def test_kept_preserves_input_order():
     """Callers concatenate kept + fetched, so ranking order must survive."""
     hits = [
+        _hit("a", "one.py", 0.900),
+        _hit("b", "one.py", 0.702),
+        _hit("c", "two.py", 0.700),
+    ]
+    kept, _ = _displace(hits, 1)
+    assert [r["id"] for r in kept] == ["a", "c"]
+
+
+def test_a_materially_better_hit_is_not_sacrificed_for_coverage():
+    """Coverage only decides inside the band where ranking cannot separate.
+
+    Here the redundant hit scores 0.8 against the unique hit's 0.7 — well
+    outside the margin — so the score is real signal and stands. Dropping it
+    to keep one more file costs more facts than the file is worth: measured,
+    an unbounded coverage preference took the parity gate's faithfulness delta
+    from +0.041 to -0.006 and failed its floor.
+    """
+    hits = [
         _hit("a", "one.py", 0.9),
         _hit("b", "one.py", 0.8),
         _hit("c", "two.py", 0.7),
     ]
-    kept, _ = _displace(hits, 1)
-    assert [r["id"] for r in kept] == ["a", "c"]
+    kept, dropped = _displace(hits, 1)
+    assert [r["id"] for r in dropped] == ["c"]
+    assert [r["id"] for r in kept] == ["a", "b"]
+
+
+def test_margin_is_wide_enough_for_host_variance_and_no_wider():
+    """Guard the constant against being tuned into either uselessness.
+
+    Below the ~0.8% host-to-host score variation it stops curing the
+    bimodality; far above it, coverage starts overriding real ranking signal
+    and fact coverage regresses.
+    """
+    assert 0.01 <= _COVERAGE_MARGIN <= 0.05
 
 
 def test_equal_scores_break_on_id_not_input_order():
