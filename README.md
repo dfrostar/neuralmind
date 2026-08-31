@@ -60,7 +60,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**NeuralMind makes no network calls of its own.** It processes locally and feeds only the relevant code slice to your AI tool.
+**NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
@@ -76,9 +76,9 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
-| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. | 🔬 Theoretical |
-| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. | 🔬 Theoretical |
-| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) holds the staged, CI-prevalidated `a0-plugins` index entry, not yet submitted. | 🔬 Theoretical |
+| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
+| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. The portable skill is also listed on ClawHub (community channel): `openclaw skills install @dfrostar/neuralmind`. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) holds the `a0-plugins` index entry, [submitted as agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499) — their plugin validator passes; awaiting maintainer review, not merged. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
@@ -104,7 +104,7 @@ NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what 
 
 | Effect | What CI enforces | Observed magnitude |
 |--------|------------------|--------------------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on is within 2 pts of recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift ≥ 0, averaged over 3 runs | **+0.9 to +11.6 pts** across runs |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
@@ -142,7 +142,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that makes no network calls of its own, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -315,7 +315,7 @@ Measured, not marketed — the numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`:
 
 - **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
+- **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI permits at most a 2-point host-variance loss.
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).
@@ -334,9 +334,11 @@ Methodology, gold sets, and community submissions:
 
 ## 🔒 Security & Compliance
 
-- **100% local engine.** NeuralMind makes zero network calls of its own and
-  ships no telemetry. Only the minimal relevant slice of code ever reaches
-  your AI tool.
+- **Local engine, no telemetry.** NeuralMind transmits no repository content
+  and ships no telemetry. Only the minimal relevant slice of code ever reaches
+  your AI tool. The single outbound request it makes is a one-time fetch of a
+  public embedding model on first build, carrying nothing about your code;
+  pre-seed it and the install never reaches the network at all.
 - **CycloneDX SBOM per release**, hash-chained audit log (Team tier), signed
   licenses (Ed25519), tarball integrity instructions on every release.
 - Live posture page: [neuralmind.uk/security](https://neuralmind.uk/security/) ·
@@ -386,7 +388,7 @@ read the number. If it's not worth it, uninstall — and see the
 tier adds governance, audit, and seat management for organizations.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (no network calls of its own, audit log, RBAC). Certification is on
+patterns (no repository content transmitted, audit log, RBAC). Certification is on
 the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 

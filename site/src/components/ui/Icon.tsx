@@ -139,7 +139,7 @@ const paths: Record<IconName, React.ReactNode> = {
             <path d="M13.9 10.1 15.9 12.1" />
         </>
     ),
-    // Zero network calls of its own.
+    // No repository content transmitted.
     offline: (
         <>
             <circle cx="12" cy="12" r="9" />

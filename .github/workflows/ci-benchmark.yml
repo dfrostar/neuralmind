@@ -22,6 +22,8 @@ concurrency:
 jobs:
   benchmark:
     runs-on: ubuntu-latest
+    env:
+      NEURALMIND_ORT_THREADS: "1"
     steps:
       - uses: actions/checkout@v7
 
@@ -161,6 +163,14 @@ jobs:
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
+        # always(): the regression gate runs BEFORE this step, so on a failure
+        # the job exited here and results.json — the probe digest and per-query
+        # hit_modules that test_synapse_recall_does_not_reduce_hit_rate's own
+        # docstring tells you to compare — was discarded. The evidence survived
+        # only on the runs that did not need it. Verified on 2026-08-28: three
+        # failing runs produced no benchmark-results artifact while every
+        # passing run did, which made the prescribed diagnosis impossible.
+        if: always()
         with:
           name: benchmark-results
           path: |

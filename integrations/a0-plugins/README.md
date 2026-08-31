@@ -1,10 +1,19 @@
 # Agent Zero `a0-plugins` submission
 
-`neuralmind/` is the ready-to-submit index entry for
+`neuralmind/` is the index entry for
 [agent0ai/a0-plugins](https://github.com/agent0ai/a0-plugins), the
-community registry surfaced inside Agent Zero. It has never been submitted
-(verified 2026-08-27: no entry, no open or closed PR, no dfrostar activity
-in that repo), so this directory is staged, not live.
+community registry surfaced inside Agent Zero.
+
+**Status (verified 2026-08-28): submitted, not merged.**
+[agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499)
+is open, their "Validate Plugin PR" check passes, and no reviewer is
+assigned yet. Until it merges, NeuralMind is *not* listed in the registry —
+say "submitted, validator green", never "available in Agent Zero". The
+content lives on the `dfrostar/a0-plugins` fork's **main** branch; pushing
+there updates the PR in place.
+
+This directory stays the source of truth: change it here, then copy to the
+fork, so the entry can't drift from the claims gate below.
 
 ## What the registry actually takes
 
