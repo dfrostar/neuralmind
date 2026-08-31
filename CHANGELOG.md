@@ -1,13 +1,13 @@
 # Changelog
 
-## [3.7.1](https://github.com/dfrostar/neuralmind/compare/v3.7.0...v3.7.1) (2026-08-31)
+## [3.8.0](https://github.com/dfrostar/neuralmind/compare/v3.7.0...v3.8.0) (2026-08-31)
 
 
-### Documentation
+### Features
 
-* disclose the one LLM egress path and rule out video ingestion ([#493](https://github.com/dfrostar/neuralmind/issues/493)) ([ccf8322](https://github.com/dfrostar/neuralmind/commit/ccf83223140b2f422845fbbb438c971e0fb491e3))
-* ecosystem debut posts, correct registry status, fix the air-gapped page ([#484](https://github.com/dfrostar/neuralmind/issues/484)) ([4397e10](https://github.com/dfrostar/neuralmind/commit/4397e107709c0382aaec0e676538a6218fc5b1b8))
-* refresh benchmark chart [skip ci] ([d671a30](https://github.com/dfrostar/neuralmind/commit/d671a301f64a78e975073dedafc22424b5a1313b))
+* **unified search:** content+code search for book-like projects with `--mode=unified` and `--content-type=book` ([5188dc6](https://github.com/dfrostar/neuralmind/commit/5188dc6))
+* **unified search:** scope bias (`--scope-bias=content|code|balanced`) and chapter filtering (`--chapter=`) ([3d35ef5](https://github.com/dfrostar/neuralmind/commit/3d35ef5))
+
 
 ## [3.7.0](https://github.com/dfrostar/neuralmind/compare/v3.6.0...v3.7.0) (2026-08-30)
 
