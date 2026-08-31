@@ -120,16 +120,36 @@ deployment sets it to anything other than a loopback/private address, that
 becomes a real egress path and should go through the same review as any
 other outbound connection.
 
-### 3.3 Dead configuration — not a live risk today, flagged for hygiene
+### 3.3 Dead configuration — removed
 
-`neuralmind/config.py` defines `LocalModelsConfig.fallback_to_api` (default
-`True`) and `ApiConfig(provider="openrouter")`. As of this review, **no
-code path reads either field** — they are schema-only and do not cause any
-call to OpenRouter or any other API provider. This is not a current data
-exposure, but it is worth removing or wiring up deliberately: a client
-security reviewer grepping the codebase for `openrouter` will find it and
-reasonably ask whether it does something. Filed as a hygiene item, not a
-compliance blocker.
+`neuralmind/config.py` previously defined `LocalModelsConfig.fallback_to_api`
+(default `True`) and an `ApiConfig(provider="openrouter")` section. As of
+this review, no code path ever read either field — they were schema-only
+and never caused a call to OpenRouter or any other API provider. They were
+removed (not wired up) precisely because leaving a dead field named after a
+hosted third-party API in the config schema is confusing for exactly the
+audience this document serves: a client security reviewer grepping the
+codebase for `openrouter` would find it and reasonably ask whether it does
+something. `neuralmind/config.py` now only carries the local-Ollama section
+described in §3.2.
+
+### 3.4 Hugging Face — not a dependency of any kind
+
+A natural follow-up to §3.3's OpenRouter finding: does NeuralMind depend on
+Hugging Face the way some "local" AI tools quietly do (fetching model
+weights from the HF Hub, or calling HF's hosted Inference API)? No. The
+only Hugging-Face-authored package anywhere in `pyproject.toml` is
+`tokenizers` (the fast-tokenizer library), and it runs entirely
+in-process to prepare text for the local ONNX MiniLM model described in
+§3 — it makes no network calls of its own. There is no `huggingface_hub` or
+`transformers` dependency, and no `HF_API_KEY`/Inference API code path
+anywhere in the codebase. The embedding model archive itself is fetched
+from a pinned, SHA256-verified URL on Chroma's own S3 bucket
+(`neuralmind/onnx_embedder.py`), not the HF Hub. Using a vendor's
+open-source library locally (this project also uses OpenAI's `tiktoken`
+the same way, for benchmark tokenization) is not the same as depending on
+that vendor's hosted service — the distinction that made §3.3's OpenRouter
+field worth removing in the first place.
 
 ## 4. Answering the specific question: client video files and LLM subprocessors
 

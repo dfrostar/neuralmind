@@ -2,8 +2,8 @@
 
 Reads user overrides from ``~/.config/neuralmind/config.toml`` (or
 ``$XDG_CONFIG_HOME/neuralmind/config.toml``) and merges them over the
-built-in DEFAULT_CONFIG. Used by the local-Ollama client and the
-embedding backend to resolve provider/endpoints without env-var juggling.
+built-in DEFAULT_CONFIG. Used by the local-Ollama client to resolve the
+endpoint/model without env-var juggling.
 
 Example:
     >>> from neuralmind.config import load_config
@@ -13,10 +13,11 @@ Example:
 
 See Also:
     - ``neuralmind/local_client.py`` — consumer for the local-model section
-    - ``neuralmind/embedder.py`` — consumer for the api provider section
+    - ``docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`` — why there's no
+      cloud-API fallback section here: NeuralMind doesn't call one
 
 Version:
-    0.54.0
+    0.55.0
 """
 
 import logging
@@ -40,21 +41,6 @@ class LocalModelsConfig:
     endpoint: str = "http://localhost:11434"
     model: str = "llama3.1"
     api_key: str | None = None
-    fallback_to_api: bool = True
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)
-
-    def __contains__(self, key: str) -> bool:
-        return hasattr(self, key)
-
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
-
-
-@dataclass
-class ApiConfig:
-    provider: str = "openrouter"
 
     def get(self, key: str, default: Any = None) -> Any:
         return getattr(self, key, default)
@@ -69,7 +55,6 @@ class ApiConfig:
 @dataclass
 class NeuralMindConfig:
     local_models: LocalModelsConfig = field(default_factory=LocalModelsConfig)
-    api: ApiConfig = field(default_factory=ApiConfig)
 
     def __getitem__(self, key: str) -> Any:
         """Dict-style backward compat: config['local_models']."""
@@ -97,12 +82,10 @@ class NeuralMindConfig:
     def from_dict(cls, data: dict[str, Any]) -> "NeuralMindConfig":
         """Build a config from a raw dict, ignoring unknown keys."""
         local = data.get("local_models", {}) or {}
-        api = data.get("api", {}) or {}
         return cls(
             local_models=LocalModelsConfig(
                 **{k: v for k, v in local.items() if k in LocalModelsConfig.__dataclass_fields__}
             ),
-            api=ApiConfig(**{k: v for k, v in api.items() if k in ApiConfig.__dataclass_fields__}),
         )
 
     def to_dict(self) -> dict[str, Any]:
