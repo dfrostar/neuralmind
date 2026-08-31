@@ -17,7 +17,7 @@ smaller-scope.
 |---|---|---|---|
 | 💸 | **Cheaper context** | **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** than pasting files — beats `ripgrep` on cost on every repo, and on recall beats it on 2 of 4 and ties exactly on the other 2 | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Same public benchmark, **real repos** |
-| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI permits a 2-point host-variance loss — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
+| 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
 | 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **delta CI-gated ≥ 0, +0.013 to +0.143 observed**, grounding 1.00 | Faithfulness/parity gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos

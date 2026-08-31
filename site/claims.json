@@ -139,11 +139,11 @@
       "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.96 / 0.79 / 0.95 / 1.00; click is the weakest and every miss is published."
     },
     {
-      "claim": "Synapse recall stays within 2 points of no-recall top-k hit rate, at a neutral token budget",
+      "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
       "evidence": "ci-gated",
-      "note": "The CI gate permits at most a 2-point loss: test_synapse_recall_stays_within_host_variance allows measured TurboVec host variance, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate an uplift magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number."
+      "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number. HISTORY: this gate measured -1.75 pts (74.6% -> 72.8%) on AVX-512 hosts and +3.5 elsewhere, bit-stably, for months. A 2-point tolerance was added 2026-08-29 to make it pass and was reverted; the cause was displacement dropping the ranked tail, which could evict a module's only representatives. Fixed 2026-08-31 by choosing displacement victims whose module another survivor still covers. Both host classes now measure +3.51 on this fixture (74.6% -> 78.1%), verified on an avx512f container and a non-avx512f CI runner at the same commit."
     },
     {
       "claim": "NeuralMind's selection beats naive truncation at a matched token budget",
@@ -178,7 +178,7 @@
     },
     {
       "claim": "'+6.1 pts' or '+0.143' labelled CI-gated",
-      "why": "The synapse CI gate allows a bounded 2-point host-variance loss, while the faithfulness gate asserts direction only; neither gates an uplift magnitude. Quoting a number as gated when only a tolerance or sign is gated is the same defect as quoting a number with no measurement at all."
+      "why": "Both CI gates assert direction only (on >= off, delta >= 0.0), never a magnitude, and both published magnitudes are contradicted by current CI output. Quoting a number as gated when only its sign is gated is the same defect as quoting a number with no measurement at all."
     }
   ],
   "private_names_never_publish": [
