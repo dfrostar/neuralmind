@@ -334,16 +334,23 @@ Methodology, gold sets, and community submissions:
 
 ## 🔒 Security & Compliance
 
-- **Local engine, no telemetry.** NeuralMind transmits no repository content
-  and ships no telemetry. Only the minimal relevant slice of code ever reaches
-  your AI tool. The single outbound request it makes is a one-time fetch of a
-  public embedding model on first build, carrying nothing about your code;
-  pre-seed it and the install never reaches the network at all.
+- **Local engine, no telemetry by default.** NeuralMind transmits no
+  repository content and ships no telemetry in its default configuration.
+  Only the minimal relevant slice of code ever reaches your AI tool. The
+  only outbound requests it makes by default are a one-time fetch of a
+  public embedding model on first build (carrying nothing about your code;
+  pre-seed it and the install never reaches the network at all) and,
+  **only if you explicitly opt in** with `NEURALMIND_LLM_SEED=1` +
+  `ANTHROPIC_API_KEY`, a call that sends README/architecture-doc prose
+  (never code, never other files) to Anthropic to seed synapse edges. No
+  code path ingests video, image, or audio files at all. Full disclosure:
+  [`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 - **CycloneDX SBOM per release**, hash-chained audit log (Team tier), signed
   licenses (Ed25519), tarball integrity instructions on every release.
 - Live posture page: [neuralmind.uk/security](https://neuralmind.uk/security/) ·
   Policy: [SECURITY.md](SECURITY.md) ·
   [Compliance summary](docs/COMPLIANCE-SUMMARY.md) ·
+  [Third-party LLM & media disclosure](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md) ·
   [SDLC policy](docs/compliance/SDLC_POLICY.md)
 
 Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
