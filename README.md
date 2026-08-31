@@ -104,7 +104,7 @@ NeuralMind's moat is usage memory: a **Hebbian synapse layer** that learns what 
 
 | Effect | What CI enforces | Observed magnitude |
 |--------|------------------|--------------------|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on is within 2 pts of recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on ≥ recall-off, at a neutral token budget | **+3.5 to +14 pts** across runs on passing hosts; **-1.75 pts** on AVX-512 hosts, which fails this gate (open bug) |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift ≥ 0, averaged over 3 runs | **+0.9 to +11.6 pts** across runs |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits rather than adding tokens.
@@ -315,7 +315,7 @@ Measured, not marketed — the numbers are produced by CI on every commit
 with `python -m tests.benchmark.run`:
 
 - **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** on the public benchmark.
-- **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI permits at most a 2-point host-variance loss.
+- **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude. On AVX-512 hosts it currently measures -1.75 points and the gate fails: a host-dependent ranking bug, published rather than tolerated ([details](tests/test_benchmark_regression.py)).
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
   ([full field report](https://neuralmind.uk/effectiveness/)).

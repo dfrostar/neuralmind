@@ -25,7 +25,6 @@ RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
 
 REDUCTION_FLOOR = 4.0  # keep in sync with tests/benchmark/run.py
 HIT_RATE_FLOOR = 0.50  # at least half of expected modules should show up
-SYNAPSE_HIT_RATE_TOLERANCE = 0.02  # TurboVec ranking varies by host
 
 
 @pytest.fixture(scope="module")
@@ -64,13 +63,31 @@ def test_top_k_hit_rate_above_floor(benchmark_results):
     )
 
 
-def test_synapse_recall_stays_within_host_variance(benchmark_results):
-    """Synapse recall must stay within measured host-dependent variance.
+def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
+    """Synapse recall must never make retrieval worse.
 
     Budget-neutral displacement could in principle drop a relevant vector
-    hit for a co-activated-but-wrong one. The gate permits no more than a
-    two-point hit-rate loss, which covers the measured TurboVec ranking
-    variation while still detecting a product regression.
+    hit for a co-activated-but-wrong one. This gate catches that: with the
+    same warm graph, recall on must surface at least as many expected
+    modules as recall off. This is the CI enforcement behind the published
+    "recall-on ≥ recall-off" claim (README, site) — loosening it changes
+    what the product is allowed to say, not just what CI tolerates.
+
+    That -2pt tolerance has now been added and removed TWICE, both times for
+    the bimodality described below. The first was removed when the harness
+    pinned the suspected source instead. The second landed on 2026-08-29 and
+    was reverted the same weekend: it renamed this test to
+    "stays_within_host_variance", deleted this very paragraph, and rewrote the
+    published claim across README, site/claims.json, llms.txt and the wiki
+    from a guarantee into a permitted 2-point regression. Note the sizing —
+    the tolerance was 2.0 against an observed failure of 1.75, so it was cut
+    to clear the symptom rather than derived from a variance measurement.
+    The cost of keeping it would have been permanent: the host-dependent
+    ranking bug is real, it makes retrieval genuinely worse for users on that
+    hardware, and a 2-point allowance hides it from CI forever.
+
+    If you are here because this gate is red and a tolerance looks like the
+    fix: it is the third time. Read WHAT DIFFERS below first.
 
     History of that bimodality, kept because it is the map if this ever
     recurs. The same commit on the same runner image produced both -1.75 and
@@ -204,14 +221,12 @@ def test_synapse_recall_stays_within_host_variance(benchmark_results):
             p3.get("off_hit_rate_runs", []), p3.get("on_hit_rate_runs", []), strict=False
         )
     )
-    assert p3["on_avg_top_k_hit_rate"] >= (
-        p3["off_avg_top_k_hit_rate"] - SYNAPSE_HIT_RATE_TOLERANCE
-    ), (
+    assert p3["on_avg_top_k_hit_rate"] >= p3["off_avg_top_k_hit_rate"] - 1e-9, (
         f"Synapse recall lowered hit rate: {p3['off_avg_top_k_hit_rate']:.2%} off → "
         f"{p3['on_avg_top_k_hit_rate']:.2%} on, averaged over "
         f"{p3.get('ab_runs', 1)} run(s) [{runs}] points. "
-        f"This exceeds the {SYNAPSE_HIT_RATE_TOLERANCE:.0%} host-variance allowance; "
-        "see this test's docstring for the probe-digest diagnosis path."
+        "Displacement is dropping relevant hits — see this test's docstring "
+        "for the probe-digest diagnosis path before assuming a flake."
     )
 
 
