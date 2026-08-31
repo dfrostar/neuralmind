@@ -339,7 +339,7 @@ Skeptical? Each row of this table is a single command:
 | The retrieval reduction claim | `bash scripts/demo.sh` | 5.5× on the fixture |
 | The CI claim | View any PR's [self-benchmark comment](https://github.com/dfrostar/neuralmind/pulls?q=is%3Apr) | 6.1× on the same fixture |
 | The "works on my code" claim | `neuralmind benchmark . --contribute` | YOUR ratio, YOUR tokens, YOUR dollar estimate |
-| The "NeuralMind makes no network calls of its own" claim | Read [`SECURITY.md`](../SECURITY.md), audit dependencies (chromadb, mcp, pyyaml — all local-only), and run with network disabled (`unshare -n bash scripts/demo.sh` on Linux, or block on a firewall) — the demo completes after the first-run model download | local-only at runtime, not just at install |
+| The "local-only at runtime" claim | Read [`SECURITY.md`](../SECURITY.md), audit dependencies (chromadb, mcp, pyyaml — all local-only), and run with network disabled (`unshare -n bash scripts/demo.sh` on Linux, or block on a firewall) — the demo completes after the first-run model download | local-only at runtime, not just at install |
 | The "incremental updates work" claim | `neuralmind build . --force` then `neuralmind build .` | second run reports ~all skipped |
 | The "composes with prompt caching" claim | Run any agent with NeuralMind's compressed Read output through your normal cached prompt — observe lower input tokens at cache reads | Math holds |
 

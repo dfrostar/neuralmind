@@ -37,7 +37,7 @@ const honestyGate = [
     {
         // claims-guard:allow — this entry exists to disown the phrase, not to make it.
         title: 'Zero code egress',
-        body: 'Overclaim. The agent layer still talks to its model. NeuralMind makes no network calls of its own.',
+        body: 'Overclaim. The agent layer still talks to its model. NeuralMind transmits no repository content and sends no telemetry.',
     },
 ];
 

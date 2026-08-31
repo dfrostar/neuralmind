@@ -19,7 +19,7 @@ const sections: Section[] = [
     },
     {
         title: 'Data We Do Not Collect',
-        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. It makes zero network calls of its own; the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control. Payment card data never touches our systems — it is handled entirely by Stripe.',
+        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. It transmits no repository content; the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control. Payment card data never touches our systems — it is handled entirely by Stripe.',
     },
     {
         title: 'Data We Collect',

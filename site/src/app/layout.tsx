@@ -100,7 +100,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'Brain-like Hebbian synapse layer that learns associations from how you use the codebase',
                 'Bundled tree-sitter code graph indexing ten languages',
                 'MCP server for Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent',
-                '100% local engine — zero network calls of its own, no telemetry',
+                '100% local engine — transmits no repository content, no telemetry',
             ],
             offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
             author: { '@type': 'Person', name: 'Darren Frost' },
