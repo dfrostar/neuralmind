@@ -53,7 +53,7 @@ outside this block goes in a post.
 | Mean tokens per query, full-file baseline | 41,729 - 232,483 | reproducible |
 | Corpus | 40 pre-registered queries, 4 repos pinned to fixed SHAs | reproducible |
 | Real-repo positioning range | 12-50x, directional, field-reported | field-report |
-| Synapse A/B lift | CI gates *direction* (recall-on >= recall-off) at a neutral budget; observed band +3.5 to +14 pts on passing hosts, -1.75 pts on AVX-512 hosts where the gate fails | ci-gated on direction only; the negative mode is an open bug |
+| Synapse A/B lift | CI gates *direction* (recall-on >= recall-off) at a neutral budget; observed band +3.5 to +14 pts | ci-gated on direction only |
 | MCP tools exposed | 21 | `grep -c '^def tool_' neuralmind/mcp_server.py` |
 
 **Forbidden in every post:** any query-latency figure (nothing in the repo
@@ -99,7 +99,7 @@ Aggregate: 93.75% weighted mean gold-file recall, 79-100% per repo, 90% found-ra
 
 **The finding I didn't expect.** Regenerating this page moved the numbers twice in one audit — same query set, different retrieval-code commits — and a CI run later produced different results for identical code depending on which cloud CPU the job landed on. Bit-identical per host, divergent across hosts, because float kernels differ across CPU generations and one near-tied ranking decision flipped with them. Without regeneration on every retrieval-path change, a benchmark snapshot's shelf life is one commit. That's the actual lesson, more than any single ratio.
 
-**Not in the benchmark on purpose:** the synapse layer. It learns from *your* usage, so it can't be part of a fixed reproducible number — injection is off for all of the above. It's measured separately by an A/B eval that CI gates on direction only (recall-on >= recall-off, at a neutral token budget), with an observed band of +3.5 to +14 pts top-k hit rate. I'm not quoting a single figure for it, because CI gates the sign, not the size. One caveat I'd rather state than have you find: on AVX-512 hosts that same A/B currently measures -1.75 pts, and the gate fails there. It's a host-dependent ranking bug, root-caused and open — not something the gate was widened to accept.
+**Not in the benchmark on purpose:** the synapse layer. It learns from *your* usage, so it can't be part of a fixed reproducible number — injection is off for all of the above. It's measured separately by an A/B eval that CI gates on direction only (recall-on >= recall-off, at a neutral token budget), with an observed band of +3.5 to +14 pts top-k hit rate. I'm not quoting a single figure for it, because CI gates the sign, not the size.
 
     pip install neuralmind
     neuralmind build /path/to/repo
@@ -301,7 +301,7 @@ produced from CI output alone. Grouped by which post needs it.
 | `click` weakest: 0.79 recall, 2 of 7 misses, MRR 0.52 vs 0.67 | `docs/benchmarks/public.md`, "Where it missed" + `click` table |
 | `embedding-rag` matches/beats on 3 of 4 repos, always cheaper, and is NeuralMind's own encoder | `docs/benchmarks/public.md`, "The baselines" + "What the numbers honestly say" #2 |
 | Benchmark moved twice in one audit; cross-host float divergence | `docs/benchmarks/public.md`, "The corpus"; `docs/social/2026-08-19-claims-integrity-linkedin.md` |
-| Synapse A/B gated on direction, band +3.5 to +14 pts on passing hosts and -1.75 pts on AVX-512 hosts | `site/claims.json` `non_ratio_headline_claims` note; `docs/benchmarks/public.md` "What this benchmark does not measure"; `tests/test_benchmark_regression.py` docstring |
+| Synapse A/B gated on direction, band +3.5 to +14 pts | `site/claims.json` `non_ratio_headline_claims` note; `docs/benchmarks/public.md` "What this benchmark does not measure" |
 | 21 MCP tools | `grep -c '^def tool_' neuralmind/mcp_server.py` = 21 |
 | ClawHub live, v1.0.0, community channel, owner `dfrostar` | `clawhub.ai/api/v1/packages/neuralmind`, fetched 2026-08-28 |
 | a0-plugins submitted, validator green, not merged | agent0ai/a0-plugins#499 checks page, "Validate Plugin PR" succeeded 2026-08-28 |

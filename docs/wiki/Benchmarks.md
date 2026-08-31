@@ -27,9 +27,7 @@ on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
 how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neutral**
-(reference fixture; +3.5 to +14 points across runs, CI gates the direction;
--1.75 points on AVX-512 hosts, where the gate fails — an open bug, not a
-tolerated outcome);
+(reference fixture; +3.5 to +14 points across runs, CI gates the direction);
 **(4) Better-grounded answers** — at a matched budget its context carries more gold
 facts than naive truncation (reference fixture; delta +0.013 to +0.143 across runs,
 CI gates it at ≥ 0, grounding 1.00). We report where NeuralMind *doesn't* win
@@ -81,7 +79,7 @@ measured by isolated A/Bs:
 
 | Effect | What CI enforces | Observed across runs |
 |---|---|---|
-| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on **≥** recall-off, at a neutral token budget | **+3.5 to +14 pts** on passing hosts; **-1.75 pts** on AVX-512 hosts (gate fails — open bug) |
+| **Synapse recall** — top-k retrieval hit rate (same warm graph) | recall-on **≥** recall-off, at a neutral token budget | **+3.5 to +14 pts** |
 | **Onboarding lift** — top-k module hit-rate from a committed team baseline | lift **≥ 0**, averaged over 3 runs | **+0.9 to +11.6 pts** |
 
 Both are **budget-neutral by design**: recalled nodes *displace* the weakest hits

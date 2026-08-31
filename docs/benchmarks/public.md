@@ -176,9 +176,7 @@ Two loss modes, reported plainly:
   *fixed, reproducible* public number. Injection is OFF here. The learning lift
   is measured separately and reproducibly by the **synapse A/B eval**
   (`tests/benchmark/run.py`, Phase 2): **+3.5 to +14 points** top-k hit-rate
-across runs on hosts where the gate passes — and **-1.75 points** on AVX-512
-hosts, where it fails, a known host-dependent ranking bug we publish rather
-than tolerate — CI-gated on direction, budget-
+across runs, CI-gated on direction, budget-
   neutral, on the reference fixture. That is the differentiator a static index
   structurally cannot copy.
 - **End-to-end answer quality.** Gold-file recall is deliberately a *findability*

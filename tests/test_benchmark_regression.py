@@ -96,123 +96,56 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     one draw, and averaging cannot converge it. `off_hit_rate_runs` /
     `on_hit_rate_runs` publish the spread; read them first.
 
-    CAUSE FOUND 2026-08-28 (PR #484), not yet fixed. The vector scores
-    themselves differ by host — see WHAT DIFFERS below. Read the corrections
-    first: three recorded conclusions were wrong, and each cost an
+    RESOLVED 2026-08-31 (PR #492). Kept in full because four recorded causes
+    for this were wrong before the right one, and the wrong ones each cost an
     investigation:
 
-    - "Ruled out by measurement: CPU/SIMD feature set" — wrong. SIMD
-      correlates perfectly: every failing run observed was on an avx512f
-      host, every passing run was not. What the earlier measurement got
-      right is narrower than it sounds — SIMD does not reach the
-      *embeddings*.
-    - "What that left was core count" — wrong. cpu_count is 4 on both
-      sides, and NEURALMIND_ORT_THREADS=1 did not stop the failure.
-    - "A last-bit float difference decided which node fell off the end"
-      (PR #484's own first hypothesis) — wrong. Every margin at every
-      decision boundary is ~1e-1 to ~1e-3, orders of magnitude above float
-      noise. A 1e-9 quantised sort key with an id tie-break was tried at
-      all eight ranking sites in context_selector.py and measured on an
-      avx512f host: byte-identical -1.75 with the change in or out. It was
-      reverted, because it moved token counts on 3 of 19 queries and hit
-      rate on none (+141 tokens, reduction 5.0096 -> 4.9719).
+    - "Ruled out by measurement: CPU/SIMD feature set" — wrong. Every failing
+      run was on an avx512f host and every passing run was not.
+    - "What that left was core count" — wrong. cpu_count is 4 on both sides,
+      and NEURALMIND_ORT_THREADS=1 did not stop it.
+    - "A last-bit float difference decided which node fell off the end" —
+      wrong. The margins are ~1e-1 to ~1e-3. A quantised sort key with an id
+      tie-break was tried at all eight ranking sites and measured
+      byte-identical failure with it in or out; it was reverted.
+    - "graph.vector_index_sha256_16 isolates it" — wrong. A third run produced
+      a third digest while returning scores identical to another avx512f host,
+      so that digest moves with build conditions too.
 
-    HOW TO REPRODUCE (this is the thing that was missing for months). The
-    failure is not flaky — it is a deterministic function of the host, and
-    it reproduces on any avx512f machine:
+    THE ACTUAL CAUSE was a product defect, not a determinism quirk.
+    _apply_synapse_boost and _apply_structural_expansion displaced the plain
+    tail of the ranked list. When several hits share a file that can evict a
+    module's only representatives while keeping two of another's. On `refund`
+    the four hits are two api/routes.py rows and two billing/stripe_client.py
+    rows; tail-drop kept both api/routes.py rows, so the query scored 0.0 with
+    its expected module sitting in the candidates.
 
-        pip install ".[dev]" tiktoken matplotlib "graphifyy==0.9.5"
-        graphify update tests/fixtures/sample_project
-        neuralmind build tests/fixtures/sample_project --force
-        NEURALMIND_ORT_THREADS=1 python -m tests.benchmark.run
+    The bimodality followed from that. Which pair landed in the tail depended
+    on a ~0.8% score difference that varies by host — too small to be ranking
+    signal, too large for a tie-break to absorb, which is why the tie-break
+    attempt did nothing.
 
-    On avx512f this returns 0.7456 -> 0.7281 every time; on a host without
-    avx512f, 0.7456 -> 0.7807 every time. Bit-stable across three A/B
-    iterations, each a full index rebuild. Check with:
-    grep -o 'avx512f' /proc/cpuinfo | head -1
+    THE FIX is _displace() in context_selector.py: prefer a victim whose module
+    another survivor still covers, bounded by _COVERAGE_MARGIN so coverage only
+    decides between hits the ranking cannot separate. The bound is load-bearing
+    — unbounded, it took the parity gate's faithfulness delta from +0.041 to
+    -0.006 and failed its floor, because keeping one node from each of two
+    files costs facts from the file that actually matched.
 
-    WHAT IS ESTABLISHED. graph.embedding_probe_sha256_16 is IDENTICAL on
-    every run of both classes, so embeddings are bit-identical and the
-    embedding path is not the variable. With recall OFF the two classes
-    agree exactly on all 19 queries. They diverge only with recall ON, and
-    only through _recall_energy. On avx512f the `refund` query loses its
-    single expected module, billing/stripe_client.py; one query of nineteen
-    flipping 1.0 -> 0.0 is 100/19 = 5.26 points, exactly the gap between the
-    two modes.
+    MEASURED at the same commit, both host classes:
 
-    The displacement mechanism itself is ordinary and not in doubt.
-    _apply_synapse_boost step (b) drops the tail of the ranked results and
-    appends the strongest absent neighbours:
+        avx512f container    0.7456 -> 0.7807 (+3.51)   refund 1.0, 922 tokens
+        non-avx512f runner   0.7456 -> 0.7807 (+3.51)   refund 1.0, 922 tokens
 
-        results BEFORE boost (4)
-           1.000  api_routes_rationale_86
-           0.948  api_routes_refund_endpoint
-           0.947  billing_stripe_client_rationale_44     <- dropped
-           0.946  billing_stripe_client_rationale_132    <- dropped
-        pull-in candidates (max 2)
-          42.201  users_crud
-          41.927  users_crud_get_user      <== cutoff
-          41.725  users_crud_create_user
+    Identical, where before they were -1.75 and +3.51. Total token counts still
+    differ by 7 across 19 queries, so some host-dependence remains in node
+    selection; it no longer moves any hit rate.
 
-    WHAT DIFFERS. One artifact from each host class, same commit, settles it.
-    The embeddings are identical — both the 1-row and the 64-row batch probe
-    match (62fa3fea0d93ea3b, 00b1832575ab567e), and locally the outcome does
-    not move under embedding perturbations from 1e-8 to 1e-2. What differs is
-    the scores the vector index returns:
-
-        pre-boost results, `refund`
-        non-avx512f (passes)                    avx512f (fails)
-        1.000000  api_routes_rationale_86       1.000000  api_routes_rationale_86
-        0.954860  stripe_client_rationale_44    0.948111  api_routes_refund_endpoint
-        0.946315  stripe_client_rationale_132   0.946988  stripe_client_rationale_44
-        0.940239  api_routes_refund_endpoint    0.946315  stripe_client_rationale_132
-
-    stripe_client_rationale_44 scores 0.954860 on one host and 0.946988 on
-    the other. That is 0.8%, not float noise, so no tie-break addresses it —
-    one was tried at all eight ranking sites and reverted after measuring
-    byte-identical failure with it in or out.
-
-    Two independent avx512f samples — a CI runner and a dev container —
-    produce these scores identically to twelve decimal places, and both differ
-    from the non-avx512f runner in the same direction. Identical embeddings in
-    and different scores out puts the divergence in the vector index itself.
-    TurboVec stores vectors quantised; that quantisation, or the search over
-    it, is host-dependent.
-
-    Do NOT use graph.vector_index_sha256_16 to decide this on its own. An
-    earlier version of this note offered it as the discriminator, on two
-    samples. A third run then produced a third digest (e0199bd2457050f4) while
-    returning scores identical to another avx512f host, so the digest also
-    moves with build conditions and a difference in it does not by itself mean
-    the hosts diverged. graph.refund_decision_probe carries the scores; those
-    are the evidence.
-
-    WHY IT SURFACES ONLY WITH RECALL ON. With recall off, all four results
-    enter the context whatever their order, so both host classes agree on set
-    and token count on all 19 queries — which is why the vector path looked
-    innocent for so long. _apply_synapse_boost keeps only results[:2] and
-    displaces the rest, so order becomes load-bearing: stripe_client sits at
-    rank 1 on the passing host and rank 2 on the failing one, and rank 2 is
-    dropped. The reordering also changes the top-3 seeds, which is why the
-    spreading-activation energies differ wholesale (47.14 vs 42.20) rather
-    than slightly — that is a consequence, not the cause.
-
-    Not fixed here, because the fix is a product decision rather than a test
-    one: either make the index host-deterministic, or accept that ranking is
-    host-dependent and stop letting a 0.8% score difference decide which node
-    a fixed displacement budget discards.
-
-    Noted separately, genuine but not this bug: SynapseStore._spread truncates
-    with an untie-broken sort, and exact ties do occur in that data
-    (users_crud_get_user_by_email and users_crud_update_last_login at
-    41.400389273295552).
-
-    If this gate fails again: check the runner's avx512f flag and compare
-    graph.refund_decision_probe against a passing job. Scores matching the
-    avx512f column above, with the batch embedding probe still matching, is
-    this same open bug and not a new regression. A differing batch probe would
-    be genuinely new — the embedding path has been bit-stable across every run
-    measured so far.
+    If this gate fails again: compare graph.refund_decision_probe against a
+    passing job, and check whether a displacement site was added that does not
+    go through _displace(). A tolerance is not the fix — one was added and
+    reverted twice already, and the second time it also rewrote the published
+    claim from a guarantee into a permitted 2-point regression.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(
