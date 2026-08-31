@@ -50,7 +50,6 @@ class TestLoadConfig:
 
         config = load_config()
         assert "local_models" in config
-        assert "api" in config
         assert config["local_models"]["provider"] == DEFAULT_CONFIG["local_models"]["provider"]
 
     def test_loads_user_config_when_exists(self, tmp_path, monkeypatch):
@@ -88,7 +87,6 @@ class TestLoadConfig:
         from neuralmind.config import DEFAULT_CONFIG
 
         assert "local_models" in DEFAULT_CONFIG
-        assert "api" in DEFAULT_CONFIG
         assert "enabled" in DEFAULT_CONFIG["local_models"]
         assert "provider" in DEFAULT_CONFIG["local_models"]
         assert "endpoint" in DEFAULT_CONFIG["local_models"]

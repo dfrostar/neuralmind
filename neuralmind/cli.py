@@ -254,6 +254,114 @@ def cmd_scan_for_secrets(args):
         sys.exit(1)
 
 
+def _is_book_project(project_path: Path) -> bool:
+    """Detect if a project is book-like (chapters + code + assets).
+
+    Heuristic: markdown:code ratio > 3:1 AND no src/ or lib/ at root.
+    """
+    md_files = list(project_path.glob("**/*.md"))
+    if len(md_files) < 3:
+        return False
+
+    code_exts = {".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".rb", ".php", ".swift", ".kt"}
+    code_files = [f for f in project_path.glob("*") if f.suffix.lower() in code_exts]
+    # Also check for src/ or lib/ directories (strong code indicator)
+    if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
+        return False
+
+    if not code_files:
+        return True
+
+    return len(md_files) / max(len(code_files), 1) > 3
+
+
+def _cmd_build_book(args, project_path: str, force: bool) -> None:
+    """Build a book project: code scope for engine, content scope for chapters, metadata for assets."""
+    import time
+    start = time.time()
+    path = Path(project_path)
+    print(f"Building book project: {path}")
+    print(f"Force rebuild: {force}")
+    print()
+
+    # Ensure state dir
+    from neuralmind.state_dir import ensure_state_dir, tracked_state_files
+    ensure_state_dir(project_path)
+    already_tracked = tracked_state_files(project_path)
+    if already_tracked:
+        import shlex
+        quoted = shlex.quote(str(path.resolve()))
+        print(
+            f"\n⚠  git is already tracking {len(already_tracked)} file(s) under .neuralmind/ — the ignore rule does not apply to files already in the index.\n"
+            f"   These can contain cached command output, including credentials. Untrack them with:\n"
+            f"     git -C {quoted} rm -r --cached .neuralmind/\n"
+            f"   Then rotate any credential that could have reached a commit.\n",
+            file=sys.stderr,
+        )
+
+    # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
+    print("   Scope: code... ", end="", flush=True)
+    graph_path = path / "graphify-out" / "graph.json"
+    if graph_path.exists():
+        code_args = argparse.Namespace(
+            project_path=project_path,
+            force=force,
+            scope="code",
+            content_type="code",
+            bootstrap=None,
+            redact_secrets=getattr(args, "redact_secrets", False),
+            dry_run=False,
+            json=False,
+        )
+        try:
+            os.environ["NEURALMIND_NO_PROGRESS"] = "1"
+            try:
+                cmd_build(code_args)
+            finally:
+                os.environ.pop("NEURALMIND_NO_PROGRESS", None)
+            print("done")
+        except SystemExit as e:
+            if e.code != 0:
+                print(f"failed (exit {e.code})")
+            else:
+                print("done")
+    else:
+        print("skipped (no graph.json — pure content book)")
+
+    # 2. Build content scope (chapters) — use document ingestion for proper metadata
+    print("   Scope: content... ", end="", flush=True)
+    from neuralmind.document_ingestion import ingest_directory
+    try:
+        content_nodes = ingest_directory(path / "chapters" if (path / "chapters").exists() else path)
+        if content_nodes:
+            mind = NeuralMind(project_path, scope="content")
+            # Convert ContentNodes to graph nodes and embed
+            graph_nodes = [n.to_graph_node() for n in content_nodes]
+            mind.embedder.embed_content(graph_nodes)
+            print(f"done ({len(content_nodes)} chunks)")
+        else:
+            print("done (no content found)")
+    except Exception as e:
+        print(f"warning: {e}")
+
+    # 3. Track assets as metadata
+    print("   Tracking assets... ", end="", flush=True)
+    try:
+        mind = NeuralMind(project_path, scope="content")
+        mind.embedder._track_book_assets(path)
+        print("done")
+    except Exception as e:
+        print(f"warning: {e}")
+
+    duration = time.time() - start
+    print()
+    print("=" * 60)
+    print(f"Book build complete in {duration:.1f}s")
+    print(f"  Code scope: engine files")
+    print(f"  Content scope: chapters")
+    print(f"  Assets: metadata tracked")
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
 
@@ -355,6 +463,19 @@ def cmd_build(args):
     _scope = getattr(args, "scope", "all")
     if _scope not in ("all", "code", "content", "docs"):
         _scope = "all"
+    _content_type = getattr(args, "content_type", "auto")
+    if _content_type not in ("auto", "book", "code", "content"):
+        _content_type = "auto"
+
+    # Book mode: route code and content to separate scopes, track assets
+    _is_book = (
+        _content_type == "book"
+        or (_content_type == "auto" and _scope == "all" and _is_book_project(Path(project_path)))
+    )
+    if _is_book:
+        _cmd_build_book(args, project_path, force)
+        return
+
     mind = NeuralMind(project_path, scope=_scope)
     # Warn for large projects before starting the slow embed loop.
     # Estimate node count from graph.json directly since embedder.nodes
@@ -547,9 +668,141 @@ def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
             print(f"  {i+1}. [{project}] {label}  ({score:.3f})")
 
 
+def _get_assets_for_file(mind, source_file: str) -> list[dict]:
+    """Get asset references for a source file from the book_assets table."""
+    try:
+        conn = mind.embedder._conn
+        rows = conn.execute(
+            "SELECT path, asset_type, caption FROM book_assets WHERE chapter_ref = ?",
+            (source_file,),
+        ).fetchall()
+        return [{"path": r["path"], "type": r["asset_type"], "caption": r["caption"]} for r in rows]
+    except Exception:
+        return []
+
+
+def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trace_verbose: bool, relevance: bool, explain: bool) -> None:
+    """Search both content (chapters) and code scopes, merge results with source labels."""
+    from pathlib import Path as _Path
+
+    path = _Path(project_path)
+    chapter_filter = getattr(args, "chapter", None)
+    scope_bias = getattr(args, "scope_bias", "balanced")  # balanced, content, code
+
+    # Detect available scopes
+    tv_dir = path / "graphify-out" / "neuralmind_turbovec"
+    has_code = (tv_dir / "store.code.sqlite").exists()
+    has_content = (tv_dir / "store.content.sqlite").exists()
+
+    results = []
+
+    # Search content scope (chapters)
+    if has_content:
+        content_mind = NeuralMind(project_path, scope="content")
+        try:
+            content_results = content_mind.embedder.search(question, n=5)
+            for r in content_results:
+                r["source_scope"] = "content"
+                # Filter by chapter if specified
+                if chapter_filter:
+                    tags = r.get("metadata", {}).get("tags", "")
+                    if f"chapter:{chapter_filter}" not in tags:
+                        continue
+                results.append(r)
+                # Check for asset references in the source file
+                source_file = r.get("metadata", {}).get("source_file", "")
+                if source_file:
+                    assets = _get_assets_for_file(content_mind, source_file)
+                    if assets:
+                        r["_referenced_assets"] = assets
+        except Exception:
+            pass
+
+    # Search code scope
+    if has_code:
+        code_mind = NeuralMind(project_path, scope="code")
+        try:
+            code_results = code_mind.embedder.search(question, n=5)
+            for r in code_results:
+                r["source_scope"] = "code"
+                results.append(r)
+        except Exception:
+            pass
+
+    # Apply scope bias to scores
+    if scope_bias == "content":
+        for r in results:
+            if r["source_scope"] == "content":
+                r["score"] = r.get("score", 0) * 1.2  # 20% boost
+    elif scope_bias == "code":
+        for r in results:
+            if r["source_scope"] == "code":
+                r["score"] = r.get("score", 0) * 1.2
+
+    # Sort by score descending
+    results.sort(key=lambda r: r.get("score", 0), reverse=True)
+
+    if args.json:
+        output = {
+            "query": question,
+            "type": "unified",
+            "scope_bias": scope_bias,
+            "chapter_filter": chapter_filter,
+            "results": results,
+            "has_content_scope": has_content,
+            "has_code_scope": has_code,
+        }
+        print(json.dumps(output, indent=2, default=str))
+    else:
+        scope_info = []
+        if has_content:
+            scope_info.append("content")
+        if has_code:
+            scope_info.append("code")
+        print(f"Query: {question}")
+        print(f"Mode: unified ({'+'.join(scope_info)}, bias={scope_bias})")
+        if chapter_filter:
+            print(f"Chapter: {chapter_filter}")
+        print("=" * 60)
+        for i, r in enumerate(results[:10]):
+            label = r.get("label", r.get("id", "?"))[:60]
+            score = r.get("score", 0)
+            scope = r.get("source_scope", "?")
+            source = r.get("metadata", {}).get("source_file", "")
+            print(f"  {i+1}. [{scope}] {label}  ({score:.3f})")
+            if source:
+                print(f"      {source}")
+            # Show referenced assets
+            assets = r.get("_referenced_assets", [])
+            if assets:
+                for asset in assets:
+                    print(f"      [asset] {asset['path']} ({asset['type']})")
+            # Show preview snippet
+            doc = r.get("document", "")
+            if doc:
+                preview = doc[:120].replace("\n", " ").strip()
+                print(f"      {preview}...")
+        print("=" * 60)
+        print(f"Total results: {len(results)}")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     _increment_wakeup_count()
+
+    # Handle unified mode (content + code search)
+    query_mode = getattr(args, "mode", "default")
+    if query_mode == "unified":
+        _cmd_query_unified(
+            args,
+            args.project_path or ".",
+            args.question,
+            False,  # trace
+            False,  # trace_verbose
+            False,  # relevance
+            False,  # explain
+        )
+        return
 
     # Handle cross-project query
     projects_arg = getattr(args, "projects", None)
@@ -4852,6 +5105,12 @@ def main():
         default="all",
         help="Index scope: code (source files), content (docs/chapters), docs (markdown only), all (default)",
     )
+    build_p.add_argument(
+        "--content-type",
+        choices=["auto", "book", "code", "content"],
+        default="auto",
+        help="Content type: auto (detect), book (chapters+code+assets), code (force code scope), content (force content scope)",
+    )
     build_p.set_defaults(func=cmd_build)
 
     scan_secrets_p = subparsers.add_parser(
@@ -4920,6 +5179,23 @@ def main():
     query_p.add_argument(
         "--projects",
         help="Comma-separated list of project paths to query (cross-project). If specified, overrides project_path.",
+    )
+    query_p.add_argument(
+        "--mode",
+        choices=["default", "unified"],
+        default="default",
+        help="Query mode: 'default' uses context selector, 'unified' searches both content and code scopes with merged results",
+    )
+    query_p.add_argument(
+        "--chapter",
+        default=None,
+        help="Filter unified results to a specific chapter (e.g., 'Chapter 1' or 'Chapter 2 — The Corner Pub')",
+    )
+    query_p.add_argument(
+        "--scope-bias",
+        choices=["balanced", "content", "code"],
+        default="balanced",
+        help="Unified mode: boost results from one scope (balanced/content/code)",
     )
     query_p.set_defaults(func=cmd_query)
 

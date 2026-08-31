@@ -191,6 +191,14 @@ class TurboVecEmbedder(EmbeddingBackend):
                 tags         TEXT
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE IF NOT EXISTS book_assets (
+                uid          INTEGER PRIMARY KEY,
+                path         TEXT NOT NULL,
+                asset_type   TEXT,
+                chapter_ref  TEXT,
+                caption      TEXT,
+                tracked_at   TEXT
+            );
             """)
         # Additive columns for existing DBs (don't fail if already present)
         try:
@@ -213,6 +221,55 @@ class TurboVecEmbedder(EmbeddingBackend):
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, str(value)),
         )
+
+    def _track_book_assets(self, project_path: Path) -> int:
+        """Track non-text assets (images, diagrams) as metadata in book_assets table.
+
+        Returns the number of assets tracked.
+        """
+        asset_exts = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tiff"}
+        assets = []
+        for f in project_path.rglob("*"):
+            if f.is_file() and f.suffix.lower() in asset_exts:
+                # Skip files in .neuralmind/ or other hidden dirs
+                if any(part.startswith(".") for part in f.relative_to(project_path).parts):
+                    continue
+                assets.append(f)
+
+        if not assets:
+            return 0
+
+        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        for asset in assets:
+            rel_path = str(asset.relative_to(project_path))
+            # Try to find a chapter reference (which .md file mentions this asset)
+            chapter_ref = self._find_chapter_reference(project_path, asset)
+            caption = self._extract_caption(asset)
+
+            self._conn.execute(
+                "INSERT INTO book_assets(path, asset_type, chapter_ref, caption, tracked_at) VALUES(?, ?, ?, ?, ?)",
+                (rel_path, asset.suffix.lower().lstrip("."), chapter_ref, caption, now),
+            )
+        self._conn.commit()
+        return len(assets)
+
+    def _find_chapter_reference(self, project_path: Path, asset: Path) -> str | None:
+        """Find which chapter (if any) references this asset."""
+        asset_name = asset.name
+        # Search .md files for references to this asset
+        for md_file in project_path.rglob("*.md"):
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="ignore")
+                if asset_name in content:
+                    return str(md_file.relative_to(project_path))
+            except Exception:
+                continue
+        return None
+
+    def _extract_caption(self, asset: Path) -> str | None:
+        """Try to extract alt text or caption from nearby markdown or filename."""
+        # For now, just use the filename stem as a basic caption
+        return asset.stem.replace("_", " ").replace("-", " ")
 
     @property
     def embed_fn(self) -> Callable[[list[str]], list[list[float]]]:
@@ -856,6 +913,7 @@ class TurboVecEmbedder(EmbeddingBackend):
             "community": row["community"],
             "node_id": row["node_id"],
             "content_category": row["content_category"] or "",
+            "tags": row["tags"] or "",
         }
 
     def get_nodes_by_ids(self, node_ids: list[str]) -> list[dict]:

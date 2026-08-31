@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.8.0](https://github.com/dfrostar/neuralmind/compare/v3.7.0...v3.8.0) (2026-08-31)
+
+
+### Features
+
+* **unified search:** content+code search for book-like projects with `--mode=unified` and `--content-type=book` ([5188dc6](https://github.com/dfrostar/neuralmind/commit/5188dc6))
+* **unified search:** scope bias (`--scope-bias=content|code|balanced`) and chapter filtering (`--chapter=`) ([3d35ef5](https://github.com/dfrostar/neuralmind/commit/3d35ef5))
+
+
 ## [3.7.0](https://github.com/dfrostar/neuralmind/compare/v3.6.0...v3.7.0) (2026-08-30)
 
 

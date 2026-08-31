@@ -182,6 +182,21 @@ def _make_node_id(path: Path, index: int = 0) -> str:
     return f"doc:{base}:chunk{index}"
 
 
+def _extract_heading_hierarchy(text: str, max_lines: int = 50) -> list[dict[str, str]]:
+    """Extract markdown heading hierarchy from the start of a document.
+
+    Returns a list of {"level": "H1", "text": "..."} entries.
+    """
+    import re
+    headings = []
+    for line in text.split("\n")[:max_lines]:
+        match = re.match(r'^(#{1,6})\s+(.+)$', line)
+        if match:
+            level = f"H{len(match.group(1))}"
+            headings.append({"level": level, "text": match.group(2).strip()})
+    return headings
+
+
 def parse_document(
     path: Path,
     root: Path | None = None,
@@ -261,25 +276,41 @@ def parse_document(
     chunks = _chunk_text(text, chunk_size=chunk_size, overlap=overlap)
     nodes = []
 
+    # Extract heading hierarchy for book content
+    heading_tags = []
+    is_md = file_type == "markdown" or (content_type != "auto" and path.suffix.lower() in (".md", ".markdown", ".mkd"))
+    if is_md and content_type in ("auto", "book"):
+        headings = _extract_heading_hierarchy(text)
+        for h in headings:
+            if h["level"] == "H1":
+                heading_tags.append(f"chapter:{h['text']}")
+            elif h["level"] == "H2":
+                heading_tags.append(f"section:{h['text']}")
+            heading_tags.append(f"depth:{h['level']}")
+
     for i, chunk in enumerate(chunks):
         node_id = _make_node_id(path, i if len(chunks) > 1 else 0)
         label = f"{path.name}"
         if len(chunks) > 1:
             label += f" (chunk {i+1}/{len(chunks)})"
 
+        metadata = {
+            "source": str(path),
+            "file_type": file_type,
+            "chunk_index": i,
+            "chunk_count": len(chunks),
+            "ingested_at": time.time(),
+            "file_size": path.stat().st_size,
+        }
+        if heading_tags:
+            metadata["tags"] = " ".join(heading_tags)
+
         node = ContentNode(
             node_id=node_id,
             label=label,
             content_type=f"document_{file_type}",
             text=chunk,
-            metadata={
-                "source": str(path),
-                "file_type": file_type,
-                "chunk_index": i,
-                "chunk_count": len(chunks),
-                "ingested_at": time.time(),
-                "file_size": path.stat().st_size,
-            },
+            metadata=metadata,
         )
         nodes.append(node)
 
