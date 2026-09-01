@@ -3,7 +3,6 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -243,9 +242,13 @@ class TestUnifiedQuery:
         parser.add_argument("question")
         parser.add_argument("--mode", choices=["default", "unified"], default="default")
         parser.add_argument("--chapter", default=None)
-        parser.add_argument("--scope-bias", choices=["balanced", "content", "code"], default="balanced")
+        parser.add_argument(
+            "--scope-bias", choices=["balanced", "content", "code"], default="balanced"
+        )
 
-        args = parser.parse_args([".", "test question", "--mode=unified", "--chapter=Chapter 1", "--scope-bias=content"])
+        args = parser.parse_args(
+            [".", "test question", "--mode=unified", "--chapter=Chapter 1", "--scope-bias=content"]
+        )
         assert args.mode == "unified"
         assert args.chapter == "Chapter 1"
         assert args.scope_bias == "content"

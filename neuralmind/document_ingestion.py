@@ -188,9 +188,10 @@ def _extract_heading_hierarchy(text: str, max_lines: int = 50) -> list[dict[str,
     Returns a list of {"level": "H1", "text": "..."} entries.
     """
     import re
+
     headings = []
     for line in text.split("\n")[:max_lines]:
-        match = re.match(r'^(#{1,6})\s+(.+)$', line)
+        match = re.match(r"^(#{1,6})\s+(.+)$", line)
         if match:
             level = f"H{len(match.group(1))}"
             headings.append({"level": level, "text": match.group(2).strip()})
@@ -278,7 +279,9 @@ def parse_document(
 
     # Extract heading hierarchy for book content
     heading_tags = []
-    is_md = file_type == "markdown" or (content_type != "auto" and path.suffix.lower() in (".md", ".markdown", ".mkd"))
+    is_md = file_type == "markdown" or (
+        content_type != "auto" and path.suffix.lower() in (".md", ".markdown", ".mkd")
+    )
     if is_md and content_type in ("auto", "book"):
         headings = _extract_heading_hierarchy(text)
         for h in headings:

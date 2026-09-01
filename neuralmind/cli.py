@@ -263,7 +263,23 @@ def _is_book_project(project_path: Path) -> bool:
     if len(md_files) < 3:
         return False
 
-    code_exts = {".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".rb", ".php", ".swift", ".kt"}
+    code_exts = {
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    }
     code_files = [f for f in project_path.glob("*") if f.suffix.lower() in code_exts]
     # Also check for src/ or lib/ directories (strong code indicator)
     if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
@@ -278,6 +294,7 @@ def _is_book_project(project_path: Path) -> bool:
 def _cmd_build_book(args, project_path: str, force: bool) -> None:
     """Build a book project: code scope for engine, content scope for chapters, metadata for assets."""
     import time
+
     start = time.time()
     path = Path(project_path)
     print(f"Building book project: {path}")
@@ -286,10 +303,12 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
 
     # Ensure state dir
     from neuralmind.state_dir import ensure_state_dir, tracked_state_files
+
     ensure_state_dir(project_path)
     already_tracked = tracked_state_files(project_path)
     if already_tracked:
         import shlex
+
         quoted = shlex.quote(str(path.resolve()))
         print(
             f"\n⚠  git is already tracking {len(already_tracked)} file(s) under .neuralmind/ — the ignore rule does not apply to files already in the index.\n"
@@ -331,8 +350,11 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     # 2. Build content scope (chapters) — use document ingestion for proper metadata
     print("   Scope: content... ", end="", flush=True)
     from neuralmind.document_ingestion import ingest_directory
+
     try:
-        content_nodes = ingest_directory(path / "chapters" if (path / "chapters").exists() else path)
+        content_nodes = ingest_directory(
+            path / "chapters" if (path / "chapters").exists() else path
+        )
         if content_nodes:
             mind = NeuralMind(project_path, scope="content")
             # Convert ContentNodes to graph nodes and embed
@@ -357,9 +379,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     print()
     print("=" * 60)
     print(f"Book build complete in {duration:.1f}s")
-    print(f"  Code scope: engine files")
-    print(f"  Content scope: chapters")
-    print(f"  Assets: metadata tracked")
+    print("  Code scope: engine files")
+    print("  Content scope: chapters")
+    print("  Assets: metadata tracked")
 
 
 def cmd_build(args):
@@ -468,9 +490,8 @@ def cmd_build(args):
         _content_type = "auto"
 
     # Book mode: route code and content to separate scopes, track assets
-    _is_book = (
-        _content_type == "book"
-        or (_content_type == "auto" and _scope == "all" and _is_book_project(Path(project_path)))
+    _is_book = _content_type == "book" or (
+        _content_type == "auto" and _scope == "all" and _is_book_project(Path(project_path))
     )
     if _is_book:
         _cmd_build_book(args, project_path, force)
@@ -681,7 +702,15 @@ def _get_assets_for_file(mind, source_file: str) -> list[dict]:
         return []
 
 
-def _cmd_query_unified(args, project_path: str, question: str, trace: bool, trace_verbose: bool, relevance: bool, explain: bool) -> None:
+def _cmd_query_unified(
+    args,
+    project_path: str,
+    question: str,
+    trace: bool,
+    trace_verbose: bool,
+    relevance: bool,
+    explain: bool,
+) -> None:
     """Search both content (chapters) and code scopes, merge results with source labels."""
     from pathlib import Path as _Path
 
@@ -802,7 +831,7 @@ def cmd_query(args):
             False,  # relevance
             False,  # explain
         )
-        return
+        return None
 
     # Handle cross-project query
     projects_arg = getattr(args, "projects", None)
