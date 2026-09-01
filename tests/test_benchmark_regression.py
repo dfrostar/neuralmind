@@ -71,32 +71,81 @@ def test_synapse_recall_does_not_reduce_hit_rate(benchmark_results):
     same warm graph, recall on must surface at least as many expected
     modules as recall off. This is the CI enforcement behind the published
     "recall-on ≥ recall-off" claim (README, site) — loosening it changes
-    what the product is allowed to say, not just what CI tolerates. A -2pt
-    tolerance briefly lived here for the bimodality described below; it was
-    removed when the harness pinned the suspected source instead.
+    what the product is allowed to say, not just what CI tolerates.
+
+    That -2pt tolerance has now been added and removed TWICE, both times for
+    the bimodality described below. The first was removed when the harness
+    pinned the suspected source instead. The second landed on 2026-08-29 and
+    was reverted the same weekend: it renamed this test to
+    "stays_within_host_variance", deleted this very paragraph, and rewrote the
+    published claim across README, site/claims.json, llms.txt and the wiki
+    from a guarantee into a permitted 2-point regression. Note the sizing —
+    the tolerance was 2.0 against an observed failure of 1.75, so it was cut
+    to clear the symptom rather than derived from a variance measurement.
+    The cost of keeping it would have been permanent: the host-dependent
+    ranking bug is real, it makes retrieval genuinely worse for users on that
+    hardware, and a 2-point allowance hides it from CI forever.
+
+    If you are here because this gate is red and a tolerance looks like the
+    fix: it is the third time. Read WHAT DIFFERS below first.
 
     History of that bimodality, kept because it is the map if this ever
     recurs. The same commit on the same runner image produced both -1.75 and
     +4.0 points, landing on one mode *per job* and returning it bit-for-bit
     on every in-process repeat — so the mean of N in-job runs is N copies of
     one draw, and averaging cannot converge it. `off_hit_rate_runs` /
-    `on_hit_rate_runs` publish the spread; read them first. Ruled out by
-    measurement: CPU/SIMD feature set, PYTHONHASHSEED, the graph partition
-    (identical digest across a passing and a failing job), Python patch
-    version, resolved dependency versions, neighbour-row order out of the
-    un-ORDER BY'd synapse query, and the recall ranking reverted in #464.
+    `on_hit_rate_runs` publish the spread; read them first.
 
-    What that left was the vector path, and the one machine property none of
-    the fingerprints captured: core count. ORT sizes its intra-op pool to the
-    host, and parallel-summation order moves the last bits of the embedding
-    floats — machine-fixed, rebuild-stable, exactly the observed profile. The
-    harness now pins NEURALMIND_ORT_THREADS=1 and records cpu_count plus an
-    embedding-probe digest (graph.embedding_probe_sha256_16). If this gate
-    fails again: compare that probe digest and per-query hit_modules
-    (phase2_synapse.queries vs .off_queries) against a passing job before
-    anything else — matching probes with a real delta means displacement
-    genuinely regressed; differing probes falsify the thread pin and name
-    the next suspect.
+    RESOLVED 2026-08-31 (PR #492). Kept in full because four recorded causes
+    for this were wrong before the right one, and the wrong ones each cost an
+    investigation:
+
+    - "Ruled out by measurement: CPU/SIMD feature set" — wrong. Every failing
+      run was on an avx512f host and every passing run was not.
+    - "What that left was core count" — wrong. cpu_count is 4 on both sides,
+      and NEURALMIND_ORT_THREADS=1 did not stop it.
+    - "A last-bit float difference decided which node fell off the end" —
+      wrong. The margins are ~1e-1 to ~1e-3. A quantised sort key with an id
+      tie-break was tried at all eight ranking sites and measured
+      byte-identical failure with it in or out; it was reverted.
+    - "graph.vector_index_sha256_16 isolates it" — wrong. A third run produced
+      a third digest while returning scores identical to another avx512f host,
+      so that digest moves with build conditions too.
+
+    THE ACTUAL CAUSE was a product defect, not a determinism quirk.
+    _apply_synapse_boost and _apply_structural_expansion displaced the plain
+    tail of the ranked list. When several hits share a file that can evict a
+    module's only representatives while keeping two of another's. On `refund`
+    the four hits are two api/routes.py rows and two billing/stripe_client.py
+    rows; tail-drop kept both api/routes.py rows, so the query scored 0.0 with
+    its expected module sitting in the candidates.
+
+    The bimodality followed from that. Which pair landed in the tail depended
+    on a ~0.8% score difference that varies by host — too small to be ranking
+    signal, too large for a tie-break to absorb, which is why the tie-break
+    attempt did nothing.
+
+    THE FIX is _displace() in context_selector.py: prefer a victim whose module
+    another survivor still covers, bounded by _COVERAGE_MARGIN so coverage only
+    decides between hits the ranking cannot separate. The bound is load-bearing
+    — unbounded, it took the parity gate's faithfulness delta from +0.041 to
+    -0.006 and failed its floor, because keeping one node from each of two
+    files costs facts from the file that actually matched.
+
+    MEASURED at the same commit, both host classes:
+
+        avx512f container    0.7456 -> 0.7807 (+3.51)   refund 1.0, 922 tokens
+        non-avx512f runner   0.7456 -> 0.7807 (+3.51)   refund 1.0, 922 tokens
+
+    Identical, where before they were -1.75 and +3.51. Total token counts still
+    differ by 7 across 19 queries, so some host-dependence remains in node
+    selection; it no longer moves any hit rate.
+
+    If this gate fails again: compare graph.refund_decision_probe against a
+    passing job, and check whether a displacement site was added that does not
+    go through _displace(). A tolerance is not the fix — one was added and
+    reverted twice already, and the second time it also rewrote the published
+    claim from a guarantee into a permitted 2-point regression.
     """
     p3 = benchmark_results["phase2_synapse"]
     runs = ", ".join(

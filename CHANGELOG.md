@@ -1,5 +1,74 @@
 # Changelog
 
+## [3.8.0](https://github.com/dfrostar/neuralmind/compare/v3.7.0...v3.8.0) (2026-08-31)
+
+
+### Features
+
+* **unified search:** content+code search for book-like projects with `--mode=unified` and `--content-type=book` ([5188dc6](https://github.com/dfrostar/neuralmind/commit/5188dc6))
+* **unified search:** scope bias (`--scope-bias=content|code|balanced`) and chapter filtering (`--chapter=`) ([3d35ef5](https://github.com/dfrostar/neuralmind/commit/3d35ef5))
+
+
+## [3.7.0](https://github.com/dfrostar/neuralmind/compare/v3.6.0...v3.7.0) (2026-08-30)
+
+
+### Features
+
+* add project registry for multi-project operator mode ([cbc41f3](https://github.com/dfrostar/neuralmind/commit/cbc41f3a681b9d7df1f7781ed48e91ee93229011))
+* **tier2:** add `license expiring` so renewals stop lapsing silently ([607a674](https://github.com/dfrostar/neuralmind/commit/607a6748a8e4be85a0186328b80b99288de346ea))
+
+
+### Bug Fixes
+
+* **cli:** parenthesize the renewal-report header string ([2f05ae3](https://github.com/dfrostar/neuralmind/commit/2f05ae35073bae2fbad95f4d97b700647edeac80))
+* correct the cron recipe, activation error, and exit-7 help text ([a651639](https://github.com/dfrostar/neuralmind/commit/a651639d722f7473dcde4b4b2c22ff65afd90640))
+* normalize invalid --scope values to 'all' in cmd_build ([f3b2873](https://github.com/dfrostar/neuralmind/commit/f3b28735089bfc78018f1c2e597373db3edaf5ef))
+* **operator:** incremental recovery for index mismatch + progress + enhanced doctor ([b56718f](https://github.com/dfrostar/neuralmind/commit/b56718f8bf017629052e60fd20e79c4591b654fe))
+* per-scope SQLite store naming to prevent cross-scope contamination ([36bb4ae](https://github.com/dfrostar/neuralmind/commit/36bb4ae459184f129c5fce224636da6733e92c78))
+* store.code.sqlite, store.content.sqlite, store.docs.sqlite ([36bb4ae](https://github.com/dfrostar/neuralmind/commit/36bb4ae459184f129c5fce224636da6733e92c78))
+* **tier1:** update migration warning assertion to match new wording ([61f9614](https://github.com/dfrostar/neuralmind/commit/61f961467921d186448ba2b48f7766f021772195))
+* **tier2:** bill and expire licences on the calendar, not 30-day months ([d1a20a8](https://github.com/dfrostar/neuralmind/commit/d1a20a849d38ae5bbd47019079401c7e55b48878))
+* **tier2:** exact renewal window, and a runbook step that could not run ([2a64485](https://github.com/dfrostar/neuralmind/commit/2a6448552b17a077992bf3fef3a2895e83d6d5ef))
+* use tmp_path-based paths in registry tests for cross-platform compat ([ed4572e](https://github.com/dfrostar/neuralmind/commit/ed4572edb0230156c88c2773efb6ccce0586d2b0))
+
+
+### Documentation
+
+* **wiki:** add the Billing Runbook and document the issuer CLI ([98d5bb3](https://github.com/dfrostar/neuralmind/commit/98d5bb367701125df26896d1fee8ba334e2b7f9b))
+
+## [3.6.0](https://github.com/dfrostar/neuralmind/compare/v3.5.1...v3.6.0) (2026-08-28)
+
+
+### Features
+
+* **ecosystem:** stage the a0-plugins index entry, prevalidated against their CI ([ba03116](https://github.com/dfrostar/neuralmind/commit/ba03116a55f1f0dfb74fee66bcd494e94931e7b1))
+
+
+### Bug Fixes
+
+* **claims:** correct unsourced 12-70x in plugin.yaml, gate registry manifests ([fd4c2bd](https://github.com/dfrostar/neuralmind/commit/fd4c2bdaf160f4bf8b6ebecbe9415368641ac603))
+* loud detached-host path guard + deterministic benchmark embeddings ([#479](https://github.com/dfrostar/neuralmind/issues/479)) ([5013b17](https://github.com/dfrostar/neuralmind/commit/5013b178923213db5e77ce7ddea00d49ae9fff90))
+
+
+### Documentation
+
+* move GOALS.md to neuralmind-autopilot ([ad2275f](https://github.com/dfrostar/neuralmind/commit/ad2275ffc027e213615c95a22669620ca1788745))
+
+## [3.5.1](https://github.com/dfrostar/neuralmind/compare/v3.5.0...v3.5.1) (2026-08-27)
+
+
+### Bug Fixes
+
+* **deps:** raise security floors clearing 20 dependency advisories + add vulnerability management policy ([#478](https://github.com/dfrostar/neuralmind/issues/478)) ([00c6415](https://github.com/dfrostar/neuralmind/commit/00c64157fc91a5c8b1668a12b130bcd1277ef810))
+
+
+### Documentation
+
+* add GOALS.md with project goals and objectives ([1155675](https://github.com/dfrostar/neuralmind/commit/1155675ecb89d49c9a12c0f77529c1e1d3beb503))
+* add GOALS.md with project goals and objectives ([215a4a1](https://github.com/dfrostar/neuralmind/commit/215a4a1a6fc8036c64c75b6f118c3baca5b672a2))
+* add SOTA OKR-based GOALS.md with measurable objectives ([9d3c112](https://github.com/dfrostar/neuralmind/commit/9d3c112c15cde18721d867c54fc0e281a418f638))
+* add SOTA OKR-based GOALS.md with measurable objectives ([6c4f22b](https://github.com/dfrostar/neuralmind/commit/6c4f22b1bba41843b2a25bc8642c4845d0a0014a))
+
 ## [3.5.0](https://github.com/dfrostar/neuralmind/compare/v3.4.1...v3.5.0) (2026-08-26)
 
 

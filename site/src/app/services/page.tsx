@@ -19,7 +19,7 @@ const offerings = [
         description:
             'Find out what NeuralMind actually does on your code before anyone installs anything team-wide.',
         features: [
-            'Benchmark on 1–3 of your repos, run on your hardware — the benchmark transmits no repository content and sends no telemetry',
+            'Benchmark on 1–3 of your repos, run on your hardware — none of your code is transmitted',
             'Measured retrieval reduction ratios (the same harness as our public CI numbers)',
             'Retrieval-quality spot checks against real questions from your team',
             'Fit across your agent stack: Claude Code, Cursor, Cline, Codex, any MCP client',

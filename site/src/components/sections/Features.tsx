@@ -73,7 +73,7 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
     {
         icon: 'offline',
         title: '100% Local Engine',
-        desc: 'NeuralMind transmits no repository content and sends no telemetry — its one outbound request is a one-time fetch of a public embedding model on first build (pre-seedable for air-gapped installs). Only the minimal relevant slice ever reaches your AI tool, never your whole codebase.',
+        desc: 'NeuralMind transmits no repository content — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry. One first-build model download aside, pre-seedable for air-gapped installs.',
         badge: 'Secure',
     },
     {

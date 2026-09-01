@@ -20,7 +20,7 @@
 
 ### Core Principles
 
-1. **No Calls Home** — NeuralMind makes no external network calls; it adds nothing to what your agent sends its model
+1. **No Calls Home by Default** — NeuralMind makes no external network calls in its default configuration; it adds nothing to what your agent sends its model. One narrow, opt-in exception exists — see below.
 2. **Local-First Processing** — All embeddings computed locally
 3. **Explainability** — Every decision is auditable
 4. **Least Privilege** — Users get minimum permissions needed
@@ -28,11 +28,20 @@
 
 ### What NeuralMind Does NOT Do
 
-❌ Send code to external APIs  
-❌ Collect telemetry or usage metrics  
-❌ Store credentials in indexes  
-❌ Cache queries in cloud storage  
-❌ Share data between customers/projects  
+❌ Ingest video, image, or audio files — no code path accepts media of any kind
+❌ Send source code to external APIs
+❌ Collect telemetry or usage metrics
+❌ Store credentials in indexes
+❌ Cache queries in cloud storage
+❌ Share data between customers/projects
+
+**The one opt-in exception:** setting both `NEURALMIND_LLM_SEED=1` and
+`ANTHROPIC_API_KEY` enables a documentation-synapse-seeding call that sends
+only the text of `README.md`/`docs/architecture.md` to Anthropic's API —
+never source code, never client data files, never media. Default is off;
+the call fails open (never blocks indexing). Full disclosure, verification
+steps, and how to keep it disabled:
+[`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 
 ---
 

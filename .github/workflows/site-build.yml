@@ -1,0 +1,80 @@
+name: Build site (PR check)
+
+# Build-only gate for the marketing site on pull requests.
+#
+# Why this exists separately from deploy-site.yml: that workflow triggers on
+# push to main, a published release, or manual dispatch — never on a pull
+# request. So until 2026-08-28 nothing built site/ before merge, and a broken
+# static export would surface only as a failed *deploy* on main, after the
+# change was already in. That is the wrong place to find out: the deploy job
+# holds the Cloudflare credentials, and a red deploy leaves the live site on
+# its previous build with no PR to point at.
+#
+# This is deliberately a separate workflow rather than a `pull_request` trigger
+# added to deploy-site.yml. A PR-triggered job must never be in a position to
+# reach CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID, and the cleanest way to
+# guarantee that is a workflow that has no deploy step to guard in the first
+# place. It builds and stops.
+#
+# Keep the Node version, cache config and build env in step with
+# deploy-site.yml — a check that builds under different conditions than the
+# deploy is a check that can pass while the deploy fails.
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - '.github/workflows/site-build.yml'
+      - '.github/workflows/deploy-site.yml'
+
+# A newer push to the same PR supersedes the older build.
+concurrency:
+  group: site-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # Named explicitly: GitHub labels the check by JOB name, not workflow name,
+    # so this would otherwise show as a bare "build" beside the Python job
+    # "Build Package" in a 20-check list.
+    name: Build site (static export)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export
+        env:
+          # Same reason as the deploy workflow: the build reads the latest
+          # release from the GitHub API (site/src/lib/release.ts), and an
+          # unauthenticated call from a shared runner can be rate-limited into
+          # silently rendering the fallback version. Never hardcode a version
+          # to work around this — that is the exact bug the API read prevents.
+          GITHUB_TOKEN: ${{ github.token }}
+        run: npm run build
+
+      - name: Confirm the export produced pages
+        # `next build` can succeed while exporting nothing if the export config
+        # is broken, and wrangler would then happily publish an empty
+        # directory. Fail here instead, where there is a PR to fix.
+        run: |
+          test -f out/index.html || {
+            echo "::error::site/out/index.html missing — the static export produced no home page"
+            exit 1
+          }
+          echo "Exported $(find out -name '*.html' | wc -l) HTML page(s)."

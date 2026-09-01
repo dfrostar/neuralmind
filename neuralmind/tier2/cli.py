@@ -496,7 +496,9 @@ def cmd_team_license(args) -> int:
         src_status = load_license(src_path, _ISSUER_PUBLIC_KEY_HEX)
         if src_status != "VALID":
             print(
-                f"License validation failed: {src_status}. Run `autopilot license status --license-id <id>` to check."
+                f"License validation failed for {src_path}: {src_status}. "
+                "Nothing was installed. Check this is the unaltered file you were "
+                "sent, then contact hello@neuralmind.uk quoting that status."
             )
             return 1
         # Signature validated — install

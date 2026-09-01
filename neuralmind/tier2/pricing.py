@@ -38,25 +38,36 @@ def load_pricing(config_path: Path | None = None) -> dict:
     return DEFAULT_PRICING
 
 
+# Named entries in the pricing table, by term length in months. Terms the
+# CLI accepts but this table does not name (6 and 36) bill at the flat
+# monthly rate for every month of the term — they used to fall through to a
+# single month's rate, quoting a 36-month deal at 1/36th of its value.
+_TERM_KEYS = {1: "monthly", 3: "quarterly", 12: "annual", 24: "biennial"}
+
+
 def calculate_price(
     pricing: dict,
     tier: str,
     seats: int,
     term_months: int,
 ) -> float:
-    """Calculate total price for a license."""
+    """Calculate the total price for a license over its whole term.
+
+    Args:
+        pricing: Pricing table, as returned by :func:`load_pricing`.
+        tier: ``"free"`` or ``"team"``.
+        seats: Number of seats on the license.
+        term_months: Term length in months.
+
+    Returns:
+        Total price in the table's currency for all seats over the term.
+    """
     if tier == "free":
         return 0.0
     tier_pricing = pricing.get("team", {})
-    if term_months == 1:
-        base = tier_pricing.get("monthly", {}).get("base_per_seat", 29.0)
-    elif term_months == 3:
-        base = tier_pricing.get("quarterly", {}).get("base_per_seat", 87.0)
-    elif term_months == 12:
-        base = tier_pricing.get("annual", {}).get("base_per_seat", 348.0)
-    elif term_months == 24:
-        base = tier_pricing.get("biennial", {}).get("base_per_seat", 696.0)
-    else:
-        # Monthly rate for other terms
-        base = tier_pricing.get("monthly", {}).get("base_per_seat", 29.0)
+    monthly = tier_pricing.get("monthly", {}).get("base_per_seat", 29.0)
+    key = _TERM_KEYS.get(term_months)
+    base = tier_pricing.get(key, {}).get("base_per_seat") if key else None
+    if base is None:
+        base = monthly * term_months
     return base * seats

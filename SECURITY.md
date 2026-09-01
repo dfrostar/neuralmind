@@ -163,10 +163,17 @@ NeuralMind processes code from your projects. Here's what you should know:
 
 ### Known Security Considerations
 
+Third-party dependency vulnerabilities — Dependabot / OSV alerts against
+packages NeuralMind depends on — are triaged under
+[`docs/VULNERABILITY-MANAGEMENT-POLICY.md`](docs/VULNERABILITY-MANAGEMENT-POLICY.md),
+which sets out when an alert is fixed, when a version floor is raised, and the
+evidence required before one is dismissed. The entries below are the standing
+exceptions that policy has accepted.
+
 1. **ChromaDB (opt-in fallback since v0.29).** ChromaDB is **no longer the default
    backend**. On mainstream platforms (Linux, Apple Silicon, Windows x64) the default
    is the ChromaDB-free `turbovec`/ONNX stack, so ChromaDB's dependency tree — and the
-   advisory below — are **absent from the default install** entirely. ChromaDB is only
+   advisories below — are **absent from the default install** entirely. ChromaDB is only
    pulled in as a transparent fallback on platforms turbovec has no wheel for (Intel
    macOS, Windows ARM) or when you explicitly select the `chroma` backend. If you do
    run ChromaDB, monitor their advisories.
@@ -190,6 +197,40 @@ NeuralMind processes code from your projects. Here's what you should know:
      - References: [NVD](https://nvd.nist.gov/vuln/detail/CVE-2026-45829) ·
        [GHSA-f4j7-r4q5-qw2c](https://github.com/advisories/GHSA-f4j7-r4q5-qw2c) ·
        [upstream issue](https://github.com/chroma-core/chroma/issues/6717).
+
+   - **CVE-2026-45830, CVE-2026-45831, CVE-2026-45833 — same disposition, same
+     reason.** Three further ChromaDB advisories share the argument above: each
+     one needs a running ChromaDB *server* with multiple tenants and an
+     authenticated caller, and NeuralMind has none of those. Like CVE-2026-45829,
+     *every* published version is affected (`last_affected: 1.5.9`, the current
+     latest), so no version bump resolves them either.
+     - **CVE-2026-45833 / GHSA-36p7-vc44-83pf** (chromadb ≥ 0.4.17, CRITICAL,
+       CWE-94) — authenticated code injection via a malicious model repository
+       when `trust_remote_code=true`. The post-auth sibling of CVE-2026-45829;
+       NeuralMind never sets `trust_remote_code`.
+       `CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:H/VI:H/VA:H/SC:H/SI:H/SA:H` ·
+       [GHSA-36p7-vc44-83pf](https://github.com/advisories/GHSA-36p7-vc44-83pf)
+     - **CVE-2026-45830 / GHSA-2wm9-hf6c-p5cr** (chromadb ≥ 0.4.17, HIGH) —
+       missing authorization validation lets any authenticated user read, write
+       or delete data in *any* tenant's collection. `PersistentClient` is
+       single-tenant, local, on-disk, and has no authenticated callers to
+       escalate between.
+       `CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N` ·
+       [GHSA-2wm9-hf6c-p5cr](https://github.com/advisories/GHSA-2wm9-hf6c-p5cr)
+     - **CVE-2026-45831 / GHSA-xph7-9rjv-w5fr** (chromadb ≥ 0.5.0, HIGH) —
+       `SimpleRBACAuthorizationProvider` checks whether a user holds a
+       permission but never which tenant, database or collection it applies to.
+       NeuralMind configures no authorization provider at all.
+       `CVSS:4.0/AV:N/AC:L/AT:P/PR:L/UI:N/VC:H/VI:H/VA:N/SC:H/SI:H/SA:N` ·
+       [GHSA-xph7-9rjv-w5fr](https://github.com/advisories/GHSA-xph7-9rjv-w5fr)
+
+     All four are watched by `.github/workflows/chromadb-cve-watch.yml`, which
+     tracks each advisory separately and files a tracking issue as soon as
+     **any** one of them stops flagging the latest release — naming which
+     cleared and which remain. A partial fix does not move the pin, but it does
+     change that advisory's disposition from "dismiss, unreachable" to "fix"
+     under the policy, and a dismissed Dependabot alert never re-alerts to say
+     so.
 
 2. **MCP Server.** If using the MCP server (`neuralmind.mcp_server`, **14 tools**), be aware:
    - It runs locally over stdio by default — no network port is opened.
@@ -284,9 +325,9 @@ NeuralMind is **designed to support** standard enterprise compliance requirement
 - **Business Associate Agreements**: No BAA needed (no external vendors processing your data)
 
 ### ✅ SOC 2 Type II
-- **Security**: Local processing, transmits no repository content, encrypted at rest (your choice)
+- **Security**: Local processing, no repository content transmitted, encrypted at rest (your choice)
 - **Availability**: No dependencies on external services for core functionality
-- **Confidentiality**: NeuralMind stores and processes locally and transmits no repository content
+- **Confidentiality**: NeuralMind stores and processes locally; no repository content is transmitted (its only outbound request is a one-time public embedding-model download, pre-seedable for air-gapped installs)
 - **Integrity**: Deterministic, reproducible indexing from your source code
 - **Privacy**: No collection, no analytics, no tracking
 
@@ -342,6 +383,11 @@ Security updates are announced through:
 
 - [GitHub Security Advisories](https://github.com/dfrostar/neuralmind/security/advisories)
 - [Release Notes](https://github.com/dfrostar/neuralmind/releases)
+
+Vulnerabilities in NeuralMind's **dependencies** follow a separate track —
+see [`docs/VULNERABILITY-MANAGEMENT-POLICY.md`](docs/VULNERABILITY-MANAGEMENT-POLICY.md)
+for dispositions, remediation targets, and the commands to reproduce the audit
+yourself.
 
 ## Auditability & Explainability
 

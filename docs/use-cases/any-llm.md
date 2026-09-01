@@ -82,7 +82,7 @@ Paste, ask, done. Usually ~800–1,100 tokens instead of tens of thousands.
 - The same 4-layer progressive disclosure
 - The same skeleton views (`neuralmind skeleton <file>`)
 - The same semantic search (`neuralmind search . "term"`)
-- Fully local — NeuralMind transmits no repository content and sends no telemetry. Its one outbound request is a one-time fetch of a public embedding model on first build (pre-seedable, see docs/use-cases/air-gapped.md).
+- Fully local — NeuralMind transmits no repository content (one first-build model download aside, pre-seedable)
 - Works with any model — OpenAI, Google, Anthropic, Ollama, vLLM, anything
 
 ## Graph view works with any LLM (v0.6.0+)

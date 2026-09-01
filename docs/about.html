@@ -105,7 +105,7 @@
     <section>
         <div class="container">
             <ul>
-                <li><strong>100% local engine.</strong> NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool; no telemetry by default.</li>
+                <li><strong>Local engine, no telemetry.</strong> NeuralMind transmits no repository content — only the minimal relevant slice ever reaches your AI tool; no telemetry by default. Its one outbound request is a one-time public embedding-model download on first build, which air-gapped installs pre-seed.</li>
                 <li><strong>New in v0.22.0 — ChromaDB-free by default, when available.</strong> <code>import neuralmind</code> no longer requires ChromaDB, and the default backend is now <code>auto</code> — it prefers the ChromaDB-free <code>turbovec</code> path when its deps are installed, else falls back to chroma. Plain installs are unchanged; <code>neuralmind doctor</code> shows the resolved backend.</li>
                 <li><strong>In v0.21.0 — ChromaDB-free option.</strong> Embed <em>and</em> search with zero ChromaDB at <strong>8–16× smaller</strong> vectors and <strong>byte-identical</strong> embeddings (cosine 1.0) — same answer quality, far fewer dependencies, and the CVE-2026-45829 advisory surface gone.</li>
             </ul>

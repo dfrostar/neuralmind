@@ -5,10 +5,11 @@
 
 from __future__ import annotations
 
+import calendar
 import json
 import tempfile
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import license
@@ -17,6 +18,28 @@ from .pricing import calculate_price, load_pricing
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _add_months(start: datetime, months: int) -> datetime:
+    """Add calendar months to ``start``, clamping to the last valid day.
+
+    Terms are sold in months, so they have to land on the calendar. Adding
+    30-day months shortchanged an annual customer by five days and drifted
+    further on longer terms. Day-of-month is clamped, so 31 Jan + 1 month is
+    28/29 Feb rather than rolling into March.
+
+    Args:
+        start: The instant the term runs from.
+        months: Number of calendar months to add.
+
+    Returns:
+        ``start`` advanced by ``months``, at the same time of day.
+    """
+    total = start.month - 1 + months
+    year = start.year + total // 12
+    month = total % 12 + 1
+    day = min(start.day, calendar.monthrange(year, month)[1])
+    return start.replace(year=year, month=month, day=day)
 
 
 class LicenseOperations:
@@ -156,7 +179,7 @@ class LicenseOperations:
         license_id = self._generate_license_id()
         customer_id = self._generate_customer_id()
         now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(days=30 * term_months)
+        expires_at = _add_months(now, term_months)
 
         # Build license data
         license_data = {
@@ -180,10 +203,16 @@ class LicenseOperations:
         if output_path is None:
             safe_name = "".join(c for c in customer_name.lower() if c.isalnum() or c in "-_")
             output_path = self.storage / f"{safe_name}.json"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        # Verify the resolved path is still inside storage
+        # Validate before creating anything: a rejected path used to leave its
+        # parent directory behind. The guard covers both inputs that can point
+        # outside storage — the customer name and an explicit output_path — so
+        # the message names both rather than blaming the name.
         if not str(output_path.resolve()).startswith(str(self.storage.resolve())):
-            raise ValueError("Invalid customer name: path traversal detected")
+            raise ValueError(
+                f"Refusing to write outside {self.storage}: {output_path} resolves "
+                "beyond the storage directory (check the output path, or the customer name)"
+            )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp = tempfile.mkstemp(dir=output_path.parent, suffix=".tmp")
         try:
             with open(fd, "w") as f:
@@ -243,7 +272,7 @@ class LicenseOperations:
         cust = customers["customers"][customer_name]
 
         old_expires = datetime.fromisoformat(cust["expires_at"])
-        new_expires = old_expires + timedelta(days=30 * term_months)
+        new_expires = _add_months(old_expires, term_months)
 
         # H4 fix: Do not revive revoked licenses
         if cust.get("status") == "revoked":
@@ -371,6 +400,94 @@ class LicenseOperations:
             "status": cust.get("status"),
             "total_paid": cust.get("total_paid"),
             "partner_id": cust.get("partner_id"),
+        }
+
+    def list_expiring_licenses(
+        self,
+        within_days: int = 60,
+        now: datetime | None = None,
+    ) -> dict:
+        """Find licences that need a renewal conversation.
+
+        Nothing else in the system watches expiry dates, so this is the
+        query an operator (or a scheduler calling the CLI) runs to find
+        out what is about to lapse. Revoked licences are excluded: they
+        cannot be renewed, so they are not renewal opportunities.
+
+        A record whose ``expires_at`` cannot be parsed is reported under
+        ``unknown`` rather than skipped — an unreadable expiry is a data
+        problem the operator has to see, not one to swallow.
+
+        Args:
+            within_days: How far ahead to look. Must not be negative.
+            now: Evaluation instant; defaults to the current UTC time.
+                Injectable so tests need not manipulate the clock.
+
+        Returns:
+            A dict with ``checked_at``, ``within_days``, ``total_active``,
+            ``needs_attention``, and the ``expired`` / ``expiring`` /
+            ``unknown`` buckets, each sorted most-urgent first.
+        """
+        if within_days < 0:
+            raise ValueError("within_days must not be negative")
+        now = now or datetime.now(timezone.utc)
+
+        expired: list[dict] = []
+        expiring: list[dict] = []
+        unknown: list[dict] = []
+        total_active = 0
+
+        for name, cust in self._load_customers().get("customers", {}).items():
+            if cust.get("status") == "revoked":
+                continue
+            total_active += 1
+
+            expires_at = cust.get("expires_at")
+            entry = {
+                "customer": name,
+                "license_id": cust.get("license_id"),
+                "seats": cust.get("seats"),
+                "expires_at": expires_at,
+                "status": cust.get("status"),
+                "partner_id": cust.get("partner_id"),
+            }
+
+            if expires_at == "never":
+                continue
+            try:
+                exp = datetime.fromisoformat(str(expires_at))
+            except (ValueError, TypeError):
+                unknown.append(entry)
+                continue
+            if exp.tzinfo is None:
+                exp = exp.replace(tzinfo=timezone.utc)
+
+            # int() truncates toward zero, so both directions read naturally:
+            # 17.9 days left is "17 days remaining", and 4.1 days past due is
+            # "expired 4 days ago". timedelta.days would floor the latter to 5.
+            seconds_left = (exp - now).total_seconds()
+            entry["days_remaining"] = int(seconds_left / 86400)
+            # Bucket on the instant, never the truncated day count: comparing
+            # days would stretch the window by up to a day (`--within 60`
+            # catching an expiry 60 days 23 hours out) and flip the exit code
+            # to 6 early. The truncated value is for display only.
+            if seconds_left < 0:
+                expired.append(entry)
+            elif seconds_left <= within_days * 86400:
+                expiring.append(entry)
+
+        expired.sort(key=lambda e: e["days_remaining"])
+        expiring.sort(key=lambda e: e["days_remaining"])
+        unknown.sort(key=lambda e: e["customer"])
+
+        return {
+            "checked_at": now.isoformat(),
+            "within_days": within_days,
+            "total_active": total_active,
+            "needs_attention": len(expired) + len(expiring) + len(unknown),
+            "expired": expired,
+            "expiring": expiring,
+            "unknown": unknown,
         }
 
     def list_customer_licenses(

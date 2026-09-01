@@ -13,7 +13,7 @@ Cursor's `@codebase` feature indexes your repository and injects relevant chunks
 | Retrieval | Chunk similarity | 4-layer progressive disclosure (identity → summary → clusters → search) |
 | Output | Raw chunks into prompt | Structured, token-budgeted context with reduction metrics |
 | Tool-output compression | None | PostToolUse hooks compress Read/Bash/Grep results |
-| Offline | No (Cursor cloud) | Yes — NeuralMind transmits no repository content and sends no telemetry |
+| Offline | No (Cursor cloud) | Yes — no repository content transmitted; one first-build model download, pre-seedable |
 | Cost | Bundled in Cursor subscription | Free, local |
 | Install methods | Paid Mac/Windows/Linux IDE installer | `pip` / `pipx` / `uv` / Docker / source — runs anywhere Python does |
 | Adapts to you | No | Yes — a Hebbian synapse layer learns associations from your usage automatically (co-activation with decay), no manual step |

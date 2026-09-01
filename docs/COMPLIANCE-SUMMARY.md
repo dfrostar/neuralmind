@@ -10,9 +10,10 @@
 
 | Posture | NeuralMind support |
 |---|---|
-| Data leaves your machine | **Never** — fully local, no telemetry, no remote logging, no update checks |
-| Code uploaded to a cloud provider | **No** — all embeddings generated and stored locally via ChromaDB |
-| Outbound network at runtime | **None** — install-time only; see [air-gapped walkthrough](use-cases/air-gapped.md) |
+| Data leaves your machine | **Never by default** — fully local, no telemetry, no remote logging, no update checks. One opt-in exception: see below |
+| Code uploaded to a cloud provider | **No** — all embeddings generated and stored locally via ChromaDB or the local ONNX backend |
+| Outbound network at runtime | **None by default** — install-time only unless `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` are explicitly set, which sends only README/architecture-doc prose (never code, never client files) to Anthropic for synapse seeding. See [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) and the [air-gapped walkthrough](use-cases/air-gapped.md) |
+| Video/media file ingestion | **Not supported** — no code path accepts video, image, or audio files at any layer; see [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) §2 |
 | Audit trail | **Built-in** — `.neuralmind/audit_events.jsonl` append-only log + query provenance |
 | Software Bill of Materials | **Auto-generated** — CycloneDX JSON attached to every tagged release |
 | License | **MIT** — full source review, no vendor lock-in |
@@ -79,9 +80,16 @@ NeuralMind processes code. Code can contain comments referencing names, emails, 
 - **Right to erasure** — synapse store and audit log are local files; `rm -rf .neuralmind/` is a complete erasure path
 - **Data residency** — entirely under operator control; no cross-border transfers initiated by NeuralMind
 - **Pseudonymisation** — audit log actor field is system-level on local queries and operator-supplied at the MCP boundary; can be a hashed token rather than a username
-- **Breach notification** — local files, no external surface area, no third-party processor
+- **Breach notification** — local files, no external surface area by default
 
-NeuralMind does **not** act as a data processor in the GDPR sense — there is no external entity to which data is transferred. The operator is the sole controller.
+NeuralMind does **not** act as a data processor in the GDPR sense in its
+default configuration — there is no external entity to which data is
+transferred, and the operator is the sole controller. The one exception is
+the opt-in `NEURALMIND_LLM_SEED=1` documentation-synapse-seeding path,
+which makes Anthropic a subprocessor for README/architecture-doc prose
+only, if and only if an operator explicitly enables it. See
+[`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md)
+for the full disclosure, including how to verify it stays disabled.
 
 ---
 
@@ -150,7 +158,7 @@ Choose the strictest your operational needs allow — all four use the same Neur
 This is the **summary** view. For depth:
 
 - [`SECURITY-GUIDE.md`](SECURITY-GUIDE.md) — threat model, encryption, secrets management, line-by-line SOC 2 control evidence
-- [`ENTERPRISE.md`](ENTERPRISE.md) — deployment patterns, scaling, multi-team usage
+- [`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md) — precise, code-cited answer to "does any client content (including media files) ever reach a third-party LLM"
 - [`use-cases/air-gapped.md`](use-cases/air-gapped.md) — strictest deployment posture, step-by-step
 - [`use-cases/offline-regulated.md`](use-cases/offline-regulated.md) — broader regulated-industry walkthrough
 - [`SECURITY.md`](../SECURITY.md) — security policy, vulnerability disclosure

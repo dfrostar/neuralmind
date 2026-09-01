@@ -1,7 +1,7 @@
 ---
 name: neuralmind
-description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall.
-version: 3.5.0 # x-release-please-version
+description: Answer questions about a code repository in ~800 tokens instead of loading 50,000+ tokens of raw source. Use whenever the user asks how something works, where something is defined, who calls what, or to explore an unfamiliar file. Provides progressive context disclosure (L0 identity → L1 architecture → L2 relevant clusters → L3 semantic search) and a learned synapse graph for usage-based recall. Also supports unified content+code search for book-like projects.
+version: 3.8.0 # x-release-please-version
 author: dfrostar
 license: MIT
 tags:
@@ -9,6 +9,7 @@ tags:
   - retrieval
   - context-compression
   - mcp
+  - unified-search
 triggers:
   - how does
   - where is
@@ -23,6 +24,10 @@ triggers:
   - codebase question
   - unfamiliar repo
   - onboard to repo
+  - book search
+  - unified search
+  - content search
+  - chapter search
 allowed_tools:
   - neuralmind_wakeup
   - neuralmind_query
@@ -100,6 +105,40 @@ Want associations the agent has learned over time?
 Made code changes in this session?
   └─► neuralmind_build              incremental re-embedding
 ```
+
+## Unified content+code search (v3.8+)
+
+For book-like projects (markdown chapters + engine code), NeuralMind can
+search both content and code scopes simultaneously and merge results.
+
+**Build a book project:**
+```
+neuralmind build --content-type=book --force
+```
+Auto-detects book-like repos (markdown:code ratio > 3:1, no `src/` or
+`lib/` at root) and routes indexing into separate scopes.
+
+**Query both scopes:**
+```
+neuralmind query . "how does authentication work?" --mode=unified
+```
+
+Returns results labeled `[content]` (chapters) and `[code]` (implementation),
+ranked by relevance.
+
+**Filter by chapter:**
+```
+neuralmind query . "WANK worm" --mode=unified --chapter="Chapter 1"
+```
+
+**Bias toward one scope:**
+```
+neuralmind query . "explain the architecture" --mode=unified --scope-bias=content
+neuralmind query . "show me the implementation" --mode=unified --scope-bias=code
+```
+
+`--scope-bias=balanced` (default) returns equal weighting. `content` boosts
+chapter results 20%; `code` boosts implementation results 20%.
 
 ## Output shape (so you know what to expect)
 

@@ -92,6 +92,100 @@ _DEFAULT_PARAM_FALLBACK = {
 }
 
 
+# How close two hits must be before coverage, not score, picks the victim.
+#
+# Displacement has to drop someone. Between two hits the ranking cannot
+# confidently separate, dropping the one whose file another survivor still
+# covers is strictly better: same budget, more of the codebase represented.
+# Outside that band the score is carrying real signal and is left alone.
+#
+# 2% is above the ~0.8% host-to-host score variation that made this ranking
+# non-deterministic (PR #484, #492), which is why the fix also cures the
+# bimodality — but it is deliberately not *derived* from that number. It is
+# the width at which this fixture's own top-k scores cluster: the `refund`
+# hits span 0.946-0.948 before the leader at 1.000. Widening it further
+# regresses fact coverage, which is what the parity gate is for.
+_COVERAGE_MARGIN = 0.02
+
+
+def _module_of(result):
+    """The source file a result belongs to, for coverage accounting."""
+    meta = result.get("metadata") or {}
+    return str(meta.get("source_file") or result.get("id") or "")
+
+
+def _displace(results, drop_count):
+    """Choose which results to displace, preserving module coverage.
+
+    Displacement is budget-neutral: recalled neighbours take the slots of
+    existing hits. The question is whose. Dropping the plain tail spends both
+    slots on whichever nodes happen to sort last, and when several hits come
+    from the same file that can evict a module's *only* representatives while
+    keeping two of another's — losing a whole file from the context to gain
+    nothing.
+
+    That is not hypothetical; it is the failure this function was written for.
+    On the `refund` fixture query the four hits are two api/routes.py nodes and
+    two billing/stripe_client.py nodes. Tail-drop kept both api/routes.py rows
+    and evicted both billing/stripe_client.py rows, so the query lost its one
+    expected module. Which pair survived depended on a ~0.8% score difference
+    that varies by host, so the same commit scored differently on different
+    CPUs (PR #484, #492).
+
+    Preferring a victim whose module is still covered by a survivor fixes both
+    problems at once. The context keeps more distinct files, and the outcome
+    stops depending on score differences far too small to be a ranking signal:
+    a reorder within one module no longer changes which modules survive.
+
+    Ties and the all-unique case fall back to lowest score first, so this only
+    ever changes *which* equally-droppable hit goes, never how many.
+
+    Args:
+        results: Ranked hits, best first.
+        drop_count: How many to displace.
+
+    Returns:
+        ``(kept, dropped)``; ``kept`` preserves the input ordering.
+    """
+    survivors = list(results)
+    dropped = []
+    for _ in range(max(0, drop_count)):
+        if not survivors:
+            break
+        covered = {}
+        for r in survivors:
+            mod = _module_of(r)
+            covered[mod] = covered.get(mod, 0) + 1
+        # Weakest first, and among equals the lowest id, so the choice is a
+        # function of the data rather than of dict or input ordering.
+        order = sorted(
+            range(len(survivors)),
+            key=lambda i: (
+                float(survivors[i].get("score") or 0.0),
+                str(survivors[i].get("id") or ""),
+            ),
+        )
+        # Only rearrange within the band where ranking cannot confidently
+        # separate the candidates. Outside it the score is real signal, and
+        # trading a materially better hit for coverage costs more facts than
+        # the extra file is worth — measured, not assumed: an unbounded
+        # version of this preference took the parity gate's faithfulness
+        # delta from +0.041 to -0.006.
+        weakest = float(survivors[order[0]].get("score") or 0.0)
+        ceiling = weakest + _COVERAGE_MARGIN * abs(weakest)
+        victim = next(
+            (
+                i
+                for i in order
+                if float(survivors[i].get("score") or 0.0) <= ceiling
+                and covered.get(_module_of(survivors[i]), 0) > 1
+            ),
+            order[0],
+        )
+        dropped.append(survivors.pop(victim))
+    return survivors, dropped
+
+
 def _resolve_params(project_path):
     """Fail-open registry read. Returns the effective param map.
 
@@ -705,7 +799,7 @@ class ContextSelector:
         if not fetched:
             return results
 
-        kept = results[: len(results) - len(fetched)]
+        kept, _ = _displace(results, len(fetched))
         for node in fetched:
             boost = self._synapse_boost_weight * energy_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
@@ -785,7 +879,7 @@ class ContextSelector:
         if not fetched:
             return results
 
-        kept = results[: len(results) - len(fetched)]
+        kept, _ = _displace(results, len(fetched))
         for node in fetched:
             boost = self._structural_boost_weight * weight_by_id.get(node.get("id"), 0.0)
             node["score"] = boost
