@@ -458,6 +458,7 @@ def cmd_build_status(args):
         # Trim ISO timestamp to human-readable
         try:
             from datetime import datetime as dt
+
             built_at = dt.fromisoformat(built_at).strftime("%Y-%m-%d %H:%M")
         except ValueError:
             pass
