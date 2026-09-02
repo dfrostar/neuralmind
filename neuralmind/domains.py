@@ -171,7 +171,8 @@ def distinct_nodes(store: SynapseStore) -> list[str]:
     side effects.
     """
     with store._connect() as conn:
-        cur = conn.execute("""
+        cur = conn.execute(
+            """
             SELECT DISTINCT node FROM (
                 SELECT node_a AS node FROM synapses
                 UNION
@@ -184,7 +185,8 @@ def distinct_nodes(store: SynapseStore) -> list[str]:
                 SELECT node_id AS node FROM node_activations
             )
             ORDER BY node
-        """)
+        """
+        )
         return [row[0] for row in cur.fetchall()]
 
 
