@@ -39,7 +39,8 @@ def close_all() -> None:
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     """Create fixture tables if they don't exist yet."""
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             email        TEXT NOT NULL UNIQUE,
@@ -80,5 +81,6 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             created_at    INTEGER NOT NULL,
             sent_at       INTEGER
         );
-        """)
+        """
+    )
     conn.commit()
