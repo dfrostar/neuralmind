@@ -3,7 +3,6 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -123,6 +122,7 @@ class TestBookAssetTracking:
         # Verify they're in the table
         cursor = be._conn.execute("SELECT COUNT(*) FROM book_assets")
         assert cursor.fetchone()[0] == 2
+        be.close()
 
     def test_tracks_svg_files(self, temp_project):
         """SVG files are tracked as image assets."""
@@ -133,6 +133,7 @@ class TestBookAssetTracking:
 
         count = be._track_book_assets(temp_project)
         assert count == 1
+        be.close()
 
     def test_skips_hidden_directories(self, temp_project):
         """Files in hidden directories are skipped."""
@@ -145,6 +146,7 @@ class TestBookAssetTracking:
 
         count = be._track_book_assets(temp_project)
         assert count == 0
+        be.close()
 
     def test_find_chapter_reference(self, temp_project):
         """Asset reference to a chapter is found."""
@@ -158,6 +160,7 @@ class TestBookAssetTracking:
 
         ref = be._find_chapter_reference(temp_project, diagram)
         assert ref == "chapter_01.md"
+        be.close()
 
 
 class TestHeadingExtraction:
@@ -243,9 +246,13 @@ class TestUnifiedQuery:
         parser.add_argument("question")
         parser.add_argument("--mode", choices=["default", "unified"], default="default")
         parser.add_argument("--chapter", default=None)
-        parser.add_argument("--scope-bias", choices=["balanced", "content", "code"], default="balanced")
+        parser.add_argument(
+            "--scope-bias", choices=["balanced", "content", "code"], default="balanced"
+        )
 
-        args = parser.parse_args([".", "test question", "--mode=unified", "--chapter=Chapter 1", "--scope-bias=content"])
+        args = parser.parse_args(
+            [".", "test question", "--mode=unified", "--chapter=Chapter 1", "--scope-bias=content"]
+        )
         assert args.mode == "unified"
         assert args.chapter == "Chapter 1"
         assert args.scope_bias == "content"
