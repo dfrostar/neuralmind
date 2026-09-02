@@ -25,32 +25,40 @@ def sample_project(tmp_path: Path) -> Path:
     root.mkdir()
 
     # a.py is a leaf module (imported by b.py)
-    (root / "a.py").write_text("""
+    (root / "a.py").write_text(
+        """
 def helper():
     return 42
-""")
+"""
+    )
 
     # b.py imports a.py and is imported by c.py
-    (root / "b.py").write_text("""
+    (root / "b.py").write_text(
+        """
 from a import helper
 
 def process():
     return helper() * 2
-""")
+"""
+    )
 
     # c.py imports b.py (top-level, depends on b which depends on a)
-    (root / "c.py").write_text("""
+    (root / "c.py").write_text(
+        """
 from b import process
 
 def run():
     return process() + 1
-""")
+"""
+    )
 
     # d.py is independent
-    (root / "d.py").write_text("""
+    (root / "d.py").write_text(
+        """
 def standalone():
     return "standalone"
-""")
+"""
+    )
 
     # Create a markdown doc
     (root / "README.md").write_text("# Project\n\nThis is a test project.\n")
@@ -119,10 +127,12 @@ class TestTouchFileWithImporters:
     def test_touch_leaf_file(self, project_with_output: Path) -> None:
         """Touching a leaf file only re-extracts that file (no importers)."""
         time.sleep(0.1)
-        (project_with_output / "d.py").write_text("""
+        (project_with_output / "d.py").write_text(
+            """
 def standalone():
     return "standalone v2"
-""")
+"""
+        )
         result = graphgen.build_graph(project_with_output)
         # d.py should be re-extracted (it changed)
         assert result is not None
@@ -134,10 +144,12 @@ def standalone():
     def test_touch_file_with_importer(self, project_with_output: Path) -> None:
         """Touching a.py (imported by b.py) should also re-extract b.py."""
         time.sleep(0.1)
-        (project_with_output / "a.py").write_text("""
+        (project_with_output / "a.py").write_text(
+            """
 def helper():
     return 99  # changed
-""")
+"""
+        )
         result = graphgen.build_graph(project_with_output)
         # Both a and b should be re-extracted (b imports a)
         assert result is not None

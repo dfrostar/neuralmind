@@ -22,7 +22,9 @@ def tmp_project(tmp_path):
     project_dir.mkdir()
 
     src = project_dir / "module_a.py"
-    src.write_text(textwrap.dedent("""
+    src.write_text(
+        textwrap.dedent(
+            """
             from typing import Optional, Union, List
 
             def get_user(id: int) -> Optional[str]:
@@ -48,10 +50,14 @@ def tmp_project(tmp_path):
                 if x > 0:
                     return x
                 return None
-        """))
+        """
+        )
+    )
 
     caller = project_dir / "module_b.py"
-    caller.write_text(textwrap.dedent("""
+    caller.write_text(
+        textwrap.dedent(
+            """
             from module_a import get_user, fetch_all, no_annotation
 
             def process():
@@ -59,7 +65,9 @@ def tmp_project(tmp_path):
                 items = fetch_all()
                 result = no_annotation("x")
                 return user
-        """))
+        """
+        )
+    )
 
     return project_dir
 

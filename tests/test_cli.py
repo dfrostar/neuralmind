@@ -52,6 +52,7 @@ class TestCLIBuild:
         args = MagicMock()
         args.project_path = str(temp_project)
         args.force = False
+        args.rebuild_index = False
 
         cmd_build(args)
 
@@ -66,6 +67,7 @@ class TestCLIBuild:
         args = MagicMock()
         args.project_path = str(temp_project)
         args.force = True
+        args.rebuild_index = False
 
         cmd_build(args)
 
@@ -79,6 +81,7 @@ class TestCLIBuild:
         args = MagicMock()
         args.project_path = "/nonexistent/path/12345"
         args.force = False
+        args.rebuild_index = False
 
         with pytest.raises(SystemExit):
             cmd_build(args)
@@ -98,6 +101,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -121,6 +125,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -154,6 +159,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -183,6 +189,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -235,6 +242,7 @@ class TestCLIWakeup:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -256,6 +264,7 @@ class TestCLIWakeup:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -293,6 +302,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -316,6 +326,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -341,6 +352,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -409,6 +421,7 @@ class TestCLIStats:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -783,6 +796,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -805,6 +819,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -839,6 +854,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -873,6 +889,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -895,6 +912,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -928,6 +946,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -1161,6 +1180,7 @@ class TestCLIBuildDryRun:
         args = MagicMock()
         args.project_path = str(tmp_path)
         args.force = False
+        args.rebuild_index = False
         args.dry_run = True
         args.json = False
 
@@ -1180,6 +1200,7 @@ class TestCLIBuildDryRun:
         args = MagicMock()
         args.project_path = str(tmp_path)
         args.force = False
+        args.rebuild_index = False
         args.dry_run = True
         args.json = True
 
@@ -1199,6 +1220,7 @@ class TestCLIBuildDryRun:
         args = MagicMock()
         args.project_path = "/totally/nonexistent/path/12345"
         args.force = False
+        args.rebuild_index = False
         args.dry_run = True
         args.json = False
 
