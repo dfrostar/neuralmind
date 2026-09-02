@@ -101,7 +101,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -125,7 +125,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -159,7 +159,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -189,7 +189,7 @@ class TestCLIQuery:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -242,7 +242,7 @@ class TestCLIWakeup:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -264,7 +264,7 @@ class TestCLIWakeup:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -302,7 +302,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -326,7 +326,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -352,7 +352,7 @@ class TestCLISearch:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -421,7 +421,7 @@ class TestCLIStats:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -796,7 +796,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -819,7 +819,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -854,7 +854,7 @@ class TestCLIBenchmark:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -889,7 +889,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -912,7 +912,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
@@ -946,7 +946,7 @@ class TestCLISkeleton:
         build_args = MagicMock()
         build_args.project_path = str(temp_project)
         build_args.force = False
-        args.rebuild_index = False
+        build_args.rebuild_index = False
         cmd_build(build_args)
         capsys.readouterr()  # Clear build output
 
