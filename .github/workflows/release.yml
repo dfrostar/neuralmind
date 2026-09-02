@@ -63,7 +63,7 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -90,7 +90,7 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -149,7 +149,7 @@ jobs:
       contents: read
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
