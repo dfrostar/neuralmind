@@ -86,6 +86,7 @@ from .ir import (
     validate_synapse_bundle,
 )
 from .namespaces import resolve_namespace
+from .synapse_dynamics import SynapseDynamics
 from .synapse_memory import (
     export_synapse_memory,
     project_memory_file,
@@ -108,7 +109,7 @@ from .team_memory import (
 from .trace import RetrievalTrace
 from .watcher import FileActivityWatcher
 
-__version__ = "3.8.0"
+__version__ = "3.9.0"
 # Derived so it can never drift from __version__ again (release-please only
 # rewrites the string literal above; the old hardcoded tuple sat at (1, 12, 0)
 # through three releases).
@@ -136,6 +137,7 @@ __all__ = [
     "install_hooks",
     # Associative synapse layer (v0.4.0)
     "SynapseStore",
+    "SynapseDynamics",
     "FileActivityWatcher",
     "default_db_path",
     "render_synapse_memory",

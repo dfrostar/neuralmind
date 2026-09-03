@@ -319,6 +319,8 @@ class ContextSelector:
         # attribute each boost to the memory namespace that drove it. Only
         # consulted when a trace is active.
         self.synapse_recall_detailed = None
+        self._synapse_store: Any = None  # For synapse-seeded expansion
+        self._structural_index: Any = None  # For dependency graph expansion
 
         # Optional structural recall, injected by NeuralMind.build().
         # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, weight]].
@@ -1061,6 +1063,96 @@ class ContextSelector:
         # Apply type-aware re-ranking based on query intent
         intent = self._detect_intent(query)
         results = self._apply_intent_boost(results, intent)
+
+        # Apply adversarial retrieval enhancements:
+        # 1. Re-classify intent (how-implement → code intent)
+        # 2. Code-signal boost for implementation queries
+        # 3. Synapse-seeded expansion for co-implemented neighbors
+        try:
+            from .retrieval_enhancement import (
+                classify_intent as _enhanced_classify_intent,
+                apply_code_signal_boost,
+                synapse_seeded_expansion,
+                extract_code_identifiers,
+            )
+
+            corrected_intent = _enhanced_classify_intent(
+                query,
+                existing_code_keywords=[
+                    "implement", "function", "class", "method", "code",
+                    "source", "file", "module", "component", "handler",
+                    "service", "controller", "model", "route", "endpoint",
+                    "api", "config", "constant", "type", "interface", "schema",
+                ],
+                existing_doc_keywords=[
+                    "explain", "what is", "how does", "documentation",
+                    "readme", "guide", "tutorial", "why", "when should",
+                    "concept", "overview", "architecture", "design", "pattern",
+                    "principle", "best practice", "introduction",
+                ],
+            )
+
+            identifiers = extract_code_identifiers(query)
+
+            # Apply code-signal boost for code-intent queries
+            if corrected_intent == "code" and identifiers:
+                results = apply_code_signal_boost(results, identifiers)
+
+            # Apply synapse-seeded expansion
+            if self.synapse_recall is not None and identifiers:
+                store = getattr(self, '_synapse_store', None)
+                if store is not None:
+                    results = synapse_seeded_expansion(
+                        store, query, results, max_expansions=3
+                    )
+
+            # Re-apply intent boost with corrected intent (BEFORE two-pass retrieval)
+            # This ensures docstrings are penalized before we add implementation files
+            if corrected_intent != intent and corrected_intent != "hybrid":
+                results = self._apply_intent_boost(results, corrected_intent)
+
+            # Apply two-pass retrieval for code-intent queries (AFTER intent boost)
+            # This surfaces implementation files that vector search misses
+            if corrected_intent == "code" and identifiers and self.embedder is not None:
+                try:
+                    from .retrieval_enhancement import _search_source_files, _extract_code_snippet
+                    source_results = _search_source_files(self.embedder, identifiers, top_k=5)
+                    if source_results:
+                        # For source file matches, extract code snippets
+                        for sr in source_results:
+                            snippet = _extract_code_snippet(self.embedder, sr.get("id", ""), identifiers)
+                            if snippet:
+                                sr["document"] = snippet  # Replace generic document with actual code snippet
+                            # Boost implementation file scores ABOVE docstrings with synapse boost
+                            # Docstrings get ~3.75 (1.0 base + 2.25 synapse), so we need >4.0
+                            sr["score"] = max(sr.get("score", 0.5), 4.5)
+                        
+                        # Merge source file results, avoiding duplicates
+                        existing_ids = {r.get("id") for r in results}
+                        for sr in source_results:
+                            if sr.get("id") not in existing_ids:
+                                results.append(sr)
+                                existing_ids.add(sr.get("id"))
+                        
+                        # Re-sort by score after adding two-pass results
+                        results.sort(key=lambda r: r.get("score", 0), reverse=True)
+
+                        # Option B: Apply additional boost to code results after two-pass.
+                        # Two-pass results are hardcoded at 4.5, but docstrings in code files
+                        # get misclassified as code by _apply_intent_boost and receive 3x+synapse.
+                        # Give all code results an extra 2x to ensure implementation files win.
+                        if corrected_intent == "code":
+                            for r in results:
+                                is_code = r.get("metadata", {}).get("file_type") == "code"
+                                is_doc = r.get("metadata", {}).get("file_type") in ("rationale", "document")
+                                if is_code and not is_doc:
+                                    r["score"] = r.get("score", 1.0) * 2.0
+                            results.sort(key=lambda r: r.get("score", 0), reverse=True)
+                except Exception:
+                    pass
+
+        except Exception:
+            pass  # Fail open — use unenhanced results
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
         # relevance sidecar built from it) carry the same synapse_boost /

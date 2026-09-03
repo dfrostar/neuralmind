@@ -42,6 +42,7 @@ from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .query_handler import QueryHandler
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
+from .synapse_dynamics import SynapseDynamics
 from .synapses import SynapseStore, default_db_path
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,7 @@ class NeuralMind:
         self._synapses: SynapseStore | None = None
         self._synapses_lock = threading.Lock()
         self._synapse_client: SynapseClient | None = None
+        self._dynamics: SynapseDynamics | None = None
         self._query_handler: QueryHandler | None = None
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
@@ -284,6 +286,22 @@ class NeuralMind:
         return self._synapse_client
 
     @property
+    def dynamics(self) -> SynapseDynamics | None:
+        """Return the SOTA synapse dynamics wrapper, creating it on first use.
+
+        The dynamics layer wraps the raw SynapseStore with six modern
+        brain-inspired techniques (lateral inhibition, STC, SAMPL, 
+        resource-dependent STDP, FOK gating, replay consolidation).
+        
+        Returns None when synapses are disabled.
+        """
+        if not self.enable_synapses or self.synapses is None:
+            return None
+        if self._dynamics is None:
+            self._dynamics = SynapseDynamics(self.synapses)
+        return self._dynamics
+
+    @property
     def query_handler(self) -> QueryHandler:
         """Return the query handler, creating it on first use."""
         if self._query_handler is None:
@@ -293,6 +311,38 @@ class NeuralMind:
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
         """Feed an activation signal into the synapse layer."""
         return self.synapse_client.activate(node_ids, strength=strength)
+
+    def dynamics_reinforce(self, node_ids: list[str], strength: float = 1.0) -> int:
+        """Reinforce synapses using SOTA dynamics (STC, resource STDP, replay).
+
+        Uses the full SynapseDynamics wrapper which applies synaptic tagging,
+        resource-dependent competition, and replay queueing in addition to
+        standard Hebbian reinforcement.
+        """
+        if self.dynamics is None:
+            return self.activate(node_ids, strength=strength)
+        return self.dynamics.reinforce(node_ids, strength=strength)
+
+    def dynamics_spread(
+        self, seeds: list[tuple[str, float]] | list[str], depth: int = 2, top_k: int = 12
+    ) -> list[tuple[str, float]]:
+        """Spread activation with lateral inhibition and FOK gating.
+
+        Returns top-k nodes ranked by accumulated activation after lateral
+        inhibition sharpens the activation landscape. Returns empty list if
+        the feeling-of-knowing gate determines no relevant context exists.
+        """
+        if self.dynamics is None:
+            if self.synapses is None:
+                return []
+            return self.synapses.spread(seeds, depth=depth, top_k=top_k)
+        return self.dynamics.spread(seeds, depth=depth, top_k=top_k)
+
+    def dynamics_stats(self) -> dict | None:
+        """Return current dynamics state for monitoring."""
+        if self.dynamics is None:
+            return None
+        return self.dynamics.dynamics_stats()
 
     def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
         """Co-activate every node in the touched files as one batch.
@@ -512,6 +562,14 @@ class NeuralMind:
         # Traced queries use the detailed variant so the PRD 3 trace can show
         # which memory namespace drove each boost (PRD 4).
         self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
+        # Pass the synapse store directly for synapse-seeded expansion
+        if self.synapses is not None:
+            self.selector._synapse_store = self.synapses
+            # Also pass the embedder so synapse-seeded expansion can fetch node data
+            self.synapses._embedder = self.embedder
+        # Pass the structural index for dependency graph expansion
+        if hasattr(self, '_structural_index') and self._structural_index is not None:
+            self.selector._structural_index = self._structural_index
 
         # Structural edge index — precise, day-one code wiring (calls/inherits/
         # imports) from graph.json, built from the edges the embedder already
