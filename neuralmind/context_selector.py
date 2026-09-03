@@ -796,7 +796,37 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        energy_by_id = dict(candidates[:num_swap])
+
+        # Only displace a vector hit when the synapse-recalled replacement
+        # would score strictly higher than the hit it displaces.  A synapse
+        # candidate with energy e gets score = boost_weight * e; the weakest
+        # vector hits are at the tail of the already-sorted results list.
+        # Pairing strongest-synapse against weakest-vector (and so on) keeps
+        # the logic greedy-optimal: if the best candidate can't beat the
+        # weakest hit, no further swaps are worthwhile.
+        #
+        # `accepted_count` tracks how many slots have been claimed so each
+        # rejected candidate does not advance the results pointer; otherwise
+        # a rejected candidate at position i would cause position i+1 to be
+        # compared against the wrong (higher-scored) slot.
+        #
+        # This prevents the pathological case where a low-energy synapse node
+        # (score ≈ 0.045–0.15) evicts a moderate-confidence vector hit
+        # (score ≈ 0.3–0.8), which is the root cause of the bimodal hit-rate
+        # regression seen in the self-benchmark gate.
+        accepted: list[tuple[str, float]] = []
+        accepted_count = 0
+        for cand_nid, cand_energy in candidates[:num_swap]:
+            synapse_score = self._synapse_boost_weight * cand_energy
+            displaced_score = results[len(results) - 1 - accepted_count].get("score", 0.0)
+            if synapse_score > displaced_score:
+                accepted.append((cand_nid, cand_energy))
+                accepted_count += 1
+
+        if not accepted:
+            return results
+
+        energy_by_id = dict(accepted)
         fetched = get_nodes_by_ids(list(energy_by_id))
         if not fetched:
             return results
@@ -876,7 +906,25 @@ class ContextSelector:
         num_swap = min(len(candidates), max(0, len(results) - 1))
         if num_swap <= 0:
             return results
-        weight_by_id = dict(candidates[:num_swap])
+
+        # Only displace a vector hit when the structural-recalled replacement
+        # would score strictly higher than the hit it displaces — same guard
+        # as _apply_synapse_boost to prevent evicting a strong vector match.
+        # `accepted_count` advances only on acceptance so rejected candidates
+        # do not skip over the next available (weakest) displacement slot.
+        accepted_struct: list[tuple[str, float]] = []
+        accepted_struct_count = 0
+        for cand_nid, cand_weight in candidates[:num_swap]:
+            struct_score = self._structural_boost_weight * cand_weight
+            displaced_score = results[len(results) - 1 - accepted_struct_count].get("score", 0.0)
+            if struct_score > displaced_score:
+                accepted_struct.append((cand_nid, cand_weight))
+                accepted_struct_count += 1
+
+        if not accepted_struct:
+            return results
+
+        weight_by_id = dict(accepted_struct)
         fetched = get_nodes_by_ids(list(weight_by_id))
         if not fetched:
             return results
