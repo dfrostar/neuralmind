@@ -156,8 +156,7 @@ def _cmd_onboarding_eula(args) -> int:
     print("\n" + "─" * 50)
     print("  NEURALMIND TEAM LICENSE AGREEMENT")
     print("─" * 50)
-    print(
-        """
+    print("""
   By using NeuralMind Team, you agree to:
 
   1. LICENSE SCOPE
@@ -184,8 +183,7 @@ def _cmd_onboarding_eula(args) -> int:
 
   Full agreement: docs/NEURALMIND-LICENSE-AGREEMENT.md
   Contact: legal@neuralmind.uk
-"""
-    )
+""")
 
     if _yes(args, "Do you accept the NeuralMind Team License Agreement?", default=True):
         # Record acceptance

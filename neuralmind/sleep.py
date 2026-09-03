@@ -179,12 +179,10 @@ class DaemonSleep:
         over multiple sleep passes without overshooting.
         """
         with self.store._connect() as conn:
-            cur = conn.execute(
-                """UPDATE synapses SET weight = MIN(1.0, weight * 1.1)
+            cur = conn.execute("""UPDATE synapses SET weight = MIN(1.0, weight * 1.1)
                    WHERE activation_count >= 5
                      AND weight >= 0.20
-                     AND weight < 1.0"""
-            )
+                     AND weight < 1.0""")
             return cur.rowcount
 
     def emit_team_bundle(self) -> dict[str, Any] | None:
@@ -195,12 +193,10 @@ class DaemonSleep:
         """
         try:
             with self.store._connect() as conn:
-                cur = conn.execute(
-                    """SELECT node_a, node_b, weight, activation_count
+                cur = conn.execute("""SELECT node_a, node_b, weight, activation_count
                        FROM synapses WHERE namespace = 'shared'
                        ORDER BY weight DESC
-                       LIMIT 500"""
-                )
+                       LIMIT 500""")
                 rows = cur.fetchall()
             if not rows:
                 return None

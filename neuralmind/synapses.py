@@ -2204,8 +2204,7 @@ class SynapseStore:
             nodes = conn.execute("SELECT COUNT(DISTINCT node_id) FROM node_activations").fetchone()[
                 0
             ]
-            top_hubs = conn.execute(
-                """
+            top_hubs = conn.execute("""
                 SELECT node_id, COUNT(*) AS degree FROM (
                     SELECT node_a AS node_id FROM synapses
                     UNION ALL
@@ -2214,8 +2213,7 @@ class SynapseStore:
                 GROUP BY node_id
                 ORDER BY degree DESC
                 LIMIT 5
-                """
-            ).fetchall()
+                """).fetchall()
             transitions = conn.execute("SELECT COUNT(*) FROM synapse_transitions").fetchone()[0]
             transition_weight = conn.execute(
                 "SELECT COALESCE(SUM(weight), 0.0) FROM synapse_transitions"

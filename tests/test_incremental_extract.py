@@ -6,12 +6,10 @@ from neuralmind.incremental_extract import IncrementalExtractor
 class TestIncrementalExtractor:
     def test_scan_detects_new_files(self, tmp_path):
         # Create fixture files
-        (tmp_path / "a.py").write_text(
-            """
+        (tmp_path / "a.py").write_text("""
 def foo():
     pass
-"""
-        )
+""")
         extractor = IncrementalExtractor(str(tmp_path))
         added, modified, deleted = extractor.scan_files(tmp_path, suffixes=frozenset({".py"}))
         assert len(added) == 1
@@ -19,12 +17,10 @@ def foo():
     def test_scan_detects_modified_files(self, tmp_path):
         # Create file and add to cache
         test_file = tmp_path / "a.py"
-        test_file.write_text(
-            """
+        test_file.write_text("""
 def foo():
     pass
-"""
-        )
+""")
         extractor = IncrementalExtractor(str(tmp_path))
         extractor.update_cache(["a.py"], tmp_path)
 
@@ -32,12 +28,10 @@ def foo():
         import time
 
         time.sleep(0.1)
-        test_file.write_text(
-            """
+        test_file.write_text("""
 def bar():
     pass
-"""
-        )
+""")
 
         added, modified, deleted = extractor.scan_files(tmp_path, suffixes=frozenset({".py"}))
         assert "a.py" in modified

@@ -176,8 +176,7 @@ class TurboVecEmbedder(EmbeddingBackend):
 
     # ------------------------------------------------------------------ store
     def _init_store(self) -> None:
-        self._conn.executescript(
-            """
+        self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS nodes (
                 uid          INTEGER PRIMARY KEY,
                 node_id      TEXT UNIQUE NOT NULL,
@@ -200,8 +199,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                 caption      TEXT,
                 tracked_at   TEXT
             );
-            """
-        )
+            """)
         # Additive columns for existing DBs (don't fail if already present)
         try:
             self._conn.execute("ALTER TABLE nodes ADD COLUMN content_category TEXT")
