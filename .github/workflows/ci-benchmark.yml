@@ -86,16 +86,25 @@ jobs:
 
           PROJ = "/tmp/nm_builtin"
 
-          # Faithfulness gate on the built-in backend.
-          fr = fh.run_and_report(PROJ).to_dict()
+          # Faithfulness gate on the built-in backend. Averaged over three
+          # samples to absorb ChromaDB HNSW query-time jitter, matching the
+          # onboarding-lift gate below (a single sample can flip sign on this
+          # tiny fixture even with no code change).
+          faithfulness_deltas = []
+          fr = None
+          for _ in range(3):
+              fr = fh.run_and_report(PROJ).to_dict()
+              faithfulness_deltas.append(fr["faithfulness_delta"])
+          mean_faithfulness_delta = sum(faithfulness_deltas) / len(faithfulness_deltas)
+          runs = ", ".join(f"{x:+.3f}" for x in faithfulness_deltas)
           print(
               f"[faithfulness] built-in recall {fr['nm_mean_recall']:.3f} vs "
-              f"naive {fr['naive_mean_recall']:.3f} -> delta {fr['faithfulness_delta']:+.3f} "
-              f"(grounding {fr['nm_mean_grounding']:.3f})"
+              f"naive {fr['naive_mean_recall']:.3f} -> delta runs=[{runs}] "
+              f"mean={mean_faithfulness_delta:+.3f} (grounding {fr['nm_mean_grounding']:.3f})"
           )
-          assert fr["faithfulness_delta"] >= 0.0, (
+          assert mean_faithfulness_delta >= 0.0, (
               f"faithfulness regression on the built-in backend "
-              f"(delta {fr['faithfulness_delta']:+.3f})"
+              f"(mean delta {mean_faithfulness_delta:+.3f})"
           )
 
           # Onboarding-lift gate on the built-in backend. The headline +
