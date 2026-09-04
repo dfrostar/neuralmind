@@ -219,6 +219,8 @@ jobs:
     # backend today, TS/Go extractors and an LSP/SCIP pass next).
     name: Backend parity gate
     runs-on: ubuntu-latest
+    env:
+      NEURALMIND_ORT_THREADS: "1"
     steps:
       - uses: actions/checkout@v7
 
