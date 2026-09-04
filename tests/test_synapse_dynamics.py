@@ -4,21 +4,15 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
+from neuralmind.synapse_dynamics import (
+    RESOURCE_INITIAL,
+    STC_TAG_INITIAL,
+    SynapseDynamics,
+)
 from neuralmind.synapses import (
     DEFAULT_NAMESPACE,
     LEARNING_RATE,
-    WEIGHT_CAP,
     SynapseStore,
-)
-from neuralmind.synapse_dynamics import (
-    FOK_INITIAL_THRESHOLD,
-    RESOURCE_INITIAL,
-    SAMPL_DEPRESSION_SCALE,
-    STC_CONSOLIDATION_THRESHOLD,
-    STC_TAG_INITIAL,
-    SynapseDynamics,
 )
 
 

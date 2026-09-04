@@ -290,9 +290,9 @@ class NeuralMind:
         """Return the SOTA synapse dynamics wrapper, creating it on first use.
 
         The dynamics layer wraps the raw SynapseStore with six modern
-        brain-inspired techniques (lateral inhibition, STC, SAMPL, 
+        brain-inspired techniques (lateral inhibition, STC, SAMPL,
         resource-dependent STDP, FOK gating, replay consolidation).
-        
+
         Returns None when synapses are disabled.
         """
         if not self.enable_synapses or self.synapses is None:
@@ -568,7 +568,7 @@ class NeuralMind:
             # Also pass the embedder so synapse-seeded expansion can fetch node data
             self.synapses._embedder = self.embedder
         # Pass the structural index for dependency graph expansion
-        if hasattr(self, '_structural_index') and self._structural_index is not None:
+        if hasattr(self, "_structural_index") and self._structural_index is not None:
             self.selector._structural_index = self._structural_index
 
         # Structural edge index — precise, day-one code wiring (calls/inherits/

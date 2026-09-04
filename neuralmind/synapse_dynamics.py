@@ -77,21 +77,14 @@ Version:
 from __future__ import annotations
 
 import logging
-import math
 import sqlite3
 import time
 from typing import Any
 
 from .synapses import (
-    DEFAULT_NAMESPACE,
-    EPHEMERAL_NAMESPACE,
-    LTP_FLOOR,
-    LTP_THRESHOLD,
-    PRUNE_THRESHOLD,
-    SHARED_NAMESPACE,
     SPREAD_DECAY,
-    SynapseStore,
     WEIGHT_CAP,
+    SynapseStore,
     _canonical,
 )
 
@@ -338,13 +331,13 @@ class SynapseDynamics:
                 seed_set.add(str(s))
 
         # Build activation map
-        activations = {node: score for node, score in ranked}
+        activations = dict(ranked)
 
         # For each non-seed node, compute inhibition from other non-seed nodes
         non_seeds = [n for n in activations if n not in seed_set]
         adjusted: dict[str, float] = dict(activations)
 
-        for i, node_a in enumerate(non_seeds):
+        for node_a in non_seeds:
             inhibition = 0.0
             for node_b in non_seeds:
                 if node_a == node_b:
@@ -373,8 +366,7 @@ class SynapseDynamics:
             FOK_MIN_THRESHOLD,
             min(
                 FOK_MAX_THRESHOLD,
-                self._fok_threshold * (1 - FOK_ADAPTATION_RATE)
-                + peak * FOK_ADAPTATION_RATE,
+                self._fok_threshold * (1 - FOK_ADAPTATION_RATE) + peak * FOK_ADAPTATION_RATE,
             ),
         )
 
@@ -424,9 +416,7 @@ class SynapseDynamics:
 
         return pairs_count
 
-    def _apply_stc_tags(
-        self, pairs: list[tuple[str, str]], namespace: str, now: float
-    ) -> None:
+    def _apply_stc_tags(self, pairs: list[tuple[str, str]], namespace: str, now: float) -> None:
         """Set or increment tags, and capture if above threshold."""
         try:
             with self.store._connect() as conn:
@@ -464,8 +454,6 @@ class SynapseDynamics:
                             new_tag = STC_TAG_INITIAL
                         else:
                             existing = float(cur_tag[0])
-                            # Decay existing tag by time since last activation
-                            decay_lambda = 0.6931471805599453 / STC_TAG_DECAY_DAYS
                             # We don't track tag age separately, so we use a
                             # simpler model: increment with saturation
                             new_tag = min(1.0, existing + STC_TAG_INITIAL * (1.0 - existing))
@@ -764,7 +752,7 @@ class SynapseDynamics:
                 ).fetchall()
 
             # Replay: re-reinforce each pair
-            for node_a, node_b, ns, weight, act_count in recent + list(old):
+            for node_a, node_b, ns, _weight, _act_count in recent + list(old):
                 self.store.reinforce([node_a, node_b], strength=0.5, now=ts, namespace=ns)
                 replayed += 1
 
@@ -902,9 +890,7 @@ class SynapseDynamics:
                 )
                 stats["active_tags"] = cur.fetchone()[0]
 
-                cur = conn.execute(
-                    "SELECT AVG(resource_pool) FROM node_resources"
-                )
+                cur = conn.execute("SELECT AVG(resource_pool) FROM node_resources")
                 row = cur.fetchone()
                 stats["avg_resource_pool"] = row[0] if row[0] is not None else 0.0
         except Exception:

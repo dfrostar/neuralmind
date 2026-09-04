@@ -1070,25 +1070,57 @@ class ContextSelector:
         # 3. Synapse-seeded expansion for co-implemented neighbors
         try:
             from .retrieval_enhancement import (
-                classify_intent as _enhanced_classify_intent,
                 apply_code_signal_boost,
-                synapse_seeded_expansion,
                 extract_code_identifiers,
+                synapse_seeded_expansion,
+            )
+            from .retrieval_enhancement import (
+                classify_intent as _enhanced_classify_intent,
             )
 
             corrected_intent = _enhanced_classify_intent(
                 query,
                 existing_code_keywords=[
-                    "implement", "function", "class", "method", "code",
-                    "source", "file", "module", "component", "handler",
-                    "service", "controller", "model", "route", "endpoint",
-                    "api", "config", "constant", "type", "interface", "schema",
+                    "implement",
+                    "function",
+                    "class",
+                    "method",
+                    "code",
+                    "source",
+                    "file",
+                    "module",
+                    "component",
+                    "handler",
+                    "service",
+                    "controller",
+                    "model",
+                    "route",
+                    "endpoint",
+                    "api",
+                    "config",
+                    "constant",
+                    "type",
+                    "interface",
+                    "schema",
                 ],
                 existing_doc_keywords=[
-                    "explain", "what is", "how does", "documentation",
-                    "readme", "guide", "tutorial", "why", "when should",
-                    "concept", "overview", "architecture", "design", "pattern",
-                    "principle", "best practice", "introduction",
+                    "explain",
+                    "what is",
+                    "how does",
+                    "documentation",
+                    "readme",
+                    "guide",
+                    "tutorial",
+                    "why",
+                    "when should",
+                    "concept",
+                    "overview",
+                    "architecture",
+                    "design",
+                    "pattern",
+                    "principle",
+                    "best practice",
+                    "introduction",
                 ],
             )
 
@@ -1100,11 +1132,9 @@ class ContextSelector:
 
             # Apply synapse-seeded expansion
             if self.synapse_recall is not None and identifiers:
-                store = getattr(self, '_synapse_store', None)
+                store = getattr(self, "_synapse_store", None)
                 if store is not None:
-                    results = synapse_seeded_expansion(
-                        store, query, results, max_expansions=3
-                    )
+                    results = synapse_seeded_expansion(store, query, results, max_expansions=3)
 
             # Re-apply intent boost with corrected intent (BEFORE two-pass retrieval)
             # This ensures docstrings are penalized before we add implementation files
@@ -1115,25 +1145,30 @@ class ContextSelector:
             # This surfaces implementation files that vector search misses
             if corrected_intent == "code" and identifiers and self.embedder is not None:
                 try:
-                    from .retrieval_enhancement import _search_source_files, _extract_code_snippet
+                    from .retrieval_enhancement import _extract_code_snippet, _search_source_files
+
                     source_results = _search_source_files(self.embedder, identifiers, top_k=5)
                     if source_results:
                         # For source file matches, extract code snippets
                         for sr in source_results:
-                            snippet = _extract_code_snippet(self.embedder, sr.get("id", ""), identifiers)
+                            snippet = _extract_code_snippet(
+                                self.embedder, sr.get("id", ""), identifiers
+                            )
                             if snippet:
-                                sr["document"] = snippet  # Replace generic document with actual code snippet
+                                sr["document"] = (
+                                    snippet  # Replace generic document with actual code snippet
+                                )
                             # Boost implementation file scores ABOVE docstrings with synapse boost
                             # Docstrings get ~3.75 (1.0 base + 2.25 synapse), so we need >4.0
                             sr["score"] = max(sr.get("score", 0.5), 4.5)
-                        
+
                         # Merge source file results, avoiding duplicates
                         existing_ids = {r.get("id") for r in results}
                         for sr in source_results:
                             if sr.get("id") not in existing_ids:
                                 results.append(sr)
                                 existing_ids.add(sr.get("id"))
-                        
+
                         # Re-sort by score after adding two-pass results
                         results.sort(key=lambda r: r.get("score", 0), reverse=True)
 
@@ -1144,7 +1179,10 @@ class ContextSelector:
                         if corrected_intent == "code":
                             for r in results:
                                 is_code = r.get("metadata", {}).get("file_type") == "code"
-                                is_doc = r.get("metadata", {}).get("file_type") in ("rationale", "document")
+                                is_doc = r.get("metadata", {}).get("file_type") in (
+                                    "rationale",
+                                    "document",
+                                )
                                 if is_code and not is_doc:
                                     r["score"] = r.get("score", 1.0) * 2.0
                             results.sort(key=lambda r: r.get("score", 0), reverse=True)

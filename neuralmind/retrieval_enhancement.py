@@ -31,13 +31,10 @@ from __future__ import annotations
 import logging
 import os
 import re
-import time
 from typing import Any
 
 from .synapses import (
-    DEFAULT_NAMESPACE,
     SynapseStore,
-    _canonical,
 )
 
 log = logging.getLogger(__name__)
@@ -47,56 +44,308 @@ log = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 # Words that indicate an implementation/how-it-works query
-_IMPLEMENTATION_VERBS = frozenset({
-    "implement", "perform", "execute", "handle", "process", "work",
-    "function", "operate", "behave", "act", "compute", "calculate",
-    "achieve", "accomplish", "deploy", "apply", "employ", "use",
-    "utilize", "leverage", "harness", "wield", "exercise",
-    "instantiate", "actualize", "realize", "manifest", "embody",
-    "express", "translate", "convert", "transform", "turn", "change",
-    "morph", "evolve", "develop", "grow", "build", "construct",
-    "make", "form", "fashion", "shape", "mold",
-})
+_IMPLEMENTATION_VERBS = frozenset(
+    {
+        "implement",
+        "perform",
+        "execute",
+        "handle",
+        "process",
+        "work",
+        "function",
+        "operate",
+        "behave",
+        "act",
+        "compute",
+        "calculate",
+        "achieve",
+        "accomplish",
+        "deploy",
+        "apply",
+        "employ",
+        "use",
+        "utilize",
+        "leverage",
+        "harness",
+        "wield",
+        "exercise",
+        "instantiate",
+        "actualize",
+        "realize",
+        "manifest",
+        "embody",
+        "express",
+        "translate",
+        "convert",
+        "transform",
+        "turn",
+        "change",
+        "morph",
+        "evolve",
+        "develop",
+        "grow",
+        "build",
+        "construct",
+        "make",
+        "form",
+        "fashion",
+        "shape",
+        "mold",
+    }
+)
 
 # Common stopwords to ignore
-_STOPWORDS = frozenset({
-    "the", "a", "an", "this", "that", "these", "those", "is", "are",
-    "was", "were", "be", "been", "being", "have", "has", "had", "do",
-    "does", "did", "will", "would", "could", "should", "may", "might",
-    "shall", "can", "to", "of", "in", "for", "on", "with", "at",
-    "by", "from", "as", "into", "through", "during", "before", "after",
-    "above", "below", "between", "under", "again", "further", "then",
-    "once", "here", "there", "when", "where", "why", "how", "all",
-    "each", "every", "both", "few", "more", "most", "other", "some",
-    "such", "no", "nor", "not", "only", "own", "same", "so", "than",
-    "too", "very", "just", "because", "but", "and", "or", "if", "while",
-    "about", "what", "which", "who", "whom", "whose", "whom", "am",
-    "it", "its", "he", "she", "they", "them", "we", "us", "me", "him",
-    "her", "my", "your", "show", "tell", "give", "get", "make",
-    "take", "come", "go", "see", "know", "think", "say", "look",
-    "want", "let", "put", "keep", "turn", "move", "try", "use",
-    "work", "call", "ask", "seem", "feel", "leave", "start", "run",
-    "part", "long", "great", "small", "large", "high", "low", "old",
-    "new", "young", "big", "good", "bad", "well", "also", "back",
-    "even", "still", "way", "thing", "man", "woman", "child", "world",
-    "life", "hand", "day", "week", "month", "year", "time", "end",
-    "point", "home", "water", "room", "mother", "area", "money",
-    "story", "fact", "right", "left", "power", "city", "team", "state",
-    "place", "case", "side", "head", "house", "service", "friend",
-    "father", "line", "tree", "car", "name", "word", "letter", "number",
-    "set", "group", "kind", "type", "form", "class", "issue", "side",
-    "kind", "head", "house", "service", "friend", "father", "power",
-    "hour", "game", "end", "member", "law", "car", "city", "community",
-    "name", "president", "team", "minute", "idea", "body", "information",
-    "back", "parent", "face", "level", "office", "door", "health",
-    "person", "art", "war", "history", "party", "result", "change",
-    "morning", "reason", "research", "girl", "guy", "moment", "air",
-    "teacher", "force", "education", "does", "perform", "implement",
-    "handle", "process", "function", "operate", "behave",
-})
+_STOPWORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "this",
+        "that",
+        "these",
+        "those",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "because",
+        "but",
+        "and",
+        "or",
+        "if",
+        "while",
+        "about",
+        "what",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "am",
+        "it",
+        "its",
+        "he",
+        "she",
+        "they",
+        "them",
+        "we",
+        "us",
+        "me",
+        "him",
+        "her",
+        "my",
+        "your",
+        "show",
+        "tell",
+        "give",
+        "get",
+        "make",
+        "take",
+        "come",
+        "go",
+        "see",
+        "know",
+        "think",
+        "say",
+        "look",
+        "want",
+        "let",
+        "put",
+        "keep",
+        "turn",
+        "move",
+        "try",
+        "use",
+        "work",
+        "call",
+        "ask",
+        "seem",
+        "feel",
+        "leave",
+        "start",
+        "run",
+        "part",
+        "long",
+        "great",
+        "small",
+        "large",
+        "high",
+        "low",
+        "old",
+        "new",
+        "young",
+        "big",
+        "good",
+        "bad",
+        "well",
+        "also",
+        "back",
+        "even",
+        "still",
+        "way",
+        "thing",
+        "man",
+        "woman",
+        "child",
+        "world",
+        "life",
+        "hand",
+        "day",
+        "week",
+        "month",
+        "year",
+        "time",
+        "end",
+        "point",
+        "home",
+        "water",
+        "room",
+        "mother",
+        "area",
+        "money",
+        "story",
+        "fact",
+        "right",
+        "left",
+        "power",
+        "city",
+        "team",
+        "state",
+        "place",
+        "case",
+        "side",
+        "head",
+        "house",
+        "service",
+        "friend",
+        "father",
+        "line",
+        "tree",
+        "car",
+        "name",
+        "word",
+        "letter",
+        "number",
+        "set",
+        "group",
+        "kind",
+        "type",
+        "form",
+        "class",
+        "issue",
+        "hour",
+        "game",
+        "member",
+        "law",
+        "community",
+        "president",
+        "minute",
+        "idea",
+        "body",
+        "information",
+        "parent",
+        "face",
+        "level",
+        "office",
+        "door",
+        "health",
+        "person",
+        "art",
+        "war",
+        "history",
+        "party",
+        "result",
+        "change",
+        "morning",
+        "reason",
+        "research",
+        "girl",
+        "guy",
+        "moment",
+        "air",
+        "teacher",
+        "force",
+        "education",
+        "perform",
+        "implement",
+        "handle",
+        "process",
+        "function",
+        "operate",
+        "behave",
+    }
+)
 
 
-def classify_intent(query: str, existing_code_keywords: list[str], existing_doc_keywords: list[str]) -> str:
+def classify_intent(
+    query: str, existing_code_keywords: list[str], existing_doc_keywords: list[str]
+) -> str:
     """Enhanced intent classification that distinguishes implementation queries.
 
     Returns 'code', 'docs', or 'hybrid'.
@@ -109,23 +358,25 @@ def classify_intent(query: str, existing_code_keywords: list[str], existing_doc_
     for i, word in enumerate(words):
         if word in ("does", "do", "did", "is", "are", "was", "were"):
             # Look ahead for an implementation verb
-            remaining = words[i+1:]
+            remaining = words[i + 1 :]
             # Check if any implementation verb appears in the next 5 words
-            for j, next_word in enumerate(remaining[:5]):
+            for next_word in remaining[:5]:
                 clean_word = next_word.strip("?,.").lower()
                 if clean_word in _IMPLEMENTATION_VERBS:
                     return "code"
 
     # Check for "how does X work/works" pattern
-    if re.search(r'how\s+(?:does\s+)?(?:\w+\s+){1,4}works?', query_lower):
+    if re.search(r"how\s+(?:does\s+)?(?:\w+\s+){1,4}works?", query_lower):
         return "code"
-    
+
     # Check for "show me how X works" pattern
-    if re.search(r'show\s+me\s+how\s+(?:\w+\s+){1,4}works?', query_lower):
+    if re.search(r"show\s+me\s+how\s+(?:\w+\s+){1,4}works?", query_lower):
         return "code"
 
     # Check for "what is X" or "which X" patterns (docs intent)
-    if re.match(r'^(?:what|which|who|whom|whose|where|when|why)\s+(?:is|are|was|were)\s+', query_lower):
+    if re.match(
+        r"^(?:what|which|who|whom|whose|where|when|why)\s+(?:is|are|was|were)\s+", query_lower
+    ):
         return "docs"
 
     # Fall back to keyword scoring
@@ -154,9 +405,9 @@ def classify_intent(query: str, existing_code_keywords: list[str], existing_doc_
 # --------------------------------------------------------------------------- #
 
 # Pattern to extract potential identifiers from a query
-_CAMEL_CASE_PATTERN = re.compile(r'\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b')
-_SNAKE_CASE_PATTERN = re.compile(r'\b([a-z]+(?:_[a-z]+)+)\b')
-_WORD_PATTERN = re.compile(r'\b([a-zA-Z][a-zA-Z]{2,})\b')
+_CAMEL_CASE_PATTERN = re.compile(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+)\b")
+_SNAKE_CASE_PATTERN = re.compile(r"\b([a-z]+(?:_[a-z]+)+)\b")
+_WORD_PATTERN = re.compile(r"\b([a-zA-Z][a-zA-Z]{2,})\b")
 
 
 def extract_code_identifiers(query: str) -> list[str]:
@@ -183,7 +434,7 @@ def extract_code_identifiers(query: str) -> list[str]:
             identifiers.append(term)
             seen.add(term)
             # Also add individual parts
-            parts = term.split('_')
+            parts = term.split("_")
             for part in parts:
                 if len(part) >= 3 and part not in _STOPWORDS and part not in seen:
                     identifiers.append(part)
@@ -197,7 +448,7 @@ def extract_code_identifiers(query: str) -> list[str]:
             seen.add(word)
 
     # Also extract compound phrases
-    for m in re.finditer(r'\b([a-z]{3,})\s+([a-z]{3,})\b', query, re.IGNORECASE):
+    for m in re.finditer(r"\b([a-z]{3,})\s+([a-z]{3,})\b", query, re.IGNORECASE):
         w1, w2 = m.group(1), m.group(2)
         for w in [w1, w2]:
             if w.lower() not in _STOPWORDS and w not in seen:
@@ -232,23 +483,18 @@ def compute_code_signal_score(result: dict, identifiers: list[str]) -> float:
     # Check how many identifiers appear in the source file name
     file_name = source_file.lower().replace("/", "_").replace(".", "_")
     file_matches = sum(
-        1 for ident in identifiers
-        if ident.lower() in file_name or file_name in ident.lower()
+        1 for ident in identifiers if ident.lower() in file_name or file_name in ident.lower()
     )
 
     # Check how many identifiers appear in the label
     label_lower = label.lower()
     label_matches = sum(
-        1 for ident in identifiers
-        if ident.lower() in label_lower or label_lower in ident.lower()
+        1 for ident in identifiers if ident.lower() in label_lower or label_lower in ident.lower()
     )
 
     # Check how many identifiers appear in the document content
     doc_lower = document.lower()
-    doc_matches = sum(
-        1 for ident in identifiers
-        if ident.lower() in doc_lower
-    )
+    doc_matches = sum(1 for ident in identifiers if ident.lower() in doc_lower)
 
     # Weight matches: file name > label > document content
     total_score = (file_matches * 3.0) + (label_matches * 2.0) + (doc_matches * 0.5)
@@ -283,6 +529,7 @@ def apply_code_signal_boost(results: list[dict], identifiers: list[str]) -> list
 # 3. Synapse-seeded expansion
 # --------------------------------------------------------------------------- #
 
+
 def extract_potential_node_ids(query: str) -> list[str]:
     """Extract potential node IDs from a query.
 
@@ -311,7 +558,6 @@ def synapse_seeded_expansion(
     if store is None:
         return existing_results
 
-    ts = now if now is not None else time.time()
     identifiers = extract_potential_node_ids(query)
 
     if not identifiers:
@@ -380,10 +626,10 @@ def synapse_seeded_expansion(
                 "_synapse_seeded": True,
                 "_synapse_seed_energy": energy,
             }
-            
+
             # Try to get actual document content from embedder
             try:
-                embedder = getattr(store, '_embedder', None)
+                embedder = getattr(store, "_embedder", None)
                 if embedder is not None:
                     nodes = embedder.get_nodes_by_ids([node_id])
                     if nodes:
@@ -391,7 +637,7 @@ def synapse_seeded_expansion(
                         node_data["metadata"] = nodes[0].get("metadata", node_data["metadata"])
             except Exception:
                 pass
-            
+
             new_results.append(node_data)
 
     return existing_results + new_results
@@ -431,18 +677,20 @@ def dependency_graph_expansion(
                     if nid in existing_ids:
                         continue
 
-                    new_results.append({
-                        "id": nid,
-                        "score": 0.8,  # High score for structural matches
-                        "metadata": {
-                            "source_file": nid.split(":")[0] if ":" in nid else "unknown",
-                            "label": nid,
-                            "file_type": "code",
-                        },
-                        "document": f"Structural neighbor ({view}) of: {ident}",
-                        "_structural_expansion": True,
-                        "_structural_relation": view,
-                    })
+                    new_results.append(
+                        {
+                            "id": nid,
+                            "score": 0.8,  # High score for structural matches
+                            "metadata": {
+                                "source_file": nid.split(":")[0] if ":" in nid else "unknown",
+                                "label": nid,
+                                "file_type": "code",
+                            },
+                            "document": f"Structural neighbor ({view}) of: {ident}",
+                            "_structural_expansion": True,
+                            "_structural_relation": view,
+                        }
+                    )
                     existing_ids.add(nid)
 
                     if len(new_results) >= max_expansions:
@@ -463,6 +711,7 @@ def dependency_graph_expansion(
 # --------------------------------------------------------------------------- #
 # Unified enhancement pipeline
 # --------------------------------------------------------------------------- #
+
 
 def enhance_retrieval(
     store: SynapseStore | None,
@@ -503,7 +752,8 @@ def enhance_retrieval(
     # 5. Two-pass retrieval: for code-intent queries, search source files directly
     if corrected_intent == "code" and identifiers and embedder is not None:
         try:
-            from .retrieval_enhancement import _search_source_files, _extract_code_snippet
+            from .retrieval_enhancement import _extract_code_snippet, _search_source_files
+
             source_results = _search_source_files(embedder, identifiers, top_k=5)
             if source_results:
                 # For source file matches, extract code snippets
@@ -525,10 +775,11 @@ def enhance_retrieval(
     if corrected_intent == "code" and identifiers:
         try:
             from .retrieval_enhancement import dependency_graph_expansion
-            structural_index = getattr(store, '_structural_index', None)
+
+            structural_index = getattr(store, "_structural_index", None)
             if structural_index is None:
                 # Try to get from embedder
-                structural_index = getattr(embedder, '_structural_index', None)
+                structural_index = getattr(embedder, "_structural_index", None)
             if structural_index is not None:
                 results = dependency_graph_expansion(
                     structural_index, query, results, identifiers, max_expansions=3
@@ -558,7 +809,7 @@ def _search_source_files(embedder: Any, identifiers: list[str], top_k: int = 5) 
 
     try:
         # Get all nodes from the embedder
-        all_nodes = getattr(embedder, 'get_all_nodes', lambda: [])()
+        all_nodes = getattr(embedder, "get_all_nodes", list)()
         if not all_nodes:
             return []
 
@@ -585,9 +836,12 @@ def _search_source_files(embedder: Any, identifiers: list[str], top_k: int = 5) 
             document = node.get("document", "").lower()
 
             # Skip marketing/site nodes for implementation queries
-            is_site = ("site_src" in id_lower or "site/" in source_file.lower() or 
-                      "publications" in id_lower)
-            
+            is_site = (
+                "site_src" in id_lower
+                or "site/" in source_file.lower()
+                or "publications" in id_lower
+            )
+
             # Priorize implementation nodes (neuralmind/ prefix)
             is_impl = "neuralmind_" in id_lower or "neuralmind/" in source_file.lower()
 
@@ -613,11 +867,11 @@ def _search_source_files(embedder: Any, identifiers: list[str], top_k: int = 5) 
                     score *= 0.2  # Heavy penalty for marketing pages
                 elif is_impl:
                     score *= 1.5  # Boost for implementation files
-                
+
                 # Additional boost for function definitions (not just constants)
-                if '__fn' in id_lower or '__cls' in id_lower:
+                if "__fn" in id_lower or "__cls" in id_lower:
                     score *= 1.3
-                
+
                 node["score"] = min(2.0, score * 0.3)  # Cap at 2.0
                 node["_source_file_match"] = True
                 results.append(node)
@@ -631,7 +885,9 @@ def _search_source_files(embedder: Any, identifiers: list[str], top_k: int = 5) 
         return []
 
 
-def _extract_code_snippet(embedder: Any, node_id: str, identifiers: list[str], max_lines: int = 20) -> str:
+def _extract_code_snippet(
+    embedder: Any, node_id: str, identifiers: list[str], max_lines: int = 20
+) -> str:
     """Extract a code snippet from a source file, centered on the best-matching identifier.
 
     This replaces the generic document snippet with actual source code read from disk.
@@ -650,26 +906,26 @@ def _extract_code_snippet(embedder: Any, node_id: str, identifiers: list[str], m
         metadata = node.get("metadata", {})
         source_file = metadata.get("source_file", "")
         document = node.get("document", "")
-        
+
         # Extract line number from document (format: "Location: L561")
         line_num = None
-        for line in document.split('\n'):
-            if 'Location: L' in line:
+        for line in document.split("\n"):
+            if "Location: L" in line:
                 try:
                     # Extract number after 'L'
-                    parts = line.split('Location: L')
+                    parts = line.split("Location: L")
                     if len(parts) > 1:
                         line_num = int(parts[1].strip().split()[0])
                 except (ValueError, IndexError):
                     pass
                 break
-        
+
         if not source_file or not line_num:
             return document  # Fall back to original document
 
         # Read the actual source file from disk
         # Try relative to project path first, then absolute
-        project_path = getattr(embedder, 'project_path', None)
+        project_path = getattr(embedder, "project_path", None)
         if project_path:
             file_path = os.path.join(str(project_path), source_file)
             if not os.path.exists(file_path):
@@ -680,7 +936,7 @@ def _extract_code_snippet(embedder: Any, node_id: str, identifiers: list[str], m
         if not os.path.exists(file_path):
             return document  # Fall back
 
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
 
         # Center the snippet on the line number
@@ -690,14 +946,16 @@ def _extract_code_snippet(embedder: Any, node_id: str, identifiers: list[str], m
 
         # Add line numbers
         line_num_start = start + 1
-        numbered = [f"{line_num_start + i}: {line.rstrip()}" for i, line in enumerate(snippet_lines)]
+        numbered = [
+            f"{line_num_start + i}: {line.rstrip()}" for i, line in enumerate(snippet_lines)
+        ]
 
         if start > 0:
             numbered.insert(0, "...")
         if end < len(lines):
             numbered.append("...")
 
-        return '\n'.join(numbered)
+        return "\n".join(numbered)
 
     except Exception:
         return ""

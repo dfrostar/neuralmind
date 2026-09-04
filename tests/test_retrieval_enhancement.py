@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
 from neuralmind.retrieval_enhancement import (
-    _STOPWORDS,
     apply_code_signal_boost,
     classify_intent,
     compute_code_signal_score,
     extract_code_identifiers,
-    extract_potential_node_ids,
     synapse_seeded_expansion,
 )
 
@@ -208,7 +204,11 @@ class TestCodeSignalBoost:
 
     def test_compute_code_signal_score_boosts_code_files(self):
         result = {
-            "metadata": {"source_file": "neuralmind/synapses.py", "label": "reinforce", "file_type": "code"},
+            "metadata": {
+                "source_file": "neuralmind/synapses.py",
+                "label": "reinforce",
+                "file_type": "code",
+            },
             "document": "def reinforce(node_ids): ...",
         }
         score = compute_code_signal_score(result, ["synapse", "reinforce"])
@@ -216,7 +216,11 @@ class TestCodeSignalBoost:
 
     def test_compute_code_signal_score_penalizes_docs(self):
         result = {
-            "metadata": {"source_file": "docs/README.md", "label": "README", "file_type": "document"},
+            "metadata": {
+                "source_file": "docs/README.md",
+                "label": "README",
+                "file_type": "document",
+            },
             "document": "synapse layer",
         }
         score = compute_code_signal_score(result, ["synapse", "reinforce"])
@@ -232,9 +236,10 @@ class TestSynapseSeededExpansion:
         assert expanded == results
 
     def test_no_expansion_with_empty_results(self):
-        from neuralmind.synapses import SynapseStore
         import tempfile
         from pathlib import Path
+
+        from neuralmind.synapses import SynapseStore
 
         with tempfile.TemporaryDirectory() as tmp:
             store = SynapseStore(Path(tmp) / "test.db")
@@ -242,9 +247,10 @@ class TestSynapseSeededExpansion:
             assert expanded == []
 
     def test_no_expansion_without_matching_synapses(self):
-        from neuralmind.synapses import SynapseStore
         import tempfile
         from pathlib import Path
+
+        from neuralmind.synapses import SynapseStore
 
         with tempfile.TemporaryDirectory() as tmp:
             store = SynapseStore(Path(tmp) / "test.db")
@@ -253,9 +259,10 @@ class TestSynapseSeededExpansion:
             assert expanded == results  # no matching synapses
 
     def test_expansion_with_matching_synapses(self):
-        from neuralmind.synapses import SynapseStore
         import tempfile
         from pathlib import Path
+
+        from neuralmind.synapses import SynapseStore
 
         with tempfile.TemporaryDirectory() as tmp:
             store = SynapseStore(Path(tmp) / "test.db")
@@ -264,8 +271,20 @@ class TestSynapseSeededExpansion:
             store.reinforce(["synapse", "store"])
             store.reinforce(["layer", "reinforce"])
 
-            results = [{"id": "initial", "score": 0.5, "metadata": {"source_file": "initial.py", "label": "initial", "file_type": "code"}}]
-            expanded = synapse_seeded_expansion(store, "How does synapse layer work?", results, max_expansions=5)
+            results = [
+                {
+                    "id": "initial",
+                    "score": 0.5,
+                    "metadata": {
+                        "source_file": "initial.py",
+                        "label": "initial",
+                        "file_type": "code",
+                    },
+                }
+            ]
+            expanded = synapse_seeded_expansion(
+                store, "How does synapse layer work?", results, max_expansions=5
+            )
 
             # Should have added some neighbors
             assert len(expanded) >= 1  # at least original
@@ -278,9 +297,10 @@ class TestIntegration:
     """Integration tests for all three fixes"""
 
     def test_full_pipeline_code_intent(self):
-        from neuralmind.retrieval_enhancement import enhance_retrieval
         import tempfile
         from pathlib import Path
+
+        from neuralmind.retrieval_enhancement import enhance_retrieval
         from neuralmind.synapses import SynapseStore
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -293,19 +313,31 @@ class TestIntegration:
                 {
                     "id": "neuralmind/synapses.py::fn:reinforce",
                     "score": 0.7,
-                    "metadata": {"source_file": "neuralmind/synapses.py", "label": "reinforce", "file_type": "code"},
+                    "metadata": {
+                        "source_file": "neuralmind/synapses.py",
+                        "label": "reinforce",
+                        "file_type": "code",
+                    },
                     "document": "def reinforce(node_ids): ...",
                 },
                 {
                     "id": "docs/synapses.md",
                     "score": 0.9,
-                    "metadata": {"source_file": "docs/synapses.md", "label": "Synapse Guide", "file_type": "document"},
+                    "metadata": {
+                        "source_file": "docs/synapses.md",
+                        "label": "Synapse Guide",
+                        "file_type": "document",
+                    },
                     "document": "The synapse layer uses Hebbian learning...",
                 },
                 {
                     "id": "tests/test_synapses.py",
                     "score": 0.5,
-                    "metadata": {"source_file": "tests/test_synapses.py", "label": "test_reinforce", "file_type": "code"},
+                    "metadata": {
+                        "source_file": "tests/test_synapses.py",
+                        "label": "test_reinforce",
+                        "file_type": "code",
+                    },
                     "document": "def test_reinforce(): ...",
                 },
             ]
