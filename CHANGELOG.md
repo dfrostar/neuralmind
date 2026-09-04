@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.9.0](https://github.com/dfrostar/neuralmind/compare/v3.8.0...v3.9.0) (2026-09-04)
+
+
+### Features
+
+* **cli:** add --rebuild-index flag + build-status command + delta stats on build ([1f7b200](https://github.com/dfrostar/neuralmind/commit/1f7b200e0eea0fbae986be591a27a65482317b5c))
+* **cli:** add --rebuild-index flag + build-status command + delta stats on build ([364be99](https://github.com/dfrostar/neuralmind/commit/364be99fb8ebcb1ca67376b97888a631842793da))
+* v3.9.0 — SOTA synapse dynamics + adversarial retrieval ([73a4b0b](https://github.com/dfrostar/neuralmind/commit/73a4b0bc877c1a1994fae3504911b8f518eccfba))
+
+
+### Bug Fixes
+
+* add rebuild_index to all mock args in build tests, update SKILL.md to 3.8.0 ([e4ad652](https://github.com/dfrostar/neuralmind/commit/e4ad652570e8c1385f36135fc1d2e0ea36b4f381))
+* correct rebuild_index to use build_args in test mocks ([61d4f53](https://github.com/dfrostar/neuralmind/commit/61d4f532ab8e8574c7904fe40231798efc633e96))
+* **skills:** revert SKILL.md version to 3.7.1 to match release-please-manifest ([33c89f2](https://github.com/dfrostar/neuralmind/commit/33c89f26c6938d98c107c71c4afcd734dc30dc37))
+
 ## [3.9.0](https://github.com/dfrostar/neuralmind/compare/v3.8.0...v3.9.0) (2026-09-03)
 
 
