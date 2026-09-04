@@ -42,6 +42,27 @@ Replay queue captures recent co-activation sequences. During idle periods, repla
 
 ## Retrieval Enhancements
 
+> **Status: opt-in, off by default.** Set
+> `NEURALMIND_ADVERSARIAL_RETRIEVAL=1` to enable the five fixes below.
+>
+> They do what they claim for the failure mode they targeted — "what happens
+> when a Stripe webhook fires" went from 0.67 to 1.00 fact recall on the
+> faithfulness fixture. But measured across that fixture's full 18 queries
+> they were **net-negative**: 1 query improved, 3 regressed (`jwt-secret`
+> 1.00 → 0.50, `protected-endpoints` 0.50 → 0.00,
+> `webhook-signature-detail` 1.00 → 0.67), and the per-query slice grew ~22%
+> (13,789 → 16,863 tokens). Because the A/B scores NeuralMind against a
+> **matched-budget** naive baseline, a fatter slice hands that baseline the
+> same fatter budget — naive recall rose 0.532 → 0.621 and the gate went
+> `+0.041` → `-0.065`.
+>
+> The code and its 347 tests ship intact. Rather than relax the gate to
+> accommodate the regression, the pass stays behind a switch until it clears
+> the gate on its own merits — that gate is its acceptance test. Two things
+> to look at when re-landing: the hard-coded `score = 4.5` pin on two-pass
+> hits and the subsequent `×2.0` boost on every code hit, which together
+> evict the rationale nodes the three regressed queries need.
+
 ### Problem
 For "how does X implement Y" queries, the system was surfacing docstrings instead of implementation code. Qwen 3.8 Flash adversarial QA identified this as the critical failure mode.
 

@@ -69,6 +69,15 @@ FAITHFULNESS_TOLERANCE = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_TO
 REDUCTION_FLOOR = float(os.environ.get("NEURALMIND_PARITY_REDUCTION_FLOOR", "4.0"))
 FAITHFULNESS_FLOOR = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_FLOOR", "0.0"))
 
+# The faithfulness A/B rides on ANN query-time ordering, which is not perfectly
+# stable run to run. The self-benchmark's onboarding gate already averages 3
+# samples for exactly this reason ("Averaged to absorb any ChromaDB HNSW
+# query-time jitter"); this gate measured a single sample and so could trip on
+# noise alone. Averaging keeps the bar where it is — unlike raising the floor,
+# which would weaken it permanently — and makes a failure mean a real
+# regression rather than an unlucky draw.
+FAITHFULNESS_SAMPLES = int(os.environ.get("NEURALMIND_PARITY_SAMPLES", "3"))
+
 # Multi-language structural parity. The faithfulness A/B needs a per-language
 # gold-fact set (we have one only for the Python fixture), so for TypeScript and
 # Go the gate proves parity *structurally*: the built-in backend must recover at
@@ -176,24 +185,30 @@ def measure(backend: str, project: Path, generated_by: str, code_nodes: int) -> 
     """Run the faithfulness eval + derive the reduction ratio for one backend."""
     from evals.faithfulness import harness
 
-    report = harness.run_and_report(str(project))
+    # Sample the A/B FAITHFULNESS_SAMPLES times and gate the mean, so ANN
+    # ordering jitter can't decide a pass/fail on its own (see the constant).
+    reports = [harness.run_and_report(str(project)) for _ in range(max(1, FAITHFULNESS_SAMPLES))]
+    report = reports[-1]
+
+    def _mean(values: list[float]) -> float:
+        return sum(values) / len(values) if values else 0.0
 
     # Reduction = whole-repo tokens ÷ NeuralMind's per-query budget, averaged —
     # the same metric as tests/benchmark/run.py Phase 1, reusing the per-query
     # nm_tokens the faithfulness A/B already measured.
     whole_repo = harness.count_tokens(harness._fixture_source_text(project))
-    ratios = [whole_repo / r.nm_tokens for r in report.per_query if r.nm_tokens > 0]
-    mean_reduction = sum(ratios) / len(ratios) if ratios else 0.0
+    ratios = [whole_repo / r.nm_tokens for rep in reports for r in rep.per_query if r.nm_tokens > 0]
+    mean_reduction = _mean(ratios)
 
     return BackendMeasurement(
         backend=backend,
         generated_by=generated_by,
         code_nodes=code_nodes,
         mean_reduction=mean_reduction,
-        faithfulness_delta=report.faithfulness_delta,
-        nm_mean_recall=report.nm_mean_recall,
-        naive_mean_recall=report.naive_mean_recall,
-        nm_mean_grounding=report.nm_mean_grounding,
+        faithfulness_delta=_mean([r.faithfulness_delta for r in reports]),
+        nm_mean_recall=_mean([r.nm_mean_recall for r in reports]),
+        naive_mean_recall=_mean([r.naive_mean_recall for r in reports]),
+        nm_mean_grounding=_mean([r.nm_mean_grounding for r in reports]),
         n_queries=report.n_queries,
     )
 
