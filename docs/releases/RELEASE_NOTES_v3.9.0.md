@@ -67,11 +67,11 @@ For source file matches, extracts actual source code centered on the best-matchi
 > appended up to eight nodes to a four-hit list and forced their scores to a
 > hardcoded `4.5`, so injected nodes outranked every real hit and the genuine
 > ones were pushed past the L3 token budget. On the reference fixture the
-> faithfulness delta went `+0.013` → `-0.062`, under the gate's `+0.000` floor.
+> faithfulness delta went `+0.041` → `-0.065`, under the gate's `+0.000` floor.
 >
 > They are now behind `NEURALMIND_RETRIEVAL_EXPANSION=1`, **off by default**,
 > and budget-neutral when enabled. Making them budget-neutral did not rescue
-> them — displaced, the delta was `-0.122`, worse than appending — because
+> them — displaced, the delta was `-0.107`, worse than appending — because
 > displacement evicts a real hit per candidate, so candidates worse than what
 > they replace cost facts rather than only tokens. That is a candidate-quality
 > problem, and it is unsolved.

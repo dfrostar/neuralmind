@@ -1016,13 +1016,15 @@ class ContextSelector:
         end.
 
         Measured on the reference fixture (``evals/faithfulness``, built-in
-        backend, ``NEURALMIND_ORT_THREADS=1``), mean of three samples:
+        backend, ``NEURALMIND_ORT_THREADS=1``). Each sample runs against a
+        freshly copied fixture — see the sampling note below, which is the
+        difference between these numbers and a set that looked noisier:
 
-            intent + code-signal, no pull-in     +0.013  PASS
-            pull-in, appended (v3.9.0 shipped)   -0.062  FAIL
-            pull-in, budget-neutral displacement -0.122  FAIL
+            intent + code-signal, no pull-in     +0.041  PASS
+            pull-in, appended (v3.9.0 shipped)   -0.065  FAIL
+            pull-in, budget-neutral displacement -0.107  FAIL
 
-        Each row differs from the +0.013 row only in the pull-in, so the
+        Each row differs from the +0.041 row only in the pull-in, so the
         attribution is direct: intent classification and the code-signal boost
         are bit-for-bit neutral here, and the pull-in accounts for the whole
         regression. It also failed the parity gate's faithfulness floor.
@@ -1036,9 +1038,22 @@ class ContextSelector:
         discipline is necessary but not sufficient — the candidates have to be
         good, and these are not yet.
 
-        Both CI runs and local runs reproduce ``[-0.046, -0.069, -0.069]``
-        bit-for-bit, so it was never the HNSW jitter it was first read as, and
-        averaging more samples cannot move it.
+        SAMPLING: repeat the A/B against the SAME project directory and it is
+        not a repeat measurement. ``NeuralMind.query()`` reinforces synapses
+        into ``<project>/.neuralmind/synapses.db``, so sample 2 scores an index
+        that sample 1 trained. That is what produces the descending sequences
+        this bug was first reported with — CI's ``[-0.046, -0.069, -0.069]``
+        and, for the flag-off path, ``[+0.041, -0.001, -0.001]``. Their means
+        (-0.062, +0.013) are artifacts of the accumulation, not measurements of
+        anything, and the drift is toward failure, so a gate averaging them is
+        biased against itself. Re-copy the fixture between samples and every
+        one of them lands on the same value to four decimals.
+
+        Which also settles the original misreading: the descent is state
+        accumulating, not HNSW jitter — there is no jitter here to absorb, and
+        averaging more contaminated samples only moves the number further from
+        the truth. Credit to PR #500, which found this independently and whose
+        figures these match.
 
         Left in place behind the flag rather than deleted so the ranking work
         it needs has somewhere to land — the same shape as the SCIP precision

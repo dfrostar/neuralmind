@@ -96,9 +96,9 @@ nodes vector search did not return, and so must displace a hit to make room:
 5. **Code snippet extraction:** Shows actual source code with line numbers
 
 Fixes 3–5 are disabled because they were measured and lost facts: on the
-reference fixture they took the faithfulness delta from `+0.013` to `-0.062`,
+reference fixture they took the faithfulness delta from `+0.041` to `-0.065`,
 under the gate's `+0.000` floor. Rebuilding them to be budget-neutral made it
-`-0.122` — worse — because displacement evicts a real hit for every candidate
+`-0.107` — worse — because displacement evicts a real hit for every candidate
 pulled in, so a candidate that is worse than what it replaces now costs an
 answer rather than only tokens. Their candidates are substring matches over
 identifiers, and on that fixture they lose to the vector hits they displace.

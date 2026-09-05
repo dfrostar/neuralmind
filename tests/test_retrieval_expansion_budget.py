@@ -7,7 +7,7 @@ outage:
 1. **Default off is a strict no-op.** With ``NEURALMIND_RETRIEVAL_EXPANSION``
    unset, ``_apply_retrieval_enhancements`` must not add, remove, or reorder a
    single hit beyond the code-signal re-rank. That is what restores the
-   pre-3.9.0 faithfulness delta (+0.013 on ``evals/faithfulness``, built-in
+   pre-3.9.0 faithfulness delta (+0.041 on ``evals/faithfulness``, built-in
    backend), and it is the same shape as the SCIP precision pass, which the
    parity gate proves is a no-op when unset.
 
@@ -19,12 +19,19 @@ outage:
 
 Why the flag exists at all is recorded on
 ``ContextSelector._apply_retrieval_enhancements``: making the pull-in
-budget-neutral did not rescue it (-0.062 appended, -0.122 displaced, against
-+0.013 without it). Displacement is necessary but not sufficient — a candidate
+budget-neutral did not rescue it (-0.065 appended, -0.107 displaced, against
++0.041 without it). Displacement is necessary but not sufficient — a candidate
 worse than the hit it evicts costs a fact rather than only tokens. So the
 budget assertions below are deliberately *not* a claim that the pull-in is
 good; they pin the mechanism so the next attempt at candidate quality starts
 from a sound base.
+
+Those figures are each one sample against a freshly copied fixture, which is
+the only way to sample this A/B: ``NeuralMind.query()`` reinforces synapses
+into ``<project>/.neuralmind/synapses.db``, so a second run over the same
+directory scores an index the first run trained. That is where the descending
+sequences in the original bug report came from, and why their means were not
+measurements of anything. See ``_apply_retrieval_enhancements`` for the detail.
 
 Stdlib-only by design, matching ``test_displacement_coverage.py``:
 ``context_selector`` imports without ChromaDB or numpy, so this keeps running
