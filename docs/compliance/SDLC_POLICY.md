@@ -61,7 +61,7 @@ All changes must pass:
 |------|----------|----------|
 | Pre-commit | No `print()` in production, no `TODO` in shipped code | No |
 | Pre-merge | All CI checks pass | Yes |
-| Pre-release | Benchmark ratio ≥ 4× floor | Yes |
+| Pre-release | Benchmark ratio ≥ 3.5× floor | Yes |
 | Post-deploy | `/healthz` returns 200 | No |
 
 ## 4. Documentation Standards

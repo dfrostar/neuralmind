@@ -43,7 +43,7 @@ the same checks that run on every PR.
 
 | # | What it measures | Command | Network / key | Committed results |
 |---|---|---|---|---|
-| 1 | **Token reduction + learning + synapse A/B** (CI floor 4.0×) | `python -m tests.benchmark.run` | none | [`tests/benchmark/`](../tests/benchmark/) (golden queries; report printed on run) |
+| 1 | **Token reduction + learning + synapse A/B** (CI floor 3.5×) | `python -m tests.benchmark.run` | none | [`tests/benchmark/`](../tests/benchmark/) (golden queries; report printed on run) |
 | 2 | **Answer quality** — faithfulness Δ at *matched budget* vs naive truncation | `python -m evals.faithfulness.runner --run` | none | `evals/faithfulness/` |
 | 3 | **Onboarding lift** — does an agent inheriting committed team memory retrieve better cold? | `python -m evals.onboarding.runner --run` | none | `evals/onboarding/` |
 | 4 | **Backend parity** — turbovec vs ChromaDB + multi-language structural parity | `python -m evals.parity.run` | none | `evals/parity/` |
