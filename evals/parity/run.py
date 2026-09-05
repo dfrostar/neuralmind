@@ -185,9 +185,21 @@ def measure(backend: str, project: Path, generated_by: str, code_nodes: int) -> 
     """Run the faithfulness eval + derive the reduction ratio for one backend."""
     from evals.faithfulness import harness
 
-    # Sample the A/B FAITHFULNESS_SAMPLES times and gate the mean, so ANN
-    # ordering jitter can't decide a pass/fail on its own (see the constant).
-    reports = [harness.run_and_report(str(project)) for _ in range(max(1, FAITHFULNESS_SAMPLES))]
+    # Sample the A/B FAITHFULNESS_SAMPLES times and gate the mean (see the
+    # constant). Each sample MUST start from pristine learned state:
+    # ``NeuralMind.query()`` calls ``_reinforce_from_query()``, which persists
+    # weights to ``<project>/.neuralmind/synapses.db``. Without the reset,
+    # samples 2..N score an index that trained on the benchmark's own queries —
+    # measured on this fixture as delta +0.0407 (clean) vs -0.0009 (carried
+    # over), i.e. the "variance" would be self-training, not jitter, and the
+    # mean would drift toward failure by construction.
+    synapse_db = Path(project) / ".neuralmind" / "synapses.db"
+
+    def _sample():
+        synapse_db.unlink(missing_ok=True)
+        return harness.run_and_report(str(project))
+
+    reports = [_sample() for _ in range(max(1, FAITHFULNESS_SAMPLES))]
     report = reports[-1]
 
     def _mean(values: list[float]) -> float:

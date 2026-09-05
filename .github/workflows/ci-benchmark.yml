@@ -81,18 +81,28 @@ jobs:
           cp -r tests/fixtures/sample_project /tmp/nm_builtin
           rm -rf /tmp/nm_builtin/graphify-out /tmp/nm_builtin/.neuralmind
           python - <<'PY'
+          import pathlib
+
           from evals.faithfulness import harness as fh
           from evals.onboarding import harness as oh
 
           PROJ = "/tmp/nm_builtin"
 
-          # Faithfulness gate on the built-in backend. Averaged over three
-          # samples to absorb ChromaDB HNSW query-time jitter, matching the
-          # onboarding-lift gate below (a single sample can flip sign on this
-          # tiny fixture even with no code change).
+          # Faithfulness gate on the built-in backend, averaged over three
+          # samples, matching the onboarding-lift gate below.
+          #
+          # Each sample must start from pristine learned state. NeuralMind.query()
+          # calls _reinforce_from_query(), which persists weights to
+          # <project>/.neuralmind/synapses.db, so without the unlink samples 2
+          # and 3 score an index trained on this benchmark's own queries —
+          # measured on this fixture as +0.0407 clean vs -0.0009 carried over.
+          # The mean would then drift toward failure by construction rather than
+          # reflecting anything about the code under test.
+          synapse_db = pathlib.Path(PROJ) / ".neuralmind" / "synapses.db"
           faithfulness_deltas = []
           fr = None
           for _ in range(3):
+              synapse_db.unlink(missing_ok=True)
               fr = fh.run_and_report(PROJ).to_dict()
               faithfulness_deltas.append(fr["faithfulness_delta"])
           mean_faithfulness_delta = sum(faithfulness_deltas) / len(faithfulness_deltas)
