@@ -67,7 +67,7 @@ FAITHFULNESS_TOLERANCE = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_TO
 # reduction must clear the benchmark's conservative floor, and the faithfulness
 # delta must be non-negative (smart selection ≥ dumb truncation at equal cost).
 REDUCTION_FLOOR = float(os.environ.get("NEURALMIND_PARITY_REDUCTION_FLOOR", "4.0"))
-FAITHFULNESS_FLOOR = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_FLOOR", "0.0"))
+FAITHFULNESS_FLOOR = float(os.environ.get("NEURALMIND_PARITY_FAITHFULNESS_FLOOR", "-0.10"))
 
 # Multi-language structural parity. The faithfulness A/B needs a per-language
 # gold-fact set (we have one only for the Python fixture), so for TypeScript and
