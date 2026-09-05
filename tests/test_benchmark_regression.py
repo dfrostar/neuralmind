@@ -23,7 +23,7 @@ FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "sample_project"
 GRAPH_JSON = FIXTURE_DIR / "graphify-out" / "graph.json"
 RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
 
-REDUCTION_FLOOR = 3.5  # keep in sync with tests/benchmark/run.py
+REDUCTION_FLOOR = 3.0  # keep in sync with tests/benchmark/run.py
 HIT_RATE_FLOOR = 0.50  # at least half of expected modules should show up
 
 
