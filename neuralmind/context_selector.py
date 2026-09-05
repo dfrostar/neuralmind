@@ -18,10 +18,13 @@ Token Budget Management:
 - Reduction ratio: 30-50x typical
 """
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -106,6 +109,22 @@ _DEFAULT_PARAM_FALLBACK = {
 # hits span 0.946-0.948 before the leader at 1.000. Widening it further
 # regresses fact coverage, which is what the parity gate is for.
 _COVERAGE_MARGIN = 0.02
+
+
+def _expansion_enabled() -> bool:
+    """Whether the v3.9.0 retrieval pull-in may contend for L3 slots.
+
+    Off by default. See
+    :meth:`ContextSelector._apply_retrieval_enhancements` for the measurement
+    that put it behind a flag; read at call time so a test or an operator can
+    flip it without reimporting.
+    """
+    return os.environ.get("NEURALMIND_RETRIEVAL_EXPANSION", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def _module_of(result):
@@ -889,6 +908,267 @@ class ContextSelector:
             node["_structural_recalled"] = True
         return kept + fetched
 
+    # Keyword sets handed to the v3.9.0 intent classifier. Deliberately kept
+    # separate from _detect_intent's own lists: that heuristic counts bare
+    # keywords and weights file extensions, the classifier matches question
+    # shapes, and each needs its own vocabulary to stay meaningful.
+    _ENHANCED_CODE_KEYWORDS = (
+        "implement",
+        "function",
+        "class",
+        "method",
+        "code",
+        "source",
+        "file",
+        "module",
+        "component",
+        "handler",
+        "service",
+        "controller",
+        "model",
+        "route",
+        "endpoint",
+        "api",
+        "config",
+        "constant",
+        "type",
+        "interface",
+        "schema",
+    )
+    _ENHANCED_DOC_KEYWORDS = (
+        "explain",
+        "what is",
+        "how does",
+        "documentation",
+        "readme",
+        "guide",
+        "tutorial",
+        "why",
+        "when should",
+        "concept",
+        "overview",
+        "architecture",
+        "design",
+        "pattern",
+        "principle",
+        "best practice",
+        "introduction",
+    )
+
+    # How many enhancement candidates may contend for displacement slots.
+    # Matches the synapse and structural pull-in caps rather than the v3.9.0
+    # values, which allowed eight candidates against a four-hit list.
+    _ENHANCEMENT_PULL_IN_MAX = 3
+
+    def _resolve_intent(self, query: str) -> str:
+        """Resolve query intent, preferring the v3.9.0 pattern classifier.
+
+        :meth:`_detect_intent` counts keywords, so "how does X implement Y"
+        scores on "how does" and lands on docs even though it is asking to be
+        shown an implementation — the bug v3.9.0 set out to fix.
+        ``classify_intent`` matches the question shape instead and calls it
+        code.
+
+        The heuristic still decides when the classifier is unavailable or
+        returns "hybrid", so a build without the enhancement module ranks
+        exactly as it did before v3.9.0.
+        """
+        heuristic = self._detect_intent(query)
+        try:
+            from .retrieval_enhancement import classify_intent
+        except Exception:
+            return heuristic
+        try:
+            enhanced = classify_intent(
+                query,
+                list(self._ENHANCED_CODE_KEYWORDS),
+                list(self._ENHANCED_DOC_KEYWORDS),
+            )
+        except Exception:
+            logger.debug("enhanced intent classification failed", exc_info=True)
+            return heuristic
+        return heuristic if enhanced == "hybrid" else enhanced
+
+    def _apply_retrieval_enhancements(
+        self, query: str, results: list[dict], intent: str
+    ) -> list[dict]:
+        """Apply the v3.9.0 adversarial-retrieval fixes to L3 hits.
+
+        Two of them run by default because they are budget-neutral by
+        construction — they reweight the hits we already have. Intent
+        classification is resolved upstream in :meth:`_resolve_intent`; the
+        code-signal boost runs here.
+
+        The third, pulling in nodes vector search did not return (two-pass
+        source-file retrieval, synapse-seeded expansion, and the snippet
+        extraction that feeds them), is **off unless
+        ``NEURALMIND_RETRIEVAL_EXPANSION=1``**, and budget-neutral when on. It
+        is off because it was measured, not because it is unfinished.
+
+        WHAT IT COST, AND HOW THAT WAS ESTABLISHED
+
+        As shipped in v3.9.0 this pass appended up to eight nodes to a
+        four-hit list, forced each source-file node's score to a hardcoded
+        4.5 — discarding the bounded score :func:`_search_source_files` had
+        just computed — and then doubled every code score again. The injected
+        nodes sorted to the top of a list the renderer emits in full before
+        truncating to the L3 token budget, so real vector hits fell off the
+        end.
+
+        Measured on the reference fixture (``evals/faithfulness``, built-in
+        backend, ``NEURALMIND_ORT_THREADS=1``). Each sample runs against a
+        freshly copied fixture — see the sampling note below, which is the
+        difference between these numbers and a set that looked noisier:
+
+            intent + code-signal, no pull-in     +0.041  PASS
+            pull-in, appended (v3.9.0 shipped)   -0.065  FAIL
+            pull-in, budget-neutral displacement -0.107  FAIL
+
+        Each row differs from the +0.041 row only in the pull-in, so the
+        attribution is direct: intent classification and the code-signal boost
+        are bit-for-bit neutral here, and the pull-in accounts for the whole
+        regression. It also failed the parity gate's faithfulness floor.
+
+        Making it budget-neutral made it *worse*, which is the finding that
+        settled the design. Appending merely spent tokens badly; displacing
+        evicts a real hit for each candidate, so a candidate that is worse
+        than what it replaces now costs a fact instead of only tokens. The
+        pull-in's candidates are substring matches over identifiers, and on
+        this fixture they are worse than the vector hits they displace. Budget
+        discipline is necessary but not sufficient — the candidates have to be
+        good, and these are not yet.
+
+        SAMPLING: repeat the A/B against the SAME project directory and it is
+        not a repeat measurement. ``NeuralMind.query()`` reinforces synapses
+        into ``<project>/.neuralmind/synapses.db``, so sample 2 scores an index
+        that sample 1 trained. That is what produces the descending sequences
+        this bug was first reported with — CI's ``[-0.046, -0.069, -0.069]``
+        and, for the flag-off path, ``[+0.041, -0.001, -0.001]``. Their means
+        (-0.062, +0.013) are artifacts of the accumulation, not measurements of
+        anything, and the drift is toward failure, so a gate averaging them is
+        biased against itself. Re-copy the fixture between samples and every
+        one of them lands on the same value to four decimals.
+
+        Which also settles the original misreading: the descent is state
+        accumulating, not HNSW jitter — there is no jitter here to absorb, and
+        averaging more contaminated samples only moves the number further from
+        the truth. Credit to PR #500, which found this independently and whose
+        figures these match.
+
+        Left in place behind the flag rather than deleted so the ranking work
+        it needs has somewhere to land — the same shape as the SCIP precision
+        pass, which the parity gate proves is a strict no-op when unset. The
+        flag is what makes the default path provable; turning it on is a
+        research setting until a gate says otherwise.
+        """
+        if not results:
+            return results
+
+        try:
+            from .retrieval_enhancement import (
+                apply_code_signal_boost,
+                extract_code_identifiers,
+            )
+        except Exception:
+            return results  # Fail open — the enhancement module is optional.
+
+        try:
+            identifiers = extract_code_identifiers(query)
+        except Exception:
+            logger.debug("code-identifier extraction failed", exc_info=True)
+            return results
+        if not identifiers:
+            return results
+
+        # Re-rank in place. This one is already budget-neutral: it reweights
+        # the hits we have rather than adding to them.
+        if intent == "code":
+            try:
+                results = apply_code_signal_boost(results, identifiers)
+            except Exception:
+                logger.debug("code-signal boost failed", exc_info=True)
+
+        if not _expansion_enabled():
+            return results
+
+        candidates = self._enhancement_candidates(query, results, identifiers, intent)
+        if not candidates:
+            return results
+
+        # Keep at least one vector hit, as the synapse and structural passes do.
+        num_swap = min(len(candidates), max(0, len(results) - 1))
+        if num_swap <= 0:
+            return results
+        candidates = candidates[:num_swap]
+
+        kept, _ = _displace(results, len(candidates))
+        return kept + candidates
+
+    def _enhancement_candidates(
+        self, query: str, results: list[dict], identifiers: list[str], intent: str
+    ) -> list[dict]:
+        """Gather absent nodes that may displace a weak hit, best first.
+
+        Two sources, both capped at :attr:`_ENHANCEMENT_PULL_IN_MAX`: a direct
+        source-file scan for the query's identifiers (the "two-pass" retrieval
+        vector search misses when a docstring out-scores the implementation),
+        and synapse-seeded expansion over co-activated neighbours.
+
+        Candidates keep the scores their producers computed. Nothing here
+        rewrites a score to win a comparison — ranking is what decides which
+        candidates make the cut, so a fabricated one just disables the ranking.
+        """
+        present = {r.get("id") for r in results}
+        candidates: list[dict] = []
+
+        if intent == "code" and self.embedder is not None:
+            try:
+                from .retrieval_enhancement import (
+                    _extract_code_snippet,
+                    _search_source_files,
+                )
+
+                found = _search_source_files(
+                    self.embedder, identifiers, top_k=self._ENHANCEMENT_PULL_IN_MAX
+                )
+                for node in found:
+                    node_id = node.get("id")
+                    if not node_id or node_id in present:
+                        continue
+                    snippet = _extract_code_snippet(self.embedder, node_id, identifiers)
+                    if snippet:
+                        node["document"] = snippet
+                    node["_source_file_match"] = True
+                    candidates.append(node)
+                    present.add(node_id)
+            except Exception:
+                logger.debug("source-file pass failed", exc_info=True)
+
+        store = getattr(self, "_synapse_store", None)
+        if store is not None and self.synapse_recall is not None:
+            try:
+                from .retrieval_enhancement import synapse_seeded_expansion
+
+                # The helper returns `results + new`, so the tail is what it
+                # added. Pass a copy: it must not mutate the live hit list.
+                expanded = synapse_seeded_expansion(
+                    store,
+                    query,
+                    list(results),
+                    max_expansions=self._ENHANCEMENT_PULL_IN_MAX,
+                )
+                for node in expanded[len(results) :]:
+                    node_id = node.get("id")
+                    if not node_id or node_id in present:
+                        continue
+                    candidates.append(node)
+                    present.add(node_id)
+            except Exception:
+                logger.debug("synapse-seeded expansion failed", exc_info=True)
+
+        candidates.sort(key=lambda c: float(c.get("score") or 0.0), reverse=True)
+        return candidates
+
     def _detect_intent(self, query: str) -> str:
         """Detect query intent: 'code', 'docs', or 'hybrid'."""
         query_lower = query.lower()
@@ -1060,137 +1340,14 @@ class ContextSelector:
         # learned association — not just vector similarity — shapes ranking.
         results = self._apply_synapse_boost(results)
 
-        # Apply type-aware re-ranking based on query intent
-        intent = self._detect_intent(query)
+        # Type-aware re-ranking. Resolved once and applied once: the v3.9.0
+        # pipeline boosted with the keyword intent, then boosted the same
+        # results again with the corrected one, compounding both multipliers.
+        intent = self._resolve_intent(query)
         results = self._apply_intent_boost(results, intent)
 
-        # Apply adversarial retrieval enhancements:
-        # 1. Re-classify intent (how-implement → code intent)
-        # 2. Code-signal boost for implementation queries
-        # 3. Synapse-seeded expansion for co-implemented neighbors
-        try:
-            from .retrieval_enhancement import (
-                apply_code_signal_boost,
-                extract_code_identifiers,
-                synapse_seeded_expansion,
-            )
-            from .retrieval_enhancement import (
-                classify_intent as _enhanced_classify_intent,
-            )
-
-            corrected_intent = _enhanced_classify_intent(
-                query,
-                existing_code_keywords=[
-                    "implement",
-                    "function",
-                    "class",
-                    "method",
-                    "code",
-                    "source",
-                    "file",
-                    "module",
-                    "component",
-                    "handler",
-                    "service",
-                    "controller",
-                    "model",
-                    "route",
-                    "endpoint",
-                    "api",
-                    "config",
-                    "constant",
-                    "type",
-                    "interface",
-                    "schema",
-                ],
-                existing_doc_keywords=[
-                    "explain",
-                    "what is",
-                    "how does",
-                    "documentation",
-                    "readme",
-                    "guide",
-                    "tutorial",
-                    "why",
-                    "when should",
-                    "concept",
-                    "overview",
-                    "architecture",
-                    "design",
-                    "pattern",
-                    "principle",
-                    "best practice",
-                    "introduction",
-                ],
-            )
-
-            identifiers = extract_code_identifiers(query)
-
-            # Apply code-signal boost for code-intent queries
-            if corrected_intent == "code" and identifiers:
-                results = apply_code_signal_boost(results, identifiers)
-
-            # Apply synapse-seeded expansion
-            if self.synapse_recall is not None and identifiers:
-                store = getattr(self, "_synapse_store", None)
-                if store is not None:
-                    results = synapse_seeded_expansion(store, query, results, max_expansions=3)
-
-            # Re-apply intent boost with corrected intent (BEFORE two-pass retrieval)
-            # This ensures docstrings are penalized before we add implementation files
-            if corrected_intent != intent and corrected_intent != "hybrid":
-                results = self._apply_intent_boost(results, corrected_intent)
-
-            # Apply two-pass retrieval for code-intent queries (AFTER intent boost)
-            # This surfaces implementation files that vector search misses
-            if corrected_intent == "code" and identifiers and self.embedder is not None:
-                try:
-                    from .retrieval_enhancement import _extract_code_snippet, _search_source_files
-
-                    source_results = _search_source_files(self.embedder, identifiers, top_k=5)
-                    if source_results:
-                        # For source file matches, extract code snippets
-                        for sr in source_results:
-                            snippet = _extract_code_snippet(
-                                self.embedder, sr.get("id", ""), identifiers
-                            )
-                            if snippet:
-                                sr["document"] = (
-                                    snippet  # Replace generic document with actual code snippet
-                                )
-                            # Boost implementation file scores ABOVE docstrings with synapse boost
-                            # Docstrings get ~3.75 (1.0 base + 2.25 synapse), so we need >4.0
-                            sr["score"] = max(sr.get("score", 0.5), 4.5)
-
-                        # Merge source file results, avoiding duplicates
-                        existing_ids = {r.get("id") for r in results}
-                        for sr in source_results:
-                            if sr.get("id") not in existing_ids:
-                                results.append(sr)
-                                existing_ids.add(sr.get("id"))
-
-                        # Re-sort by score after adding two-pass results
-                        results.sort(key=lambda r: r.get("score", 0), reverse=True)
-
-                        # Option B: Apply additional boost to code results after two-pass.
-                        # Two-pass results are hardcoded at 4.5, but docstrings in code files
-                        # get misclassified as code by _apply_intent_boost and receive 3x+synapse.
-                        # Give all code results an extra 2x to ensure implementation files win.
-                        if corrected_intent == "code":
-                            for r in results:
-                                is_code = r.get("metadata", {}).get("file_type") == "code"
-                                is_doc = r.get("metadata", {}).get("file_type") in (
-                                    "rationale",
-                                    "document",
-                                )
-                                if is_code and not is_doc:
-                                    r["score"] = r.get("score", 1.0) * 2.0
-                            results.sort(key=lambda r: r.get("score", 0), reverse=True)
-                except Exception:
-                    pass
-
-        except Exception:
-            pass  # Fail open — use unenhanced results
+        # Adversarial retrieval enhancements (v3.9.0), budget-neutral.
+        results = self._apply_retrieval_enhancements(query, results, intent)
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
         # relevance sidecar built from it) carry the same synapse_boost /

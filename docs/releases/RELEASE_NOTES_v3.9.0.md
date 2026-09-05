@@ -60,6 +60,30 @@ For each identifier, finds its callers/callees/imports in the structural graph. 
 ### Fix 5: Code Snippet Extraction
 For source file matches, extracts actual source code centered on the best-matching identifier (with line numbers) instead of generic document snippets.
 
+> **Correction (v3.9.1): fixes 3–5 are off by default.**
+>
+> As first shipped, fixes 3–5 — the passes that pull in nodes vector search did
+> not return — regressed the faithfulness gate and blocked this release. They
+> appended up to eight nodes to a four-hit list and forced their scores to a
+> hardcoded `4.5`, so injected nodes outranked every real hit and the genuine
+> ones were pushed past the L3 token budget. On the reference fixture the
+> faithfulness delta went `+0.041` → `-0.065`, under the gate's `+0.000` floor.
+>
+> They are now behind `NEURALMIND_RETRIEVAL_EXPANSION=1`, **off by default**,
+> and budget-neutral when enabled. Making them budget-neutral did not rescue
+> them — displaced, the delta was `-0.107`, worse than appending — because
+> displacement evicts a real hit per candidate, so candidates worse than what
+> they replace cost facts rather than only tokens. That is a candidate-quality
+> problem, and it is unsolved.
+>
+> **Fixes 1 and 2 (intent classification, code-signal boost) are unaffected and
+> stay on.** They re-rank the hits retrieval already returned rather than adding
+> to them, and measure bit-for-bit neutral on the same fixture. The headline
+> "how does X implement Y" behaviour is Fix 1, so it still ships.
+>
+> See `NEURALMIND_RETRIEVAL_EXPANSION` in the [CLI
+> Reference](../wiki/CLI-Reference.md#environment-variables).
+
 ---
 
 ## API
@@ -91,6 +115,7 @@ result = nm.query('How does the synapse layer work?')
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | Intent classification threshold |
 | `NEURALMIND_CODE_BOOST` | `3.0` | Code intent boost multiplier |
 | `NEURALMIND_DOC_BOOST` | `2.0` | Doc intent boost multiplier |
+| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.9.1+)* Opt-in the retrieval pull-in (fixes 3–5). Off by default — see the correction above |
 
 ---
 
@@ -109,7 +134,7 @@ result = nm.query('How does the synapse layer work?')
 
 ## Known Limitations
 
-1. **`synapses.py` surfacing:** For "how does X work" queries, `synapses.py` still ranks below docstrings. The code-signal boost (10x cap) is insufficient to overcome the initial vector score gap. Fix: intent-aware pre-filtering or two-pass retrieval with snippet extraction.
+1. **`synapses.py` surfacing:** For "how does X work" queries, `synapses.py` still ranks below docstrings. The code-signal boost (10x cap) is insufficient to overcome the initial vector score gap. Two-pass retrieval with snippet extraction was the attempted fix and is the pass now disabled by default (see the correction above) — it surfaced the implementation by outranking everything, including the hits carrying the answer. The open problem is a pull-in whose candidates beat the hits they displace; substring matching over identifiers does not.
 
 2. **No re-ranking model:** Cursor uses a fine-tuned 7B CodeLlama reranker. We use multiplicative score boosting. This is the single biggest quality gap.
 
