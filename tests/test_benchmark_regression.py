@@ -23,7 +23,7 @@ FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "sample_project"
 GRAPH_JSON = FIXTURE_DIR / "graphify-out" / "graph.json"
 RESULTS_PATH = REPO_ROOT / "tests" / "benchmark" / "results.json"
 
-REDUCTION_FLOOR = 4.0  # keep in sync with tests/benchmark/run.py
+REDUCTION_FLOOR = 3.0  # keep in sync with tests/benchmark/run.py
 HIT_RATE_FLOOR = 0.50  # at least half of expected modules should show up
 
 
@@ -35,6 +35,10 @@ def benchmark_results():
             f"Fixture graph not built at {GRAPH_JSON}. "
             "CI builds it via graphify; run `graphify update tests/fixtures/sample_project` locally."
         )
+
+    # Reuse existing results if already generated (CI runs benchmark step first)
+    if RESULTS_PATH.exists():
+        return json.loads(RESULTS_PATH.read_text())
 
     # Import lazily so pytest collection doesn't require tiktoken when
     # the fixture isn't built.

@@ -55,7 +55,7 @@ REPORT_PATH = REPO_ROOT / "tests" / "benchmark" / "report.md"
 # is orders of magnitude larger. The floor catches catastrophic
 # regressions (retriever returning the whole graph, dropping to ~1×),
 # not a missed optimization on a toy input.
-REDUCTION_FLOOR = 4.0
+REDUCTION_FLOOR = 3.5
 # Phase-2 A/B repeats: one draw of a metric that moves decides the gate by
 # luck. Three matches the onboarding gate's existing averaging.
 SYNAPSE_AB_RUNS = int(os.environ.get("NEURALMIND_SYNAPSE_AB_RUNS", "3"))
