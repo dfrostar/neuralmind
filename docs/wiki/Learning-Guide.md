@@ -76,14 +76,34 @@ recent + old patterns to prevent catastrophic forgetting.
 
 ## v3.9.0: Adversarial Retrieval Enhancements
 
-For "how does X implement Y" queries, the system now surfaces implementation
-code instead of just docstrings:
+For "how does X implement Y" queries, retrieval leans toward implementation
+code rather than docstrings.
 
-1. **Intent-aware classification:** "how does X implement Y" → code intent
-2. **Code-signal boost:** Extracts identifiers, boosts matching source files
+**On by default** — both re-rank the hits retrieval already returned, so they
+cannot spend extra context:
+
+1. **Intent-aware classification:** "how does X implement Y" → code intent,
+   which multiplies code hits by `NEURALMIND_CODE_BOOST` (3.0) and doc hits by
+   0.5. The keyword heuristic alone scored this on "how does" and called it
+   docs; matching the question shape is what fixed it.
+2. **Code-signal boost:** Extracts identifiers, boosts matching source files.
+
+**Off by default**, behind `NEURALMIND_RETRIEVAL_EXPANSION=1` — these pull in
+nodes vector search did not return, and so must displace a hit to make room:
+
 3. **Synapse-seeded expansion:** Spreads activation from query-matched nodes
 4. **Dependency graph traversal:** Finds callers/callees/imports
 5. **Code snippet extraction:** Shows actual source code with line numbers
+
+Fixes 3–5 are disabled because they were measured and lost facts: on the
+reference fixture they took the faithfulness delta from `+0.013` to `-0.062`,
+under the gate's `+0.000` floor. Rebuilding them to be budget-neutral made it
+`-0.122` — worse — because displacement evicts a real hit for every candidate
+pulled in, so a candidate that is worse than what it replaces now costs an
+answer rather than only tokens. Their candidates are substring matches over
+identifiers, and on that fixture they lose to the vector hits they displace.
+Candidate quality is the open problem; the budget discipline is already there
+waiting for it.
 
 ## Step-by-Step Workflow
 

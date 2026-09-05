@@ -219,6 +219,13 @@ jobs:
     # backend today, TS/Go extractors and an LSP/SCIP pass next).
     name: Backend parity gate
     runs-on: ubuntu-latest
+    env:
+      # Same pin as the benchmark job above, for the same reason: ORT sizes its
+      # intra-op thread pool from the host's core count, and the parallel
+      # summation order moves the last bits of the embedding floats. Without
+      # this, a gate whose faithfulness floor is +0.000 is reading a number
+      # that depends on which runner it drew.
+      NEURALMIND_ORT_THREADS: "1"
     steps:
       - uses: actions/checkout@v7
 
