@@ -36,6 +36,10 @@ def benchmark_results():
             "CI builds it via graphify; run `graphify update tests/fixtures/sample_project` locally."
         )
 
+    # Reuse existing results if already generated (CI runs benchmark step first)
+    if RESULTS_PATH.exists():
+        return json.loads(RESULTS_PATH.read_text())
+
     # Import lazily so pytest collection doesn't require tiktoken when
     # the fixture isn't built.
     from tests.benchmark import run as bench_run
