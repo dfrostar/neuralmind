@@ -1225,7 +1225,14 @@ class ContextSelector:
                 pass  # Fail open — use unenhanced results
 
         # Hold the slice flat: enhancement re-ranks, it does not enlarge.
+        # Sort before slicing — synapse_seeded_expansion returns ``existing +
+        # new`` without re-ordering, and the only other sorts in the block are
+        # conditional on corrected_intent, so on a query whose intent is
+        # unchanged and not "code" nothing re-orders and a positional slice
+        # would drop exactly the appended hits. Ranking here is what actually
+        # makes the extra hits compete rather than be discarded.
         if _pre_enhancement_hits and len(results) > _pre_enhancement_hits:
+            results.sort(key=lambda r: r.get("score", 0), reverse=True)
             results = results[:_pre_enhancement_hits]
 
         # Stash the post-boost hits so ContextResult.top_search_hits (and the
