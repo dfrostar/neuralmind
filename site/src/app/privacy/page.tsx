@@ -1,10 +1,13 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/privacy',
     title: 'Privacy Policy — NeuralMind',
     description: 'Privacy policy for NeuralMind. The engine runs 100% locally with no telemetry — this policy explains the little that\'s left.',
-};
+});
 
 type Section = {
     title: string;

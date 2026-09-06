@@ -1,9 +1,18 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import { getLatestRelease } from '@/lib/release';
+import { pageMetadata } from '@/lib/seo';
+import type { Metadata } from 'next';
 
 const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const COMPLIANCE_URL = `${GITHUB_URL}/blob/main/docs/COMPLIANCE-SUMMARY.md`;
+
+export const metadata: Metadata = pageMetadata({
+    path: '/security',
+    title: 'Security — NeuralMind',
+    description:
+        'Security and supply-chain posture for NeuralMind: a per-release Software Bill of Materials, source integrity and release verification, vulnerability reporting, NIST AI RMF mapping, SOC 2 status, and the audit trail.',
+});
 
 export default async function SecurityPage() {
     const rel = await getLatestRelease();

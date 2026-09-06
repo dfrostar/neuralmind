@@ -1,15 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/services',
     title: 'Services — NeuralMind',
     description:
         'Fixed-fee assessment and pilot engagements for engineering teams adopting NeuralMind: measured token-reduction benchmarks on your repos, governance setup, and an honest keep-or-skip recommendation.',
-    alternates: {
-        canonical: '/services',
-    },
-};
+});
 
 const offerings = [
     {

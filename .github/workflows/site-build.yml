@@ -26,6 +26,7 @@ on:
       - 'site/**'
       - '.github/workflows/site-build.yml'
       - '.github/workflows/deploy-site.yml'
+      - 'scripts/check_site_seo.py'
 
 # A newer push to the same PR supersedes the older build.
 concurrency:
@@ -78,3 +79,13 @@ jobs:
             exit 1
           }
           echo "Exported $(find out -name '*.html' | wc -l) HTML page(s)."
+
+      - name: Check indexability (canonicals, og:url, og:image, sitemap)
+        # The root layout sets `alternates: { canonical: '/' }` and Next.js
+        # merges metadata shallowly, so a page that omits `alternates` inherits
+        # it and ships rel=canonical pointing at the homepage. Six pages had —
+        # /pricing/ and /effectiveness/ among them. The same merge in reverse
+        # dropped og:image from every /publications/* page. Both classes are
+        # invisible in a green build, so assert them against the built HTML.
+        working-directory: .
+        run: python3 scripts/check_site_seo.py site/out

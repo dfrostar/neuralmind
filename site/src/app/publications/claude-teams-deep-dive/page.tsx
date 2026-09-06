@@ -37,6 +37,14 @@ export const metadata = {
         modifiedTime: '2026-07-26',
         authors: ['Darren Frost'],
         tags: ['Claude Code', 'team memory', 'token reduction', 'agent amnesia', 'NeuralMind'],
+        images: [
+            {
+                url: '/social-preview.png',
+                width: 1200,
+                height: 630,
+                alt: 'NeuralMind — Code Memory for AI Coding Agents',
+            },
+        ],
     },
     twitter: {
         card: 'summary_large_image',

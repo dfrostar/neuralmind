@@ -2,12 +2,14 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import { getLatestRelease } from '@/lib/release';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/pricing',
     title: 'Pricing — NeuralMind',
     description:
         'NeuralMind is MIT-licensed open source with every feature free at 1 seat. The Team tier licenses seats beyond one (5-50) with priority support; Enterprise adds custom SLAs.',
-};
+});
 
 const tiers = [
     {
