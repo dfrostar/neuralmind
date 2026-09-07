@@ -223,6 +223,60 @@ class TestEnabledStaysBudgetNeutral(unittest.TestCase):
         ids = [r["id"] for r in after]
         self.assertEqual(len(ids), len(set(ids)))
 
+    def test_merged_slice_is_ranked_by_score(self):
+        """A displaced slot has to be won on score, not on list position.
+
+        ``_displace`` preserves input order, so returning ``kept + candidates``
+        puts every pulled-in node after every survivor whatever it scored, and
+        nothing downstream re-orders — ``get_l3_search`` renders in list order
+        and ``top_search_hits`` exposes it.
+
+        The hit list here is the exact shape the pull-in exists to rescue: a
+        code-intent query whose vector hits came back mostly documentation.
+        Code intent multiplies those doc hits by 0.3, so the survivors sit at
+        0.27 and 0.24 while the source-file scan's real implementation match
+        scores 2.0 — and unsorted concatenation files it *below* both
+        docstrings. That is the v3.9.0 failure mode inverted: the pull-in pays
+        a slot to surface implementation over docstrings, then renders it last.
+
+        An all-code hit list cannot catch this. Code intent boosts every code
+        hit 10x, so survivors always out-score a 2.0 candidate and the
+        concatenation happens to come out ordered.
+        """
+        hits = [
+            {
+                "id": "api_routes_py__refund_fn",
+                "score": 1.0,
+                "document": "def refund(...)",
+                "metadata": {"source_file": "api/routes.py", "file_type": "code"},
+            }
+        ]
+        for i, score in enumerate((0.9, 0.8, 0.7)):
+            hits.append(
+                {
+                    "id": f"docs_guide_md__sec_{i}",
+                    "score": score,
+                    "document": "The synapse layer reinforces edges.",
+                    "metadata": {
+                        "source_file": f"docs/guide_{i}.md",
+                        "file_type": "document",
+                    },
+                }
+            )
+
+        after = self._run(hits, _StubEmbedder(extra=1))
+
+        pulled_in = [r for r in after if r.get("_source_file_match")]
+        self.assertTrue(pulled_in, "expected the source-file scan to pull a candidate in")
+
+        scores = [float(r.get("score") or 0.0) for r in after]
+        self.assertEqual(
+            scores,
+            sorted(scores, reverse=True),
+            "merged slice is not ranked by score — a pulled-in implementation "
+            f"match is rendered below a weaker docstring hit: {scores}",
+        )
+
     def test_absent_embedder_is_survivable(self):
         after = self._run(_hits(), None)
         self.assertEqual(len(after), len(_hits()))

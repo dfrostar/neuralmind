@@ -1102,7 +1102,18 @@ class ContextSelector:
         candidates = candidates[:num_swap]
 
         kept, _ = _displace(results, len(candidates))
-        return kept + candidates
+
+        # Rank the merged slice. _displace preserves input order, so a bare
+        # ``kept + candidates`` puts every pulled-in node after every survivor
+        # however it scored — a 2.0 source match landing below a 0.2 survivor.
+        # Nothing downstream re-orders: get_l3_search renders in list order and
+        # top_search_hits exposes it, so that order is what the agent reads and
+        # what rank-sensitive metrics score. Sorting is also what makes the
+        # displacement honest: a candidate that took a slot has to out-score
+        # what is left, not merely be appended behind it.
+        merged = kept + candidates
+        merged.sort(key=lambda r: r.get("score", 0), reverse=True)
+        return merged
 
     def _enhancement_candidates(
         self, query: str, results: list[dict], identifiers: list[str], intent: str
