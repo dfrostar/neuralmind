@@ -1,11 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/effectiveness',
     title: 'Effectiveness — NeuralMind',
     description:
         '48.8× token reduction on a real CRM codebase. Personal edges tripled, shared edge weight up 5.4%, 810 architectural communities. Tiered claims, honest scrutiny.',
-};
+});
 
 const headlineStats = [
     { label: 'Token Reduction', value: '48.8×', detail: '1,033 vs 50,000+ tokens/query', gradient: true },

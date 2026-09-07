@@ -2,12 +2,14 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import { getLatestRelease } from '@/lib/release';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/team',
     title: 'Team & Enterprise — NeuralMind',
     description:
         'NeuralMind for teams: shared codebase intelligence, memory governance, seat management, Ed25519-signed manifests, and self-hosted deployment.',
-};
+});
 
 const cardStyle: React.CSSProperties = {
     background: '#161b22',

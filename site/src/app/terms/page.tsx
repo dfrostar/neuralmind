@@ -1,10 +1,13 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/terms',
     title: 'Terms of Service — NeuralMind',
     description: 'Terms of service for NeuralMind. MIT-licensed OSS with a commercial license for teams.',
-};
+});
 
 const sections = [
     {
