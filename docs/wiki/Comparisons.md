@@ -20,6 +20,8 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | [Long context windows](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-long-context.md) | "Claude has 1M context / Gemini has 2M — why compress?" |
 | [Generic RAG over a codebase](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-rag.md) | "Isn't this just RAG with extra steps?" |
 | [Tree-sitter / ctags / grep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-treesitter-ctags.md) | "Why do I need embeddings at all?" |
+| [Graft](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-graft.md) | "Graft also builds a local code graph and wires into Claude Code — what's different?" |
+| [codebase-memory-mcp](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codebase-memory-mcp.md) | "It indexes 162 languages and the Linux kernel in 3 minutes — why not that?" |
 | [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 | [The Context Engineering Stack (NeuralMind + Ponytail + Headroom)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md) | "How do NeuralMind, Ponytail, and Headroom work together as a unified token optimization stack?" |
 
@@ -39,6 +41,8 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | Long context (1M/2M) | Possible ≠ cheap — NeuralMind gives ~60× cost reduction on the same model |
 | Generic RAG | Text chunking loses structure; NeuralMind keeps the call graph |
 | Tree-sitter / ctags / grep | Deterministic but syntactic; use alongside NeuralMind, not instead of |
+| Graft | Closest architectural neighbour — both build local code graphs; Graft's is rebuilt fresh per query, NeuralMind's learns from usage. Graft publishes agent-loop SWE-bench results we don't have; no head-to-head run |
+| codebase-memory-mcp | The one competitor we've scored live: better ranking at ~10× fewer tokens on two Python repos, but it indexes 162 languages to our 10 and scales to kernel-size repos |
 | Headroom | Use both — Headroom compresses what flows to the model; NeuralMind stops most of it from flowing in the first place |
 | Context Engineering Stack (NeuralMind + Ponytail + Headroom) | These compose: NeuralMind (retrieval) + Headroom (transport) + Ponytail (generation) address token waste at every pipeline stage |
 

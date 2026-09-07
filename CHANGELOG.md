@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.9.0](https://github.com/dfrostar/neuralmind/compare/v3.8.0...v3.9.0) (2026-09-03)
+
+
+### Features
+
+* **synapse dynamics:** 6 SOTA brain-inspired learning techniques — Synaptic Tagging & Capture (STC), SAMPL non-monotonic plasticity, resource-dependent STDP, Feeling-of-Knowing (FOK) gating, lateral inhibition, replay-based consolidation ([synapse_dynamics.py](neuralmind/synapse_dynamics.py))
+* **adversarial retrieval:** 5 retrieval fixes — intent classification (how-implement → code), code-signal boost, synapse-seeded expansion, two-pass retrieval for implementation files, code snippet extraction from disk ([retrieval_enhancement.py](neuralmind/retrieval_enhancement.py))
+
+
+### Bug Fixes
+
+* **retrieval:** implementation files (e.g. `synapses.py`) now surface for "how does X implement Y" queries — docstrings no longer outrank implementation code (resolved via two-pass retrieval + post-retrieval intent boost)
+
+
 ## [3.8.0](https://github.com/dfrostar/neuralmind/compare/v3.7.0...v3.8.0) (2026-08-31)
 
 
