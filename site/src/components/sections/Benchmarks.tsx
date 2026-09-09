@@ -46,6 +46,18 @@ export default function Benchmarks() {
                     ))}
                 </dl>
 
+                {/* The full evidence page: per-repo tables, all four backends, and the
+                    four queries NeuralMind misses. The tiles above are the summary. */}
+                <p className="mt-6 text-slate-400 text-sm max-w-3xl">
+                    Every number above comes from{' '}
+                    <a href="/benchmark/" className="text-electric hover:text-electric-bright transition-colors">
+                        the public benchmark
+                    </a>
+                    {' '}— four pinned OSS repos, 40 pre-registered queries, one command to rerun it.
+                    That page publishes the per-repo tables, the baselines it loses to, and the four
+                    queries it misses.
+                </p>
+
                 {/* Field report — hand-measured, deliberately outside the CI-gated tiles above */}
                 <p className="mt-6 text-slate-400 text-sm max-w-3xl">
                     Plus one labeled <span className="text-slate-300">field report</span> (measured with the CLI, not CI-gated):{' '}
