@@ -10,6 +10,8 @@ Guide to integrating NeuralMind with MCP tools, graphify, and other development 
   - [Claude Desktop](#claude-desktop)
   - [Cursor](#cursor)
   - [Hermes-Agent](#hermes-agent)
+  - [Agent Zero](#agent-zero)
+  - [OpenClaw](#openclaw)
   - [Custom MCP Clients](#custom-mcp-clients)
 - [CI/CD Integration](#cicd-integration)
 - [IDE Integration](#ide-integration)
@@ -359,6 +361,117 @@ third-party warning panel after the security scan.
 The skill drives the `neuralmind` CLI through Hermes's `terminal` tool, so
 it works with or without the MCP server registered. With both, the MCP
 tools take precedence — same retrieval, fewer shell round-trips.
+
+### Agent Zero
+
+NeuralMind is listed in Agent Zero's in-app **Plugin Hub** — the
+[`a0-plugins` index entry](https://github.com/agent0ai/a0-plugins/tree/main/plugins/neuralmind)
+merged on 2026-08-31. Open the Plugins dialog, pick the **Browse** tab (or the
+**Install** button's Browse tab) and search for `neuralmind`.
+
+#### What the Plugin Hub install actually does
+
+Read this before clicking Install, because it does less than the word suggests:
+
+| It does | It does not |
+|---------|-------------|
+| Clone this repository into `usr/plugins/neuralmind/` | Run `pip install neuralmind` |
+| Expose the repo's `skills/` as Agent Zero skills — the framework scans `usr/plugins/*/skills` | Register an MCP server |
+| Add Readme / License / Update buttons to the Plugins dialog | Give the agent any `neuralmind_*` tool |
+
+So the listing is a discovery and skill-delivery channel. The MCP wiring below
+is still yours to do, and until you do it the agent has the skill's
+instructions but none of the tools those instructions call.
+
+One side effect worth knowing: the clone carries **every** `SKILL.md` in this
+repository, so `skills/github-issue-audit/` becomes a second Agent Zero skill.
+It targets GitHub MCP tools Agent Zero does not ship — hide it from the
+Plugins dialog if you do not want it in the catalog.
+
+#### Wiring the MCP server
+
+1. **Install the package where Agent Zero's server process runs.** Agent Zero
+   resolves the `command` below on that process's `PATH`, so in the standard
+   Docker deployment the install happens *inside the container* — installing
+   on the host does not satisfy it:
+
+   ```bash
+   pip install neuralmind
+   ```
+
+2. **Build an index for each project the agent should know:**
+
+   ```bash
+   neuralmind build /absolute/path/to/repo
+   ```
+
+3. **Register the server.** Settings → **MCP** → **External MCP Servers** →
+   Open, then add the entry to the `mcpServers` JSON:
+
+   ```json
+   {
+     "mcpServers": {
+       "neuralmind": {
+         "command": "neuralmind-mcp",
+         "args": []
+       }
+     }
+   }
+   ```
+
+   Apply the settings and start a new chat. All 21 tools should then be
+   visible to the agent.
+
+#### Pass absolute project paths
+
+Agent Zero starts the server detached, so the server's working directory is
+not your project. `neuralmind-mcp` takes no launch arguments — every tool
+resolves its own `project_path` argument relative to the *server* process — so
+a relative `"."` points somewhere you did not mean.
+
+The server says so rather than failing quietly: `neuralmind_stats` returns
+`built: false` with a `hint` naming the directory the relative path actually
+resolved to, and `wakeup` / `query` / `search` raise that hint as an explicit
+error instead of indexing the wrong tree. When you see it, retry the same call
+with the absolute path — a path inside the container's filesystem, if Agent
+Zero runs in Docker.
+
+### OpenClaw
+
+Two ways in, and they are not equivalent.
+
+#### Skill only, via ClawHub
+
+The portable skill is published on ClawHub as a community-channel package:
+
+```bash
+openclaw skills install @dfrostar/neuralmind
+```
+
+You can also add it from the UI under **Plugins → Skills**, and type `$` in
+the composer to search the skills available to the current agent.
+
+This route drives the `neuralmind` CLI through OpenClaw's terminal tool, so it
+works with or without the MCP server registered.
+
+**On freshness:** the ClawHub package is a point-in-time upload, not a mirror
+of this repository, so the published copy can lag
+[`skills/neuralmind/SKILL.md`](https://github.com/dfrostar/neuralmind/blob/main/skills/neuralmind/SKILL.md)
+here. Compare the `version` line in the listing against the file in this repo
+before assuming a documented flag exists in the copy you installed.
+
+#### MCP server, for the full tool set
+
+```bash
+pip install neuralmind
+neuralmind build /absolute/path/to/repo
+openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'
+openclaw mcp show neuralmind             # the definition as saved
+openclaw mcp doctor neuralmind --probe   # validate, then connect and list tools
+```
+
+OpenClaw also starts the server detached, so the absolute-path rule from the
+Agent Zero section applies here unchanged: pass real project paths, not `"."`.
 
 ### Custom MCP Clients
 
