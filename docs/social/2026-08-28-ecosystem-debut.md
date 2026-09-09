@@ -5,19 +5,20 @@ communities. Drafted in-repo so `tests/test_docs_claims.py` vets every
 claim before any of it is pasted somewhere no CI can reach — same reason
 `docs/social/` is a scanned glob in the first place.
 
-## Registry status as of 2026-08-28 (verified today, not assumed)
+## Registry status as of 2026-08-28 (verified today, not assumed; Agent Zero row upgraded 2026-09-09 after merge)
 
 | Registry | State | Evidence |
 |---|---|---|
 | **ClawHub** (OpenClaw) | **Live.** Community channel, not official. Skill package `neuralmind` v1.0.0, owner `dfrostar`, 51 downloads. | `clawhub.ai/api/v1/packages/neuralmind`; listing at [clawhub.ai/dfrostar/skills/neuralmind](https://clawhub.ai/dfrostar/skills/neuralmind) |
-| **Agent Zero** `a0-plugins` | **Submitted, validator green, awaiting maintainer review.** Not merged. | [agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499) — "Validate Plugin PR" succeeded 2026-08-28 in 12s; no reviewer assigned |
+| **Agent Zero** `a0-plugins` | **Listed** (upgraded 2026-09-09 per the rule below). Merged 2026-08-31 without a formal review — their practice is validate-then-merge — and the entry is in the `index.json` the in-app Plugin Hub fetches. Installing from the Hub clones the repo and exposes the skill only; the MCP server is still manual. | [agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499) merged by 3clyp50, merge commit `ff281d5`; discussion [agent0ai/a0-plugins#505](https://github.com/agent0ai/a0-plugins/discussions/505) |
 | **Hermes-Agent** MCP catalog | **Submitted, review comments resolved, awaiting merge.** Not merged, and no formal review — the Reviewers panel still reads "No reviews". Labels `type/feature`, `tool/mcp`, `P3`. | [NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207); Enough1122 (Contributor) flagged the manifest's network claim as unverified by their CI 2026-08-28, then confirmed at head `bccabd6` on 2026-08-29 "no further items from me" — a plain comment, not an approving review. Maintainer alt-glitch has labelled it but not reviewed or merged |
 
-**Wording rule that follows:** ClawHub may be described as *listed* /
-*installable today*. Agent Zero and Hermes are **"submitted, validator
-green, awaiting review"** — never "listed", "available in", or "shipping
-with" until the PR merges. If either merges before posting, upgrade that
-line and nothing else.
+**Wording rule that follows:** ClawHub and Agent Zero may be described as
+*listed* / *installable today* — for Agent Zero, *listed in the Plugin Hub*,
+with the MCP wiring still manual. Hermes is **"submitted, validator green,
+awaiting review"** — never "listed", "available in", or "shipping with"
+until the PR merges. If it merges before posting, upgrade that line and
+nothing else. (Agent Zero was upgraded this way on 2026-09-09.)
 
 ## Venue note — three of these four are not on Reddit
 
@@ -173,7 +174,7 @@ Source: github.com/dfrostar/neuralmind
 
 ## Post 4 — Agent Zero (Discord / GitHub Discussions)
 
-**Title:** NeuralMind — codebase memory over MCP for Agent Zero (registry PR open, validator green)
+**Title:** NeuralMind — codebase memory over MCP for Agent Zero (now in the Plugin Hub)
 
 **Body:**
 
@@ -191,7 +192,7 @@ That exposes 21 tools — query, search, structural and synaptic neighbours, imp
 
 **Use absolute paths.** Agent Zero starts the server detached, so a relative `project_path` resolves against the server's directory. The server reports the directory it actually resolved rather than indexing the wrong tree, but the fix is yours: pass the absolute path.
 
-A registry entry is **submitted to `a0-plugins` and awaiting maintainer review** — agent0ai/a0-plugins#499, plugin validator green. Not merged yet, so install is manual for now.
+The registry entry is **listed in Agent Zero's Plugin Hub** — agent0ai/a0-plugins#499 merged 2026-08-31. Installing it from the Hub gives you the NeuralMind skill; the MCP server itself is still the manual config above (the Hub clones the repo, it does not pip-install anything).
 
 Where it stands on numbers: 93.75% mean gold-file recall, 79-100% per repo (`click` is the weakest at 0.79, 2 of 7 queries missed), 90% found-rate, at 44.9-256.8x fewer tokens than pasting whole files — 40 pre-registered queries across four SHA-pinned OSS repos. Every miss is published, including the repo where a bare vector baseline beats it outright. Reproduce with `python -m evals.public.run`. MIT core, no telemetry, and no repository content transmitted — one first-build model download aside, pre-seedable.
 
@@ -304,7 +305,7 @@ produced from CI output alone. Grouped by which post needs it.
 | Synapse A/B gated on direction, band +3.5 to +14 pts | `site/claims.json` `non_ratio_headline_claims` note; `docs/benchmarks/public.md` "What this benchmark does not measure" |
 | 21 MCP tools | `grep -c '^def tool_' neuralmind/mcp_server.py` = 21 |
 | ClawHub live, v1.0.0, community channel, owner `dfrostar` | `clawhub.ai/api/v1/packages/neuralmind`, fetched 2026-08-28 |
-| a0-plugins submitted, validator green, not merged | agent0ai/a0-plugins#499 checks page, "Validate Plugin PR" succeeded 2026-08-28 |
+| a0-plugins merged and listed; Hub install exposes the skill only, MCP still manual | agent0ai/a0-plugins#499 (merged 2026-08-31); `index.json` release asset on the `generated-index` tag, fetched 2026-09-09; `plugins/_plugin_installer/helpers/install.py` and `helpers/skills.py` in agent0ai/agent-zero, read 2026-09-09 |
 | Hermes catalog submitted, labels `type/feature` / `tool/mcp` / `P3`, not merged, contributor review resolved, no formal review recorded | NousResearch/hermes-agent#97207, checked 2026-08-29 09:00Z |
 | The one outbound request: NeuralMind's own embedder fetches the SHA256-pinned all-MiniLM-L6-v2 ONNX archive on first embed when no cached model is found | `neuralmind/onnx_embedder.py` (`_ARCHIVE_URL`, `_download_into`, resolution order `$NEURALMIND_ONNX_MODEL_DIR` → `~/.cache/neuralmind/onnx_models/` → `~/.cache/chroma/onnx_models/` → download). Verified in code 2026-08-28, not taken from the docs |
 | "transmits no repository content", no telemetry | `README.md`; `neuralmind/onnx_embedder.py`, `daemon_client.py`, `local_client.py` read directly. The older phrasing is now itself a FORBIDDEN pattern — it was false on a cold install | <!-- claims-guard:allow — row names the retired phrase in order to record its retirement -->

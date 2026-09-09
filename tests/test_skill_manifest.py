@@ -161,11 +161,25 @@ A0_THUMB_MAX_BYTES = 20 * 1024
 
 
 def _index_fields() -> tuple[dict[str, str], dict[str, list[str]]]:
-    """Shallow-parse index.yaml: scalar fields and list fields (stdlib-only)."""
+    """Shallow-parse index.yaml: scalar fields and list fields (stdlib-only).
+
+    Understands the one block-scalar form the entry uses — a folded ``>-``
+    description — because the registry's own validator rejected the
+    single-line form: a plain scalar containing ``: `` ("Local-first: no
+    telemetry") is a nested-mapping error under ``yaml.safe_load`` (a0-bot on
+    agent0ai/a0-plugins#499, 2026-08-29). Folded lines are joined with single
+    spaces, which is what YAML does for ``>``, so the length caps below apply
+    to the text the registry actually sees.
+    """
     scalars: dict[str, str] = {}
     lists: dict[str, list[str]] = {}
     current: str | None = None
+    folding: str | None = None
     for line in A0_INDEX.read_text(encoding="utf-8").splitlines():
+        if folding is not None and line.startswith("  "):
+            scalars[folding] = (scalars[folding] + " " + line.strip()).strip()
+            continue
+        folding = None
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         if line.startswith("  - ") and current is not None:
@@ -174,7 +188,15 @@ def _index_fields() -> tuple[dict[str, str], dict[str, list[str]]]:
         key, _, value = line.partition(":")
         key, value = key.strip(), value.strip()
         current = key
-        if value:
+        if value in (">", ">-", "|", "|-"):
+            folding = key
+            scalars[key] = ""
+        elif value:
+            assert ": " not in value or value[0] in "\"'", (
+                f"index.yaml `{key}` is a plain scalar containing ': ' — the "
+                "registry's yaml.safe_load reads that as a nested mapping and "
+                "rejects the PR; write it as a folded block (`>-`)"
+            )
             scalars[key] = value
     return scalars, lists
 

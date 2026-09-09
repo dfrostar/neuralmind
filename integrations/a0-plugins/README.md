@@ -2,18 +2,50 @@
 
 `neuralmind/` is the index entry for
 [agent0ai/a0-plugins](https://github.com/agent0ai/a0-plugins), the
-community registry surfaced inside Agent Zero.
+community registry surfaced inside Agent Zero's in-app Plugin Hub.
 
-**Status (verified 2026-08-28): submitted, not merged.**
+**Status (verified 2026-09-09): merged and listed.**
 [agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499)
-is open, their "Validate Plugin PR" check passes, and no reviewer is
-assigned yet. Until it merges, NeuralMind is *not* listed in the registry —
-say "submitted, validator green", never "available in Agent Zero". The
-content lives on the `dfrostar/a0-plugins` fork's **main** branch; pushing
-there updates the PR in place.
+was merged on 2026-08-31 (merge commit `ff281d5`, by maintainer 3clyp50,
+with no formal review — their practice is validate-then-merge).
+`plugins/neuralmind/` is on their `main`, and the generated `index.json`
+release asset that Agent Zero's Plugin Hub fetches at runtime carries the
+entry, so it is visible in the app's Plugins → Browse tab today. The
+registry auto-opened
+[agent0ai/a0-plugins#505](https://github.com/agent0ai/a0-plugins/discussions/505)
+as the plugin's discussion thread.
 
-This directory stays the source of truth: change it here, then copy to the
-fork, so the entry can't drift from the claims gate below.
+**Wording rule.** NeuralMind may be described as *listed in Agent Zero's
+Plugin Hub*. Do not say it *works out of the box* there. The Hub's Install
+button clones this repository into `usr/plugins/neuralmind/` and nothing
+else: no `pip install`, no MCP registration (`plugin.yaml` is metadata only
+and there is no `hooks.py`). What the clone does contribute is the
+`skills/` directory, which Agent Zero scans for `SKILL.md` files — so the
+portable skill (and anything else under `skills/`) becomes an Agent Zero
+skill. The MCP server is still wired by hand: `pip install neuralmind`
+where Agent Zero runs, then Settings → MCP → External MCP Servers pointed
+at `neuralmind-mcp`, as `index.yaml` itself says.
+
+## Where the listing text lives
+
+This directory mirrors the **merged** entry byte-for-byte. During review the
+listing was changed on the fork side (commits `6f48388` and `2ffb96d`,
+2026-08-29/30: the description was folded into a `>-` block and the network
+claim scoped to name the one-time embedding-model download), and those
+changes were not back-ported here until 2026-09-09. Keep the two in step in
+this direction:
+
+1. Edit `neuralmind/index.yaml` here first (the claims gate below scans it).
+2. Open a **new** single-folder PR against `agent0ai/a0-plugins` replacing
+   `plugins/neuralmind/` — the merged fork branch no longer updates
+   anything. Their CI validates, a maintainer merges, and `index.json` is
+   regenerated automatically on merge.
+
+**Keep the description a folded block (`>-`).** The single-line form failed
+their `yaml.safe_load` — `Local-first: no telemetry` inside a plain scalar
+is a nested-mapping error (a0-bot on #499, 2026-08-29) — and
+`tests/test_skill_manifest.py` rejects a plain scalar containing `: ` for
+the same reason.
 
 ## What the registry actually takes
 
@@ -27,21 +59,16 @@ Their CI limits (validated locally by `tests/test_skill_manifest.py`):
 
 | Rule | Ours |
 |------|------|
-| `index.yaml` ≤ 2000 chars; only `title`/`description`/`github`/`tags`/`screenshots` | 647 chars, no extra fields |
-| `title` ≤ 50 chars, `description` ≤ 500 chars | 39 / 480 |
+| `index.yaml` ≤ 2000 chars; only `title`/`description`/`github`/`tags`/`screenshots` | 676 chars, no extra fields |
+| `title` ≤ 50 chars, `description` ≤ 500 chars | 39 / 492 |
 | `tags` ≤ 5 strings | 5 |
 | Thumbnail square, ≤ 20 KB | 288×288, ~19 KB |
 | Folder name `^[a-z0-9_]+$`, one plugin per PR, no extra files | ✓ |
 
-## How to submit
-
-1. Fork `agent0ai/a0-plugins`.
-2. Copy `integrations/a0-plugins/neuralmind/` to `plugins/neuralmind/` in
-   the fork — the folder must contain **only** `index.yaml` and
-   `thumbnail.png`.
-3. Open a PR adding exactly that one folder. Their CI validates first, then
-   a human maintainer reviews. A PR failing checks with 7+ days of no
-   activity is auto-closed.
+The entry carries no `version`, `stars`, or `updated` fields (most entries
+don't), so inside the Hub it never appears under the *New* or *Popular*
+filters and the Hub cannot offer an update for it — users find it via
+search, the `mcp` tag, or the *All* list.
 
 ## Claims
 
