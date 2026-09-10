@@ -371,16 +371,41 @@ release-please release-pr \
 If you must release manually (e.g. a hotfix not using release-please):
 
 ```bash
-# 1. Update the version in pyproject.toml
+# 1. Update the version in pyproject.toml AND neuralmind/__init__.py
+#    (release-please-config.json's actual version-file) — keep them equal.
 # 2. Update CHANGELOG.md
 # 3. Update .release-please-manifest.json to match the new version
 # 4. Commit with: chore(release): vX.Y.Z
-# 5. Push the tag (must match pyproject.toml version):
-git tag vX.Y.Z
+# 5. Push that commit and get it onto `main` FIRST, as its own push or a
+#    fast-forward merge — never a squash- or rebase-merged PR. Either of
+#    those rewrites the commit into a new SHA on main, silently orphaning
+#    the tag you're about to create in step 6 (see "Tag the SHA that's
+#    actually on main" below).
+git push origin HEAD:main
+
+# 6. Only now, tag the commit that landed on main — re-read its SHA from
+#    main itself, don't reuse the SHA you had checked out locally:
+git fetch origin main
+git tag vX.Y.Z origin/main
 git push origin vX.Y.Z
 ```
 
-The `validate-version` gate in `release.yml` will reject the push if the tag and `pyproject.toml` version differ.
+**Tag the SHA that's actually on `main`, not the one you committed locally.**
+If step 5 goes through a PR that GitHub squash- or rebase-merges, the commit
+that lands on `main` gets a *different SHA* than the one you tagged locally
+— even with an identical message and near-identical content. The tag then
+points at a commit unreachable from `main`: orphaned, invisible to anyone
+browsing the branch, and invisible to release-please's own diffing (see the
+next section). This happened for real on `v3.9.0` — this section was rewritten
+after diagnosing it live in 2026-09.
+
+The `validate-version` gate in `release.yml` checks three things before
+anything publishes, and hard-fails the whole pipeline if any of them don't
+hold: the tag matches `pyproject.toml`'s version, the tag matches
+`.release-please-manifest.json`, and **the tag's commit is an ancestor of
+`main`**. The third check is what would have caught the `v3.9.0` incident
+immediately instead of letting it corrupt the next release-please PR two
+weeks later.
 
 ### Release-please troubleshooting
 
@@ -422,6 +447,36 @@ git commit --allow-empty -m "chore: release as v0.6.0" -m "Release-As: 0.6.0"
 ```
 
 This was used to produce v0.4.0 before the config was sorted out.
+
+**Symptom: release-please proposes a release with a huge, wrong changelog
+reaching back through already-shipped work, or an unexpected major-version
+bump.**
+
+This means the git tag matching `.release-please-manifest.json`'s current
+value is not actually an ancestor of `main` — release-please can't find it
+in the branch's history, so it silently falls back to whatever earlier tag
+*is* an ancestor and walks everything since, including work that already
+shipped under a later version. Confirm with:
+
+```bash
+git merge-base --is-ancestor v<manifest-version> origin/main && echo OK || echo ORPHANED
+```
+
+If it prints `ORPHANED`, find the commit on `main` with the equivalent
+change (same message, `git log --all --grep` or `git diff <bad-tag>
+<candidate>` to compare trees) and repoint the tag:
+
+```bash
+git tag -f v<manifest-version> <correct-sha-on-main>
+git push --force origin v<manifest-version>
+```
+
+This only rewrites a git ref — nothing already published (the PyPI wheel,
+the GHCR image, the SBOM, the GitHub Release notes) changes. Do this before
+merging or re-running release-please's next proposed PR; merging it as-is
+would ship the bogus changelog and version bump. The `validate-version` gate
+described above exists specifically to stop a fresh instance of this from
+reaching this point silently again.
 
 ## Community
 
