@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import re
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -160,12 +161,45 @@ A0_THUMB_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
 A0_THUMB_MAX_BYTES = 20 * 1024
 
 
-def _index_fields() -> tuple[dict[str, str], dict[str, list[str]]]:
-    """Shallow-parse index.yaml: scalar fields and list fields (stdlib-only)."""
+def _index_fields(
+    path: Path | None = None,
+) -> tuple[dict[str, str], dict[str, list[str]]]:
+    """Shallow-parse index.yaml: scalar fields and list fields (stdlib-only).
+
+    Understands the one block-scalar form the entry uses — a folded ``>-``
+    description — because the registry's own validator rejected the
+    single-line form: a plain scalar containing ``: `` ("Local-first: no
+    telemetry") is a nested-mapping error under ``yaml.safe_load`` (a0-bot on
+    agent0ai/a0-plugins#499, 2026-08-29).
+
+    Folding follows ``>``: consecutive indented lines join with a space, and a
+    blank line becomes a newline rather than ending the block. Getting that
+    second rule wrong is not cosmetic — it would silently drop every paragraph
+    after the first, so a description well over the registry's 500-character
+    cap could measure as under it here and fail upstream instead.
+    """
     scalars: dict[str, str] = {}
     lists: dict[str, list[str]] = {}
     current: str | None = None
-    for line in A0_INDEX.read_text(encoding="utf-8").splitlines():
+    folding: str | None = None
+    pending_breaks = 0
+    for line in (path or A0_INDEX).read_text(encoding="utf-8").splitlines():
+        if folding is not None:
+            if not line.strip():
+                # Blank lines live inside a block scalar; they do not close it.
+                pending_breaks += 1
+                continue
+            if line.startswith("  "):
+                if pending_breaks:
+                    scalars[folding] += "\n" * pending_breaks
+                elif scalars[folding]:
+                    scalars[folding] += " "
+                pending_breaks = 0
+                scalars[folding] += line.strip()
+                continue
+            # A non-blank line back at column 0 ends the block.
+            folding = None
+            pending_breaks = 0
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         if line.startswith("  - ") and current is not None:
@@ -174,9 +208,75 @@ def _index_fields() -> tuple[dict[str, str], dict[str, list[str]]]:
         key, _, value = line.partition(":")
         key, value = key.strip(), value.strip()
         current = key
-        if value:
+        if value in (">", ">-", "|", "|-"):
+            folding = key
+            scalars[key] = ""
+        elif value:
+            assert ": " not in value or value[0] in "\"'", (
+                f"index.yaml `{key}` is a plain scalar containing ': ' — the "
+                "registry's yaml.safe_load reads that as a nested mapping and "
+                "rejects the PR; write it as a folded block (`>-`)"
+            )
             scalars[key] = value
     return scalars, lists
+
+
+def test_index_parser_keeps_folded_paragraphs_across_blank_lines() -> None:
+    """A paragraph break must not truncate the parsed description.
+
+    The first version of the parser above cleared its folding state on the
+    blank line, so only the opening paragraph was measured. Two 300-character
+    paragraphs then read as 300 characters, sailing through the 500-character
+    gate that exists to stop the registry rejecting the entry.
+    """
+    doc = (
+        "title: T\ndescription: >-\n  "
+        + ("a" * 300)
+        + "\n\n  "
+        + ("b" * 300)
+        + "\ngithub: https://example.com\n"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        sample = Path(tmp) / "index.yaml"
+        sample.write_text(doc, encoding="utf-8")
+        scalars, _ = _index_fields(sample)
+
+    # 300 + newline + 300, exactly what a YAML loader yields for folded style.
+    assert len(scalars["description"]) == 601, (
+        "folded description was truncated at the paragraph break; the length "
+        f"gate would under-measure it ({len(scalars['description'])} chars)"
+    )
+    assert (
+        scalars["github"] == "https://example.com"
+    ), "the key after the block scalar was swallowed by the fold"
+
+
+def test_index_parser_agrees_with_a_real_yaml_loader() -> None:
+    """Cross-check the stdlib parser against PyYAML wherever it is installed.
+
+    This module is stdlib-only by repo convention, and a hand-rolled parser
+    drifts from the loader the registry actually runs — which is how the
+    paragraph-break bug above got in. Where PyYAML is importable the two must
+    agree exactly; where it is not, the rest of this module still runs.
+    """
+    try:
+        import yaml
+    except ImportError:  # pragma: no cover - depends on the installed dep set
+        return
+
+    loaded = yaml.safe_load(A0_INDEX.read_text(encoding="utf-8"))
+    scalars, lists = _index_fields()
+    for key, value in loaded.items():
+        if isinstance(value, str):
+            assert scalars.get(key) == value, (
+                f"hand parser and yaml.safe_load disagree on `{key}`: "
+                f"{scalars.get(key)!r} vs {value!r}"
+            )
+        elif isinstance(value, list):
+            assert lists.get(key, []) == value, (
+                f"hand parser and yaml.safe_load disagree on `{key}`: "
+                f"{lists.get(key, [])!r} vs {value!r}"
+            )
 
 
 def test_a0_index_folder_holds_only_index_and_thumbnail() -> None:
