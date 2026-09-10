@@ -473,7 +473,7 @@ release before planning any repair** — it decides which of the two recoveries
 below is even possible:
 
 ```bash
-gh api repos/:owner/:repo/releases/tags/v<manifest-version> --jq .immutable
+gh api repos/{owner}/{repo}/releases/tags/v<manifest-version> --jq .immutable
 ```
 
 Read that as **four** outcomes, not two — the endpoint returns 404 when no
@@ -526,16 +526,18 @@ that carries the released change (`git log --all --grep`), and verify it with
 This is what `v3.9.0` needed: its tag points at `d748a65`, which never
 reached `main`, while the same change landed as `73a4b0b`, which did.
 
-**Treat `last-release-sha` as a one-incident repair and remove it once the
-next release cuts cleanly.** In release-please's source it is a hard stop in
-the backward commit walk, not a floor: reaching that SHA ends iteration
-immediately. Walking back from `HEAD` it should encounter a newer, properly
-reachable release tag first and stop there — meaning a stale entry would
-never bind — but don't rely on that. After the next release lands with a tag
-that *is* an ancestor of `main`, delete the key and confirm the following
-release-please PR still proposes a correctly-scoped changelog. Leaving it
-pinned indefinitely risks silently re-walking already-released commits into
-a future changelog, which is the same class of bug this entry exists to fix.
+**`last-release-sha` must be deleted once the next release PR merges. This
+is required, not housekeeping.** Release-please's manifest documentation is
+explicit that the two sha options behave differently: `bootstrap-sha` "will
+subsequently be ignored" once a release PR exists, but `last-release-sha` is
+"never ignored: remove/change it once a good release PR is merged." It is a
+hard stop in the backward commit walk that keeps applying on every later run,
+so a stale entry does *not* quietly stop mattering once a newer,
+properly-reachable tag exists. Leaving it pinned re-walks already-released
+commits into a later changelog — the same bug this entry exists to fix,
+reintroduced from the other direction. After the next release lands, delete
+the key and confirm the following release-please PR is still correctly
+scoped.
 
 #### Recovery B — the tag is mutable or has no release (retagging is possible)
 
@@ -593,7 +595,7 @@ release's status from the API's `immutable` field rather than assuming
 either way:
 
 ```bash
-gh api repos/:owner/:repo/releases/tags/vX.Y.Z --jq .immutable
+gh api repos/{owner}/{repo}/releases/tags/vX.Y.Z --jq .immutable
 ```
 
 The repo-level setting lives under Settings → General → Releases. Note that
