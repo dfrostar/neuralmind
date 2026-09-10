@@ -468,7 +468,64 @@ shipped under a later version. Confirm with:
 git merge-base --is-ancestor v<manifest-version> origin/main && echo OK || echo ORPHANED
 ```
 
-If it prints `ORPHANED`, find a commit on `main` that's a candidate for the
+If it prints `ORPHANED`, **check whether that tag has a published immutable
+release before planning any repair** — it decides which of the two recoveries
+below is even possible:
+
+```bash
+gh release view v<manifest-version> --json isImmutable,tagName
+# or: gh api repos/:owner/:repo/releases/tags/v<manifest-version> --jq .immutable
+```
+
+#### Recovery A — the tag has an immutable release (retagging is impossible)
+
+This repo has release immutability enabled, so this is the normal case for
+any tag that actually shipped. Per GitHub's documentation, once an immutable
+release is published its tag "is locked to a specific commit, cannot be
+changed, and cannot be deleted while the release exists," and if you delete
+the release to free the tag, "you cannot reuse the same tag name." There is
+no sequence of git commands that repoints such a tag. Don't try; the push is
+rejected with `GH013 … Cannot update this protected ref`, and no ruleset
+appears in Settings → Rules to explain it, because immutability is enforced
+separately from rulesets.
+
+Instead, tell release-please where the last release actually landed on `main`,
+with a top-level `last-release-sha` in `release-please-config.json`:
+
+```json
+{
+  "release-type": "python",
+  "last-release-sha": "<full 40-char SHA on main of the released commit>",
+  "packages": { ... }
+}
+```
+
+Release-please then collects commits *after* that SHA instead of resolving
+the orphaned tag, which fixes both the changelog range and the version bump
+(the bump level is derived from the commits it collects). A full 40-character
+SHA is required, and the key is only honored at the top level of the config,
+not inside a `packages` entry. Find the SHA by locating the commit on `main`
+that carries the released change (`git log --all --grep`), and verify it with
+`git merge-base --is-ancestor <sha> origin/main`.
+
+This is what `v3.9.0` needed: its tag points at `d748a65`, which never
+reached `main`, while the same change landed as `73a4b0b`, which did.
+
+**Treat `last-release-sha` as a one-incident repair and remove it once the
+next release cuts cleanly.** In release-please's source it is a hard stop in
+the backward commit walk, not a floor: reaching that SHA ends iteration
+immediately. Walking back from `HEAD` it should encounter a newer, properly
+reachable release tag first and stop there — meaning a stale entry would
+never bind — but don't rely on that. After the next release lands with a tag
+that *is* an ancestor of `main`, delete the key and confirm the following
+release-please PR still proposes a correctly-scoped changelog. Leaving it
+pinned indefinitely risks silently re-walking already-released commits into
+a future changelog, which is the same class of bug this entry exists to fix.
+
+#### Recovery B — no immutable release on the tag (retagging is possible)
+
+Only when the check above reports the tag has no immutable release. Find a
+commit on `main` that's a candidate for the
 retag. Start from the commit with the equivalent change (same message,
 `git log --all --grep`), but **don't stop at matching source content** —
 `git diff <bad-tag> <candidate>` showing only cosmetic differences is
@@ -509,20 +566,27 @@ workflow) — before this section was written, only `release.yml` checked
 the tag, so an orphaned or mismatched tag could still get a GHCR image
 built and an SBOM published even though PyPI correctly rejected it.
 
-**"The release is immutable" does not mean the tag is locked.** Those are
-two different things. GitHub Releases are immutable in one specific,
-narrow sense: once published, there's no API path to attach *assets* to
-them afterward (see `github-release`'s job in `release.yml` — it warns and
-moves on rather than failing when that upload fails). That says nothing
-about the underlying git tag. A tag is an ordinary ref; force-pushing it
-works the same whether or not a Release object happens to reference it,
-unless this repository has an explicit tag-protection ruleset configured
-(Settings → Tags) blocking pushes to `v*` — which it does not, as of this
-writing. If a future ruleset ever changes that, the force-push above would
-simply be rejected by git with a permission error you'd see immediately,
-not silently succeed against a locked target.
+**On immutability: it locks the tag, not just the assets.** An earlier
+version of this section claimed the opposite — that Release immutability was
+only about attaching *assets* after publish, and that a tag stayed an
+ordinary force-pushable ref. That was wrong, and it sent someone through a
+retag that could never have worked. Immutability covers both: assets are
+frozen (which is why `github-release`'s job in `release.yml` warns and moves
+on rather than failing when a late asset upload is refused) **and** the tag
+is pinned to its commit for as long as the release exists. Confirm a given
+release's status from the API's `immutable` field rather than assuming
+either way:
 
-Do the retag before merging or re-running release-please's next proposed
+```bash
+gh api repos/:owner/:repo/releases/tags/vX.Y.Z --jq .immutable
+```
+
+The repo-level setting lives under Settings → General → Releases. Note that
+already-published releases carry immutability as a property of the release
+itself, so turning the setting off does not retroactively unlock tags that
+were published while it was on.
+
+Do the repair before merging or re-running release-please's next proposed
 PR; merging it as-is would ship the bogus changelog and version bump. The
 `validate-version` gate described above exists specifically to stop a
 fresh instance of this from
