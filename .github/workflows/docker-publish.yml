@@ -12,6 +12,14 @@ name: Docker Publish (GHCR)
 # Triggered on the same `v*` tag push that fires release.yml, so the
 # image lands alongside the PyPI publish without a separate dispatch.
 #
+# validate-version (shared with release.yml and sbom.yml via
+# _validate-release-tag.yml) gates the actual build: this workflow runs
+# independently of release.yml's own validate-version job — GitHub Actions
+# has no cross-workflow `needs:` — so without its own gate, an orphaned or
+# manifest-mismatched tag that release.yml correctly rejects would still
+# get a GHCR image built and tagged `latest` here. See CONTRIBUTING.md's
+# "Release-please troubleshooting" for what this actually catches.
+#
 # Tag/label generation uses docker/metadata-action so:
 #   - the image name is lowercased (GHCR rejects uppercase, and a
 #     future repo rename or fork with mixed case wouldn't fail the push)
@@ -36,8 +44,15 @@ env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
+  validate-version:
+    name: Validate Tag vs Package Version
+    uses: ./.github/workflows/_validate-release-tag.yml
+    with:
+      release_tag: ${{ env.RELEASE_TAG }}
+
   build-and-push:
     name: Build + push multi-platform image
+    needs: validate-version
     runs-on: ubuntu-latest
     permissions:
       contents: read
