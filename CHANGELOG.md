@@ -1,5 +1,39 @@
 # Changelog
 
+## [3.10.0](https://github.com/dfrostar/neuralmind/compare/v3.9.0...v3.10.0) (2026-09-10)
+
+
+### Features
+
+* **site:** publish the public benchmark as a first-class page ([b8257d7](https://github.com/dfrostar/neuralmind/commit/b8257d70032e87b982fc510bc80a2584a5a45fe2))
+* **site:** publish the public benchmark as a first-class page ([a52e08b](https://github.com/dfrostar/neuralmind/commit/a52e08b754104849370a941cbfc3299de7047305))
+
+
+### Bug Fixes
+
+* **ci:** average faithfulness gate over 3 samples to absorb HNSW jitter ([33de626](https://github.com/dfrostar/neuralmind/commit/33de6265afc67ddb0140a7a25622afdf72a4d942))
+* correct version-manifest drift, add a ClawHub publish script ([#508](https://github.com/dfrostar/neuralmind/issues/508)) ([f0a7237](https://github.com/dfrostar/neuralmind/commit/f0a72373234171ed84630ea3ca8a6944f573d5c7))
+* **docs:** correct the faithfulness figures — the samples were training on themselves ([ac8361f](https://github.com/dfrostar/neuralmind/commit/ac8361f86b917352c230a75d3fc6b4850fd6eae1))
+* rank before flattening the L3 slice, so expansion hits can compete ([7a5d2ea](https://github.com/dfrostar/neuralmind/commit/7a5d2ea96fb35897043fe74cae2d4b198e3c4de9))
+* **release:** repair release-please baseline via last-release-sha ([#510](https://github.com/dfrostar/neuralmind/issues/510)) ([7dd5752](https://github.com/dfrostar/neuralmind/commit/7dd5752d75260583f84e61ba453e97dd29b58e42))
+* reset learned state between faithfulness samples ([6606d3f](https://github.com/dfrostar/neuralmind/commit/6606d3f674a9a44cf79044890d82e9ac0a28e764))
+* restore the faithfulness gate — make v3.9.0 adversarial retrieval opt-in ([8394e4c](https://github.com/dfrostar/neuralmind/commit/8394e4cad41b9089e37e44ad5bd343fc2f9dd30e))
+* restore the faithfulness gate — make v3.9.0 adversarial retrieval opt-in ([c8aefdb](https://github.com/dfrostar/neuralmind/commit/c8aefdb9be5514e6a2177086a3f8bbb1fd0b9e64))
+* **retrieval:** rank the merged L3 slice, not just the surviving hits ([3915095](https://github.com/dfrostar/neuralmind/commit/3915095ab00163a6525ca2cf8145813839d0d6ac))
+* **retrieval:** stop the v3.9.0 pull-in from spending the L3 budget on worse hits ([03d77b7](https://github.com/dfrostar/neuralmind/commit/03d77b7caee6102d590db5a2f4e651f73e69ed58))
+* **retrieval:** stop the v3.9.0 pull-in from spending the L3 budget on worse hits ([21239ae](https://github.com/dfrostar/neuralmind/commit/21239ae033697b60d76119b72a8d90e5feb4a2c9))
+* **site:** stop six pages canonicalizing to the homepage, put FAQ answers in the HTML ([35c1470](https://github.com/dfrostar/neuralmind/commit/35c14703599fd13cd1fbea6949e08a191df1a91b))
+* **site:** stop six pages canonicalizing to the homepage, put FAQ answers in the HTML ([#503](https://github.com/dfrostar/neuralmind/issues/503)) ([82c1da9](https://github.com/dfrostar/neuralmind/commit/82c1da932be5d3a26149e98f8f437fd56b608366))
+
+
+### Documentation
+
+* add 2026 SEO plan with live indexability audit ([#502](https://github.com/dfrostar/neuralmind/issues/502)) ([8499393](https://github.com/dfrostar/neuralmind/commit/8499393d18d7913e2c96d0f610827753e2a5182f))
+* Agent Zero listing is merged — update stale status, sync index entry, document both live registries ([#507](https://github.com/dfrostar/neuralmind/issues/507)) ([e1f0ba0](https://github.com/dfrostar/neuralmind/commit/e1f0ba06c23c8434e034917b5e38c1636ff193ac))
+* compare NeuralMind against Graft and codebase-memory-mcp ([307ec9c](https://github.com/dfrostar/neuralmind/commit/307ec9ce9698a93378715ed494130743a7b49a0b))
+* compare NeuralMind against Graft and codebase-memory-mcp ([c37e90f](https://github.com/dfrostar/neuralmind/commit/c37e90f222201bb180fb851c7862d796565905ed))
+* refresh benchmark chart [skip ci] ([33fd3f6](https://github.com/dfrostar/neuralmind/commit/33fd3f62fdcaa04ad635a46507b29bb67f623710))
+
 ## [3.9.0](https://github.com/dfrostar/neuralmind/compare/v3.8.0...v3.9.0) (2026-09-03)
 
 
