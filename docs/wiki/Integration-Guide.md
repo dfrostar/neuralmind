@@ -459,6 +459,10 @@ of this repository, so the published copy can lag
 [`skills/neuralmind/SKILL.md`](https://github.com/dfrostar/neuralmind/blob/main/skills/neuralmind/SKILL.md)
 here. Compare the `version` line in the listing against the file in this repo
 before assuming a documented flag exists in the copy you installed.
+Maintainers: republish with `scripts/publish_clawhub.sh --publish` (needs a
+`CLAWHUB_TOKEN`) — the version it uploads is read from `SKILL.md`'s own
+frontmatter, so keep that file's `version:` line in sync with a real release
+before running it.
 
 #### MCP server, for the full tool set
 
