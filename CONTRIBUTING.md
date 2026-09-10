@@ -503,10 +503,29 @@ and `sbom.yml` all re-fire on this push (it's a real tag push, same as the
 original), but PyPI publish uses `skip-existing: true` so an already-shipped
 version succeeds as a no-op instead of failing on "file already exists",
 GHCR image tags simply get overwritten with identical content, and
-`sbom.yml` already no-ops when nothing changed. Do the retag before merging
-or re-running release-please's next proposed PR; merging it as-is would
-ship the bogus changelog and version bump. The `validate-version` gate
-described above exists specifically to stop a fresh instance of this from
+`sbom.yml` already no-ops when nothing changed. All three workflows share
+one `validate-version` gate (`_validate-release-tag.yml`, a reusable
+workflow) — before this section was written, only `release.yml` checked
+the tag, so an orphaned or mismatched tag could still get a GHCR image
+built and an SBOM published even though PyPI correctly rejected it.
+
+**"The release is immutable" does not mean the tag is locked.** Those are
+two different things. GitHub Releases are immutable in one specific,
+narrow sense: once published, there's no API path to attach *assets* to
+them afterward (see `github-release`'s job in `release.yml` — it warns and
+moves on rather than failing when that upload fails). That says nothing
+about the underlying git tag. A tag is an ordinary ref; force-pushing it
+works the same whether or not a Release object happens to reference it,
+unless this repository has an explicit tag-protection ruleset configured
+(Settings → Tags) blocking pushes to `v*` — which it does not, as of this
+writing. If a future ruleset ever changes that, the force-push above would
+simply be rejected by git with a permission error you'd see immediately,
+not silently succeed against a locked target.
+
+Do the retag before merging or re-running release-please's next proposed
+PR; merging it as-is would ship the bogus changelog and version bump. The
+`validate-version` gate described above exists specifically to stop a
+fresh instance of this from
 reaching this point silently again.
 
 ## Community

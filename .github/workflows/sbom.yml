@@ -8,6 +8,14 @@ name: SBOM
 # Tracks issue #120. Uses Anchore's syft via the official action so the
 # SBOM format is consistent with what most enterprise scanners ingest
 # (Grype, Trivy, Dependency-Track, etc.).
+#
+# validate-version (shared with release.yml and docker-publish.yml via
+# _validate-release-tag.yml) gates generation: this workflow runs
+# independently of release.yml's own validate-version job — GitHub Actions
+# has no cross-workflow `needs:` — so without its own gate, an orphaned or
+# manifest-mismatched tag that release.yml correctly rejects would still
+# get an SBOM generated and published from it. See CONTRIBUTING.md's
+# "Release-please troubleshooting" for what this actually catches.
 
 on:
   push:
@@ -24,8 +32,15 @@ env:
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
+  validate-version:
+    name: Validate Tag vs Package Version
+    uses: ./.github/workflows/_validate-release-tag.yml
+    with:
+      release_tag: ${{ env.RELEASE_TAG }}
+
   sbom:
     name: Generate + attach SBOM
+    needs: validate-version
     runs-on: ubuntu-latest
     permissions:
       contents: write   # to upload to the GitHub Release + push the site copy

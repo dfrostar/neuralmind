@@ -1,0 +1,111 @@
+name: Validate Release Tag (reusable)
+
+# Single source of truth for "is this tag safe to publish from", called by
+# every workflow that triggers on a `v*` tag push: release.yml (PyPI),
+# docker-publish.yml (GHCR), and sbom.yml. Before this file existed, only
+# release.yml checked the tag; docker-publish.yml and sbom.yml had no
+# equivalent gate, so an orphaned or manifest-mismatched tag (see
+# CONTRIBUTING.md's "Release-please troubleshooting") could still get a
+# GHCR image built and an SBOM published even though release.yml correctly
+# rejected the same tag. Centralizing here means one set of checks to keep
+# correct, not three copies to keep in sync.
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: 'The v* tag being validated (e.g., v0.9.0).'
+        required: true
+        type: string
+
+jobs:
+  validate:
+    name: Validate Tag vs Package Version
+    runs-on: ubuntu-latest
+    steps:
+      # Full history, not the default shallow single-commit checkout: the
+      # ancestry check below needs enough of the graph to compute a real
+      # merge-base against `main`, and a shallow clone gives either a false
+      # "not an ancestor" or an outright "no merge base" error.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+
+      - name: Check tag matches pyproject.toml version
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          TAG_VERSION="${RELEASE_TAG#v}"
+          PKG_VERSION="$(python - <<'EOF'
+          import re, sys
+          content = open("pyproject.toml").read()
+          m = re.search(r'^\s*version\s*=\s*"([^"]+)"', content, re.MULTILINE)
+          if not m:
+              print("ERROR: version not found in pyproject.toml", file=sys.stderr)
+              sys.exit(1)
+          print(m.group(1))
+          EOF
+          )"
+          echo "Tag version:     ${TAG_VERSION}"
+          echo "Package version: ${PKG_VERSION}"
+          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
+            echo "ERROR: Git tag v${TAG_VERSION} does not match pyproject.toml version ${PKG_VERSION}."
+            echo "Please delete the wrong tag and push the correct tag matching pyproject.toml."
+            exit 1
+          fi
+          echo "OK: tag v${TAG_VERSION} matches pyproject.toml version ${PKG_VERSION}."
+
+      - name: Check tag matches the release-please manifest
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          TAG_VERSION="${RELEASE_TAG#v}"
+          MANIFEST_VERSION="$(python -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")"
+          echo "Tag version:      ${TAG_VERSION}"
+          echo "Manifest version: ${MANIFEST_VERSION}"
+          if [ "${TAG_VERSION}" != "${MANIFEST_VERSION}" ]; then
+            echo "ERROR: Git tag v${TAG_VERSION} does not match .release-please-manifest.json (${MANIFEST_VERSION})."
+            echo "release-please diffs its NEXT release from the tag matching this manifest value."
+            echo "If they disagree, its next proposed release silently walks the wrong commit range."
+            echo "Update .release-please-manifest.json to ${TAG_VERSION} in the same commit that creates this tag."
+            exit 1
+          fi
+          echo "OK: tag v${TAG_VERSION} matches .release-please-manifest.json."
+
+      - name: Check the tag is reachable from main
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          # release-please's manifest mode computes what's unreleased by
+          # diffing from the tag matching the manifest version above. If
+          # that tag's commit isn't actually on main's history -- e.g. it
+          # was committed and tagged locally, then reached main through a
+          # squash- or rebase-merged PR that gave the "same" change a
+          # different SHA -- the tag is orphaned: invisible to `git log
+          # main`, and invisible to release-please's diffing. It then falls
+          # back to whatever earlier tag IS an ancestor and walks everything
+          # since, silently pulling months of already-shipped work back into
+          # a bogus "unreleased" changelog. This happened for real on
+          # v3.9.0 (tagged 2026-09-03, diagnosed and fixed 2026-09-10) --
+          # see CONTRIBUTING.md's "Release-please troubleshooting" section.
+          git fetch origin main --quiet
+          if ! git merge-base --is-ancestor "${RELEASE_TAG}" origin/main; then
+            echo "ERROR: ${RELEASE_TAG} is not an ancestor of origin/main."
+            echo "This tag's commit was never actually merged into main -- most likely it was"
+            echo "committed and tagged locally, then reached main via a squash- or rebase-merged"
+            echo "PR that produced a different SHA for the same change. release-please cannot"
+            echo "compute a correct diff from an orphaned tag."
+            echo
+            echo "Fix: find a commit on main where pyproject.toml, the manifest, and SKILL.md all"
+            echo "agree with this tag's version (not just matching source content -- see"
+            echo "CONTRIBUTING.md's 'Release-please troubleshooting' for why those can differ),"
+            echo "then repoint the tag to it:"
+            echo "  git tag -f ${RELEASE_TAG} <correct-sha-on-main>"
+            echo "  git push --force origin ${RELEASE_TAG}"
+            echo "Retagging only rewrites a git ref -- nothing already published (the PyPI wheel,"
+            echo "the GHCR image, the SBOM, the GitHub Release notes) changes, and re-running this"
+            echo "workflow and its siblings against the corrected tag is safe (see CONTRIBUTING.md)."
+            exit 1
+          fi
+          echo "OK: ${RELEASE_TAG} is an ancestor of main."
