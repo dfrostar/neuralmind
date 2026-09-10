@@ -22,6 +22,12 @@ jobs:
   validate:
     name: Validate Tag vs Package Version
     runs-on: ubuntu-latest
+    # Read-only job: checks out a ref and inspects/diffs it, never writes
+    # anything. Explicit least-privilege block per CodeQL's workflow-
+    # permissions check, rather than inheriting whatever the repo default
+    # happens to be.
+    permissions:
+      contents: read
     steps:
       # Full history, not the default shallow single-commit checkout: the
       # ancestry check below needs enough of the graph to compute a real
