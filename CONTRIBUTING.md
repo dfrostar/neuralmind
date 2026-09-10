@@ -473,9 +473,24 @@ release before planning any repair** — it decides which of the two recoveries
 below is even possible:
 
 ```bash
-gh release view v<manifest-version> --json isImmutable,tagName
-# or: gh api repos/:owner/:repo/releases/tags/v<manifest-version> --jq .immutable
+gh api repos/:owner/:repo/releases/tags/v<manifest-version> --jq .immutable
 ```
+
+Read that as **four** outcomes, not two — the endpoint returns 404 when no
+release exists for the tag, so `gh` exits nonzero having printed neither
+`true` nor `false`:
+
+| Result | Meaning | Go to |
+|--------|---------|-------|
+| `true` | Published immutable release. The tag is permanently pinned. | Recovery A |
+| `false` | A release exists but is mutable. | Recovery B |
+| HTTP 404 (`Not Found`, nonzero exit) | No release for this tag at all, so nothing pins it. | Recovery B |
+| Any other error (auth, rate limit, network) | Unknown — resolve it first. | — |
+
+Never read a non-404 failure as "no release." And note the 404 row is the
+*usual* case for a bad tag this gate catches: `validate-version` fails long
+before `github-release` would ever create a release, so a freshly-pushed
+orphaned tag normally has none.
 
 #### Recovery A — the tag has an immutable release (retagging is impossible)
 
@@ -522,9 +537,9 @@ release-please PR still proposes a correctly-scoped changelog. Leaving it
 pinned indefinitely risks silently re-walking already-released commits into
 a future changelog, which is the same class of bug this entry exists to fix.
 
-#### Recovery B — no immutable release on the tag (retagging is possible)
+#### Recovery B — the tag is mutable or has no release (retagging is possible)
 
-Only when the check above reports the tag has no immutable release. Find a
+Only when the check above returned `false` or a confirmed 404. Find a
 commit on `main` that's a candidate for the
 retag. Start from the commit with the equivalent change (same message,
 `git log --all --grep`), but **don't stop at matching source content** —
