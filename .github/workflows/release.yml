@@ -194,6 +194,16 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         # No password needed - uses trusted publishing via OIDC
+        with:
+          # A validate-version repair (retagging an orphaned tag, see
+          # CONTRIBUTING.md's "Release-please troubleshooting") re-fires this
+          # whole workflow against a tag whose version may already be on
+          # PyPI. Without this, that re-run fails here with "400: File
+          # already exists" even though every check above it correctly
+          # passed. skip-existing makes an already-published version a
+          # successful no-op instead — the actual fix in that scenario is
+          # the tag repair itself, not a new PyPI upload.
+          skip-existing: true
 
   smoke-test-pypi:
     name: Smoke Test PyPI Package
@@ -254,6 +264,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true  # explicit, not just masked by continue-on-error below
         continue-on-error: true  # Don't fail if version already exists
 
   github-release:

@@ -375,15 +375,21 @@ If you must release manually (e.g. a hotfix not using release-please):
 #    (release-please-config.json's actual version-file) — keep them equal.
 # 2. Update CHANGELOG.md
 # 3. Update .release-please-manifest.json to match the new version
-# 4. Commit with: chore(release): vX.Y.Z
-# 5. Push that commit and get it onto `main` FIRST, as its own push or a
+# 4. Update skills/neuralmind/SKILL.md's `version:` line to match too —
+#    keep the `# x-release-please-version` annotation on that line intact.
+#    tests/test_skill_manifest.py checks this file against the manifest,
+#    and it's what Hermes-Agent, OpenClaw's ClawHub, and Agent Zero's
+#    registries all read; skipping this step is exactly how it drifted to
+#    three releases behind before (fixed in #508).
+# 5. Commit with: chore(release): vX.Y.Z
+# 6. Push that commit and get it onto `main` FIRST, as its own push or a
 #    fast-forward merge — never a squash- or rebase-merged PR. Either of
 #    those rewrites the commit into a new SHA on main, silently orphaning
-#    the tag you're about to create in step 6 (see "Tag the SHA that's
+#    the tag you're about to create in step 7 (see "Tag the SHA that's
 #    actually on main" below).
 git push origin HEAD:main
 
-# 6. Only now, tag the commit that landed on main — re-read its SHA from
+# 7. Only now, tag the commit that landed on main — re-read its SHA from
 #    main itself, don't reuse the SHA you had checked out locally:
 git fetch origin main
 git tag vX.Y.Z origin/main
@@ -462,9 +468,28 @@ shipped under a later version. Confirm with:
 git merge-base --is-ancestor v<manifest-version> origin/main && echo OK || echo ORPHANED
 ```
 
-If it prints `ORPHANED`, find the commit on `main` with the equivalent
-change (same message, `git log --all --grep` or `git diff <bad-tag>
-<candidate>` to compare trees) and repoint the tag:
+If it prints `ORPHANED`, find a commit on `main` that's a candidate for the
+retag. Start from the commit with the equivalent change (same message,
+`git log --all --grep`), but **don't stop at matching source content** —
+`git diff <bad-tag> <candidate>` showing only cosmetic differences is
+necessary but not sufficient. The candidate must ALSO satisfy
+`validate-version`'s other two checks at that exact commit:
+
+```bash
+git show <candidate>:pyproject.toml | grep '^version'
+git show <candidate>:.release-please-manifest.json
+git show <candidate>:skills/neuralmind/SKILL.md | grep '^version:'
+```
+
+All three must read `v<manifest-version>` **at that commit** — not on
+`main`'s current tip, at the candidate itself. This is easy to get wrong:
+the commit with the matching *source* content is often an earlier one than
+the commit where the manifest/SKILL.md bookkeeping actually got fixed (that
+fix usually lands later, bundled with unrelated work, exactly as it did for
+`v3.9.0` — the source-matching commit predated the manifest fix by a week,
+which would have failed `validate-version`'s manifest check all over again
+if tagged directly). Walk forward from the source-matching commit to the
+nearest later one where all three agree, and tag that instead. Then:
 
 ```bash
 git tag -f v<manifest-version> <correct-sha-on-main>
@@ -472,9 +497,15 @@ git push --force origin v<manifest-version>
 ```
 
 This only rewrites a git ref — nothing already published (the PyPI wheel,
-the GHCR image, the SBOM, the GitHub Release notes) changes. Do this before
-merging or re-running release-please's next proposed PR; merging it as-is
-would ship the bogus changelog and version bump. The `validate-version` gate
+the GHCR image, the SBOM, the GitHub Release notes) changes, and none of
+those republish as a side effect either: `release.yml`, `docker-publish.yml`
+and `sbom.yml` all re-fire on this push (it's a real tag push, same as the
+original), but PyPI publish uses `skip-existing: true` so an already-shipped
+version succeeds as a no-op instead of failing on "file already exists",
+GHCR image tags simply get overwritten with identical content, and
+`sbom.yml` already no-ops when nothing changed. Do the retag before merging
+or re-running release-please's next proposed PR; merging it as-is would
+ship the bogus changelog and version bump. The `validate-version` gate
 described above exists specifically to stop a fresh instance of this from
 reaching this point silently again.
 
