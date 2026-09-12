@@ -303,6 +303,21 @@ Results are tagged with source project and deduplicated by ID.
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 | `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
+| `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
+| `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
+| `--chapter` | None | *(v3.8.0+)* With `--mode=unified`: filter results to a specific chapter tag, e.g. `--chapter="Chapter 2 — The Corner Pub"` |
+
+#### Unified search mode *(v3.8.0+)*
+
+For a project indexed with both `neuralmind build` (code) and
+`neuralmind ingest-content` (prose — see v3.4.0), `--mode=unified` queries
+both scopes and merges the results instead of picking one by default:
+
+```bash
+neuralmind query . "how does the corner pub scene end?" --mode=unified --scope-bias=content
+neuralmind query . "what handles the payment retry?" --mode=unified --scope-bias=code
+neuralmind query . "who visits the pub?" --mode=unified --chapter="Chapter 2 — The Corner Pub"
+```
 
 #### Output
 
