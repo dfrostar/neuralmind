@@ -60,7 +60,7 @@ For each identifier, finds its callers/callees/imports in the structural graph. 
 ### Fix 5: Code Snippet Extraction
 For source file matches, extracts actual source code centered on the best-matching identifier (with line numbers) instead of generic document snippets.
 
-> **Correction (v3.9.1): fixes 3–5 are off by default.**
+> **Correction (v3.10.0): fixes 3–5 are off by default.**
 >
 > As first shipped, fixes 3–5 — the passes that pull in nodes vector search did
 > not return — regressed the faithfulness gate and blocked this release. They
@@ -115,7 +115,7 @@ result = nm.query('How does the synapse layer work?')
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | Intent classification threshold |
 | `NEURALMIND_CODE_BOOST` | `3.0` | Code intent boost multiplier |
 | `NEURALMIND_DOC_BOOST` | `2.0` | Doc intent boost multiplier |
-| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.9.1+)* Opt-in the retrieval pull-in (fixes 3–5). Off by default — see the correction above |
+| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.10.0+)* Opt-in the retrieval pull-in (fixes 3–5). Off by default — see the correction above |
 
 ---
 

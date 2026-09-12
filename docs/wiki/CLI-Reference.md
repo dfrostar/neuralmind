@@ -303,6 +303,21 @@ Results are tagged with source project and deduplicated by ID.
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 | `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
+| `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
+| `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
+| `--chapter` | None | *(v3.8.0+)* With `--mode=unified`: filter results to a specific chapter tag, e.g. `--chapter="Chapter 2 — The Corner Pub"` |
+
+#### Unified search mode *(v3.8.0+)*
+
+For a project indexed with both `neuralmind build` (code) and
+`neuralmind ingest-content` (prose — see v3.4.0), `--mode=unified` queries
+both scopes and merges the results instead of picking one by default:
+
+```bash
+neuralmind query . "how does the corner pub scene end?" --mode=unified --scope-bias=content
+neuralmind query . "what handles the payment retry?" --mode=unified --scope-bias=code
+neuralmind query . "who visits the pub?" --mode=unified --chapter="Chapter 2 — The Corner Pub"
+```
 
 #### Output
 
@@ -2912,7 +2927,7 @@ renewed — issue a new one.
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
 | `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when a query is classified `docs` (code hits are multiplied by `0.7`). |
-| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.9.1+)* Opt-in — set to `1`, `true`, `yes` or `on` (case- and whitespace-insensitive); anything else, including unset, is off. Lets the v3.9.0 retrieval pull-in — two-pass source-file search, synapse-seeded expansion, and snippet extraction — contend for L3 slots, budget-neutrally (displacement, not addition). **Off by default because it was measured, not because it is unfinished:** on the faithfulness fixture it takes the delta from `+0.041` to `-0.065` appended (how v3.9.0 shipped) or `-0.107` displaced, against a `+0.000` gate floor. Making it budget-neutral made it worse, which is the useful finding — displacing evicts a real hit per candidate, so candidates that are worse than what they replace cost facts, not just tokens. Intent classification and the code-signal boost are unaffected by this flag and stay on; they are bit-for-bit neutral on the same fixture. Turning this on is a research setting until a gate says otherwise. Reproducing these numbers requires a **fresh copy of the fixture per sample** — `query()` reinforces synapses into `<project>/.neuralmind/synapses.db`, so re-running against the same directory measures a progressively trained index, not a repeat. |
+| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.10.0+)* Opt-in — set to `1`, `true`, `yes` or `on` (case- and whitespace-insensitive); anything else, including unset, is off. Lets the v3.9.0 retrieval pull-in — two-pass source-file search, synapse-seeded expansion, and snippet extraction — contend for L3 slots, budget-neutrally (displacement, not addition). **Off by default because it was measured, not because it is unfinished:** on the faithfulness fixture it takes the delta from `+0.041` to `-0.065` appended (how v3.9.0 shipped) or `-0.107` displaced, against a `+0.000` gate floor. Making it budget-neutral made it worse, which is the useful finding — displacing evicts a real hit per candidate, so candidates that are worse than what they replace cost facts, not just tokens. Intent classification and the code-signal boost are unaffected by this flag and stay on; they are bit-for-bit neutral on the same fixture. Turning this on is a research setting until a gate says otherwise. Reproducing these numbers requires a **fresh copy of the fixture per sample** — `query()` reinforces synapses into `<project>/.neuralmind/synapses.db`, so re-running against the same directory measures a progressively trained index, not a repeat. |
 
 ---
 

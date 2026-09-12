@@ -21,7 +21,7 @@
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-08-22",
+      "dateModified": "2026-09-10",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -35,7 +35,7 @@
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "3.3.0",
+        "softwareVersion": "3.10.0",
         "downloadUrl": "https://pypi.org/project/neuralmind/",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
@@ -195,6 +195,79 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v3100">
+            <h2>What&rsquo;s New in v3.10.0 &mdash; the v3.9.0 retrieval correction, and a public benchmark page</h2>
+            <p><strong>v3.9.0's adversarial-retrieval pull-in regressed the faithfulness gate after release: measured, its extra candidates pushed the gate's delta from +0.041 to -0.065 against a +0.000 floor.</strong> v3.10.0 restores the gate as blocking and makes that pull-in opt-in.</p>
+            <h3>What&rsquo;s fixed</h3>
+            <ul>
+                <li><strong>Faithfulness gate restored</strong> &mdash; the v3.9.0 pull-in (synapse-seeded expansion, dependency-graph traversal, code-snippet extraction) is now gated behind <code>NEURALMIND_RETRIEVAL_EXPANSION</code>, off by default. Intent classification and the code-signal boost, v3.9.0's other two changes, are unaffected and stay on</li>
+                <li><strong>Gate averaged over 3 samples</strong> &mdash; and learned synapse state is reset between them, to absorb HNSW-index jitter the single-sample gate was measuring as signal</li>
+                <li><strong>L3 slice ranked before flattening</strong> &mdash; an expansion candidate must now outrank what it would replace, rather than being appended regardless of score</li>
+            </ul>
+            <h3>Also in v3.10.0</h3>
+            <ul>
+                <li>The public benchmark is now a first-class page on the marketing site, not just a results file in the repo</li>
+                <li>Six pages that were canonicalizing to the homepage now canonicalize to themselves; FAQ answers moved into page HTML so a non-JS crawler can see them</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.10.0.md">v3.10.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v390">
+            <h2>What&rsquo;s New in v3.9.0 &mdash; SOTA Synapse Dynamics &amp; Adversarial Retrieval</h2>
+            <p><strong>Six modern brain-inspired learning techniques in the synapse layer, plus adversarial-QA-identified retrieval fixes.</strong> The synapse layer now learns like a biological brain &mdash; not just "what files go together" but "what you actually need before you ask."</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong>Synapse Dynamics (6 techniques)</strong> &mdash; lateral inhibition, Synaptic Tagging &amp; Capture, non-monotonic plasticity (SAMPL), resource-dependent STDP, Feeling-of-Knowing gating, and replay-based consolidation</li>
+                <li><strong>Retrieval enhancements</strong> &mdash; intent-aware classification and a code-signal boost fix the failure mode where "how does X implement Y" queries surfaced docstrings instead of implementation code</li>
+            </ul>
+            <div class="quote">Note: the three most aggressive retrieval fixes in this release regressed the faithfulness gate and were made opt-in in v3.10.0 &mdash; see that release's notes for the measured tradeoff.</div>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.9.0.md">v3.9.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v380">
+            <h2>What&rsquo;s New in v3.8.0 &mdash; unified content+code search for book-like projects</h2>
+            <p><strong>v3.4.0 added <code>ingest-content</code> for book-like projects. v3.8.0 adds the query-side counterpart.</strong> <code>--mode=unified</code> searches content and code scopes together and merges the results.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong><code>neuralmind query --mode=unified</code></strong> &mdash; searches both scopes and merges results, rather than querying one scope by default</li>
+                <li><strong><code>--scope-bias=content|code|balanced</code></strong> &mdash; weights which scope's hits rank higher in the merged results</li>
+                <li><strong><code>--chapter=</code></strong> &mdash; filters unified results to a specific chapter tag</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.8.0.md">v3.8.0 release notes</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v370">
+            <h2>What&rsquo;s New in v3.7.0 &mdash; a project registry for multi-project operator mode</h2>
+            <p><strong>NeuralMind isolates per-project by default, but an operator running it across several projects had no central record of which projects exist.</strong> v3.7.0 adds that registry.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong>Project registry</strong> &mdash; a central record of projects an operator has built, for multi-project operator mode. Isolation itself is unchanged: each project's <code>.neuralmind/</code> stays scoped to it</li>
+                <li><strong><code>license expiring</code></strong> (tier2) &mdash; a renewal-window warning so a Team-tier license doesn't lapse silently</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.7.0.md">v3.7.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Multi-Project-Scoping.md">Multi-project scoping guide &rarr;</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v360">
+            <h2>What&rsquo;s New in v3.6.0 &mdash; listed on the a0-plugins registry</h2>
+            <p><strong>NeuralMind's plugin manifest was staged for Agent Zero's <code>a0-plugins</code> registry, prevalidated against that registry's own CI.</strong> Also corrected an unsourced performance figure that had crept into the manifest itself.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong>a0-plugins registry entry</strong> &mdash; staged and prevalidated ahead of submission</li>
+                <li><strong>Claims correction</strong> &mdash; <code>plugin.yaml</code>'s description had an unsourced "12-70x" figure outside the sourced 12-50&times; range this repo's claims-guard enforces everywhere else; corrected, and registry manifests are now gated by the same check</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v3.6.0.md">v3.6.0 release notes</a></p>
         </div>
     </section>
 
