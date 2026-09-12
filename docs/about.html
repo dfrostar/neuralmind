@@ -98,7 +98,7 @@
         </section>
         <section>
             <h2>Supply chain</h2>
-            <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, linked from <a href="https://neuralmind.uk/security">neuralmind.uk/security</a> (always resolves to the latest tag) or attached directly to each <a href="https://github.com/dfrostar/neuralmind/releases">GitHub release</a>. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
+            <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, linked from <a href="https://neuralmind.uk/security">neuralmind.uk/security</a> (resolved from the GitHub API at build time, falling back to the last-known release if the API is unavailable). GitHub Release attachment is attempted but best-effort — it commonly fails for release-please-created releases, since published GitHub Releases on this repo are immutable, in which case the site-hosted copy is the reliable source. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
             <p>100% local. No cloud lock-in. No telemetry. MIT-licensed.</p>
         </section>
     </div>
@@ -329,7 +329,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Hooks installed</strong> — Claude Code lifecycle hooks registered.</li>
             </ul>
             <div class="quote">Documentation that proves itself against your own index — not a style guide, a fitness function.</div>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.7.2.md">Full v1.7.2 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/doc-evolver-optimize-docs.md">DocEvolver walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Architecture.md#doc-evolver-v0530">Architecture &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.7.2.md">Full v1.7.2 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/doc-evolver-optimize-docs.md">DocEvolver walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Architecture.md#docevolver-v0530">Architecture &rarr;</a></p>
         </div>
     </section>
 

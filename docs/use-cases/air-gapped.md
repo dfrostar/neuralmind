@@ -13,7 +13,11 @@ model, and nothing on this page changes that.
 Never transmitted by NeuralMind, under the default configuration: your
 source, file paths, query text, results, or any identifier. There is no
 telemetry, no remote logging and no update check. Every outbound-capable
-path in the package, in full:
+path in normal build/query operation, in full (this excludes the
+separate, explicitly opt-in `neuralmind benchmark --public`/`--judge`
+dev-benchmarking commands, which clone pinned GitHub repos and can call
+an LLM judge — irrelevant to air-gapped operation since they require
+internet access by design, not something you'd run on an isolated host):
 
 | Path | Target | Carries your data? |
 |---|---|---|
@@ -29,8 +33,11 @@ It is also avoidable, which is what the rest of this page is for. On an
 air-gapped machine, leave `NEURALMIND_LLM_SEED` unset (the default) and
 the synapse-seeding row above never triggers either — there is no
 mechanism by which it could reach out on a network-less host. The
-remaining network dependencies are install-time only: the PyPI package
-download, and NeuralMind's own first-use embedding-model download.
+remaining network dependencies are two, neither of them ongoing: the
+PyPI package download (at `pip install` time) and NeuralMind's own
+embedding-model download (at first use/build, not at `pip install` —
+stage it ahead of time per Step 2 below if install and first build
+happen on different machines or at different times).
 
 <!-- claims-guard:allow — names the retired phrase in order to retire it. Note
      it currently also escapes FORBIDDEN by being line-wrapped, which is the
@@ -318,10 +325,12 @@ supports:
   read [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md)
   before opting in, since it is not a guarantee that only prose is sent.
 - **Wheel set is auditable** — every transitive dep is a file on disk
-  you can hash, mirror, and review independently. See the [SBOM
-  attached to each tagged release](https://github.com/dfrostar/neuralmind/releases)
-  (`neuralmind-vX.Y.Z.sbom.json`, CycloneDX JSON) for the full graph
-  with versions + licenses.
+  you can hash, mirror, and review independently. See the current SBOM
+  at [neuralmind.uk/security](https://neuralmind.uk/security)
+  (`neuralmind-vX.Y.Z.sbom.json`, CycloneDX JSON, generated for every
+  release) for the full graph with versions + licenses — GitHub Release
+  attachment is attempted but best-effort, since published releases on
+  this repo are immutable and commonly reject the upload.
 - **No telemetry, no remote logging, no automatic update checks.**
   See [`docs/SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) and
   [`docs/COMPLIANCE-SUMMARY.md`](../COMPLIANCE-SUMMARY.md).

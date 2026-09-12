@@ -49,8 +49,11 @@ CONTEXT=$(neuralmind query . "how does auth work?")
 echo "$CONTEXT" | ollama run llama3.1:70b "Explain the auth flow"
 ```
 
-Nothing here touches the public internet under the default configuration
-(`NEURALMIND_LLM_SEED` unset, which it is unless you set it).
+Nothing in NeuralMind's own build/query runtime touches the public
+internet under the default configuration (`NEURALMIND_LLM_SEED` unset,
+which it is unless you set it) — that's distinct from the setup commands
+above (`pip install`, `ollama pull`), which do need internet access the
+first time you run them, same as installing any package.
 
 ## Compliance-friendly properties
 
