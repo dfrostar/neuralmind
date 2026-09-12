@@ -54,7 +54,11 @@ tests/benchmark/report.md
 tests/benchmark/multi_model.json
 tests/benchmark/multi_model.md
 tests/fixtures/sample_project/graphify-out/
-/graphify-out/
+# Not root-anchored: a nested graphify-out/ (e.g. docs/releases/graphify-out/
+# store.sqlite, committed by accident in 71dca4f) should never be trackable
+# either. neuralmind/demo_data/sample_project/graphify-out/ is intentionally
+# bundled and stays tracked — gitignore doesn't untrack what's already tracked.
+graphify-out/
 
 # Per-project synapse layer artifacts (generated, not source)
 # Root-anchored: ignores .neuralmind/ everywhere (repo root, fixtures, nested).
