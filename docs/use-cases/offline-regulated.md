@@ -10,17 +10,27 @@ You work in a regulated industry (healthcare, finance, defense, legal), on an ai
   local. The one exception is opt-in and documented below.
 - **No cloud account required.** No sign-up, no telemetry, no outbound
   network in the default configuration.
-- **No code uploaded anywhere, ever — opt-in or not.** ChromaDB runs
-  in-process. Even the one opt-in LLM path (below) sends documentation
-  prose, never source code.
+- **No code uploaded anywhere by the default path.** ChromaDB runs
+  in-process. The one opt-in LLM path (below) is a narrower but real
+  exception — read it before assuming "never."
 - **Pairs with local LLMs.** Use with Ollama, llama.cpp, vLLM for an end-to-end local stack.
 
-**The one opt-in exception.** Setting both `NEURALMIND_LLM_SEED=1` and
-`ANTHROPIC_API_KEY` sends the text of `README.md`/`docs/architecture.md`
-— project documentation prose, never source code, never client files —
-to Anthropic's API to seed synapse edges. Both are unset by default; leave
-them unset and this path never runs. Fail-open: any error returns `0` and
-never blocks indexing. Full disclosure, code-cited:
+**The one opt-in exception — read the fine print.** Setting both
+`NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` reads whatever bytes exist
+at two fixed paths — `README.md` and `docs/architecture.md` relative to
+the project root — and sends up to the first 8,000 characters (combined)
+to Anthropic's API to seed synapse edges. **This is a path-based read, not
+a content classifier:** the code does not verify the file is prose before
+sending it. In the overwhelmingly common case these are ordinary
+documentation files, but a `README.md` that embeds real code snippets,
+API keys in example blocks, or internal architecture detail — or a
+`README.md`/`docs/architecture.md` that is itself a symlink to something
+else — would have that content sent unfiltered. If your policy prohibits
+any client file reaching a third party regardless of its usual contents,
+don't opt in, and audit what's actually at those two paths before you do.
+Both env vars are unset by default; leave them unset and this path never
+runs at all. Fail-open: any error returns `0` and never blocks indexing.
+Full disclosure, code-cited:
 [`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 
 ## Fully local stack
@@ -46,8 +56,8 @@ Nothing here touches the public internet under the default configuration
 
 | Property | NeuralMind |
 |---|---|
-| Source code transmitted externally | Never — under any configuration, opt-in included |
-| Documentation prose (README/architecture.md) transmitted externally | Only if you opt in with `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` (both unset by default) — see [disclosure](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) |
+| Source code transmitted externally | Never, under the default configuration (both env vars unset) |
+| Contents of `README.md`/`docs/architecture.md` transmitted externally | Only if you opt in with `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` (both unset by default) — unfiltered, path-based, not verified to be prose-only; see [disclosure](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) before opting in |
 | Telemetry | None |
 | SaaS dependency | None |
 | Account / login | None |

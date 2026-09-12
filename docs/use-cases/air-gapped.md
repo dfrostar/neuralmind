@@ -20,7 +20,7 @@ path in the package, in full:
 | `neuralmind/onnx_embedder.py` | one fixed HTTPS URL, `GET`, SHA256-pinned | **No.** It downloads a public model. The request carries nothing about your repository. |
 | `neuralmind/daemon_client.py` | `127.0.0.1` | **No.** A loopback socket to NeuralMind's own daemon — it is not an external connection at all. |
 | `neuralmind/local_client.py` | `http://localhost:11434` (Ollama default) | Loopback, unless you repoint `endpoint` yourself. |
-| `neuralmind/synapses.py::seed_from_documentation()` | Anthropic API | **Only if you explicitly opt in** with both `NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` set (both unset by default). Sends README/architecture-doc prose — never source code, never other files — to seed synapse edges. Fail-open: any error returns `0` and never blocks indexing. See [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md). |
+| `neuralmind/synapses.py::seed_from_documentation()` | Anthropic API | **Only if you explicitly opt in** with both `NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` set (both unset by default). Reads whatever bytes exist at two fixed paths (`README.md`, `docs/architecture.md`) and sends up to the first 8,000 characters combined — a path-based read, not a content classifier, so a README with embedded code snippets or a symlinked path sends that unfiltered. Fail-open: any error returns `0` and never blocks indexing. See [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) before opting in. |
 
 So under the default configuration there is exactly one request that
 reaches the internet, it is a plain file download, and an observer learns
@@ -309,13 +309,14 @@ supports:
   `NEURALMIND_LLM_SEED` is left unset (the default) — an air-gapped host
   has no route to trigger it regardless, but the setting itself is not a
   network condition, so state it explicitly rather than assume it.
-- **No repository content transmitted, even before staging.** The sole
-  network-reachable request in the default configuration is a `GET` for a
-  public, hash-pinned model artifact and carries no source, paths, query
-  text or identifiers — see the table at the top of this page. The one
-  opt-in exception (`NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY`) sends
-  documentation prose, never source, and is documented in full at
-  [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
+- **No repository content transmitted under the default configuration.**
+  The sole network-reachable request in the default configuration is a
+  `GET` for a public, hash-pinned model artifact and carries no source,
+  paths, query text or identifiers — see the table at the top of this
+  page. The one opt-in exception (`NEURALMIND_LLM_SEED=1` +
+  `ANTHROPIC_API_KEY`) is a path-based read of two files, unfiltered —
+  read [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md)
+  before opting in, since it is not a guarantee that only prose is sent.
 - **Wheel set is auditable** — every transitive dep is a file on disk
   you can hash, mirror, and review independently. See the [SBOM
   attached to each tagged release](https://github.com/dfrostar/neuralmind/releases)
