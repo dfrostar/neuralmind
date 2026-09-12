@@ -6,10 +6,22 @@ You work in a regulated industry (healthcare, finance, defense, legal), on an ai
 
 ## Why NeuralMind fits
 
-- **No API calls.** Indexing, embeddings, retrieval — all local.
-- **No cloud account required.** No sign-up, no telemetry, no outbound network.
-- **No code uploaded anywhere.** ChromaDB runs in-process.
+- **No API calls by default.** Indexing, embeddings, retrieval — all
+  local. The one exception is opt-in and documented below.
+- **No cloud account required.** No sign-up, no telemetry, no outbound
+  network in the default configuration.
+- **No code uploaded anywhere, ever — opt-in or not.** ChromaDB runs
+  in-process. Even the one opt-in LLM path (below) sends documentation
+  prose, never source code.
 - **Pairs with local LLMs.** Use with Ollama, llama.cpp, vLLM for an end-to-end local stack.
+
+**The one opt-in exception.** Setting both `NEURALMIND_LLM_SEED=1` and
+`ANTHROPIC_API_KEY` sends the text of `README.md`/`docs/architecture.md`
+— project documentation prose, never source code, never client files —
+to Anthropic's API to seed synapse edges. Both are unset by default; leave
+them unset and this path never runs. Fail-open: any error returns `0` and
+never blocks indexing. Full disclosure, code-cited:
+[`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 
 ## Fully local stack
 
@@ -27,20 +39,22 @@ CONTEXT=$(neuralmind query . "how does auth work?")
 echo "$CONTEXT" | ollama run llama3.1:70b "Explain the auth flow"
 ```
 
-Nothing here touches the public internet.
+Nothing here touches the public internet under the default configuration
+(`NEURALMIND_LLM_SEED` unset, which it is unless you set it).
 
 ## Compliance-friendly properties
 
 | Property | NeuralMind |
 |---|---|
-| Source code transmitted externally | Never |
+| Source code transmitted externally | Never — under any configuration, opt-in included |
+| Documentation prose (README/architecture.md) transmitted externally | Only if you opt in with `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` (both unset by default) — see [disclosure](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) |
 | Telemetry | None |
 | SaaS dependency | None |
 | Account / login | None |
 | Network required for install | Only to fetch the Python package — mirror it internally if needed |
 | License | MIT (auditable) |
 | Data at rest | `graphify-out/` and `.neuralmind/` inside your project |
-| Data in transit | N/A (no outbound calls) |
+| Data in transit | N/A under default configuration (no outbound calls) |
 
 ## Air-gapped install
 

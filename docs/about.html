@@ -98,7 +98,7 @@
         </section>
         <section>
             <h2>Supply chain</h2>
-            <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, served from <a href="https://neuralmind.uk/sbom">neuralmind.uk/sbom</a>. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
+            <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, linked from <a href="https://neuralmind.uk/security">neuralmind.uk/security</a> (always resolves to the latest tag) or attached directly to each <a href="https://github.com/dfrostar/neuralmind/releases">GitHub release</a>. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
             <p>100% local. No cloud lock-in. No telemetry. MIT-licensed.</p>
         </section>
     </div>
@@ -329,7 +329,7 @@ $ neuralmind query . "CMMC gap analysis"
                 <li><strong>Hooks installed</strong> — Claude Code lifecycle hooks registered.</li>
             </ul>
             <div class="quote">Documentation that proves itself against your own index — not a style guide, a fitness function.</div>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.7.2.md">Full v1.7.2 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/doc-evolver-optimize-docs.md">DocEvolver walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Architecture.html#doc-evolver-v0530">Architecture &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v1.7.2.md">Full v1.7.2 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/doc-evolver-optimize-docs.md">DocEvolver walkthrough &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/wiki/Architecture.md#doc-evolver-v0530">Architecture &rarr;</a></p>
         </div>
     </section>
 
@@ -454,7 +454,7 @@ $ neuralmind query . "CMMC gap analysis"
             <p>Reads <code>git diff --name-only &lt;base&gt;</code>, maps each changed file to its graph nodes, runs spreading activation (depth 2, top-<em>k</em> configurable) from those seed nodes, and surfaces the most likely co-break candidates — the nodes most strongly associated with the changed code but not themselves in the diff. Prints a ranked table of candidates with their edge weights. Also available as the <code>neuralmind_review</code> MCP tool, so agents can call it automatically before a commit or push. Handles cold (unbuilt) graphs gracefully.</p>
             <h3><code>neuralmind savings</code> — cumulative token savings dashboard</h3>
             <p>Reads the JSONL event log (<code>NEURALMIND_MEMORY=1</code>), groups events by session, and prints a dashboard: total sessions tracked, total tokens saved, average reduction ratio, and a table of the most recent queries with their individual ratios. Run it after a week of use to get a concrete, cumulative number for the token cost you've avoided.</p>
-            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.39.0.md">Full v0.39.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.html">Claude Code walkthrough &rarr;</a></p>
+            <p><a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v0.39.0.md">Full v0.39.0 release notes &rarr;</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md">Claude Code walkthrough &rarr;</a></p>
         </div>
     </section>
 
