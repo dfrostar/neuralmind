@@ -25,7 +25,13 @@ jobs:
     name: Validate Tag vs Package Version
     uses: ./.github/workflows/_validate-release-tag.yml
     with:
-      release_tag: ${{ env.RELEASE_TAG }}
+      # Duplicates the RELEASE_TAG env expression above rather than reusing it:
+      # `env` is NOT an available context in `jobs.<id>.with.<input>` (only
+      # github, needs, strategy, matrix, inputs, vars are). Referencing it
+      # there makes the whole workflow file invalid, so Actions rejects it at
+      # startup -- no jobs, no logs, and a release that silently never
+      # publishes. That is exactly what happened to v3.10.0.
+      release_tag: ${{ inputs.tag || github.ref_name }}
 
   smoke-test:
     name: Smoke Test

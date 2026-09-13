@@ -48,7 +48,10 @@ jobs:
     name: Validate Tag vs Package Version
     uses: ./.github/workflows/_validate-release-tag.yml
     with:
-      release_tag: ${{ env.RELEASE_TAG }}
+      # Not ${{ env.RELEASE_TAG }} -- `env` is not an available context in a
+      # reusable-workflow `with:` block, and using it there invalidates the
+      # entire workflow file. See release.yml's copy of this note.
+      release_tag: ${{ inputs.tag || github.ref_name }}
 
   build-and-push:
     name: Build + push multi-platform image
