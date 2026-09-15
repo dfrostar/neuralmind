@@ -64,20 +64,20 @@ fixes already specced in `SPEC_PERFORMANCE_IMPROVEMENTS_v3.12.0.md` (Fixes 2–4
 | 1.4 | Apply `slow` / `integration` / `perf` markers; `--durations=25` in the test job; `test_synapse_latency.py` behind `perf`; fix or delete `bench/benchmark.py` and the hard-coded path in `peptide_benchmark.py` (parametrise the corpus path via env). | CI | 0.75 |
 | 1.5 | Publish: `docs/benchmarks/perf.md` generated from the baseline JSON (the same generator that writes the chart), and `site/claims.json` entries for any figure the site will quote, all marked `ci-gated` only if the gate is real. | `tests/test_site_claims.py` | 0.5 |
 
-**Gate values recorded from this checkout (2026-09-15, Linux x86_64 container,
-`NEURALMIND_ORT_THREADS=1`, `tests/fixtures/sample_project`, 135 nodes)** —
-these become the Phase 1 baseline and the "before" column for every later phase:
+**Gate values recorded from this checkout (2026-09-15, Linux x86_64
+container; full table and conditions in spec §1.1)** — these become the
+Phase 1 baseline and the "before" column for every later phase:
 
-| Measurement | Value |
-|-------------|-------|
-| `import neuralmind.cli` (warm) | ~90 ms |
-| `neuralmind _hook …` spawn floor (`NEURALMIND_SYNAPSE_INJECT=0`) | ~105 ms |
-| `prompt-submit` hook, index present | ~600–640 ms, **0 bytes of context returned** (empty synapse store) |
-| `compress-read` / `edit-activity` / `session-start` hooks | ~105–120 ms each |
-| `neuralmind query`, warm index, no daemon | ~630–660 ms |
-| No-op `neuralmind build` | ~400 ms |
-| Cold `neuralmind build` (incl. first-run model fetch and ONNX session) | ~16.5 s |
-| `graph.json` links after builds 1→6 with no file changes | 189 → 193 → 217 → 221 → 225 (`contains` +4 per build) |
+| Measurement | Fixture (135 nodes) | Synthetic (10,220 nodes) |
+|-------------|--------------------:|-------------------------:|
+| `import neuralmind.cli` (warm) | ~90 ms | — |
+| hook spawn floor (`NEURALMIND_SYNAPSE_INJECT=0`) | ~105 ms | — |
+| `prompt-submit` hook, index present | ~600–640 ms, **0 bytes returned** | ~1.5–1.65 s, **0 bytes returned** |
+| `compress-read` / `edit-activity` / `session-start` | ~105–120 ms | ~100 ms |
+| `neuralmind query`, warm index, no daemon | ~630–660 ms | ~1.5–1.6 s |
+| No-op `neuralmind build` | ~400 ms | ~1.35 s |
+| Cold `neuralmind build` | ~16.5 s | ~192 s |
+| `graph.json` links, builds 1→6, no changes | 189 → 193 → 217 → 221 → 225 | 9,610 stable |
 
 The last row is finding B2 reproduced; it is a correctness bug, not a
 performance one, and gets its own `fix:` in Phase 4 (or earlier if convenient).

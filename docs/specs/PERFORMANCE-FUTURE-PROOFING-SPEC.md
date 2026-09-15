@@ -31,7 +31,7 @@ The six findings that matter most, in priority order:
 | # | Finding | Evidence | Impact |
 |---|---------|----------|--------|
 | P0-1 | **`neuralmind-mcp` crashes at startup on a fresh install.** Dependabot commit `1eadb8d` (2026-08-31) lifted the cap to `mcp<3` and pinned `mcp==2.1.1`; MCP Python SDK 2.0.0 (2026-07-28) removed `Server.list_tools()` / `Server.call_tool()` decorators that `mcp_server.py:1286-1291` use. Reproduced: `mcp==2.2.0` → `hasattr(Server('x'),'list_tools') == False`. The CI fresh-install job only *imports* `mcp_server` (`ci.yml:178-181`), so it passes. | `pyproject.toml:80`, `requirements-pinned.txt` (comment still says "Held at 1.x"), `mcp_server.py:1284-1296` | Every v3.10.0+ user who installed after 2026-08-31 with a fresh resolver gets a dead MCP server. Cursor / Cline / generic-MCP users have no other integration path. |
-| P0-2 | **Every hook and CLI query runs a full `build()` in a fresh process.** `UserPromptSubmit` → `_spread_for_prompt` → `NeuralMind(cwd).synaptic_neighbors()` → `_ensure_built()` → `build()` (graphgen walk + re-hash, `graph.json` re-write with `indent=2`, IR materialize + write, per-node SQLite SELECT, unconditional BM25 rebuild, structural index over all edges) and *then* constructs an ONNX session to embed the prompt. Same for `edit-activity` on every Edit/Write and `neuralmind query`. | `hooks.py:437-452`, `core.py:1256-1264`, `core.py:488-610`, `core.py:1099-1164`, `turbovec_backend.py:806-849`, `cli.py:1048` | This is the root cause of the "P95 14.9 s" and "3.5 s first query" numbers in the two existing perf docs, and it sits synchronously in front of every prompt. The v3.12.0 spec's Fix 1 (pre-load ONNX in `__init__`) would move that cost *onto* every hook, not off it. |
+| P0-2 | **Every hook and CLI query runs a full `build()` in a fresh process.** `UserPromptSubmit` → `_spread_for_prompt` → `NeuralMind(cwd).synaptic_neighbors()` → `_ensure_built()` → `build()` (graphgen walk + re-hash, `graph.json` re-write with `indent=2`, IR materialize + write, per-node SQLite SELECT, unconditional BM25 rebuild, structural index over all edges) and *then* constructs an ONNX session to embed the prompt. Same for `neuralmind query`. **Measured on this checkout:** ~600 ms per prompt at 135 nodes and ~1.5 s per prompt at 10,220 nodes, returning 0 bytes of context in both cases (Section 1.1). | `hooks.py:437-452`, `core.py:1256-1264`, `core.py:488-610`, `core.py:1099-1164`, `turbovec_backend.py:806-849`, `cli.py:1048` | Per-prompt cost grows with repo size because the hook re-walks the repo. This is the root cause of the "P95 14.9 s" and "3.5 s first query" numbers in the two existing perf docs, and it sits synchronously in front of every prompt. The v3.12.0 spec's Fix 1 (pre-load ONNX in `__init__`) would move that cost *onto* every hook, not off it. |
 | P0-3 | **Learned memory does not survive rebuilds, and the store cannot shrink.** Markdown heading node IDs embed a line index (`graphgen.py:899`); nothing garbage-collects synapse edges whose nodes vanished; edges reaching 5 activations get `LTP_FLOOR=0.20 > PRUNE_THRESHOLD=0.01` and become immortal (`synapses.py:66-69`, `:2293-2300`); `structural_edges`/`type_edges` never decay; no `VACUUM`/checkpoint anywhere; `last_decay` is written but never read, so full-table decay runs on every SessionStart and every 600 s in `watch`. | `synapses.py:821-959`, `hooks.py:328`, `cli.py:3802` | Months-old installs on large repos accumulate a DB of orphaned, unprunable edges that every decay tick rewrites in full. |
 | P0-4 | **Multi-writer SQLite without `BEGIN IMMEDIATE` or busy retry.** Watcher, hooks, MCP server, CLI and daemon all write `synapses.db`; 13 of 14 write transactions use deferred `BEGIN` (`synapses.py:605…2263`), which in WAL mode returns `SQLITE_BUSY` on read→write upgrade *without* invoking the 30 s busy handler. Every caller swallows the exception. `reinforce()` is O(n²) in batch size with no cap (`synapses.py:583-588`); a checkout touching 200 files can enqueue millions of pairs in one transaction. | `synapses.py:377-384, 583-588`, `synapse_feedback.py:97-115`, `watcher.py:33` | Silent learning loss under contention; occasional multi-second lock stalls on a hook. Not covered by any test (`test_synapse_latency.py` scales store size, not batch size). |
 | P1-5 | **No end-to-end latency, cold-start, build-time, memory or scaling measurement exists — and nothing gates them.** `tests/benchmark/latency.py` measures only synapse store ops on a synthetic 4k-node store; `run.py` measures token ratio and hit rate; the good harness (`bench/benchmark_turbovec.py`: RSS, index bytes, p50/p95) is referenced by no workflow. `hooks.py` and `core.py` contain zero timers. `REDUCTION_FLOOR` is defined twice. The regression test reads a gitignored `results.json` and skips when no graph is present. | `tests/benchmark/*`, `tests/test_benchmark_regression.py:26-42`, `.github/workflows/ci-benchmark.yml` | A performance program cannot claim wins or prevent regressions until this exists. It is the first deliverable in the plan. |
@@ -64,6 +64,36 @@ document is a constant-factor improvement layered on that.
 Nothing in this document is an invented figure. Where a number is a
 projection it is labelled as one.
 
+### 1.1 Measurements taken on this checkout
+
+Linux x86_64 container, Python 3.11.15, clean venv resolving to
+`mcp 2.2.0`, `onnxruntime 1.30.0`, `turbovec 1.0.0`, `tree-sitter 0.26.0`,
+`numpy 2.4.6`. Wall-clock via `date +%s%N` around the subprocess, 3–5 runs,
+values rounded. Fixture = scratch copy of `tests/fixtures/sample_project`;
+synthetic = `bench/benchmark_turbovec.generate_synthetic_repo(n_files=600)`.
+Fixture runs used `NEURALMIND_ORT_THREADS=1`; the synthetic cold build used
+the default thread count.
+
+| Measurement | Fixture (135 nodes) | Synthetic (600 files, 10,220 nodes) |
+|-------------|--------------------:|------------------------------------:|
+| `import neuralmind.cli` (warm) | ~90 ms | — |
+| `neuralmind _hook …` spawn floor (`NEURALMIND_SYNAPSE_INJECT=0`) | ~105 ms | — |
+| `prompt-submit` hook, index present | ~600–640 ms | ~1,500–1,650 ms |
+| context bytes returned by `prompt-submit` | 0 | 0 |
+| `compress-read` / `edit-activity` / `session-start` hooks | ~105–120 ms | ~100 ms (`edit-activity`) |
+| `neuralmind query`, warm index, no daemon | ~630–660 ms | ~1,500–1,600 ms |
+| No-op `neuralmind build` (nothing changed) | ~400 ms | ~1,300–1,400 ms |
+| Cold `neuralmind build` | ~16.5 s (incl. first-run model fetch) | ~192 s |
+| `graph.json` size | 113 KB | 6.9 MB |
+| `graph.json` links, builds 1→6, no file changes | 189 → 193 → 217 → 221 → 225 | 9,610 (stable; no markdown in corpus) |
+| `neuralmind-mcp` startup | `AttributeError: 'Server' object has no attribute 'list_tools'` | same |
+
+Two things to read off this table. First, the hook's cost is the no-op
+build plus an ONNX session, and both scale with the repo, so a real 50k-node
+repo will sit well above Claude Code's comfort zone on every prompt. Second,
+the edge growth is specific to markdown `contains` edges (B2), which is why
+the markdown-free synthetic corpus is stable.
+
 ---
 
 ## 2. What is already good (do not re-propose)
@@ -73,8 +103,8 @@ re-solving solved problems.
 
 - **Lazy heavy imports.** numpy, onnxruntime, chromadb, mcp, pydantic,
   cryptography and tree-sitter are all deferred; `import neuralmind.cli` pulls
-  only `yaml` + `sqlite3` from third parties (measured ≈73 ms warm in this
-  container without the vector stack). CI asserts the default install is
+  only `yaml` + `sqlite3` from third parties (measured ≈90 ms warm in a clean venv with the full vector stack
+  installed; bare interpreter ≈11 ms). CI asserts the default install is
   ChromaDB-free (`ci.yml:167-186`).
 - **Incremental graph extraction is real.** Content-hash + mtime cache,
   persisted importer index, transitive-importer invalidation, fail-open on a
@@ -120,7 +150,7 @@ installs; **P2** hygiene / future risk.
 | ID | Sev | Finding | Evidence |
 |----|-----|---------|----------|
 | H1 | P0 | `prompt-submit` hook constructs `NeuralMind` and calls `synaptic_neighbors`, which calls `_ensure_built()` → full `build()`, then creates an ONNX `InferenceSession` to embed the prompt. Runs synchronously before every user prompt. | `hooks.py:437-452`, `core.py:1540-1548`, `core.py:1256-1264` |
-| H2 | P0 | `edit-activity` hook (Edit/Write matcher) does the same via `record_edit_activity`. | `hooks.py:511` |
+| H2 | P2 | `edit-activity` hook constructs `NeuralMind` per Edit/Write but does **not** build (`record_edit_activity` never calls `_ensure_built`); measured at the ~100 ms spawn floor. Listed so nobody "fixes" it. | `hooks.py:511-528`, `core.py:360` |
 | H3 | P1 | `build()` on the query path re-runs `graphgen.build_graph()` (walk + hash every file), **rewrites `graph.json` with `indent=2` unconditionally**, materialises and writes `index_ir.json`, issues one SQLite SELECT per node in `embed_nodes`, and rebuilds BM25 from a full table scan even when zero nodes changed. | `core.py:1099-1164`, `core.py:762-798`, `turbovec_backend.py:806-849, 1137-1200` |
 | H4 | P1 | `main()` builds the entire 59-subcommand argparse tree before dispatching the hidden `_hook` subcommand. `cli.py:13` and `mcp_server.py:42` prepend to `sys.path` at import time. | `cli.py:5236-6751, 6522` |
 | H5 | P1 | Hooks never use the daemon; only `cmd_query`/`cmd_stats` try it, and the daemon must be started by hand. No idle auto-shutdown. Daemon port 8787 collides with `server.serve` default 8787. | `cli.py:693, 1011, 1825`, `daemon.py:48`, `server.py:717` |
@@ -508,9 +538,9 @@ to the existing `.neuralmind/metrics/*.jsonl` (already has 30-day retention).
 | Area | Today (measured or documented) | Target | How verified |
 |------|------|--------|--------------|
 | MCP server on fresh install | crashes with `AttributeError` on mcp ≥ 2.0 | starts and answers `tools/list` on mcp 1.30 **and** 2.2 | new CI step |
-| `prompt-submit` hook, index present | full `build()` + ONNX session (P95 3.5–14.9 s on the prose corpus per existing docs) | p95 ≤ 250 ms without daemon; ≤ 100 ms with | `perf.py` gate |
-| `neuralmind query`, warm index, no daemon | full `build()` per invocation | load-only; p95 ≤ 1.5 s incl. ONNX on fixture | `perf.py` gate |
-| Incremental no-op build | re-walks, re-writes `graph.json`, rebuilds BM25 | ≤ 10 % of cold build; artifacts byte-identical | `perf.py` gate |
+| `prompt-submit` hook, index present | full `build()` + ONNX session: ~0.6 s at 135 nodes, ~1.5 s at 10k nodes (measured); P95 3.5–14.9 s on the prose corpus per existing docs | p95 ≤ 250 ms without daemon; ≤ 100 ms with | `perf.py` gate |
+| `neuralmind query`, warm index, no daemon | full `build()` per invocation: ~0.65 s at 135 nodes, ~1.5 s at 10k nodes (measured) | load-only; p95 ≤ 1.5 s incl. ONNX on fixture | `perf.py` gate |
+| Incremental no-op build | re-walks, re-writes `graph.json`, rebuilds BM25: ~0.4 s at 135 nodes, ~1.35 s at 10k nodes (measured) | ≤ 10 % of cold build; artifacts byte-identical | `perf.py` gate |
 | Synapse DB after 100 sessions on `synthetic-1k` | unmeasured; unbounded by construction | ≤ 2× the 10-session size; zero orphans after rebuild | `perf.py` + new unit tests |
 | `reinforce()` with 200 touched files | O(n²) pairs, unbounded | capped at 64 nodes/batch; ≤ 50 ms | unit + perf |
 | Concurrent writers (watcher + hook + MCP) | silent loss on `SQLITE_BUSY` | zero lost writes in a 3-process contention test | new integration test |
