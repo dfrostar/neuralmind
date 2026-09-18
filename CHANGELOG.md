@@ -1,5 +1,24 @@
 # Changelog
 
+## [4.2.0](https://github.com/dfrostar/neuralmind/compare/v4.1.0...v4.2.0) (2026-09-18)
+
+
+### Features
+
+* **memory:** PreToolUse stale-decision guard ([605b036](https://github.com/dfrostar/neuralmind/commit/605b036682b3e0d2f0076c08d94c17fa5770a02b))
+
+
+### Bug Fixes
+
+* **memory:** replace silent except-pass with logged fail-open ([bf59505](https://github.com/dfrostar/neuralmind/commit/bf595054a4e2c705d5150fe0a4e96e72feb95ee8))
+* reword absolute privacy claim in privacy page ([aab31c6](https://github.com/dfrostar/neuralmind/commit/aab31c63f012f233fc08ebdf7f8a29aeea2c9149))
+
+
+### Documentation
+
+* release notes v4.1.0 + Memory Layer wiki page ([bd7a5cf](https://github.com/dfrostar/neuralmind/commit/bd7a5cf1be989fb75edd3363ccaeb74067cd5696))
+* stale-decision guard across all public surfaces (v4.2.0 prep) ([cf2ce08](https://github.com/dfrostar/neuralmind/commit/cf2ce08d09e1898e5f86eeacd62bdc4e688e16f3))
+
 ## [4.1.0](https://github.com/dfrostar/neuralmind/compare/v4.0.0...v4.1.0) (2026-09-18)
 
 
