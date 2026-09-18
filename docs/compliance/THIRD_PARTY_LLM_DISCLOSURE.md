@@ -178,6 +178,11 @@ arbitrary client files.
 - [`RISK_ASSESSMENT.md`](RISK_ASSESSMENT.md) R-03 — data exfiltration via
   MCP server; mitigation text updated to reference this document rather
   than assert "no network" unconditionally.
+- [`../use-cases/air-gapped.md`](../use-cases/air-gapped.md) and
+  [`../use-cases/offline-regulated.md`](../use-cases/offline-regulated.md)
+  — the strictest-posture walkthroughs `COMPLIANCE-SUMMARY.md` points
+  auditors to; both now name this exception rather than assert
+  unconditional "no network."
 
 This document does not constitute legal advice or contract language for a
 DPA, BAA, or service-provider addendum. It is a factual, code-verified
