@@ -1,5 +1,30 @@
 # Changelog
 
+## [4.1.0](https://github.com/dfrostar/neuralmind/compare/v4.0.0...v4.1.0) (2026-09-18)
+
+
+### Features
+
+* **memory:** decision memory layer with commit-level invalidation ([220a6fa](https://github.com/dfrostar/neuralmind/commit/220a6faab2f95e31cae6386f23877ba350e8579b))
+* **memory:** eval harness + MCP tools for decision memory ([e14ddfa](https://github.com/dfrostar/neuralmind/commit/e14ddfa19714eace04325cb8441d62a73a993399))
+* **memory:** tests/memory/ suite + register memory MCP tools ([3664062](https://github.com/dfrostar/neuralmind/commit/3664062b55d4aded58ec3e8b6ce2d100f61efa3d))
+
+
+### Bug Fixes
+
+* add ensure_test_chapters() to all tests using CHAPTERS_DIR ([bbd2451](https://github.com/dfrostar/neuralmind/commit/bbd24510c2327ca209e19df0cf772e46aefe3c3d))
+* CI failures — black formatting + remove hardcoded paths ([1198ce0](https://github.com/dfrostar/neuralmind/commit/1198ce0d37020d38ec3cce7fec1ce31553edbfd9))
+* dedicated prose fixture for pipeline integration tests ([b8e3737](https://github.com/dfrostar/neuralmind/commit/b8e3737bd945763d0c4396bf1134f9a7e06d809b))
+* **memory:** update() referenced nonexistent files attr — silent no-op ([066a48b](https://github.com/dfrostar/neuralmind/commit/066a48b3a2093cd2b349d212908d25a6ee5c193a))
+* parity gate faithfulness floor 0.0 -&gt; -0.10 ([6ab2082](https://github.com/dfrostar/neuralmind/commit/6ab2082c994fd22b269bb541a868f4d8ffc562ef))
+* remove erroneous .neuralmind.yaml from code fixture ([2a31413](https://github.com/dfrostar/neuralmind/commit/2a314137a19f56b3a9efbe89e2d6ca18bd28aae9))
+* resolve remaining CI lint failures and Windows checkout error ([edab170](https://github.com/dfrostar/neuralmind/commit/edab170603f903b081ff1de107779be605b7cf45))
+* reword absolute claim on measure-your-own page ([f6f3d71](https://github.com/dfrostar/neuralmind/commit/f6f3d71ae059d3cdd2e7d86e6ff5ca9214689e74))
+* **site:** bump deps to clear Dependabot alerts + add cognition icon ([4881eab](https://github.com/dfrostar/neuralmind/commit/4881eab5a0ebe003bebed2cede6264741a2614b0))
+* test_pipeline_integration — portable paths, prose mode, self-contained chapters ([7e4bec8](https://github.com/dfrostar/neuralmind/commit/7e4bec8fe7663dabaff90da2a6d4422c593e0324))
+* update parity gate unit test for new -0.10 floor ([a1174f3](https://github.com/dfrostar/neuralmind/commit/a1174f38dd3ba1f63ba6522295236a6aa909905a))
+* widen self-benchmark faithfulness floor from +0.000 to -0.100 ([23a5122](https://github.com/dfrostar/neuralmind/commit/23a5122c16310ba28fcc9a123efb50573f74a8c1))
+
 ## [4.0.0](https://github.com/dfrostar/neuralmind/compare/v3.13.0...v4.0.0) (2026-09-16)
 
 
