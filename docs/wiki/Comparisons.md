@@ -23,6 +23,7 @@ Full source of these pages lives at [docs/comparisons/](https://github.com/dfros
 | [Graft](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-graft.md) | "Graft also builds a local code graph and wires into Claude Code — what's different?" |
 | [codebase-memory-mcp](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codebase-memory-mcp.md) | "It indexes 162 languages and the Linux kernel in 3 minutes — why not that?" |
 | [Mem0 / Zep](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-mem0-zep.md) | "Isn't this just AI agent memory, like Mem0 or Zep?" |
+| [Claude Code native subagent memory](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-claude-code-native-memory.md) | "Claude Code subagents already have a `memory` field — why do I need this too?" |
 | [Codex CLI memory ecosystem (Hindsight, Mem0, Basic Memory)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-codex-cli-memory.md) | "Codex has no memory — which of these should I use, and where does NeuralMind fit?" |
 | [Headroom](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 | [The Context Engineering Stack (NeuralMind + Ponytail + Headroom)](https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md) | "How do NeuralMind, Ponytail, and Headroom work together as a unified token optimization stack?" |

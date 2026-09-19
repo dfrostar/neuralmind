@@ -27,6 +27,7 @@ Each page follows the same structure:
 | [Graft](./vs-graft.md) | "Graft also builds a local code graph and wires into Claude Code — what's actually different?" |
 | [codebase-memory-mcp](./vs-codebase-memory-mcp.md) | "It indexes 162 languages and the Linux kernel in 3 minutes — why wouldn't I use that?" |
 | [Mem0 / Zep](./vs-mem0-zep.md) | "Isn't this just AI agent memory, like Mem0 or Zep?" |
+| [Claude Code native subagent memory](./vs-claude-code-native-memory.md) | "Claude Code subagents already have a `memory` field — why do I need this too?" |
 | [Codex CLI memory ecosystem (Hindsight, Mem0, Basic Memory)](./vs-codex-cli-memory.md) | "Codex has no memory — which of these should I use, and where does NeuralMind fit?" |
 | [Headroom](./vs-headroom.md) | "Isn't a compression layer between my agent and the LLM enough?" |
 | [Context Engineering Stack (NeuralMind + Ponytail + Headroom)](./context-engineering-stack.md) | "How do I deploy all three tools together as an end-to-end pipeline?" |
