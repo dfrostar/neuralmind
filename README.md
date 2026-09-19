@@ -60,7 +60,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**NeuralMind makes no network calls of its own.** It processes locally and feeds only the relevant code slice to your AI tool.
+**NeuralMind indexes and queries entirely locally.** No telemetry, no repository content transmitted anywhere — the only outbound request is a one-time HTTPS GET for the public MiniLM embedding model when no cached copy exists (air-gapped installs pre-seed it via `NEURALMIND_ONNX_MODEL_DIR`; see [SECURITY.md](SECURITY.md)). Your agent still sends whatever slice NeuralMind retrieves to its own model — same as it would with any file read.
 
 ---
 
@@ -76,14 +76,14 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
-| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. | 🔬 Theoretical |
-| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. | 🔬 Theoretical |
-| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. `plugin.yaml` (repo root) is the draft manifest for the `a0-plugins` registry listing. | 🔬 Theoretical |
+| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. An official `optional-mcps` catalog entry is reviewer-approved and [awaiting maintainer merge](https://github.com/NousResearch/hermes-agent/pull/97207). | 🔬 Theoretical |
+| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory, or install from the [ClawHub](https://clawhub.dev) marketplace (`openclaw skills install neuralmind`) — live listing, MIT-0. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. Listed in the official [`a0-plugins`](https://github.com/agent0ai/a0-plugins/pull/499) registry (merged); `plugin.yaml` (repo root) is that listing's manifest. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
 
-Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules, but none has been physically driven end-to-end yet either.
+Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules. The registry submissions themselves: live on [ClawHub](https://clawhub.dev), merged into [`a0-plugins`](https://github.com/agent0ai/a0-plugins/pull/499), and reviewer-approved but [awaiting maintainer merge](https://github.com/NousResearch/hermes-agent/pull/97207) on Hermes-Agent. None of the three has been physically driven end-to-end in our own CI yet, though — that's what "Theoretical" tracks here, independent of registry status.
 
 ---
 
@@ -142,7 +142,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that makes no network calls of its own, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (local indexing and querying with no telemetry, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
