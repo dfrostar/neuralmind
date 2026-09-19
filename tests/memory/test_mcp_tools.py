@@ -165,7 +165,9 @@ def test_record_decision_schema_advertises_all_store_fields():
         "rejected_alternatives",
         "tags",
     ):
-        assert field in schema["properties"], f"{field} missing from neuralmind_record_decision schema"
+        assert (
+            field in schema["properties"]
+        ), f"{field} missing from neuralmind_record_decision schema"
 
 
 # ------------------------------------------------------------------ #
