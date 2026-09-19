@@ -43,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from neuralmind.core import NeuralMind
 from neuralmind.mcp_security import MCPSecurityManager
+from neuralmind.memory.mcp_tools import TOOLS as MEMORY_TOOLS
 
 # Cache for NeuralMind instances per project
 _mind_cache: dict[str, NeuralMind] = {}
@@ -1176,6 +1177,9 @@ TOOLS = [
     },
 ]
 
+# Decision memory tools (Memory Layer v1.0) from neuralmind.memory.mcp_tools.
+TOOLS = TOOLS + MEMORY_TOOLS
+
 
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a tool call and return the result as JSON string."""
@@ -1250,6 +1254,15 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args.get("content_type", "auto"),
         ),
     }
+
+    # Decision memory tools (Memory Layer v1.0) — delegate to the memory
+    # module's dispatch table. These take raw argument dicts and return
+    # dict results, same contract as the handlers above.
+    from neuralmind.memory.mcp_tools import handle_tool_call as memory_handle_tool_call
+
+    _memory_tool_names = {t["name"] for t in MEMORY_TOOLS}
+    if name in _memory_tool_names:
+        handlers[name] = lambda args: json.loads(memory_handle_tool_call(name, args))
 
     if name not in handlers:
         return json.dumps({"error": f"Unknown tool: {name}"})

@@ -50,6 +50,14 @@ RATIO_GATED = (
     "app/layout.tsx",
 )
 
+# Registry manifests shipped to external indexes (Agent Zero's a0-plugins,
+# and any future ClawHub/Hermes listing files at the repo root). They are read
+# in other people's runtimes where none of our CI runs, which is exactly how
+# plugin.yaml carried an unsourced "12-70×" — a blend of two drafts matching
+# no measurement — until 2026-08-27. Gated for ratio provenance and absolutes
+# alongside the site surfaces.
+REGISTRY_MANIFESTS = ("plugin.yaml", "integrations/a0-plugins/neuralmind/index.yaml")
+
 # Ratios below this are never performance claims — they're decay weights,
 # merge coefficients, and other worked math in the publications.
 MIN_CLAIM_RATIO = 2.0
@@ -159,7 +167,8 @@ def _ratios_in(text: str) -> list[tuple[int, float]]:
 def test_every_site_ratio_has_provenance() -> None:
     allowed = _allowed_ratios()
     violations: list[str] = []
-    for path in _site_files(RATIO_GATED):
+    manifests = [REPO_ROOT / name for name in REGISTRY_MANIFESTS]
+    for path in _site_files(RATIO_GATED) + manifests:
         for lineno, ratio in _ratios_in(_prose(path)):
             if ratio < MIN_CLAIM_RATIO or ratio in allowed:
                 continue
@@ -209,7 +218,8 @@ def test_site_does_not_claim_perfect_gold_file_recall() -> None:
 
 def test_site_has_no_forbidden_absolute_claims() -> None:
     violations: list[str] = []
-    for path in _site_files():
+    manifests = [REPO_ROOT / name for name in REGISTRY_MANIFESTS]
+    for path in _site_files() + manifests:
         lines = _prose(path).splitlines()
         for index, line in enumerate(lines):
             lineno = index + 1

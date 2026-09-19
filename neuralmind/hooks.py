@@ -36,7 +36,11 @@ BLOCK_KEY = "__neuralmind_managed__"
 # v2 (v0.38.0): add Edit/Write matchers for the reuse-vs-rewrite feedback
 # loop. Bumping the version makes `install-hooks` re-write the managed block
 # on upgrade so existing installs pick up the new matchers.
-HOOK_VERSION = "2"
+# v3 (v4.2.0): add PreToolUse stale-decision guard — before an agent edits
+# a file, surface any STALE/INVALIDATED decisions governing that file so
+# stale memory cannot silently steer edits. Opt-out via
+# NEURALMIND_STALE_GUARD=0.
+HOOK_VERSION = "3"
 
 
 def _hook_block() -> dict:
@@ -49,6 +53,23 @@ def _hook_block() -> dict:
     """
     return {
         BLOCK_KEY: HOOK_VERSION,
+        # PreToolUse: stale-decision guard. Before an agent edits a file,
+        # check the decision store for STALE/INVALIDATED decisions whose
+        # files_affected covers that file and surface them as context.
+        # This is the runtime counterpart of the eval harness's
+        # stale_influence_rate metric: instead of measuring how often stale
+        # memory steers edits, prevent it. Fail-open — no store, no output.
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "neuralmind _hook stale-guard",
+                    }
+                ],
+            },
+        ],
         # PostToolUse matchers below. Compatibility note for
         # Claude Code v2.1.117+ (April 2026): on *native* macOS/Linux
         # builds the standalone Grep + Glob tools were folded into
@@ -290,6 +311,23 @@ def run_hook(action: str) -> int:
         compressed, _ = offload_if_large(content)
         if compressed != content:
             _emit(compressed)
+        return 0
+
+    if action == "stale-guard":
+        # PreToolUse on Edit/Write: before the edit lands, surface any
+        # STALE/INVALIDATED decisions governing the target file so the
+        # agent knows its remembered rationale may no longer hold.
+        # Pure context injection — we never deny the edit (fail-open).
+        # Opt-out via NEURALMIND_STALE_GUARD=0.
+        if os.environ.get("NEURALMIND_STALE_GUARD") == "0":
+            return 0
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        if not file_path:
+            return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        context = _stale_decision_context(cwd, file_path)
+        if context:
+            _emit_for_event("PreToolUse", context)
         return 0
 
     if action == "edit-activity":
@@ -550,6 +588,63 @@ def _record_tool_transition(project_path: str, file_path: str) -> None:
         store.set_meta("_last_touched_file", file_path)
     except Exception:
         return
+
+
+def _stale_decision_context(project_path: str, file_path: str) -> str:
+    """Build PreToolUse context listing stale decisions governing a file.
+
+    Returns an empty string when there is nothing to report (no store, no
+    stale decisions touching this file) so the caller emits nothing and the
+    edit proceeds normally. Fail-open on every error path.
+    """
+    try:
+        from .memory.store import DecisionStore
+
+        store = DecisionStore(project_path)
+        # Normalize the hook's file path the same way DecisionStore does (backslashes to forward slashes)
+        norm_file_path = file_path.replace("\\", "/")
+        # Normalize the project path to forward slashes for consistent comparison
+        norm_project_path = str(Path(project_path)).replace("\\", "/")
+        # Try to make it relative to the project root first
+        try:
+            rel = str(Path(norm_file_path).relative_to(Path(norm_project_path)))
+        except (ValueError, OSError):
+            # If not under project root, use the normalized path as-is
+            rel = norm_file_path
+        # Normalize rel to forward slashes for comparison with stored files_affected
+        rel = rel.replace("\\", "/")
+
+        records = [
+            r for r in store.find_by_files([rel], include_invalidated=True) if r.status != "ACTIVE"
+        ]
+        # If no records found with relative path, try the normalized absolute path
+        if not records and rel != norm_file_path:
+            records = [
+                r
+                for r in store.find_by_files([norm_file_path], include_invalidated=True)
+                if r.status != "ACTIVE"
+            ]
+        if not records:
+            return ""
+
+        lines = [
+            (
+                f"[neuralmind stale-guard] {len(records)} decision(s) governing "
+                f"{rel} are no longer ACTIVE. Their rationale may not hold — "
+                "verify before relying on them:"
+            )
+        ]
+        for r in records[:5]:
+            lines.append(
+                f"- [{r.status}] {r.title} (confidence {r.confidence:.2f}, "
+                f"updated {r.updated_at.date().isoformat()}): {r.rationale[:160]}"
+            )
+        if len(records) > 5:
+            lines.append(f"- …and {len(records) - 5} more (neuralmind decisions audit)")
+        return "\n".join(lines)
+    except Exception:
+        # Fail-open: a guard failure must never block an edit.
+        return ""
 
 
 def _emit_for_event(event_name: str, content: str) -> None:

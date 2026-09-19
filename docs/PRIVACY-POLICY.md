@@ -93,6 +93,14 @@ We do not share your data with any other third parties. We do not sell your data
 
 If a new sub-processor is added, we will update this Policy and notify existing customers via email 30 days before the new processor begins processing.
 
+**Scope note:** this section covers data collected by NeuralMind's own
+commercial operations (license portal, billing). It does not cover the
+runtime behavior of the OSS tool running against your codebase — that is
+documented separately in
+[`compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](compliance/THIRD_PARTY_LLM_DISCLOSURE.md),
+including the one opt-in path where the OSS tool itself calls a
+third-party LLM (Anthropic), disabled by default.
+
 ---
 
 ## 7. International Data Transfers

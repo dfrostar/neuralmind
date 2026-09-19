@@ -363,10 +363,10 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 21 tools: previous 20 + neuralmind_health."""
+        """TOOLS should define 25 tools: previous 21 + 4 memory-layer tools."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 21
+        assert len(TOOLS) == 25
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -416,6 +416,11 @@ class TestToolDefinitions:
             "neuralmind_ingest_document",
             # v3.1.3 health check endpoint
             "neuralmind_health",
+            # v4.0.0 decision memory layer
+            "neuralmind_query_decisions",
+            "neuralmind_audit_decisions",
+            "neuralmind_record_decision",
+            "neuralmind_invalidate_decision",
         }
         assert tool_names == expected
 

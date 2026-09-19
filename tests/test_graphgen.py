@@ -79,8 +79,26 @@ class BuildGraphTests(unittest.TestCase):
         self.assertFalse(self.graph["directed"])
 
     def test_node_keys_match_graphify(self) -> None:
+        """All nodes have at least the base graphify keys.
+
+        Document nodes may additionally carry prose-specific fields
+        (content_text, chapter, section, heading_level) added by the
+        prose-mode heading-aware chunker.
+        """
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, f"bad node keys for {n.get('id')}")
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                # Only document nodes may have extra prose fields
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            # All base keys must still be present
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
 
     def test_edge_keys_match_graphify(self) -> None:
         for e in self.edges:
@@ -269,7 +287,17 @@ class TypeScriptTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -359,7 +387,17 @@ class RustTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -465,7 +503,17 @@ class JavaTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -564,7 +612,17 @@ class CsharpTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -671,7 +729,17 @@ class RubyTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -771,7 +839,17 @@ class PhpTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -879,7 +957,17 @@ class CTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 
@@ -964,7 +1052,17 @@ class CppTests(unittest.TestCase):
 
     def test_schema_keys(self) -> None:
         for n in self.nodes:
-            self.assertEqual(set(n.keys()), NODE_KEYS, n.get("id"))
+            keys = set(n.keys())
+            extra = keys - NODE_KEYS
+            if extra:
+                if n.get("file_type") != "document":
+                    self.fail(f"unexpected extra keys {extra} on {n.get('id')}")
+                allowed_extra = {"content_text", "chapter", "section", "heading_level"}
+                unexpected = extra - allowed_extra
+                if unexpected:
+                    self.fail(f"unexpected extra keys {unexpected} on {n.get('id')}")
+            for key in NODE_KEYS:
+                self.assertIn(key, keys, f"missing {key} on {n.get('id')}")
         for e in self.edges:
             self.assertEqual(set(e.keys()), EDGE_KEYS, e)
 

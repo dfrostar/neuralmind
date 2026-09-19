@@ -12,7 +12,7 @@ class TestNeuralMindInit:
         from neuralmind import NeuralMind
 
         mind = NeuralMind(str(temp_project))
-        assert mind.project_path == Path(temp_project)
+        assert mind.project_path == Path(temp_project).resolve()
         # graph_path is on the embedder, not NeuralMind directly
         assert mind.embedder.graph_path.exists()
 
@@ -492,6 +492,8 @@ class TestNeuralMindExportContext:
 
     def test_export_default_path(self, temp_project, mock_chromadb):
         """export_context uses default path when none specified."""
+        import os
+
         from neuralmind import NeuralMind
 
         mind = NeuralMind(str(temp_project))
@@ -499,7 +501,7 @@ class TestNeuralMindExportContext:
 
         result = mind.export_context()
         expected_path = str(Path(temp_project) / "neuralmind_context.md")
-        assert result == expected_path
+        assert os.path.realpath(result) == os.path.realpath(expected_path)
         assert Path(result).exists()
 
     def test_export_includes_metadata(self, temp_project, tmp_path, mock_chromadb):

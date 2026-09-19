@@ -41,19 +41,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Fetch all history so the watcher can detect changed files
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
       - name: Restore NeuralMind index cache
         id: cache-neuralmind
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .neuralmind/
           # Key changes whenever any source file changes — forces re-index
@@ -82,7 +82,7 @@ jobs:
 
       - name: Commit team memory snapshot
         # Only commits when .neuralmind-team-memory.json actually changed.
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: update NeuralMind team memory snapshot [skip ci]"
           file_pattern: ".neuralmind-team-memory.json"

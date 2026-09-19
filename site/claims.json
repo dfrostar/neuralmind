@@ -1,5 +1,5 @@
 {
-  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.75% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
+  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.6% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
   "_evidence_levels": {
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
     "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number.",
@@ -8,42 +8,42 @@
   },
   "ratios": [
     {
-      "value": 45,
-      "context": "Low end of 'fewer tokens than pasting whole files', across the 40-query public benchmark (requests, at 44.9x, rounded down).",
+      "value": 46,
+      "context": "Low end of 'fewer tokens than pasting whole files', across the 40-query public benchmark (requests, at 45.7x, rounded down).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 257,
-      "context": "High end of the same range (rich, at 256.8x, rounded up).",
+      "value": 259,
+      "context": "High end of the same range (rich, at 259.1x, rounded up).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 44.9,
+      "value": 45.7,
       "context": "requests @ 0e322af877 — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 99.6,
+      "value": 107.7,
       "context": "click @ 874ca2bc1c — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 76.4,
+      "value": 81.6,
       "context": "flask @ c12a5d874c — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 256.8,
+      "value": 259.1,
       "context": "rich @ 7f580bdc70 — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
@@ -132,18 +132,18 @@
   ],
   "non_ratio_headline_claims": [
     {
-      "claim": "93.75% gold-file recall (mean), 79-100% per repo, 90% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
+      "claim": "93.6% gold-file recall (mean), 85-100% per repo, 87.5% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible",
-      "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.96 / 0.79 / 0.95 / 1.00; click is the weakest and every miss is published."
+      "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.89 / 1.00 / 0.85 / 1.00; flask is the weakest and every miss is published."
     },
     {
       "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
       "evidence": "ci-gated",
-      "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number."
+      "note": "The CI gate is DIRECTIONAL: test_synapse_recall_does_not_reduce_hit_rate asserts on >= off, and test_synapse_recall_is_budget_neutral bounds the reduction delta. It does not gate a magnitude. The +6.1 pts (77.2% -> 83.3%) figure published in docs/wiki/ traces to the v0.25.0 2x2 study; the self-benchmark's current Phase 2 output reports +3.5 pts (74.6% -> 78.1%). Do not quote either magnitude as 'CI-gated' — quote the gate, and let the reproduction command give the number. HISTORY: this gate measured -1.75 pts (74.6% -> 72.8%) on AVX-512 hosts and +3.5 elsewhere, bit-stably, for months. A 2-point tolerance was added 2026-08-29 to make it pass and was reverted; the cause was displacement dropping the ranked tail, which could evict a module's only representatives. Fixed 2026-08-31 by choosing displacement victims whose module another survivor still covers. Both host classes now measure +3.51 on this fixture (74.6% -> 78.1%), verified on an avx512f container and a non-avx512f CI runner at the same commit."
     },
     {
       "claim": "NeuralMind's selection beats naive truncation at a matched token budget",

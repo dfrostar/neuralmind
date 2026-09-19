@@ -39,6 +39,14 @@ export const metadata = {
         modifiedTime: '2026-08-07',
         authors: ['Darren Frost'],
         tags: ['defensive publication', 'prior art', 'spreading activation', 'Hebbian learning', 'context retrieval'],
+        images: [
+            {
+                url: '/social-preview.png',
+                width: 1200,
+                height: 630,
+                alt: 'NeuralMind — Code Memory for AI Coding Agents',
+            },
+        ],
     },
     twitter: {
         card: 'summary_large_image',

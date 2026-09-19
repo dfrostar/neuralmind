@@ -44,6 +44,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+from .progress import ProgressReporter
 from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,43 @@ def _default_embed_fn() -> Callable[[list[str]], list[list[float]]]:
 class TurboVecEmbedder(EmbeddingBackend):
     """EmbeddingBackend backed by a TurboVec index + a SQLite metadata store."""
 
+    # Scope definitions: maps scope name -> set of file_type values to INCLUDE
+    SCOPE_FILTERS: dict[str, frozenset[str]] = {
+        "code": frozenset({"code", "function", "class", "method", "module"}),
+        "content": frozenset(
+            {"document", "rationale", "content", "policy", "sop", "decision", "meeting_note"}
+        ),
+        "docs": frozenset({"document", "rationale"}),
+        "all": frozenset(),  # empty = no filtering
+    }
+
+    # File-type extension-based fallback for when file_type is generic/missing
+    SCOPE_EXTENSIONS: dict[str, frozenset[str]] = {
+        "code": frozenset(
+            {
+                ".py",
+                ".js",
+                ".ts",
+                ".tsx",
+                ".jsx",
+                ".go",
+                ".rs",
+                ".java",
+                ".cs",
+                ".c",
+                ".cpp",
+                ".h",
+                ".rb",
+                ".php",
+                ".swift",
+                ".kt",
+            }
+        ),
+        "content": frozenset({".md", ".mdx", ".txt", ".rst", ".docx", ".pdf"}),
+        "docs": frozenset({".md", ".mdx", ".txt", ".rst"}),
+        "all": frozenset(),
+    }
+
     def __init__(
         self,
         project_path: str,
@@ -84,6 +122,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         *,
         bit_width: int = _DEFAULT_BIT_WIDTH,
         embed_fn: Callable[[list[str]], list[list[float]]] | None = None,
+        scope: str = "all",
     ):
         self._project_path = Path(project_path).resolve()
         self.graph_path = self._project_path / "graphify-out" / "graph.json"
@@ -93,8 +132,15 @@ class TurboVecEmbedder(EmbeddingBackend):
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._index_path = self._dir / "index.tvim"
-        self._store_path = self._dir / "store.sqlite"
+
+        # Per-scope store + index file naming to prevent collisions
+        self._scope = scope
+        if scope != "all":
+            self._store_path = self._dir / f"store.{scope}.sqlite"
+            self._index_path = self._dir / f"index.{scope}.tvim"
+        else:
+            self._store_path = self._dir / "store.sqlite"
+            self._index_path = self._dir / "index.tvim"
 
         self.bit_width = int(bit_width)
         self._embed_fn = embed_fn  # resolved lazily so tests can inject a fake
@@ -107,6 +153,26 @@ class TurboVecEmbedder(EmbeddingBackend):
         self._conn = sqlite3.connect(str(self._store_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._init_store()
+
+    def _node_matches_scope(self, node: dict) -> bool:
+        """Check if a node should be included based on the current scope."""
+        if self._scope == "all":
+            return True
+        file_type = str(node.get("file_type", ""))
+        source_file = str(node.get("source_file", ""))
+        ext = Path(source_file).suffix.lower() if source_file else ""
+
+        allowed_types = self.SCOPE_FILTERS.get(self._scope, frozenset())
+        allowed_exts = self.SCOPE_EXTENSIONS.get(self._scope, frozenset())
+
+        # If file_type is set and recognized, use type-based filtering
+        if file_type and file_type in allowed_types:
+            return True
+        # If file_type is missing or unrecognized, fall back to extension
+        if ext and ext in allowed_exts:
+            return True
+        # file_type is set but not in scope, and no extension match
+        return False
 
     # ------------------------------------------------------------------ store
     def _init_store(self) -> None:
@@ -122,17 +188,41 @@ class TurboVecEmbedder(EmbeddingBackend):
                 content_hash TEXT,
                 embedded_at  TEXT,
                 content_category TEXT,
-                tags         TEXT
+                tags         TEXT,
+                chapter      TEXT,
+                section      TEXT,
+                heading      TEXT,
+                heading_level INTEGER DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);
+            CREATE TABLE IF NOT EXISTS book_assets (
+                uid          INTEGER PRIMARY KEY,
+                path         TEXT NOT NULL,
+                asset_type   TEXT,
+                chapter_ref  TEXT,
+                caption      TEXT,
+                tracked_at  TEXT
+            );
             """)
         # Additive columns for existing DBs (don't fail if already present)
+        for col, typ in [
+            ("content_category", "TEXT"),
+            ("tags", "TEXT"),
+            ("chapter", "TEXT"),
+            ("section", "TEXT"),
+            ("heading", "TEXT"),
+            ("heading_level", "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                self._conn.execute(f"ALTER TABLE nodes ADD COLUMN {col} {typ}")
+            except Exception:
+                pass
         try:
-            self._conn.execute("ALTER TABLE nodes ADD COLUMN content_category TEXT")
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN tags TEXT")
         except Exception:
             pass
         try:
-            self._conn.execute("ALTER TABLE nodes ADD COLUMN tags TEXT")
+            self._conn.execute("ALTER TABLE nodes ADD COLUMN prose_meta TEXT")
         except Exception:
             pass
         self._conn.commit()
@@ -147,6 +237,55 @@ class TurboVecEmbedder(EmbeddingBackend):
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, str(value)),
         )
+
+    def _track_book_assets(self, project_path: Path) -> int:
+        """Track non-text assets (images, diagrams) as metadata in book_assets table.
+
+        Returns the number of assets tracked.
+        """
+        asset_exts = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".tiff"}
+        assets = []
+        for f in project_path.rglob("*"):
+            if f.is_file() and f.suffix.lower() in asset_exts:
+                # Skip files in .neuralmind/ or other hidden dirs
+                if any(part.startswith(".") for part in f.relative_to(project_path).parts):
+                    continue
+                assets.append(f)
+
+        if not assets:
+            return 0
+
+        now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+        for asset in assets:
+            rel_path = str(asset.relative_to(project_path))
+            # Try to find a chapter reference (which .md file mentions this asset)
+            chapter_ref = self._find_chapter_reference(project_path, asset)
+            caption = self._extract_caption(asset)
+
+            self._conn.execute(
+                "INSERT INTO book_assets(path, asset_type, chapter_ref, caption, tracked_at) VALUES(?, ?, ?, ?, ?)",
+                (rel_path, asset.suffix.lower().lstrip("."), chapter_ref, caption, now),
+            )
+        self._conn.commit()
+        return len(assets)
+
+    def _find_chapter_reference(self, project_path: Path, asset: Path) -> str | None:
+        """Find which chapter (if any) references this asset."""
+        asset_name = asset.name
+        # Search .md files for references to this asset
+        for md_file in project_path.rglob("*.md"):
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="ignore")
+                if asset_name in content:
+                    return str(md_file.relative_to(project_path))
+            except Exception:
+                continue
+        return None
+
+    def _extract_caption(self, asset: Path) -> str | None:
+        """Try to extract alt text or caption from nearby markdown or filename."""
+        # For now, just use the filename stem as a basic caption
+        return asset.stem.replace("_", " ").replace("-", " ")
 
     @property
     def embed_fn(self) -> Callable[[list[str]], list[list[float]]]:
@@ -174,7 +313,79 @@ class TurboVecEmbedder(EmbeddingBackend):
     def project_path(self) -> Path:
         return self._project_path
 
+    def turbovec_index_version(self) -> str | None:
+        """Return the turbovec index version if detectable, else None.
+
+        The ``.tvim`` binary format embeds a version stamp that ``turbovec``
+        checks on load. When the on-disk version is incompatible with the
+        installed turbovec, ``IdMapIndex.load`` raises ``ValueError``. Since the
+        C extension doesn't expose the version directly, we infer it from the
+        quarantine file left behind by ``_load_index``: if a ``.stale`` file
+        exists, the index was quarantined for incompatibility.
+
+        Returns the installed turbovec version string, or ``None`` if
+        turbovec is not installed.
+        """
+        try:
+            import importlib.util
+
+            if importlib.util.find_spec("turbovec") is None:
+                return None
+        except ImportError:
+            return None
+        # The version is in the dist-info metadata, but the C extension
+        # doesn't expose it at runtime. Best effort from packaging metadata.
+        try:
+            import importlib.metadata
+
+            return importlib.metadata.version("turbovec")
+        except Exception:
+            return "installed"
+
+    def check_turbovec_compatibility(self) -> str | None:
+        """Pre-flight check: return a warning string if the turbovec index
+        was quarantined due to version incompatibility, else None.
+
+        This surfaces the issue BEFORE the slow embed loop so the operator
+        knows a rebuild is coming and why. The recovery itself happens in
+        ``embed_nodes`` (via ``_rebuild_index_from_store``) — this check
+        is just the user-visible heads-up.
+        """
+        stale_path = self._index_path.with_name(self._index_path.name + ".stale")
+        if not stale_path.exists():
+            return None
+        tv_version = self.turbovec_index_version()
+        return (
+            f"The vector index was quarantined (likely a turbovec version mismatch).\n"
+            f"Installed turbovec: {tv_version or 'unknown'}.\n"
+            f"The stale index is backed up at: {stale_path.name}\n"
+            f"Recovery will attempt to rebuild from stored vectors. If that fails,\n"
+            f"a full re-embedding will be triggered automatically."
+        )
+
     # ------------------------------------------------------------------ index
+    @property
+    def dim(self) -> int:
+        """Return the dimensionality of the stored or active embedder.
+
+        Resolution order:
+        1. Stored dim in SQLite meta (from a previous build)
+        2. Injected embedder's ``dim`` attribute
+        3. Default embedder's ``dim`` attribute
+        """
+        try:
+            stored = self._dim()
+            if stored is not None:
+                return stored
+        except Exception:
+            pass  # _conn not available (__new__ without __init__)
+        if self._embed_fn is not None:
+            return getattr(self._embed_fn, "dim", 384)
+        try:
+            return getattr(_default_embed_fn(), "dim", 384)
+        except Exception:
+            return 384
+
     def _dim(self) -> int | None:
         stored = self._meta_get("dim")
         return int(stored) if stored else None
@@ -359,6 +570,10 @@ class TurboVecEmbedder(EmbeddingBackend):
         for key in ("practice_id", "title", "domain", "framework", "content_category"):
             if key in node_meta:
                 meta[key] = str(node_meta[key])
+        # Preserve prose metadata (chapter, section, heading) for book retrieval
+        for key in ("chapter", "section", "heading", "heading_level"):
+            if key in node_meta:
+                meta[key] = node_meta[key]
         # Serialize tags as JSON for SQLite storage
         if "tags" in node_meta:
             import json
@@ -369,10 +584,19 @@ class TurboVecEmbedder(EmbeddingBackend):
     def get_all_nodes(self) -> list[dict]:
         """Return all indexed nodes as a list of dicts."""
         nodes: list[dict] = []
+        # Build SELECT dynamically to handle legacy DBs without prose columns
+        prose_cols = ""
         try:
-            rows = self._conn.execute(
-                "SELECT node_id, document, label, file_type, source_file, community, content_category, tags FROM nodes"
-            ).fetchall()
+            # Check if prose columns exist
+            cols = [row[1] for row in self._conn.execute("PRAGMA table_info(nodes)").fetchall()]
+            if "chapter" in cols:
+                prose_cols = ", chapter, section, heading, heading_level"
+        except Exception:
+            pass
+
+        sql = f"SELECT node_id, document, label, file_type, source_file, community, content_category, tags{prose_cols} FROM nodes"
+        try:
+            rows = self._conn.execute(sql).fetchall()
         except Exception:
             # Fallback if columns don't exist yet (legacy DB without the columns)
             try:
@@ -382,20 +606,23 @@ class TurboVecEmbedder(EmbeddingBackend):
             except Exception:
                 return nodes
         for row in rows:
+            meta = {
+                "label": row["label"],
+                "file_type": row["file_type"],
+                "source_file": row["source_file"],
+                "community": row["community"],
+            }
+            if prose_cols:
+                meta["chapter"] = row["chapter"] or ""
+                meta["section"] = row["section"] or ""
+                meta["heading"] = row["heading"] or ""
+                meta["heading_level"] = row["heading_level"] or 0
             nodes.append(
                 {
                     "id": row["node_id"],
                     "label": row["label"] or row["node_id"],
                     "content_text": row["document"] or "",
-                    "metadata": {
-                        "label": row["label"],
-                        "file_type": row["file_type"],
-                        "source_file": row["source_file"],
-                        "community": row["community"],
-                        "node_id": row["node_id"],
-                        "content_category": row["content_category"] or "",
-                        "tags": row["tags"] or "",
-                    },
+                    "metadata": meta,
                 }
             )
         return nodes
@@ -477,14 +704,16 @@ class TurboVecEmbedder(EmbeddingBackend):
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
                                   source_file, community, content_hash, embedded_at,
-                                  content_category, tags)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                                  content_category, tags, chapter, section, heading, heading_level)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
                     embedded_at=excluded.embedded_at,
-                    content_category=excluded.content_category, tags=excluded.tags
+                    content_category=excluded.content_category, tags=excluded.tags,
+                    chapter=excluded.chapter, section=excluded.section,
+                    heading=excluded.heading, heading_level=excluded.heading_level
                 """,
                 (
                     uid,
@@ -498,6 +727,10 @@ class TurboVecEmbedder(EmbeddingBackend):
                     now,
                     meta.get("content_category", ""),
                     meta.get("tags", ""),
+                    meta.get("chapter", ""),
+                    meta.get("section", ""),
+                    meta.get("heading", ""),
+                    meta.get("heading_level", 0),
                 ),
             )
 
@@ -519,14 +752,34 @@ class TurboVecEmbedder(EmbeddingBackend):
         if not self.nodes and not self.load_graph():
             return {"added": 0, "updated": 0, "skipped": 0, "error": "No graph loaded"}
 
-        if self._load_index() is None:
+        # Detect index version mismatch before the slow embed loop.
+        # If _load_index returns None but the SQLite store has rows, the
+        # index was quarantined as unreadable (version mismatch, corrupt).
+        # Recover incrementally from the stored vectors instead of forcing
+        # a full re-embed.
+        idx = self._load_index()
+        if idx is None:
             row = self._conn.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()
             if int(row["c"]) > 0:
-                # The index is gone (quarantined as unreadable, or deleted)
-                # while node metadata survives. Skipping unchanged nodes would
-                # persist an empty index that SQLite claims is populated, so
-                # re-embed everything into the fresh index.
-                force = True
+                # Try incremental recovery from stored vectors first.
+                logger.info(
+                    "Index version mismatch detected. Attempting incremental "
+                    "rebuild from %d stored vectors...",
+                    int(row["c"]),
+                )
+                if self._rebuild_index_from_store():
+                    # Success — index recovered, proceed with incremental update.
+                    stats_rebuilt = int(row["c"])
+                    logger.info(
+                        "Successfully recovered %d vectors from store. "
+                        "Proceeding with incremental update.",
+                        stats_rebuilt,
+                    )
+                    # Fall through to incremental loop below — don't force.
+                else:
+                    # Recovery failed (no ONNX, no model). Force full re-embed.
+                    force = True
+                    logger.warning("Incremental recovery failed. Forcing full re-embedding.")
 
         stats = {"added": 0, "updated": 0, "skipped": 0}
         pending: list[tuple[str, int, str, dict, str, bool]] = (
@@ -534,39 +787,61 @@ class TurboVecEmbedder(EmbeddingBackend):
         )  # (node_id, uid, text, meta, hash, is_update)
         next_uid = self._next_uid()
 
-        for node in self.nodes:
-            node_id = str(node.get("id", node.get("label", "")))
-            if not node_id:
-                continue
-            text = self._node_to_text(node)
-            content_hash = self._content_hash(text)
-            row = self._conn.execute(
-                "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
-                (node_id,),
-            ).fetchone()
-
-            if row is not None:
-                if not force and row["content_hash"] == content_hash:
-                    stats["skipped"] += 1
+        total_nodes = len(self.nodes)
+        scope_filtered = 0
+        with ProgressReporter(total_nodes, label="Embedding") as bar:
+            for node in self.nodes:
+                node_id = str(node.get("id", node.get("label", "")))
+                if not node_id:
                     continue
-                uid = int(row["uid"])
-                is_update = True
-                stats["updated"] += 1
-                # Preserve content_category from existing row if graph node lacks it
-                existing_cc = row["content_category"] or ""
-            else:
-                uid = next_uid
-                next_uid += 1
-                is_update = False
-                stats["added"] += 1
-                existing_cc = ""
+                # Apply scope filter — skip nodes not matching the current scope
+                if not self._node_matches_scope(node):
+                    scope_filtered += 1
+                    bar.advance()
+                    continue
+                # For prose nodes, use content_text as the embedding text;
+                # for code nodes, use the standard node-to-text conversion.
+                raw_content_text = node.get("content_text", "")
+                text = raw_content_text if raw_content_text else self._node_to_text(node)
+                content_hash = self._content_hash(text)
+                row = self._conn.execute(
+                    "SELECT uid, content_hash, content_category FROM nodes WHERE node_id = ?",
+                    (node_id,),
+                ).fetchone()
 
-            meta = self._node_metadata(node)
-            # Don't overwrite content_category from DB with empty graph value
-            if existing_cc and not meta.get("content_category"):
-                meta["content_category"] = existing_cc
+                if row is not None:
+                    if not force and row["content_hash"] == content_hash:
+                        stats["skipped"] += 1
+                        bar.advance()
+                        continue
+                    uid = int(row["uid"])
+                    is_update = True
+                    stats["updated"] += 1
+                    existing_cc = row["content_category"] or ""
+                else:
+                    uid = next_uid
+                    next_uid += 1
+                    is_update = False
+                    stats["added"] += 1
+                    existing_cc = ""
 
-            pending.append((node_id, uid, text, meta, content_hash, is_update))
+                meta = self._node_metadata(node)
+                if existing_cc and not meta.get("content_category"):
+                    meta["content_category"] = existing_cc
+
+                # Build prose_meta JSON for prose nodes
+                prose_meta = None
+                if raw_content_text:
+                    prose_meta = json.dumps(
+                        {
+                            "chapter": node.get("chapter", ""),
+                            "section": node.get("section", ""),
+                            "heading_level": node.get("heading_level", 0),
+                        }
+                    )
+
+                pending.append((node_id, uid, text, meta, content_hash, is_update, prose_meta))
+                bar.advance(detail=node_id[:40])
 
         if not pending:
             self._persist_index()
@@ -581,7 +856,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         now = datetime.now().isoformat()
         new_vecs: list[np.ndarray] = []
         new_ids: list[int] = []
-        for (node_id, uid, text, meta, content_hash, is_update), vec in zip(
+        for (node_id, uid, text, meta, content_hash, is_update, prose_meta), vec in zip(
             pending, vectors, strict=True
         ):
             if is_update:
@@ -598,14 +873,15 @@ class TurboVecEmbedder(EmbeddingBackend):
                 """
                 INSERT INTO nodes(uid, node_id, document, label, file_type,
                                   source_file, community, content_hash, embedded_at,
-                                  content_category, tags)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                                  content_category, tags, prose_meta)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(node_id) DO UPDATE SET
                     document=excluded.document, label=excluded.label,
                     file_type=excluded.file_type, source_file=excluded.source_file,
                     community=excluded.community, content_hash=excluded.content_hash,
                     embedded_at=excluded.embedded_at,
-                    content_category=excluded.content_category, tags=excluded.tags
+                    content_category=excluded.content_category, tags=excluded.tags,
+                    prose_meta=excluded.prose_meta
                 """,
                 (
                     uid,
@@ -619,6 +895,7 @@ class TurboVecEmbedder(EmbeddingBackend):
                     now,
                     meta.get("content_category", ""),
                     meta.get("tags", ""),
+                    prose_meta,
                 ),
             )
 
@@ -705,14 +982,38 @@ class TurboVecEmbedder(EmbeddingBackend):
 
     @staticmethod
     def _row_metadata(row: sqlite3.Row) -> dict[str, Any]:
-        return {
+        meta = {
             "label": row["label"],
             "file_type": row["file_type"],
             "source_file": row["source_file"],
             "community": row["community"],
             "node_id": row["node_id"],
             "content_category": row["content_category"] or "",
+            "tags": row["tags"] or "",
         }
+        # Include prose metadata (chapter, section, heading) when present
+        # Check new columns first, fall back to prose_meta JSON for backward compatibility
+        if "chapter" in row.keys() and row["chapter"]:
+            meta["chapter"] = row["chapter"]
+            meta["section"] = row["section"] or ""
+            meta["heading"] = row["heading"] or ""
+            meta["heading_level"] = row["heading_level"] or 0
+        else:
+            # Fall back to prose_meta JSON column
+            prose_meta_raw = row["prose_meta"] if "prose_meta" in row.keys() else None
+            if prose_meta_raw:
+                try:
+                    import json as _json
+
+                    prose_meta = _json.loads(prose_meta_raw)
+                    meta["chapter"] = prose_meta.get("chapter", "")
+                    meta["section"] = prose_meta.get("section", "")
+                    meta["heading"] = prose_meta.get("heading", "")
+                    meta["heading_level"] = prose_meta.get("heading_level", 0)
+                except Exception:
+                    pass
+        return meta
+        return meta
 
     def get_nodes_by_ids(self, node_ids: list[str]) -> list[dict]:
         """Fetch indexed nodes by id (synapse-recall pull-in). Missing ids skipped."""
@@ -837,26 +1138,49 @@ class TurboVecEmbedder(EmbeddingBackend):
         """Build and persist the BM25 keyword index from the SQLite store.
 
         Called automatically at the end of embed_nodes() so the BM25 index
-        stays in sync with the vector index.
+        stays in sync with the vector index. Includes prose metadata (chapter,
+        section, heading) when available.
         """
         from .bm25 import BM25Index
 
+        # Check if prose columns exist
+        prose_cols = ""
+        try:
+            cols = [row[1] for row in self._conn.execute("PRAGMA table_info(nodes)").fetchall()]
+            if "chapter" in cols:
+                prose_cols = ", chapter, section, heading, heading_level"
+        except Exception:
+            pass
+
+        sql = f"SELECT node_id, document, label, file_type, source_file, community{prose_cols} FROM nodes"
+        rows = self._conn.execute(sql).fetchall()
+
         ids, texts, metas = [], [], []
-        rows = self._conn.execute(
-            "SELECT node_id, document, label, file_type, source_file, community FROM nodes"
-        ).fetchall()
+        skipped = 0
         for r in rows:
+            # Skip non-document nodes (code graph nodes, entities, etc.)
+            # Only index content chunks for BM25 retrieval
+            file_type = r["file_type"] or ""
+            if not (file_type.startswith("document") or "chunk" in r["node_id"]):
+                skipped += 1
+                continue
+
             ids.append(r["node_id"])
             texts.append(r["document"] or r["label"] or r["node_id"])
-            metas.append(
-                {
-                    "label": r["label"],
-                    "file_type": r["file_type"],
-                    "source_file": r["source_file"],
-                    "community": r["community"],
-                    "node_id": r["node_id"],
-                }
-            )
+            meta = {
+                "label": r["label"],
+                "file_type": r["file_type"],
+                "source_file": r["source_file"],
+                "community": r["community"],
+                "node_id": r["node_id"],
+            }
+            if prose_cols:
+                meta["chapter"] = r["chapter"] or ""
+                meta["section"] = r["section"] or ""
+                meta["heading"] = r["heading"] or ""
+                meta["heading_level"] = r["heading_level"] or 0
+            metas.append(meta)
+
         if not ids:
             self._bm25_cached = None
             try:
@@ -864,7 +1188,12 @@ class TurboVecEmbedder(EmbeddingBackend):
             except (FileNotFoundError, AttributeError):
                 pass
             return
-        idx = BM25Index()
+
+        # Use prose tokenizer for prose/book projects (when chapter column exists)
+        from .bm25 import _tokenize_prose
+
+        tokenizer = _tokenize_prose if prose_cols else None
+        idx = BM25Index(tokenizer=tokenizer)
         idx.add_documents(ids, texts, metas)
         idx.build()
         idx.save(self._bm25_path)
@@ -882,6 +1211,35 @@ class TurboVecEmbedder(EmbeddingBackend):
         if idx is None or idx._N == 0:
             return []
         raw = idx.search(query, top_k=n)
+        out = []
+        for r in raw:
+            sim = float(r["score"])
+            out.append(
+                {
+                    "id": r["id"],
+                    "document": r["document"],
+                    "metadata": r["metadata"],
+                    "distance": round(1.0 - sim, 6),
+                    "score": round(sim, 6),
+                    "_bm25_raw": r.get("_bm25_raw"),
+                }
+            )
+        return out
+
+    def bm25_search_prose(self, query: str, n: int = 10) -> list[dict[str, Any]]:
+        """BM25 keyword search with prose-friendly tokenization.
+
+        Same result shape as :meth:`search`, but uses :func:`_tokenize_prose`
+        so hyphenated terms (BPC-157, GLP-1, semaglutide) stay whole.
+        Returns an empty list when the index hasn't been built yet or when
+        NEURALMIND_BM25=0 is set.
+        """
+        if os.environ.get("NEURALMIND_BM25") == "0":
+            return []
+        idx = self._load_bm25()
+        if idx is None or idx._N == 0:
+            return []
+        raw = idx.bm25_search_prose(query, n=n)
         out = []
         for r in raw:
             sim = float(r["score"])

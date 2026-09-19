@@ -25,8 +25,8 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
     {
         icon: 'layers',
         title: 'Progressive L0–L3 Disclosure',
-        desc: 'Retrieves the exact bytes needed. Never pastes the whole repo. 45–257× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
-        badge: '45–257×',
+        desc: 'Retrieves the exact bytes needed. Never pastes the whole repo. 46–259× fewer tokens than full-file context across 40 pre-registered queries on four public repos.',
+        badge: '46–259×',
     },
     {
         icon: 'dashboard',
@@ -73,7 +73,7 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
     {
         icon: 'offline',
         title: '100% Local Engine',
-        desc: 'NeuralMind makes zero network calls of its own — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry.',
+        desc: 'NeuralMind transmits no repository content — only the minimal relevant slice ever reaches your AI tool, never your whole codebase. No telemetry. One first-build model download aside, pre-seedable for air-gapped installs.',
         badge: 'Secure',
     },
     {
@@ -99,6 +99,48 @@ const featureList: { icon: IconName; title: string; desc: string; badge: string 
         title: 'Compliance Report MCP Tool',
         desc: '`neuralmind_compliance_report` surfaces live compliance stance from any MCP-compatible agent. Ask "are we compliant on access control?" and get an answer grounded in real annotations.',
         badge: 'v2.0.0',
+    },
+    {
+        icon: 'layers',
+        title: 'Context Budget Enforcement',
+        desc: 'Fixed token budget with L3→L2→L1→L0 progressive trimming. Your agent never exceeds the context budget you set — critical for cost-controlled multi-agent workflows.',
+        badge: 'v3.13.0',
+    },
+    {
+        icon: 'restore',
+        title: 'Session Summaries',
+        desc: 'Periodic semantically-recallable digests of your agent sessions. Recap what was learned, what was built, and what needs attention — without re-reading every log.',
+        badge: 'v3.13.0',
+    },
+    {
+        icon: 'synapse',
+        title: 'Graph Traversal Edges',
+        desc: 'Learned co-access edges that strengthen when your agent reads related files together. The graph gets smarter the more you use it — zero configuration.',
+        badge: 'v3.13.0',
+    },
+    {
+        icon: 'chip',
+        title: 'Read Dedup + LRU Cache',
+        desc: 'Content-hash dedup eliminates redundant reads of unchanged files. LRU cache keeps hot files ready. Reduces token waste from re-reading the same source.',
+        badge: 'v3.13.0',
+    },
+    {
+        icon: 'cognition',
+        title: 'Cognition Loop',
+        desc: 'Background knowledge consolidation: reinforces co-access patterns, decays unused edges, promotes strong clusters, and prunes stale synapses. Runs while you work.',
+        badge: 'v3.13.0',
+    },
+    {
+        icon: 'recall',
+        title: 'Decision Memory',
+        desc: 'Every architecture decision stored with rationale, evidence, commit SHA, and rejected alternatives. FTS5-searchable, invalidated automatically when the code it describes changes. 4 MCP tools, RBAC, audit + export.',
+        badge: 'v4.1.0',
+    },
+    {
+        icon: 'shield-check',
+        title: 'Stale-Decision Guard',
+        desc: 'Before your agent edits a file, a PreToolUse hook surfaces any decisions governing that file that are no longer ACTIVE — so stale memory can never silently steer an edit. Fail-open, opt-out via env var.',
+        badge: 'v4.2.0',
     },
 ];
 

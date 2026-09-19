@@ -279,6 +279,10 @@ class GraphEmbedder(EmbeddingBackend):
         for key in ("practice_id", "title", "domain", "framework", "content_category"):
             if key in node_meta:
                 meta[key] = str(node_meta[key])
+        # Preserve prose metadata (chapter, section, heading) for book retrieval
+        for key in ("chapter", "section", "heading", "heading_level"):
+            if key in node_meta:
+                meta[key] = node_meta[key]
         # Serialize tags as JSON for chromadb (which only supports scalars)
         if "tags" in node_meta:
             import json
@@ -290,13 +294,24 @@ class GraphEmbedder(EmbeddingBackend):
         """
         Extract metadata from node for filtering.
         """
-        return {
+        meta = {
             "label": str(node.get("label", node.get("id", "unknown"))),
             "file_type": str(node.get("file_type", "unknown")),
             "source_file": str(node.get("source_file", "")),
             "community": int(node.get("community", -1)),
             "node_id": str(node.get("id", "")),
         }
+        # Include prose-specific metadata for prose/book projects
+        # Check both top-level and nested metadata (from get_all_nodes)
+        node_meta = node.get("metadata", {})
+        if node.get("content_text") or node_meta:
+            meta["chapter"] = str(node_meta.get("chapter", node.get("chapter", "")))
+            meta["section"] = str(node_meta.get("section", node.get("section", "")))
+            meta["heading"] = str(node_meta.get("heading", node.get("heading", "")))
+            meta["heading_level"] = int(
+                node_meta.get("heading_level", node.get("heading_level", 0))
+            )
+        return meta
 
     def _content_hash(self, text: str) -> str:
         """Generate hash of content for change detection."""
@@ -639,17 +654,27 @@ class GraphEmbedder(EmbeddingBackend):
     # ------------------------------------------------------------------
 
     def build_bm25_index(self) -> None:
-        """Build and persist the BM25 keyword index from currently loaded nodes.
+        """Build and persist the BM25 keyword index from currently indexed nodes.
 
         Called automatically at the end of embed_nodes() so the BM25 index
         stays in sync with the vector index. Safe to call standalone when only
         a keyword re-index is needed.
+
+        Uses the same node set as the vector store (from get_all_nodes())
+        so the BM25 and vector indexes share IDs for hybrid merge.
         """
-        if not self.nodes:
+        # Read from the vector store only when one is attached. A bare
+        # instance (no collection) makes get_all_nodes() return [], which
+        # would silently skip persisting the index and defeat callers that
+        # hold nodes in memory (including the redaction regression test).
+        nodes = (
+            self.get_all_nodes() if getattr(self, "collection", None) is not None else self.nodes
+        )
+        if not nodes:
             return
         idx = BM25Index()
         ids, texts, metas = [], [], []
-        for node in self.nodes:
+        for node in nodes:
             node_id = str(node.get("id", node.get("label", "")))
             if not node_id:
                 continue
@@ -661,7 +686,11 @@ class GraphEmbedder(EmbeddingBackend):
             # while the vector document beside it was scrubbed.
             text = self._content_to_text(node)
             texts.append(text)
-            metas.append(self._node_metadata(node))
+            # Use _content_node_metadata to preserve prose metadata (chapter/section)
+            if hasattr(self, "_content_node_metadata"):
+                metas.append(self._content_node_metadata(node))
+            else:
+                metas.append(self._node_metadata(node))
         idx.add_documents(ids, texts, metas)
         idx.build()
         idx.save(self._bm25_path)
@@ -681,6 +710,16 @@ class GraphEmbedder(EmbeddingBackend):
         NEURALMIND_BM25=0 is set.
         """
         return self._load_bm25().search(query, top_k=n)
+
+    def bm25_search_prose(self, query: str, n: int = 10) -> list[dict]:
+        """BM25 keyword search with prose-friendly tokenization.
+
+        Same result shape as :meth:`search`, but uses :func:`_tokenize_prose`
+        so hyphenated terms (BPC-157, GLP-1, semaglutide) stay whole.
+        Returns an empty list when the index hasn't been built yet or when
+        NEURALMIND_BM25=0 is set.
+        """
+        return self._load_bm25().bm25_search_prose(query, n=n)
 
     def delete_nodes(self, node_ids) -> int:
         """Delete embeddings for the given node ids (e.g. symbols removed by an

@@ -37,6 +37,14 @@ export const metadata = {
         modifiedTime: '2026-07-22',
         authors: ['Darren Frost'],
         tags: ['defensive publication', 'prior art', 'edge-weight graph', 'conflict resolution', 'team memory'],
+        images: [
+            {
+                url: '/social-preview.png',
+                width: 1200,
+                height: 630,
+                alt: 'NeuralMind — Code Memory for AI Coding Agents',
+            },
+        ],
     },
     twitter: {
         card: 'summary_large_image',

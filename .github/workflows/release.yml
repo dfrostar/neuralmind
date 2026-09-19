@@ -23,34 +23,15 @@ env:
 jobs:
   validate-version:
     name: Validate Tag vs Package Version
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-
-      - name: Check tag matches pyproject.toml version
-        run: |
-          set -euo pipefail
-          TAG_VERSION="${RELEASE_TAG#v}"
-          PKG_VERSION="$(python - <<'EOF'
-          import re, sys
-          content = open("pyproject.toml").read()
-          m = re.search(r'^\s*version\s*=\s*"([^"]+)"', content, re.MULTILINE)
-          if not m:
-              print("ERROR: version not found in pyproject.toml", file=sys.stderr)
-              sys.exit(1)
-          print(m.group(1))
-          EOF
-          )"
-          echo "Tag version:     ${TAG_VERSION}"
-          echo "Package version: ${PKG_VERSION}"
-          if [ "${TAG_VERSION}" != "${PKG_VERSION}" ]; then
-            echo "ERROR: Git tag v${TAG_VERSION} does not match pyproject.toml version ${PKG_VERSION}."
-            echo "Please delete the wrong tag and push the correct tag matching pyproject.toml."
-            exit 1
-          fi
-          echo "OK: tag v${TAG_VERSION} matches pyproject.toml version ${PKG_VERSION}."
+    uses: ./.github/workflows/_validate-release-tag.yml
+    with:
+      # Duplicates the RELEASE_TAG env expression above rather than reusing it:
+      # `env` is NOT an available context in `jobs.<id>.with.<input>` (only
+      # github, needs, strategy, matrix, inputs, vars are). Referencing it
+      # there makes the whole workflow file invalid, so Actions rejects it at
+      # startup -- no jobs, no logs, and a release that silently never
+      # publishes. That is exactly what happened to v3.10.0.
+      release_tag: ${{ inputs.tag || github.ref_name }}
 
   smoke-test:
     name: Smoke Test
@@ -63,7 +44,7 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -90,7 +71,7 @@ jobs:
           ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -139,6 +120,16 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         # No password needed - uses trusted publishing via OIDC
+        with:
+          # A validate-version repair (retagging an orphaned tag, see
+          # CONTRIBUTING.md's "Release-please troubleshooting") re-fires this
+          # whole workflow against a tag whose version may already be on
+          # PyPI. Without this, that re-run fails here with "400: File
+          # already exists" even though every check above it correctly
+          # passed. skip-existing makes an already-published version a
+          # successful no-op instead — the actual fix in that scenario is
+          # the tag repair itself, not a new PyPI upload.
+          skip-existing: true
 
   smoke-test-pypi:
     name: Smoke Test PyPI Package
@@ -149,7 +140,7 @@ jobs:
       contents: read
     steps:
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -199,6 +190,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true  # explicit, not just masked by continue-on-error below
         continue-on-error: true  # Don't fail if version already exists
 
   github-release:

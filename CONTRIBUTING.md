@@ -371,16 +371,47 @@ release-please release-pr \
 If you must release manually (e.g. a hotfix not using release-please):
 
 ```bash
-# 1. Update the version in pyproject.toml
+# 1. Update the version in pyproject.toml AND neuralmind/__init__.py
+#    (release-please-config.json's actual version-file) — keep them equal.
 # 2. Update CHANGELOG.md
 # 3. Update .release-please-manifest.json to match the new version
-# 4. Commit with: chore(release): vX.Y.Z
-# 5. Push the tag (must match pyproject.toml version):
-git tag vX.Y.Z
+# 4. Update skills/neuralmind/SKILL.md's `version:` line to match too —
+#    keep the `# x-release-please-version` annotation on that line intact.
+#    tests/test_skill_manifest.py checks this file against the manifest,
+#    and it's what Hermes-Agent, OpenClaw's ClawHub, and Agent Zero's
+#    registries all read; skipping this step is exactly how it drifted to
+#    three releases behind before (fixed in #508).
+# 5. Commit with: chore(release): vX.Y.Z
+# 6. Push that commit and get it onto `main` FIRST, as its own push or a
+#    fast-forward merge — never a squash- or rebase-merged PR. Either of
+#    those rewrites the commit into a new SHA on main, silently orphaning
+#    the tag you're about to create in step 7 (see "Tag the SHA that's
+#    actually on main" below).
+git push origin HEAD:main
+
+# 7. Only now, tag the commit that landed on main — re-read its SHA from
+#    main itself, don't reuse the SHA you had checked out locally:
+git fetch origin main
+git tag vX.Y.Z origin/main
 git push origin vX.Y.Z
 ```
 
-The `validate-version` gate in `release.yml` will reject the push if the tag and `pyproject.toml` version differ.
+**Tag the SHA that's actually on `main`, not the one you committed locally.**
+If step 5 goes through a PR that GitHub squash- or rebase-merges, the commit
+that lands on `main` gets a *different SHA* than the one you tagged locally
+— even with an identical message and near-identical content. The tag then
+points at a commit unreachable from `main`: orphaned, invisible to anyone
+browsing the branch, and invisible to release-please's own diffing (see the
+next section). This happened for real on `v3.9.0` — this section was rewritten
+after diagnosing it live in 2026-09.
+
+The `validate-version` gate in `release.yml` checks three things before
+anything publishes, and hard-fails the whole pipeline if any of them don't
+hold: the tag matches `pyproject.toml`'s version, the tag matches
+`.release-please-manifest.json`, and **the tag's commit is an ancestor of
+`main`**. The third check is what would have caught the `v3.9.0` incident
+immediately instead of letting it corrupt the next release-please PR two
+weeks later.
 
 ### Release-please troubleshooting
 
@@ -422,6 +453,161 @@ git commit --allow-empty -m "chore: release as v0.6.0" -m "Release-As: 0.6.0"
 ```
 
 This was used to produce v0.4.0 before the config was sorted out.
+
+**Symptom: release-please proposes a release with a huge, wrong changelog
+reaching back through already-shipped work, or an unexpected major-version
+bump.**
+
+This means the git tag matching `.release-please-manifest.json`'s current
+value is not actually an ancestor of `main` — release-please can't find it
+in the branch's history, so it silently falls back to whatever earlier tag
+*is* an ancestor and walks everything since, including work that already
+shipped under a later version. Confirm with:
+
+```bash
+git merge-base --is-ancestor v<manifest-version> origin/main && echo OK || echo ORPHANED
+```
+
+If it prints `ORPHANED`, **check whether that tag has a published immutable
+release before planning any repair** — it decides which of the two recoveries
+below is even possible:
+
+```bash
+gh api repos/{owner}/{repo}/releases/tags/v<manifest-version> --jq .immutable
+```
+
+Read that as **four** outcomes, not two — the endpoint returns 404 when no
+release exists for the tag, so `gh` exits nonzero having printed neither
+`true` nor `false`:
+
+| Result | Meaning | Go to |
+|--------|---------|-------|
+| `true` | Published immutable release. The tag is permanently pinned. | Recovery A |
+| `false` | A release exists but is mutable. | Recovery B |
+| HTTP 404 (`Not Found`, nonzero exit) | No release for this tag at all, so nothing pins it. | Recovery B |
+| Any other error (auth, rate limit, network) | Unknown — resolve it first. | — |
+
+Never read a non-404 failure as "no release." And note the 404 row is the
+*usual* case for a bad tag this gate catches: `validate-version` fails long
+before `github-release` would ever create a release, so a freshly-pushed
+orphaned tag normally has none.
+
+#### Recovery A — the tag has an immutable release (retagging is impossible)
+
+This repo has release immutability enabled, so this is the normal case for
+any tag that actually shipped. Per GitHub's documentation, once an immutable
+release is published its tag "is locked to a specific commit, cannot be
+changed, and cannot be deleted while the release exists," and if you delete
+the release to free the tag, "you cannot reuse the same tag name." There is
+no sequence of git commands that repoints such a tag. Don't try; the push is
+rejected with `GH013 … Cannot update this protected ref`, and no ruleset
+appears in Settings → Rules to explain it, because immutability is enforced
+separately from rulesets.
+
+Instead, tell release-please where the last release actually landed on `main`,
+with a top-level `last-release-sha` in `release-please-config.json`:
+
+```json
+{
+  "release-type": "python",
+  "last-release-sha": "<full 40-char SHA on main of the released commit>",
+  "packages": { ... }
+}
+```
+
+Release-please then collects commits *after* that SHA instead of resolving
+the orphaned tag, which fixes both the changelog range and the version bump
+(the bump level is derived from the commits it collects). A full 40-character
+SHA is required, and the key is only honored at the top level of the config,
+not inside a `packages` entry. Find the SHA by locating the commit on `main`
+that carries the released change (`git log --all --grep`), and verify it with
+`git merge-base --is-ancestor <sha> origin/main`.
+
+This is what `v3.9.0` needed: its tag points at `d748a65`, which never
+reached `main`, while the same change landed as `73a4b0b`, which did.
+
+**`last-release-sha` must be deleted once the next release PR merges. This
+is required, not housekeeping.** Release-please's manifest documentation is
+explicit that the two sha options behave differently: `bootstrap-sha` "will
+subsequently be ignored" once a release PR exists, but `last-release-sha` is
+"never ignored: remove/change it once a good release PR is merged." It is a
+hard stop in the backward commit walk that keeps applying on every later run,
+so a stale entry does *not* quietly stop mattering once a newer,
+properly-reachable tag exists. Leaving it pinned re-walks already-released
+commits into a later changelog — the same bug this entry exists to fix,
+reintroduced from the other direction. After the next release lands, delete
+the key and confirm the following release-please PR is still correctly
+scoped.
+
+#### Recovery B — the tag is mutable or has no release (retagging is possible)
+
+Only when the check above returned `false` or a confirmed 404. Find a
+commit on `main` that's a candidate for the
+retag. Start from the commit with the equivalent change (same message,
+`git log --all --grep`), but **don't stop at matching source content** —
+`git diff <bad-tag> <candidate>` showing only cosmetic differences is
+necessary but not sufficient. The candidate must ALSO satisfy
+`validate-version`'s other two checks at that exact commit:
+
+```bash
+git show <candidate>:pyproject.toml | grep '^version'
+git show <candidate>:.release-please-manifest.json
+git show <candidate>:skills/neuralmind/SKILL.md | grep '^version:'
+```
+
+All three must read `v<manifest-version>` **at that commit** — not on
+`main`'s current tip, at the candidate itself. This is easy to get wrong:
+the commit with the matching *source* content is often an earlier one than
+the commit where the manifest/SKILL.md bookkeeping actually got fixed (that
+fix usually lands later, bundled with unrelated work, exactly as it did for
+`v3.9.0` — the source-matching commit predated the manifest fix by a week,
+which would have failed `validate-version`'s manifest check all over again
+if tagged directly). Walk forward from the source-matching commit to the
+nearest later one where all three agree, and tag that instead. Then:
+
+```bash
+git tag -f v<manifest-version> <correct-sha-on-main>
+git push --force origin v<manifest-version>
+```
+
+This only rewrites a git ref — nothing already published (the PyPI wheel,
+the GHCR image, the SBOM, the GitHub Release notes) changes, and none of
+those republish as a side effect either: `release.yml`, `docker-publish.yml`
+and `sbom.yml` all re-fire on this push (it's a real tag push, same as the
+original), but PyPI publish uses `skip-existing: true` so an already-shipped
+version succeeds as a no-op instead of failing on "file already exists",
+GHCR image tags simply get overwritten with identical content, and
+`sbom.yml` already no-ops when nothing changed. All three workflows share
+one `validate-version` gate (`_validate-release-tag.yml`, a reusable
+workflow) — before this section was written, only `release.yml` checked
+the tag, so an orphaned or mismatched tag could still get a GHCR image
+built and an SBOM published even though PyPI correctly rejected it.
+
+**On immutability: it locks the tag, not just the assets.** An earlier
+version of this section claimed the opposite — that Release immutability was
+only about attaching *assets* after publish, and that a tag stayed an
+ordinary force-pushable ref. That was wrong, and it sent someone through a
+retag that could never have worked. Immutability covers both: assets are
+frozen (which is why `github-release`'s job in `release.yml` warns and moves
+on rather than failing when a late asset upload is refused) **and** the tag
+is pinned to its commit for as long as the release exists. Confirm a given
+release's status from the API's `immutable` field rather than assuming
+either way:
+
+```bash
+gh api repos/{owner}/{repo}/releases/tags/vX.Y.Z --jq .immutable
+```
+
+The repo-level setting lives under Settings → General → Releases. Note that
+already-published releases carry immutability as a property of the release
+itself, so turning the setting off does not retroactively unlock tags that
+were published while it was on.
+
+Do the repair before merging or re-running release-please's next proposed
+PR; merging it as-is would ship the bogus changelog and version bump. The
+`validate-version` gate described above exists specifically to stop a
+fresh instance of this from
+reaching this point silently again.
 
 ## Community
 

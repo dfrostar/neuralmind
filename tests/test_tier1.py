@@ -187,8 +187,8 @@ class TestMigrationCheck:
         warning = _check_version_mismatch(str(tmp_path))
         assert warning is not None
         assert "v0.41.0" in warning
-        # Version mismatch message should mention reindex.
-        assert "reindex" in warning
+        # Version mismatch message should mention rebuild/reindex.
+        assert "rebuild" in warning.lower()
 
     def test_no_warning_when_versions_match(self, tmp_path):
         import neuralmind

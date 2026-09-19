@@ -41,6 +41,7 @@ Complete command-line interface documentation for NeuralMind.
   - [review](#review-v0390)
   - [onboarding](#onboarding-v170)
   - [optimize-docs](#optimize-docs-v172)
+  - [license — issuer-side](#license--issuer-side)
 - [Exit Codes](#exit-codes)
 - [Environment Variables](#environment-variables)
 - [Examples](#examples)
@@ -302,6 +303,21 @@ Results are tagged with source project and deduplicated by ID.
 | `--trace-verbose` | False | *(v0.23.0+)* With `--trace`, keep full candidate/hit lists |
 | `--explain` | False | *(v0.39.0+)* Human-friendly breakdown of token savings, layers used, top hits, and synapses that fired (implies `--trace`) |
 | `--relevance` | False | *(v0.41.0+)* With `--json`, attach a structured `relevance` sidecar (per-file, per-node score/synapse-boost/recall + line spans) so a downstream compressor can protect the load-bearing spans (see below) |
+| `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
+| `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
+| `--chapter` | None | *(v3.8.0+)* With `--mode=unified`: filter results to a specific chapter tag, e.g. `--chapter="Chapter 2 — The Corner Pub"` |
+
+#### Unified search mode *(v3.8.0+)*
+
+For a project indexed with both `neuralmind build` (code) and
+`neuralmind ingest-content` (prose — see v3.4.0), `--mode=unified` queries
+both scopes and merges the results instead of picking one by default:
+
+```bash
+neuralmind query . "how does the corner pub scene end?" --mode=unified --scope-bias=content
+neuralmind query . "what handles the payment retry?" --mode=unified --scope-bias=code
+neuralmind query . "who visits the pub?" --mode=unified --chapter="Chapter 2 — The Corner Pub"
+```
 
 #### Output
 
@@ -2778,6 +2794,75 @@ Run without --dry-run to evolve JSDoc for these methods.
 
 ---
 
+### license — issuer-side
+
+Mints and manages **Team licences**. These are operator commands, not
+customer commands — every subcommand that changes a licence requires the
+Ed25519 issuer private key in `NEURALMIND_ISSUER_PRIVATE_KEY_HEX` and
+exits 1 without it. Customers use `neuralmind team license …` instead
+(see [Tier2-Operator-Guide](Tier2-Operator-Guide.md)).
+
+The end-to-end selling process these fit into — quoting, invoicing,
+delivery, renewals — is the [Billing Runbook](Billing-Runbook.md).
+
+```bash
+neuralmind license issue --customer "Acme Corp" --seats 12 --term 12 [--partner ID] [--output PATH]
+neuralmind license renew --customer "Acme Corp" --term 12
+neuralmind license revoke --customer "Acme Corp" --reason "non-payment"
+neuralmind license status --customer "Acme Corp"
+neuralmind license list [--partner ID]
+neuralmind license expiring [--within DAYS] [--json] [--quiet]
+```
+
+**`expiring`** is the exception to the key requirement above: it is
+read-only, needs no issuer key, and exists so a scheduler can watch for
+lapsing licences without holding anything sensitive. Nothing else in the
+system tracks expiry dates. It signals through its exit code so a caller
+never has to parse output to decide whether to alert:
+
+| Exit | Meaning |
+|-----:|---------|
+| 0 | Nothing due inside the window |
+| 6 | Renewals due inside the window |
+| 7 | Already expired, or an expiry that cannot be parsed (takes precedence over 6) |
+
+`--within` sets the look-ahead in days (default 60). `--quiet` suppresses
+output on exit 0, so a cron entry stays silent unless there is news.
+`--json` emits the full report — `expired`, `expiring` and `unknown`
+buckets, each sorted most-urgent first, with `days_remaining` per customer.
+Revoked licences are excluded: they cannot be renewed. See the
+[Billing Runbook](Billing-Runbook.md) for the scheduling recipe.
+
+| Flag | Applies to | Meaning |
+|------|-----------|---------|
+| `--customer` | issue, renew, revoke, status | Customer name; also the licence filename, sanitized |
+| `--seats` | issue | Seat count (must be positive) |
+| `--term` | issue, renew | Term in months: 1, 3, 6, 12, 24, or 36 |
+| `--partner` | issue, list | Reseller partner ID |
+| `--within` | expiring | Days ahead to look (default: 60) |
+| `--json` / `--quiet` | expiring | Machine-readable output / silence when nothing is due |
+| `--output` | issue | Filename for the signed licence, **within `~/.neuralmind`** — a path outside it is refused by the same guard that contains hostile customer names. Defaults to `<sanitized-customer-name>.json` |
+| `--reason` | revoke | Recorded in the audit log |
+
+**Term arithmetic.** Terms advance by calendar months, so a 12-month
+licence issued on 28 August expires on 28 August the following year. A
+day-of-month with no counterpart in the target month clamps to the last
+valid day (31 Jan + 1 month is 28 or 29 Feb). `renew` extends from the
+existing expiry rather than from today, so paying late does not grant free
+months and paying early does not forfeit any. A revoked licence cannot be
+renewed — issue a new one.
+
+**State written.** All under `~/.neuralmind/`:
+
+| File | Contents |
+|------|----------|
+| `<customer>.json` | The signed licence (`--output` renames it, still inside this directory) |
+| `customers.yaml` | Customer record: seats, expiry, status, `total_paid` |
+| `partners.yaml` | Reseller registry and accrued commission |
+| `audit_log.jsonl` | Append-only record of every issue, renew and revoke |
+
+---
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -2788,6 +2873,8 @@ Run without --dry-run to evolve JSDoc for these methods.
 | 3 | graph.json not found |
 | 4 | Index not built (run `build` first) |
 | 5 | Database error |
+| 6 | `license expiring`: renewals due inside the window |
+| 7 | `license expiring`: a licence has already expired, or its expiry cannot be parsed |
 
 ---
 
@@ -2831,11 +2918,16 @@ Run without --dry-run to evolve JSDoc for these methods.
 | `NEURALMIND_STRUCTURAL_RECALL` | `0` | *(v0.42.0+)* Opt-in (`== "1"`). Fold a query hit's structural neighbors (callers/callees/base classes) into L3 retrieval, budget-neutrally (displacement, not addition). **Off by default** because the structural signal can saturate top-k recall and crowd out the learned synapse reranker on some graphs; the always-on structural **query tools** carry the value with zero effect on the tuned retrieval stack. |
 | `NEURALMIND_STRUCTURAL_MIN_CONFIDENCE` | `0.0` | *(v0.42.0+)* Drop structural edges whose `confidence_score` is below this value when building the index. Raise toward `1.0` to trust only compiler-accurate edges (pair with `NEURALMIND_PRECISION`). |
 | `NEURALMIND_STRUCTURAL_HUB_DEGREE` | `50` | *(v0.42.0+)* Per-relation degree cap for structural recall and blast-radius. Above the cap, an over-connected utility's neighbors are down-weighted (recall) or truncated (blast-radius) so one hub can't dominate. |
+| `NEURALMIND_PARITY_SAMPLES` | `3` | *(v3.9.0+)* Backend parity gate: how many times the faithfulness A/B is sampled before the mean is gated. Averaging absorbs ANN query-time ordering jitter, matching the self-benchmark's onboarding-lift gate, so a failure means a real regression rather than an unlucky draw. Set to `1` to restore single-sample behavior. |
 | `NEURALMIND_DRIFT_REFRESH` | `1` | *(v3.2.0+)* Set to `0` to make `neuralmind drift` judge strictly against the last-built graph, skipping the transparent re-parse of changed files (same effect as `--no-refresh`). The re-parse needs tree-sitter (the `graphgen` extra); without it this is already a no-op. |
 | `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
 | `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
 | `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
 | `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`). Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one — so this is for golden-output tests and log-sensitive CI jobs. |
+| `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
+| `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
+| `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when a query is classified `docs` (code hits are multiplied by `0.7`). |
+| `NEURALMIND_RETRIEVAL_EXPANSION` | `0` | *(v3.10.0+)* Opt-in — set to `1`, `true`, `yes` or `on` (case- and whitespace-insensitive); anything else, including unset, is off. Lets the v3.9.0 retrieval pull-in — two-pass source-file search, synapse-seeded expansion, and snippet extraction — contend for L3 slots, budget-neutrally (displacement, not addition). **Off by default because it was measured, not because it is unfinished:** on the faithfulness fixture it takes the delta from `+0.041` to `-0.065` appended (how v3.9.0 shipped) or `-0.107` displaced, against a `+0.000` gate floor. Making it budget-neutral made it worse, which is the useful finding — displacing evicts a real hit per candidate, so candidates that are worse than what they replace cost facts, not just tokens. Intent classification and the code-signal boost are unaffected by this flag and stay on; they are bit-for-bit neutral on the same fixture. Turning this on is a research setting until a gate says otherwise. Reproducing these numbers requires a **fresh copy of the fixture per sample** — `query()` reinforces synapses into `<project>/.neuralmind/synapses.db`, so re-running against the same directory measures a progressively trained index, not a repeat. |
 
 ---
 

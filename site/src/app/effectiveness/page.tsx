@@ -1,11 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/effectiveness',
     title: 'Effectiveness — NeuralMind',
     description:
         '48.8× token reduction on a real CRM codebase. Personal edges tripled, shared edge weight up 5.4%, 810 architectural communities. Tiered claims, honest scrutiny.',
-};
+});
 
 const headlineStats = [
     { label: 'Token Reduction', value: '48.8×', detail: '1,033 vs 50,000+ tokens/query', gradient: true },
@@ -37,7 +40,7 @@ const honestyGate = [
     {
         // claims-guard:allow — this entry exists to disown the phrase, not to make it.
         title: 'Zero code egress',
-        body: 'Overclaim. The agent layer still talks to its model. NeuralMind makes no network calls of its own.',
+        body: 'Overclaim. The agent layer still talks to its model. What NeuralMind itself does: transmits no repository content, and sends no telemetry.',
     },
 ];
 

@@ -1,15 +1,14 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/services',
     title: 'Services — NeuralMind',
     description:
         'Fixed-fee assessment and pilot engagements for engineering teams adopting NeuralMind: measured token-reduction benchmarks on your repos, governance setup, and an honest keep-or-skip recommendation.',
-    alternates: {
-        canonical: '/services',
-    },
-};
+});
 
 const offerings = [
     {
@@ -19,7 +18,7 @@ const offerings = [
         description:
             'Find out what NeuralMind actually does on your code before anyone installs anything team-wide.',
         features: [
-            'Benchmark on 1–3 of your repos, run on your hardware — the benchmark makes no network calls of its own',
+            'Benchmark on 1–3 of your repos, run on your hardware — none of your code is transmitted',
             'Measured retrieval reduction ratios (the same harness as our public CI numbers)',
             'Retrieval-quality spot checks against real questions from your team',
             'Fit across your agent stack: Claude Code, Cursor, Cline, Codex, any MCP client',
@@ -191,7 +190,7 @@ export default function ServicesPage() {
                         </p>
                         <ul className="space-y-2 mb-4">
                             {[
-                                'Local-first with zero telemetry — NeuralMind stores your code graph and learned memory on your own infrastructure and makes no network calls of its own',
+                                'Local-first with zero telemetry — NeuralMind stores your code graph and learned memory on your own infrastructure and transmits no repository content',
                                 'Append-only, hash-chained audit log of team-memory governance actions',
                                 'Publish scoping and admin roles controlling what leaves each developer’s machine',
                                 'A CycloneDX SBOM published for every release',

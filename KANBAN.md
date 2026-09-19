@@ -1,110 +1,109 @@
-# NeuralMind — Kanban Board (v3.1.3+)
+# NeuralMind — Kanban Board (CANONICAL — `dfrostar/neuralmind`)
 
-**Last updated:** 2026-08-11
-**Repo:** `neuralmind-fresh` (dfrostar/neuralmind)
-**Version:** 3.1.3+
-
----
-
-## ✅ COMPLETE: P0 Fixes (2026-08-09)
-
-| # | Issue | Fix | Commit |
-|---|-------|-----|--------|
-| 1 | Role-gated MCP tools | Added analytics tools to builder role | `b113b24` |
-| 2 | No auto-rebuild | Post-build hint → `init-hook` / `watch` | `aded3fd` |
-| 4 | No incremental build | Regenerate graph on every build (graphgen reuses by hash) | `986db53` |
-
-## ✅ COMPLETE: P1 Fixes (2026-08-09)
-
-| # | Issue | Fix | Commit |
-|---|-------|-----|--------|
-| 3 | No `.neuralmindignore` | `.gitignore`-style exclusion in `_iter_files()` | `594dcd0` |
-| 8 | Markdown bloat | Same fix as #3 | `594dcd0` |
-
-## ✅ COMPLETE: Gap Closure (2026-08-09)
-
-| ID | Task | Commit |
-|----|------|--------|
-| G-03 | `SynapseStore.penalize()` | `d5b9699` |
-| G-04 | `feedback good/bad` CLI | `d5b9699` |
-| G-05 | `status` dashboard | `d5b9699` |
-
-## ✅ COMPLETE: P2 Fixes (2026-08-09)
-
-| # | Issue | Fix | Commit |
-|---|-------|-----|--------|
-| 5 | Unknown edge relations | Added `describes` to EDGE_RELATIONS | `c2a420f` |
-| 6 | No audit trail query | Added `audit recent` subcommand | `a91ecd2` |
-| 7 | SOC2 compliance | Added SOC2 regex pattern | `05c8a24` |
-| 9 | Query --type filter | Added `--type code/docs/auto` flag | `efead21` |
-| 10 | Cross-project query | Added `--projects` flag | `ff90512` |
-
-## ✅ COMPLETE: P3 Fixes (2026-08-09)
-
-| # | Issue | Fix | Commit |
-|---|-------|-----|--------|
-| 11 | Synapse pruning | Added `synapse prune/stats` commands | `ce58ce7` |
-| 12 | Health check | Added `health` CLI + MCP tool | `d1b3fdb` |
-
-## ✅ COMPLETE: Code/Document Scoring (2026-08-11)
-
-| ID | Task | Status | Commit |
-|----|------|--------|--------|
-| CD-01 | Create TRD | ✅ | `neuralmind-autopilot/docs/specs/CODE-DOC-SCORING-TRD.md` |
-| CD-02 | Query intent detection | ✅ | `04ed8be` |
-| CD-03 | Type-aware boosting | ✅ | `04ed8be` |
-| CD-04 | CLI --type flag integration | ✅ | `efead21` + fix |
-
-## ✅ COMPLETE: QA Fixes (2026-08-11)
-
-| ID | Severity | Issue | Fix |
-|----|----------|-------|-----|
-| C1 | CRITICAL | `penalize()` destroys LTP edges | Added LTP guard to DELETE |
-| C2 | CRITICAL | `prune_stale()` wipes LTP edges | Added LTP guard to DELETE |
-| C3 | CRITICAL | `neuralmind_health` MCP tool denied by RBAC | Added to `builder` + `reader` |
-| H1 | HIGH | `--type` filter no-ops via daemon path | Fall back to direct mode when type set |
-| H2 | HIGH | `--type` filter doesn't filter context | Pass `query_type` to context selector |
-| W1 | WARNING | `penalize()` bumps `last_activated` | Removed from UPDATE |
-| W2 | WARNING | `penalize()` bulk DELETE collateral | Scope to penalized pair set |
-| W3 | WARNING | `core.py` force builds clobber graphify | Restore graphify-protection guard |
-| W5 | WARNING | `_apply_intent_boost` boolean precedence | Make code/doc mutually exclusive |
-| M5 | MEDIUM | Feedback strength hardcoded | Derive from `LEARNING_RATE` |
+**Last updated:** 2026-09-17 16:30:00
+**Repo:** `neuralmind` (dfrostar/neuralmind)
+**Version:** 3.13.0
+**Branch:** main
+**Last commit:** `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17)
 
 ---
 
-## 📋 BACKLOG
+## Status
 
-| # | Issue | Priority |
-|---|-------|----------|
-| 14 | Logos training transformers incompatibility | P1 |
+### What Works (Verified)
+
+| Component | Status | Tests |
+|-----------|--------|-------|
+| MedicalRetriever (standalone) | ✅ Built & tested | 22/22 pass |
+| ChapterIndexer (standalone) | ✅ Built & tested | 12/12 pass |
+| Pipeline integration (prose path) | ✅ Wired & tested | 12/12 pass |
+| BM25 prose tokenizer fix (P0) | ✅ Fixed | Verified |
+| Benchmark parser (new format) | ✅ Fixed | 14 queries run |
+
+### Benchmark Results (peptide book, 14 queries)
+
+| Metric | Before (v3.12) | After (v3.13) | Change |
+|--------|----------------|---------------|--------|
+| **Recall@1** | 64.3% | 78.6% | **+14 pts** |
+| **Fact Recall** | 47% | 84% | **+37 pts** |
+| MRR | 0.79 | 0.83 | +0.04 |
+| Avg Latency | 1418ms | 921ms | 1.5x faster |
+| Precision@5 | 38.6% | 37.3% | -1.3 pts (acceptable) |
+
+### Architecture
+
+```
+NeuralMind.query()
+  ├── if project_kind in ("prose", "mixed"):
+  │     └── MedicalRetriever.query() → ContextResult
+  │           ├── ChapterIndexer (BM25 + embedding + heading match)
+  │           ├── ConfidenceFlagger (HIGH/MEDIUM/LOW)
+  │           └── Negative query fallback
+  └── else (code):
+        └── ContextSelector.get_query_context() (unchanged)
+```
 
 ---
 
-## ✅ SHIPPED: Pre-v3.1.2 (Confirmed Working)
+## Decisions Made
 
-| Feature | Version | Date |
-|---------|---------|------|
-| Hebbian co-activation (undirected) | v0.11.0 | 2026-07-17 |
-| Directional transitions | v0.11.0 | 2026-07-17 |
-| Memory namespaces | v0.11.0 | 2026-07-17 |
-| Learned half-life | v0.11.0 | 2026-07-17 |
-| Reuse-detection feedback | v0.38.0 | 2026-07-31 |
-| Periodic decay (`watch`) | v3.1.2 | 2026-08-09 |
-| `audit export/verify` CLI | v3.1.2 | 2026-08-09 |
-| `compliance` CLI | v3.1.2 | 2026-08-09 |
-| `feedback good/bad` CLI | v3.1.2+ | 2026-08-09 |
-| `status` dashboard | v3.1.2+ | 2026-08-09 |
-| `penalize()` method | v3.1.2+ | 2026-08-09 |
-| `.neuralmindignore` support | v3.1.2+ | 2026-08-09 |
-| `health` check endpoint | v3.1.2+ | 2026-08-09 |
-| `synapse prune/stats` | v3.1.2+ | 2026-08-09 |
-| `audit recent` | v3.1.2+ | 2026-08-09 |
-| Query `--type` filter | v3.1.2+ | 2026-08-09 |
-| Cross-project query | v3.1.2+ | 2026-08-09 |
-| Code/doc intent detection | v3.1.3+ | 2026-08-11 |
-| LTP-guarded penalize/prune | v3.1.3+ | 2026-08-11 |
-| RBAC for health tool | v3.1.3+ | 2026-08-11 |
+### MedicalRetriever Design
+
+| Decision | Rationale |
+|----------|-----------|
+| Chapter-level indexing (one doc per chapter) | Eliminates duplicate chapter entries from 61 fragmented nodes |
+| Hybrid scoring: 0.30 BM25 + 0.45 embedding + 0.25 heading match | Embedding carries most weight for semantic queries; heading match catches exact phrases |
+| Claims Register downweight (0.4×) | Reference tables hijack BM25 with dense term repetition |
+| Back-matter downweight (0.3×) | Glossary is lookup table, not clinical content |
+| Confidence gating (HIGH≥0.70, MEDIUM≥0.40, LOW<0.40) | No silent low-confidence results for medical content |
+| Lazy initialization | MedicalRetriever only builds on first prose query |
+
+### Context Mode Comparison
+
+| Dimension | NeuralMind | Context Mode |
+|-----------|-----------|------------|
+| Scope | Persistent (your library) | Session-scoped (this conversation) |
+| Input | Pre-existing documents | Tool output during session |
+| Value | Surfaces relevant content from your knowledge base | Prevents context flooding |
+| Semantic search | ✅ Embeddings (ONNX) | ❌ FTS5 keyword only |
+| Prose/books | ✅ Chapter-level + medical terminology | ❌ Code-only |
+| Session continuity | ❌ Not built | ✅ SQLite FTS5 |
+| MCP integration | ❌ Not yet | ✅ 17+ agents |
+
+**Verdict:** They're layers, not competitors. Context Mode manages the present; NeuralMind retrieves from the past.
 
 ---
 
-*Next: run tests, create PR, merge to main.*
+## Pending Work
+
+### Next Sprint
+- [ ] Context Mode MCP integration for session continuity
+- [ ] e5-large embedding upgrade (network blocked)
+- [ ] Strip unused code paths (if any remain)
+- [ ] Publish v3.13.0 to PyPI
+
+### Known Limitations
+- MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
+- e5-large upgrade path documented but not yet available (network blocked)
+- P95 latency 7.6s (first query cold start); subsequent queries <400ms
+- Synapse layer unused for prose (only code projects)
+
+---
+
+## Action Items
+
+1. Monitor for network availability to download e5-large ONNX model
+2. Consider Context Mode integration as companion tool for session management
+3. Evaluate competitive positioning: "Context Mode for personal knowledge"
+
+---
+
+## 📊 Repo State (2026-09-17)
+
+| Field | Value |
+|-------|-------|
+| Branch | main |
+| Last commit | `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17) |
+| Uncommitted | 3 files (KANBAN.md, Features.tsx, evals/public/card.py) |
+| New work | `Features.tsx` — 30 lines added (uncommitted) |
+| Stale days | 0 days (last commit today) |

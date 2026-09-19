@@ -28,6 +28,10 @@ from typing import Any
 
 _CAMEL_RE = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])")
 
+# Prose-friendly tokenizer: keeps hyphenated terms whole (BPC-157, GLP-1),
+# lowercases, strips punctuation except hyphens within words.
+_PROSE_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
 
 def _tokenize(text: str) -> list[str]:
     """Split code text into lowercase tokens.
@@ -43,6 +47,19 @@ def _tokenize(text: str) -> list[str]:
     return [t.lower() for t in tokens if len(t) >= 2 and not t.isdigit()]
 
 
+def _tokenize_prose(text: str) -> list[str]:
+    """Prose-friendly tokenization: keeps hyphenated terms whole.
+
+    Regex ``[a-z0-9]+(?:-[a-z0-9]+)*`` matches runs of alphanumerics
+    connected by single hyphens, so "BPC-157", "GLP-1", "semaglutide"
+    stay as single tokens. Lowercases, drops punctuation, filters tokens
+    shorter than 2 chars and pure-digit tokens (same noise guard as
+    ``_tokenize``).
+    """
+    tokens = _PROSE_RE.findall(text.lower())
+    return [t for t in tokens if len(t) >= 2 and not t.replace("-", "").isdigit()]
+
+
 class BM25Index:
     """BM25 sparse index for code node retrieval.
 
@@ -56,15 +73,19 @@ class BM25Index:
 
     _VERSION = 1
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(self, k1: float = 1.5, b: float = 0.75, tokenizer: callable = None) -> None:
         """Create an empty BM25 index.
 
         Args:
             k1: Term-frequency saturation (higher = slower saturation).
             b: Document-length normalization (0=none, 1=full).
+            tokenizer: Tokenizer function for documents and queries.
+                       Defaults to _tokenize (code). Use _tokenize_prose for
+                       prose/book projects so hyphenated terms stay whole.
         """
         self.k1 = k1
         self.b = b
+        self._tokenize = tokenizer or _tokenize
 
         # Ordered document lists — same index across all three.
         self._ids: list[str] = []
@@ -96,7 +117,7 @@ class BM25Index:
         if metadatas is None:
             metadatas = [{} for _ in doc_ids]
         for doc_id, text, meta in zip(doc_ids, texts, metadatas, strict=True):
-            tokens = _tokenize(text)
+            tokens = self._tokenize(text)
             tf: dict[str, int] = {}
             for t in tokens:
                 tf[t] = tf.get(t, 0) + 1
@@ -131,7 +152,7 @@ class BM25Index:
         if self._N == 0 or os.environ.get("NEURALMIND_BM25") == "0":
             return []
 
-        q_tokens = _tokenize(query)
+        q_tokens = self._tokenize(query)
         if not q_tokens:
             return []
 
@@ -147,14 +168,70 @@ class BM25Index:
                 if tf == 0:
                     continue
                 dl = self._dl[i]
-                denom = tf + k1 * (1 - b + b * dl / avgdl) if avgdl > 0 else tf + k1
-                score = idf * tf * (k1 + 1) / denom
+                # Sublinear TF scaling: log(tf) + 1 prevents high-TF docs from dominating
+                sublinear_tf = 1 + math.log(tf) if tf > 0 else 0
+                denom = (
+                    sublinear_tf + k1 * (1 - b + b * dl / avgdl) if avgdl > 0 else sublinear_tf + k1
+                )
+                score = idf * sublinear_tf * (k1 + 1) / denom
                 scores[i] = scores.get(i, 0.0) + score
 
         if not scores:
             return []
 
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_k]
+        max_score = ranked[0][1] if ranked else 1.0
+
+        return [
+            {
+                "id": self._ids[i],
+                "document": self._docs[i],
+                "metadata": self._metadatas[i],
+                "score": score / max_score,  # normalise to [0, 1]
+                "_bm25_raw": score,
+            }
+            for i, score in ranked
+        ]
+
+    def bm25_search_prose(self, query: str, n: int = 10) -> list[dict[str, Any]]:
+        """Return top_k results using prose-friendly tokenization.
+
+        Same result shape as :meth:`search`, but tokenizes the query with
+        :func:`_tokenize_prose` so hyphenated terms (BPC-157, GLP-1) stay
+        whole — critical for book/prose retrieval where those tokens carry
+        meaning that code-style splitting (``bpc``, ``157``) would dilute.
+        """
+        if self._N == 0 or os.environ.get("NEURALMIND_BM25") == "0":
+            return []
+
+        q_tokens = _tokenize_prose(query)
+        if not q_tokens:
+            return []
+
+        scores: dict[int, float] = {}
+        k1, b, avgdl = self.k1, self.b, self._avgdl
+
+        for term in q_tokens:
+            if term not in self._idf:
+                continue
+            idf = self._idf[term]
+            for i, tf_map in enumerate(self._tf):
+                tf = tf_map.get(term, 0)
+                if tf == 0:
+                    continue
+                dl = self._dl[i]
+                # Sublinear TF scaling: log(tf) + 1 prevents high-TF docs from dominating
+                sublinear_tf = 1 + math.log(tf) if tf > 0 else 0
+                denom = (
+                    sublinear_tf + k1 * (1 - b + b * dl / avgdl) if avgdl > 0 else sublinear_tf + k1
+                )
+                score = idf * sublinear_tf * (k1 + 1) / denom
+                scores[i] = scores.get(i, 0.0) + score
+
+        if not scores:
+            return []
+
+        ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:n]
         max_score = ranked[0][1] if ranked else 1.0
 
         return [

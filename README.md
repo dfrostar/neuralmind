@@ -22,7 +22,8 @@ together, what you usually touch next — and remembers it across sessions.
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
-> - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
+|> - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
+|> - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
 >
 > **Works with every IDE your team already uses.**
 
@@ -60,7 +61,7 @@ Two cooperating brains:
 
 The agent asks a question. NeuralMind retrieves only the relevant slice (~800 tokens). The more you use it, the smarter the retrieval gets — Hebbian co-activation strengthens edges between code that's used together; unused edges decay.
 
-**NeuralMind indexes and queries entirely locally.** No telemetry, no repository content transmitted anywhere — the only outbound request is a one-time HTTPS GET for the public MiniLM embedding model when no cached copy exists (air-gapped installs pre-seed it via `NEURALMIND_ONNX_MODEL_DIR`; see [SECURITY.md](SECURITY.md)). Your agent still sends whatever slice NeuralMind retrieves to its own model — same as it would with any file read.
+**NeuralMind sends no telemetry and transmits no repository content off your machine.** It processes locally and hands only the relevant code slice to your AI tool on the same machine — what that tool then sends to its own model provider is between you and it. Its one outbound request is a one-time download of a public embedding model on first build — pre-seedable, see [Run NeuralMind air-gapped](docs/use-cases/air-gapped.md).
 
 ---
 
@@ -76,14 +77,14 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
 | **Codex** | Same MCP integration. | 🔬 Theoretical |
-| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. An official `optional-mcps` catalog entry is reviewer-approved and [awaiting maintainer merge](https://github.com/NousResearch/hermes-agent/pull/97207). | 🔬 Theoretical |
-| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory, or install from the [ClawHub](https://clawhub.dev) marketplace (`openclaw skills install neuralmind`) — live listing, MIT-0. | 🔬 Theoretical |
-| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. Listed in the official [`a0-plugins`](https://github.com/agent0ai/a0-plugins/pull/499) registry (merged); `plugin.yaml` (repo root) is that listing's manifest. | 🔬 Theoretical |
+| **Hermes-Agent** | Native MCP client discovers `neuralmind-mcp` at startup — no bridge process. Or skip MCP and install the portable skill straight from GitHub: `hermes skills install dfrostar/neuralmind/skills/neuralmind`. A catalog entry is [submitted as NousResearch/hermes-agent#97207](https://github.com/NousResearch/hermes-agent/pull/97207) — a contributor's review comments are resolved, but it carries no formal review and is not merged. | 🔬 Theoretical |
+| **OpenClaw** | `openclaw mcp set neuralmind '{"command":"neuralmind-mcp","args":[]}'` wires it into the same shared memory. The portable skill is also listed on ClawHub (community channel): `openclaw skills install @dfrostar/neuralmind`. | 🔬 Theoretical |
+| **Agent Zero** | Same MCP integration, pointed at `neuralmind-mcp`. Listed in Agent Zero's in-app Plugin Hub: the [`a0-plugins` index entry](https://github.com/agent0ai/a0-plugins/tree/main/plugins/neuralmind) merged 2026-08-31 ([agent0ai/a0-plugins#499](https://github.com/agent0ai/a0-plugins/pull/499)). Installing from the Hub clones this repository as a plugin, which exposes the portable skill — it does not install the package or register the MCP server, so `pip install neuralmind` and the MCP config are still manual. `plugin.yaml` (repo root) is the manifest their registry CI fetches; [`integrations/a0-plugins/`](integrations/a0-plugins/) mirrors the merged entry. | 🔬 Theoretical |
 | **VS Code** | Direct extension + MCP. | ✅ Tested |
 | **Vim/Neovim** | Via Claude Code CLI. | ✅ Tested |
 | **JetBrains** | Via Claude Code or MCP agent. | ✅ Validated |
 
-Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules. The registry submissions themselves: live on [ClawHub](https://clawhub.dev), merged into [`a0-plugins`](https://github.com/agent0ai/a0-plugins/pull/499), and reviewer-approved but [awaiting maintainer merge](https://github.com/NousResearch/hermes-agent/pull/97207) on Hermes-Agent. None of the three has been physically driven end-to-end in our own CI yet, though — that's what "Theoretical" tracks here, independent of registry status.
+Theoretical = MCP is standard protocol. All MCP-compatible agents should work. We haven't physically tested display-server-dependent IDEs (Cursor, Cline, Continue) — Xvfb is not available in our CI. Hermes-Agent, OpenClaw, and Agent Zero are covered by host-specific notes in [`skills/neuralmind/SKILL.md`](skills/neuralmind/SKILL.md) and a CI check ([`tests/test_skill_manifest.py`](tests/test_skill_manifest.py)) that keeps the portable skill's identity in sync with each registry's rules, but none has been physically driven end-to-end yet either.
 
 ---
 
@@ -111,11 +112,49 @@ Both are **budget-neutral by design**: recalled nodes *displace* the weakest hit
 
 **Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI guarantees is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
 
-### 3. Finds the right code (not just less of it)
+### 3. Context budget management (v3.13.0+)
+
+Every query gets a fixed token budget (default 8,000 tokens, matching lean-ctx). If the assembled context would exceed it, lower-priority layers are trimmed first — L3 search results, then L2 on-demand modules, then L1 summary. L0 identity is never trimmed. Budget warnings log at 80% usage.
+
+```python
+result = mind.query("How does auth work?", context_budget=6000)
+# Context trimmed to fit 6000 tokens, L3 removed first
+```
+
+### 4. Session summaries (v3.13.0+)
+
+Periodic session digests (every 25 tool calls) capture what was done, key decisions, files touched, and commands run. Stored as markdown under `.neuralmind/summaries/`, semantically recallable via the vector index. Auto-pruned (max 100 per project).
+
+```bash
+neuralmind status .  # shows recent summaries
+```
+
+### 5. Code graph traversal edges (v3.13.0+)
+
+Files that appear together in query results get **co-access edges** reinforced Hebbian-style. Over time this captures "to understand X, you also need Y" relationships that static analysis misses. Traversal edges decay faster than structural edges (they're noisier) and can be promoted to durable status via the cognition loop.
+
+### 6. Read dedup + auto-preload (v3.13.0+)
+
+Repeated reads of unchanged files are replaced with compact stubs (content-hash based). Related files are auto-preloaded on first read, using the code graph's traversal edges. Both are token-saving optimizations that work transparently.
+
+### 7. Cognition loop (v3.13.0+)
+
+Background knowledge consolidation runs periodically (default every hour):
+1. Reinforces co-access edges from recent queries
+2. Decays unused edges (faster for traversal edges)
+3. Consolidates knowledge (promotes frequently co-activated clusters to LTP)
+4. Prunes stale data (old summaries, expired read cache, dormant synapses)
+
+```bash
+neuralmind cognition-loop .  # run manually
+# Or via systemd timer (auto-configured by install-hooks)
+```
+
+### 8. Finds the right code (not just less of it)
 
 **93.75% mean gold-file recall (79–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
-### 4. Better-grounded answers (not just shorter)
+### 9. Better-grounded answers (not just shorter)
 
 At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation. CI gates the delta at **≥ 0**; the measured delta has ranged **+0.013 to +0.143** across runs on the reference fixture, with grounding at 1.00. Same caveat as above — the gate is the guarantee, the magnitude moves.
 
@@ -142,7 +181,7 @@ At a *matched* token budget, NeuralMind's selected context carries more of the g
 - **NOT a SaaS wrapper.** It's a code intelligence layer that runs in your infrastructure. We never see your code.
 - **NOT a model swap.** It works with whatever agent you already use — Claude, GPT, Gemini, or any MCP-compatible agent.
 - **NOT a replacement for Copilot/Cursor.** It composes with them. It's the memory layer that makes every agent smarter.
-- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (local indexing and querying with no telemetry, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
+- **SOC 2-ready posture, certification on the roadmap.** Our architecture *supports* SOC 2 deployment patterns (an engine that transmits no repository content, hash-chained audit log, RBAC). See [commercial-terms.json](commercial-terms.json).
 - **NOT SSO/SAML today.** This is a roadmap feature. See [commercial-terms.json](commercial-terms.json) `do_not_market` list.
 
 **Technical limits:**
@@ -330,24 +369,44 @@ with `python -m tests.benchmark.run`:
 Methodology, gold sets, and community submissions:
 [benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md).
 
+<!-- COMMUNITY-BENCHMARKS:START -->
+| Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
+|---------|------|------:|-------:|----------:|----------:|-------|-----------|
+| project-alpha | JavaScript | 241 | 341 | 739 | **65.6×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+| ts-saas-platform (anon) | TypeScript | 9,293 | 455 | 1,033 | **48.8×** | — | [@dfrostar](https://github.com/dfrostar) · 2026-07-20 |
+| project-beta | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
+
+_3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + by-language charts._
+<!-- COMMUNITY-BENCHMARKS:END -->
+
 ---
 
 ## 🔒 Security & Compliance
 
-- **100% local engine.** NeuralMind makes zero network calls of its own and
-  ships no telemetry. Only the minimal relevant slice of code ever reaches
-  your AI tool.
+- **Local engine, no telemetry by default.** NeuralMind transmits no
+  repository content and ships no telemetry in its default configuration.
+  Only the minimal relevant slice of code ever reaches your AI tool. The
+  only outbound requests it makes by default are a one-time fetch of a
+  public embedding model on first build (carrying nothing about your code;
+  pre-seed it and the install never reaches the network at all) and,
+  **only if you explicitly opt in** with `NEURALMIND_LLM_SEED=1` +
+  `ANTHROPIC_API_KEY`, a call that sends README/architecture-doc prose
+  (never code, never other files) to Anthropic to seed synapse edges. No
+  code path ingests video, image, or audio files at all. Full disclosure:
+  [`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 - **CycloneDX SBOM per release**, hash-chained audit log (Team tier), signed
   licenses (Ed25519), tarball integrity instructions on every release.
 - Live posture page: [neuralmind.uk/security](https://neuralmind.uk/security/) ·
   Policy: [SECURITY.md](SECURITY.md) ·
   [Compliance summary](docs/COMPLIANCE-SUMMARY.md) ·
+  [Third-party LLM & media disclosure](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md) ·
   [SDLC policy](docs/compliance/SDLC_POLICY.md)
 
 Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 `NEURALMIND_SYNAPSE_INJECT=0` (skip prompt-time recall),
 `NEURALMIND_SYNAPSE_EXPORT=0` (skip memory export),
-`NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import). All fail-open.
+`NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import),
+`NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard). All fail-open.
 
 ---
 
@@ -386,7 +445,7 @@ read the number. If it's not worth it, uninstall — and see the
 tier adds governance, audit, and seat management for organizations.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
-patterns (no network calls of its own, audit log, RBAC). Certification is on
+patterns (no repository content transmitted, audit log, RBAC). Certification is on
 the roadmap.
 See [commercial-terms.json](commercial-terms.json).
 

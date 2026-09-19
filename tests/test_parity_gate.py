@@ -91,8 +91,8 @@ class GateTests(unittest.TestCase):
     def test_negative_faithfulness_delta_fails_floor(self) -> None:
         g = _measurement("graphify", faithfulness_delta=-0.02)
         # Within tolerance of graphify's (also negative) delta, but below the
-        # absolute floor of 0.0 → must still fail.
-        b = _measurement("builtin", faithfulness_delta=-0.05)
+        # absolute floor of -0.10 → must still fail.
+        b = _measurement("builtin", faithfulness_delta=-0.15)
         checks = {c.name: c.passed for c in parity.evaluate_gate(g, b)}
         self.assertFalse(checks["faithfulness delta ≥ absolute floor"])
 

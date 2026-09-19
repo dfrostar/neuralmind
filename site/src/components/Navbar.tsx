@@ -22,6 +22,7 @@ const productLinks: NavItem[] = [
 
 const resourceLinks: NavItem[] = [
     { href: '/publications', label: 'Research', hint: 'Write-ups and methodology' },
+    { href: '/measure-your-own', label: 'Measure Your Own', hint: 'Run the benchmark on your repo' },
     { href: '/#assessment', label: 'Assessment', hint: 'Free spend analysis' },
     { href: '/#faq', label: 'FAQ', hint: 'Common questions' },
     { href: 'https://docs.neuralmind.uk/wiki/Home', label: 'Docs', hint: 'CLI and wiki' },

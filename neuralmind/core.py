@@ -28,6 +28,7 @@ import os
 import threading
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from neuralmind.state_dir import ensure_parent_dir
 
@@ -37,11 +38,12 @@ from . import querying, synapse_feedback
 from . import recent_queries as recent_queries_log
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
-from .context_selector import ContextResult, ContextSelector
+from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
 from .query_handler import QueryHandler
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
+from .synapse_dynamics import SynapseDynamics
 from .synapses import SynapseStore, default_db_path
 
 logger = logging.getLogger(__name__)
@@ -155,6 +157,7 @@ class NeuralMind:
         hybrid_context: bool | None = None,
         enable_synapses: bool = True,
         memory_namespace: str | None = None,
+        scope: str = "all",
     ):
         """
         Initialize NeuralMind for a project.
@@ -167,11 +170,12 @@ class NeuralMind:
             memory_namespace: Explicit synapse-memory namespace (PRD 4). When
                 None, resolved from NEURALMIND_NAMESPACE / the backend config's
                 ``memory_namespace`` / the current git branch / ``personal``.
+            scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
-        self.project_path = Path(project_path)
+        self.project_path = Path(project_path).resolve()
         self.db_path = db_path
         self.backend_manager = BackendManager(
-            project_path=str(self.project_path), db_path=db_path, backend=backend_type
+            project_path=str(self.project_path), db_path=db_path, backend=backend_type, scope=scope
         )
         self.hybrid_context = (
             bool(self.backend_manager.config.get("hybrid_context", False))
@@ -193,6 +197,7 @@ class NeuralMind:
         self._synapses: SynapseStore | None = None
         self._synapses_lock = threading.Lock()
         self._synapse_client: SynapseClient | None = None
+        self._dynamics: SynapseDynamics | None = None
         self._query_handler: QueryHandler | None = None
         self._memory_namespace_override = memory_namespace
         self._memory_namespace: str | None = None
@@ -202,6 +207,9 @@ class NeuralMind:
         # from the loaded graph at build() time; None until then or when the
         # NEURALMIND_STRUCTURAL kill switch is set.
         self._structural_index: StructuralIndex | None = None
+
+        # Medical retriever for prose projects (lazy: built on first prose query)
+        self._medical_retriever: Any | None = None
 
     @property
     def backend_name(self) -> str:
@@ -282,6 +290,22 @@ class NeuralMind:
         return self._synapse_client
 
     @property
+    def dynamics(self) -> SynapseDynamics | None:
+        """Return the SOTA synapse dynamics wrapper, creating it on first use.
+
+        The dynamics layer wraps the raw SynapseStore with six modern
+        brain-inspired techniques (lateral inhibition, STC, SAMPL,
+        resource-dependent STDP, FOK gating, replay consolidation).
+
+        Returns None when synapses are disabled.
+        """
+        if not self.enable_synapses or self.synapses is None:
+            return None
+        if self._dynamics is None:
+            self._dynamics = SynapseDynamics(self.synapses)
+        return self._dynamics
+
+    @property
     def query_handler(self) -> QueryHandler:
         """Return the query handler, creating it on first use."""
         if self._query_handler is None:
@@ -291,6 +315,38 @@ class NeuralMind:
     def activate(self, node_ids: list[str], strength: float = 1.0) -> int:
         """Feed an activation signal into the synapse layer."""
         return self.synapse_client.activate(node_ids, strength=strength)
+
+    def dynamics_reinforce(self, node_ids: list[str], strength: float = 1.0) -> int:
+        """Reinforce synapses using SOTA dynamics (STC, resource STDP, replay).
+
+        Uses the full SynapseDynamics wrapper which applies synaptic tagging,
+        resource-dependent competition, and replay queueing in addition to
+        standard Hebbian reinforcement.
+        """
+        if self.dynamics is None:
+            return self.activate(node_ids, strength=strength)
+        return self.dynamics.reinforce(node_ids, strength=strength)
+
+    def dynamics_spread(
+        self, seeds: list[tuple[str, float]] | list[str], depth: int = 2, top_k: int = 12
+    ) -> list[tuple[str, float]]:
+        """Spread activation with lateral inhibition and FOK gating.
+
+        Returns top-k nodes ranked by accumulated activation after lateral
+        inhibition sharpens the activation landscape. Returns empty list if
+        the feeling-of-knowing gate determines no relevant context exists.
+        """
+        if self.dynamics is None:
+            if self.synapses is None:
+                return []
+            return self.synapses.spread(seeds, depth=depth, top_k=top_k)
+        return self.dynamics.spread(seeds, depth=depth, top_k=top_k)
+
+    def dynamics_stats(self) -> dict | None:
+        """Return current dynamics state for monitoring."""
+        if self.dynamics is None:
+            return None
+        return self.dynamics.dynamics_stats()
 
     def activate_files(self, file_paths: list[str], strength: float = 1.0) -> int:
         """Co-activate every node in the touched files as one batch.
@@ -447,6 +503,11 @@ class NeuralMind:
         """
         start_time = datetime.now()
 
+        # Load .neuralmind.yaml config
+        from neuralmind.neuralmind_config import NeuralmindConfig
+
+        self._neuralmind_config = NeuralmindConfig.load(self.project_path)
+
         # Built-in backend: when there's no graphify output yet, generate a
         # graphify-compatible graph.json from a tree-sitter parse so that
         # `pip install neuralmind && neuralmind build` works with no separate
@@ -492,6 +553,19 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
+        # Detect project_kind (prose vs code) from the loaded graph
+        # before creating the selector so it can use the right strategy.
+        graph = getattr(self.embedder, "graph", None)
+        if graph:
+            # The graph structure has a top-level "graph" key that contains the project_kind
+            self.project_kind = graph.get("graph", {}).get("project_kind", "code")
+        else:
+            self.project_kind = "code"
+
+        # If config explicitly sets mode, honor it
+        if self._neuralmind_config.mode != "auto":
+            self.project_kind = self._neuralmind_config.mode
+
         # Initialize selector. When the selector auto-tuner is enabled
         # (NEURALMIND_SELECTOR_AUTOTUNE=1), read its persisted L2 recall depth
         # from the synapse meta table once, here, and thread it through to the
@@ -503,6 +577,7 @@ class NeuralMind:
             self.embedder,
             str(self.project_path),
             l2_recall_k=self._tuned_l2_recall_k(),
+            project_kind=self.project_kind,
         )
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
@@ -510,6 +585,14 @@ class NeuralMind:
         # Traced queries use the detailed variant so the PRD 3 trace can show
         # which memory namespace drove each boost (PRD 4).
         self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
+        # Pass the synapse store directly for synapse-seeded expansion
+        if self.synapses is not None:
+            self.selector._synapse_store = self.synapses
+            # Also pass the embedder so synapse-seeded expansion can fetch node data
+            self.synapses._embedder = self.embedder
+        # Pass the structural index for dependency graph expansion
+        if hasattr(self, "_structural_index") and self._structural_index is not None:
+            self.selector._structural_index = self._structural_index
 
         # Structural edge index — precise, day-one code wiring (calls/inherits/
         # imports) from graph.json, built from the edges the embedder already
@@ -1232,6 +1315,7 @@ class NeuralMind:
         trace: bool = False,
         trace_verbose: bool = False,
         query_type: str = "auto",
+        context_budget: int | None = None,
     ) -> ContextResult:
         """
         Get optimized context for answering a question.
@@ -1246,14 +1330,27 @@ class NeuralMind:
             trace_verbose: If True (with trace), keep full candidate/hit lists.
             query_type: Filter results — 'code' restricts to source code, 'docs'
                 to documentation, 'auto' detects intent (default).
+            context_budget: Optional token budget. If provided, the assembled
+                context is trimmed to fit within this budget by removing
+                lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
 
         Returns:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        result = self.selector.get_query_context(
-            question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
-        )
+
+        # Route prose/mixed projects through MedicalRetriever.
+        # ContextSelector remains the code path (unchanged).
+        if self.project_kind in ("prose", "mixed"):
+            result = self._query_prose(question)
+        else:
+            result = self.selector.get_query_context(
+                question,
+                trace=trace,
+                trace_verbose=trace_verbose,
+                query_type=query_type,
+                context_budget=context_budget,
+            )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:
@@ -1315,6 +1412,54 @@ class NeuralMind:
 
     def _build_hybrid_highlights(self, question: str, cached_hits: list[dict] | None = None) -> str:
         return querying.build_hybrid_highlights(self, question, cached_hits)
+
+    def _get_medical_retriever(self):
+        """Lazy-initialize MedicalRetriever for prose projects."""
+        if self._medical_retriever is None:
+            from neuralmind.medical_retriever import MedicalRetriever
+
+            chapters_dir = self.project_path / "chapters"
+            self._medical_retriever = MedicalRetriever(
+                project_path=str(self.project_path),
+                chapter_dir=str(chapters_dir),
+            )
+            self._medical_retriever.build()
+        return self._medical_retriever
+
+    def _query_prose(self, question: str) -> ContextResult:
+        """Query using MedicalRetriever for prose/mixed projects.
+
+        Formats results into ContextResult for API compatibility with
+        the code path. Includes confidence flags in the output context.
+        """
+        mr = self._get_medical_retriever()
+        result = mr.query(question, top_k=5)
+
+        # Build TokenBudget from MedicalRetriever metrics
+        budget = TokenBudget(
+            l0_identity=0,
+            l1_summary=0,
+            l2_ondemand=0,
+            l3_search=len(result.chapters) * 200,  # ~200 tokens per chapter
+        )
+
+        return ContextResult(
+            context=result.context,
+            budget=budget,
+            layers_used=["medical_retriever"],
+            search_hits=len(result.chapters),
+            reduction_ratio=10.0,  # estimated; prose docs are small
+            top_search_hits=[
+                {
+                    "source_file": ch["source_file"],
+                    "chapter_name": ch.get("chapter_name", ""),
+                    "score": ch["score"],
+                    "confidence": ch.get("confidence_label", "HIGH"),
+                }
+                for ch in result.chapters
+            ],
+            trace=None,
+        )
 
     def skeleton(self, file_path: str) -> str:
         """Return a compact skeleton view of a file using graph data.

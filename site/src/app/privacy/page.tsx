@@ -1,10 +1,13 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/sections/Footer';
+import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 
-export const metadata = {
+export const metadata: Metadata = pageMetadata({
+    path: '/privacy',
     title: 'Privacy Policy — NeuralMind',
     description: 'Privacy policy for NeuralMind. The engine runs 100% locally with no telemetry — this policy explains the little that\'s left.',
-};
+});
 
 type Section = {
     title: string;
@@ -19,7 +22,7 @@ const sections: Section[] = [
     },
     {
         title: 'Data We Do Not Collect',
-        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. It makes zero network calls of its own; the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control. Payment card data never touches our systems — it is handled entirely by Stripe.',
+        body: 'We do not collect, transmit, or store your source code, queries, file paths, graph data, synapse weights, or any file contents. The index lives entirely in your project\'s `.neuralmind/` and `graphify-out/` directories on your machine. The NeuralMind software has no telemetry of any kind — not opt-in, not anonymous, none. It makes one kind of outbound request of its own, and only this: the first time it needs to embed on a machine with no cached model, it downloads a public embedding model (all-MiniLM-L6-v2) over HTTPS, verified against a pinned checksum. That fetch retries on transient network errors and runs again if the cached model is later removed, so it is not a once-in-a-lifetime event — but it is always the same public file, and it never carries your data. That request carries none of your data — it is a plain file download — and pre-seeding the model via NEURALMIND_ONNX_MODEL_DIR removes it entirely. Beyond that, the only network traffic in your workflow is what your AI agent sends to its own model provider, which NeuralMind minimizes but does not control. Payment card data never touches our systems — it is handled entirely by Stripe.',
     },
     {
         title: 'Data We Collect',
@@ -86,6 +89,7 @@ export default function Privacy() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
+                    <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. Your code stays on your machine, no telemetry, no third-party analytics.</p>
                     <p className="text-slate-400 text-lg mb-12">Last updated: July 20, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">

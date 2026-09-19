@@ -38,6 +38,14 @@ export const metadata = {
         modifiedTime: '2026-08-06',
         authors: ['Darren Frost'],
         tags: ['defensive publication', 'prior art', 'Hebbian learning', 'spreading activation', 'long-term potentiation', 'code intelligence'],
+        images: [
+            {
+                url: '/social-preview.png',
+                width: 1200,
+                height: 630,
+                alt: 'NeuralMind — Code Memory for AI Coding Agents',
+            },
+        ],
     },
     twitter: {
         card: 'summary_large_image',

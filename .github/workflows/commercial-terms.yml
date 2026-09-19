@@ -16,6 +16,6 @@ jobs:
     name: commercial-terms
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: All surfaces agree with commercial-terms.json
         run: python3 scripts/check_commercial_terms.py

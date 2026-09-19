@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -155,6 +156,10 @@ def _check_version_mismatch(project_path: str) -> str | None:
     A missing file or a file without a version stamp (pre-v0.46.0 builds)
     yields None — we only warn when there is a concrete mismatch, so users
     who upgrade don't get false alarms on actively-built projects.
+
+    The warning suggests ``neuralmind build`` (without ``--force``): the
+    incremental path skips unchanged nodes, and the turbovec quarantine
+    mechanism handles binary format mismatches transparently.
     """
     ir_meta_path = Path(project_path) / ".neuralmind" / "ir_meta.json"
     if not ir_meta_path.exists():
@@ -167,10 +172,98 @@ def _check_version_mismatch(project_path: str) -> str | None:
     if stored and stored != __version__:
         return (
             f"This project was indexed with NeuralMind v{stored}.\n"
-            f"v{__version__} requires a one-time reindex.\n"
+            f"Rebuild recommended (incremental — skips unchanged nodes).\n"
+            f"Run: neuralmind build"
+        )
+    return None
+
+
+def _check_turbovec_mismatch(project_path: str) -> str | None:
+    """Return a warning string if the turbovec index was quarantined due
+    to version incompatibility.
+
+    This runs in cmd_build BEFORE the slow embed loop so the operator knows
+    a rebuild is coming and why. Recovery itself happens inside
+    embed_nodes via _rebuild_index_from_store.
+    """
+    try:
+        from neuralmind.turbovec_backend import TurboVecEmbedder
+
+        backend = TurboVecEmbedder(project_path)
+        return backend.check_turbovec_compatibility()
+    except ImportError:
+        # turbovec not installed — skip this check
+        return None
+
+
+def _check_embedder_mismatch(project_path: str, embedder: str | None) -> str | None:
+    """Return a warning string if the project's ir_meta.json was built with
+    a different embedder dimensionality than the one requested.
+
+    This runs in cmd_build BEFORE the slow embed loop so the operator knows
+    a rebuild is coming and why. A mismatch means the existing TurboVec index
+    has the wrong dimensionality and must be rebuilt.
+
+    Returns None when:
+    - No embedder was explicitly requested (default is assumed)
+    - The embedder is the default (all-MiniLM-L6-v2)
+    - ir_meta.json doesn't exist (fresh build)
+    - The stored dim matches the requested embedder's dim
+    """
+    if not embedder or embedder in ("all-MiniLM-L6-v2", "minilm", "default"):
+        return None
+    ir_meta_path = Path(project_path) / ".neuralmind" / "ir_meta.json"
+    if not ir_meta_path.exists():
+        return None
+    try:
+        meta = json.loads(ir_meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    stored_dim = meta.get("dim")
+    if stored_dim is None:
+        return None
+    try:
+        from neuralmind.bge_embedder import embedder_dim
+
+        requested_dim = embedder_dim(embedder)
+    except (ValueError, ImportError):
+        return None
+    if int(stored_dim) != requested_dim:
+        return (
+            f"Existing index was built with dim={stored_dim}, but "
+            f"'{embedder}' requests dim={requested_dim}.\n"
+            f"Rebuild with --force required to switch embedders.\n"
             f"Run: neuralmind build --force"
         )
     return None
+
+
+def _save_build_stats(project_path: str, result: dict) -> None:
+    """Write build metadata to .neuralmind/build_status.json for
+    `neuralmind build-status` to read without a running build.
+
+    Records delta stats, duration, and timestamp — everything an operator
+    needs to know "what happened in the last build" without re-running it.
+    """
+    state_dir = Path(project_path) / ".neuralmind"
+    if not state_dir.exists():
+        return
+    status_path = state_dir / "build_status.json"
+    status = {
+        "project": result.get("project"),
+        "nodes_total": result.get("nodes_total"),
+        "nodes_added": result.get("nodes_added", 0),
+        "nodes_updated": result.get("nodes_updated", 0),
+        "nodes_skipped": result.get("nodes_skipped", 0),
+        "communities": result.get("communities"),
+        "duration_seconds": result.get("duration_seconds"),
+        "backend": result.get("backend"),
+        "built_at": datetime.now().isoformat(),
+    }
+    try:
+        status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def cmd_scan_for_secrets(args):
@@ -232,6 +325,197 @@ def cmd_scan_for_secrets(args):
         sys.exit(1)
 
 
+def _is_book_project(project_path: Path) -> bool:
+    """Detect if a project is book-like (chapters + code + assets).
+
+    Heuristic: markdown:code ratio > 3:1 AND no src/ or lib/ at root.
+    """
+    md_files = list(project_path.glob("**/*.md"))
+    if len(md_files) < 3:
+        return False
+
+    code_exts = {
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    }
+    code_files = [f for f in project_path.glob("*") if f.suffix.lower() in code_exts]
+    # Also check for src/ or lib/ directories (strong code indicator)
+    if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
+        return False
+
+    if not code_files:
+        return True
+
+    return len(md_files) / max(len(code_files), 1) > 3
+
+
+def _cmd_build_book(args, project_path: str, force: bool) -> None:
+    """Build a book project: code scope for engine, content scope for chapters, metadata for assets."""
+    import time
+
+    start = time.time()
+    path = Path(project_path)
+    print(f"Building book project: {path}")
+    print(f"Force rebuild: {force}")
+    print()
+
+    # Ensure state dir
+    from neuralmind.state_dir import ensure_state_dir, tracked_state_files
+
+    ensure_state_dir(project_path)
+    already_tracked = tracked_state_files(project_path)
+    if already_tracked:
+        import shlex
+
+        quoted = shlex.quote(str(path.resolve()))
+        print(
+            f"\n⚠  git is already tracking {len(already_tracked)} file(s) under .neuralmind/ — the ignore rule does not apply to files already in the index.\n"
+            f"   These can contain cached command output, including credentials. Untrack them with:\n"
+            f"     git -C {quoted} rm -r --cached .neuralmind/\n"
+            f"   Then rotate any credential that could have reached a commit.\n",
+            file=sys.stderr,
+        )
+
+    # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
+    print("   Scope: code... ", end="", flush=True)
+    graph_path = path / "graphify-out" / "graph.json"
+    if graph_path.exists():
+        code_args = argparse.Namespace(
+            project_path=project_path,
+            force=force,
+            scope="code",
+            content_type="code",
+            bootstrap=None,
+            redact_secrets=getattr(args, "redact_secrets", False),
+            dry_run=False,
+            json=False,
+        )
+        try:
+            os.environ["NEURALMIND_NO_PROGRESS"] = "1"
+            try:
+                cmd_build(code_args)
+            finally:
+                os.environ.pop("NEURALMIND_NO_PROGRESS", None)
+            print("done")
+        except SystemExit as e:
+            if e.code != 0:
+                print(f"failed (exit {e.code})")
+            else:
+                print("done")
+    else:
+        print("skipped (no graph.json — pure content book)")
+
+    # 2. Build content scope (chapters) — use document ingestion for proper metadata
+    print("   Scope: content... ", end="", flush=True)
+    from neuralmind.document_ingestion import ingest_directory
+
+    try:
+        content_nodes = ingest_directory(
+            path / "chapters" if (path / "chapters").exists() else path
+        )
+        if content_nodes:
+            mind = NeuralMind(project_path, scope="content")
+            # Convert ContentNodes to graph nodes and embed
+            graph_nodes = [n.to_graph_node() for n in content_nodes]
+            mind.embedder.embed_content(graph_nodes)
+            print(f"done ({len(content_nodes)} chunks)")
+        else:
+            print("done (no content found)")
+    except Exception as e:
+        print(f"warning: {e}")
+
+    # 3. Track assets as metadata
+    print("   Tracking assets... ", end="", flush=True)
+    try:
+        mind = NeuralMind(project_path, scope="content")
+        mind.embedder._track_book_assets(path)
+        print("done")
+    except Exception as e:
+        print(f"warning: {e}")
+
+    duration = time.time() - start
+    print()
+    print("=" * 60)
+    print(f"Book build complete in {duration:.1f}s")
+    print("  Code scope: engine files")
+    print("  Content scope: chapters")
+    print("  Assets: metadata tracked")
+
+
+def cmd_build_status(args):
+    """Show the result of the last build from saved metadata.
+
+    Reads .neuralmind/build_status.json — no daemon, no vector backend,
+    no graph load. Milliseconds, not minutes. Safe to poll from cron.
+    """
+    project_path = Path(args.project_path).resolve()
+    status_path = project_path / ".neuralmind" / "build_status.json"
+    if not status_path.exists():
+        result = {
+            "status": "no_build",
+            "project": project_path.name,
+            "message": f"No build recorded. Run `neuralmind build {project_path}` first.",
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"No build recorded for {project_path.name}")
+            print(f"  Run: neuralmind build {project_path}")
+        return
+
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as e:
+        result = {
+            "status": "error",
+            "project": project_path.name,
+            "message": f"Could not read build status: {e}",
+        }
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Error reading build status: {e}")
+        return
+
+    if args.json:
+        print(json.dumps(status, indent=2, default=str))
+        return
+
+    print(f"═══ Last Build — {status.get('project', project_path.name)} ═══")
+    built_at = status.get("built_at", "unknown")
+    if built_at and built_at != "unknown":
+        # Trim ISO timestamp to human-readable
+        try:
+            from datetime import datetime as dt
+
+            built_at = dt.fromisoformat(built_at).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            pass
+    print(f"  Built:         {built_at}")
+    print(f"  Nodes:         {status.get('nodes_total', 'unknown')}")
+    added = status.get("nodes_added", 0)
+    updated = status.get("nodes_updated", 0)
+    skipped = status.get("nodes_skipped", 0)
+    if added or updated or skipped:
+        print(f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped")
+    print(f"  Communities:   {status.get('communities', 'unknown')}")
+    print(f"  Duration:      {status.get('duration_seconds', 'unknown')}s")
+    print(f"  Backend:       {status.get('backend', 'unknown')}")
+
+
 def cmd_build(args):
     project_path = args.project_path or "."
 
@@ -265,8 +549,13 @@ def cmd_build(args):
         return
 
     force = args.force
+    rebuild_index = getattr(args, "rebuild_index", False)
+    if rebuild_index:
+        force = True  # rebuild-index implies force for the embed loop
     print(f"Building NeuralMind index for: {project_path}")
     print(f"Force rebuild: {force}")
+    if rebuild_index:
+        print(f"Rebuild index: {rebuild_index}")
     print()
 
     path = Path(project_path)
@@ -282,6 +571,14 @@ def cmd_build(args):
     if _migrate_warning:
         print(
             f"\n⚠  {_migrate_warning}\n",
+            file=sys.stderr,
+        )
+
+    # Turbovec index compatibility check (quarantine detection)
+    _turbovec_warning = _check_turbovec_mismatch(project_path)
+    if _turbovec_warning:
+        print(
+            f"\n⚠  {_turbovec_warning}\n",
             file=sys.stderr,
         )
 
@@ -322,7 +619,40 @@ def cmd_build(args):
             "credential at the source."
         )
 
-    mind = NeuralMind(project_path)
+    _scope = getattr(args, "scope", "all")
+    if _scope not in ("all", "code", "content", "docs"):
+        _scope = "all"
+    _content_type = getattr(args, "content_type", "auto")
+    if _content_type not in ("auto", "book", "code", "content"):
+        _content_type = "auto"
+
+    # Book mode: route code and content to separate scopes, track assets
+    _is_book = _content_type == "book" or (
+        _content_type == "auto" and _scope == "all" and _is_book_project(Path(project_path))
+    )
+    if _is_book:
+        _cmd_build_book(args, project_path, force)
+        return
+
+    mind = NeuralMind(project_path, scope=_scope)
+    # Warn for large projects before starting the slow embed loop.
+    # Estimate node count from graph.json directly since embedder.nodes
+    # is lazy-loaded only inside build().
+    est_nodes = 0
+    graph_path = Path(project_path) / "graphify-out" / "graph.json"
+    if graph_path.exists():
+        try:
+            est_nodes = len(json.loads(graph_path.read_text(encoding="utf-8")).get("nodes", []))
+        except Exception:
+            pass
+    if est_nodes > 2000:
+        est_min = round(est_nodes / 585)  # ~585 nodes/min rough estimate
+        print(
+            f"\n⚠  Large project: ~{est_nodes:,} nodes. "
+            f"Expected build time: ~{est_min} minutes.\n"
+            f"  Run in background: neuralmind build {project_path} &\n",
+            file=sys.stderr,
+        )
     # Wire --bootstrap into the NeuralMind instance
     if getattr(args, "bootstrap", None):
         mind._bootstrap_bundle_path = args.bootstrap
@@ -332,6 +662,14 @@ def cmd_build(args):
         print(f"   Project: {result.get('project')}")
         print(f"   Nodes: {result.get('nodes_total')}")
         print(f"   Communities: {result.get('communities')}")
+        # Delta stats — show what actually changed, not just totals.
+        # For incremental builds this is the whole point: the operator
+        # learns whether the build was cheap (most skipped) or expensive.
+        added = result.get("nodes_added", 0)
+        updated = result.get("nodes_updated", 0)
+        skipped = result.get("nodes_skipped", 0)
+        if added or updated or skipped:
+            print(f"   Delta: +{added} new, ~{updated} updated, ={skipped} skipped")
         ir_meta = result.get("ir")
         if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
             val = ir_meta.get("validation", {})
@@ -341,6 +679,9 @@ def cmd_build(args):
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
         sys.exit(1)
+
+    # Save build stats to ir_meta.json for build-status / status commands
+    _save_build_stats(project_path, result)
 
     # Hint: auto-rebuild on commit to prevent stale-index drift
     if not os.environ.get("NEURALMIND_NO_INIT_HINT"):
@@ -496,9 +837,149 @@ def _cmd_query_cross_project(args, project_paths: list[str]) -> None:
             print(f"  {i+1}. [{project}] {label}  ({score:.3f})")
 
 
+def _get_assets_for_file(mind, source_file: str) -> list[dict]:
+    """Get asset references for a source file from the book_assets table."""
+    try:
+        conn = mind.embedder._conn
+        rows = conn.execute(
+            "SELECT path, asset_type, caption FROM book_assets WHERE chapter_ref = ?",
+            (source_file,),
+        ).fetchall()
+        return [{"path": r["path"], "type": r["asset_type"], "caption": r["caption"]} for r in rows]
+    except Exception:
+        return []
+
+
+def _cmd_query_unified(
+    args,
+    project_path: str,
+    question: str,
+    trace: bool,
+    trace_verbose: bool,
+    relevance: bool,
+    explain: bool,
+) -> None:
+    """Search both content (chapters) and code scopes, merge results with source labels."""
+    from pathlib import Path as _Path
+
+    path = _Path(project_path)
+    chapter_filter = getattr(args, "chapter", None)
+    scope_bias = getattr(args, "scope_bias", "balanced")  # balanced, content, code
+
+    # Detect available scopes
+    tv_dir = path / "graphify-out" / "neuralmind_turbovec"
+    has_code = (tv_dir / "store.code.sqlite").exists()
+    has_content = (tv_dir / "store.content.sqlite").exists()
+
+    results = []
+
+    # Search content scope (chapters)
+    if has_content:
+        content_mind = NeuralMind(project_path, scope="content")
+        try:
+            content_results = content_mind.embedder.search(question, n=5)
+            for r in content_results:
+                r["source_scope"] = "content"
+                # Filter by chapter if specified
+                if chapter_filter:
+                    tags = r.get("metadata", {}).get("tags", "")
+                    if f"chapter:{chapter_filter}" not in tags:
+                        continue
+                results.append(r)
+                # Check for asset references in the source file
+                source_file = r.get("metadata", {}).get("source_file", "")
+                if source_file:
+                    assets = _get_assets_for_file(content_mind, source_file)
+                    if assets:
+                        r["_referenced_assets"] = assets
+        except Exception:
+            pass
+
+    # Search code scope
+    if has_code:
+        code_mind = NeuralMind(project_path, scope="code")
+        try:
+            code_results = code_mind.embedder.search(question, n=5)
+            for r in code_results:
+                r["source_scope"] = "code"
+                results.append(r)
+        except Exception:
+            pass
+
+    # Apply scope bias to scores
+    if scope_bias == "content":
+        for r in results:
+            if r["source_scope"] == "content":
+                r["score"] = r.get("score", 0) * 1.2  # 20% boost
+    elif scope_bias == "code":
+        for r in results:
+            if r["source_scope"] == "code":
+                r["score"] = r.get("score", 0) * 1.2
+
+    # Sort by score descending
+    results.sort(key=lambda r: r.get("score", 0), reverse=True)
+
+    if args.json:
+        output = {
+            "query": question,
+            "type": "unified",
+            "scope_bias": scope_bias,
+            "chapter_filter": chapter_filter,
+            "results": results,
+            "has_content_scope": has_content,
+            "has_code_scope": has_code,
+        }
+        print(json.dumps(output, indent=2, default=str))
+    else:
+        scope_info = []
+        if has_content:
+            scope_info.append("content")
+        if has_code:
+            scope_info.append("code")
+        print(f"Query: {question}")
+        print(f"Mode: unified ({'+'.join(scope_info)}, bias={scope_bias})")
+        if chapter_filter:
+            print(f"Chapter: {chapter_filter}")
+        print("=" * 60)
+        for i, r in enumerate(results[:10]):
+            label = r.get("label", r.get("id", "?"))[:60]
+            score = r.get("score", 0)
+            scope = r.get("source_scope", "?")
+            source = r.get("metadata", {}).get("source_file", "")
+            print(f"  {i+1}. [{scope}] {label}  ({score:.3f})")
+            if source:
+                print(f"      {source}")
+            # Show referenced assets
+            assets = r.get("_referenced_assets", [])
+            if assets:
+                for asset in assets:
+                    print(f"      [asset] {asset['path']} ({asset['type']})")
+            # Show preview snippet
+            doc = r.get("document", "")
+            if doc:
+                preview = doc[:120].replace("\n", " ").strip()
+                print(f"      {preview}...")
+        print("=" * 60)
+        print(f"Total results: {len(results)}")
+
+
 def cmd_query(args):
     _maybe_prompt_for_memory_opt_in()
     _increment_wakeup_count()
+
+    # Handle unified mode (content + code search)
+    query_mode = getattr(args, "mode", "default")
+    if query_mode == "unified":
+        _cmd_query_unified(
+            args,
+            args.project_path or ".",
+            args.question,
+            False,  # trace
+            False,  # trace_verbose
+            False,  # relevance
+            False,  # explain
+        )
+        return None
 
     # Handle cross-project query
     projects_arg = getattr(args, "projects", None)
@@ -1503,6 +1984,135 @@ def cmd_validate(args):
         sys.exit(1)
 
 
+def cmd_build_all(args):
+    """Build indexes for all registered projects."""
+    from neuralmind.project_registry import ProjectRegistry
+
+    override_scope = args.scope
+    force = getattr(args, "force", False)
+
+    # Gather projects: explicit list or registry
+    if args.projects:
+        project_paths = [p.strip() for p in args.projects.split(",") if p.strip()]
+        projects = [{"path": p, "scopes": [override_scope]} for p in project_paths]
+    else:
+        reg = ProjectRegistry()
+        entries = reg.list_projects()
+        if not entries:
+            print(
+                "No projects registered.\n"
+                "Add one with: neuralmind project add <path> [--scope=code,content]"
+            )
+            return
+        projects = []
+        for entry in entries:
+            scopes = [override_scope] if override_scope != "all" else entry.get("scopes", ["all"])
+            projects.append({"path": entry["path"], "scopes": scopes})
+
+    print(f"Building {len(projects)} project(s)...")
+    print()
+
+    summary = []
+    for proj in projects:
+        path = proj["path"]
+        scopes = proj.get("scopes", ["all"])
+        print(f"📁 {path}")
+        for scope in scopes:
+            print(f"   Scope: {scope}...", end=" ", flush=True)
+            try:
+                build_args = argparse.Namespace(
+                    project_path=path,
+                    force=force,
+                    scope=scope,
+                    bootstrap=None,
+                    redact_secrets=False,
+                    dry_run=False,
+                    json=False,
+                )
+                # Suppress child progress bars — they deadlock when both
+                # parent and child share the same pty. NEURALMIND_NO_PROGRESS=1
+                # disables ProgressReporter in embed_nodes().
+                os.environ["NEURALMIND_NO_PROGRESS"] = "1"
+                try:
+                    cmd_build(build_args)
+                finally:
+                    os.environ.pop("NEURALMIND_NO_PROGRESS", None)
+                print("done")
+                summary.append(("✓", path, scope, ""))
+            except SystemExit as e:
+                status = "failed" if e.code != 0 else "done"
+                print(status)
+                summary.append(("✗", path, scope, f"exit {e.code}"))
+            except Exception as e:
+                print(f"error: {e}")
+                summary.append(("✗", path, scope, str(e)))
+        print()
+
+    print("=" * 60)
+    print("Summary:")
+    for mark, p, scope, note in summary:
+        suffix = f" ({note})" if note else ""
+        print(f"  {mark} {p} [{scope}]{suffix}")
+
+
+def cmd_project(args):
+    """Manage registered projects."""
+    from neuralmind.project_registry import ProjectRegistry
+
+    reg = ProjectRegistry()
+    action = args.project_action
+
+    if action == "add":
+        path = args.path
+        scope_str = getattr(args, "scope", "all")
+        scopes = [s.strip() for s in scope_str.split(",")] if scope_str != "all" else ["all"]
+        if not Path(path).exists():
+            print(f"Error: path does not exist: {path}")
+            sys.exit(1)
+        reg.add_project(path, scopes=scopes)
+        print(f"Added: {Path(path).resolve()} (scopes: {', '.join(scopes)})")
+
+    elif action == "remove":
+        path = args.path
+        reg.remove_project(path)
+        print(f"Removed: {Path(path).resolve()}")
+
+    elif action == "list":
+        projects = reg.list_projects()
+        if not projects:
+            print("No projects registered.")
+            print("Add one with: neuralmind project add <path> [--scope=code,content,docs]")
+            return
+        print(f"Registered projects ({len(projects)}):")
+        for p in projects:
+            scopes = ", ".join(p.get("scopes", ["all"]))
+            print(f"  {p['path']}  [{scopes}]")
+
+    elif action == "detect":
+        import glob
+
+        search_path = getattr(args, "path", ".")
+        print(f"Scanning {search_path} for NeuralMind projects...")
+        patterns = [
+            str(Path(search_path) / "**" / "graphify-out" / "graph.json"),
+            str(Path(search_path) / "**" / ".neuralmind" / "ir_meta.json"),
+        ]
+        found = set()
+        for pat in patterns:
+            for hit in glob.glob(pat, recursive=True):
+                found.add(str(Path(hit).parent.parent))
+        if not found:
+            print("No NeuralMind projects found.")
+            return
+        print(f"Found {len(found)} project(s):")
+        for p in sorted(found):
+            print(f"  {p}")
+
+    else:
+        print(f"Unknown project action: {action}")
+        sys.exit(1)
+
+
 def cmd_doctor(args):
     """Diagnose a project's NeuralMind setup and print actionable fixes."""
     from neuralmind import doctor
@@ -1670,6 +2280,24 @@ def cmd_synapse_prune(args) -> None:
         print(json.dumps({"pruned": pruned, "age_days": args.days}))
     else:
         print(f"✓ Pruned {pruned} synapses older than {args.days} days")
+
+
+def cmd_cognition_loop(args) -> None:
+    """Run background knowledge consolidation."""
+    from neuralmind.cognition_loop import run_cognition_loop
+
+    report = run_cognition_loop(args.project_path)
+    if args.json:
+        print(json.dumps(report.to_dict()))
+    else:
+        print(f"✓ Cognition loop complete in {report.duration_secs:.1f}s")
+        print(f"  Steps: {report.steps_taken}")
+        print(f"  Edges reinforced: {report.edges_reinforced}")
+        print(f"  Edges decayed: {report.edges_decayed}")
+        print(f"  Edges pruned: {report.edges_pruned}")
+        print(f"  Clusters consolidated: {report.clusters_consolidated}")
+        print(f"  Summaries pruned: {report.summaries_pruned}")
+        print(f"  Read cache cleared: {report.read_cache_cleared}")
 
 
 def cmd_synapse_stats(args) -> None:
@@ -2062,6 +2690,182 @@ def cmd_memory(args):
             return
         print(f"Staleness pass complete: {updated} edges decayed out of {len(stale)} stale.")
         return
+
+
+# ── Decision Memory Commands (v4.0.0 Memory Layer) ──────────────────────
+
+
+def _resolve_decisions_db(project_path: Path) -> Path:
+    """Return the path to the decisions SQLite DB for a project."""
+    return Path(project_path) / ".neuralmind" / "decisions.db"
+
+
+def _get_decisions_store(project_path: str | Path):
+    """Import and return a DecisionStore for the given project."""
+    from neuralmind.memory.store import DecisionStore
+
+    return DecisionStore(str(project_path))
+
+
+def cmd_decisions_record(args):
+    """Store an architecture decision with commit linkage."""
+    store = _get_decisions_store(args.project_path)
+    commit = args.commit
+    if not commit:
+        try:
+            import subprocess
+
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=args.project_path,
+                text=True,
+            ).strip()
+        except Exception as e:
+            print(f"Error resolving commit: {e}")
+            sys.exit(1)
+
+    decision = store.record(
+        title=args.title,
+        rationale=args.rationale,
+        commit_sha=commit or "unknown",
+        files_affected=args.files or [],
+        decision_type=args.type,
+        rejected_alternatives=args.rejected or [],
+        evidence=args.evidence or [],
+        confidence=args.confidence,
+        tags=args.tags or [],
+    )
+    print(f"Recorded decision {decision.id}")
+    print(f"  Title: {decision.title}")
+    print(f"  Commit: {decision.commit_sha}")
+    print(f"  Status: {decision.status}")
+
+
+def cmd_decisions_query(args):
+    """Search decisions by natural language."""
+    store = _get_decisions_store(args.project_path)
+    status = None if args.status == "ALL" else args.status
+    results = store.query(
+        text=args.query,
+        limit=args.limit,
+        status=status,
+    )
+    if args.json:
+        import json
+
+        print(json.dumps([r.model_dump() for r in results], indent=2, default=str))
+        return
+
+    if not results:
+        print(f"No decisions found for: {args.query}")
+        return
+
+    print(f'# NeuralMind Decisions Query: "{args.query}"')
+    print()
+    for i, d in enumerate(results, 1):
+        print(f"{i}. [{d.status}] {d.title}")
+        print(f"   Commit: {d.commit_sha}")
+        if d.files:
+            print(f"   Files: {', '.join(d.files)}")
+        print(f"   {d.rationale[:100]}{'...' if len(d.rationale) > 100 else ''}")
+        print()
+
+
+def cmd_decisions_amend(args):
+    """Add to an existing decision."""
+    store = _get_decisions_store(args.project_path)
+    decision = store.get(args.decision_id)
+    if not decision:
+        print(f"Decision not found: {args.decision_id}")
+        sys.exit(1)
+
+    if args.rationale:
+        decision.rationale = args.rationale
+    if args.rejected:
+        decision.rejected_alternatives.extend(args.rejected)
+    if args.evidence:
+        decision.evidence.extend(args.evidence)
+
+    store.update(decision)
+    print(f"Amended decision: {decision.id}")
+
+
+def cmd_decisions_audit(args):
+    """List all decisions."""
+    store = _get_decisions_store(args.project_path)
+    decisions = store.audit(stale_only=args.stale, orphaned_only=args.orphaned)
+
+    if args.format == "json":
+        import json
+
+        print(json.dumps([d.model_dump() for d in decisions], indent=2, default=str))
+        return
+
+    if not decisions:
+        print("No decisions recorded yet.")
+        return
+
+    print(f"# Decision Audit ({len(decisions)} entries)")
+    print()
+    for d in decisions:
+        status_icon = {"ACTIVE": "🟢", "STALE": "🔴", "INVALIDATED": "⚫"}.get(d.status, "?")
+        print(f"{status_icon} [{d.status}] {d.title}")
+        print(f"   ID: {d.id}")
+        print(f"   Commit: {d.commit_sha}")
+        if d.files:
+            print(f"   Files: {', '.join(d.files)}")
+        print(f"   {d.rationale[:80]}{'...' if len(d.rationale) > 80 else ''}")
+        print()
+
+
+def cmd_decisions_export(args):
+    """Dump all decisions to file."""
+    store = _get_decisions_store(args.project_path)
+    path = store.export(format=args.format, output=args.output)
+    print(f"Exported to: {path}")
+
+
+def cmd_decisions_restore(args):
+    """Re-validate a stale entry."""
+    store = _get_decisions_store(args.project_path)
+    commit = args.commit
+    if not commit:
+        try:
+            import subprocess
+
+            commit = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=args.project_path,
+                text=True,
+            ).strip()
+        except Exception as e:
+            print(f"Error resolving commit: {e}")
+            sys.exit(1)
+    decision = store.restore(args.decision_id, new_commit_sha=commit)
+    print(f"Restored decision: {decision.id}")
+    print(f"  Status: {decision.status}")
+    print(f"  Commit: {decision.commit_sha}")
+
+
+def cmd_decisions_invalidate(args):
+    """Mark a decision as stale."""
+    store = _get_decisions_store(args.project_path)
+    store.invalidate(args.decision_id, reason=args.reason)
+    print(f"Invalidated decision: {args.decision_id}")
+
+
+def cmd_decisions_eval(args):
+    """Run the maintenance replay benchmark."""
+    from neuralmind.memory.eval import MaintenanceEval
+
+    eval_harness = MaintenanceEval(args.project_path, task_count=args.tasks)
+    report = eval_harness.run(output_format=args.format)
+
+    if args.output:
+        Path(args.output).write_text(report)
+        print(f"Report written to: {args.output}")
+    else:
+        print(report)
 
 
 def _has_project_marker(path: Path) -> bool:
@@ -4078,6 +4882,89 @@ def cmd_license_list(args):
         )
 
 
+def cmd_license_expiring(args):
+    """`neuralmind license expiring` — licences due for renewal.
+
+    Nothing else warns that a Team licence is lapsing, so this is the
+    command a scheduler (cron, a systemd timer, autopilot) runs on a
+    recurring basis. It is built to be consumed rather than read: the exit
+    code alone says whether anyone needs to act, so a caller need not parse
+    output to decide whether to raise an alert.
+
+    Exit codes:
+        0: nothing needs attention inside the window.
+        6: renewals are due (expiring inside the window).
+        7: at least one licence has already expired, or has an expiry that
+           cannot be read. Takes precedence over 6.
+
+    Read-only — it needs no issuer private key.
+    """
+    from neuralmind.tier2.operations import LicenseOperations
+
+    storage_path = Path.home() / ".neuralmind"
+    ops = LicenseOperations("", storage_path)
+    try:
+        report = ops.list_expiring_licenses(within_days=args.within)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(2)
+
+    if args.json:
+        print(json.dumps(report, indent=2))
+    elif not args.quiet or report["needs_attention"]:
+        print(_format_expiring(report))
+
+    if report["expired"] or report["unknown"]:
+        sys.exit(7)
+    if report["expiring"]:
+        sys.exit(6)
+
+
+def _format_expiring(report: dict) -> str:
+    """Render an expiry report for a human reading a terminal or an email."""
+    within = report["within_days"]
+    if not report["needs_attention"]:
+        active = report["total_active"]
+        return (
+            f"NeuralMind licence renewals — nothing due within {within} days "
+            f"({active} active licence{'s' * (active != 1)} checked)."
+        )
+
+    def row(entry: dict, when: str) -> str:
+        seats = entry.get("seats")
+        seats_txt = f"{seats} seats" if seats is not None else "seats unknown"
+        return f"  {entry['customer']:<28} {seats_txt:<14} {when}"
+
+    n = report["needs_attention"]
+    header = (
+        f"NeuralMind licence renewals — {n} need{'s' * (n == 1)} attention "
+        f"(window: {within} days, {report['total_active']} active)."
+    )
+    lines = [header]
+    if report["expired"]:
+        lines.append("")
+        lines.append("EXPIRED")
+        for e in report["expired"]:
+            days = abs(e["days_remaining"])
+            when = "expired today" if days == 0 else f"expired {days} day{'s' * (days != 1)} ago"
+            lines.append(row(e, f"{when} ({e['expires_at'][:10]})"))
+    if report["expiring"]:
+        lines.append("")
+        lines.append("EXPIRING")
+        for e in report["expiring"]:
+            days = e["days_remaining"]
+            when = "expires today" if days == 0 else f"{days} day{'s' * (days != 1)} remaining"
+            lines.append(row(e, f"{when} ({e['expires_at'][:10]})"))
+    if report["unknown"]:
+        lines.append("")
+        lines.append("UNREADABLE EXPIRY — check customers.yaml")
+        for e in report["unknown"]:
+            lines.append(row(e, f"expires_at={e['expires_at']!r}"))
+    lines.append("")
+    lines.append('Renew with: neuralmind license renew --customer "<name>" --term 12')
+    return "\n".join(lines)
+
+
 def cmd_partner_add(args):
     """Add a new partner."""
     from neuralmind.tier2.operations import PartnerOperations
@@ -4564,6 +5451,11 @@ def main():
     build_p.add_argument("project_path", nargs="?", default=".")
     build_p.add_argument("--force", "-f", action="store_true")
     build_p.add_argument(
+        "--rebuild-index",
+        action="store_true",
+        help="Rebuild the vector index from stored vectors (recovers from version mismatch without full re-embed)",
+    )
+    build_p.add_argument(
         "--bootstrap",
         default=None,
         help="Path to a synapse bundle JSON for cold-start seeding",
@@ -4583,6 +5475,18 @@ def main():
         "scan-for-secrets` first to find and remove them at the source.",
     )
     build_p.add_argument("--json", "-j", action="store_true")
+    build_p.add_argument(
+        "--scope",
+        choices=["all", "code", "content", "docs"],
+        default="all",
+        help="Index scope: code (source files), content (docs/chapters), docs (markdown only), all (default)",
+    )
+    build_p.add_argument(
+        "--content-type",
+        choices=["auto", "book", "code", "content"],
+        default="auto",
+        help="Content type: auto (detect), book (chapters+code+assets), code (force code scope), content (force content scope)",
+    )
     build_p.set_defaults(func=cmd_build)
 
     scan_secrets_p = subparsers.add_parser(
@@ -4651,6 +5555,23 @@ def main():
     query_p.add_argument(
         "--projects",
         help="Comma-separated list of project paths to query (cross-project). If specified, overrides project_path.",
+    )
+    query_p.add_argument(
+        "--mode",
+        choices=["default", "unified"],
+        default="default",
+        help="Query mode: 'default' uses context selector, 'unified' searches both content and code scopes with merged results",
+    )
+    query_p.add_argument(
+        "--chapter",
+        default=None,
+        help="Filter unified results to a specific chapter (e.g., 'Chapter 1' or 'Chapter 2 — The Corner Pub')",
+    )
+    query_p.add_argument(
+        "--scope-bias",
+        choices=["balanced", "content", "code"],
+        default="balanced",
+        help="Unified mode: boost results from one scope (balanced/content/code)",
     )
     query_p.set_defaults(func=cmd_query)
 
@@ -5245,6 +6166,74 @@ def main():
     mem_review_reject.add_argument("--json", "-j", action="store_true")
     mem_review_reject.set_defaults(func=cmd_memory)
 
+    # decisions command group — commit-linked decision memory
+    decisions_p = subparsers.add_parser(
+        "decisions",
+        help="Persistent decision memory with commit-level invalidation",
+    )
+    decisions_sub = decisions_p.add_subparsers(dest="decisions_cmd", required=True)
+
+    d_record = decisions_sub.add_parser("record", help="Store an architecture decision")
+    d_record.add_argument("--title", required=True, help="Decision title")
+    d_record.add_argument("--rationale", required=True, help="Why this decision was made")
+    d_record.add_argument("--commit", help="Git commit SHA (defaults to HEAD)")
+    d_record.add_argument("--files", nargs="*", help="Files affected by this decision")
+    d_record.add_argument("--type", default="ARCHITECTURE", help="Decision type")
+    d_record.add_argument("--rejected", nargs="*", help="Rejected alternatives")
+    d_record.add_argument("--evidence", nargs="*", help="Supporting evidence")
+    d_record.add_argument("--confidence", type=float, default=1.0, help="Confidence 0-1")
+    d_record.add_argument("--tags", nargs="*", help="Tags for categorization")
+    d_record.add_argument("project_path", nargs="?", default=".")
+    d_record.set_defaults(func=cmd_decisions_record)
+
+    d_query = decisions_sub.add_parser("query", help="Search decisions by natural language")
+    d_query.add_argument("query", help="Search query")
+    d_query.add_argument("--limit", "-n", type=int, default=5)
+    d_query.add_argument("--status", default="ACTIVE", help="ACTIVE/STALE/ALL")
+    d_query.add_argument("--json", "-j", action="store_true")
+    d_query.add_argument("project_path", nargs="?", default=".")
+    d_query.set_defaults(func=cmd_decisions_query)
+
+    d_amend = decisions_sub.add_parser("amend", help="Add to existing decision")
+    d_amend.add_argument("decision_id", help="Decision ID to amend")
+    d_amend.add_argument("--rationale", help="Updated rationale")
+    d_amend.add_argument("--rejected", nargs="*", help="Add rejected alternatives")
+    d_amend.add_argument("--evidence", nargs="*", help="Add evidence")
+    d_amend.add_argument("project_path", nargs="?", default=".")
+    d_amend.set_defaults(func=cmd_decisions_amend)
+
+    d_audit = decisions_sub.add_parser("audit", help="List all decisions")
+    d_audit.add_argument("--stale", action="store_true", help="Only stale entries")
+    d_audit.add_argument("--orphaned", action="store_true", help="Only orphaned")
+    d_audit.add_argument("--format", choices=["md", "json"], default="md")
+    d_audit.add_argument("project_path", nargs="?", default=".")
+    d_audit.set_defaults(func=cmd_decisions_audit)
+
+    d_export = decisions_sub.add_parser("export", help="Dump all decisions to file")
+    d_export.add_argument("--format", choices=["md", "json"], default="md")
+    d_export.add_argument("--output", "-o", help="Output file path")
+    d_export.add_argument("project_path", nargs="?", default=".")
+    d_export.set_defaults(func=cmd_decisions_export)
+
+    d_restore = decisions_sub.add_parser("restore", help="Re-validate a stale entry")
+    d_restore.add_argument("decision_id", help="Decision ID to restore")
+    d_restore.add_argument("--commit", help="New commit SHA")
+    d_restore.add_argument("project_path", nargs="?", default=".")
+    d_restore.set_defaults(func=cmd_decisions_restore)
+
+    d_invalidate = decisions_sub.add_parser("invalidate", help="Mark decision as stale")
+    d_invalidate.add_argument("decision_id", help="Decision ID to invalidate")
+    d_invalidate.add_argument("--reason", default="", help="Reason for invalidation")
+    d_invalidate.add_argument("project_path", nargs="?", default=".")
+    d_invalidate.set_defaults(func=cmd_decisions_invalidate)
+
+    d_eval = decisions_sub.add_parser("eval", help="Run maintenance replay benchmark")
+    d_eval.add_argument("--tasks", type=int, default=10, help="Number of tasks")
+    d_eval.add_argument("--format", choices=["json", "md"], default="json")
+    d_eval.add_argument("--output", "-o", help="Output file")
+    d_eval.add_argument("project_path", nargs="?", default=".")
+    d_eval.set_defaults(func=cmd_decisions_eval)
+
     # synapse command group — prune + detailed stats
     synapse_p = subparsers.add_parser(
         "synapse",
@@ -5268,6 +6257,15 @@ def main():
     synapse_stats.add_argument("project_path", nargs="?", default=".")
     synapse_stats.add_argument("--json", "-j", action="store_true")
     synapse_stats.set_defaults(func=cmd_synapse_stats)
+
+    # Cognition loop subcommand
+    cognition_p = subparsers.add_parser(
+        "cognition-loop",
+        help="Run background knowledge consolidation (decay, coaccess reinforce, cluster promote, prune)",
+    )
+    cognition_p.add_argument("project_path", nargs="?", default=".")
+    cognition_p.add_argument("--json", "-j", action="store_true")
+    cognition_p.set_defaults(func=cmd_cognition_loop)
 
     mem_staleness_scan = memory_sub.add_parser(
         "staleness-scan",
@@ -5808,6 +6806,7 @@ def main():
             "session-start",
             "prompt-submit",
             "pre-compact",
+            "stale-guard",
         ],
     )
     hook_p.set_defaults(func=cmd_hook)
@@ -5916,6 +6915,90 @@ def main():
     list_lp = license_sub.add_parser("list", help="List all licenses")
     list_lp.add_argument("--partner", default=None, help="Filter by partner ID")
     list_lp.set_defaults(func=cmd_license_list)
+
+    expiring_lp = license_sub.add_parser(
+        "expiring",
+        help=(
+            "List licenses due for renewal "
+            "(exit 6 = renewals due, 7 = expired or unreadable expiry)"
+        ),
+    )
+    expiring_lp.add_argument(
+        "--within",
+        type=int,
+        default=60,
+        help="Days ahead to look (default: 60)",
+    )
+    expiring_lp.add_argument("--json", "-j", action="store_true", help="Machine-readable output")
+    expiring_lp.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        help="Print nothing when nothing needs attention (for cron)",
+    )
+    expiring_lp.set_defaults(func=cmd_license_expiring)
+
+    # ------------------------------------------------------------------
+    # Build status command
+    # ------------------------------------------------------------------
+    build_status_p = subparsers.add_parser(
+        "build-status",
+        help="Show the result of the last build (reads saved build metadata)",
+    )
+    build_status_p.add_argument("project_path", nargs="?", default=".")
+    build_status_p.add_argument("--json", "-j", action="store_true")
+    build_status_p.set_defaults(func=cmd_build_status)
+
+    # ------------------------------------------------------------------
+    # Multi-project operator commands
+    # ------------------------------------------------------------------
+    build_all_p = subparsers.add_parser(
+        "build-all",
+        help="Build all registered projects",
+    )
+    build_all_p.add_argument(
+        "--projects",
+        help="Comma-separated list of project paths (default: use registry)",
+    )
+    build_all_p.add_argument(
+        "--scope",
+        choices=["all", "code", "content", "docs"],
+        default="all",
+        help="Override scope for all projects",
+    )
+    build_all_p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force full re-embedding for all projects",
+    )
+    build_all_p.set_defaults(func=cmd_build_all)
+
+    project_p = subparsers.add_parser(
+        "project",
+        help="Manage registered projects (build-all targets)",
+    )
+    project_sub = project_p.add_subparsers(dest="project_action")
+    project_add = project_sub.add_parser("add", help="Add a project to the registry")
+    project_add.add_argument("path", help="Project directory path")
+    project_add.add_argument(
+        "--scope",
+        default="all",
+        help="Comma-separated scopes: code,content,docs (default: all)",
+    )
+    project_add.set_defaults(func=cmd_project)
+    project_list = project_sub.add_parser("list", help="List registered projects")
+    project_list.set_defaults(func=cmd_project)
+    project_remove = project_sub.add_parser("remove", help="Remove a project from the registry")
+    project_remove.add_argument("path", help="Project directory path")
+    project_remove.set_defaults(func=cmd_project)
+    project_detect = project_sub.add_parser(
+        "detect", help="Auto-detect projects in a directory tree"
+    )
+    project_detect.add_argument(
+        "path", nargs="?", default=".", help="Directory to scan (default: current dir)"
+    )
+    project_detect.set_defaults(func=cmd_project)
 
     # partner command — add, list, licenses
     partner_p = subparsers.add_parser(

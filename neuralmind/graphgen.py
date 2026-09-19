@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 from neuralmind.modularity import louvain_clustering
+from neuralmind.neuralmind_config import NeuralmindConfig
 
 # Mirrors neuralmind.watcher.DEFAULT_IGNORES — directories we never descend.
 _DEFAULT_IGNORES: frozenset[str] = frozenset(
@@ -258,6 +259,48 @@ def _is_ignored(rel_path: str, patterns: frozenset[str]) -> bool:
     return False
 
 
+# Code file suffixes considered "code" (vs prose). Used by detect_project_kind
+# to decide whether a project is a prose/book project.
+_CODE_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
+
+
+def detect_project_kind(root: Path) -> str:
+    """Return ``"prose"`` if the project has only .md/.txt files (no code),
+    else ``"code"``.
+
+    Walks the project tree (honoring ``.neuralmindignore``). A project with
+    *any* code file is treated as code so its symbols get extracted via
+    tree-sitter; a project that is pure prose (markdown/text only) skips the
+    tree-sitter pass entirely and runs heading-aware chunking instead.
+    """
+    ignores = _DEFAULT_IGNORES
+    extra_ignores = _parse_ignore_file(root)
+
+    def _walk(d: Path) -> str:
+        try:
+            entries = sorted(d.iterdir(), key=lambda p: p.name)
+        except (OSError, PermissionError):
+            return "prose"
+        for p in entries:
+            rel = p.relative_to(root).as_posix()
+            if p.name in ignores or p.name.startswith("."):
+                if p.is_dir():
+                    continue
+            if p.is_dir():
+                if p.name not in ignores and not _is_ignored(rel, extra_ignores):
+                    kind = _walk(p)
+                    if kind == "code":
+                        return "code"
+            else:
+                if _is_ignored(rel, extra_ignores):
+                    continue
+                if p.suffix in _CODE_SUFFIXES:
+                    return "code"
+        return "prose"
+
+    return _walk(root)
+
+
 def _iter_files(root: Path, ignores: frozenset[str], suffixes: frozenset[str]) -> list[Path]:
     """All files under ``root`` with a suffix in ``suffixes``, skipping ignores.
 
@@ -405,6 +448,325 @@ class _GraphBuilder:
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
 
+def _resolve_cross_chapter_refs(b: _GraphBuilder, nodes: list[dict]) -> list[dict]:
+    """Auto-detect cross-chapter relationship edges for prose projects.
+
+    Detects three types of cross-chapter relationships:
+    1. Explicit "see Chapter N" text references
+    2. Shared high-IDF terms (appearing in ≤3 chapters)
+    3. Heading similarity (shared heading text across chapters)
+
+    Caps at 10 edges per chapter to avoid noise.
+
+    Returns the list of new edges added.
+    """
+    import re
+    from collections import defaultdict
+    from math import log
+
+    # Group nodes by chapter
+    chapter_nodes: dict[str, list[dict]] = defaultdict(list)
+    for node in nodes:
+        if node.get("file_type") != "document":
+            continue
+        chapter = node.get("chapter", "")
+        if chapter:
+            chapter_nodes[chapter].append(node)
+
+    if len(chapter_nodes) < 2:
+        return []
+
+    chapters = list(chapter_nodes.keys())
+    edges_added = []
+    edges_per_chapter: dict[str, int] = defaultdict(int)
+    max_edges_per_chapter = 10
+
+    # 1. Explicit "see Chapter N" / "see Chapter X" text references
+    chapter_ref_re = re.compile(
+        r"(?:see|refer to|in|from)\s+chapter\s+(\d+|[A-Z]+)",
+        re.IGNORECASE,
+    )
+    # Build a mapping from chapter number/label to chapter name
+    chapter_num_map: dict[str, str] = {}
+    for ch_name in chapters:
+        # Try to extract chapter number from heading like "Chapter 1: Title"
+        m = re.match(r"chapter\s+(\d+)", ch_name, re.IGNORECASE)
+        if m:
+            chapter_num_map[m.group(1)] = ch_name
+        # Also map by full name
+        chapter_num_map[ch_name.lower()] = ch_name
+
+    for src_chapter, src_nodes in chapter_nodes.items():
+        for node in src_nodes:
+            content = node.get("content_text", "")
+            if not content:
+                continue
+            for match in chapter_ref_re.finditer(content):
+                ref_num = match.group(1).lower()
+                target_chapter = chapter_num_map.get(ref_num)
+                if not target_chapter or target_chapter == src_chapter:
+                    continue
+                # Add edge from this node to the first node of target chapter
+                target_nodes = chapter_nodes[target_chapter]
+                if not target_nodes:
+                    continue
+                src_id = node.get("id", "")
+                tgt_id = target_nodes[0].get("id", "")
+                if src_id and tgt_id:
+                    b.add_edge(
+                        "references",
+                        src_id,
+                        tgt_id,
+                        node.get("source_file", ""),
+                        1,
+                        confidence_score=0.9,
+                    )
+                    edges_added.append((src_id, tgt_id))
+                    edges_per_chapter[src_chapter] += 1
+                    if edges_per_chapter[src_chapter] >= max_edges_per_chapter:
+                        break
+            if edges_per_chapter[src_chapter] >= max_edges_per_chapter:
+                break
+
+    # 2. Shared high-IDF terms (appearing in ≤3 chapters)
+    # Compute IDF for terms across chapters
+    stopwords = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "can",
+        "shall",
+        "to",
+        "of",
+        "in",
+        "for",
+        "on",
+        "with",
+        "at",
+        "by",
+        "from",
+        "as",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "out",
+        "off",
+        "over",
+        "under",
+        "again",
+        "further",
+        "then",
+        "once",
+        "here",
+        "there",
+        "when",
+        "where",
+        "why",
+        "how",
+        "all",
+        "each",
+        "every",
+        "both",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "than",
+        "too",
+        "very",
+        "just",
+        "because",
+        "but",
+        "and",
+        "or",
+        "if",
+        "while",
+        "about",
+        "up",
+        "it",
+        "its",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "me",
+        "my",
+        "we",
+        "our",
+        "you",
+        "your",
+        "he",
+        "she",
+        "they",
+        "them",
+        "their",
+        "what",
+        "which",
+        "who",
+        "whom",
+    }
+
+    def tokenize(text: str) -> list[str]:
+        return re.findall(r"[a-z][a-z0-9]+", text.lower())
+
+    # Build term → set of chapters that contain it
+    term_chapters: dict[str, set[str]] = defaultdict(set)
+    chapter_term_freq: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+    for chapter, ch_nodes in chapter_nodes.items():
+        for node in ch_nodes:
+            content = node.get("content_text", "")
+            section = node.get("section", "")
+            text = f"{section} {content}"
+            terms = tokenize(text)
+            for term in terms:
+                if term in stopwords or len(term) < 3:
+                    continue
+                term_chapters[term].add(chapter)
+                chapter_term_freq[chapter][term] += 1
+
+    # Find high-IDF terms (appearing in ≤3 chapters but ≥2)
+    num_chapters = len(chapters)
+    high_idf_terms: dict[str, float] = {}
+    for term, ch_set in term_chapters.items():
+        if 2 <= len(ch_set) <= 3:
+            idf = log(num_chapters / len(ch_set))
+            high_idf_terms[term] = idf
+
+    # For each pair of chapters, find shared high-IDF terms
+    chapter_pairs: dict[tuple[str, str], list[tuple[str, float]]] = defaultdict(list)
+    for term, idf in high_idf_terms.items():
+        ch_list = sorted(term_chapters[term])
+        for i in range(len(ch_list)):
+            for j in range(i + 1, len(ch_list)):
+                pair = (ch_list[i], ch_list[j])
+                chapter_pairs[pair].append((term, idf))
+
+    # Add edges for chapter pairs with shared high-IDF terms
+    for (ch1, ch2), terms in chapter_pairs.items():
+        if not terms:
+            continue
+        # Sort by IDF (highest first) and take top terms
+        terms.sort(key=lambda x: x[1], reverse=True)
+        top_terms = terms[:3]
+
+        # Find the best node in each chapter to connect
+        best_node1 = None
+        best_score1 = -1
+        best_node2 = None
+        best_score2 = -1
+
+        for node in chapter_nodes[ch1]:
+            content = node.get("content_text", "").lower()
+            score = sum(1 for t, _ in top_terms if t in content)
+            if score > best_score1:
+                best_score1 = score
+                best_node1 = node
+
+        for node in chapter_nodes[ch2]:
+            content = node.get("content_text", "").lower()
+            score = sum(1 for t, _ in top_terms if t in content)
+            if score > best_score2:
+                best_score2 = score
+                best_node2 = node
+
+        if best_node1 and best_node2:
+            src_id = best_node1.get("id", "")
+            tgt_id = best_node2.get("id", "")
+            if src_id and tgt_id:
+                term_str = ", ".join(t for t, _ in top_terms[:2])
+                b.add_edge(
+                    "related_via_terms",
+                    src_id,
+                    tgt_id,
+                    best_node1.get("source_file", ""),
+                    1,
+                    context=f"shared terms: {term_str}",
+                    confidence_score=0.6,
+                )
+                edges_added.append((src_id, tgt_id))
+                edges_per_chapter[ch1] += 1
+                edges_per_chapter[ch2] += 1
+
+    # 3. Heading similarity (shared heading text across chapters)
+    chapter_headings: dict[str, list[str]] = defaultdict(list)
+    for chapter, ch_nodes in chapter_nodes.items():
+        for node in ch_nodes:
+            section = node.get("section", "")
+            if section:
+                chapter_headings[chapter].append(section.lower())
+
+    for i in range(len(chapters)):
+        for j in range(i + 1, len(chapters)):
+            ch1, ch2 = chapters[i], chapters[j]
+            if edges_per_chapter[ch1] >= max_edges_per_chapter:
+                break
+            if edges_per_chapter[ch2] >= max_edges_per_chapter:
+                continue
+            headings1 = set(chapter_headings.get(ch1, []))
+            headings2 = set(chapter_headings.get(ch2, []))
+            shared = headings1 & headings2
+            if shared:
+                # Find nodes with shared headings
+                for node1 in chapter_nodes[ch1]:
+                    if node1.get("section", "").lower() in shared:
+                        for node2 in chapter_nodes[ch2]:
+                            if node2.get("section", "").lower() in shared:
+                                src_id = node1.get("id", "")
+                                tgt_id = node2.get("id", "")
+                                if src_id and tgt_id:
+                                    b.add_edge(
+                                        "shared_section",
+                                        src_id,
+                                        tgt_id,
+                                        node1.get("source_file", ""),
+                                        1,
+                                        context=f"shared heading: {node1.get('section', '')}",
+                                        confidence_score=0.7,
+                                    )
+                                    edges_added.append((src_id, tgt_id))
+                                    edges_per_chapter[ch1] += 1
+                                    edges_per_chapter[ch2] += 1
+                                    break
+                        break
+
+    return edges_added
+
+
 def _add_doc_code_coupling(b: _GraphBuilder) -> None:
     """Link document/file nodes to file-level code nodes in the same directory.
 
@@ -479,6 +841,12 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
     prose anchors graphify exposes and the selector folds into L1/L2 (e.g.
     "Why this fixture?", "POST /api/auth/login"). The file node anchors them
     with a ``contains`` edge, mirroring code files' structure.
+
+    For each heading node, this also stores:
+    - ``content_text``: the markdown text under the heading (until the next
+      heading or end of file), so prose retrieval can surface body prose.
+    - ``chapter`` (H1 text), ``section`` (current heading text),
+      ``heading_level`` (1, 2, or 3) — for section-aware chunking/retrieval.
     """
     try:
         text = md_path.read_text(encoding="utf-8")
@@ -487,24 +855,56 @@ def _extract_markdown(b: _GraphBuilder, md_path: Path, rel: str) -> None:
     file_id = _slug(rel)
     b.add_node(file_id, md_path.name, "document", rel, 1)
 
+    lines = text.splitlines()
+    # First pass: find every heading with its line index + level
+    headings: list[tuple[int, int, str]] = []  # (line_idx, level, text)
     in_fence = False
-    for i, line in enumerate(text.splitlines(), 1):
+    for i, line in enumerate(lines):
         stripped = line.strip()
-        # Don't treat '#' inside fenced code blocks as headings.
         if stripped.startswith(("```", "~~~")):
             in_fence = not in_fence
             continue
         if in_fence:
             continue
         m = _HEADING_RE.match(line)
-        if not m:
-            continue
-        heading = m.group(2).strip()
-        if not heading:
-            continue
-        hid = f"{file_id}__h{i}"
-        b.add_node(hid, heading, "document", rel, i)
-        b.add_edge("contains", file_id, hid, rel, i)
+        if m:
+            level = len(m.group(1))
+            heading_text = m.group(2).strip()
+            if heading_text:
+                headings.append((i, level, heading_text))
+
+    # For each heading, extract the text content until the next heading
+    chapter = ""
+    for idx, (line_idx, level, heading_text) in enumerate(headings):
+        if level == 1:
+            chapter = heading_text
+
+        # Content runs from the line after this heading up to (but not
+        # including) the next heading, or end of file.
+        start = line_idx + 1
+        end = headings[idx + 1][0] if idx + 1 < len(headings) else len(lines)
+        # Collect lines, skipping fenced code block boundaries
+        content_lines: list[str] = []
+        cf = False
+        for j in range(start, end):
+            s = lines[j].strip()
+            if s.startswith(("```", "~~~")):
+                cf = not cf
+                continue
+            if cf:
+                continue
+            content_lines.append(lines[j])
+        content_text = "\n".join(content_lines).strip()
+
+        hid = f"{file_id}__h{line_idx + 1}"
+        b.add_node(hid, heading_text, "document", rel, line_idx + 1)
+        b.add_edge("contains", file_id, hid, rel, line_idx + 1)
+        # Enrich the node dict with prose-specific fields.
+        node = b.nodes[hid]
+        node["content_text"] = content_text
+        node["chapter"] = chapter
+        node["section"] = heading_text
+        node["heading_level"] = level
 
 
 def _extract_openapi(b: _GraphBuilder, path: Path, rel: str) -> None:
@@ -785,6 +1185,17 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     root = Path(project_path).resolve()
     b = _GraphBuilder()
 
+    # Load .neuralmind.yaml config
+    config = NeuralmindConfig.load(root)
+
+    # Detect prose mode: a project with only .md/.txt files (no code) skips
+    # the tree-sitter pass entirely and runs heading-aware chunking instead.
+    project_kind = detect_project_kind(root)
+
+    # If config explicitly sets mode, honor it
+    if config.mode != "auto":
+        project_kind = config.mode
+
     # --- Incremental extraction setup ------------------------------------
     from neuralmind.incremental_extract import (
         IncrementalExtractor,
@@ -812,6 +1223,8 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         re_extract_set = set()
 
     files = _iter_source_files(root, _DEFAULT_IGNORES)
+    # Apply include/exclude globs from config
+    files = config.apply_globs(root, files)
 
     # If we have an existing graph + cache, reuse unchanged nodes/edges
     unchanged_nodes: list[dict] = []
@@ -846,55 +1259,68 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         # No cache or no existing graph → full extraction, all files re-extracted
         re_extract_set = {f.relative_to(root).as_posix() for f in files}
 
-    # Group files by language and process each with its own extractor. A
-    # language whose grammar isn't installed is skipped (Python is the only
-    # hard dependency), so a missing TS/Go grammar degrades gracefully rather
-    # than failing the whole build.
-    by_lang: dict[str, list[Path]] = {}
-    for fpath in files:
-        rel = fpath.relative_to(root).as_posix()
-        if rel not in re_extract_set:
-            continue
-        lang = _SUFFIX_LANG.get(fpath.suffix)
-        if lang:
-            by_lang.setdefault(lang, []).append(fpath)
-
-    # Pre-seed the builder with unchanged nodes (so cross-file resolution
-    # against unchanged symbols still works) and register their symbols.
-    for node in unchanged_nodes:
-        b.nodes[node["id"]] = node
-        _register_node_symbol(b, node)
-    for edge in unchanged_edges:
-        b.edges.append(edge)
-
-    for lang in sorted(by_lang):
-        spec = _EXTRACTORS.get(lang)
-        if spec is None or not language_available(lang):
-            continue
-        extract_symbols, resolve_edges = spec
-        parser = _make_parser(lang)
-
-        parsed: list[tuple[str, bytes, Any]] = []
-        for fpath in by_lang[lang]:
+    # ---- tree-sitter code extraction (SKIPPED for prose projects) ----
+    # For prose projects (no code files), we skip tree-sitter entirely and
+    # still run _extract_markdown() for document nodes below.
+    if project_kind == "code":
+        # Group files by language and process each with its own extractor. A
+        # language whose grammar isn't installed is skipped (Python is the only
+        # hard dependency), so a missing TS/Go grammar degrades gracefully rather
+        # than failing the whole build.
+        by_lang: dict[str, list[Path]] = {}
+        for fpath in files:
             rel = fpath.relative_to(root).as_posix()
-            try:
-                src = fpath.read_bytes()
-            except OSError:
+            if rel not in re_extract_set:
                 continue
-            tree = parser.parse(src)
-            file_id = _slug(rel)
-            b.add_node(file_id, fpath.name, "code", rel, 1)
-            parsed.append((rel, src, tree))
-            # pass 1: file-level + symbol nodes (+ module-key registration).
-            extract_symbols(b, tree.root_node, src, rel, file_id)
+            lang = _SUFFIX_LANG.get(fpath.suffix)
+            if lang:
+                by_lang.setdefault(lang, []).append(fpath)
 
-        # pass 2: cross-symbol edges (imports/inherits/calls), once every
-        # file's symbols + module keys are registered.
-        for rel, src, tree in parsed:
-            resolve_edges(b, tree.root_node, src, rel, _slug(rel))
+        # Pre-seed the builder with unchanged nodes (so cross-file resolution
+        # against unchanged symbols still works) and register their symbols.
+        for node in unchanged_nodes:
+            b.nodes[node["id"]] = node
+            _register_node_symbol(b, node)
+        for edge in unchanged_edges:
+            b.edges.append(edge)
+
+        for lang in sorted(by_lang):
+            spec = _EXTRACTORS.get(lang)
+            if spec is None or not language_available(lang):
+                continue
+            extract_symbols, resolve_edges = spec
+            parser = _make_parser(lang)
+
+            parsed: list[tuple[str, bytes, Any]] = []
+            for fpath in by_lang[lang]:
+                rel = fpath.relative_to(root).as_posix()
+                try:
+                    src = fpath.read_bytes()
+                except OSError:
+                    continue
+                tree = parser.parse(src)
+                file_id = _slug(rel)
+                b.add_node(file_id, fpath.name, "code", rel, 1)
+                parsed.append((rel, src, tree))
+                # pass 1: file-level + symbol nodes (+ module-key registration).
+                extract_symbols(b, tree.root_node, src, rel, file_id)
+
+            # pass 2: cross-symbol edges (imports/inherits/calls), once every
+            # file's symbols + module keys are registered.
+            for rel, src, tree in parsed:
+                resolve_edges(b, tree.root_node, src, rel, _slug(rel))
+    else:
+        # Prose project: no tree-sitter extraction, but still pre-seed
+        # unchanged nodes if they exist.
+        for node in unchanged_nodes:
+            b.nodes[node["id"]] = node
+        for edge in unchanged_edges:
+            b.edges.append(edge)
 
     # ---- markdown → document nodes ---------------------------------------- #
-    for md_path in _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES):
+    md_files = _iter_files(root, _DEFAULT_IGNORES, _DOC_SUFFIXES)
+    md_files = config.apply_globs(root, md_files)
+    for md_path in md_files:
         _extract_markdown(b, md_path, md_path.relative_to(root).as_posix())
 
     # ---- schema/spec artifacts (OpenAPI, SQL, Protobuf) ------------------- #
@@ -904,12 +1330,18 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         if extractor_:
             extractor_(b, sa_path, rel)
 
-    # ---- doc-code coupling ----------------------------------------------
+    # ---- doc-code coupling ---------------------------------------------- #
     # Link document/file nodes to the code file nodes they describe.
     # Must run AFTER markdown/schema extraction so the document nodes exist.
     # This gives the query pipeline explicit "what does this doc explain?"
     # edges alongside the existing soft vector similarity signal.
     _add_doc_code_coupling(b)
+
+    # ---- cross-chapter relationship edges (P1.4) ---------------------- #
+    # For prose projects, auto-detect cross-chapter references and shared
+    # terms to improve multi-chapter query recall.
+    if project_kind == "prose":
+        _resolve_cross_chapter_refs(b, list(b.nodes.values()))
 
     # ---- communities (Louvain modularity over structural edges) -------- #
     # Carries over community IDs from existing_graph so unchanged files keep
@@ -955,6 +1387,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
         # be slotted in behind the same graph.json seam without ambiguity.
         "generated_by": "neuralmind.graphgen (tree-sitter)",
         "schema_version": SCHEMA_VERSION,
+        "project_kind": project_kind,
     }
 
 

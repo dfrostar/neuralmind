@@ -31,7 +31,7 @@ Risks are scored on two dimensions:
 |----|------|------------|--------|-------|-------|------------|-------|
 | R-01 | Vulnerable dependency (Critical CVE) | 3 | 5 | 15 | HIGH | Automated Dependabot alerts, 72h patch SLA for critical | Maintainer |
 | R-02 | Malicious code injection via PR | 2 | 5 | 10 | HIGH | Code review required, branch protection, CI gates | Maintainer |
-| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default, RBAC, audit logging, no network | Maintainer |
+| R-03 | Data exfiltration via MCP server | 1 | 5 | 5 | MEDIUM | Local-only by default, RBAC, audit logging, no network except the opt-in `NEURALMIND_LLM_SEED` doc-seeding path (see [`THIRD_PARTY_LLM_DISCLOSURE.md`](THIRD_PARTY_LLM_DISCLOSURE.md)) | Maintainer |
 | R-04 | Index corruption / data loss | 2 | 4 | 8 | MEDIUM | SQLite WAL mode, `neuralmind build --verify`, local backups | Maintainer |
 | R-05 | PyPI package compromise | 1 | 5 | 5 | MEDIUM | Trusted publishing (OIDC), 2FA on PyPI account, SBOM | Maintainer |
 | R-06 | Key person dependency (solo maintainer) | 3 | 4 | 12 | HIGH | Documented runbooks, bus factor reduction plan, paid support option | Maintainer |

@@ -60,6 +60,10 @@ neuralmind team license status       # current tier, seats, expiry, issued-to
 neuralmind team license activate <file>   # activate with Ed25519-signed license
 ```
 
+The signed licence file comes from the vendor. If you are the vendor, the
+issuing side — quoting, invoicing, `neuralmind license issue`, renewals —
+is the [Billing Runbook](Billing-Runbook.md).
+
 ### Seats
 
 ```bash
@@ -104,7 +108,7 @@ neuralmind team self-hosted validate-license
 | SSO/SAML/OIDC | Not shipped | PRD-scoped for future wave |
 | Real-time cross-machine sync | Not shipped | Paid tier future |
 | Customer self-serve dashboard | Not shipped | Decide later |
-| License portal | Deferred | D12: defer until 3+ customers |
+| License portal | Deferred | D12: defer until 3+ customers — the manual path is the [Billing Runbook](Billing-Runbook.md) |
 
 **Do not market Tier 2 as SSO-enabled or multi-machine-synced.** Architecture is ready; features are not shipped.
 

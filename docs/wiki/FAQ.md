@@ -292,7 +292,7 @@ neuralmind-mcp . --rbac-enabled \
 - ✅ 100% local processing
 - ✅ No cloud APIs
 - ✅ No telemetry
-- ✅ No network calls of its own
+- ✅ No repository content transmitted (one first-build model download aside, pre-seedable)
 
 ---
 

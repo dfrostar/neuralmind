@@ -9,14 +9,11 @@ NeuralMind's learning system improves automatically as you use it. The
 more you query, edit, and run tools over your code, the smarter recall
 gets — with no manual step to remember.
 
-As of **v0.25.0 there is a single learning system: the Hebbian synapse
-layer.** It learns continuously from queries, edits, and tool calls,
-reinforces the edges between code nodes that fire together, and lets
-unused edges decay so recall tracks current usage instead of a stale
-snapshot. (NeuralMind previously had a second mechanism — a
-`learned_patterns` cooccurrence reranker driven by `neuralmind learn` —
-which was removed in v0.25.0. See ["The old reranker"](#the-old-reranker-removed-in-v0250)
-below if you arrived here from an older link.)
+As of **v3.9.0 the learning system combines six modern brain-inspired
+techniques** in the synapse layer. It learns continuously from queries,
+edits, and tool calls, reinforces the edges between code nodes that fire
+together, and lets unused edges decay so recall tracks current usage
+instead of a stale snapshot.
 
 ### The Learning Cycle
 
@@ -38,10 +35,75 @@ below if you arrived here from an older link.)
 │    ↓ Recall tracks current usage, not a stale batch       │
 ├──────────────────────────────────────────────────────────┤
 │ 4. Continuous improvement                                 │
-│    No `neuralmind learn` step — the graph grows as you     │
+│    No `neuralmind learn` step — the graph grows as you    │
 │    work.                                                   │
 └──────────────────────────────────────────────────────────┘
 ```
+
+## v3.9.0: Six SOTA Synapse Dynamics
+
+### 1. Lateral Inhibition (SYNAPSE paper, arXiv 2025)
+When one concept activates, it suppresses competing activations rather
+than only boosting neighbors. Prevents "attention dilution" in large
+codebases where many clusters are partially relevant.
+
+### 2. Synaptic Tagging & Capture (STC) (PNAS Nexus 2022)
+Not every co-activation is meaningful. Two-phase model:
+- **Tag:** Co-activation creates a temporary mark (short-term)
+- **Capture:** If the same pair fires again within a consolidation window,
+  tagged synapses capture "plasticity-related proteins" and become permanent
+- **Decay:** Untagged marks fade without entering long-term memory
+
+### 3. Non-Monotonic Plasticity (SAMPL model, bioRxiv)
+Memory retrieval both *enhances* the retrieved item AND *weakens* related
+but non-retrieved items (retrieval-induced forgetting). Prevents the
+"everything is vaguely associated with everything" problem.
+
+### 4. Resource-Dependent Heterosynaptic STDP (Frontiers 2025)
+Each node has a finite local resource pool. Strengthening edge (A,B)
+consumes resources from A's pool, naturally weakening competing edges
+(A,C), (A,D). Creates synaptic competition without global normalization.
+
+### 5. Feeling-of-Knowing (FOK) Gating (SYNAPSE paper)
+Confidence gate on retrieval. If peak activation after spreading doesn't
+exceed an adaptive threshold, returns empty rather than weakly-associated
+noise. Prevents hallucination of irrelevant context.
+
+### 6. Replay-Based Consolidation (bioRxiv 2025)
+Replay queue captures recent co-activation sequences. During idle periods,
+replays them to strengthen associations without new input. Interleaves
+recent + old patterns to prevent catastrophic forgetting.
+
+## v3.9.0: Adversarial Retrieval Enhancements
+
+For "how does X implement Y" queries, retrieval leans toward implementation
+code rather than docstrings.
+
+**On by default** — both re-rank the hits retrieval already returned, so they
+cannot spend extra context:
+
+1. **Intent-aware classification:** "how does X implement Y" → code intent,
+   which multiplies code hits by `NEURALMIND_CODE_BOOST` (3.0) and doc hits by
+   0.5. The keyword heuristic alone scored this on "how does" and called it
+   docs; matching the question shape is what fixed it.
+2. **Code-signal boost:** Extracts identifiers, boosts matching source files.
+
+**Off by default**, behind `NEURALMIND_RETRIEVAL_EXPANSION=1` — these pull in
+nodes vector search did not return, and so must displace a hit to make room:
+
+3. **Synapse-seeded expansion:** Spreads activation from query-matched nodes
+4. **Dependency graph traversal:** Finds callers/callees/imports
+5. **Code snippet extraction:** Shows actual source code with line numbers
+
+Fixes 3–5 are disabled because they were measured and lost facts: on the
+reference fixture they took the faithfulness delta from `+0.041` to `-0.065`,
+under the gate's `+0.000` floor. Rebuilding them to be budget-neutral made it
+`-0.107` — worse — because displacement evicts a real hit for every candidate
+pulled in, so a candidate that is worse than what it replaces now costs an
+answer rather than only tokens. Their candidates are substring matches over
+identifiers, and on that fixture they lose to the vector hits they displace.
+Candidate quality is the open problem; the budget discipline is already there
+waiting for it.
 
 ## Step-by-Step Workflow
 

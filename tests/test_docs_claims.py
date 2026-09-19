@@ -38,6 +38,10 @@ PUBLISHED_FILES = (
     "docs/about.html",
     "docs/COMPLIANCE-SUMMARY.md",
     "docs/SECURITY-GUIDE.md",
+    # Dependency-vulnerability dispositions, read by the same CISOs as the two
+    # above — and the surface most likely to grow a reassuring absolute while
+    # explaining why an alert was dismissed.
+    "docs/VULNERABILITY-MANAGEMENT-POLICY.md",
     "docs/DEPLOYMENT-GUIDE.md",
     "docs/ENTERPRISE.md",
     "docs/BUSINESS-CASE.md",
@@ -88,7 +92,11 @@ FORBIDDEN = [
         re.compile(r"\b(code|logic|data)\s+never\s+leaves?\b", re.IGNORECASE),
         (
             "Absolute privacy claim — the agent still egresses its chosen slice. "
-            "Say what NeuralMind itself does: 'makes no network calls of its own'."
+            "Say what NeuralMind itself does, scoped to leaving the machine: "
+            "'sends no telemetry and transmits no repository content off your "
+            "machine'. Unscoped, 'transmits no repository content' contradicts "
+            "the adjacent copy, because handing a slice to a local agent is "
+            "transmitting repository content."
         ),
     ),
     (
@@ -118,6 +126,24 @@ FORBIDDEN = [
     (
         re.compile(r"\b(zero|no)\s+(data\s+)?exfiltration\b", re.IGNORECASE),
         "Absolute exfiltration claim. Use 'no telemetry / no calls home'.",
+    ),
+    (
+        # This one was the guard's OWN prescribed replacement until 2026-08-28,
+        # which is how it spread to the README, the site, llms.txt, SECURITY.md
+        # and two registry manifests. It is false: on a cold first build
+        # neuralmind/onnx_embedder.py itself calls urllib.request.urlretrieve
+        # for the MiniLM ONNX archive. The fetch is NeuralMind's own code, not
+        # a dependency's, which is precisely what "of its own" denies.
+        re.compile(
+            r"\b(no|zero)\s+(network|external)\s+calls?\s+of\s+its\s+own\b",
+            re.IGNORECASE,
+        ),
+        (
+            "False on a cold install — neuralmind/onnx_embedder.py downloads the "
+            "embedding model over HTTPS itself. Say the true and stronger thing, "
+            "scoped to leaving the machine: 'sends no telemetry and transmits no "
+            "repository content off your machine'."
+        ),
     ),
     (
         re.compile(r"\bexfiltration\s+risk\b", re.IGNORECASE),
@@ -271,6 +297,14 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search(bad) for p, _ in FORBIDDEN)
     # The variant that shipped on llms.txt while the narrower pattern watched.
     assert any(p.search("100% local: no code leaves the machine") for p, _ in FORBIDDEN)
+    # The phrase this guard itself used to prescribe, false since the embedder
+    # started fetching its own model. Both spellings that shipped.
+    assert any(p.search("NeuralMind makes no network calls of its own") for p, _ in FORBIDDEN)
+    assert any(p.search("makes zero network calls of its own") for p, _ in FORBIDDEN)
+    assert any(p.search("and makes no external calls of its own") for p, _ in FORBIDDEN)
+    # Accurate scoped wording must still pass, or the guard blocks correct copy.
+    ok = "No telemetry, and nothing on the wire at query time."
+    assert not any(p.search(ok) for p, _ in FORBIDDEN)
 
 
 def test_social_copy_is_scanned() -> None:
@@ -288,7 +322,7 @@ def test_allow_marker_exempts_quoted_disavowals_only() -> None:
     quoted = [
         "<!-- claims-guard:allow — quoting the retracted claim to correct it -->",
         'Before: "your IP never leaves your machine."',
-        "After: NeuralMind makes no network calls of its own.",
+        "After: NeuralMind transmits no repository content off your machine.",
     ]
     assert _allowed(quoted, 1), "marker on the previous line must exempt the quote"
     assert not _allowed(quoted, 2), "the line after the quote is not exempt"
