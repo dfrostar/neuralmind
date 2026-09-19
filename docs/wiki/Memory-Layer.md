@@ -73,7 +73,7 @@ Registered in the MCP server (28 tools total as of v4.3.0):
 |------|-----------|-------------|
 | `neuralmind_query_decisions` | `project_path`, `query`, `limit` | Natural-language search over decisions |
 | `neuralmind_audit_decisions` | `project_path`, `stale_only` | List decisions, filter by status |
-| `neuralmind_record_decision` | `project_path`, `title`, `rationale`, `commit`, `files_affected`, `decision_type`, `confidence`, `evidence`, `rejected_alternatives` | Store a new decision |
+| `neuralmind_record_decision` | `project_path`, `title`, `rationale`, `commit_sha`, `files_affected`, `decision_type`, `confidence`, `evidence`, `rejected_alternatives`, `tags` | Store a new decision |
 | `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision stale |
 | `neuralmind_memory_search` | `project_path`, `query`, `limit`, `status` | **Layer 1** — compact index rows (~50–100 tokens each). Cheap first call; filter here before fetching |
 | `neuralmind_memory_timeline` | `project_path`, `decision_id` or `query`, `before`, `after` | **Layer 2** — chronological context around an anchor decision |

@@ -101,6 +101,73 @@ def test_handle_tool_call_record_and_invalidate(project):
     assert "error" not in inv
 
 
+def test_handle_tool_call_record_passes_through_all_fields(project):
+    """Regression: the MCP tool used to silently drop decision_type,
+    confidence, evidence, rejected_alternatives, and tags, and only
+    recognized the file list under "files" while the docs (and the
+    direct tool_record_decision/store.record API) call it
+    "files_affected" — so a caller following the documented schema had
+    its file list silently ignored too. Verify the wire path round-trips
+    every field DecisionStore.record() actually supports.
+    """
+    out = json.loads(
+        handle_tool_call(
+            "neuralmind_record_decision",
+            {
+                "project_path": project,
+                "title": "Full-fidelity record",
+                "rationale": "why",
+                "commit_sha": "c" * 40,
+                "files_affected": ["a.py", "b.py"],
+                "decision_type": "DEPENDENCY",
+                "confidence": 0.42,
+                "evidence": ["docs/SECURITY.md#L10"],
+                "rejected_alternatives": ["do nothing"],
+                "tags": ["auth"],
+            },
+        )
+    )
+    assert out["files_affected"] == ["a.py", "b.py"]
+    assert out["decision_type"] == "DEPENDENCY"
+    assert out["confidence"] == 0.42
+    assert out["evidence"] == ["docs/SECURITY.md#L10"]
+    assert out["rejected_alternatives"] == ["do nothing"]
+    assert out["tags"] == ["auth"]
+
+
+def test_handle_tool_call_record_legacy_files_key_still_works(project):
+    """The pre-fix "files" key must keep working for any existing caller."""
+    out = json.loads(
+        handle_tool_call(
+            "neuralmind_record_decision",
+            {
+                "project_path": project,
+                "title": "Legacy files key",
+                "rationale": "why",
+                "files": ["legacy.py"],
+            },
+        )
+    )
+    assert out["files_affected"] == ["legacy.py"]
+
+
+def test_record_decision_schema_advertises_all_store_fields():
+    """The inputSchema an MCP client introspects must match what the
+    handler actually accepts — this is exactly the gap that let
+    confidence/decision_type/evidence/rejected_alternatives be silently
+    dropped even though DecisionStore.record() always supported them."""
+    schema = next(t for t in TOOLS if t["name"] == "neuralmind_record_decision")["inputSchema"]
+    for field in (
+        "files_affected",
+        "decision_type",
+        "confidence",
+        "evidence",
+        "rejected_alternatives",
+        "tags",
+    ):
+        assert field in schema["properties"], f"{field} missing from neuralmind_record_decision schema"
+
+
 # ------------------------------------------------------------------ #
 # Tool functions
 # ------------------------------------------------------------------ #

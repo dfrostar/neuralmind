@@ -13,12 +13,17 @@ description: "OpenAI's Codex CLI ships with no persistent memory of its own. Hon
 > not source-code structure. None of them parse an AST, build a call
 > graph, or rank files against a def-site oracle. NeuralMind is the only
 > tool in this set that does. The honest caveat that matters most here:
-> **NeuralMind's own Codex integration is unverified.** Codex supports
-> arbitrary MCP servers via `config.toml`, and `neuralmind-mcp` should
-> register the same way it does on Hermes-Agent and OpenClaw — but nobody
-> has driven it end-to-end on Codex yet, unlike the three tools below,
-> which all document the setup explicitly. Assessed September 2026 —
-> re-check before relying on specifics; this space is moving fast.
+> **`neuralmind-mcp` is confirmed to register with Codex CLI and speak the
+> MCP protocol correctly, but no one has watched Codex's own agent call it
+> mid-conversation.** `codex mcp add neuralmind -- neuralmind-mcp` writes
+> the expected `[mcp_servers.neuralmind]` stdio entry and `codex doctor`
+> reports it as a valid, enabled server; a direct MCP-protocol probe
+> against the same binary confirms `initialize`, `tools/list` (25 tools),
+> and real tool calls all work. What's still unverified is Codex's own
+> Rust MCP client actually driving those tools inside a live turn, which
+> needs an OpenAI API key this environment doesn't have. Assessed
+> September 2026 — re-check before relying on specifics; this space is
+> moving fast.
 
 ## The gap: what Codex does and doesn't remember natively
 
@@ -128,7 +133,7 @@ Where NeuralMind's [synapse layer](../../neuralmind/synapses.py) and
 | Storage | PostgreSQL + pgvector (or Oracle AI DB) | Hosted (Mem0 platform) or self-hosted | Local markdown files, or hosted cloud | Local SQLite + files (`.neuralmind/`) |
 | Requires a database server | Yes | No (hosted) / Yes (self-hosted) | No | No |
 | Bootstraps from git history automatically | Yes | No | No | No — static graph from current tree; usage-learning starts at zero |
-| Setup on Codex | npm package, zero-config ingestion | One `[mcp_servers]` block | One `[mcp_servers]` block | Same MCP seam should apply — **unverified** |
+| Setup on Codex | npm package, zero-config ingestion | One `[mcp_servers]` block | One `[mcp_servers]` block | One `[mcp_servers]` block — **config + protocol confirmed working; a live Codex agent turn is not** |
 | Cross-agent portability | Yes (multi-CLI MCP) | Yes (multi-CLI MCP) | Yes (multi-CLI MCP) | Yes (`.neuralmind-team-memory.json`, git-portable) |
 | License | MIT | Apache 2.0 | Not publicly specified in docs | MIT (core); source-available commercial modules for Team tier |
 | GitHub stars (point-in-time) | 23.9k | 65k+ (Mem0 overall) | Not found in docs | — |
@@ -157,23 +162,30 @@ doesn't remember facts about me or past conversations." None of the three
 above touch that problem at all — they're all note/fact layers wearing
 coding-CLI integrations, not code-structure engines.
 
-**On Codex specifically, today:** if you need something working now, pick
-one of the three above — they're documented, and someone has run them.
-NeuralMind's Codex path exists on paper (same MCP mechanism, listed as
-"Theoretical" in the [host table](../../README.md#who-this-is-for)) but
-hasn't been verified end-to-end. Treat that as the honest current answer,
-not a reason to rule it out — it's the same one-line `[mcp_servers]`
-config as the others, just not yet confirmed working in practice.
+**On Codex specifically, today:** `codex mcp add neuralmind --
+neuralmind-mcp` produces the correct `config.toml` entry, `codex doctor`
+reports the server as configured and enabled, and speaking the MCP
+protocol directly to the same binary (the official `mcp` Python SDK's
+stdio client — the same class of client Codex's own Rust MCP client
+implements against the identical spec) confirms `initialize`, a
+25-tool `tools/list`, and real tool calls all succeed, Memory Layer tools
+included. That's real evidence, not speculation — but it stops short of
+watching Codex's own agent invoke a tool mid-conversation, which needs a
+live OpenAI API key. Still listed as "Theoretical" in the
+[host table](../../README.md#who-this-is-for)) for that reason, but this
+is a materially stronger "Theoretical" than an unregistered guess.
 
 ## The honest caveats
 
-- **NeuralMind's own Codex support is unverified — this is the most
-  important caveat on this page.** Every other page in this directory
-  compares a working NeuralMind integration against a competitor;
-  this one is honest that the Codex side of that comparison is
-  theoretical. Anyone relying on this page to justify a Codex deployment
-  should verify `neuralmind-mcp` actually registers and responds via
-  `codex mcp add` before assuming parity with Hermes-Agent or OpenClaw.
+- **NeuralMind's Codex integration is config-and-protocol verified, not
+  agent-verified — this is the most important caveat on this page.**
+  `neuralmind-mcp` registers correctly and answers the MCP protocol
+  correctly when spoken to directly; what's unverified is Codex's own
+  agent loop actually calling it, which needs an API key this
+  environment doesn't have. Every other page in this directory compares
+  a fully agent-verified NeuralMind integration against a competitor —
+  this one is honest that the Codex side clears every bar except that
+  last one.
 - **All Hindsight/Mem0/Basic Memory figures and architecture details are
   from their own docs and repos**, gathered directly, not reproduced or
   benchmarked by us. Star counts are a snapshot.
