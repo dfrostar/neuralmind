@@ -7,52 +7,62 @@ The Memory Layer gives agents persistent, queryable decision memory: every archi
 - **Storage:** SQLite (`.neuralmind/memory.db` in your project root), created on first use
 - **Search:** FTS5 full-text search over titles, rationales, and evidence
 - **Invalidation:** file-touch, commit mismatch, and cascade rules — decisions referencing changed files go stale automatically
-- **Access:** CLI (`neuralmind memory`), MCP tools (4 new), and Python API
+- **Access:** CLI (`neuralmind decisions`), MCP tools (4), and Python API
 
 ## CLI Reference
+
+> **Command group:** decision verbs live under **`neuralmind decisions`**. The
+> `neuralmind memory` group carries management subcommands only (`inspect`,
+> `reset`, `export`, `import`, `publish`, `review-*`, `staleness-*`).
+> (v4.1.0 documented `neuralmind memory <verb>` — that surface was renamed;
+> see the erratum in the v4.1.0 release notes.)
 
 ### Record a decision
 
 ```bash
-neuralmind memory record [project_path] --title "TITLE" [--rationale TEXT]
-    [--commit SHA] [--files "a.py,b.py"] [--type architecture]
-    [--rejected '{"option":"X","reason":"..."}']
-    [--evidence '{"type":"supporting","content":"...","source":"..."}']
-    [--confidence 0.95]
+neuralmind decisions record [project_path] --title "TITLE" --rationale TEXT
+    [--commit SHA] [--files "a.py" "b.py"] [--type architecture]
+    [--rejected "rejected option A" "rejected option B"]
+    [--evidence "ref or URL 1" "ref or URL 2"]
+    [--confidence 0.95] [--tags "perf" "storage"]
 ```
 
 ### Query decisions
 
 ```bash
-neuralmind memory query [project_path] "natural language query" [--limit 10] [--status active]
+neuralmind decisions query "natural language query" [project_path] [--limit 10] [--status ACTIVE|STALE|ALL] [--json]
 ```
+
+The query text comes **first**; the project path is optional and comes second.
 
 ### Audit
 
 ```bash
-neuralmind memory audit [project_path] [--stale-only] [--orphaned-only] [--format md|json]
+neuralmind decisions audit [project_path] [--stale] [--orphaned] [--format md|json]
 ```
 
-Age-based staleness (STALE_DAYS=90) plus orphaned-SHA detection (commit no longer in history).
+Lists every recorded decision by default. `--stale` / `--orphaned` narrow the
+list to entries that need attention: age-based staleness (STALE_DAYS=90) plus
+orphaned-SHA detection (commit no longer in git history).
 
 ### Amend / Invalidate / Restore
 
 ```bash
-neuralmind memory amend <decision-id> [--rationale TEXT] [--evidence JSON] [--rejected JSON]
-neuralmind memory invalidate <decision-id> --reason "why"
-neuralmind memory restore <decision-id>
+neuralmind decisions amend <decision-id> [--rationale TEXT] [--evidence "ref"] [--rejected "alt"]
+neuralmind decisions invalidate <decision-id> --reason "why"
+neuralmind decisions restore <decision-id> [--commit SHA]
 ```
 
 ### Export
 
 ```bash
-neuralmind memory export [project_path] [--format md|json] [--output FILE]
+neuralmind decisions export [project_path] [--format md|json] [--output FILE]
 ```
 
 ### Eval harness
 
 ```bash
-neuralmind memory eval [project_path]
+neuralmind decisions eval [project_path] [--tasks 10] [--format json|md] [--output FILE]
 ```
 
 ## MCP Tools
@@ -75,7 +85,7 @@ Registered in the MCP server (25 tools total as of v4.1.0):
 
 - `invalidate()` sets status to `INVALIDATED` (not `STALE`) and appends the reason to the decision's evidence
 - Invalidation is **file-scoped**: a commit mismatch only invalidates decisions whose `files_affected` include the changed files — untouched decisions stay active even on commit mismatch
-- Audit returns a list; STALE detection is age-based (90 days) plus orphaned-SHA detection
+- `audit` lists all decisions by default; `--stale`/`--orphaned` filter to entries needing attention (age-based 90-day staleness plus orphaned-SHA detection)
 - `DecisionStore` has no `.close()` — connections are managed internally
 
 ## Stale-Decision Guard (v4.2.0)
@@ -96,7 +106,7 @@ The agent sees which remembered rationales may no longer hold — before it edit
 - **Fail-open by design** — no store, guard error, or empty result produces no output; the edit proceeds normally. A guard failure must never block an edit.
 - **Never denies edits** — pure context injection. The agent (and user) decide what to do with the information.
 - **Opt-out:** `NEURALMIND_STALE_GUARD=0`
-- **Cap:** at most 5 decisions surfaced per edit, with a pointer to `neuralmind memory audit` for the rest
+- **Cap:** at most 5 decisions surfaced per edit, with a pointer to `neuralmind decisions audit` for the rest
 - **Path normalization:** absolute hook paths are resolved to repo-relative before matching `files_affected`
 
 **Installation:** ships with `neuralmind install-hooks` (hook block v3). Existing installs pick it up automatically on upgrade — re-run `neuralmind install-hooks` after upgrading to v4.2.0+.
