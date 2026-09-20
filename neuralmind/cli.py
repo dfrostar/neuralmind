@@ -2695,10 +2695,6 @@ def cmd_memory(args):
 # ── Decision Memory Commands (v4.0.0 Memory Layer) ──────────────────────
 
 
-def _resolve_decisions_db(project_path: Path) -> Path:
-    """Return the path to the decisions SQLite DB for a project."""
-    return Path(project_path) / ".neuralmind" / "decisions.db"
-
 
 def _get_decisions_store(project_path: str | Path):
     """Import and return a DecisionStore for the given project."""
@@ -2765,8 +2761,8 @@ def cmd_decisions_query(args):
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
         print(f"   Commit: {d.commit_sha}")
-        if d.files:
-            print(f"   Files: {', '.join(d.files)}")
+        if d.files_affected:
+            print(f"   Files: {', '.join(d.files_affected)}")
         print(f"   {d.rationale[:100]}{'...' if len(d.rationale) > 100 else ''}")
         print()
 
@@ -2791,9 +2787,19 @@ def cmd_decisions_amend(args):
 
 
 def cmd_decisions_audit(args):
-    """List all decisions."""
+    """List decisions — all of them by default, or filter to problems."""
     store = _get_decisions_store(args.project_path)
-    decisions = store.audit(stale_only=args.stale, orphaned_only=args.orphaned)
+
+    problems_only = bool(args.stale or args.orphaned)
+    if problems_only:
+        decisions = store.audit(stale_only=args.stale, orphaned_only=args.orphaned)
+    else:
+        # Default view: every recorded decision. `store.audit()` deliberately
+        # returns only stale + orphaned entries (the maintenance view), which
+        # made plain `audit .` print "No decisions recorded yet." on a healthy
+        # store. CLI-level fix, v4.2.1 remediation R2 — store semantics
+        # unchanged (MCP calls audit(stale_only=True) explicitly).
+        decisions = store.list_all()
 
     if args.format == "json":
         import json
@@ -2802,20 +2808,28 @@ def cmd_decisions_audit(args):
         return
 
     if not decisions:
-        print("No decisions recorded yet.")
+        if args.stale:
+            print("No stale decisions.")
+        elif args.orphaned:
+            print("No orphaned decisions.")
+        else:
+            print("No decisions recorded yet.")
         return
 
-    print(f"# Decision Audit ({len(decisions)} entries)")
+    label = "entry" if len(decisions) == 1 else "entries"
+    print(f"# Decision Audit ({len(decisions)} {label})")
     print()
     for d in decisions:
         status_icon = {"ACTIVE": "🟢", "STALE": "🔴", "INVALIDATED": "⚫"}.get(d.status, "?")
         print(f"{status_icon} [{d.status}] {d.title}")
         print(f"   ID: {d.id}")
         print(f"   Commit: {d.commit_sha}")
-        if d.files:
-            print(f"   Files: {', '.join(d.files)}")
+        if d.files_affected:
+            print(f"   Files: {', '.join(d.files_affected)}")
         print(f"   {d.rationale[:80]}{'...' if len(d.rationale) > 80 else ''}")
         print()
+    if not problems_only:
+        print("Tip: --stale / --orphaned filter this list to decisions needing attention.")
 
 
 def cmd_decisions_export(args):
@@ -5427,12 +5441,12 @@ def _version_string() -> str:
     return base
 
 
-def main():
-    # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
-    # Unicode glyphs we print — and on the em-dash argparse prints in --help.
-    # Force UTF-8 before any output. No-op on Linux/macOS and under pytest capture.
-    _force_utf8_io()
+def build_parser() -> argparse.ArgumentParser:
+    """Construct the full CLI parser tree.
 
+    Extracted from ``main()`` so tests (and the docs CLI-path lint) can walk
+    the real parser instead of a hand-maintained copy of it.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
@@ -7019,6 +7033,17 @@ def main():
     plic_pp = partner_sub.add_parser("licenses", help="List partner's licenses")
     plic_pp.add_argument("--partner", required=True, help="Partner ID")
     plic_pp.set_defaults(func=cmd_partner_licenses)
+
+    return parser
+
+
+def main():
+    # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
+    # Unicode glyphs we print — and on the em-dash argparse prints in --help.
+    # Force UTF-8 before any output. No-op on Linux/macOS and under pytest capture.
+    _force_utf8_io()
+
+    parser = build_parser()
 
     args = parser.parse_args()
     if args.command is None:
