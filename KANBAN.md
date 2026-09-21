@@ -1,10 +1,11 @@
 # NeuralMind — Kanban Board (CANONICAL — `dfrostar/neuralmind`)
 
-**Last updated:** 2026-09-17 16:30:00
+**Last updated:** 2026-09-21 00:12:00 UTC
 **Repo:** `neuralmind` (dfrostar/neuralmind)
-**Version:** 3.13.0
+**Version:** 4.2.0
 **Branch:** main
-**Last commit:** `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17)
+**Last commit:** `724e31c` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-19)
+**Uncommitted:** 1 file (KANBAN.md — this file)
 
 ---
 
@@ -80,7 +81,13 @@ NeuralMind.query()
 - [ ] Context Mode MCP integration for session continuity
 - [ ] e5-large embedding upgrade (network blocked)
 - [ ] Strip unused code paths (if any remain)
-- [ ] Publish v3.13.0 to PyPI
+- [x] **Publish v4.2.0 to PyPI** ✅ DONE (`f1502dd`, 2026-09-18)
+- [x] **Memory system — decision memory layer** ✅ DONE (commit-level invalidation, `e14ddfa`)
+- [x] **Memory system — eval harness + MCP tools** ✅ DONE (MaintenanceEval, query_decisions, audit_decisions, record_decision, invalidate_decision)
+- [x] **Memory system — PreToolUse stale-decision guard** ✅ DONE (`605b036`)
+- [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
+- [ ] Memory system — integrate with synapse layer for cross-session persistence
+- [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits: `31b2c63`, `c50a804`, `92313b8`, `d874a29`, `2d0b799`, `1a453e7` — 2026-09-19)
 
 ### Known Limitations
 - MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
@@ -98,12 +105,12 @@ NeuralMind.query()
 
 ---
 
-## 📊 Repo State (2026-09-17)
+## 📊 Repo State (2026-09-21 00:12 UTC)
 
 | Field | Value |
 |-------|-------|
 | Branch | main |
-| Last commit | `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17) |
-| Uncommitted | 3 files (KANBAN.md, Features.tsx, evals/public/card.py) |
-| New work | `Features.tsx` — 30 lines added (uncommitted) |
-| Stale days | 0 days (last commit today) |
+| Last commit | `724e31c` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-19) |
+| Uncommitted | 1 file (KANBAN.md — this file) |
+| New work | v4.2.0 released 2026-09-18; stale-decision guard + Windows path normalization completed (2026-09-19) |
+| Stale days | 2 days since last commit |
