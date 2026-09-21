@@ -9,7 +9,7 @@ local graph, community browser, and semantic quick-switch search.
 No external dependencies, no CDN — the frontend is vanilla JS served
 from ``neuralmind/web/``. The HTTP handlers themselves are read-only,
 but ``serve()`` calls ``mind.build()`` on startup, which writes/updates
-the embedding index under ``graphify-out/neuralmind_db/`` — same
+the embedding index under ``.neuralmind/neuralmind_db/`` — same
 side-effects as ``neuralmind build``.
 """
 
@@ -591,7 +591,7 @@ def _ensure_graph_or_explain(project_path: Path) -> None:
     # Accept either the IR or a legacy graph.json as evidence of a build
     if (project_path / ".neuralmind" / "index_ir.json").exists():
         return
-    graph_path = project_path / "graphify-out" / "graph.json"
+    graph_path = project_path / ".neuralmind" / "graph.json"
     if graph_path.exists():
         return
     msg = (

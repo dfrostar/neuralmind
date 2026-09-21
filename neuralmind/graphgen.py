@@ -2,7 +2,7 @@
 
 The entire NeuralMind retrieval stack (``embedder`` → ``context_selector`` →
 communities → synapses → graph-view server) consumes graphify's
-``graphify-out/graph.json``: a NetworkX node-link document of symbol-level
+``.neuralmind/graph.json``: a NetworkX node-link document of symbol-level
 ``code`` nodes (files, classes, functions/methods) joined by ``contains`` /
 ``calls`` / ``imports_from`` / ``inherits`` edges, plus a docstring-derived
 ``rationale`` layer (``rationale_for`` edges).
@@ -1155,7 +1155,7 @@ def _load_existing_graph(project_path: Path) -> dict[str, Any] | None:
     Returns None when no graph, unreadable, or not from this backend.
     Fail-open: missing/corrupt graph → caller does a full build.
     """
-    graph_path = project_path / "graphify-out" / "graph.json"
+    graph_path = graph_json_path(project_path)
     if not graph_path.exists():
         return None
     try:
@@ -1353,7 +1353,7 @@ def build_graph(project_path: str | Path, *, commit: str = "") -> dict[str, Any]
     # is incremental. Remove deleted files from cache.
     # Only write cache entries for files we actually extracted — filter
     # through _iter_source_files to avoid cache pollution from
-    # node_modules, target/, graphify-out/ etc.
+    # node_modules, target/, .neuralmind/ etc.
     if re_extract_set:
         extractable = {
             f.relative_to(root).as_posix() for f in _iter_source_files(root, _DEFAULT_IGNORES)
@@ -4196,7 +4196,7 @@ def update_files(
 
 
 def write_graph(project_path: str | Path, *, commit: str = "") -> Path:
-    """Build the graph and write ``<project>/graphify-out/graph.json``.
+    """Build the graph and write ``<project>/.neuralmind/graph.json``.
 
     Returns the path written. Mirrors the location graphify uses so the rest of
     the stack finds it with no configuration.
@@ -4205,7 +4205,7 @@ def write_graph(project_path: str | Path, *, commit: str = "") -> Path:
 
     root = Path(project_path)
     graph = build_graph(root, commit=commit)
-    out_dir = root / "graphify-out"
+    out_dir = root / ".neuralmind"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "graph.json"
     out_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")

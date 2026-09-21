@@ -44,6 +44,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
+from .paths import canonical_artifact, legacy_artifact, graph_json_path, vector_db_path
 from .progress import ProgressReporter
 from .secret_scan import redact_if_enabled
 
@@ -125,10 +126,10 @@ class TurboVecEmbedder(EmbeddingBackend):
         scope: str = "all",
     ):
         self._project_path = Path(project_path).resolve()
-        self.graph_path = self._project_path / "graphify-out" / "graph.json"
+        self.graph_path = graph_json_path(self._project_path)
 
         if db_path is None:
-            db_path = str(self._project_path / "graphify-out" / "neuralmind_turbovec")
+            db_path = str(vector_db_path(self._project_path, "turbovec"))
         self.db_path = db_path
         self._dir = Path(db_path)
         self._dir.mkdir(parents=True, exist_ok=True)

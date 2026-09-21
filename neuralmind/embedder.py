@@ -24,6 +24,7 @@ from chromadb.config import Settings
 
 from .bm25 import BM25Index
 from .embedding_backend import EmbeddingBackend
+from .paths import canonical_artifact, legacy_artifact, graph_json_path, vector_db_path
 from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -71,15 +72,15 @@ class GraphEmbedder(EmbeddingBackend):
         Initialize the embedder for a project.
 
         Args:
-            project_path: Path to project root (where graphify-out/ lives)
+            project_path: Path to project root (where .neuralmind/ lives)
             db_path: Optional custom path for ChromaDB storage
         """
         self._project_path = Path(project_path)
-        self.graph_path = self._project_path / "graphify-out" / "graph.json"
+        self.graph_path = graph_json_path(self._project_path)
 
-        # Default DB path in project's graphify-out
+        # Default DB path in project's .neuralmind/ (legacy: graphify-out/)
         if db_path is None:
-            db_path = str(self._project_path / "graphify-out" / "neuralmind_db")
+            db_path = str(vector_db_path(self._project_path, "chroma"))
 
         self.db_path = db_path
         self.graph: dict = {}

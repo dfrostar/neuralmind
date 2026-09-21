@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .embedding_backend import EmbeddingBackend
+from .paths import graph_json_path
 from .secret_scan import redact_if_enabled
 
 
@@ -17,7 +18,7 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def __init__(self, project_path: str, db_path: str | None = None):
         self._project_path = Path(project_path).resolve()
-        self.graph_path = self._project_path / "graphify-out" / "graph.json"
+        self.graph_path = graph_json_path(self._project_path)
         self.db_path = db_path or ":memory:"
         self.graph: dict[str, Any] = {}
         self.nodes: list[dict[str, Any]] = []

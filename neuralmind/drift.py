@@ -463,7 +463,7 @@ def load_graph(project_path: str | Path) -> dict:
     from . import ir as ir_mod
 
     try:
-        path = ir_mod.project_artifact(project_path, "graphify-out", "graph.json")
+        path = ir_mod.project_artifact(project_path, ".neuralmind", "graph.json")
     except ValueError:
         return {}
     try:

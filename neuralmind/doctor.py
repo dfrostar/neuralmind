@@ -46,7 +46,7 @@ class Check:
 
 
 def _check_graph(project: Path) -> Check:
-    graph = project / "graphify-out" / "graph.json"
+    graph = graph_json_path(project)
     if not graph.exists():
         return Check(
             "Code graph",
@@ -232,7 +232,7 @@ def _check_doc_code_alignment(project: Path) -> Check:
     is newer than the directory's newest code file, flag it as potentially
     stale. Fail-open: never FAIL — this is advisory.
     """
-    graph_path = project / "graphify-out" / "graph.json"
+    graph_path = graph_json_path(project)
     if not graph_path.exists():
         return Check("Doc-code alignment", WARN, "no graph.json to analyze")
 
