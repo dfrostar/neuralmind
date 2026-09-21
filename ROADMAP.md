@@ -29,10 +29,10 @@ and is not part of the public PyPI package.
   `graphify-out/` to `.neuralmind/` with a legacy-path shim, removing a
   third-party product name from every user's repo (choke point:
   `project_artifact` in `neuralmind/ir.py`; touches ~12 modules, docs,
-  and the site privacy policy).
-- **Cost Attribution Dashboard** — `neuralmind stats --cost`: per-repo,
+  and the site privacy policy). ✅ DONE (`62a44e8`)
+- **Cost Attribution Dashboard** — `neuralmind cost`: per-repo,
   per-seat modeled savings as a CFO-facing ROI artifact (free tier;
-  feeds the services funnel — see `docs/PILOT-BRD.md`).
+  feeds the services funnel — see `docs/PILOT-BRD.md`). ✅ DONE (`09318d5`)
 - **Auto-regenerate public benchmark on drift** — `bench/public/report.md`
   was generated once at the benchmark's original commit and never rerun since,
   even as retrieval code changed underneath it (2026-08 audit: a fresh run
@@ -42,7 +42,7 @@ and is not part of the public PyPI package.
   for both deltas). Wire `bench-public.yml` to regenerate and diff-check on
   `evals/public/manifest.json` or retrieval code-path changes, the same way
   `ci-benchmark.yml` already gates the reference-fixture numbers, so a stale
-  snapshot can't sit uncorrected again.
+  snapshot can't sit uncorrected again. ✅ DONE (`78f9299`)
 - **Synapse-prose integration** — currently the Hebbian synapse layer only
   learns from code projects. Extend to prose/book content so cross-session
   learning applies to MedicalRetriever too.
