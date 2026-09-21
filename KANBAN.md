@@ -78,6 +78,8 @@ NeuralMind.query()
 ## Pending Work
 
 ### Next Sprint
+- [x] **Output directory consolidation** ✅ DONE (`62a44e8` — `graphify-out/` → `.neuralmind/` with legacy fallback)
+- [x] **Auto-regenerate public benchmark on drift** ✅ DONE (`78f9299` — `bench-public-drift.yml`)
 - [ ] Context Mode MCP integration for session continuity
 - [ ] e5-large embedding upgrade (network blocked)
 - [ ] Strip unused code paths (if any remain)
@@ -88,6 +90,8 @@ NeuralMind.query()
 - [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
 - [ ] Memory system — integrate with synapse layer for cross-session persistence
 - [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits: `31b2c63`, `c50a804`, `92313b8`, `d874a29`, `2d0b799`, `1a453e7` — 2026-09-19)
+- [ ] **Cost Attribution Dashboard** — `neuralmind stats --cost` (CFO-facing ROI artifact)
+- [ ] **Synapse-prose integration** — extend Hebbian learning to prose/book content
 
 ### Known Limitations
 - MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
@@ -102,15 +106,17 @@ NeuralMind.query()
 1. Monitor for network availability to download e5-large ONNX model
 2. Consider Context Mode integration as companion tool for session management
 3. Evaluate competitive positioning: "Context Mode for personal knowledge"
+4. Build Cost Attribution Dashboard (`neuralmind stats --cost`)
+5. Integrate synapse layer with prose content (MedicalRetriever)
 
 ---
 
-## 📊 Repo State (2026-09-21 00:12 UTC)
+## 📊 Repo State (2026-09-21 07:06 UTC)
 
 | Field | Value |
 |-------|-------|
 | Branch | main |
-| Last commit | `724e31c` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-19) |
+| Last commit | `78f9299` — ci: auto-regenerate public benchmark on drift (2026-09-21) |
 | Uncommitted | 1 file (KANBAN.md — this file) |
-| New work | v4.2.0 released 2026-09-18; stale-decision guard + Windows path normalization completed (2026-09-19) |
-| Stale days | 2 days since last commit |
+| New work | v4.2.0 released 2026-09-18; output directory consolidation + public benchmark drift check completed (2026-09-21) |
+| Stale days | 0 days (active development) |
