@@ -90,7 +90,7 @@ NeuralMind.query()
 - [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
 - [ ] Memory system — integrate with synapse layer for cross-session persistence
 - [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits: `31b2c63`, `c50a804`, `92313b8`, `d874a29`, `2d0b799`, `1a453e7` — 2026-09-19)
-- [ ] **Cost Attribution Dashboard** — `neuralmind stats --cost` (CFO-facing ROI artifact)
+- [x] **Cost Attribution Dashboard** ✅ DONE (`09318d5` — `neuralmind cost` command)
 - [ ] **Synapse-prose integration** — extend Hebbian learning to prose/book content
 
 ### Known Limitations
