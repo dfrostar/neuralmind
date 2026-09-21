@@ -1880,6 +1880,32 @@ def cmd_stats(args):
                 )
 
 
+def cmd_cost(args):
+    """Show cost attribution (modeled savings) from query event logs.
+
+    Reads the JSONL events written by neuralmind.memory and computes a
+    per-repo, per-seat modeled cost savings figure. The baseline is
+    reconstructed from reduction_ratio — this is a modeled estimate,
+    not a measured one.
+    """
+    from neuralmind.cost_attribution import compute_cost_attribution, format_cost_report
+
+    project_path = Path(args.project_path).resolve()
+    days = getattr(args, "days", 30)
+    cost_per_1k = getattr(args, "cost_per_1k_tokens", None)
+
+    attribution = compute_cost_attribution(
+        project_path,
+        days=days,
+        cost_per_1k_tokens=cost_per_1k,
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(attribution, indent=2))
+    else:
+        print(format_cost_report(attribution))
+
+
 def cmd_metrics(args):
     """Show aggregated metrics summary from .neuralmind/metrics/ JSONL files.
 
@@ -5760,6 +5786,27 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    cost_p = subparsers.add_parser(
+        "cost",
+        help="Show cost attribution (modeled savings) from query event logs",
+    )
+    cost_p.add_argument("project_path", nargs="?", default=".")
+    cost_p.add_argument(
+        "--days",
+        "-d",
+        type=int,
+        default=30,
+        help="Analysis window in days (default: 30)",
+    )
+    cost_p.add_argument(
+        "--cost-per-1k-tokens",
+        type=float,
+        default=None,
+        help="Cost model: dollars per 1K tokens (default: $0.01, override via NEURALMIND_COST_PER_1K_TOKENS)",
+    )
+    cost_p.add_argument("--json", "-j", action="store_true")
+    cost_p.set_defaults(func=cmd_cost)
 
     # health command — lightweight health check for CI/CD
     health_p = subparsers.add_parser(
