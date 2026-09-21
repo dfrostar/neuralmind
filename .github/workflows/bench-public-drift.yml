@@ -1,0 +1,141 @@
+name: Public benchmark drift check
+
+# Regenerates the public benchmark on every PR and push to main, then
+# diffs the fresh numbers against the committed docs/benchmarks/public.md.
+# Fails if any repo's recall or cost drifts beyond tolerance — the same
+# pattern ci-benchmark.yml uses for the reference-fixture gates, applied
+# to the public corpus so a stale snapshot can't sit uncorrected.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  public-benchmark-drift:
+    runs-on: ubuntu-latest
+    env:
+      NEURALMIND_ORT_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install NeuralMind + benchmark deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . tiktoken
+
+      - name: Run the public benchmark
+        id: bench
+        run: |
+          python -m evals.public.run --json --out bench/public | tee public-report.json
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Diff against committed numbers
+        id: diff
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          # Load fresh results
+          fresh = json.loads(Path("public-report.json").read_text())
+
+          # Parse committed numbers from docs/benchmarks/public.md
+          committed_text = Path("docs/benchmarks/public.md").read_text()
+
+          # Extract per-repo recall and cost from the committed markdown
+          # Pattern: | backend | gold-file recall | found-rate | mean tokens/query | MRR |
+          committed = {}
+          current_repo = None
+          for line in committed_text.splitlines():
+              # Match repo header: ## repo  @commit
+              m_repo = re.match(r"##\s+(\w[\w-]*)\s+@", line)
+              if m_repo:
+                  current_repo = m_repo.group(1)
+                  continue
+              # Match table row: | backend | recall | found-rate | tokens | MRR |
+              m_row = re.match(
+                  r"\|\s*(\w[\w-]*)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|",
+                  line,
+              )
+              if m_row and current_repo:
+                  backend, recall, found, tokens, mrr = (
+                      m_row.group(1),
+                      float(m_row.group(2)),
+                      float(m_row.group(3)),
+                      float(m_row.group(4)),
+                      float(m_row.group(5)),
+                  )
+                  if current_repo not in committed:
+                      committed[current_repo] = {}
+                  committed[current_repo][backend] = {
+                      "recall": recall,
+                      "tokens": tokens,
+                  }
+
+          if not committed:
+              print("WARNING: could not parse committed numbers from public.md")
+              sys.exit(0)
+
+          # Compare
+          drift = []
+          tolerance_recall = 0.05  # 5 percentage points
+          tolerance_cost = 0.10    # 10%
+
+          for repo_data in fresh.get("repos", []):
+              repo_name = repo_data.get("name")
+              if repo_name not in committed:
+                  print(f"  {repo_name}: NEW (not in committed)")
+                  continue
+              for backend, stats in repo_data.get("summary", {}).items():
+                  if backend not in committed[repo_name]:
+                      continue
+                  c = committed[repo_name][backend]
+                  f_recall = stats.get("mean_recall", 0)
+                  f_cost = stats.get("mean_tokens", 0)
+                  recall_delta = abs(f_recall - c["recall"])
+                  cost_delta = abs(f_cost - c["tokens"])
+                  if recall_delta > tolerance_recall or cost_delta > tolerance_cost:
+                      drift.append(
+                          f"{repo_name}/{backend}: recall {f_recall:.3f} vs committed {c['recall']:.3f} "
+                          f"(Δ{recall_delta:+.3f}), cost {f_cost:.1f} vs {c['tokens']:.1f} "
+                          f"(Δ{cost_delta:+.1f})"
+                      )
+                  else:
+                      print(f"  {repo_name}/{backend}: OK (recall Δ{recall_delta:+.3f}, cost Δ{cost_delta:+.1f})")
+
+          if drift:
+              print("\nDRIFT DETECTED:")
+              for d in drift:
+                  print(f"  {d}")
+              sys.exit(1)
+          else:
+              print("\nAll repos within tolerance.")
+          PY
+
+      - name: Upload fresh results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: public-benchmark-drift
+          path: |
+            public-report.json
+            bench/public/results.json
+            bench/public/report.md
