@@ -3,26 +3,50 @@
 A short, public list of where NeuralMind is going. Issues and PRs that
 move any of these forward are very welcome.
 
-## Now — v3.0.2 (Pure Core)
+## Now — v4.2.0 (Pure Core + Prose Pipeline)
 
-**Latest release v3.0.2** shipped to PyPI and GHCR (2026-08-03).
+**Latest release v4.2.0** shipped to PyPI and GHCR (2026-09-18).
 
 **What shipped:**
-- **Extraction complete** — Multi-tenancy, RBAC, signal detection, experiment
-  runner, and governance (formerly `agent_os/`) extracted to a separate
-  private repo. Public NeuralMind is now pure code intelligence again:
-  context disclosure, synapse layer, graph view, MCP, and benchmarking.
-- **Zero dead weight** — 95 tests for the extracted Agent OS live in
-  `dfrostar/agencyOS` (private). The public repo has no tenant cruft.
-- **Clean install** — `pip install neuralmind` gives you the original
-  product: `build`, `query`, `watch`, `serve`, `probe`, `benchmark`,
-  `context`, `synapse`, `mcp`.
+- **Prose/book retrieval pipeline** — MedicalRetriever + ChapterIndexer wired into `NeuralMind.query()` for prose and mixed projects. Chapter-level indexing, hybrid scoring (0.30 BM25 + 0.45 embedding + 0.25 heading match), confidence gating (HIGH/MEDIUM/LOW), and negative query fallback.
+- **Decision memory layer** — commit-level invalidation, eval harness, MCP tools (`query_decisions`, `audit_decisions`, `record_decision`, `invalidate_decision`), and PreToolUse stale-decision guard.
+- **BGE-large embedder** — optional `[bge]` extra with 1024-dim embeddings, dim mismatch detection, and `--embedder` CLI flag.
+- **Windows path normalization** — stale-guard and decision store handle backslash paths correctly.
+- **Stale-decision guard** — across all public surfaces (docs, site, MCP).
+- **Benchmark results (peptide book, 14 queries):** Recall@1 78.6%, Fact Recall 84%, MRR 0.83, avg latency 921ms.
 
 **What was extracted (v1.14.0):**
 The multi-tenancy package (tenant registry, RBAC, Page-Hinkley anomaly
 detection, A/B experiments, signal → experiment integration, dashboard)
 now lives in the private `dfrostar/agencyOS` repo. It ships independently
 and is not part of the public PyPI package.
+
+---
+
+## Next (~1 quarter)
+
+- **Output directory consolidation** — move the canonical index dir from
+  `graphify-out/` to `.neuralmind/` with a legacy-path shim, removing a
+  third-party product name from every user's repo (choke point:
+  `project_artifact` in `neuralmind/ir.py`; touches ~12 modules, docs,
+  and the site privacy policy).
+- **Cost Attribution Dashboard** — `neuralmind stats --cost`: per-repo,
+  per-seat modeled savings as a CFO-facing ROI artifact (free tier;
+  feeds the services funnel — see `docs/PILOT-BRD.md`).
+- **Auto-regenerate public benchmark on drift** — `bench/public/report.md`
+  was generated once at the benchmark's original commit and never rerun since,
+  even as retrieval code changed underneath it (2026-08 audit: a fresh run
+  moved `requests` recall from a published 1.00 to 0.96, and re-running again
+  after merging several months of `main` moved every repo's numbers a second
+  time in the same audit — see [public.md](docs/benchmarks/public.md#the-corpus)
+  for both deltas). Wire `bench-public.yml` to regenerate and diff-check on
+  `evals/public/manifest.json` or retrieval code-path changes, the same way
+  `ci-benchmark.yml` already gates the reference-fixture numbers, so a stale
+  snapshot can't sit uncorrected again.
+- **Synapse-prose integration** — currently the Hebbian synapse layer only
+  learns from code projects. Extend to prose/book content so cross-session
+  learning applies to MedicalRetriever too.
+- **Grace period per-license** — configurability beyond global constant.
 
 ---
 
