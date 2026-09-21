@@ -41,16 +41,16 @@ REPO = Path(__file__).resolve().parents[1]
 # with file provenance) so that any NEW drift still fails CI.
 # ---------------------------------------------------------------------------
 ALLOWED_MISSING_COMMANDS = {
-    "audit-report",    # docs/wiki/Scheduling-Guide.md, docs/SECURITY-GUIDE.md
-    "audit-export",    # docs/SECURITY-GUIDE.md
-    "issue-license",   # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "renew-license",   # docs/NEURALMIND-LICENSE-AGREEMENT.md
+    "audit-report",  # docs/wiki/Scheduling-Guide.md, docs/SECURITY-GUIDE.md
+    "audit-export",  # docs/SECURITY-GUIDE.md
+    "issue-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
+    "renew-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "revoke-license",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
     "license-status",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "license-list",    # docs/NEURALMIND-LICENSE-AGREEMENT.md
-    "backend-check",   # docs/wiki/FAQ.md, docs/DEPLOYMENT-GUIDE.md
-    "backend-list",    # docs/UPGRADING.md
-    "graphify",        # docs/DEPLOYMENT-GUIDE.md (legacy pre-rename CLI name)
+    "license-list",  # docs/NEURALMIND-LICENSE-AGREEMENT.md
+    "backend-check",  # docs/wiki/FAQ.md, docs/DEPLOYMENT-GUIDE.md
+    "backend-list",  # docs/UPGRADING.md
+    "graphify",  # docs/DEPLOYMENT-GUIDE.md (legacy pre-rename CLI name)
 }
 
 _CMD = re.compile(r"^\s*(?:\$\s+)?neuralmind\s+([a-z][a-z0-9-]+)(?:\s+([a-z][a-z0-9-]+))?")
@@ -64,9 +64,7 @@ def _command_tree() -> dict[str, set[str]]:
         if isinstance(action, argparse._SubParsersAction):
             for cmd, sub_parser in action.choices.items():
                 children = [
-                    a
-                    for a in sub_parser._actions
-                    if isinstance(a, argparse._SubParsersAction)
+                    a for a in sub_parser._actions if isinstance(a, argparse._SubParsersAction)
                 ]
                 tree[cmd] = set(children[0].choices) if children else set()
     return tree
@@ -83,7 +81,7 @@ def _finding(line: str, tree: dict[str, set[str]], *, inline: bool = False) -> s
         return f"`neuralmind {cmd}` — unknown command"
     subs = tree[cmd]
     if subs and sub and sub not in subs:
-        rest = line[m.end(2):]
+        rest = line[m.end(2) :]
         if "/" in sub or "." in sub or rest[:1] in ("/", "."):
             return None  # path-like positional, not a subcommand
         valid = ", ".join(sorted(subs))

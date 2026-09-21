@@ -138,11 +138,17 @@ def test_record_then_query_and_audit_agree(parser, project, capsys):
     _run(
         parser,
         [
-            "decisions", "record", str(project),
-            "--title", "U-100 default",
-            "--rationale", "U-100 syringes are the default; U-40 supported per vial.",
-            "--commit", "b" * 40,
-            "--files", "lib/utils/dose_conversion.dart",
+            "decisions",
+            "record",
+            str(project),
+            "--title",
+            "U-100 default",
+            "--rationale",
+            "U-100 syringes are the default; U-40 supported per vial.",
+            "--commit",
+            "b" * 40,
+            "--files",
+            "lib/utils/dose_conversion.dart",
         ],
         capsys,
     )
