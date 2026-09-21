@@ -1433,9 +1433,27 @@ class NeuralMind:
 
         Formats results into ContextResult for API compatibility with
         the code path. Includes confidence flags in the output context.
+        Also reinforces the synapse layer with the retrieved chapters so
+        cross-session learning applies to prose content too.
         """
         mr = self._get_medical_retriever()
         result = mr.query(question, top_k=5)
+
+        # Reinforce synapses with retrieved chapters (prose path)
+        if self.synapse_client.has_store() and result.chapters:
+            try:
+                chapter_ids = [
+                    ch.get("chapter_id", ch.get("source_file", ""))
+                    for ch in result.chapters
+                    if ch.get("chapter_id") or ch.get("source_file")
+                ]
+                if chapter_ids and self.dynamics is not None:
+                    self.dynamics.reinforce_prose(
+                        chapter_ids=chapter_ids,
+                        query_terms=[question],
+                    )
+            except Exception:
+                logger.debug("prose synapse reinforcement failed", exc_info=True)
 
         # Build TokenBudget from MedicalRetriever metrics
         budget = TokenBudget(

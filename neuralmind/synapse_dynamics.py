@@ -304,8 +304,71 @@ class SynapseDynamics:
 
             return raw[:top_k]
         except Exception:
-            log.debug("spread dynamics failed, falling back", exc_info=True)
+            logger.debug("spread dynamics failed, falling back", exc_info=True)
             return self.store.spread(seeds, depth=depth, top_k=top_k, namespaces=namespaces)
+
+    def reinforce_prose(
+        self,
+        chapter_ids: list[str],
+        section_ids: list[str] | None = None,
+        query_terms: list[str] | None = None,
+    ) -> bool:
+        """Hebbian reinforcement for prose/book content.
+
+        Works identically to code-path reinforcement: chapters and sections
+        that co-activate in a query wire together. The synapse store is
+        ID-agnostic — it doesn't care whether the IDs are code symbols or
+        book chapters.
+
+        Args:
+            chapter_ids: Chapter IDs that were retrieved (e.g. ["ch01", "ch03"]).
+            section_ids: Optional section IDs within chapters.
+            query_terms: Optional query terms to reinforce as pseudo-nodes.
+
+        Returns:
+            True if reinforcement succeeded.
+        """
+        if not chapter_ids:
+            return False
+
+        # Build node IDs: chapters + sections + query term pseudo-nodes
+        node_ids: list[str] = list(chapter_ids)
+        if section_ids:
+            node_ids.extend(section_ids)
+        if query_terms:
+            # Query terms as pseudo-nodes (same pattern as code path)
+            for term in query_terms[:3]:  # cap at 3 to avoid noise
+                node_ids.append(f"query_{term.lower().replace(' ', '_')}")
+
+        if not node_ids:
+            return False
+
+        try:
+            self.store.reinforce(node_ids)
+            return True
+        except Exception:
+            logger.debug("prose reinforcement failed", exc_info=True)
+            return False
+
+    def spread_prose(
+        self,
+        seed_chapter_ids: list[str],
+        depth: int = 2,
+        top_k: int = 5,
+    ) -> list[tuple[str, float]]:
+        """Spread activation from seed chapters to related chapters.
+
+        Uses the same spreading activation as the code path, but with
+        chapter IDs as seeds. Returns ranked (chapter_id, activation) pairs.
+        """
+        if not seed_chapter_ids:
+            return []
+
+        try:
+            return self.store.spread(seed_chapter_ids, depth=depth, top_k=top_k)
+        except Exception:
+            logger.debug("prose spread failed", exc_info=True)
+            return []
 
     def _apply_lateral_inhibition(
         self,
