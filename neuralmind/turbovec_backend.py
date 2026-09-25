@@ -319,7 +319,9 @@ class TurboVecEmbedder(EmbeddingBackend):
         import subprocess
 
         script = Path(__file__).parent.parent / "scripts" / "onnx_embed.py"
-        batches = [texts[i : i + self._EMBED_BATCH] for i in range(0, len(texts), self._EMBED_BATCH)]
+        batches = [
+            texts[i : i + self._EMBED_BATCH] for i in range(0, len(texts), self._EMBED_BATCH)
+        ]
 
         out: list[np.ndarray] = []
         for batch in batches:

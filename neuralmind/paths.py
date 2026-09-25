@@ -101,7 +101,9 @@ def vector_db_path(project_path: str | Path, backend: str = "turbovec") -> Path:
     the legacy path caused index writes to graphify-out/ while doctor
     checks .neuralmind/, producing a phantom 'no nodes embedded' failure.
     """
-    subdir = "neuralmind_db" if backend in ("chroma", "chromadb", "graph") else "neuralmind_turbovec"
+    subdir = (
+        "neuralmind_db" if backend in ("chroma", "chromadb", "graph") else "neuralmind_turbovec"
+    )
     return canonical_artifact(project_path, subdir)
 
 

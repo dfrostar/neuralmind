@@ -219,6 +219,7 @@ class OnnxMiniLMEmbedder:
             )
             out.append(self._normalize(pooled))
         return np.concatenate(out)
+
     def __call__(self, texts: list[str]) -> list[list[float]]:
         """Embed texts and return as a list of float lists.
 

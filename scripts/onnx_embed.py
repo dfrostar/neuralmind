@@ -8,6 +8,7 @@ in its own process is the only reliable workaround.
 stdin:  JSON {"texts": [...]}
 stdout: JSON {"shape": [n, 384], "data": "<base64 float32>"}
 """
+
 import base64
 import json
 import sys
