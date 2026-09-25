@@ -76,9 +76,10 @@ graphify-out/
 # wheel (git tracks it via add -f, and hatchling honors this .gitignore for
 # build inclusion — without the negation, `pip install neuralmind &&
 # neuralmind demo` breaks because graph.json silently drops out).
-# Narrow: only the graph itself, not stray runtime artifacts (audit_events,
-# synapses.db) that demo runs can leave in the bundled fixture.
-!neuralmind/demo_data/sample_project/.neuralmind/
+# Order matters: exclude the dir's contents FIRST, then re-include only
+# graph.json — so demo-run artifacts (audit_events.jsonl, index_ir.json,
+# ir_meta.json, synapses.db) can never leak into git or a wheel.
+neuralmind/demo_data/sample_project/.neuralmind/*
 !neuralmind/demo_data/sample_project/.neuralmind/graph.json
 
 # GitHub Actions runner log fragments occasionally land at the repo root
