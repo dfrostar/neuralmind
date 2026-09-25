@@ -1,5 +1,26 @@
 # Changelog
 
+## [4.3.0](https://github.com/dfrostar/neuralmind/compare/v4.2.0...v4.3.0) (2026-09-25)
+
+
+### Features
+
+* Memory Layer v4.3 — 3-layer progressive retrieval + session-boundary hooks ([#527](https://github.com/dfrostar/neuralmind/issues/527)) ([0109e19](https://github.com/dfrostar/neuralmind/commit/0109e19fd2f8faa3bf63f174ef5aff8e7feb70e8))
+
+
+### Bug Fixes
+
+* correct over-escaped backslash patterns in stale-guard path normalization ([1a453e7](https://github.com/dfrostar/neuralmind/commit/1a453e7cb9c61b7b71b998fdf251bc56f5d5d9b5))
+* normalize file paths in stale-guard and decision store to fix test failure on Windows ([c50a804](https://github.com/dfrostar/neuralmind/commit/c50a8046adaa83a49c0ca7743889825922c05e27))
+* normalize path separators in stale-guard context for Windows ([92313b8](https://github.com/dfrostar/neuralmind/commit/92313b8a8ce07fc552c2a58de9b082e35574ccd6))
+* normalize paths in stale-guard to handle Windows backslashes (additional normalization) ([d874a29](https://github.com/dfrostar/neuralmind/commit/d874a298a8581ef77b7dea1ddcbccdba61d15c77))
+* stale-guard context normalization for Windows paths ([31b2c63](https://github.com/dfrostar/neuralmind/commit/31b2c63f4cae2dcf827a6206c01514d713a9fea0))
+
+
+### Documentation
+
+* refresh benchmark chart [skip ci] ([8da0352](https://github.com/dfrostar/neuralmind/commit/8da03529cffdf3daaad3ce0220b097135e78ec7f))
+
 ## [4.2.0](https://github.com/dfrostar/neuralmind/compare/v4.1.0...v4.2.0) (2026-09-18)
 
 

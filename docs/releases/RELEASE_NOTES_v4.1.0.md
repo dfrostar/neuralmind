@@ -6,7 +6,27 @@
 
 ---
 
+> **⚠ Erratum (2026-09-20):** the CLI examples in this file shipped under a
+> different command group than documented here. Every `neuralmind memory
+> <verb>` example below (`record`, `query`, `audit`, `amend`, `invalidate`,
+> `restore`, `export`, `eval`) now lives under **`neuralmind decisions
+> <verb>`**, and `query` takes the query text **before** the project path:
+>
+> ```bash
+> neuralmind decisions record . --title "Use SQLite for decision store" \
+>   --rationale "Single-file, no server, ACID-compliant" \
+>   --files "neuralmind/memory/store.py" --confidence 0.95
+> neuralmind decisions query "database choice" . --limit 10
+> neuralmind decisions audit . --stale
+> ```
+>
+> The `neuralmind memory` group now carries management subcommands only
+> (`inspect`, `reset`, `export`, `import`, `publish`, `review-*`,
+> `staleness-*`). The examples further down are preserved as the v4.1.0
+> historical record; `docs/wiki/Memory-Layer.md` carries the current surface.
+
 ## What's New
+
 
 ### Memory Layer v1.0 — Decision Memory with Commit-Level Invalidation
 

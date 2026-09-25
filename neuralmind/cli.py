@@ -22,6 +22,10 @@ from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
+from neuralmind.paths import (
+    graph_json_path,
+    vector_db_path,
+)
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 
@@ -391,7 +395,7 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
 
     # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
     print("   Scope: code... ", end="", flush=True)
-    graph_path = path / "graphify-out" / "graph.json"
+    graph_path = graph_json_path(path)
     if graph_path.exists():
         code_args = argparse.Namespace(
             project_path=project_path,
@@ -613,7 +617,7 @@ def cmd_build(args):
         print(
             "Secret redaction: on — scrubs embedded text (document chunks and "
             "node descriptions).\n"
-            "  Not covered: node labels, graphify-out/graph.json and "
+            "  Not covered: node labels, .neuralmind/graph.json and "
             ".neuralmind/index_ir.json,\n"
             "  which are written before embedding. Remove and rotate the "
             "credential at the source."
@@ -639,7 +643,7 @@ def cmd_build(args):
     # Estimate node count from graph.json directly since embedder.nodes
     # is lazy-loaded only inside build().
     est_nodes = 0
-    graph_path = Path(project_path) / "graphify-out" / "graph.json"
+    graph_path = graph_json_path(project_path)
     if graph_path.exists():
         try:
             est_nodes = len(json.loads(graph_path.read_text(encoding="utf-8")).get("nodes", []))
@@ -867,7 +871,7 @@ def _cmd_query_unified(
     scope_bias = getattr(args, "scope_bias", "balanced")  # balanced, content, code
 
     # Detect available scopes
-    tv_dir = path / "graphify-out" / "neuralmind_turbovec"
+    tv_dir = vector_db_path(path, "turbovec")
     has_code = (tv_dir / "store.code.sqlite").exists()
     has_content = (tv_dir / "store.content.sqlite").exists()
 
@@ -1879,6 +1883,32 @@ def cmd_stats(args):
                 )
 
 
+def cmd_cost(args):
+    """Show cost attribution (modeled savings) from query event logs.
+
+    Reads the JSONL events written by neuralmind.memory and computes a
+    per-repo, per-seat modeled cost savings figure. The baseline is
+    reconstructed from reduction_ratio — this is a modeled estimate,
+    not a measured one.
+    """
+    from neuralmind.cost_attribution import compute_cost_attribution, format_cost_report
+
+    project_path = Path(args.project_path).resolve()
+    days = getattr(args, "days", 30)
+    cost_per_1k = getattr(args, "cost_per_1k_tokens", None)
+
+    attribution = compute_cost_attribution(
+        project_path,
+        days=days,
+        cost_per_1k_tokens=cost_per_1k,
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(attribution, indent=2))
+    else:
+        print(format_cost_report(attribution))
+
+
 def cmd_metrics(args):
     """Show aggregated metrics summary from .neuralmind/metrics/ JSONL files.
 
@@ -2094,7 +2124,7 @@ def cmd_project(args):
         search_path = getattr(args, "path", ".")
         print(f"Scanning {search_path} for NeuralMind projects...")
         patterns = [
-            str(Path(search_path) / "**" / "graphify-out" / "graph.json"),
+            str(Path(search_path) / "**" / ".neuralmind" / "graph.json"),
             str(Path(search_path) / "**" / ".neuralmind" / "ir_meta.json"),
         ]
         found = set()
@@ -2695,11 +2725,6 @@ def cmd_memory(args):
 # ── Decision Memory Commands (v4.0.0 Memory Layer) ──────────────────────
 
 
-def _resolve_decisions_db(project_path: Path) -> Path:
-    """Return the path to the decisions SQLite DB for a project."""
-    return Path(project_path) / ".neuralmind" / "decisions.db"
-
-
 def _get_decisions_store(project_path: str | Path):
     """Import and return a DecisionStore for the given project."""
     from neuralmind.memory.store import DecisionStore
@@ -2765,8 +2790,8 @@ def cmd_decisions_query(args):
     for i, d in enumerate(results, 1):
         print(f"{i}. [{d.status}] {d.title}")
         print(f"   Commit: {d.commit_sha}")
-        if d.files:
-            print(f"   Files: {', '.join(d.files)}")
+        if d.files_affected:
+            print(f"   Files: {', '.join(d.files_affected)}")
         print(f"   {d.rationale[:100]}{'...' if len(d.rationale) > 100 else ''}")
         print()
 
@@ -2791,9 +2816,19 @@ def cmd_decisions_amend(args):
 
 
 def cmd_decisions_audit(args):
-    """List all decisions."""
+    """List decisions — all of them by default, or filter to problems."""
     store = _get_decisions_store(args.project_path)
-    decisions = store.audit(stale_only=args.stale, orphaned_only=args.orphaned)
+
+    problems_only = bool(args.stale or args.orphaned)
+    if problems_only:
+        decisions = store.audit(stale_only=args.stale, orphaned_only=args.orphaned)
+    else:
+        # Default view: every recorded decision. `store.audit()` deliberately
+        # returns only stale + orphaned entries (the maintenance view), which
+        # made plain `audit .` print "No decisions recorded yet." on a healthy
+        # store. CLI-level fix, v4.2.1 remediation R2 — store semantics
+        # unchanged (MCP calls audit(stale_only=True) explicitly).
+        decisions = store.list_all()
 
     if args.format == "json":
         import json
@@ -2802,20 +2837,28 @@ def cmd_decisions_audit(args):
         return
 
     if not decisions:
-        print("No decisions recorded yet.")
+        if args.stale:
+            print("No stale decisions.")
+        elif args.orphaned:
+            print("No orphaned decisions.")
+        else:
+            print("No decisions recorded yet.")
         return
 
-    print(f"# Decision Audit ({len(decisions)} entries)")
+    label = "entry" if len(decisions) == 1 else "entries"
+    print(f"# Decision Audit ({len(decisions)} {label})")
     print()
     for d in decisions:
         status_icon = {"ACTIVE": "🟢", "STALE": "🔴", "INVALIDATED": "⚫"}.get(d.status, "?")
         print(f"{status_icon} [{d.status}] {d.title}")
         print(f"   ID: {d.id}")
         print(f"   Commit: {d.commit_sha}")
-        if d.files:
-            print(f"   Files: {', '.join(d.files)}")
+        if d.files_affected:
+            print(f"   Files: {', '.join(d.files_affected)}")
         print(f"   {d.rationale[:80]}{'...' if len(d.rationale) > 80 else ''}")
         print()
+    if not problems_only:
+        print("Tip: --stale / --orphaned filter this list to decisions needing attention.")
 
 
 def cmd_decisions_export(args):
@@ -4207,7 +4250,7 @@ def cmd_daemon(args):
 def cmd_serve(args):
     """Start the local graph-view UI server.
 
-    Builds the index (writes/updates ``graphify-out/neuralmind_db/`` the
+    Builds the index (writes/updates ``.neuralmind/neuralmind_db/`` the
     same way ``neuralmind build`` does), then serves an Obsidian-style
     force-directed graph of the codebase (structural edges + learned
     synapse overlay) with backlinks, local-graph focus, a community
@@ -4264,9 +4307,9 @@ def cmd_demo(args):
         print(f"demo failed: bundled demo data not found ({exc}).", file=sys.stderr)
         sys.exit(1)
 
-    if not (bundle_root / "graphify-out" / "graph.json").is_file():
+    if not (bundle_root / ".neuralmind" / "graph.json").is_file():
         print(
-            "demo failed: bundled demo data is missing graphify-out/graph.json. "
+            "demo failed: bundled demo data is missing .neuralmind/graph.json. "
             "Reinstall neuralmind to restore it.",
             file=sys.stderr,
         )
@@ -5126,7 +5169,7 @@ def _cmd_gaps_structural(args):
     top_k = getattr(args, "top_k", 10)
     as_json = getattr(args, "json", False)
 
-    graph_path = os.path.join(project_path, "graphify-out", "graph.json")
+    graph_path = os.path.join(project_path, ".neuralmind", "graph.json")
     if not os.path.exists(graph_path):
         print("No graph found. Run `neuralmind build` first.")
         return
@@ -5427,12 +5470,12 @@ def _version_string() -> str:
     return base
 
 
-def main():
-    # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
-    # Unicode glyphs we print — and on the em-dash argparse prints in --help.
-    # Force UTF-8 before any output. No-op on Linux/macOS and under pytest capture.
-    _force_utf8_io()
+def build_parser() -> argparse.ArgumentParser:
+    """Construct the full CLI parser tree.
 
+    Extracted from ``main()`` so tests (and the docs CLI-path lint) can walk
+    the real parser instead of a hand-maintained copy of it.
+    """
     parser = argparse.ArgumentParser(
         description=(
             "NeuralMind — reduce Claude/GPT/Gemini token costs 12-50x on code questions. "
@@ -5759,6 +5802,27 @@ def main():
     stats_p.add_argument("project_path")
     stats_p.add_argument("--json", "-j", action="store_true")
     stats_p.set_defaults(func=cmd_stats)
+
+    cost_p = subparsers.add_parser(
+        "cost",
+        help="Show cost attribution (modeled savings) from query event logs",
+    )
+    cost_p.add_argument("project_path", nargs="?", default=".")
+    cost_p.add_argument(
+        "--days",
+        "-d",
+        type=int,
+        default=30,
+        help="Analysis window in days (default: 30)",
+    )
+    cost_p.add_argument(
+        "--cost-per-1k-tokens",
+        type=float,
+        default=None,
+        help="Cost model: dollars per 1K tokens (default: $0.01, override via NEURALMIND_COST_PER_1K_TOKENS)",
+    )
+    cost_p.add_argument("--json", "-j", action="store_true")
+    cost_p.set_defaults(func=cmd_cost)
 
     # health command — lightweight health check for CI/CD
     health_p = subparsers.add_parser(
@@ -6807,6 +6871,8 @@ def main():
             "prompt-submit",
             "pre-compact",
             "stale-guard",
+            "stop",
+            "session-end",
         ],
     )
     hook_p.set_defaults(func=cmd_hook)
@@ -7019,6 +7085,17 @@ def main():
     plic_pp = partner_sub.add_parser("licenses", help="List partner's licenses")
     plic_pp.add_argument("--partner", required=True, help="Partner ID")
     plic_pp.set_defaults(func=cmd_partner_licenses)
+
+    return parser
+
+
+def main():
+    # Windows consoles default to cp1252 and crash (UnicodeEncodeError) on the
+    # Unicode glyphs we print — and on the em-dash argparse prints in --help.
+    # Force UTF-8 before any output. No-op on Linux/macOS and under pytest capture.
+    _force_utf8_io()
+
+    parser = build_parser()
 
     args = parser.parse_args()
     if args.command is None:

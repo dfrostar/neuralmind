@@ -24,7 +24,7 @@ This is the runtime counterpart of the eval harness's `stale_influence_rate` met
 - **Fail-open by design** — no store, guard error, or empty result produces no output; the edit proceeds normally
 - **Never denies edits** — pure context injection; the agent and user decide what to do
 - **Opt-out:** `NEURALMIND_STALE_GUARD=0`
-- **Cap:** at most 5 decisions surfaced per edit, with a pointer to `neuralmind memory audit`
+- **Cap:** at most 5 decisions surfaced per edit, with a pointer to `neuralmind decisions audit`
 - **Path normalization:** absolute hook paths resolved to repo-relative before matching
 
 **Upgrade note:** ships with hook block v3. Existing installs pick up the new matcher automatically — re-run `neuralmind install-hooks` after upgrading.
@@ -35,7 +35,7 @@ All `except Exception: pass` blocks in `memory/` were replaced with logged failu
 
 ## For the Agent (what changes in your session)
 
-If you edit a file governed by decisions that are no longer ACTIVE, you'll see a `[neuralmind stale-guard]` context block before the edit. Treat surfaced decisions as warnings, not commands: verify the rationale still holds before relying on it. If the guard fires on a decision you know is fine, `neuralmind memory restore <decision-id>` reactivates it.
+If you edit a file governed by decisions that are no longer ACTIVE, you'll see a `[neuralmind stale-guard]` context block before the edit. Treat surfaced decisions as warnings, not commands: verify the rationale still holds before relying on it. If the guard fires on a decision you know is fine, `neuralmind decisions restore <decision-id>` reactivates it.
 
 ## Documentation
 

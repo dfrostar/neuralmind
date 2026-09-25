@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "neuralmind"
-version = "4.2.0"
+version = "4.3.0"
 description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 12-50× cheaper code questions."
 readme = "README.md"
 license = "MIT AND LicenseRef-NeuralMind-Commercial"
@@ -188,6 +188,12 @@ Security = "https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md"
 packages = ["neuralmind"]
 include = [
     "neuralmind/demo_data/**",
+    # Hatch's ** glob skips dot-directories — the demo fixture's
+    # .neuralmind/graph.json needs an explicit pattern or it silently
+    # drops out of the wheel and `neuralmind demo` breaks for pip users.
+    # Scoped to graph.json ONLY: demo-run artifacts (audit_events, index_ir,
+    # ir_meta, synapses.db) are regenerable and must not ship.
+    "neuralmind/demo_data/sample_project/.neuralmind/graph.json",
     "neuralmind/web/**",
 ]
 
