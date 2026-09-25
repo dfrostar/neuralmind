@@ -318,7 +318,24 @@ class TurboVecEmbedder(EmbeddingBackend):
         import json
         import subprocess
 
-        script = Path(__file__).parent.parent / "scripts" / "onnx_embed.py"
+        # One subprocess per batch. The child code is inlined via -c (not a
+        # script path) so it works identically from a source checkout AND a
+        # pip-installed package — scripts/ does not ship in wheels.
+        child_code = (
+            "import base64,json,sys\n"
+            "payload=json.load(sys.stdin)\n"
+            "texts=payload.get('texts',[])\n"
+            "if not texts:\n"
+            "    print(json.dumps({'shape':[0,384],'data':''}));sys.exit(0)\n"
+            "import numpy as np\n"
+            "from neuralmind.onnx_embedder import OnnxMiniLMEmbedder\n"
+            "matrices=[]\n"
+            "for i in range(0,len(texts),32):\n"
+            "    matrices.append(OnnxMiniLMEmbedder().embed(texts[i:i+32]))\n"
+            "m=matrices[0] if len(matrices)==1 else np.concatenate(matrices)\n"
+            "print(json.dumps({'shape':list(m.shape),"
+            "'data':base64.b64encode(m.astype(np.float32).tobytes()).decode('ascii')}))\n"
+        )
         batches = [
             texts[i : i + self._EMBED_BATCH] for i in range(0, len(texts), self._EMBED_BATCH)
         ]
@@ -326,7 +343,7 @@ class TurboVecEmbedder(EmbeddingBackend):
         out: list[np.ndarray] = []
         for batch in batches:
             proc = subprocess.run(
-                [sys.executable, str(script)],
+                [sys.executable, "-c", child_code],
                 input=json.dumps({"texts": batch}),
                 capture_output=True,
                 text=True,
