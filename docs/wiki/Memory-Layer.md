@@ -57,7 +57,7 @@ neuralmind memory eval [project_path]
 
 ## MCP Tools
 
-Registered in the MCP server (25 tools total as of v4.1.0):
+Registered in the MCP server (28 tools total as of v4.3.0):
 
 | Tool | Arguments | Description |
 |------|-----------|-------------|
@@ -65,11 +65,26 @@ Registered in the MCP server (25 tools total as of v4.1.0):
 | `neuralmind_audit_decisions` | `project_path`, `stale_only` | List decisions, filter by status |
 | `neuralmind_record_decision` | `project_path`, `title`, `rationale`, `commit`, `files_affected`, `decision_type`, `confidence`, `evidence`, `rejected_alternatives` | Store a new decision |
 | `neuralmind_invalidate_decision` | `project_path`, `decision_id`, `reason` | Mark a decision stale |
+| `neuralmind_memory_search` | `project_path`, `query`, `limit`, `status` | **Layer 1** — compact index rows (~50–100 tokens each). Cheap first call; filter here before fetching |
+| `neuralmind_memory_timeline` | `project_path`, `decision_id` or `query`, `before`, `after` | **Layer 2** — chronological context around an anchor decision |
+| `neuralmind_memory_get` | `project_path`, `ids` (max 20) | **Layer 3** — full records (rationale, rejected alternatives, evidence); batch-capped to force filtering |
+
+### Progressive retrieval workflow (v4.3.0)
+
+```
+memory_search   →  scan compact rows, pick candidates (~50-100 tokens/row)
+memory_timeline →  (optional) what else was decided around a hit
+memory_get      →  full records for the shortlist (batch-capped at 20)
+```
+
+A "why did we choose X over Y?" lookup completes in ≤3 tool calls and
+≤2,000 tokens on the fixture repo. The single-shot tools above remain
+for compatibility.
 
 ### RBAC
 
-- **Builder role:** all 4 memory tools
-- **Reader role:** `query` + `audit` only — write tools verified denied
+- **Builder role:** all 7 memory tools
+- **Reader role:** `query` + `audit` + the 3 progressive-retrieval tools — write tools verified denied
 
 ## Invalidation Semantics
 

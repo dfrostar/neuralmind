@@ -242,7 +242,7 @@ shell), so a slow run is never mistaken for a hung one.
 # Any MCP-compatible agent (Claude Code, Cursor, Cline, Continue, Codex)
 neuralmind install-mcp --all
 
-# Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse)
+# Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse, PreToolUse, Stop, SessionEnd)
 neuralmind install-hooks .
 
 # Team memory: commit learned weights (no source code) for teammates

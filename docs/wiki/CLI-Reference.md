@@ -1757,16 +1757,19 @@ file inside your project).
 
 ### install-hooks
 
-Install or uninstall Claude Code lifecycle hooks. As of v0.4.0 this
-registers four event blocks (idempotent — re-running only updates the
+Install or uninstall Claude Code lifecycle hooks. As of v4.3.0 this
+registers seven event blocks (idempotent — re-running only updates the
 NeuralMind block, leaving any user hooks untouched):
 
 | Event | What runs | Purpose |
 |-------|-----------|---------|
+| `PreToolUse` *(v4.2.0)* | Stale-decision guard on Edit/Write | Surface STALE/INVALIDATED decisions governing a file before the edit lands (off-switch `NEURALMIND_STALE_GUARD=0`) |
 | `PostToolUse` | Read/Bash/Grep compressors; Edit/Write reuse feedback *(v0.41.0)* | Token reduction on tool output; feed the reuse-vs-rewrite signal back into the synapse layer (`edit-activity`, off-switch `NEURALMIND_REUSE_FEEDBACK=0`) |
 | `SessionStart` *(v0.4.0)* | `synapse decay()` + memory export | Age unused synapses; surface learned associations to Claude Code's auto-memory |
 | `UserPromptSubmit` *(v0.4.0)* | Spreading activation from prompt | Inject ranked synapse neighbors as `additionalContext` |
 | `PreCompact` *(v0.4.0)* | `normalize_hubs()` | Prevent runaway hub nodes before context compaction |
+| `Stop` *(v4.3.0)* | Summary cadence tick from the event log | Capture final-turn activity that the every-N cadence would miss (off-switch `NEURALMIND_SESSION_END=0`) |
+| `SessionEnd` *(v4.3.0)* | Session-boundary digest from the event log | Aggregate the session's events (12h window, 500-event cap) into a final summary via SessionTracker |
 
 ```bash
 neuralmind install-hooks [project_path] [--global] [--uninstall]
