@@ -189,6 +189,10 @@ Security = "https://github.com/dfrostar/neuralmind/blob/main/SECURITY.md"
 packages = ["neuralmind"]
 include = [
     "neuralmind/demo_data/**",
+    # Hatch's ** glob skips dot-directories — the demo fixture's
+    # .neuralmind/graph.json needs an explicit pattern or it silently
+    # drops out of the wheel and `neuralmind demo` breaks for pip users.
+    "neuralmind/demo_data/sample_project/.neuralmind/*",
     "neuralmind/web/**",
 ]
 

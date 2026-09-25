@@ -72,6 +72,14 @@ graphify-out/
 # Root-anchored: ignores .neuralmind/ everywhere (repo root, fixtures, nested).
 # Does NOT match .neuralmind-team-memory.json (root-level bundle).
 .neuralmind/
+# Exception: the bundled demo fixture's pre-built graph is REQUIRED in the
+# wheel (git tracks it via add -f, and hatchling honors this .gitignore for
+# build inclusion — without the negation, `pip install neuralmind &&
+# neuralmind demo` breaks because graph.json silently drops out).
+# Narrow: only the graph itself, not stray runtime artifacts (audit_events,
+# synapses.db) that demo runs can leave in the bundled fixture.
+!neuralmind/demo_data/sample_project/.neuralmind/
+!neuralmind/demo_data/sample_project/.neuralmind/graph.json
 
 # GitHub Actions runner log fragments occasionally land at the repo root
 # matching job names (Build Package/, Lint/, Test (Python 3.x)/, Type Check/)
