@@ -88,7 +88,8 @@ class TestStaleGuardHookRegistration:
         assert any("Edit" in m and "Write" in m for m in matchers)
 
     def test_hook_version_bumped(self):
-        assert HOOK_VERSION == "3"
+        # v4 (v4.3.0): Stop + SessionEnd session-boundary hooks.
+        assert HOOK_VERSION == "4"
 
 
 class TestStaleGuardRuntime:
