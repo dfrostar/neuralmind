@@ -97,15 +97,12 @@ def ir_meta_path(project_path: str | Path) -> Path:
 def vector_db_path(project_path: str | Path, backend: str = "turbovec") -> Path:
     """Return the path to the vector index directory.
 
-    Checks canonical first, then legacy. The backend parameter selects
-    the subdirectory name (``neuralmind_db`` for ChromaDB,
-    ``neuralmind_turbovec`` for TurboVec).
+    Always returns the canonical path. Legacy fallback is removed —
+    the legacy path caused index writes to graphify-out/ while doctor
+    checks .neuralmind/, producing a phantom 'no nodes embedded' failure.
     """
     subdir = "neuralmind_db" if backend in ("chroma", "chromadb", "graph") else "neuralmind_turbovec"
-    canonical = canonical_artifact(project_path, subdir)
-    if canonical.exists():
-        return canonical
-    return legacy_artifact(project_path, subdir)
+    return canonical_artifact(project_path, subdir)
 
 
 def graph_report_path(project_path: str | Path) -> Path:

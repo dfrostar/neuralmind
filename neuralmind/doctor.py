@@ -16,6 +16,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from .paths import graph_json_path, graph_report_path
+
 # Status levels, worst-last so ``overall_status`` can pick the max.
 OK = "ok"
 WARN = "warn"

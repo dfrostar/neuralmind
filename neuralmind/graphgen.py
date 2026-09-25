@@ -39,6 +39,7 @@ from typing import Any
 
 from neuralmind.modularity import louvain_clustering
 from neuralmind.neuralmind_config import NeuralmindConfig
+from neuralmind.paths import graph_json_path
 
 # Mirrors neuralmind.watcher.DEFAULT_IGNORES — directories we never descend.
 _DEFAULT_IGNORES: frozenset[str] = frozenset(

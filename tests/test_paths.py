@@ -101,20 +101,24 @@ class TestVectorDbPath:
         legacy.mkdir(parents=True)
         assert vector_db_path(tmp_path, "turbovec") == canonical
 
-    def test_falls_back_to_legacy_turbovec(self, tmp_path: Path) -> None:
+    def test_vector_db_path_always_canonical_turbovec(self, tmp_path: Path) -> None:
+        """Legacy fallback was removed — vector_db_path always returns canonical."""
         legacy = tmp_path / LEGACY_DIR / "neuralmind_turbovec"
         legacy.mkdir(parents=True)
-        assert vector_db_path(tmp_path, "turbovec") == legacy
+        canonical = tmp_path / CANONICAL_DIR / "neuralmind_turbovec"
+        assert vector_db_path(tmp_path, "turbovec") == canonical
 
     def test_chroma_backend(self, tmp_path: Path) -> None:
         canonical = tmp_path / CANONICAL_DIR / "neuralmind_db"
         canonical.mkdir(parents=True)
         assert vector_db_path(tmp_path, "chroma") == canonical
 
-    def test_chroma_falls_back_to_legacy(self, tmp_path: Path) -> None:
+    def test_chroma_always_canonical(self, tmp_path: Path) -> None:
+        """Legacy fallback was removed — vector_db_path always returns canonical."""
         legacy = tmp_path / LEGACY_DIR / "neuralmind_db"
         legacy.mkdir(parents=True)
-        assert vector_db_path(tmp_path, "chroma") == legacy
+        canonical = tmp_path / CANONICAL_DIR / "neuralmind_db"
+        assert vector_db_path(tmp_path, "chroma") == canonical
 
 
 class TestGraphReportPath:
