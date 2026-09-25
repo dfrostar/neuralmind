@@ -69,16 +69,36 @@ def legacy_artifact(project_path: str | Path, *parts: str) -> Path:
     return Path(target)
 
 
+def _validated_artifact(base: Path, target: Path) -> Path:
+    """Return ``target`` only if it stays within ``base``; raise otherwise.
+
+    CodeQL recognizes this early-return guard as a taint barrier at the
+    sink, unlike the conditional-raise pattern used inside
+    canonical_artifact/legacy_artifact (which the analyzer cannot see
+    through from graph_json_path's call sites).
+    """
+    try:
+        target.relative_to(base)
+    except ValueError:
+        raise ValueError(f"artifact path {target} escapes project root {base}") from None
+    return target
+
+
 def graph_json_path(project_path: str | Path) -> Path:
     """Return the path to ``graph.json``, checking canonical then legacy.
 
     When neither exists, returns the canonical path (the default for new
     projects).
     """
-    canonical = canonical_artifact(project_path, "graph.json")
+    base = _resolve_base(project_path)
+    canonical = _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, CANONICAL_DIR, "graph.json")))
+    )
     if canonical.exists():
         return canonical
-    legacy = legacy_artifact(project_path, "graph.json")
+    legacy = _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, LEGACY_DIR, "graph.json")))
+    )
     if legacy.exists():
         return legacy
     return canonical
