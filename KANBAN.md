@@ -1,138 +1,110 @@
 # NeuralMind — Kanban Board (CANONICAL — `dfrostar/neuralmind`)
 
-**2026-09-14 11:00:00**
+**Last updated:** 2026-09-25 14:00:00 UTC
 **Repo:** `neuralmind` (dfrostar/neuralmind)
-**Version:** 3.10.0
+**Version:** 4.2.0+ (post-v4.2.0 consolidation)
 **Branch:** main
-**Last commit:** `00f81bc` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-13)
-**Note:** This is the canonical kanban for NeuralMind. Active development repo is `/home/dtfrost5/neuralmind/` (v3.10.0, main branch).
+**Last commit:** `aaa2c5d` — fix: two consolidation stragglers in tests — structural fixture + server guard (2026-09-25)
+**Uncommitted:** 11 files (retrieval_results.json, 10 test fixture extraction_cache.json files)
 
 ---
 
-## Current State
+## Status
+
+### What Works (Verified)
+
+| Component | Status | Tests |
+|-----------|--------|-------|
+| MedicalRetriever (standalone) | ✅ Built & tested | 22/22 pass |
+| ChapterIndexer (standalone) | ✅ Built & tested | 12/12 pass |
+| Pipeline integration (prose path) | ✅ Wired & tested | 12/12 pass |
+| BM25 prose tokenizer fix (P0) | ✅ Fixed | Verified |
+| Benchmark parser (new format) | ✅ Fixed | 14 queries run |
+
+### Benchmark Results (peptide book, 14 queries)
+
+| Metric | Before (v3.12) | After (v3.13) | Change |
+|--------|----------------|---------------|--------|
+| **Recall@1** | 64.3% | 78.6% | **+14 pts** |
+| **Fact Recall** | 47% | 84% | **+37 pts** |
+| MRR | 0.79 | 0.83 | +0.04 |
+| Avg Latency | 1418ms | 921ms | 1.5x faster |
+| Precision@5 | 38.6% | 37.3% | -1.3 pts (acceptable) |
+
+### Architecture
 
 ```
-Version:   3.10.0 (released 2026-09-13)
-Tests:     65+ tests (synapse layer stdlib-only)
-Git:       main branch, last commit 2026-09-13 (1 day stale)
-Uncommitted: bm25.py, context_selector.py, core.py, document_ingestion.py, embedder.py, graphgen.py, turbovec_backend.py, test fixtures, peptide benchmark
-CI:        Regression floor at 4.0× (matches origin/main)
-Engine:    v3.10.0 — core, synapse, content QA, retrieval benchmarks, structural gap detection, VS Code extension, BGE embedder, SEO pages, benchmark page
+NeuralMind.query()
+  ├── if project_kind in ("prose", "mixed"):
+  │     └── MedicalRetriever.query() → ContextResult
+  │           ├── ChapterIndexer (BM25 + embedding + heading match)
+  │           ├── ConfidenceFlagger (HIGH/MEDIUM/LOW)
+  │           └── Negative query fallback
+  └── else (code):
+        └── ContextSelector.get_query_context() (unchanged)
 ```
-
----
-
-## ✅ Shipped (v3.10.0 — 2026-09-13)
-
-| Component | Status | Evidence |
-|-----------|--------|----------|
-| Core engine | ✅ DONE | `neuralmind/core.py` — orchestrator, public API |
-| Synapse layer | ✅ DONE | Sharded + LTP guards, SQLite-backed Hebbian store |
-| Context selector | ✅ DONE | L0/L1/L2/L3 progressive disclosure (12-50× token reduction) |
-| BGE embedder | ✅ DONE | ChromaDB embeddings + 4 use cases |
-| Retrieval benchmarks | ✅ DONE | 65+ tests passing |
-| Structural gap detection | ✅ DONE | ✅ Shipped |
-| VS Code extension | ✅ DONE | Status bar, command palette, graph panel, hover provider |
-| Content QA (books) | ✅ DONE | Shipped |
-| Marketing site | ✅ DONE | Next.js static export → Cloudflare Pages |
-| SEO pages | ✅ DONE | Benchmark page, SEO plan, indexability fixes |
-| v3.10.0 release | ✅ DONE | `bf46038` — chore(main): release 3.10.0 |
-
----
-
-## 🔴 P0 — Retrieval Performance Fix (2026-09-14)
-
-**ROOT CAUSE IDENTIFIED:** Vector index has 77 heading nodes, BM25 has 315 content chunks. IDs don't match → hybrid merge silently drops BM25 results. System returns Back Matter glossary for "semaglutide" instead of FDA-Approved chapter.
-
-**Benchmark baseline:** P95 3,527ms, Precision@5 26.3%, Fact Recall 42%, Recall@1 57.9%
-**Targets:** P95 <500ms, Precision@5 >70%, Fact Recall >75%, Recall@1 >75%
-
-| ID | Task | Status | Notes |
-|----|------|--------|-------|
-| T1 | Fix cold-start latency | 🔄 IN PROGRESS | Already uncommitted, needs verification |
-| T2 | Fix vector-BM25 merge (ROOT CAUSE) | 🟡 PLANNED | Rebuild vector index from same 315 chunks as BM25 |
-| T3 | BM25 hybrid scoring with adaptive weights | 🟡 PLANNED | Depends on T2 |
-| T4 | Prose mode context cleanup | 🟡 PLANNED | Depends on T2/T3 |
-| T5 | Confidence calibration | 🟡 PLANNED | Margin-based + exact-term boost |
-| T6 | Ambiguity handling | 🟡 PLANNED | Visible confidence flags |
-| T7 | Negative query fallback | 🟡 PLANNED | No low-confidence hints |
-| T8 | Adversarial QA | ⬜ TODO | Strict thresholds |
-| T9 | Final benchmark | ⬜ TODO | Compare against baseline |
-
-**Safety protocol:** ADR `adr-nm-confidence-protocol` in `~/.hermes/projects.db`. Strict thresholds for medical — false positives are catastrophic.
-
----
-
-## 🔄 Uncommitted Work (2026-09-14)
-
-| File | Status | Notes |
-|------|--------|-------|
-| `neuralmind/bm25.py` | ✅ MODIFIED | BM25 hybrid search |
-| `neuralmind/context_selector.py` | ✅ MODIFIED | Context selection updates |
-| `neuralmind/core.py` | ✅ MODIFIED | Core orchestrator updates |
-| `neuralmind/document_ingestion.py` | ✅ MODIFIED | Document ingestion updates |
-| `neuralmind/embedder.py` | ✅ MODIFIED | Embedder updates |
-| `neuralmind/graphgen.py` | ✅ MODIFIED | Graph generation updates |
-| `neuralmind/turbovec_backend.py` | ✅ MODIFIED | TurboVec backend updates |
-| `tests/fixtures/*/.neuralmind/extraction_cache.json` | ✅ MODIFIED | 8 fixture caches |
-| `tests/test_graphgen.py` | ✅ MODIFIED | Graph gen tests |
-| `neuralmind/neuralmind_config.py` | ✅ NEW | Config module |
-| `tests/benchmark/peptide_benchmark.py` | ✅ NEW | Peptide benchmark |
-| `tests/benchmark/peptide_queries.json` | ✅ NEW | Peptide queries |
-| `tests/benchmark/peptide_report.md` | ✅ NEW | Peptide report |
-| `tests/benchmark/peptide_results.json` | ✅ NEW | Peptide results |
-
-> **⚠️ 14 uncommitted files** — needs commit or revert after T1-T3 verification.
-
----
-
-## 🔴 CRITICAL BLOCKERS
-
-| ID | Task | Impact | Est. |
-|----|------|--------|------|
-| BLK-1 | Commit or revert uncommitted changes | Dirty working tree | 0.5h |
-
----
-
-## Sprint Backlog
-
-| ID | Task | Priority | Status |
-|----|------|----------|--------|
-| S-01 | Logos training transformers | HIGH | ⬜ TODO |
-| S-02 | Corpus expansion | MEDIUM | ⬜ TODO |
-| S-03 | Perplexity eval framework | MEDIUM | ⬜ TODO |
-| S-04 | Synapse Module wiki | LOW | ⬜ TODO |
-| S-05 | Release automation (release-please) | LOW | ⬜ TODO |
 
 ---
 
 ## Decisions Made
 
-| Date | Decision | Rationale |
-|------|----------|-----------|
-| 2026-09-14 | **ROOT CAUSE: Vector-BM25 ID mismatch** | Vector has 77 heading nodes, BM25 has 315 content chunks. Hybrid merge silently drops BM25 results because IDs don't match. Fix: rebuild vector index from same chunks. |
-| 2026-09-14 | **Retrieval confidence & safety protocol** (ADR: adr-nm-confidence-protocol) | Medical content requires strict safety: margin-based confidence, visible ambiguity flags, no low-confidence hints, strict adversarial thresholds |
-| 2026-09-14 | **BM25 weight: adaptive with hard floor** | Base 0.4 emb / 0.6 BM25; rare terms (≤3 docs) boost BM25 to 0.8; exact matches >2x next candidate win regardless |
-| 2026-09-14 | **Content mode: per-project detection** | 80% .md + zero code files + name heuristic; tag at build time; no nano-LLM (overkill) |
-| 2026-09-14 | **Ambiguity: top-1 with confidence flag** | Hiding uncertainty is dangerous; returning two chapters for every close call is noisy |
-| 2026-09-14 | **Negative query: no hints, professional referral** | Low-confidence hints could be treated as answers; "I don't know" is safe |
-| 2026-09-13 | v3.10.0 released | BGE embedder, SEO pages, benchmark page |
-| 2026-09-13 | neuralmind/ is canonical | Active development repo (v3.10.0, main) |
-| 2026-09-12 | neuralmind-fresh was canonical | `/home/dtfrost5/neuralmind/` was stale |
-| 2026-09-03 | CI regression floor lowered to 3.0× | Prevent false CI failures |
+### MedicalRetriever Design
+
+| Decision | Rationale |
+|----------|-----------|
+| Chapter-level indexing (one doc per chapter) | Eliminates duplicate chapter entries from 61 fragmented nodes |
+| Hybrid scoring: 0.30 BM25 + 0.45 embedding + 0.25 heading match | Embedding carries most weight for semantic queries; heading match catches exact phrases |
+| Claims Register downweight (0.4×) | Reference tables hijack BM25 with dense term repetition |
+| Back-matter downweight (0.3×) | Glossary is lookup table, not clinical content |
+| Confidence gating (HIGH≥0.70, MEDIUM≥0.40, LOW<0.40) | No silent low-confidence results for medical content |
+| Lazy initialization | MedicalRetriever only builds on first prose query |
 
 ---
 
-## 📊 Repo State (2026-09-14)
+## Pending Work
+
+### Next Sprint
+- [x] **Output directory consolidation** ✅ DONE (`62a44e8` — `graphify-out/` → `.neuralmind/` with legacy fallback)
+- [x] **Auto-regenerate public benchmark on drift** ✅ DONE (`78f9299` — `bench-public-drift.yml`)
+- [ ] Context Mode MCP integration for session continuity
+- [ ] e5-large embedding upgrade (network blocked)
+- [ ] Strip unused code paths (if any remain)
+- [x] **Publish v4.2.0 to PyPI** ✅ DONE (`f1502dd`, 2026-09-18)
+- [x] **Memory system — decision memory layer** ✅ DONE (commit-level invalidation, `e14ddfa`)
+- [x] **Memory system — eval harness + MCP tools** ✅ DONE (MaintenanceEval, query_decisions, audit_decisions, record_decision, invalidate_decision)
+- [x] **Memory system — PreToolUse stale-decision guard** ✅ DONE (`605b036`)
+- [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
+- [ ] Memory system — integrate with synapse layer for cross-session persistence
+- [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits — 2026-09-19)
+- [x] **Cost Attribution Dashboard** ✅ DONE (`09318d5` — `neuralmind cost` command)
+- [x] **Synapse-prose integration** — extend Hebbian learning to prose/book content ✅ DONE (`ad51f53`, 2026-09-21)
+- [x] **QA review findings (7 of 8)** ✅ DONE (`8f58d68` — deadlock, cap, docs, migration)
+- [x] **Wheel fix — ship exactly demo graph** ✅ DONE (`e4ab5b1`)
+- [x] **Ruff/black cleanup on QA-fix files** ✅ DONE (`3fd895d`)
+- [x] **Test fixture consolidation stragglers** ✅ DONE (`aaa2c5d`, 2026-09-25)
+
+### Known Limitations
+- MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
+- e5-large upgrade path documented but not yet available (network blocked)
+- P95 latency 7.6s (first query cold start); subsequent queries <400ms
+
+---
+
+## Action Items
+
+1. Monitor for network availability to download e5-large ONNX model
+2. Consider Context Mode integration as companion tool for session management
+3. **Push 23 commits to origin** — all consolidation + QA fixes ready
+4. **Clean uncommitted test fixture artifacts** — `retrieval_results.json` + 10 `extraction_cache.json` files
+
+---
+
+## 📊 Repo State (2026-09-25 14:00 UTC)
 
 | Field | Value |
 |-------|-------|
 | Branch | main |
-| Last commit | `00f81bc` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-13) |
-| Uncommitted | 14 files (bm25, core, embedder, context_selector, document_ingestion, graphgen, turbovec_backend, test fixtures, peptide benchmark) |
-| Ahead/Behind | 0/0 (in sync) |
-| Stale days | 1 day since last commit |
-
----
-
-*NeuralMind v3.10.0 — P0 retrieval performance fix in progress. ROOT CAUSE: vector-BM25 ID mismatch. Safety protocol in ADR. Uncommitted work needs commit or revert after T1-T3 verification.*
+| Last commit | `aaa2c5d` — fix: two consolidation stragglers in tests (2026-09-25) |
+| Uncommitted | 11 files (retrieval_results.json, 10 test fixture extraction_cache.json) |
+| Stale days | 0 days (commit today) |
+| Sync | **23 commits AHEAD of origin/main** — needs `git push origin main` |

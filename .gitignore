@@ -53,6 +53,14 @@ tests/benchmark/results.json
 tests/benchmark/report.md
 tests/benchmark/multi_model.json
 tests/benchmark/multi_model.md
+# Peptide book benchmark outputs (contain book-specific data, regenerated on demand)
+tests/benchmark/peptide_results.json
+tests/benchmark/peptide_report.md
+tests/benchmark/peptide_queries.json
+# Generated test fixtures (self-contained, written at import time)
+tests/fixtures/sample_project_prose/
+# Book retrieval eval corpus (synthetic placeholders — real book content must never be committed)
+evals/book_retrieval/corpus/
 tests/fixtures/sample_project/graphify-out/
 # Not root-anchored: a nested graphify-out/ (e.g. docs/releases/graphify-out/
 # store.sqlite, committed by accident in 71dca4f) should never be trackable
@@ -64,6 +72,15 @@ graphify-out/
 # Root-anchored: ignores .neuralmind/ everywhere (repo root, fixtures, nested).
 # Does NOT match .neuralmind-team-memory.json (root-level bundle).
 .neuralmind/
+# Exception: the bundled demo fixture's pre-built graph is REQUIRED in the
+# wheel (git tracks it via add -f, and hatchling honors this .gitignore for
+# build inclusion — without the negation, `pip install neuralmind &&
+# neuralmind demo` breaks because graph.json silently drops out).
+# Order matters: exclude the dir's contents FIRST, then re-include only
+# graph.json — so demo-run artifacts (audit_events.jsonl, index_ir.json,
+# ir_meta.json, synapses.db) can never leak into git or a wheel.
+neuralmind/demo_data/sample_project/.neuralmind/*
+!neuralmind/demo_data/sample_project/.neuralmind/graph.json
 
 # GitHub Actions runner log fragments occasionally land at the repo root
 # matching job names (Build Package/, Lint/, Test (Python 3.x)/, Type Check/)
@@ -87,3 +104,5 @@ evals/parity/parity_report.md
 # Claude Code personal dev config (hooks, settings)
 .claude/
 **/.neuralmind/extraction_cache.json
+tests/fixtures/sample_project/chapters/
+tests/fixtures/sample_project_dynamic_py/chapters/

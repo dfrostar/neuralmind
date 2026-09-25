@@ -9,7 +9,7 @@ Pure Python, stdlib-only. No NetworkX dependency.
 Example:
     >>> import json
     >>> from neuralmind.structural_gaps import detect_gaps, format_structural_gaps
-    >>> with open("graphify-out/graph.json") as f:
+    >>> with open(".neuralmind/graph.json") as f:
     ...     graph = json.load(f)
     >>> gaps = detect_gaps(graph, top_k=5)
     >>> print(format_structural_gaps(gaps))

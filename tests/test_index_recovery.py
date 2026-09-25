@@ -41,7 +41,8 @@ QUERY = "quarterly account review"
 
 
 def _index_path(project):
-    return project / "graphify-out" / "neuralmind_turbovec" / "index.tvim"
+    """Match the backend's index location (canonical .neuralmind/)."""
+    return project / ".neuralmind" / "neuralmind_turbovec" / "index.tvim"
 
 
 def _ingest(project):

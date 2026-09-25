@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .paths import graph_report_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -371,7 +373,7 @@ class ContextSelector:
 
     # RRF constant — rank 60 contribution = 1/61 ≈ 0.016.  Lower values
     # weight the top positions more aggressively; 60 is the de-facto standard.
-    RRF_K = 60
+    RRF_K = 10  # was: 60 — for 61-node index, k=10 creates proper rank differentiation
 
     def _rrf_merge(
         self,
@@ -494,7 +496,41 @@ class ContextSelector:
             combined.append((nid, final, node))
 
         combined.sort(key=lambda x: x[1], reverse=True)
-        return [node for _, _, node in combined]
+
+        # Chapter-level diversity boost: a chapter with one strong match
+        # (>0.7) outranks one with N marginal matches (0.3-0.5).
+        strong_match_threshold = 0.7
+        chapter_strong_boost = 1.5
+        chapter_best: dict[str, float] = {}
+        for nid, score, node in combined:
+            meta = node.get("metadata", {})
+            sf = meta.get("source_file", "")
+            chapter_key = sf if sf else nid.split(":")[0] if ":" in nid else nid
+            if chapter_key not in chapter_best or score > chapter_best[chapter_key]:
+                chapter_best[chapter_key] = score
+
+        for i, (nid, score, node) in enumerate(combined):
+            meta = node.get("metadata", {})
+            sf = meta.get("source_file", "")
+            chapter_key = sf if sf else nid.split(":")[0] if ":" in nid else nid
+            if chapter_best.get(chapter_key, 0) > strong_match_threshold:
+                combined[i] = (nid, score * chapter_strong_boost, node)
+
+        combined.sort(key=lambda x: x[1], reverse=True)
+
+        # Chapter-level dedup — keep only the top node per chapter.
+        seen_chapters: set[str] = set()
+        deduped = []
+        for nid, score, node in combined:
+            meta = node.get("metadata", {})
+            sf = meta.get("source_file", "")
+            chapter_key = sf if sf else nid.split(":")[0] if ":" in nid else nid
+            if chapter_key in seen_chapters:
+                continue
+            seen_chapters.add(chapter_key)
+            deduped.append((nid, score, node))
+
+        return [node for _, _, node in deduped]
 
     def _estimate_tokens(self, text: str) -> int:
         """Estimate token count from text."""
@@ -530,19 +566,40 @@ class ContextSelector:
         if cached is not None and len(cached) >= n:
             return cached[:n]
         fetch_n = max(n, self._query_search_max_n)
-        vec_results = self.embedder.search(query, n=fetch_n)
+
+        # v3.12.0: Expand query with medical terminology synonyms
+        if getattr(self, "project_kind", "code") == "prose":
+            from .terminology import expand_query_with_terminology
+
+            expanded_query = expand_query_with_terminology(query)
+        else:
+            expanded_query = query
+
+        vec_results = self.embedder.search(expanded_query, n=fetch_n)
 
         if getattr(self, "project_kind", "code") == "prose":
             # Prose branch: weighted hybrid scoring with prose BM25 tokenizer
             bm25_search_prose = getattr(self.embedder, "bm25_search_prose", None)
             if callable(bm25_search_prose) and os.environ.get("NEURALMIND_BM25") != "0":
-                kw_results = bm25_search_prose(query, n=fetch_n)
+                kw_results = bm25_search_prose(expanded_query, n=fetch_n)
                 if kw_results and isinstance(kw_results, list):
                     # Adaptive weights: rare terms (DF ≤ 3) boost BM25
                     vec_weight, kw_weight = self._adaptive_weights(query)
                     merged = self._weighted_hybrid_score(
                         vec_results, kw_results, vec_weight=vec_weight, kw_weight=kw_weight
                     )
+                    # Apply prose intent boost (1.5× primary, 1.25× secondary)
+                    intents = self._detect_prose_intent(query)
+                    merged = self._apply_prose_intent_boost(merged, intents)
+
+                    # Post-retrieval filtering: drop low-confidence results.
+                    # Uses a relative threshold (30% of top score) — conservative
+                    # so we don't eliminate relevant chapters on small indexes.
+                    if merged:
+                        top_score = merged[0].get("score", 1.0)
+                        cutoff = top_score * 0.3
+                        merged = [n for n in merged if n.get("score", 0.0) >= cutoff]
+
                     results = merged[:fetch_n]
                 else:
                     results = vec_results
@@ -681,7 +738,7 @@ class ContextSelector:
             parts.append("")
 
         # Try to load GRAPH_REPORT.md summary
-        graph_report = self.project_path / "graphify-out" / "GRAPH_REPORT.md"
+        graph_report = graph_report_path(self.project_path)
         if graph_report.exists():
             try:
                 with open(graph_report) as f:
@@ -1551,66 +1608,256 @@ class ContextSelector:
                 for token in q_tokens:
                     doc_count += bm25_index._df.get(token, 0)
 
-                # If query terms are rare (avg DF ≤ 3), boost BM25
-                avg_df = doc_count / len(q_tokens) if q_tokens else 0
-                if avg_df <= 3:
-                    vec_weight = 0.2
-                    kw_weight = 0.8
-                elif avg_df <= 10:
-                    vec_weight = 0.3
-                    kw_weight = 0.7
+                vec_weight = 0.5
+                kw_weight = 0.5
 
         return vec_weight, kw_weight
+
+    # Prose query intent keywords (chapter-level intent detection)
+    _PROSE_INTENT_KEYWORDS: dict[str, list[str]] = {
+        "mechanism": [
+            "how does",
+            "mechanism",
+            "work",
+            "function",
+            "action",
+            "pathway",
+            "receptor",
+            "bind",
+            "signal",
+        ],
+        "comparison": [
+            "difference",
+            "compare",
+            "versus",
+            "vs",
+            "differ",
+            "better",
+            "worse",
+            "efficacy",
+        ],
+        "regulatory": [
+            "fda",
+            "approval",
+            "regulatory",
+            "pcac",
+            "compliance",
+            "legal",
+            "law",
+            "rule",
+            "503a",
+            "503b",
+        ],
+        "delivery": [
+            "oral",
+            "delivery",
+            "injection",
+            "subcutaneous",
+            "nasal",
+            "topical",
+            "route",
+            "absorption",
+        ],
+        "safety": [
+            "side effect",
+            "risk",
+            "warning",
+            "adverse",
+            "contraindication",
+            "toxicity",
+            "danger",
+            "black box",
+        ],
+        "cost": ["cost", "price", "expensive", "cheap", "afford", "insurance", "coverage"],
+        "future": [
+            "future",
+            "pipeline",
+            "coming",
+            "next",
+            "upcoming",
+            "research",
+            "trial",
+            "phase",
+        ],
+        "definition": ["what is", "what are", "define", "definition", "meaning", "explain"],
+    }
+
+    # Chapter intent mapping for peptide book with weights per intent
+    _PROSE_CHAPTER_INTENT_WEIGHTS: dict[str, dict[str, float]] = {
+        "01_what-are-peptides": {"definition": 1.0, "mechanism": 0.5},
+        "02_chapter-2": {"mechanism": 1.0, "delivery": 1.0},
+        "03_fda-approved-peptides": {"comparison": 1.0, "regulatory": 1.0, "mechanism": 0.5},
+        "04_grey-market-compounds": {"regulatory": 1.0, "safety": 0.8},
+        "05_safety-side-effects": {"safety": 1.0},
+        "06_regulatory-landscape": {"regulatory": 1.0},
+        "07_future-of-peptide-therapy": {"future": 1.0, "comparison": 0.7},
+        "08_questions-to-ask-prescriber": {"definition": 1.0},
+        "98_claims-register-appendix": {},
+        "99_back-matter": {"definition": 1.0},
+        "00_front-matter": {"definition": 1.0},
+    }
+
+    def _detect_prose_intent(self, query: str) -> list[str]:
+        """Detect query intent keywords for prose projects.
+
+        Strong indicator phrases (difference, differ, how does, mechanism)
+        get +2 weight; single keywords get +1. Comparison signals
+        (difference, differ, versus) explicitly outrank mechanism when both
+        match. Returns intents sorted by score (highest first), filtering
+        out zero-score intents.
+        """
+        q = query.lower()
+        scores: dict[str, int] = {}
+        for intent, keywords in self._PROSE_INTENT_KEYWORDS.items():
+            score = 0
+            for kw in keywords:
+                if kw in q:
+                    # Strong indicators get +2, single keywords +1
+                    if len(kw) > 6 and " " in kw:
+                        score += 2
+                    elif kw in (
+                        "difference",
+                        "differ",
+                        "compare",
+                        "versus",
+                        "mechanism",
+                        "delivery",
+                        "oral",
+                    ):
+                        score += 2
+                    else:
+                        score += 1
+            if score > 0:
+                scores[intent] = score
+
+        # Comparison signals outrank mechanism when both match
+        comparison_signals = ("difference", "differ", "compare", "versus", "vs")
+        if any(sig in q for sig in comparison_signals):
+            for intent in scores:
+                if intent == "comparison":
+                    scores[intent] += 2
+            # Demote mechanism if comparison is present
+            if "mechanism" in scores and "comparison" in scores:
+                scores["mechanism"] = max(0, scores["mechanism"] - 1)
+
+        return [i for i, s in sorted(scores.items(), key=lambda x: -x[1]) if s > 0]
+
+    def _apply_prose_intent_boost(
+        self,
+        results: list[dict[str, Any]],
+        intents: list[str],
+    ) -> list[dict[str, Any]]:
+        """Boost results whose chapter intent matches the query intent.
+
+        Uses weighted chapter-intent mapping. Primary intent (first in list)
+        gets 2.0× boost for matching chapters; secondary intents get 1.5×.
+        This is stronger than the previous 1.3× flat boost — the extra
+        signal is needed to push correct chapters above marginal matches.
+        """
+        if not intents:
+            return results
+
+        primary = intents[0]
+        secondary = intents[1:] if len(intents) > 1 else []
+
+        boosted = []
+        for r in results:
+            meta = r.get("metadata", {})
+            sf = meta.get("source_file", "")
+            base = sf.split("/")[-1] if "/" in sf else sf
+            prefix = ""
+            if base:
+                for i in range(len(base) - 2):
+                    if base[i : i + 2].isdigit() and base[i + 2] == "_":
+                        end = i + 3
+                        while end < len(base) and (base[end].isalnum() or base[end] in "-_"):
+                            end += 1
+                        prefix = base[i:end]
+                        break
+
+            chapter_weights = self._PROSE_CHAPTER_INTENT_WEIGHTS.get(prefix, {})
+            boost = 1.0
+            applied = None
+            if primary in chapter_weights:
+                boost = 1.3
+                applied = primary
+            elif any(si in chapter_weights for si in secondary):
+                boost = 1.1
+                applied = next((si for si in secondary if si in chapter_weights), None)
+
+            if boost > 1.0:
+                r = dict(r)
+                r["score"] = r.get("score", 0.0) * boost
+                if applied:
+                    r["_prose_intent"] = applied
+
+            boosted.append(r)
+
+        boosted.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+        return boosted
 
     def _assemble_prose_context(self, ranked_nodes: list[dict], max_tokens: int = 800) -> str:
         """Assemble prose context from ranked nodes (P0.3).
 
-        For each node, builds a block with chapter, section, and content
-        text. Strips YAML frontmatter from content. Accumulates blocks
-        until ``max_tokens`` is reached.
-
-        Groups consecutive nodes from same chapter/section to avoid
-        redundant headers. Each unique (chapter, section) pair gets one
-        header block.
+        v3.12.0: emits at most one block per chapter. Consecutive same-chapter
+        nodes are merged into a single block. This prevents a single chapter
+        from occupying multiple slots in the top-K and improves precision.
         """
         blocks = []
         tokens_used = 0
+        emitted_chapters: set[str] = set()
         last_chapter = None
         last_section = None
+        chapter_buffer: list[str] = []
+        chapter_header = ""
+        chapter_tokens = 0
+
+        def flush_chapter():
+            """Emit the buffered chapter block and reset state."""
+            nonlocal chapter_buffer, chapter_header, chapter_tokens, tokens_used
+            if not chapter_buffer:
+                return
+            block = f"{chapter_header}" + "\n\n".join(chapter_buffer) + "\n\n"
+            block_tokens = len(block) // self.CHARS_PER_TOKEN
+            if tokens_used + block_tokens > max_tokens and blocks:
+                chapter_buffer = []
+                chapter_header = ""
+                chapter_tokens = 0
+                return
+            blocks.append(block)
+            tokens_used += block_tokens
+            chapter_buffer = []
+            chapter_header = ""
+            chapter_tokens = 0
 
         for node in ranked_nodes:
             meta = node.get("metadata", {})
             chapter = meta.get("chapter", "Unknown Chapter")
             section = meta.get("section", "Unknown Section")
-            source_file = meta.get("source_file", node.get("source_file", ""))
             content_text = node.get("document", "")
 
-            # Strip YAML frontmatter
             content_text = self._strip_frontmatter(content_text)
-
             if not content_text:
                 continue
 
-            # Build header only when chapter or section changes
+            # Skip chapters already emitted (one block per chapter max)
+            if chapter in emitted_chapters:
+                continue
+
             if chapter != last_chapter or section != last_section:
-                header = f"## {chapter}\n### {section}\n\n"
+                flush_chapter()
+                chapter_header = f"## {chapter}\n### {section}\n\n"
                 last_chapter = chapter
                 last_section = section
-            else:
-                header = ""
+                emitted_chapters.add(chapter)
 
-            block = (
-                f"{header}"
-                f"{content_text}\n\n"
-                f'— {source_file} — {chapter}, section "{section}"\n'
-            )
-            block_tokens = len(block) // self.CHARS_PER_TOKEN
+            chapter_buffer.append(content_text)
+            chapter_tokens += len(content_text) // self.CHARS_PER_TOKEN
 
-            if tokens_used + block_tokens > max_tokens and blocks:
-                break
+            if chapter_tokens >= max_tokens // 2:
+                flush_chapter()
 
-            blocks.append(block)
-            tokens_used += block_tokens
+        flush_chapter()
 
         return "\n".join(blocks)
 
@@ -1821,7 +2068,12 @@ class ContextSelector:
         )
 
     def get_query_context(
-        self, query: str, trace: bool = False, trace_verbose: bool = False, query_type: str = "auto"
+        self,
+        query: str,
+        trace: bool = False,
+        trace_verbose: bool = False,
+        query_type: str = "auto",
+        context_budget: int | None = None,
     ) -> ContextResult:
         """
         Get full context for a specific query.
@@ -1834,6 +2086,10 @@ class ContextSelector:
             trace: If True, attach a per-layer retrieval trace
             trace_verbose: If True (with trace), keep full candidate/hit lists
             query_type: Filter results — 'code', 'docs', or 'auto' (default)
+            context_budget: Optional token budget override. If provided, the
+                assembled context is trimmed to fit within this budget by
+                removing lower-priority layers (L3 → L2 → L1). L0 identity
+                is never trimmed.
 
         Returns:
             ContextResult with relevant context and search results
@@ -1854,8 +2110,138 @@ class ContextSelector:
             if query_type != "auto":
                 intent = self._detect_intent(query)
                 result.top_search_hits = self._apply_intent_boost(result.top_search_hits, intent)
+
+            # Context budget enforcement: trim if over budget
+            if context_budget is not None and context_budget > 0:
+                from .context_budget import check_budget_warning, count_tokens
+
+                used = count_tokens(result.context)
+                if used > context_budget:
+                    # Trim L3 search results first, then L2, then L1
+                    trimmed_context, layers_trimmed = self._trim_context_to_budget(
+                        result.context, context_budget
+                    )
+                    result.context = trimmed_context
+                    # Update budget tracking
+                    result.budget.l3_search = (
+                        0 if "L3" in layers_trimmed else result.budget.l3_search
+                    )
+                    result.budget.l2_ondemand = (
+                        0 if "L2" in layers_trimmed else result.budget.l2_ondemand
+                    )
+                    result.budget.l1_summary = (
+                        0 if "L1" in layers_trimmed else result.budget.l1_summary
+                    )
+                    # Log budget warning
+                    if check_budget_warning(used, context_budget):
+                        import logging
+
+                        logging.getLogger(__name__).warning(
+                            "[context_budget] query exceeded budget: %d/%d tokens (trimmed: %s)",
+                            used,
+                            context_budget,
+                            layers_trimmed,
+                        )
+
             if self._trace is not None:
                 result.trace = self._trace.to_dict()
             return result
         finally:
             self._trace = None
+
+    def _trim_context_to_budget(self, context: str, budget_tokens: int) -> tuple[str, list[str]]:
+        """Trim context to fit within budget, removing lower-priority layers first.
+
+        Layer priority (highest to lowest):
+        - L0: Identity (project name, description) — never trimmed
+        - L1: Summary (architecture, main components) — trimmed only if critical
+        - L2: On-demand modules — trimmed before L1
+        - L3: Search results — trimmed first
+
+        Returns:
+            (trimmed_context, layers_trimmed)
+        """
+        from .context_budget import count_tokens
+
+        current_tokens = count_tokens(context)
+        if current_tokens <= budget_tokens:
+            return context, []
+
+        layers_trimmed: list[str] = []
+
+        # Split by layer markers (L3: Search results, L2: OnDemand, L1: Summary)
+        # The context is assembled as "\n".join(context_parts) in get_context
+        # We look for the layer labels that were added in layers_used
+        l3_marker = "L3:Search("
+        l2_marker = "L2:OnDemand("
+        l1_marker = "L1:Summary"
+
+        # Split context into sections by layer markers
+        sections: list[tuple[str, str]] = []  # (layer_name, content)
+        remaining = context
+
+        # Find L3 section
+        if l3_marker in remaining:
+            idx = remaining.index(l3_marker)
+            # Find the start of the L3 content (after the marker line)
+            l3_start = remaining.find("\n", idx)
+            if l3_start == -1:
+                l3_start = idx
+            else:
+                l3_start += 1
+            sections.append(("L3", remaining[l3_start:]))
+            remaining = remaining[:idx]
+
+        # Find L2 section
+        if l2_marker in remaining:
+            idx = remaining.index(l2_marker)
+            l2_start = remaining.find("\n", idx)
+            if l2_start == -1:
+                l2_start = idx
+            else:
+                l2_start += 1
+            sections.append(("L2", remaining[l2_start:]))
+            remaining = remaining[:idx]
+
+        # Find L1 section
+        if l1_marker in remaining:
+            idx = remaining.index(l1_marker)
+            l1_start = remaining.find("\n", idx)
+            if l1_start == -1:
+                l1_start = idx
+            else:
+                l1_start += 1
+            sections.append(("L1", remaining[l1_start:]))
+            remaining = remaining[:idx]
+
+        # Priority order: L3 first (trim search results), then L2, then L1
+        priority_order = ["L3", "L2", "L1"]
+
+        for layer in priority_order:
+            if current_tokens <= budget_tokens:
+                break
+            for i, (name, content) in enumerate(sections):
+                if name == layer and content.strip():
+                    # Remove this layer
+                    sections[i] = (name, "")
+                    layers_trimmed.append(layer)
+                    # Reassemble
+                    context = "".join(content for _, content in sections)
+                    current_tokens = count_tokens(context)
+                    break
+
+        # If still over budget, truncate from the end (L3 search results)
+        if current_tokens > budget_tokens:
+            # Binary search for the truncation point
+            low, high = 0, len(context)
+            while low < high:
+                mid = (low + high + 1) // 2
+                if count_tokens(context[:mid]) <= budget_tokens:
+                    low = mid
+                else:
+                    high = mid - 1
+            context = context[:low]
+            if "L3" not in layers_trimmed:
+                layers_trimmed.append("L3")
+
+        return context, layers_trimmed

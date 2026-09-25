@@ -2,6 +2,7 @@ import Hero from '@/components/sections/Hero';
 import HowItWorks from '@/components/sections/HowItWorks';
 import Benchmarks from '@/components/sections/Benchmarks';
 import ProveIt from '@/components/sections/ProveIt';
+import Proof from '@/components/sections/Proof';
 import BusinessCase from '@/components/sections/BusinessCase';
 import Features from '@/components/sections/Features';
 import Assessment from '@/components/sections/Assessment';
@@ -19,6 +20,7 @@ export default function Page() {
                 <HowItWorks />
                 <Benchmarks />
                 <ProveIt />
+                <Proof />
                 <BusinessCase />
                 <Features />
                 <Assessment />

@@ -89,7 +89,7 @@ def run_demo_report(
     """Run the demo queries against ``fixture_dir`` and print the report.
 
     Returns the process exit code (0 on success). The fixture must
-    already have a ``graphify-out/graph.json`` and (after build) a
+    already have a ``.neuralmind/graph.json`` and (after build) a
     ``neuralmind_db`` populated by NeuralMind.
     """
     from neuralmind import NeuralMind

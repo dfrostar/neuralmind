@@ -14,8 +14,8 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // The site's own rule is that a CI gate and a per-repo mean are not the same
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
-    { label: 'Gold-file recall', value: '93.75%', evidence: 'mean, 79–100% per repo', figure: true },
-    { label: 'vs. pasting files', value: '45–257×', evidence: 'fewer tokens', figure: true },
+    { label: 'Gold-file recall', value: '93.6%', evidence: 'mean, 79–100% per repo', figure: true },
+    { label: 'vs. pasting files', value: '46–259×', evidence: 'fewer tokens', figure: true },
     { label: 'Pre-registered queries', value: '40', evidence: 'four public repos', figure: true },
     { label: 'Free tier', value: 'Auto-provisioned', evidence: 'no signup', figure: false },
 ];
@@ -75,8 +75,8 @@ export default function Hero() {
 
                         <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mb-9">
                             Persistent neural memory for AI agents. Your agent opens the right file
-                            first — <span className="text-slate-100 font-medium">93.75% gold-file recall across 40
-                            pre-registered queries on four public repos</span>, at 45–257× fewer tokens than
+                            first — <span className="text-slate-100 font-medium">93.6% gold-file recall across 40
+                            pre-registered queries on four public repos</span>, at 46–259× fewer tokens than
                             pasting those files in. Local-first, no telemetry.
                         </p>
 

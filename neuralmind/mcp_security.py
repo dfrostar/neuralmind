@@ -31,6 +31,11 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_synapse_decay",
         "neuralmind_export_synapse_memory",
         "neuralmind_feedback",
+        # Decision memory (v1.0) — read + write for builders
+        "neuralmind_query_decisions",
+        "neuralmind_audit_decisions",
+        "neuralmind_record_decision",
+        "neuralmind_invalidate_decision",
     },
     "reader": {
         "neuralmind_wakeup",
@@ -47,6 +52,9 @@ DEFAULT_ROLE_POLICY: dict[str, set[str] | str] = {
         "neuralmind_synapse_decay",
         "neuralmind_export_synapse_memory",
         "neuralmind_feedback",
+        # Decision memory (v1.0) — read-only for readers
+        "neuralmind_query_decisions",
+        "neuralmind_audit_decisions",
     },
 }
 

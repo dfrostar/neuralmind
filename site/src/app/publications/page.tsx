@@ -85,10 +85,28 @@ const publications = [
     },
 ];
 
+const itemListJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'NeuralMind Research & Publications',
+    description: 'Research reports and defensive publications from the NeuralMind project.',
+    numberOfItems: publications.length,
+    itemListElement: publications.map((pub, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        url: `https://neuralmind.uk/publications/${pub.slug}/`,
+        name: pub.title,
+    })),
+};
+
 export default function PublicationsIndex() {
     return (
         <>
             <Navbar />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+            />
             <main className="max-w-4xl mx-auto px-4 md:px-6 py-16">
                 <header className="mb-12 pb-8 border-b border-carbon-border">
                     <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-4">

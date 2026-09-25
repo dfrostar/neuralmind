@@ -18,6 +18,7 @@ This file is intentionally kept slim. All compression logic lives in
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -30,13 +31,24 @@ from .compressors import (
     offload_if_large,
 )
 
+logger = logging.getLogger(__name__)
+
+
 # Sentinels delimit the neuralmind block so we can upgrade/remove without
 # clobbering other tools' hook contributions.
 BLOCK_KEY = "__neuralmind_managed__"
 # v2 (v0.38.0): add Edit/Write matchers for the reuse-vs-rewrite feedback
 # loop. Bumping the version makes `install-hooks` re-write the managed block
 # on upgrade so existing installs pick up the new matchers.
-HOOK_VERSION = "2"
+# v3 (v4.2.0): add PreToolUse stale-decision guard — before an agent edits
+# a file, surface any STALE/INVALIDATED decisions governing that file so
+# stale memory cannot silently steer edits. Opt-out via
+# NEURALMIND_STALE_GUARD=0.
+# v4 (v4.3.0): add Stop + SessionEnd hooks — turn-boundary summary cadence
+# tick and session-boundary digest from the durable event log, closing the
+# gap where final-turn activity never gets summarized. Opt-out via
+# NEURALMIND_SESSION_END=0.
+HOOK_VERSION = "4"
 
 
 def _hook_block() -> dict:
@@ -46,9 +58,28 @@ def _hook_block() -> dict:
     SessionStart: warm the synapse store and run a decay tick.
     UserPromptSubmit: inject spreading-activation neighbors as context.
     PreCompact: normalize hubs before context shrinks.
+    Stop: tick the session-summary cadence from the event log.
+    SessionEnd: write a session-boundary digest from the event log.
     """
     return {
         BLOCK_KEY: HOOK_VERSION,
+        # PreToolUse: stale-decision guard. Before an agent edits a file,
+        # check the decision store for STALE/INVALIDATED decisions whose
+        # files_affected covers that file and surface them as context.
+        # This is the runtime counterpart of the eval harness's
+        # stale_influence_rate metric: instead of measuring how often stale
+        # memory steers edits, prevent it. Fail-open — no store, no output.
+        "PreToolUse": [
+            {
+                "matcher": "Edit|Write",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "neuralmind _hook stale-guard",
+                    }
+                ],
+            },
+        ],
         # PostToolUse matchers below. Compatibility note for
         # Claude Code v2.1.117+ (April 2026): on *native* macOS/Linux
         # builds the standalone Grep + Glob tools were folded into
@@ -100,6 +131,22 @@ def _hook_block() -> dict:
                 "hooks": [{"type": "command", "command": "neuralmind _hook pre-compact"}],
             },
         ],
+        # Stop: end of an agent turn — tick the summary cadence so
+        # final-turn activity is captured even mid-cadence. Side-effect
+        # only, fail-open. Opt-out: NEURALMIND_SESSION_END=0.
+        "Stop": [
+            {
+                "hooks": [{"type": "command", "command": "neuralmind _hook stop"}],
+            },
+        ],
+        # SessionEnd: session close — force a digest from the durable
+        # event log. Side-effect only, fail-open. Opt-out:
+        # NEURALMIND_SESSION_END=0.
+        "SessionEnd": [
+            {
+                "hooks": [{"type": "command", "command": "neuralmind _hook session-end"}],
+            },
+        ],
     }
 
 
@@ -149,6 +196,7 @@ def install_hooks(
         "SessionStart",
         "UserPromptSubmit",
         "PreCompact",
+        "SessionEnd",
     ):
         if event not in hooks:
             continue
@@ -172,7 +220,15 @@ def install_hooks(
 
     # Install: append our block
     block = _hook_block()
-    for event in ("PostToolUse", "SessionStart", "UserPromptSubmit", "PreCompact"):
+    for event in (
+        "PostToolUse",
+        "PreToolUse",
+        "SessionStart",
+        "UserPromptSubmit",
+        "PreCompact",
+        "Stop",
+        "SessionEnd",
+    ):
         if event in block:
             hooks.setdefault(event, []).extend(block[event])
 
@@ -290,6 +346,57 @@ def run_hook(action: str) -> int:
         compressed, _ = offload_if_large(content)
         if compressed != content:
             _emit(compressed)
+        return 0
+
+    if action == "stale-guard":
+        # PreToolUse on Edit/Write: before the edit lands, surface any
+        # STALE/INVALIDATED decisions governing the target file so the
+        # agent knows its remembered rationale may no longer hold.
+        # Pure context injection — we never deny the edit (fail-open).
+        # Opt-out via NEURALMIND_STALE_GUARD=0.
+        if os.environ.get("NEURALMIND_STALE_GUARD") == "0":
+            return 0
+        file_path = tool_input.get("file_path") or tool_input.get("path") or ""
+        if not file_path:
+            return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        context = _stale_decision_context(cwd, file_path)
+        if context:
+            _emit_for_event("PreToolUse", context)
+        return 0
+
+    if action == "session-end":
+        # SessionEnd: write a session-boundary digest from the durable
+        # event log (.neuralmind/events.jsonl). Hooks run one-per-process,
+        # so in-memory trackers are empty here — the event log is the
+        # durable record. (Decision invalidation signaling is not part of
+        # v4.3; the staleness-scan command covers that audit today.)
+        # Opt-out via NEURALMIND_SESSION_END=0. Fail-open on every error.
+        if os.environ.get("NEURALMIND_SESSION_END") == "0":
+            return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        try:
+            _write_session_end_digest(cwd)
+        except Exception:
+            logger.exception(
+                "[hooks] session-end digest failed — no summary written "
+                "(periodic cadence summaries, if any, are unaffected)"
+            )
+        return 0
+
+    if action == "stop":
+        # Stop (end of an agent turn): tick the summary cadence from the
+        # durable event log so a turn that ends mid-cadence still counts
+        # its activity. Pure side effect, fail-open, no output.
+        # Opt-out via NEURALMIND_SESSION_END=0 (shared with session-end —
+        # both are session-boundary behaviors).
+        if os.environ.get("NEURALMIND_SESSION_END") == "0":
+            return 0
+        cwd = payload.get("cwd") or os.getcwd()
+        try:
+            _tick_stop_summary(cwd)
+        except Exception:
+            logger.exception("[hooks] stop cadence tick failed — no summary written")
         return 0
 
     if action == "edit-activity":
@@ -550,6 +657,191 @@ def _record_tool_transition(project_path: str, file_path: str) -> None:
         store.set_meta("_last_touched_file", file_path)
     except Exception:
         return
+
+
+def _stale_decision_context(project_path: str, file_path: str) -> str:
+    """Build PreToolUse context listing stale decisions governing a file.
+
+    Returns an empty string when there is nothing to report (no store, no
+    stale decisions touching this file) so the caller emits nothing and the
+    edit proceeds normally. Fail-open on every error path.
+    """
+    try:
+        from .memory.store import DecisionStore
+
+        store = DecisionStore(project_path)
+        # Normalize the hook's file path the same way DecisionStore does (backslashes to forward slashes)
+        norm_file_path = file_path.replace("\\", "/")
+        # Normalize the project path to forward slashes for consistent comparison
+        norm_project_path = str(Path(project_path)).replace("\\", "/")
+        # Try to make it relative to the project root first
+        try:
+            rel = str(Path(norm_file_path).relative_to(Path(norm_project_path)))
+        except (ValueError, OSError):
+            # If not under project root, use the normalized path as-is
+            rel = norm_file_path
+        # Normalize rel to forward slashes for comparison with stored files_affected
+        rel = rel.replace("\\", "/")
+
+        records = [
+            r for r in store.find_by_files([rel], include_invalidated=True) if r.status != "ACTIVE"
+        ]
+        # If no records found with relative path, try the normalized absolute path
+        if not records and rel != norm_file_path:
+            records = [
+                r
+                for r in store.find_by_files([norm_file_path], include_invalidated=True)
+                if r.status != "ACTIVE"
+            ]
+        if not records:
+            return ""
+
+        lines = [
+            (
+                f"[neuralmind stale-guard] {len(records)} decision(s) governing "
+                f"{rel} are no longer ACTIVE. Their rationale may not hold — "
+                "verify before relying on them:"
+            )
+        ]
+        for r in records[:5]:
+            lines.append(
+                f"- [{r.status}] {r.title} (confidence {r.confidence:.2f}, "
+                f"updated {r.updated_at.date().isoformat()}): {r.rationale[:160]}"
+            )
+        if len(records) > 5:
+            lines.append(f"- …and {len(records) - 5} more (neuralmind decisions audit)")
+        return "\n".join(lines)
+    except Exception:
+        # Fail-open: a guard failure must never block an edit.
+        return ""
+
+
+_SESSION_END_MAX_EVENTS = 500
+_SESSION_END_LOOKBACK_SECONDS = 60 * 60 * 12  # half a working day
+# The cap must not truncate the time window: read a wider tail (3x) so the
+# 12h filter sees enough history even when the log is long, then cap AFTER
+# filtering. A >1500-event half-day still loses its oldest events — an
+# accepted, documented limit, not a silent one.
+_SESSION_END_READ_TAIL = _SESSION_END_MAX_EVENTS * 3
+
+
+def _recent_session_events(project_path: str) -> list[dict]:
+    """Read recent events from the durable event log.
+
+    Returns events whose ``ts`` falls within ``_SESSION_END_LOOKBACK_SECONDS``
+    of the newest event, capped at ``_SESSION_END_MAX_EVENTS`` (newest kept).
+    The log is the durable cross-process record — hook processes are
+    short-lived, so in-memory state is always empty at session boundaries.
+    Fail-open: any read error returns [].
+    """
+    log_path = Path(project_path) / ".neuralmind" / "events.jsonl"
+    if not log_path.is_file():
+        return []
+    try:
+        lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+    events: list[dict] = []
+    for line in lines[-_SESSION_END_READ_TAIL:]:
+        try:
+            events.append(json.loads(line))
+        except (json.JSONDecodeError, TypeError):
+            continue
+    if not events:
+        return []
+    newest_ts = max(e.get("ts", 0) for e in events)
+    floor = newest_ts - _SESSION_END_LOOKBACK_SECONDS
+    in_window = [e for e in events if e.get("ts", 0) >= floor]
+    return in_window[-_SESSION_END_MAX_EVENTS:]
+
+
+def _files_from_events(events: list[dict]) -> list[str]:
+    """Collect the distinct file paths touched by a batch of events."""
+    files: list[str] = []
+    for e in events:
+        for key in ("paths", "files", "path"):
+            val = e.get(key)
+            if isinstance(val, str) and val and val not in files:
+                files.append(val)
+            elif isinstance(val, list):
+                for p in val:
+                    if isinstance(p, str) and p and p not in files:
+                        files.append(p)
+    return files
+
+
+def _write_session_end_digest(project_path: str) -> None:
+    """SessionEnd: aggregate the durable event log into a final digest.
+
+    Writes a summary via SessionTracker (which handles dedup + pruning).
+    Note: v4.3 does NOT flag decisions whose evidence files changed — the
+    summary records files touched, but decision invalidation signaling is
+    future work (the InvalidationEngine's staleness-scan covers the audit
+    side today). Called only from the ``session-end`` hook; every failure
+    is caught by the caller (fail-open).
+    """
+    from .session_summaries import SessionTracker
+
+    events = _recent_session_events(project_path)
+    files = _files_from_events(events)
+    if not events:
+        return  # nothing happened; no digest
+
+    tracker = SessionTracker(project_path)
+    tracker.files_touched = files
+    tracker.tool_call_count = len(events)
+    summary = tracker.generate_summary(
+        title=f"Session end — {len(events)} events, {len(files)} files"
+    )
+    summary.notes = (
+        "Session-boundary digest generated from the durable event log "
+        "(.neuralmind/events.jsonl) by the SessionEnd hook."
+    )
+    tracker.write_summary(summary)
+    logger.info(
+        "[hooks] session-end digest: %d events, %d files -> %s",
+        len(events),
+        len(files),
+        tracker.session_id,
+    )
+
+
+def _tick_stop_summary(project_path: str) -> None:
+    """Stop: run the periodic-summary cadence check from the event log.
+
+    Counts events since the last written summary and, when they exceed the
+    configured ``every_n_turns`` cadence, writes one. This closes the gap
+    where a session ends mid-cadence and the final turns never get
+    summarized. Called only from the ``stop`` hook; fail-open.
+    """
+    from .session_summaries import SessionTracker
+
+    summaries_dir = Path(project_path) / ".neuralmind" / "summaries"
+    if not summaries_dir.is_dir():
+        # Session summaries were never enabled for this project; the Stop
+        # hook must not create the directory on its own (config belongs to
+        # the user's SessionSummaryConfig).
+        return
+    events = _recent_session_events(project_path)
+    if not events:
+        return
+
+    # Events since the newest existing summary.
+    newest_summary_ts = 0.0
+    for p in summaries_dir.glob("*.md"):
+        try:
+            newest_summary_ts = max(newest_summary_ts, p.stat().st_mtime)
+        except OSError:
+            continue
+    fresh = [e for e in events if e.get("ts", 0) > newest_summary_ts]
+
+    tracker = SessionTracker(project_path)
+    if len(fresh) < tracker.config.every_n_turns:
+        return  # cadence not reached; SessionEnd will still write the digest
+    tracker.files_touched = _files_from_events(fresh)
+    tracker.tool_call_count = len(fresh)
+    summary = tracker.generate_summary(title=f"Turn boundary — {len(fresh)} events")
+    tracker.write_summary(summary)
 
 
 def _emit_for_event(event_name: str, content: str) -> None:

@@ -204,7 +204,7 @@ class BM25Index:
         if self._N == 0 or os.environ.get("NEURALMIND_BM25") == "0":
             return []
 
-        q_tokens = self._tokenize(query)
+        q_tokens = _tokenize_prose(query)
         if not q_tokens:
             return []
 

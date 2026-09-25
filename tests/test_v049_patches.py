@@ -265,7 +265,7 @@ class TestEmptySourceFile:
         write_graph(proj)
 
         # Verify graph.json exists
-        graph_path = proj / "graphify-out" / "graph.json"
+        graph_path = proj / ".neuralmind" / "graph.json"
         assert graph_path.exists()
 
         # Manually inject a node with empty source_file into graph.json

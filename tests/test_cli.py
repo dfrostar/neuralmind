@@ -1559,7 +1559,7 @@ class TestCLIDemo:
         from importlib import resources
 
         bundle = resources.files("neuralmind") / "demo_data" / "sample_project"
-        assert (bundle / "graphify-out" / "graph.json").is_file()
+        assert (bundle / ".neuralmind" / "graph.json").is_file()
         assert (bundle / "auth" / "handlers.py").is_file()
         assert (bundle / "billing" / "invoices.py").is_file()
 

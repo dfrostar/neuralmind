@@ -28,17 +28,20 @@ import os
 import threading
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from neuralmind.state_dir import ensure_parent_dir
 
 from . import ir as ir_mod
 from . import namespaces as ns_mod
+from . import paths as paths_mod
 from . import querying, synapse_feedback
 from . import recent_queries as recent_queries_log
 from .audit import get_audit_trail
 from .backend_manager import BackendManager
-from .context_selector import ContextResult, ContextSelector
+from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
+from .paths import graph_json_path
 from .query_handler import QueryHandler
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
@@ -85,9 +88,9 @@ def validate_project(project_path: str | Path, *, write: bool = False) -> dict:
     project_path = Path(project_path)
     # Resolve + contain artifact paths: validate is reachable from the daemon
     # with a request-supplied project, so the root is untrusted input.
-    graph_path = ir_mod.project_artifact(project_path, "graphify-out", "graph.json")
-    ir_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_FILENAME)
-    ir_meta_path = ir_mod.project_artifact(project_path, ".neuralmind", IR_META_FILENAME)
+    graph_path = paths_mod.graph_json_path(project_path)
+    ir_path = paths_mod.ir_path(project_path)
+    ir_meta_path = paths_mod.ir_meta_path(project_path)
 
     try:
         if ir_path.exists() and not write:
@@ -162,7 +165,7 @@ class NeuralMind:
         Initialize NeuralMind for a project.
 
         Args:
-            project_path: Path to project root (where graphify-out/ lives)
+            project_path: Path to project root (where .neuralmind/ lives)
             db_path: Optional custom path for ChromaDB storage
             enable_synapses: If True, run the associative synapse layer that
                 learns co-activation patterns across queries and tool calls.
@@ -171,7 +174,7 @@ class NeuralMind:
                 ``memory_namespace`` / the current git branch / ``personal``.
             scope: Index scope — 'all' (default), 'code', 'content', or 'docs'.
         """
-        self.project_path = Path(project_path)
+        self.project_path = Path(project_path).resolve()
         self.db_path = db_path
         self.backend_manager = BackendManager(
             project_path=str(self.project_path), db_path=db_path, backend=backend_type, scope=scope
@@ -206,6 +209,9 @@ class NeuralMind:
         # from the loaded graph at build() time; None until then or when the
         # NEURALMIND_STRUCTURAL kill switch is set.
         self._structural_index: StructuralIndex | None = None
+
+        # Medical retriever for prose projects (lazy: built on first prose query)
+        self._medical_retriever: Any | None = None
 
     @property
     def backend_name(self) -> str:
@@ -553,7 +559,8 @@ class NeuralMind:
         # before creating the selector so it can use the right strategy.
         graph = getattr(self.embedder, "graph", None)
         if graph:
-            self.project_kind = graph.get("project_kind", "code")
+            # The graph structure has a top-level "graph" key that contains the project_kind
+            self.project_kind = graph.get("graph", {}).get("project_kind", "code")
         else:
             self.project_kind = "code"
 
@@ -1067,8 +1074,14 @@ class NeuralMind:
 
         if self.backend_manager.backend_name != "turbovec":
             return
-        # A prior chroma index lives at the GraphEmbedder default db path.
-        legacy_chroma = self.project_path / "graphify-out" / "neuralmind_db"
+        # A prior chroma index may live at either the canonical path or the
+        # legacy graphify-out/ path (pre-consolidation projects). Detection
+        # checks both; only the canonical path is used for new writes.
+        from .paths import canonical_artifact, legacy_artifact
+
+        legacy_chroma = canonical_artifact(self.project_path, "neuralmind_db")
+        if not legacy_chroma.exists():
+            legacy_chroma = legacy_artifact(self.project_path, "neuralmind_db")
         if not legacy_chroma.exists():
             return  # fresh project, not a migration
         try:
@@ -1097,7 +1110,7 @@ class NeuralMind:
         )
 
     def _maybe_generate_builtin_graph(self, force: bool = False) -> None:
-        """Generate ``graphify-out/graph.json`` with the built-in tree-sitter
+        """Generate ``.neuralmind/graph.json`` with the built-in tree-sitter
         backend when there's no graphify output to consume.
 
         A graphify-produced graph always wins: we only generate when none
@@ -1112,7 +1125,7 @@ class NeuralMind:
         """
         import sys
 
-        graph_path = self.project_path / "graphify-out" / "graph.json"
+        graph_path = graph_json_path(self.project_path)
         if graph_path.exists():
             # Check if the existing graph was generated by us (built-in backend)
             # vs. a real graphify build. Never clobber a real graphify build.
@@ -1156,7 +1169,7 @@ class NeuralMind:
                 f"{pstats.documents} document(s))"
             )
 
-        out_dir = self.project_path / "graphify-out"
+        out_dir = paths_mod.canonical_artifact(self.project_path)
         out_dir.mkdir(parents=True, exist_ok=True)
         graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
         print(
@@ -1176,7 +1189,7 @@ class NeuralMind:
         Only the built-in tree-sitter graph is updated in place; a graphify
         graph is left to graphify. Returns a stats dict.
         """
-        graph_path = self.project_path / "graphify-out" / "graph.json"
+        graph_path = graph_json_path(self.project_path)
         if not graph_path.exists():
             return {"success": False, "error": "no graph to update; run build first"}
         try:
@@ -1264,7 +1277,7 @@ class NeuralMind:
             result = self.build()
             if self.selector is None:
                 ir_path = self.project_path / ".neuralmind" / "index_ir.json"
-                graph_path = self.project_path / "graphify-out" / "graph.json"
+                graph_path = graph_json_path(self.project_path)
                 if not ir_path.exists() and not graph_path.exists():
                     raise GraphNotBuiltError(
                         f"No code graph found at {ir_path} or {graph_path}.\n"
@@ -1310,6 +1323,7 @@ class NeuralMind:
         trace: bool = False,
         trace_verbose: bool = False,
         query_type: str = "auto",
+        context_budget: int | None = None,
     ) -> ContextResult:
         """
         Get optimized context for answering a question.
@@ -1324,14 +1338,27 @@ class NeuralMind:
             trace_verbose: If True (with trace), keep full candidate/hit lists.
             query_type: Filter results — 'code' restricts to source code, 'docs'
                 to documentation, 'auto' detects intent (default).
+            context_budget: Optional token budget. If provided, the assembled
+                context is trimmed to fit within this budget by removing
+                lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
 
         Returns:
             ContextResult with relevant context and token budget
         """
         self._ensure_built()
-        result = self.selector.get_query_context(
-            question, trace=trace, trace_verbose=trace_verbose, query_type=query_type
-        )
+
+        # Route prose/mixed projects through MedicalRetriever.
+        # ContextSelector remains the code path (unchanged).
+        if self.project_kind in ("prose", "mixed"):
+            result = self._query_prose(question)
+        else:
+            result = self.selector.get_query_context(
+                question,
+                trace=trace,
+                trace_verbose=trace_verbose,
+                query_type=query_type,
+                context_budget=context_budget,
+            )
         if self.hybrid_context:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:
@@ -1393,6 +1420,72 @@ class NeuralMind:
 
     def _build_hybrid_highlights(self, question: str, cached_hits: list[dict] | None = None) -> str:
         return querying.build_hybrid_highlights(self, question, cached_hits)
+
+    def _get_medical_retriever(self):
+        """Lazy-initialize MedicalRetriever for prose projects."""
+        if self._medical_retriever is None:
+            from neuralmind.medical_retriever import MedicalRetriever
+
+            chapters_dir = self.project_path / "chapters"
+            self._medical_retriever = MedicalRetriever(
+                project_path=str(self.project_path),
+                chapter_dir=str(chapters_dir),
+            )
+            self._medical_retriever.build()
+        return self._medical_retriever
+
+    def _query_prose(self, question: str) -> ContextResult:
+        """Query using MedicalRetriever for prose/mixed projects.
+
+        Formats results into ContextResult for API compatibility with
+        the code path. Includes confidence flags in the output context.
+        Also reinforces the synapse layer with the retrieved chapters so
+        cross-session learning applies to prose content too.
+        """
+        mr = self._get_medical_retriever()
+        result = mr.query(question, top_k=5)
+
+        # Reinforce synapses with retrieved chapters (prose path)
+        if self.synapse_client.has_store() and result.chapters:
+            try:
+                chapter_ids = [
+                    ch.get("chapter_id", ch.get("source_file", ""))
+                    for ch in result.chapters
+                    if ch.get("chapter_id") or ch.get("source_file")
+                ]
+                if chapter_ids and self.dynamics is not None:
+                    self.dynamics.reinforce_prose(
+                        chapter_ids=chapter_ids,
+                        query_terms=[question],
+                    )
+            except Exception:
+                logger.debug("prose synapse reinforcement failed", exc_info=True)
+
+        # Build TokenBudget from MedicalRetriever metrics
+        budget = TokenBudget(
+            l0_identity=0,
+            l1_summary=0,
+            l2_ondemand=0,
+            l3_search=len(result.chapters) * 200,  # ~200 tokens per chapter
+        )
+
+        return ContextResult(
+            context=result.context,
+            budget=budget,
+            layers_used=["medical_retriever"],
+            search_hits=len(result.chapters),
+            reduction_ratio=10.0,  # estimated; prose docs are small
+            top_search_hits=[
+                {
+                    "source_file": ch["source_file"],
+                    "chapter_name": ch.get("chapter_name", ""),
+                    "score": ch["score"],
+                    "confidence": ch.get("confidence_label", "HIGH"),
+                }
+                for ch in result.chapters
+            ],
+            trace=None,
+        )
 
     def skeleton(self, file_path: str) -> str:
         """Return a compact skeleton view of a file using graph data.

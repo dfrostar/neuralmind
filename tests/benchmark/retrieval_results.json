@@ -1,55 +1,55 @@
 {
   "version": 1,
-  "timestamp": 1785985053.6166925,
+  "timestamp": 1790325041.4684563,
   "config": {
     "fixture": "/home/dtfrost5/neuralmind/tests/fixtures/sample_project",
     "query_count": 19,
     "judge": "ragas-stdlib-faithfulness"
   },
   "aggregates": {
-    "recall_at_1": 0.3316,
-    "recall_at_3": 0.564,
-    "recall_at_5": 0.564,
-    "precision_at_5": 0.3684,
-    "mrr": 1.0,
-    "ndcg_at_5": 0.8087,
+    "recall_at_1": 0.2579,
+    "recall_at_3": 0.5035,
+    "recall_at_5": 0.5649,
+    "precision_at_5": 0.3579,
+    "mrr": 0.9079,
+    "ndcg_at_5": 0.725,
     "hit_rate": 1.0,
-    "faithfulness": 0.0263,
-    "fact_recall": 0.0263,
-    "contradiction": 0.0
+    "faithfulness": 0.0378,
+    "fact_recall": 0.0395,
+    "contradiction": 0.0066
   },
   "by_shape": {
     "cross-file": {
-      "recall_at_1": 0.2433,
-      "recall_at_3": 0.4817,
-      "recall_at_5": 0.4817,
-      "precision_at_5": 0.4,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.7672,
+      "recall_at_1": 0.2233,
+      "recall_at_3": 0.4533,
+      "recall_at_5": 0.4533,
+      "precision_at_5": 0.38,
+      "mrr": 0.95,
+      "ndcg_at_5": 0.676,
       "hit_rate": 1.0,
-      "faithfulness": 0.0,
-      "fact_recall": 0.0,
+      "faithfulness": 0.025,
+      "fact_recall": 0.025,
       "contradiction": 0.0
     },
     "focused": {
-      "recall_at_1": 0.3583,
-      "recall_at_3": 0.6125,
-      "recall_at_5": 0.6125,
+      "recall_at_1": 0.3333,
+      "recall_at_3": 0.6292,
+      "recall_at_5": 0.65,
       "precision_at_5": 0.35,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.8366,
+      "mrr": 0.9375,
+      "ndcg_at_5": 0.823,
       "hit_rate": 1.0,
-      "faithfulness": 0.0312,
+      "faithfulness": 0.0273,
       "fact_recall": 0.0312,
-      "contradiction": 0.0
+      "contradiction": 0.0156
     },
     "identity": {
-      "recall_at_1": 1.0,
-      "recall_at_3": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.0,
       "recall_at_5": 1.0,
       "precision_at_5": 0.2,
-      "mrr": 1.0,
-      "ndcg_at_5": 1.0,
+      "mrr": 0.25,
+      "ndcg_at_5": 0.4307,
       "hit_rate": 1.0,
       "faithfulness": 0.25,
       "fact_recall": 0.25,
@@ -61,19 +61,20 @@
       "id": "auth-flow",
       "question": "How does authentication work in this codebase?",
       "shape": "cross-file",
-      "recall_at_1": 0.2,
+      "recall_at_1": 0.0,
       "recall_at_3": 0.4,
       "recall_at_5": 0.4,
       "precision_at_5": 0.4,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.7821995632389057,
+      "mrr": 0.5,
+      "ndcg_at_5": 0.36948577470112404,
       "hit_rate": 1.0,
-      "faithfulness": 0.0,
-      "fact_recall": 0.0,
+      "faithfulness": 0.25,
+      "fact_recall": 0.25,
       "contradiction": 0.0,
       "ranked_modules": [
-        "auth/handlers.py",
-        "auth/jwt_utils.py"
+        "README.md",
+        "api/routes.py",
+        "auth/handlers.py"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -88,18 +89,20 @@
       "question": "What are the main API endpoints?",
       "shape": "focused",
       "recall_at_1": 0.16666666666666666,
-      "recall_at_3": 0.3333333333333333,
+      "recall_at_3": 0.16666666666666666,
       "recall_at_5": 0.3333333333333333,
       "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.7473743017307073,
+      "ndcg_at_5": 0.8121225182029949,
       "hit_rate": 1.0,
-      "faithfulness": 0.25,
-      "fact_recall": 0.25,
+      "faithfulness": 0.0,
+      "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
         "api/routes.py",
-        "users/crud.py"
+        "db/connection.py",
+        "README.md",
+        "auth/handlers.py"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -115,19 +118,19 @@
       "question": "Explain the billing flow from a user perspective.",
       "shape": "cross-file",
       "recall_at_1": 0.2,
-      "recall_at_3": 0.6,
-      "recall_at_5": 0.6,
-      "precision_at_5": 0.6,
+      "recall_at_3": 0.4,
+      "recall_at_5": 0.4,
+      "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.6648394297954316,
+      "ndcg_at_5": 0.39438571648465914,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
-        "billing/stripe_client.py",
         "api/routes.py",
-        "users/crud.py"
+        "billing/stripe_client.py",
+        "README.md"
       ],
       "expected_modules": [
         "api/routes.py",
@@ -142,17 +145,19 @@
       "question": "How are users stored in the database?",
       "shape": "cross-file",
       "recall_at_1": 0.16666666666666666,
-      "recall_at_3": 0.16666666666666666,
-      "recall_at_5": 0.16666666666666666,
-      "precision_at_5": 0.2,
+      "recall_at_3": 0.3333333333333333,
+      "recall_at_5": 0.3333333333333333,
+      "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.5497078144203298,
+      "ndcg_at_5": 0.5889726583074962,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
-        "users/crud.py"
+        "users/crud.py",
+        "README.md",
+        "api/routes.py"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -191,18 +196,19 @@
       "question": "What happens when a Stripe webhook fires?",
       "shape": "focused",
       "recall_at_1": 0.3333333333333333,
-      "recall_at_3": 0.3333333333333333,
-      "recall_at_5": 0.3333333333333333,
-      "precision_at_5": 0.2,
+      "recall_at_3": 0.6666666666666666,
+      "recall_at_5": 0.6666666666666666,
+      "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.8609101556836468,
+      "ndcg_at_5": 0.9224037382324788,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
         "billing/stripe_client.py",
-        "users/crud.py"
+        "README.md",
+        "api/routes.py"
       ],
       "expected_modules": [
         "api/routes.py",
@@ -242,15 +248,15 @@
       "recall_at_5": 0.6666666666666666,
       "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.6661609974703122,
+      "ndcg_at_5": 0.9224037382324788,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
-        "api/routes.py",
         "billing/stripe_client.py",
-        "users/crud.py"
+        "README.md",
+        "api/routes.py"
       ],
       "expected_modules": [
         "api/routes.py",
@@ -262,20 +268,21 @@
       "id": "db-choice",
       "question": "What database does this project use?",
       "shape": "identity",
-      "recall_at_1": 1.0,
-      "recall_at_3": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.0,
       "recall_at_5": 1.0,
       "precision_at_5": 0.2,
-      "mrr": 1.0,
-      "ndcg_at_5": 1.0,
+      "mrr": 0.25,
+      "ndcg_at_5": 0.43067655807339306,
       "hit_rate": 1.0,
       "faithfulness": 0.25,
       "fact_recall": 0.25,
       "contradiction": 0.0,
       "ranked_modules": [
-        "db/connection.py",
+        "auth/handlers.py",
         "README.md",
-        "billing/stripe_client.py"
+        "api/routes.py",
+        "db/connection.py"
       ],
       "expected_modules": [
         "db/connection.py"
@@ -284,79 +291,6 @@
     {
       "id": "invoice-send",
       "question": "How are invoices sent to users?",
-      "shape": "cross-file",
-      "recall_at_1": 0.25,
-      "recall_at_3": 0.75,
-      "recall_at_5": 0.75,
-      "precision_at_5": 0.6,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.9496967575479826,
-      "hit_rate": 1.0,
-      "faithfulness": 0.0,
-      "fact_recall": 0.0,
-      "contradiction": 0.0,
-      "ranked_modules": [
-        "billing/invoices.py",
-        "api/routes.py",
-        "users/crud.py"
-      ],
-      "expected_modules": [
-        "api/routes.py",
-        "billing/invoices.py",
-        "users/crud.py",
-        "db/connection.py"
-      ]
-    },
-    {
-      "id": "debug-login-silent",
-      "question": "A user login is failing without any error message \u2014 which file contains credential validation?",
-      "shape": "focused",
-      "recall_at_1": 0.3333333333333333,
-      "recall_at_3": 0.6666666666666666,
-      "recall_at_5": 0.6666666666666666,
-      "precision_at_5": 0.4,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.938506417451168,
-      "hit_rate": 1.0,
-      "faithfulness": 0.0,
-      "fact_recall": 0.0,
-      "contradiction": 0.0,
-      "ranked_modules": [
-        "auth/handlers.py",
-        "auth/jwt_utils.py"
-      ],
-      "expected_modules": [
-        "auth/handlers.py",
-        "auth/jwt_utils.py",
-        "users/crud.py"
-      ]
-    },
-    {
-      "id": "debug-webhook-reject",
-      "question": "Stripe webhooks are being rejected \u2014 where is the signature verified?",
-      "shape": "focused",
-      "recall_at_1": 0.5,
-      "recall_at_3": 0.5,
-      "recall_at_5": 0.5,
-      "precision_at_5": 0.2,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.9173194127129571,
-      "hit_rate": 1.0,
-      "faithfulness": 0.0,
-      "fact_recall": 0.0,
-      "contradiction": 0.0,
-      "ranked_modules": [
-        "billing/stripe_client.py",
-        "users/crud.py"
-      ],
-      "expected_modules": [
-        "api/routes.py",
-        "billing/stripe_client.py"
-      ]
-    },
-    {
-      "id": "debug-invoice-missing",
-      "question": "Invoices are not appearing for a user \u2014 which files handle invoice retrieval?",
       "shape": "cross-file",
       "recall_at_1": 0.25,
       "recall_at_3": 0.5,
@@ -370,7 +304,82 @@
       "contradiction": 0.0,
       "ranked_modules": [
         "billing/invoices.py",
+        "api/routes.py",
+        "README.md"
+      ],
+      "expected_modules": [
+        "api/routes.py",
+        "billing/invoices.py",
+        "users/crud.py",
+        "db/connection.py"
+      ]
+    },
+    {
+      "id": "debug-login-silent",
+      "question": "A user login is failing without any error message \u2014 which file contains credential validation?",
+      "shape": "focused",
+      "recall_at_1": 0.3333333333333333,
+      "recall_at_3": 0.3333333333333333,
+      "recall_at_5": 0.3333333333333333,
+      "precision_at_5": 0.2,
+      "mrr": 1.0,
+      "ndcg_at_5": 0.8609101556836468,
+      "hit_rate": 1.0,
+      "faithfulness": 0.0,
+      "fact_recall": 0.0,
+      "contradiction": 0.0,
+      "ranked_modules": [
+        "auth/handlers.py",
+        "README.md"
+      ],
+      "expected_modules": [
+        "auth/handlers.py",
+        "auth/jwt_utils.py",
         "users/crud.py"
+      ]
+    },
+    {
+      "id": "debug-webhook-reject",
+      "question": "Stripe webhooks are being rejected \u2014 where is the signature verified?",
+      "shape": "focused",
+      "recall_at_1": 0.5,
+      "recall_at_3": 1.0,
+      "recall_at_5": 1.0,
+      "precision_at_5": 0.4,
+      "mrr": 1.0,
+      "ndcg_at_5": 0.9828422279067397,
+      "hit_rate": 1.0,
+      "faithfulness": 0.21875,
+      "fact_recall": 0.25,
+      "contradiction": 0.125,
+      "ranked_modules": [
+        "billing/stripe_client.py",
+        "README.md",
+        "api/routes.py"
+      ],
+      "expected_modules": [
+        "api/routes.py",
+        "billing/stripe_client.py"
+      ]
+    },
+    {
+      "id": "debug-invoice-missing",
+      "question": "Invoices are not appearing for a user \u2014 which files handle invoice retrieval?",
+      "shape": "cross-file",
+      "recall_at_1": 0.25,
+      "recall_at_3": 0.75,
+      "recall_at_5": 0.75,
+      "precision_at_5": 0.6,
+      "mrr": 1.0,
+      "ndcg_at_5": 0.9496967575479826,
+      "hit_rate": 1.0,
+      "faithfulness": 0.0,
+      "fact_recall": 0.0,
+      "contradiction": 0.0,
+      "ranked_modules": [
+        "billing/invoices.py",
+        "db/connection.py",
+        "api/routes.py"
       ],
       "expected_modules": [
         "api/routes.py",
@@ -388,13 +397,14 @@
       "recall_at_5": 1.0,
       "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.7098097413968655,
+      "ndcg_at_5": 0.5897053367440438,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
         "auth/handlers.py",
+        "api/routes.py",
         "auth/jwt_utils.py"
       ],
       "expected_modules": [
@@ -430,19 +440,20 @@
       "id": "refactor-swap-database",
       "question": "I need to replace the database backend \u2014 which file owns the connection pool?",
       "shape": "focused",
-      "recall_at_1": 0.2,
-      "recall_at_3": 0.4,
-      "recall_at_5": 0.4,
-      "precision_at_5": 0.4,
-      "mrr": 1.0,
-      "ndcg_at_5": 0.8527646662062498,
+      "recall_at_1": 0.0,
+      "recall_at_3": 0.2,
+      "recall_at_5": 0.2,
+      "precision_at_5": 0.2,
+      "mrr": 0.5,
+      "ndcg_at_5": 0.4935495839370027,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
+        "api/routes.py",
         "db/connection.py",
-        "billing/stripe_client.py"
+        "README.md"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -457,11 +468,11 @@
       "question": "I want to add multi-factor authentication to the login flow \u2014 which files would I modify?",
       "shape": "cross-file",
       "recall_at_1": 0.25,
-      "recall_at_3": 0.75,
-      "recall_at_5": 0.75,
-      "precision_at_5": 0.6,
+      "recall_at_3": 0.5,
+      "recall_at_5": 0.5,
+      "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.8277047941695621,
+      "ndcg_at_5": 0.7768062610832323,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
@@ -469,7 +480,7 @@
       "ranked_modules": [
         "auth/handlers.py",
         "api/routes.py",
-        "users/crud.py"
+        "README.md"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -494,8 +505,7 @@
       "contradiction": 0.0,
       "ranked_modules": [
         "auth/jwt_utils.py",
-        "auth/handlers.py",
-        "users/crud.py"
+        "auth/handlers.py"
       ],
       "expected_modules": [
         "auth/handlers.py",
@@ -512,14 +522,15 @@
       "recall_at_5": 0.4,
       "precision_at_5": 0.4,
       "mrr": 1.0,
-      "ndcg_at_5": 0.7473743017307073,
+      "ndcg_at_5": 0.5304935598381362,
       "hit_rate": 1.0,
       "faithfulness": 0.0,
       "fact_recall": 0.0,
       "contradiction": 0.0,
       "ranked_modules": [
+        "api/routes.py",
         "billing/stripe_client.py",
-        "users/crud.py"
+        "README.md"
       ],
       "expected_modules": [
         "api/routes.py",

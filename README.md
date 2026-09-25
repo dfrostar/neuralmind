@@ -112,11 +112,49 @@ Both are **budget-neutral by design**: recalled nodes *displace* the weakest hit
 
 **Why a range, not a number.** Both A/Bs run against a ~500-line fixture through a ChromaDB HNSW index, so the deltas are small and jitter between runs — CI averages the onboarding lift over three runs for exactly that reason. What CI guarantees is the *direction*; the magnitude is whatever your own repo produces. Run `python -m tests.benchmark.run` for yours.
 
-### 3. Finds the right code (not just less of it)
+### 3. Context budget management (v3.13.0+)
+
+Every query gets a fixed token budget (default 8,000 tokens, matching lean-ctx). If the assembled context would exceed it, lower-priority layers are trimmed first — L3 search results, then L2 on-demand modules, then L1 summary. L0 identity is never trimmed. Budget warnings log at 80% usage.
+
+```python
+result = mind.query("How does auth work?", context_budget=6000)
+# Context trimmed to fit 6000 tokens, L3 removed first
+```
+
+### 4. Session summaries (v3.13.0+)
+
+Periodic session digests (every 25 tool calls) capture what was done, key decisions, files touched, and commands run. Stored as markdown under `.neuralmind/summaries/`, semantically recallable via the vector index. Auto-pruned (max 100 per project).
+
+```bash
+neuralmind status .  # shows recent summaries
+```
+
+### 5. Code graph traversal edges (v3.13.0+)
+
+Files that appear together in query results get **co-access edges** reinforced Hebbian-style. Over time this captures "to understand X, you also need Y" relationships that static analysis misses. Traversal edges decay faster than structural edges (they're noisier) and can be promoted to durable status via the cognition loop.
+
+### 6. Read dedup + auto-preload (v3.13.0+)
+
+Repeated reads of unchanged files are replaced with compact stubs (content-hash based). Related files are auto-preloaded on first read, using the code graph's traversal edges. Both are token-saving optimizations that work transparently.
+
+### 7. Cognition loop (v3.13.0+)
+
+Background knowledge consolidation runs periodically (default every hour):
+1. Reinforces co-access edges from recent queries
+2. Decays unused edges (faster for traversal edges)
+3. Consolidates knowledge (promotes frequently co-activated clusters to LTP)
+4. Prunes stale data (old summaries, expired read cache, dormant synapses)
+
+```bash
+neuralmind cognition-loop .  # run manually
+# Or via systemd timer (auto-configured by install-hooks)
+```
+
+### 8. Finds the right code (not just less of it)
 
 **93.75% mean gold-file recall (79–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
-### 4. Better-grounded answers (not just shorter)
+### 9. Better-grounded answers (not just shorter)
 
 At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation. CI gates the delta at **≥ 0**; the measured delta has ranged **+0.013 to +0.143** across runs on the reference fixture, with grounding at 1.00. Same caveat as above — the gate is the guarantee, the magnitude moves.
 
@@ -204,7 +242,7 @@ shell), so a slow run is never mistaken for a hung one.
 # Any MCP-compatible agent (Claude Code, Cursor, Cline, Continue, Codex)
 neuralmind install-mcp --all
 
-# Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse)
+# Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse, PreToolUse, Stop, SessionEnd)
 neuralmind install-hooks .
 
 # Team memory: commit learned weights (no source code) for teammates
@@ -367,7 +405,8 @@ _3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes 
 Behavior toggles: `NEURALMIND_BYPASS=1` (skip compression),
 `NEURALMIND_SYNAPSE_INJECT=0` (skip prompt-time recall),
 `NEURALMIND_SYNAPSE_EXPORT=0` (skip memory export),
-`NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import). All fail-open.
+`NEURALMIND_TEAM_MEMORY=0` (skip team-bundle import),
+`NEURALMIND_STALE_GUARD=0` (skip the PreToolUse stale-decision guard). All fail-open.
 
 ---
 

@@ -39,6 +39,7 @@ export type IconName =
     | 'query'
     | 'recall'
     | 'check'
+    | 'cognition'
     | 'arrow-right';
 
 const paths: Record<IconName, React.ReactNode> = {
@@ -203,6 +204,16 @@ const paths: Record<IconName, React.ReactNode> = {
         </>
     ),
     check: <path d="M4.5 12.5 9.5 17.5 19.5 6.5" />,
+    // Cognition loop: background consolidation cycling around a core node.
+    cognition: (
+        <>
+            <circle cx="12" cy="12" r="2.5" />
+            <path d="M12 3.6a8.4 8.4 0 0 1 7.5 4.6" />
+            <path d="M12 20.4a8.4 8.4 0 0 1-7.5-4.6" />
+            <path d="M19.2 4.2l.6 4.4-4.4-.6" />
+            <path d="M4.8 19.8l-.6-4.4 4.4.6" />
+        </>
+    ),
     'arrow-right': (
         <>
             <path d="M4 12h15" />

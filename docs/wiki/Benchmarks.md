@@ -19,8 +19,8 @@ NeuralMind is more than token reduction; the numbers below back **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
-fixture** (real but smaller-scope): **(1) Cheaper context** — **79–100%
-gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–257×
+fixture** (real but smaller-scope): **(1) Cheaper context** — **85–100%
+gold-file recall (93.6% mean, 87.5% found-rate across 40 queries) at 46–259×
 fewer tokens** than pasting files, beating `ripgrep` on both recall and cost
 on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96

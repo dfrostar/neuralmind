@@ -3,9 +3,9 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 export const metadata = {
-    title: 'NeuralMind — Code Memory for AI Coding Agents | 93.75% Gold-File Recall',
+    title: 'NeuralMind — Code Memory for AI Coding Agents | 93.6% Gold-File Recall',
     description:
-        'Memory for AI coding agents that opens the right file first: 93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens than pasting them in. Local-first, no telemetry.',
+        'Memory for AI coding agents that opens the right file first: 93.6% gold-file recall across 40 pre-registered queries on four public repos, at 46–259× fewer tokens than pasting them in. Local-first, no telemetry.',
     keywords: [
         'AI coding agent memory',
         'gold-file recall',
@@ -33,7 +33,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Code Memory for AI Coding Agents',
         description:
-            '93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens. Local-first, no telemetry, honest benchmarks — every miss published.',
+            '93.6% gold-file recall across 40 pre-registered queries on four public repos, at 46–259× fewer tokens. Local-first, no telemetry, honest benchmarks — every miss published.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -51,7 +51,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'NeuralMind — Code Memory for AI Coding Agents',
         description:
-            '93.75% gold-file recall across 40 pre-registered queries on four public repos, at 45–257× fewer tokens. Local-first, no telemetry.',
+            '93.6% gold-file recall across 40 pre-registered queries on four public repos, at 46–259× fewer tokens. Local-first, no telemetry.',
         images: ['https://neuralmind.uk/social-preview.png'],
     },
     robots: {
@@ -94,7 +94,7 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'AI coding agent memory, code intelligence, token reduction, RAG, MCP server, knowledge graph, Hebbian synapses, progressive context disclosure',
             featureList: [
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
-                '45–257× fewer tokens than full-file context across 40 pre-registered queries on four public repos',
+                '46–259× fewer tokens than full-file context across 40 pre-registered queries on four public repos',
                 'Read-only team dashboard with synapse memory, ingestion, and latency trends',
                 'DocEvolver: evolutionary JSDoc optimization for undocumented methods',
                 'Brain-like Hebbian synapse layer that learns associations from how you use the codebase',

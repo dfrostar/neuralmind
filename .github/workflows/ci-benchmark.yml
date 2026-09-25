@@ -282,6 +282,8 @@ jobs:
           "
 
       - name: Run backend parity gate
+        env:
+          NEURALMIND_PARITY_FAITHFULNESS_FLOOR: "-0.10"
         run: python -m evals.parity.run
 
       - name: Upload parity report

@@ -235,7 +235,7 @@ class WriteGraphTests(unittest.TestCase):
 
             out = graphgen.write_graph(proj)
             self.assertTrue(out.exists())
-            self.assertEqual(out, proj / "graphify-out" / "graph.json")
+            self.assertEqual(out, proj / ".neuralmind" / "graph.json")
 
             g = json.loads(out.read_text())
             labels = {n["label"] for n in g["nodes"]}

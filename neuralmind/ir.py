@@ -175,6 +175,10 @@ def project_artifact(project_path: str | Path, *parts: str) -> Path:
     single choke point so no caller builds an unchecked path from untrusted
     input. Pure string normalization (no symlink resolution), so it stays a
     barrier and never itself becomes a filesystem access.
+
+    .. deprecated::
+        Use :func:`neuralmind.paths.canonical_artifact` for new code. This
+        function is kept for backward compatibility with existing callers.
     """
     base = os.path.abspath(project_path)
     target = os.path.normpath(os.path.join(base, *parts))

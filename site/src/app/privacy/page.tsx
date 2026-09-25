@@ -89,6 +89,7 @@ export default function Privacy() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <article className="max-w-3xl mx-auto">
                     <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Privacy Policy</h1>
+                    <p className="text-slate-300 text-lg mb-4">NeuralMind is local-first: your code, your decisions, your data. Your code stays on your machine, no telemetry, no third-party analytics.</p>
                     <p className="text-slate-400 text-lg mb-12">Last updated: July 20, 2026</p>
                     {sections.map((s) => (
                         <div key={s.title} className="mb-10">

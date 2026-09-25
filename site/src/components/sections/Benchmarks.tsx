@@ -6,8 +6,8 @@ import SectionHeader from '@/components/ui/SectionHeader';
 // says which kind of evidence it is — a CI gate, an on-demand reproduction, or
 // a single-repo field report — because they are not the same strength of claim.
 const dataPoints = [
-    { metric: 'Gold-file recall', value: '93.75%', detail: '40 pre-registered queries, 4 pinned OSS repos (79–100% per repo)' },
-    { metric: 'Tokens vs. pasting files', value: '45–257×', detail: 'same 40 queries; cheaper than ripgrep on every repo' },
+    { metric: 'Gold-file recall', value: '93.6%', detail: '40 pre-registered queries, 4 pinned OSS repos (79–100% per repo)' },
+    { metric: 'Tokens vs. pasting files', value: '46–259×', detail: 'same 40 queries; cheaper than ripgrep on every repo' },
     { metric: 'Learned recall', value: 'Never worse', detail: 'CI asserts synapse recall ≥ no-recall on the same warm graph, at a neutral token budget' },
     { metric: 'vs. naive truncation', value: 'Never worse', detail: 'CI asserts our selection beats truncation at an equal budget. Both magnitudes vary by repo — run them for yours' },
     { metric: 'Field report, one repo', value: '48.8×', detail: '~9,300-node private TypeScript codebase — method reproducible, not CI-gated' },
@@ -47,7 +47,7 @@ export default function Benchmarks() {
                 </dl>
 
                 {/* The full evidence page: per-repo tables, all four backends, and the
-                    four queries NeuralMind misses. The tiles above are the summary. */}
+                    5 of 40 queries NeuralMind misses. The tiles above are the summary. */}
                 <p className="mt-6 text-slate-400 text-sm max-w-3xl">
                     Every number above comes from{' '}
                     <a href="/benchmark/" className="text-electric hover:text-electric-bright transition-colors">
