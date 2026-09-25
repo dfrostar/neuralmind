@@ -10,22 +10,34 @@ rather than with a slogan. Note the scope: this is about what *NeuralMind*
 sends. Your agent still forwards whatever context it selects to its own
 model, and nothing on this page changes that.
 
-Never transmitted by NeuralMind: your source, file paths, query text,
-results, or any identifier. There is no telemetry, no remote logging and no
-update check. Every outbound-capable path in the package, in full:
+Never transmitted by NeuralMind, under the default configuration: your
+source, file paths, query text, results, or any identifier. There is no
+telemetry, no remote logging and no update check. Every outbound-capable
+path in normal build/query operation, in full (this excludes the
+separate, explicitly opt-in `neuralmind benchmark --public`/`--judge`
+dev-benchmarking commands, which clone pinned GitHub repos and can call
+an LLM judge — irrelevant to air-gapped operation since they require
+internet access by design, not something you'd run on an isolated host):
 
 | Path | Target | Carries your data? |
 |---|---|---|
 | `neuralmind/onnx_embedder.py` | one fixed HTTPS URL, `GET`, SHA256-pinned | **No.** It downloads a public model. The request carries nothing about your repository. |
 | `neuralmind/daemon_client.py` | `127.0.0.1` | **No.** A loopback socket to NeuralMind's own daemon — it is not an external connection at all. |
 | `neuralmind/local_client.py` | `http://localhost:11434` (Ollama default) | Loopback, unless you repoint `endpoint` yourself. |
+| `neuralmind/synapses.py::seed_from_documentation()` | Anthropic API | **Only if you explicitly opt in** with both `NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` set (both unset by default). Reads whatever bytes exist at two fixed paths (`README.md`, `docs/architecture.md`) and sends up to the first 8,000 characters combined — a path-based read, not a content classifier, so a README with embedded code snippets or a symlinked path sends that unfiltered. Fail-open: any error returns `0` and never blocks indexing. See [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) before opting in. |
 
-So there is exactly one request that reaches the internet, it is a plain
-file download, and an observer learns only that this host fetched a public
-model — nothing about your codebase. It is also avoidable, which is what
-the rest of this page is for. The remaining network dependencies are
-install-time only: the PyPI package download, and NeuralMind's own
-first-use embedding-model download.
+So under the default configuration there is exactly one request that
+reaches the internet, it is a plain file download, and an observer learns
+only that this host fetched a public model — nothing about your codebase.
+It is also avoidable, which is what the rest of this page is for. On an
+air-gapped machine, leave `NEURALMIND_LLM_SEED` unset (the default) and
+the synapse-seeding row above never triggers either — there is no
+mechanism by which it could reach out on a network-less host. The
+remaining network dependencies are two, neither of them ongoing: the
+PyPI package download (at `pip install` time) and NeuralMind's own
+embedding-model download (at first use/build, not at `pip install` —
+stage it ahead of time per Step 2 below if install and first build
+happen on different machines or at different times).
 
 <!-- claims-guard:allow — names the retired phrase in order to retire it. Note
      it currently also escapes FORBIDDEN by being line-wrapped, which is the
@@ -300,16 +312,25 @@ The air-gapped install is the strictest deployment posture NeuralMind
 supports:
 
 - **No outbound network at any phase** (install, build, runtime, query)
-  once wheels and model are staged per this page.
-- **No repository content transmitted, even before staging.** The sole
-  outbound request is a `GET` for a public, hash-pinned model artifact and
-  carries no source, paths, query text or identifiers — see the table at
-  the top of this page.
+  once wheels and model are staged per this page, provided
+  `NEURALMIND_LLM_SEED` is left unset (the default) — an air-gapped host
+  has no route to trigger it regardless, but the setting itself is not a
+  network condition, so state it explicitly rather than assume it.
+- **No repository content transmitted under the default configuration.**
+  The sole network-reachable request in the default configuration is a
+  `GET` for a public, hash-pinned model artifact and carries no source,
+  paths, query text or identifiers — see the table at the top of this
+  page. The one opt-in exception (`NEURALMIND_LLM_SEED=1` +
+  `ANTHROPIC_API_KEY`) is a path-based read of two files, unfiltered —
+  read [`THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md)
+  before opting in, since it is not a guarantee that only prose is sent.
 - **Wheel set is auditable** — every transitive dep is a file on disk
-  you can hash, mirror, and review independently. See the [SBOM
-  attached to each tagged release](https://github.com/dfrostar/neuralmind/releases)
-  (`neuralmind-vX.Y.Z.sbom.json`, CycloneDX JSON) for the full graph
-  with versions + licenses.
+  you can hash, mirror, and review independently. See the current SBOM
+  at [neuralmind.uk/security](https://neuralmind.uk/security)
+  (`neuralmind-vX.Y.Z.sbom.json`, CycloneDX JSON, generated for every
+  release) for the full graph with versions + licenses — GitHub Release
+  attachment is attempted but best-effort, since published releases on
+  this repo are immutable and commonly reject the upload.
 - **No telemetry, no remote logging, no automatic update checks.**
   See [`docs/SECURITY-GUIDE.md`](../SECURITY-GUIDE.md) and
   [`docs/COMPLIANCE-SUMMARY.md`](../COMPLIANCE-SUMMARY.md).
@@ -329,5 +350,7 @@ supports:
   encryption, secrets
 - [`docs/COMPLIANCE-SUMMARY.md`](../COMPLIANCE-SUMMARY.md) — NIST AI
   RMF + SOC 2 + GDPR consolidation
+- [`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) —
+  the one opt-in LLM egress path, and why video/media ingestion doesn't exist
 - [`docs/use-cases/offline-regulated.md`](offline-regulated.md) —
   broader "regulated industry" walkthrough
