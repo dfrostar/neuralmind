@@ -21,7 +21,7 @@ FIXTURE = (
     / "neuralmind"
     / "demo_data"
     / "sample_project"
-    / "graphify-out"
+    / ".neuralmind"
     / "graph.json"
 )
 
