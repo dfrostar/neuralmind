@@ -347,17 +347,23 @@ def _is_book_project(project_path: Path) -> bool:
 
     md_files = [
         f
-        for f in _iter_files(project_path, _DEFAULT_IGNORES, frozenset({".md", ".markdown", ".mkd"}))
+        for f in _iter_files(
+            project_path, _DEFAULT_IGNORES, frozenset({".md", ".markdown", ".mkd"})
+        )
         if not _gitignored(f)
     ]
     if len(md_files) < 3:
         return False
 
-    code_files = [f for f in _iter_source_files(project_path, _DEFAULT_IGNORES) if not _gitignored(f)]
+    code_files = [
+        f for f in _iter_source_files(project_path, _DEFAULT_IGNORES) if not _gitignored(f)
+    ]
     # Also check for src/ or lib/ directories (strong code indicator)
     src_dir = project_path / "src"
     lib_dir = project_path / "lib"
-    if (src_dir.is_dir() and not _gitignored(src_dir)) or (lib_dir.is_dir() and not _gitignored(lib_dir)):
+    if (src_dir.is_dir() and not _gitignored(src_dir)) or (
+        lib_dir.is_dir() and not _gitignored(lib_dir)
+    ):
         return False
 
     # If there's substantial code anywhere in the repository tree, treat this
