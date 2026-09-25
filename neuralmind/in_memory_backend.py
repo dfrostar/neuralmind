@@ -18,12 +18,22 @@ class InMemoryEmbeddingBackend(EmbeddingBackend):
 
     def __init__(self, project_path: str, db_path: str | None = None):
         self._project_path = Path(project_path).resolve()
-        self.graph_path = graph_json_path(self._project_path)
         self.db_path = db_path or ":memory:"
         self.graph: dict[str, Any] = {}
         self.nodes: list[dict[str, Any]] = []
         self.edges: list[dict[str, Any]] = []
         self._index: dict[str, dict[str, Any]] = {}
+
+    @property
+    def graph_path(self) -> Path:
+        """Live path to graph.json — re-resolves canonical-then-legacy.
+
+        A cached attribute would pin the canonical path at __init__ time
+        (when neither file typically exists yet) and never see a legacy
+        graphify-out/graph.json written afterwards. Re-resolving keeps the
+        legacy fallback working for pre-consolidation projects.
+        """
+        return graph_json_path(self._project_path)
 
     @property
     def project_path(self) -> Path:

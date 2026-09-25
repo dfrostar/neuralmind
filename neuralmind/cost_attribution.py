@@ -24,7 +24,7 @@ import logging
 import os
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -124,7 +124,9 @@ def compute_cost_attribution(
         }
 
     cutoff = time.time() - (days * 86400)
-    recent_events = [e for e in events if e.get("timestamp", "") and _parse_ts(e["timestamp"]) >= cutoff]
+    recent_events = [
+        e for e in events if e.get("timestamp", "") and _parse_ts(e["timestamp"]) >= cutoff
+    ]
 
     if not recent_events:
         return {
@@ -181,7 +183,9 @@ def compute_cost_attribution(
         daily[day_key]["savings_tokens"] += savings
 
     total_savings_tokens = max(0, total_baseline_tokens - total_tokens_used)
-    savings_ratio = total_savings_tokens / total_baseline_tokens if total_baseline_tokens > 0 else 0.0
+    savings_ratio = (
+        total_savings_tokens / total_baseline_tokens if total_baseline_tokens > 0 else 0.0
+    )
     modeled_cost_savings = (total_savings_tokens / 1000) * cost_per_1k
 
     # Convert defaultdicts to regular dicts for JSON serialization
@@ -246,7 +250,9 @@ def format_cost_report(attribution: dict[str, Any]) -> str:
     if daily:
         lines.append("  Daily breakdown:")
         for day, stats in sorted(daily.items()):
-            lines.append(f"    {day}: {stats['queries']} queries, {stats['savings_tokens']:,} tokens saved")
+            lines.append(
+                f"    {day}: {stats['queries']} queries, {stats['savings_tokens']:,} tokens saved"
+            )
         lines.append("")
 
     lines.append("  Note: Modeled savings — baseline reconstructed from reduction_ratio,")

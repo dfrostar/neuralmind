@@ -41,7 +41,7 @@ from .audit import get_audit_trail
 from .backend_manager import BackendManager
 from .context_selector import ContextResult, ContextSelector, TokenBudget
 from .memory import is_memory_logging_enabled, log_query_event, log_wakeup_event
-from .paths import graph_json_path, vector_db_path
+from .paths import graph_json_path
 from .query_handler import QueryHandler
 from .structural import BLAST_VIEW_RELATION, StructuralIndex
 from .synapse_client import SynapseClient
@@ -1074,8 +1074,14 @@ class NeuralMind:
 
         if self.backend_manager.backend_name != "turbovec":
             return
-        # A prior chroma index lives at the GraphEmbedder default db path.
-        legacy_chroma = vector_db_path(self.project_path, "chroma")
+        # A prior chroma index may live at either the canonical path or the
+        # legacy graphify-out/ path (pre-consolidation projects). Detection
+        # checks both; only the canonical path is used for new writes.
+        from .paths import canonical_artifact, legacy_artifact
+
+        legacy_chroma = canonical_artifact(self.project_path, "neuralmind_db")
+        if not legacy_chroma.exists():
+            legacy_chroma = legacy_artifact(self.project_path, "neuralmind_db")
         if not legacy_chroma.exists():
             return  # fresh project, not a migration
         try:

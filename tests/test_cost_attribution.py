@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from neuralmind.cost_attribution import (
@@ -176,12 +175,8 @@ class TestComputeCostAttribution:
 
     def test_days_window(self, tmp_path: Path) -> None:
         # Old event (40 days ago) should be excluded with days=30
-        old_event = self._make_event(
-            tokens=500, ratio=10.0, ts="2026-08-12T07:00:00+00:00"
-        )
-        recent_event = self._make_event(
-            tokens=300, ratio=5.0, ts="2026-09-21T07:00:00+00:00"
-        )
+        old_event = self._make_event(tokens=500, ratio=10.0, ts="2026-08-12T07:00:00+00:00")
+        recent_event = self._make_event(tokens=300, ratio=5.0, ts="2026-09-21T07:00:00+00:00")
         self._write_events(tmp_path, [old_event, recent_event])
         result = compute_cost_attribution(tmp_path, days=30)
         assert result["total_queries"] == 1
