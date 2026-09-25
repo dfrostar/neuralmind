@@ -28,42 +28,52 @@ CHUNK_SIZE = 500  # chars per chunk
 CHUNK_OVERLAP = 50  # chars overlap between chunks
 
 
-def _load_ignore_patterns(project_path: Path, filename: str) -> frozenset[str]:
+def _load_ignore_patterns(project_path: Path, filename: str) -> tuple[str, ...]:
     """Load .gitignore-style patterns from ``filename`` under ``project_path``."""
     ignore_path = project_path / filename
     if not ignore_path.exists():
-        return frozenset()
+        return ()
     try:
         content = ignore_path.read_text(encoding="utf-8")
     except OSError:
-        return frozenset()
+        return ()
 
-    patterns: set[str] = set()
+    patterns: list[str] = []
     for line in content.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
-        patterns.add(line)
-    return frozenset(patterns)
+        patterns.append(line)
+    return tuple(patterns)
 
 
-def _matches_ignore(rel_path: str, patterns: frozenset[str]) -> bool:
+def _matches_ignore(rel_path: str, patterns: tuple[str, ...]) -> bool:
     """Check if project-relative ``rel_path`` matches any ignore pattern."""
     if not patterns:
         return False
 
     parts = rel_path.split("/")
+    ignored = False
     for pattern in patterns:
+        negated = pattern.startswith("!")
+        if negated:
+            pattern = pattern[1:].strip()
+            if not pattern:
+                continue
         cleaned = pattern.rstrip("/")
+        matched = False
         if fnmatch(rel_path, pattern):
-            return True
-        if "/" not in cleaned and fnmatch(parts[-1], cleaned):
-            return True
-        if any(fnmatch(part, cleaned) for part in parts[:-1]):
-            return True
-        if rel_path.startswith(cleaned + "/"):
-            return True
-    return False
+            matched = True
+        elif "/" not in cleaned and fnmatch(parts[-1], cleaned):
+            matched = True
+        elif any(fnmatch(part, cleaned) for part in parts[:-1]):
+            matched = True
+        elif rel_path.startswith(cleaned + "/"):
+            matched = True
+
+        if matched:
+            ignored = not negated
+    return ignored
 
 
 def _validate_path(path: Path, root: Path) -> Path:

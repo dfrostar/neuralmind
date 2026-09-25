@@ -173,3 +173,14 @@ class TestIngestDirectory:
         assert "hidden.txt" not in labels
         assert "rendered.txt" not in labels
         assert "skip.md" not in labels
+
+    def test_gitignore_negation_unignores_file(self, tmp_path):
+        (tmp_path / "README.md").write_text("# Keep me\n")
+        (tmp_path / "notes.md").write_text("# Skip me\n")
+        (tmp_path / ".gitignore").write_text("*.md\n!README.md\n")
+
+        nodes = ingest_directory(tmp_path)
+        labels = {n.label for n in nodes}
+
+        assert "README.md" in labels
+        assert "notes.md" not in labels
