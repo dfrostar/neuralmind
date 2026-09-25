@@ -22,7 +22,10 @@ from neuralmind.doc_evolver import BlindSpot, DocEvolver
 from neuralmind.drift import DEFAULT_MAX_FINDINGS
 from neuralmind.metrics_pipeline import MetricsCollector
 from neuralmind.onboarding import cmd_onboarding
-from neuralmind.paths import canonical_artifact, legacy_artifact, graph_json_path, vector_db_path, graph_report_path, cache_dir_path, graph_html_path
+from neuralmind.paths import (
+    graph_json_path,
+    vector_db_path,
+)
 from neuralmind.tier2.config import TIER2_CONFIG_DIR
 from neuralmind.tier2.license import issue_free_license
 

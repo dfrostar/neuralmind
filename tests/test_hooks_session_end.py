@@ -123,9 +123,7 @@ def test_session_end_skips_malformed_lines(tmp_path):
     log = tmp_path / ".neuralmind" / "events.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     log.write_text(
-        "not json\n"
-        + json.dumps(_event(paths=["src/ok.py"])) + "\n"
-        + "{broken\n",
+        "not json\n" + json.dumps(_event(paths=["src/ok.py"])) + "\n" + "{broken\n",
         encoding="utf-8",
     )
     rc, _ = _run("session-end", {"cwd": str(tmp_path)})

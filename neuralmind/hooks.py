@@ -396,9 +396,7 @@ def run_hook(action: str) -> int:
         try:
             _tick_stop_summary(cwd)
         except Exception:
-            logger.exception(
-                "[hooks] stop cadence tick failed — no summary written"
-            )
+            logger.exception("[hooks] stop cadence tick failed — no summary written")
         return 0
 
     if action == "edit-activity":
@@ -836,7 +834,6 @@ def _tick_stop_summary(project_path: str) -> None:
     tracker.tool_call_count = len(fresh)
     summary = tracker.generate_summary(title=f"Turn boundary — {len(fresh)} events")
     tracker.write_summary(summary)
-
 
 
 def _emit_for_event(event_name: str, content: str) -> None:
