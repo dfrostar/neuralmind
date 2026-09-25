@@ -334,12 +334,15 @@ class TurboVecEmbedder(EmbeddingBackend):
             )
             if proc.returncode != 0:
                 raise RuntimeError(f"onnx_embed failed: {proc.stderr[:500]}")
-            payload = json.loads(proc.stdout)
-            out.append(
-                np.frombuffer(base64.b64decode(payload["data"]), dtype=np.float32).reshape(
-                    payload["shape"]
-                )
-            )
+            try:
+                payload = json.loads(proc.stdout)
+                raw = base64.b64decode(payload["data"])
+                out.append(np.frombuffer(raw, dtype=np.float32).reshape(payload["shape"]))
+            except (json.JSONDecodeError, KeyError, ValueError, TypeError) as exc:
+                # binascii.Error subclasses ValueError, so it is covered.
+                raise RuntimeError(
+                    f"onnx_embed subprocess returned invalid payload: {exc}"
+                ) from exc
         return np.concatenate(out) if out else np.zeros((0, 384), dtype=np.float32)
 
     @property

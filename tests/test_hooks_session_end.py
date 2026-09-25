@@ -21,6 +21,8 @@ import json
 import os
 import sys
 import time
+
+import pytest
 from pathlib import Path
 
 from neuralmind.hooks import _hook_block, install_hooks, run_hook
@@ -186,3 +188,58 @@ def test_stop_counts_only_fresh_events(tmp_path):
     assert rc == 0
     # Only the marker exists; no new summary was written.
     assert [p.name for p in summaries_dir.glob("*.md")] == ["marker.md"]
+
+
+def test_recent_session_events_cap_applies_after_time_filter(tmp_path):
+    """The 500-event cap must not truncate the 12h window (QA #4).
+
+    With 600 in-window events, the returned set is the NEWEST 500 — not
+    the newest 500 raw lines with the time filter applied afterward.
+    """
+    from neuralmind.hooks import _recent_session_events, _SESSION_END_MAX_EVENTS
+
+    now = time.time()
+    # 600 events all inside the 12h window (written oldest-first).
+    _write_events(tmp_path, [_event(ts=now - i) for i in reversed(range(600))])
+    events = _recent_session_events(str(tmp_path))
+    assert len(events) == _SESSION_END_MAX_EVENTS
+    # File order is oldest-first, so the returned list's LAST element is
+    # the newest event.
+    assert events[-1]["ts"] == pytest.approx(now, abs=5)
+    # And the returned window must span the newest 500, not lines 100-599
+    # of a truncated read: the oldest returned event is the 101st-oldest
+    # raw event (i.e. only the 100 oldest were dropped).
+    oldest_returned = min(e["ts"] for e in events)
+    assert oldest_returned == pytest.approx(now - 500, abs=5)
+
+
+def test_recent_session_events_time_filter_excludes_old_events(tmp_path):
+    """Events older than 12h before the newest are excluded even under the cap."""
+    from neuralmind.hooks import _recent_session_events
+
+    now = time.time()
+    _write_events(
+        tmp_path,
+        [_event(ts=now - 86400) for _ in range(10)] + [_event(ts=now) for _ in range(5)],  # 24h old
+    )
+    events = _recent_session_events(str(tmp_path))
+    assert len(events) == 5
+
+
+def test_repeated_stop_calls_do_not_duplicate_summaries(tmp_path):
+    """Two stop calls with no new events between them write one summary (QA #6).
+
+    The second call sees zero fresh events (all are older than the first
+    summary) and must no-op.
+    """
+    summaries_dir = tmp_path / ".neuralmind" / "summaries"
+    summaries_dir.mkdir(parents=True, exist_ok=True)
+    _write_events(tmp_path, [_event() for _ in range(30)])
+    rc1, _ = _run("stop", {"cwd": str(tmp_path)})
+    assert rc1 == 0
+    first = sorted(summaries_dir.glob("*.md"))
+    assert len(first) == 1
+    # Second stop, no new events: nothing fresh -> no new summary.
+    rc2, _ = _run("stop", {"cwd": str(tmp_path)})
+    assert rc2 == 0
+    assert sorted(summaries_dir.glob("*.md")) == first

@@ -367,11 +367,11 @@ def run_hook(action: str) -> int:
 
     if action == "session-end":
         # SessionEnd: write a session-boundary digest from the durable
-        # event log (.neuralmind/events.jsonl) and flag decisions whose
-        # evidence files changed during the session (pre-invalidation
-        # signal). Hooks run one-per-process, so in-memory trackers are
-        # empty here — the event log is the durable record. Opt-out via
-        # NEURALMIND_SESSION_END=0. Fail-open on every error.
+        # event log (.neuralmind/events.jsonl). Hooks run one-per-process,
+        # so in-memory trackers are empty here — the event log is the
+        # durable record. (Decision invalidation signaling is not part of
+        # v4.3; the staleness-scan command covers that audit today.)
+        # Opt-out via NEURALMIND_SESSION_END=0. Fail-open on every error.
         if os.environ.get("NEURALMIND_SESSION_END") == "0":
             return 0
         cwd = payload.get("cwd") or os.getcwd()
@@ -718,16 +718,21 @@ def _stale_decision_context(project_path: str, file_path: str) -> str:
 
 _SESSION_END_MAX_EVENTS = 500
 _SESSION_END_LOOKBACK_SECONDS = 60 * 60 * 12  # half a working day
+# The cap must not truncate the time window: read a wider tail (3x) so the
+# 12h filter sees enough history even when the log is long, then cap AFTER
+# filtering. A >1500-event half-day still loses its oldest events — an
+# accepted, documented limit, not a silent one.
+_SESSION_END_READ_TAIL = _SESSION_END_MAX_EVENTS * 3
 
 
 def _recent_session_events(project_path: str) -> list[dict]:
     """Read recent events from the durable event log.
 
-    Returns the last ``_SESSION_END_MAX_EVENTS`` events whose ``ts`` falls
-    within ``_SESSION_END_LOOKBACK_SECONDS`` of the newest event. The log
-    is the durable cross-process record — hook processes are short-lived,
-    so in-memory state is always empty at session boundaries. Fail-open:
-    any read error returns [].
+    Returns events whose ``ts`` falls within ``_SESSION_END_LOOKBACK_SECONDS``
+    of the newest event, capped at ``_SESSION_END_MAX_EVENTS`` (newest kept).
+    The log is the durable cross-process record — hook processes are
+    short-lived, so in-memory state is always empty at session boundaries.
+    Fail-open: any read error returns [].
     """
     log_path = Path(project_path) / ".neuralmind" / "events.jsonl"
     if not log_path.is_file():
@@ -737,7 +742,7 @@ def _recent_session_events(project_path: str) -> list[dict]:
     except OSError:
         return []
     events: list[dict] = []
-    for line in lines[-_SESSION_END_MAX_EVENTS:]:
+    for line in lines[-_SESSION_END_READ_TAIL:]:
         try:
             events.append(json.loads(line))
         except (json.JSONDecodeError, TypeError):
@@ -746,7 +751,8 @@ def _recent_session_events(project_path: str) -> list[dict]:
         return []
     newest_ts = max(e.get("ts", 0) for e in events)
     floor = newest_ts - _SESSION_END_LOOKBACK_SECONDS
-    return [e for e in events if e.get("ts", 0) >= floor]
+    in_window = [e for e in events if e.get("ts", 0) >= floor]
+    return in_window[-_SESSION_END_MAX_EVENTS:]
 
 
 def _files_from_events(events: list[dict]) -> list[str]:
@@ -767,10 +773,12 @@ def _files_from_events(events: list[dict]) -> list[str]:
 def _write_session_end_digest(project_path: str) -> None:
     """SessionEnd: aggregate the durable event log into a final digest.
 
-    Writes a summary via SessionTracker (which handles dedup + pruning) and
-    flags decisions whose evidence files changed during the session — the
-    pre-invalidation signal. Called only from the ``session-end`` hook;
-    every failure is caught by the caller (fail-open).
+    Writes a summary via SessionTracker (which handles dedup + pruning).
+    Note: v4.3 does NOT flag decisions whose evidence files changed — the
+    summary records files touched, but decision invalidation signaling is
+    future work (the InvalidationEngine's staleness-scan covers the audit
+    side today). Called only from the ``session-end`` hook; every failure
+    is caught by the caller (fail-open).
     """
     from .session_summaries import SessionTracker
 
