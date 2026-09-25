@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import sqlite3
+import sys
 from collections.abc import Callable
 from datetime import datetime
 from functools import cached_property
@@ -294,21 +295,50 @@ class TurboVecEmbedder(EmbeddingBackend):
             self._embed_fn = _default_embed_fn()
         return self._embed_fn
 
-    def _embed_matrix(self, texts: list[str]) -> np.ndarray:
-        """Embed ``texts`` into an ``(n, dim)`` array, numpy-native where possible.
+    _EMBED_BATCH = 256
 
-        The default ``OnnxMiniLMEmbedder`` exposes ``embed()`` returning an
-        ``ndarray`` directly. Its ``__call__`` (the ChromaDB-compatible interface)
-        instead returns ``list[list[float]]`` via ``.tolist()`` — and the caller
-        immediately rebuilds an array from it. For a large graph that round-trip
-        materialises one Python ``float`` per element (n × 384), ~150 MB of
-        transient heap that inflates peak RSS during indexing. Prefer ``embed()``
-        when the embedder offers it; injected callables still work via the
-        ``__call__`` fallback.
+    def _embed_matrix(self, texts: list[str]) -> np.ndarray:
+        """Embed ``texts`` into an ``(n, dim)`` array.
+
+        Small inputs run in-process. Larger inputs are fanned out across
+        subprocesses (batch = ``_EMBED_BATCH``), because onnxruntime 1.29 on
+        Python 3.14 deadlocks after 2-3 ``session.run()`` calls inside a single
+        process — regardless of thread count, session reuse, or batch size.
+        One process per batch is the only reliable workaround.
         """
         fn = self.embed_fn
         embed = getattr(fn, "embed", None)
-        return embed(texts) if callable(embed) else fn(texts)
+        if not callable(embed):
+            return fn(texts)
+
+        if len(texts) <= self._EMBED_BATCH:
+            return embed(texts)
+
+        import base64
+        import json
+        import subprocess
+
+        script = Path(__file__).parent.parent / "scripts" / "onnx_embed.py"
+        batches = [texts[i : i + self._EMBED_BATCH] for i in range(0, len(texts), self._EMBED_BATCH)]
+
+        out: list[np.ndarray] = []
+        for batch in batches:
+            proc = subprocess.run(
+                [sys.executable, str(script)],
+                input=json.dumps({"texts": batch}),
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+            if proc.returncode != 0:
+                raise RuntimeError(f"onnx_embed failed: {proc.stderr[:500]}")
+            payload = json.loads(proc.stdout)
+            out.append(
+                np.frombuffer(base64.b64decode(payload["data"]), dtype=np.float32).reshape(
+                    payload["shape"]
+                )
+            )
+        return np.concatenate(out) if out else np.zeros((0, 384), dtype=np.float32)
 
     @property
     def project_path(self) -> Path:
