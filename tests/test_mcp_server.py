@@ -480,22 +480,30 @@ class TestRunMcpServer:
             patch.object(mcp_server, "MCP_AVAILABLE", True),
             patch.object(mcp_server, "Server", FakeServer),
             patch.object(mcp_server, "stdio_server", lambda: FakeStdioServer()),
-            patch.object(mcp_server, "handle_tool_call", return_value='{"ok": true}') as mock_handle,
+            patch.object(
+                mcp_server, "handle_tool_call", return_value='{"ok": true}'
+            ) as mock_handle,
         ):
             asyncio.run(mcp_server.run_mcp_server())
             kwargs = created["kwargs"]
             tools_result = asyncio.run(kwargs["on_list_tools"](None, None))
-            params = SimpleNamespace(name="neuralmind_stats", arguments={"project_path": "/tmp/project"})
+            params = SimpleNamespace(
+                name="neuralmind_stats", arguments={"project_path": "/tmp/project"}
+            )
             call_result = asyncio.run(kwargs["on_call_tool"](None, params))
             assert call_result.content[0].text == '{"ok": true}'
-            mock_handle.assert_called_once_with("neuralmind_stats", {"project_path": "/tmp/project"})
+            mock_handle.assert_called_once_with(
+                "neuralmind_stats", {"project_path": "/tmp/project"}
+            )
 
         kwargs = created["kwargs"]
         assert created["name"] == "neuralmind"
         assert "on_list_tools" in kwargs
         assert "on_call_tool" in kwargs
         assert created["run"] == ("read-stream", "write-stream", {"init": True})
-        assert [tool.name for tool in tools_result.tools] == [tool["name"] for tool in mcp_server.TOOLS]
+        assert [tool.name for tool in tools_result.tools] == [
+            tool["name"] for tool in mcp_server.TOOLS
+        ]
 
     def test_falls_back_to_legacy_decorators_when_server_signature_is_unavailable(self):
         """Uninspectable Server implementations should still take the legacy path."""
@@ -538,7 +546,9 @@ class TestRunMcpServer:
             patch.object(mcp_server, "MCP_AVAILABLE", True),
             patch.object(mcp_server, "Server", FakeLegacyServer),
             patch.object(mcp_server, "stdio_server", lambda: FakeStdioServer()),
-            patch("neuralmind.mcp_server.inspect.signature", side_effect=ValueError("no signature")),
+            patch(
+                "neuralmind.mcp_server.inspect.signature", side_effect=ValueError("no signature")
+            ),
         ):
             asyncio.run(mcp_server.run_mcp_server())
 
