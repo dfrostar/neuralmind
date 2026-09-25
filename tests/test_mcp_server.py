@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -437,6 +439,59 @@ class TestAsyncToolHandler:
             # PRAGMA busy_timeout is in milliseconds
             row = conn.execute("PRAGMA busy_timeout").fetchone()
             assert row[0] == 30000, f"Expected 30000ms, got {row[0]}"
+
+
+class TestRunMcpServer:
+    """Regression tests for MCP SDK compatibility."""
+
+    def test_uses_constructor_handlers_when_decorator_api_is_absent(self):
+        """Modern MCP SDKs register tool handlers via Server constructor callbacks."""
+        from neuralmind import mcp_server
+
+        created: dict[str, object] = {}
+
+        class FakeServer:
+            def __init__(self, name, on_list_tools=None, on_call_tool=None, **kwargs):
+                created["name"] = name
+                created["kwargs"] = {
+                    "on_list_tools": on_list_tools,
+                    "on_call_tool": on_call_tool,
+                    **kwargs,
+                }
+
+            def create_initialization_options(self):
+                return {"init": True}
+
+            async def run(self, read_stream, write_stream, options):
+                created["run"] = (read_stream, write_stream, options)
+
+        class FakeStdioServer:
+            async def __aenter__(self):
+                return ("read-stream", "write-stream")
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        with (
+            patch.object(mcp_server, "MCP_AVAILABLE", True),
+            patch.object(mcp_server, "Server", FakeServer),
+            patch.object(mcp_server, "stdio_server", lambda: FakeStdioServer()),
+            patch.object(mcp_server, "handle_tool_call", return_value='{"ok": true}') as mock_handle,
+        ):
+            asyncio.run(mcp_server.run_mcp_server())
+            kwargs = created["kwargs"]
+            tools_result = asyncio.run(kwargs["on_list_tools"](None, None))
+            params = SimpleNamespace(name="neuralmind_stats", arguments={"project_path": "/tmp/project"})
+            call_result = asyncio.run(kwargs["on_call_tool"](None, params))
+            assert call_result.content[0].text == '{"ok": true}'
+            mock_handle.assert_called_once_with("neuralmind_stats", {"project_path": "/tmp/project"})
+
+        kwargs = created["kwargs"]
+        assert created["name"] == "neuralmind"
+        assert "on_list_tools" in kwargs
+        assert "on_call_tool" in kwargs
+        assert created["run"] == ("read-stream", "write-stream", {"init": True})
+        assert [tool.name for tool in tools_result.tools] == [tool["name"] for tool in mcp_server.TOOLS]
 
 
 class TestRelativePathGuard:
