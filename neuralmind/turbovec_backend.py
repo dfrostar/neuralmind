@@ -45,7 +45,7 @@ from typing import Any
 import numpy as np
 
 from .embedding_backend import EmbeddingBackend
-from .paths import canonical_artifact, legacy_artifact, graph_json_path, vector_db_path
+from .paths import graph_json_path, vector_db_path
 from .progress import ProgressReporter
 from .secret_scan import redact_if_enabled
 

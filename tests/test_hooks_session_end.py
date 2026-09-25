@@ -21,9 +21,9 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 import pytest
-from pathlib import Path
 
 from neuralmind.hooks import _hook_block, install_hooks, run_hook
 
@@ -196,7 +196,7 @@ def test_recent_session_events_cap_applies_after_time_filter(tmp_path):
     With 600 in-window events, the returned set is the NEWEST 500 — not
     the newest 500 raw lines with the time filter applied afterward.
     """
-    from neuralmind.hooks import _recent_session_events, _SESSION_END_MAX_EVENTS
+    from neuralmind.hooks import _SESSION_END_MAX_EVENTS, _recent_session_events
 
     now = time.time()
     # 600 events all inside the 12h window (written oldest-first).
