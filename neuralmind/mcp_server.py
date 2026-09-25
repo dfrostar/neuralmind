@@ -1306,7 +1306,7 @@ async def run_mcp_server():
 
     try:
         server_signature = inspect.signature(Server.__init__)
-    except (TypeError, ValueError):
+    except (AttributeError, TypeError, ValueError):
         server_signature = None
 
     if (
