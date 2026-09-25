@@ -26,8 +26,6 @@ import re
 import tempfile
 from pathlib import Path
 
-from .paths import graph_json_path
-
 # Size thresholds (tunable via env vars for tests and power users)
 BASH_TAIL_LINES = int(os.environ.get("NEURALMIND_BASH_TAIL", "3"))
 BASH_MAX_CHARS = int(os.environ.get("NEURALMIND_BASH_MAX_CHARS", "3000"))

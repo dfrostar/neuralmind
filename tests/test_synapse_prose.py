@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import json
-import sqlite3
 from pathlib import Path
-
-import pytest
 
 from neuralmind.synapse_dynamics import SynapseDynamics
 from neuralmind.synapses import SynapseStore

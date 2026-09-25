@@ -304,7 +304,7 @@ class SynapseDynamics:
 
             return raw[:top_k]
         except Exception:
-            logger.debug("spread dynamics failed, falling back", exc_info=True)
+            log.debug("spread dynamics failed, falling back", exc_info=True)
             return self.store.spread(seeds, depth=depth, top_k=top_k, namespaces=namespaces)
 
     def reinforce_prose(
@@ -347,7 +347,7 @@ class SynapseDynamics:
             self.store.reinforce(node_ids)
             return True
         except Exception:
-            logger.debug("prose reinforcement failed", exc_info=True)
+            log.debug("prose reinforcement failed", exc_info=True)
             return False
 
     def spread_prose(
@@ -367,7 +367,7 @@ class SynapseDynamics:
         try:
             return self.store.spread(seed_chapter_ids, depth=depth, top_k=top_k)
         except Exception:
-            logger.debug("prose spread failed", exc_info=True)
+            log.debug("prose spread failed", exc_info=True)
             return []
 
     def _apply_lateral_inhibition(

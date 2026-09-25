@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .paths import graph_json_path, graph_report_path
+from .paths import graph_report_path
 
 logger = logging.getLogger(__name__)
 

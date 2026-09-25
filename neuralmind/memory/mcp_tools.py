@@ -266,7 +266,7 @@ def tool_memory_timeline(
         "before": [_compact_row(r) for r in all_records[max(0, idx - before) : idx]],
         "after": [_compact_row(r) for r in all_records[idx + 1 : idx + 1 + after]],
         "next": (
-            "Use memory_get with batched ids (max 20) for full records of " "any row shown here."
+            "Use memory_get with batched ids (max 20) for full records of any row shown here."
         ),
     }
 
