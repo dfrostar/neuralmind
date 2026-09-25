@@ -41,7 +41,7 @@ _MODEL_NAME = "all-MiniLM-L6-v2"
 _ARCHIVE_URL = "https://chroma-onnx-models.s3.amazonaws.com/all-MiniLM-L6-v2/onnx.tar.gz"
 _ARCHIVE_SHA256 = "913d7300ceae3b2dbc2c50d1de4baacab4be7b9380491c27fab7418616a16ec3"
 _MAX_TOKENS = 256
-_BATCH = 32
+_BATCH = 32  # ORT deadlocks on large single-batch runs; 32 is the proven-safe size
 _DOWNLOAD_RETRIES = 3
 
 _NM_CACHE = Path.home() / ".cache" / "neuralmind" / "onnx_models" / _MODEL_NAME / "onnx"
@@ -164,8 +164,14 @@ class OnnxMiniLMEmbedder:
                 so.inter_op_num_threads = 1
         return so
 
-    @cached_property
-    def _session(self):
+    def _session_factory(self):
+        """Create an ONNX session.
+
+        Deliberately not cached: onnxruntime 1.29 on Python 3.14 deadlocks
+        after 2-3 ``session.run()`` calls on a reused session (CPU provider,
+        independent of thread count). Callers in long-lived processes fan
+        batches out to subprocesses so each session sees exactly one run.
+        """
         import onnxruntime as ort
 
         so = self._session_options()
@@ -184,9 +190,16 @@ class OnnxMiniLMEmbedder:
         return (v / norm[:, np.newaxis]).astype(np.float32)
 
     def embed(self, texts: list[str]) -> np.ndarray:
-        """Return an ``(n, 384)`` float32 array of unit-normalised embeddings."""
+        """Return an ``(n, 384)`` float32 array of unit-normalised embeddings.
+
+        Batched at ``_BATCH``. Safe for a single call per process; for a large
+        corpus callers should fan batches across subprocesses (see
+        ``TurboVecEmbedder._embed_matrix``), because onnxruntime 1.29 on
+        Python 3.14 deadlocks after 2-3 ``session.run()`` calls in one process.
+        """
         if not texts:
             return np.zeros((0, self.dim), dtype=np.float32)
+        session = self._session_factory()
         out: list[np.ndarray] = []
         for i in range(0, len(texts), _BATCH):
             batch = texts[i : i + _BATCH]
@@ -198,7 +211,7 @@ class OnnxMiniLMEmbedder:
                 "attention_mask": attention_mask,
                 "token_type_ids": np.zeros_like(input_ids),
             }
-            last_hidden = self._session.run(None, onnx_input)[0]
+            last_hidden = session.run(None, onnx_input)[0]
             # Attention-masked mean pooling (identical to ChromaDB / S-BERT).
             mask = np.broadcast_to(np.expand_dims(attention_mask, -1), last_hidden.shape)
             pooled = np.sum(last_hidden * mask, axis=1) / np.clip(

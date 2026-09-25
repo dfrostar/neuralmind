@@ -1,10 +1,11 @@
 # NeuralMind — Kanban Board (CANONICAL — `dfrostar/neuralmind`)
 
-**Last updated:** 2026-09-17 16:30:00
+**Last updated:** 2026-09-25 14:00:00 UTC
 **Repo:** `neuralmind` (dfrostar/neuralmind)
-**Version:** 3.13.0
+**Version:** 4.2.0+ (post-v4.2.0 consolidation)
 **Branch:** main
-**Last commit:** `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17)
+**Last commit:** `aaa2c5d` — fix: two consolidation stragglers in tests — structural fixture + server guard (2026-09-25)
+**Uncommitted:** 11 files (retrieval_results.json, 10 test fixture extraction_cache.json files)
 
 ---
 
@@ -58,35 +59,34 @@ NeuralMind.query()
 | Confidence gating (HIGH≥0.70, MEDIUM≥0.40, LOW<0.40) | No silent low-confidence results for medical content |
 | Lazy initialization | MedicalRetriever only builds on first prose query |
 
-### Context Mode Comparison
-
-| Dimension | NeuralMind | Context Mode |
-|-----------|-----------|------------|
-| Scope | Persistent (your library) | Session-scoped (this conversation) |
-| Input | Pre-existing documents | Tool output during session |
-| Value | Surfaces relevant content from your knowledge base | Prevents context flooding |
-| Semantic search | ✅ Embeddings (ONNX) | ❌ FTS5 keyword only |
-| Prose/books | ✅ Chapter-level + medical terminology | ❌ Code-only |
-| Session continuity | ❌ Not built | ✅ SQLite FTS5 |
-| MCP integration | ❌ Not yet | ✅ 17+ agents |
-
-**Verdict:** They're layers, not competitors. Context Mode manages the present; NeuralMind retrieves from the past.
-
 ---
 
 ## Pending Work
 
 ### Next Sprint
+- [x] **Output directory consolidation** ✅ DONE (`62a44e8` — `graphify-out/` → `.neuralmind/` with legacy fallback)
+- [x] **Auto-regenerate public benchmark on drift** ✅ DONE (`78f9299` — `bench-public-drift.yml`)
 - [ ] Context Mode MCP integration for session continuity
 - [ ] e5-large embedding upgrade (network blocked)
 - [ ] Strip unused code paths (if any remain)
-- [ ] Publish v3.13.0 to PyPI
+- [x] **Publish v4.2.0 to PyPI** ✅ DONE (`f1502dd`, 2026-09-18)
+- [x] **Memory system — decision memory layer** ✅ DONE (commit-level invalidation, `e14ddfa`)
+- [x] **Memory system — eval harness + MCP tools** ✅ DONE (MaintenanceEval, query_decisions, audit_decisions, record_decision, invalidate_decision)
+- [x] **Memory system — PreToolUse stale-decision guard** ✅ DONE (`605b036`)
+- [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
+- [ ] Memory system — integrate with synapse layer for cross-session persistence
+- [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits — 2026-09-19)
+- [x] **Cost Attribution Dashboard** ✅ DONE (`09318d5` — `neuralmind cost` command)
+- [x] **Synapse-prose integration** — extend Hebbian learning to prose/book content ✅ DONE (`ad51f53`, 2026-09-21)
+- [x] **QA review findings (7 of 8)** ✅ DONE (`8f58d68` — deadlock, cap, docs, migration)
+- [x] **Wheel fix — ship exactly demo graph** ✅ DONE (`e4ab5b1`)
+- [x] **Ruff/black cleanup on QA-fix files** ✅ DONE (`3fd895d`)
+- [x] **Test fixture consolidation stragglers** ✅ DONE (`aaa2c5d`, 2026-09-25)
 
 ### Known Limitations
 - MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
 - e5-large upgrade path documented but not yet available (network blocked)
 - P95 latency 7.6s (first query cold start); subsequent queries <400ms
-- Synapse layer unused for prose (only code projects)
 
 ---
 
@@ -94,16 +94,17 @@ NeuralMind.query()
 
 1. Monitor for network availability to download e5-large ONNX model
 2. Consider Context Mode integration as companion tool for session management
-3. Evaluate competitive positioning: "Context Mode for personal knowledge"
+3. **Push 23 commits to origin** — all consolidation + QA fixes ready
+4. **Clean uncommitted test fixture artifacts** — `retrieval_results.json` + 10 `extraction_cache.json` files
 
 ---
 
-## 📊 Repo State (2026-09-17)
+## 📊 Repo State (2026-09-25 14:00 UTC)
 
 | Field | Value |
 |-------|-------|
 | Branch | main |
-| Last commit | `bea01ac` — chore: update NeuralMind team memory snapshot [skip ci] (2026-09-17) |
-| Uncommitted | 3 files (KANBAN.md, Features.tsx, evals/public/card.py) |
-| New work | `Features.tsx` — 30 lines added (uncommitted) |
-| Stale days | 0 days (last commit today) |
+| Last commit | `aaa2c5d` — fix: two consolidation stragglers in tests (2026-09-25) |
+| Uncommitted | 11 files (retrieval_results.json, 10 test fixture extraction_cache.json) |
+| Stale days | 0 days (commit today) |
+| Sync | **23 commits AHEAD of origin/main** — needs `git push origin main` |

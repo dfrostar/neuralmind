@@ -363,10 +363,10 @@ class TestToolDefinitions:
     """Tests for the TOOLS constant."""
 
     def test_tools_list_has_expected_count(self):
-        """TOOLS should define 25 tools: previous 21 + 4 memory-layer tools."""
+        """TOOLS should define 28 tools: 21 core + 4 memory-layer + 3 progressive-retrieval."""
         from neuralmind.mcp_server import TOOLS
 
-        assert len(TOOLS) == 25
+        assert len(TOOLS) == 28
 
     def test_each_tool_has_required_fields(self):
         """Every tool definition has name, description, and inputSchema."""
@@ -421,6 +421,10 @@ class TestToolDefinitions:
             "neuralmind_audit_decisions",
             "neuralmind_record_decision",
             "neuralmind_invalidate_decision",
+            # v4.3.0 progressive decision retrieval (3-layer)
+            "neuralmind_memory_search",
+            "neuralmind_memory_timeline",
+            "neuralmind_memory_get",
         }
         assert tool_names == expected
 

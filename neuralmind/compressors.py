@@ -229,10 +229,12 @@ def compress_read(file_path: str, raw_content: str, mind=None) -> str:
         from .core import NeuralMind  # local to avoid circular import at module-load
 
         if mind is None:
-            # Walk up from file_path looking for graphify-out
+            # Walk up from file_path looking for .neuralmind/graph.json (legacy: graphify-out/)
             search_from = Path(file_path).resolve().parent
             for candidate in [search_from, *search_from.parents]:
-                if (candidate / "graphify-out" / "graph.json").exists():
+                if (candidate / ".neuralmind" / "graph.json").exists() or (
+                    candidate / "graphify-out" / "graph.json"
+                ).exists():
                     mind = NeuralMind(str(candidate))
                     break
             else:

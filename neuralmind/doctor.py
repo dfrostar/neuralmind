@@ -16,6 +16,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from .paths import graph_json_path
+
 # Status levels, worst-last so ``overall_status`` can pick the max.
 OK = "ok"
 WARN = "warn"
@@ -46,7 +48,7 @@ class Check:
 
 
 def _check_graph(project: Path) -> Check:
-    graph = project / "graphify-out" / "graph.json"
+    graph = graph_json_path(project)
     if not graph.exists():
         return Check(
             "Code graph",
@@ -120,10 +122,27 @@ def _check_index(project: Path) -> Check:
     total = int(stats.get("total_nodes", 0) or 0)
     if total > 0:
         return Check("Semantic index", OK, f"{total} nodes embedded ({backend} backend)")
+    # No nodes at canonical path — is a legacy graphify-out/ index orphaned?
+    legacy_note = ""
+    try:
+        from neuralmind.paths import legacy_artifact
+
+        legacy_vec = legacy_artifact(project, "neuralmind_turbovec")
+        legacy_chroma = legacy_artifact(project, "neuralmind_db")
+        if legacy_vec.exists() or legacy_chroma.exists():
+            legacy_note = (
+                " — a legacy graphify-out/ index exists; it is NOT read "
+                'anymore. Run `python -c "from neuralmind.paths import '
+                "migrate_legacy_artifacts; "
+                "print(migrate_legacy_artifacts('.'))\"` to move it, or "
+                "rebuild with `neuralmind build`."
+            )
+    except Exception:
+        pass  # diagnostic only; never fail the check on this
     return Check(
         "Semantic index",
         FAIL,
-        f"no nodes embedded ({backend} backend)",
+        f"no nodes embedded ({backend} backend){legacy_note}",
         fix="Build it: neuralmind build",
     )
 
@@ -232,7 +251,7 @@ def _check_doc_code_alignment(project: Path) -> Check:
     is newer than the directory's newest code file, flag it as potentially
     stale. Fail-open: never FAIL — this is advisory.
     """
-    graph_path = project / "graphify-out" / "graph.json"
+    graph_path = graph_json_path(project)
     if not graph_path.exists():
         return Check("Doc-code alignment", WARN, "no graph.json to analyze")
 

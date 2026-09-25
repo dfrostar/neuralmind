@@ -27,7 +27,7 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures"
 # hand-authored TS/Go graphs must match its shape, so the expected key sets are
 # derived from it rather than hard-coded (and drift loudly if graphify changes).
 REFERENCE_GRAPH = (
-    REPO_ROOT / "neuralmind" / "demo_data" / "sample_project" / "graphify-out" / "graph.json"
+    REPO_ROOT / "neuralmind" / "demo_data" / "sample_project" / ".neuralmind" / "graph.json"
 )
 
 # (fixture dir, query-set file)

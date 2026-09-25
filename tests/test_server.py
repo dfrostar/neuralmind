@@ -67,8 +67,10 @@ def test_ensure_graph_or_explain_missing(tmp_path):
 
 
 def test_ensure_graph_or_explain_present(tmp_path):
-    (tmp_path / "graphify-out").mkdir()
-    (tmp_path / "graphify-out" / "graph.json").write_text("{}")
+    # A canonical .neuralmind/graph.json (post-consolidation location)
+    # satisfies the guard.
+    (tmp_path / ".neuralmind").mkdir()
+    (tmp_path / ".neuralmind" / "graph.json").write_text("{}")
     # Should not raise.
     _ensure_graph_or_explain(tmp_path)
 

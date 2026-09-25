@@ -662,7 +662,7 @@ def tool_structural_gaps(
 
     from neuralmind.structural_gaps import detect_gaps
 
-    graph_path = os.path.join(project_path, "graphify-out", "graph.json")
+    graph_path = os.path.join(project_path, ".neuralmind", "graph.json")
     if not os.path.exists(graph_path):
         return {"error": "No graph found. Run `neuralmind build` first.", "gaps": []}
 
@@ -777,7 +777,7 @@ TOOLS = [
     },
     {
         "name": "neuralmind_build",
-        "description": "Build or rebuild the neural knowledge base for a project. Requires graphify-out/graph.json to exist.",
+        "description": "Build or rebuild the neural knowledge base for a project. Requires .neuralmind/graph.json to exist.",
         "inputSchema": {
             "type": "object",
             "properties": {

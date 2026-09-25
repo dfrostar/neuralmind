@@ -143,8 +143,15 @@ def _copy_fixture(dst: Path) -> None:
 
 
 def _graph_meta(project: Path) -> tuple[str, int]:
-    """Return ``(generated_by, code_node_count)`` for a built graph."""
-    graph_path = project / "graphify-out" / "graph.json"
+    """Return ``(generated_by, code_node_count)`` for a built graph.
+
+    Reads the canonical ``.neuralmind/graph.json`` first, falling back to
+    the legacy ``graphify-out/graph.json`` (the graphify backend still
+    writes there, and pre-consolidation projects have it there too).
+    """
+    graph_path = project / ".neuralmind" / "graph.json"
+    if not graph_path.is_file():
+        graph_path = project / "graphify-out" / "graph.json"
     data = json.loads(graph_path.read_text(encoding="utf-8"))
     generated_by = str(data.get("generated_by", "graphify"))
     code_nodes = sum(1 for n in data.get("nodes", []) if n.get("file_type") == "code")

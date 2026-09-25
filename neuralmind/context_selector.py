@@ -24,6 +24,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .paths import graph_report_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -736,7 +738,7 @@ class ContextSelector:
             parts.append("")
 
         # Try to load GRAPH_REPORT.md summary
-        graph_report = self.project_path / "graphify-out" / "GRAPH_REPORT.md"
+        graph_report = graph_report_path(self.project_path)
         if graph_report.exists():
             try:
                 with open(graph_report) as f:
