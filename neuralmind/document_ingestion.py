@@ -55,7 +55,9 @@ def _matches_ignore(rel_path: str, patterns: frozenset[str]) -> bool:
     parts = rel_path.split("/")
     for pattern in patterns:
         cleaned = pattern.rstrip("/")
-        if fnmatch(rel_path, pattern) or fnmatch(parts[-1], pattern):
+        if fnmatch(rel_path, pattern):
+            return True
+        if "/" not in cleaned and fnmatch(parts[-1], cleaned):
             return True
         if any(fnmatch(part, cleaned) for part in parts[:-1]):
             return True
