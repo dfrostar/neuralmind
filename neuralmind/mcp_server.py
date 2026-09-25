@@ -1305,7 +1305,7 @@ async def run_mcp_server():
         return mcp_types.CallToolResult(content=[TextContent(type="text", text=result)])
 
     try:
-        server_signature = inspect.signature(Server)
+        server_signature = inspect.signature(Server.__init__)
     except (TypeError, ValueError):
         server_signature = None
 
