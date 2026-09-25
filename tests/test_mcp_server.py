@@ -493,6 +493,56 @@ class TestRunMcpServer:
         assert created["run"] == ("read-stream", "write-stream", {"init": True})
         assert [tool.name for tool in tools_result.tools] == [tool["name"] for tool in mcp_server.TOOLS]
 
+    def test_falls_back_to_legacy_decorators_when_server_signature_is_unavailable(self):
+        """Uninspectable Server implementations should still take the legacy path."""
+        from neuralmind import mcp_server
+
+        created: dict[str, object] = {}
+
+        class FakeLegacyServer:
+            def __init__(self, name):
+                created["name"] = name
+
+            def list_tools(self):
+                def decorator(fn):
+                    created["list_tools_handler"] = fn
+                    return fn
+
+                return decorator
+
+            def call_tool(self):
+                def decorator(fn):
+                    created["call_tool_handler"] = fn
+                    return fn
+
+                return decorator
+
+            def create_initialization_options(self):
+                return {"init": True}
+
+            async def run(self, read_stream, write_stream, options):
+                created["run"] = (read_stream, write_stream, options)
+
+        class FakeStdioServer:
+            async def __aenter__(self):
+                return ("read-stream", "write-stream")
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return False
+
+        with (
+            patch.object(mcp_server, "MCP_AVAILABLE", True),
+            patch.object(mcp_server, "Server", FakeLegacyServer),
+            patch.object(mcp_server, "stdio_server", lambda: FakeStdioServer()),
+            patch("neuralmind.mcp_server.inspect.signature", side_effect=ValueError("no signature")),
+        ):
+            asyncio.run(mcp_server.run_mcp_server())
+
+        assert created["name"] == "neuralmind"
+        assert "list_tools_handler" in created
+        assert "call_tool_handler" in created
+        assert created["run"] == ("read-stream", "write-stream", {"init": True})
+
 
 class TestRelativePathGuard:
     """The detached-host footgun guard on the four first-contact tools.

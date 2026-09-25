@@ -1304,8 +1304,16 @@ async def run_mcp_server():
         result = await asyncio.to_thread(handle_tool_call, params.name, arguments)
         return mcp_types.CallToolResult(content=[TextContent(type="text", text=result)])
 
-    server_signature = inspect.signature(Server)
-    if "on_list_tools" in server_signature.parameters and "on_call_tool" in server_signature.parameters:
+    try:
+        server_signature = inspect.signature(Server)
+    except (TypeError, ValueError):
+        server_signature = None
+
+    if (
+        server_signature is not None
+        and "on_list_tools" in server_signature.parameters
+        and "on_call_tool" in server_signature.parameters
+    ):
         server = Server(
             "neuralmind",
             on_list_tools=list_tools_v2,
