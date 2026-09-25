@@ -6855,6 +6855,8 @@ def main():
             "prompt-submit",
             "pre-compact",
             "stale-guard",
+            "stop",
+            "session-end",
         ],
     )
     hook_p.set_defaults(func=cmd_hook)
