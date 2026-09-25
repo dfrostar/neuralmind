@@ -1,11 +1,11 @@
 # NeuralMind — Kanban Board (CANONICAL — `dfrostar/neuralmind`)
 
-**Last updated:** 2026-09-25 09:00:00 UTC
+**Last updated:** 2026-09-25 14:00:00 UTC
 **Repo:** `neuralmind` (dfrostar/neuralmind)
-**Version:** 4.2.0
+**Version:** 4.2.0+ (post-v4.2.0 consolidation)
 **Branch:** main
-**Last commit:** `ad51f53` — feat: synapse-prose integration — Hebbian learning for book content (2026-09-21)
-**Uncommitted:** 19 files (KANBAN.md, doctor.py, graphgen.py, onnx_embedder.py, paths.py, turbovec_backend.py, retrieval_results.json, test_paths.py, extraction_cache.json in 9 test fixtures, scripts/onnx_embed.py)
+**Last commit:** `aaa2c5d` — fix: two consolidation stragglers in tests — structural fixture + server guard (2026-09-25)
+**Uncommitted:** 11 files (retrieval_results.json, 10 test fixture extraction_cache.json files)
 
 ---
 
@@ -59,20 +59,6 @@ NeuralMind.query()
 | Confidence gating (HIGH≥0.70, MEDIUM≥0.40, LOW<0.40) | No silent low-confidence results for medical content |
 | Lazy initialization | MedicalRetriever only builds on first prose query |
 
-### Context Mode Comparison
-
-| Dimension | NeuralMind | Context Mode |
-|-----------|-----------|------------|
-| Scope | Persistent (your library) | Session-scoped (this conversation) |
-| Input | Pre-existing documents | Tool output during session |
-| Value | Surfaces relevant content from your knowledge base | Prevents context flooding |
-| Semantic search | ✅ Embeddings (ONNX) | ❌ FTS5 keyword only |
-| Prose/books | ✅ Chapter-level + medical terminology | ❌ Code-only |
-| Session continuity | ❌ Not built | ✅ SQLite FTS5 |
-| MCP integration | ❌ Not yet | ✅ 17+ agents |
-
-**Verdict:** They're layers, not competitors. Context Mode manages the present; NeuralMind retrieves from the past.
-
 ---
 
 ## Pending Work
@@ -89,9 +75,13 @@ NeuralMind.query()
 - [x] **Memory system — PreToolUse stale-decision guard** ✅ DONE (`605b036`)
 - [x] **Stale-decision guard across all public surfaces** ✅ DONE (`cf2ce08`, v4.2.0 prep)
 - [ ] Memory system — integrate with synapse layer for cross-session persistence
-- [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits: `31b2c63`, `c50a804`, `92313b8`, `d874a29`, `2d0b799`, `1a453e7` — 2026-09-19)
+- [x] **Stale-guard Windows path normalization** ✅ DONE (5 commits — 2026-09-19)
 - [x] **Cost Attribution Dashboard** ✅ DONE (`09318d5` — `neuralmind cost` command)
 - [x] **Synapse-prose integration** — extend Hebbian learning to prose/book content ✅ DONE (`ad51f53`, 2026-09-21)
+- [x] **QA review findings (7 of 8)** ✅ DONE (`8f58d68` — deadlock, cap, docs, migration)
+- [x] **Wheel fix — ship exactly demo graph** ✅ DONE (`e4ab5b1`)
+- [x] **Ruff/black cleanup on QA-fix files** ✅ DONE (`3fd895d`)
+- [x] **Test fixture consolidation stragglers** ✅ DONE (`aaa2c5d`, 2026-09-25)
 
 ### Known Limitations
 - MiniLM-L6-v2 (384-dim) is the embedding ceiling (~67% recall@1)
@@ -104,16 +94,17 @@ NeuralMind.query()
 
 1. Monitor for network availability to download e5-large ONNX model
 2. Consider Context Mode integration as companion tool for session management
-3. **Push 9 commits to origin** — doctor.py, graphgen.py, onnx_embedder.py, paths.py, turbovec_backend.py changes ready
+3. **Push 23 commits to origin** — all consolidation + QA fixes ready
+4. **Clean uncommitted test fixture artifacts** — `retrieval_results.json` + 10 `extraction_cache.json` files
 
 ---
 
-## 📊 Repo State (2026-09-25 09:00 UTC)
+## 📊 Repo State (2026-09-25 14:00 UTC)
 
 | Field | Value |
 |-------|-------|
 | Branch | main |
-| Last commit | `ad51f53` — feat: synapse-prose integration — Hebbian learning for book content (2026-09-21) |
-| Uncommitted | 19 files (KANBAN.md, doctor.py, graphgen.py, onnx_embedder.py, paths.py, turbovec_backend.py, retrieval_results.json, test_paths.py, 9 test fixtures, scripts/onnx_embed.py) |
-| Stale days | 4 days (last commit 2026-09-21) |
-| Sync | **9 commits AHEAD of origin/main** — needs `git push origin main` |
+| Last commit | `aaa2c5d` — fix: two consolidation stragglers in tests (2026-09-25) |
+| Uncommitted | 11 files (retrieval_results.json, 10 test fixture extraction_cache.json) |
+| Stale days | 0 days (commit today) |
+| Sync | **23 commits AHEAD of origin/main** — needs `git push origin main` |
