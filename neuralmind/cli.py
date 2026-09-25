@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from fnmatch import fnmatch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -330,30 +331,51 @@ def _is_book_project(project_path: Path) -> bool:
 
     Heuristic: markdown:code ratio > 3:1 AND no src/ or lib/ at root.
     """
-    md_files = list(project_path.glob("**/*.md"))
+    from neuralmind.graphgen import _DEFAULT_IGNORES, _iter_files, _iter_source_files
+
+    gitignore_path = project_path / ".gitignore"
+    gitignore_patterns: set[str] = set()
+    if gitignore_path.exists():
+        try:
+            content = gitignore_path.read_text(encoding="utf-8")
+        except OSError:
+            content = ""
+        for line in content.splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                gitignore_patterns.add(line)
+
+    def _gitignored(path: Path) -> bool:
+        if not gitignore_patterns:
+            return False
+        rel_path = path.relative_to(project_path).as_posix()
+        parts = rel_path.split("/")
+        for pattern in gitignore_patterns:
+            cleaned = pattern.rstrip("/")
+            if fnmatch(rel_path, pattern) or fnmatch(parts[-1], pattern):
+                return True
+            if any(fnmatch(part, cleaned) for part in parts[:-1]):
+                return True
+            if rel_path.startswith(cleaned + "/"):
+                return True
+        return False
+
+    md_files = [
+        f
+        for f in _iter_files(project_path, _DEFAULT_IGNORES, frozenset({".md", ".markdown", ".mkd"}))
+        if not _gitignored(f)
+    ]
     if len(md_files) < 3:
         return False
 
-    code_exts = {
-        ".py",
-        ".js",
-        ".ts",
-        ".tsx",
-        ".jsx",
-        ".go",
-        ".rs",
-        ".java",
-        ".c",
-        ".cpp",
-        ".h",
-        ".rb",
-        ".php",
-        ".swift",
-        ".kt",
-    }
-    code_files = [f for f in project_path.glob("*") if f.suffix.lower() in code_exts]
+    code_files = [f for f in _iter_source_files(project_path, _DEFAULT_IGNORES) if not _gitignored(f)]
     # Also check for src/ or lib/ directories (strong code indicator)
     if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
+        return False
+
+    # If there's substantial code anywhere in the repository tree, treat this
+    # as a code project rather than a book.
+    if len(code_files) >= 10:
         return False
 
     if not code_files:

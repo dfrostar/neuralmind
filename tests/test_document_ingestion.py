@@ -142,3 +142,34 @@ class TestIngestDirectory:
         nodes = ingest_directory(tmp_path)
         # May or may not find deep file depending on limit
         assert isinstance(nodes, list)
+
+    def test_skips_default_and_ignore_file_directories(self, tmp_path):
+        (tmp_path / "keep.md").write_text("# Keep\n")
+
+        venv = tmp_path / ".venv" / "pkg"
+        venv.mkdir(parents=True)
+        (venv / "ignored.md").write_text("# ignored")
+
+        hidden = tmp_path / ".cache"
+        hidden.mkdir()
+        (hidden / "hidden.txt").write_text("hidden")
+
+        build = tmp_path / "docs" / "_build"
+        build.mkdir(parents=True)
+        (build / "rendered.txt").write_text("rendered")
+
+        notes = tmp_path / "notes"
+        notes.mkdir()
+        (notes / "skip.md").write_text("# skip")
+
+        (tmp_path / ".gitignore").write_text("docs/_build/\n")
+        (tmp_path / ".neuralmindignore").write_text("notes/\n")
+
+        nodes = ingest_directory(tmp_path)
+        labels = {n.label for n in nodes}
+
+        assert "keep.md" in labels
+        assert "ignored.md" not in labels
+        assert "hidden.txt" not in labels
+        assert "rendered.txt" not in labels
+        assert "skip.md" not in labels

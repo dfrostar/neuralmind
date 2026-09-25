@@ -102,6 +102,26 @@ class TestBookDetection:
 
             assert _is_book_project(path) is False
 
+    def test_not_book_for_package_layout_python_repo(self, temp_project):
+        """Package-layout repos should not be misdetected as books."""
+        pkg = temp_project / "aiopnsense"
+        pkg.mkdir()
+        for i in range(12):
+            (pkg / f"module_{i}.py").write_text("def f():\n    return 1\n")
+
+        # Large markdown trees under ignored dirs should not drive detection.
+        (temp_project / ".gitignore").write_text(".venv/\ndocs/_build/\n")
+        venv_docs = temp_project / ".venv" / "docs"
+        venv_docs.mkdir(parents=True)
+        (venv_docs / "readme.md").write_text("# Ignored venv doc")
+        build_docs = temp_project / "docs" / "_build"
+        build_docs.mkdir(parents=True)
+        (build_docs / "rendered.md").write_text("# Ignored built doc")
+
+        from neuralmind.cli import _is_book_project
+
+        assert _is_book_project(temp_project) is False
+
 
 class TestBookAssetTracking:
     """Tests for _track_book_assets in TurboVecEmbedder."""
