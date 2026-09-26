@@ -184,3 +184,67 @@ class TestIngestDirectory:
 
         assert "README.md" in labels
         assert "notes.md" not in labels
+
+
+class TestDotFileSecretsNeverIngested:
+    """Regression: .env / dot-files were ingested as content, leaking
+    credentials into the index (found by GLM-5.2 second-model review of
+    PR #528, verified 2026-09-26)."""
+
+    def test_env_file_never_ingested(self, tmp_path):
+        (tmp_path / ".env").write_text("OPENAI_API_KEY=sk-test123\n")
+        (tmp_path / "readme.md").write_text("# Real content\n")
+
+        nodes = ingest_directory(tmp_path)
+        labels = {n.label for n in nodes}
+
+        assert ".env" not in labels, "secrets file leaked into content index"
+        assert "readme.md" in labels
+
+    def test_gitignore_itself_not_ingested(self, tmp_path):
+        (tmp_path / ".gitignore").write_text("*.log\n")
+        (tmp_path / "doc.md").write_text("# doc\n")
+
+        nodes = ingest_directory(tmp_path)
+        labels = {n.label for n in nodes}
+
+        assert ".gitignore" not in labels
+        assert "doc.md" in labels
+
+
+class TestGitignoreSemantics:
+    """Regression: the matcher mis-implemented gitignore anchoring rules
+    (nested over-ignore, dead rooted patterns, dead **/ patterns — found by
+    GLM-5.2 review, fixed 2026-09-26)."""
+
+    def test_slash_anchors_glob_to_root(self):
+        from neuralmind.document_ingestion import _matches_ignore
+
+        # '*' must not cross '/' — docs/*.md matches docs/intro.md but not
+        # docs/ch1/intro.md
+        assert _matches_ignore("docs/intro.md", ("docs/*.md",))
+        assert not _matches_ignore("docs/ch1/intro.md", ("docs/*.md",))
+
+    def test_leading_slash_is_rooted(self):
+        from neuralmind.document_ingestion import _matches_ignore
+
+        assert _matches_ignore("vendor/lib.md", ("/vendor/",))
+        assert not _matches_ignore("src/vendor/lib.md", ("/vendor/",))
+
+    def test_double_star_matches_any_depth_including_root(self):
+        from neuralmind.document_ingestion import _matches_ignore
+
+        assert _matches_ignore("build_artifacts/foo.txt", ("**/build_artifacts",))
+        assert _matches_ignore("nested/build_artifacts/x.txt", ("**/build_artifacts",))
+
+    def test_unanchored_pattern_matches_directory_anywhere(self):
+        from neuralmind.document_ingestion import _matches_ignore
+
+        assert _matches_ignore("temporary/file.md", ("temp*",))
+        assert not _matches_ignore("attempt/file.md", ("temp*",))
+
+    def test_dir_only_trailing_slash(self):
+        from neuralmind.document_ingestion import _matches_ignore
+
+        assert _matches_ignore("build/out.js", ("build/",))
+        assert not _matches_ignore("build.py", ("build/",))
