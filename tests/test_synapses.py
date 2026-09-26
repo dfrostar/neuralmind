@@ -78,6 +78,40 @@ def test_decay_fresh_edges_preserved(tmp_path):
     assert "fresh_b" in dict(s.neighbors("fresh_a"))
 
 
+def test_repeated_decay_does_not_compound(tmp_path):
+    """Decay is wall-clock, not per-call: the SessionStart hook runs decay()
+    every session, and each tick must only charge the time since the last
+    tick. Regression for #422 (weights collapsing to the floor / pruned)."""
+    now = time.time()
+    t0 = now - 30 * 86400
+
+    once = _store(tmp_path / "once")
+    once.reinforce(["a", "b"], now=t0)
+    once.record_sequence(["a", "b"], now=t0)
+    once.decay(now=now)
+    expected = dict(once.neighbors("a"))["b"]
+    expected_t = once.transitions()[0][2]
+
+    many = _store(tmp_path / "many")
+    many.reinforce(["a", "b"], now=t0)
+    many.record_sequence(["a", "b"], now=t0)
+    for step in (10, 20, 30, 30, 30):
+        many.decay(now=t0 + step * 86400)
+
+    assert abs(dict(many.neighbors("a"))["b"] - expected) < 1e-9
+    assert abs(many.transitions()[0][2] - expected_t) < 1e-9
+
+
+def test_synapse_client_deactivate_decays_touching_edges(tmp_path):
+    from neuralmind.synapse_client import SynapseClient
+
+    s = _store(tmp_path)
+    s.reinforce(["a", "b"], now=time.time() - 60 * 86400)
+    before = dict(s.neighbors("a"))["b"]
+    assert SynapseClient(s, tmp_path).deactivate(["a", "a"]) == 1
+    assert dict(s.neighbors("a")).get("b", 0.0) < before
+
+
 def test_spreading_activation_finds_indirect_neighbors(tmp_path):
     s = _store(tmp_path)
     # build a chain: A — B — C, with A and C never co-activated
