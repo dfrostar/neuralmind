@@ -91,7 +91,12 @@ def tool_record_decision(
     title: str,
     rationale: str,
     commit_sha: str = "",
-    files: list[str] | None = None,
+    files_affected: list[str] | None = None,
+    decision_type: str = "ARCHITECTURE",
+    confidence: float = 1.0,
+    evidence: list[str] | None = None,
+    rejected_alternatives: list[str] | None = None,
+    tags: list[str] | None = None,
 ) -> dict[str, Any]:
     """Store a new architecture decision with commit linkage.
 
@@ -100,7 +105,12 @@ def tool_record_decision(
         title: Short summary of the decision (e.g. "Use per-handler auth").
         rationale: The *why* — the reasoning that won't be obvious later.
         commit_sha: Git SHA anchoring the decision to a specific state.
-        files: Paths of files this decision concerns.
+        files_affected: Paths of files this decision concerns.
+        decision_type: One of DecisionStore's VALID_DECISION_TYPES.
+        confidence: 0.0-1.0 certainty that this decision is correct.
+        evidence: URLs / refs / doc lines supporting the decision.
+        rejected_alternatives: Options considered and turned down.
+        tags: Free-form labels for categorization.
 
     Returns:
         The created DecisionRecord as a dict.
@@ -110,7 +120,12 @@ def tool_record_decision(
         title=title,
         rationale=rationale,
         commit_sha=commit_sha,
-        files_affected=files,
+        files_affected=files_affected,
+        decision_type=decision_type,
+        confidence=confidence,
+        evidence=evidence,
+        rejected_alternatives=rejected_alternatives,
+        tags=tags,
     )
     return json.loads(record.json())
 
@@ -381,10 +396,33 @@ TOOLS: list[dict[str, Any]] = [
                     "type": "string",
                     "description": "Git SHA anchoring the decision",
                 },
-                "files": {
+                "files_affected": {
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "Files affected by this decision",
+                },
+                "decision_type": {
+                    "type": "string",
+                    "description": "Decision category (default: ARCHITECTURE)",
+                },
+                "confidence": {
+                    "type": "number",
+                    "description": "0.0-1.0 certainty that this decision is correct (default: 1.0)",
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "URLs / refs / doc lines supporting the decision",
+                },
+                "rejected_alternatives": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Options considered and turned down",
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Free-form labels for categorization",
                 },
             },
             "required": ["project_path", "title", "rationale"],
@@ -544,7 +582,15 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
             args["title"],
             args["rationale"],
             args.get("commit_sha", ""),
-            args.get("files"),
+            # "files" is the pre-fix field name; kept as a fallback so a
+            # caller still using it (or the pre-fix test suite) doesn't
+            # silently drop its file list.
+            args.get("files_affected") or args.get("files"),
+            args.get("decision_type", "ARCHITECTURE"),
+            args.get("confidence", 1.0),
+            args.get("evidence"),
+            args.get("rejected_alternatives"),
+            args.get("tags"),
         ),
         "neuralmind_invalidate_decision": lambda args: tool_invalidate_decision(
             args["project_path"],
