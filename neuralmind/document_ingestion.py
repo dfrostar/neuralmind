@@ -589,7 +589,7 @@ def ingest_directory(dir_path: Path, recursive: bool = True) -> list[ContentNode
     nodes = []
     errors = []
     root = dir_path
-    from .graphgen import _DEFAULT_IGNORES, _is_ignored, _parse_ignore_file
+    from .graphgen import _is_ignored, _parse_ignore_file
 
     neuralmindignore = _parse_ignore_file(root)
     gitignore = _load_ignore_patterns(root, ".gitignore")
