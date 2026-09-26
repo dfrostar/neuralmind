@@ -22,6 +22,7 @@ Usage:
 """
 
 import asyncio
+import inspect
 import json
 import sys
 from pathlib import Path
@@ -29,6 +30,7 @@ from typing import Any
 
 # MCP SDK imports
 try:
+    from mcp import types as mcp_types
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
     from mcp.types import TextContent, Tool
@@ -1294,16 +1296,40 @@ async def run_mcp_server():
         )
         sys.exit(1)
 
-    server = Server("neuralmind")
+    async def list_tools_v2(_ctx, _params):
+        return mcp_types.ListToolsResult(tools=[Tool(**t) for t in TOOLS])
 
-    @server.list_tools()
-    async def list_tools():
-        return [Tool(**t) for t in TOOLS]
+    async def call_tool_v2(_ctx, params):
+        arguments = params.arguments or {}
+        result = await asyncio.to_thread(handle_tool_call, params.name, arguments)
+        return mcp_types.CallToolResult(content=[TextContent(type="text", text=result)])
 
-    @server.call_tool()
-    async def call_tool(name: str, arguments: dict):
-        result = await asyncio.to_thread(handle_tool_call, name, arguments)
-        return [TextContent(type="text", text=result)]
+    try:
+        server_signature = inspect.signature(Server.__init__)
+    except (AttributeError, TypeError, ValueError):
+        server_signature = None
+
+    if (
+        server_signature is not None
+        and "on_list_tools" in server_signature.parameters
+        and "on_call_tool" in server_signature.parameters
+    ):
+        server = Server(
+            "neuralmind",
+            on_list_tools=list_tools_v2,
+            on_call_tool=call_tool_v2,
+        )
+    else:
+        server = Server("neuralmind")
+
+        @server.list_tools()
+        async def list_tools():
+            return [Tool(**t) for t in TOOLS]
+
+        @server.call_tool()
+        async def call_tool(name: str, arguments: dict):
+            result = await asyncio.to_thread(handle_tool_call, name, arguments)
+            return [TextContent(type="text", text=result)]
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
