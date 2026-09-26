@@ -329,15 +329,33 @@ def cmd_scan_for_secrets(args):
         sys.exit(1)
 
 
+_BOOK_IGNORED_DIRS = {
+    ".neuralmind",
+    ".bench-work",
+    "node_modules",
+    "venv",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+}
+
+
 def _is_book_project(project_path: Path) -> bool:
     """Detect if a project is book-like (chapters + code + assets).
 
     Heuristic: markdown:code ratio > 3:1 AND no src/ or lib/ at root.
-    """
-    md_files = list(project_path.glob("**/*.md"))
-    if len(md_files) < 3:
-        return False
 
+    Both counts must use the same traversal basis. The original compared a
+    recursive ``**/*.md`` glob against a root-only code glob, so any code repo
+    whose code lives in a package subdir (e.g. ``neuralmind/``) with >=3 .md
+    files anywhere was misclassified as a book — and book-mode then ingested
+    the whole repo as "chapters" (a multi-hour runaway embed on large repos).
+    Ignored dirs are pruned from BOTH counts so vendored corpora
+    (.bench-work, node_modules) cannot skew the ratio either.
+    """
+    md_files = 0
+    code_files = 0
     code_exts = {
         ".py",
         ".js",
@@ -355,7 +373,19 @@ def _is_book_project(project_path: Path) -> bool:
         ".swift",
         ".kt",
     }
-    code_files = [f for f in project_path.glob("*") if f.suffix.lower() in code_exts]
+    for _root, dirs, files in os.walk(project_path):
+        # Prune dot-dirs and known vendored/state dirs from BOTH counts.
+        # os.walk(followlinks=False) also replaces the old symlink exposure.
+        dirs[:] = [d for d in dirs if d not in _BOOK_IGNORED_DIRS and not d.startswith(".")]
+        for name in files:
+            ext = Path(name).suffix.lower()
+            if ext == ".md":
+                md_files += 1
+            elif ext in code_exts:
+                code_files += 1
+    if md_files < 3:
+        return False
+
     # Also check for src/ or lib/ directories (strong code indicator)
     if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
         return False
@@ -363,7 +393,7 @@ def _is_book_project(project_path: Path) -> bool:
     if not code_files:
         return True
 
-    return len(md_files) / max(len(code_files), 1) > 3
+    return md_files / code_files > 3
 
 
 def _cmd_build_book(args, project_path: str, force: bool) -> None:

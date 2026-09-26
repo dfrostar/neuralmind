@@ -23,6 +23,29 @@ from .secret_scan import redact_if_enabled
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 MAX_DIR_DEPTH = 10
+
+# Directs never ingested as "content", regardless of caller. Without this,
+# book-mode's ingest_directory(<repo root>) sweeps vendored corpora
+# (.bench-work: 64MB of benchmark fixtures), dependency trees, and state
+# dirs into the content store — tens of thousands of chunks for a repo that
+# was never a book in the first place.
+INGEST_IGNORED_DIRS = frozenset(
+    {
+        ".neuralmind",
+        ".bench-work",
+        "node_modules",
+        "venv",
+        ".venv",
+        "__pycache__",
+        "build",
+        "dist",
+        ".git",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+    }
+)
 CHUNK_SIZE = 500  # chars per chunk
 CHUNK_OVERLAP = 50  # chars overlap between chunks
 
@@ -523,6 +546,8 @@ def ingest_directory(dir_path: Path, recursive: bool = True) -> list[ContentNode
             if item.is_symlink():
                 continue
             if item.is_dir() and recursive:
+                if item.name in INGEST_IGNORED_DIRS or item.name.startswith("."):
+                    continue
                 _walk(item, depth + 1)
             elif item.is_file():
                 try:
