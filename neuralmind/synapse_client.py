@@ -47,11 +47,13 @@ class SynapseClient:
             return 0
 
     def deactivate(self, node_ids: list[str]) -> int:
-        """Decay a set of node ids."""
+        """Decay every edge touching each of ``node_ids``; returns the number of nodes decayed."""
         if not self.store or not node_ids:
             return 0
         try:
-            return self.store.decay(node_ids)
+            for node_id in dict.fromkeys(node_ids):
+                self.store.decay_node(node_id)
+            return len(dict.fromkeys(node_ids))
         except Exception:
             logger.debug("synapse deactivate failed", exc_info=True)
             return 0
