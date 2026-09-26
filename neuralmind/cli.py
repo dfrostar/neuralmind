@@ -387,7 +387,14 @@ def _is_book_project(project_path: Path) -> bool:
         return False
 
     # Also check for src/ or lib/ directories (strong code indicator)
-    if (project_path / "src").is_dir() or (project_path / "lib").is_dir():
+    src_dir = project_path / "src"
+    lib_dir = project_path / "lib"
+    if src_dir.is_dir() or lib_dir.is_dir():
+        return False
+
+    # If there's substantial code anywhere in the repository tree, treat this
+    # as a code project rather than a book.
+    if code_files >= 10:
         return False
 
     if not code_files:

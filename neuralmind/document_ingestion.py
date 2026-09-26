@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import re
 import time
+from fnmatch import fnmatch
 from pathlib import Path
 
 from .content_node import ContentNode
@@ -48,6 +49,54 @@ INGEST_IGNORED_DIRS = frozenset(
 )
 CHUNK_SIZE = 500  # chars per chunk
 CHUNK_OVERLAP = 50  # chars overlap between chunks
+
+
+def _load_ignore_patterns(project_path: Path, filename: str) -> tuple[str, ...]:
+    """Load .gitignore-style patterns from ``filename`` under ``project_path``."""
+    ignore_path = project_path / filename
+    if not ignore_path.exists():
+        return ()
+    try:
+        content = ignore_path.read_text(encoding="utf-8")
+    except OSError:
+        return ()
+
+    patterns: list[str] = []
+    for line in content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        patterns.append(line)
+    return tuple(patterns)
+
+
+def _matches_ignore(rel_path: str, patterns: tuple[str, ...]) -> bool:
+    """Check if project-relative ``rel_path`` matches any ignore pattern."""
+    if not patterns:
+        return False
+
+    parts = rel_path.split("/")
+    ignored = False
+    for pattern in patterns:
+        negated = pattern.startswith("!")
+        if negated:
+            pattern = pattern[1:].strip()
+            if not pattern:
+                continue
+        cleaned = pattern.rstrip("/")
+        matched = False
+        if fnmatch(rel_path, pattern):
+            matched = True
+        elif "/" not in cleaned and fnmatch(parts[-1], cleaned):
+            matched = True
+        elif any(fnmatch(part, cleaned) for part in parts[:-1]):
+            matched = True
+        elif rel_path.startswith(cleaned + "/"):
+            matched = True
+
+        if matched:
+            ignored = not negated
+    return ignored
 
 
 def _validate_path(path: Path, root: Path) -> Path:
@@ -535,9 +584,15 @@ def ingest_directory(dir_path: Path, recursive: bool = True) -> list[ContentNode
     dir_path = Path(dir_path)
     if not dir_path.is_dir():
         raise ValueError(f"Not a directory: {dir_path}")
+    dir_path = dir_path.resolve()
 
     nodes = []
     errors = []
+    root = dir_path
+    from .graphgen import _is_ignored, _parse_ignore_file
+
+    neuralmindignore = _parse_ignore_file(root)
+    gitignore = _load_ignore_patterns(root, ".gitignore")
 
     def _walk(path: Path, depth: int = 0):
         if depth > MAX_DIR_DEPTH:
@@ -545,11 +600,14 @@ def ingest_directory(dir_path: Path, recursive: bool = True) -> list[ContentNode
         for item in sorted(path.iterdir()):
             if item.is_symlink():
                 continue
+            rel = item.relative_to(root).as_posix()
             if item.is_dir() and recursive:
                 if item.name in INGEST_IGNORED_DIRS or item.name.startswith("."):
                     continue
                 _walk(item, depth + 1)
             elif item.is_file():
+                if _is_ignored(rel, neuralmindignore) or _matches_ignore(rel, gitignore):
+                    continue
                 try:
                     nodes.extend(parse_document(item))
                 except (ValueError, RuntimeError) as e:
