@@ -120,6 +120,32 @@ def _check_index(project: Path) -> Check:
             fix="Build it: neuralmind build",
         )
     total = int(stats.get("total_nodes", 0) or 0)
+    if total == 0:
+        # Book-mode / scoped builds write store.<scope>.sqlite (code/content/
+        # docs) instead of the default-scope store.sqlite read above. Per-scope
+        # stores partition nodes (a node matches exactly one scope), so summing
+        # them is correct — but only when the default store is empty, since an
+        # all-scope store overlaps the per-scope ones. Without this, doctor
+        # reports "no nodes embedded" on a perfectly healthy book build.
+        import sqlite3
+
+        from .paths import vector_db_path
+
+        tv_dir = Path(vector_db_path(project, "turbovec"))
+        for store_file in sorted(tv_dir.glob("store.*.sqlite")):
+            con = None
+            try:
+                # as_uri() percent-encodes and uses forward slashes, so the
+                # read-only URI also works on Windows (a raw f"file:{path}"
+                # silently fails to open there and the store would be skipped).
+                con = sqlite3.connect(store_file.as_uri() + "?mode=ro", uri=True)
+                row = con.execute("SELECT COUNT(*) AS c FROM nodes").fetchone()
+                total += int(row[0]) if row else 0
+            except (sqlite3.Error, ValueError):
+                continue
+            finally:
+                if con is not None:
+                    con.close()
     if total > 0:
         return Check("Semantic index", OK, f"{total} nodes embedded ({backend} backend)")
     # No nodes at canonical path — is a legacy graphify-out/ index orphaned?

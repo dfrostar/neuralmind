@@ -329,35 +329,63 @@ def cmd_scan_for_secrets(args):
         sys.exit(1)
 
 
+_BOOK_IGNORED_DIRS = {
+    ".neuralmind",
+    ".bench-work",
+    "node_modules",
+    "venv",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+}
+
+
 def _is_book_project(project_path: Path) -> bool:
     """Detect if a project is book-like (chapters + code + assets).
 
     Heuristic: markdown:code ratio > 3:1 AND no src/ or lib/ at root.
+
+    Both counts must use the same traversal basis. The original compared a
+    recursive ``**/*.md`` glob against a root-only code glob, so any code repo
+    whose code lives in a package subdir (e.g. ``neuralmind/``) with >=3 .md
+    files anywhere was misclassified as a book — and book-mode then ingested
+    the whole repo as "chapters" (a multi-hour runaway embed on large repos).
+    Ignored dirs are pruned from BOTH counts so vendored corpora
+    (.bench-work, node_modules) cannot skew the ratio either.
     """
-    from neuralmind.document_ingestion import _load_ignore_patterns, _matches_ignore
-    from neuralmind.graphgen import _DEFAULT_IGNORES, _iter_files, _iter_source_files
-
-    gitignore_patterns = _load_ignore_patterns(project_path, ".gitignore")
-
-    def _gitignored(path: Path) -> bool:
-        if not gitignore_patterns:
-            return False
-        rel_path = path.relative_to(project_path).as_posix()
-        return _matches_ignore(rel_path, gitignore_patterns)
-
-    md_files = [
-        f
-        for f in _iter_files(
-            project_path, _DEFAULT_IGNORES, frozenset({".md", ".markdown", ".mkd"})
-        )
-        if not _gitignored(f)
-    ]
-    if len(md_files) < 3:
+    md_files = 0
+    code_files = 0
+    code_exts = {
+        ".py",
+        ".js",
+        ".ts",
+        ".tsx",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".rb",
+        ".php",
+        ".swift",
+        ".kt",
+    }
+    for _root, dirs, files in os.walk(project_path):
+        # Prune dot-dirs and known vendored/state dirs from BOTH counts.
+        # os.walk(followlinks=False) also replaces the old symlink exposure.
+        dirs[:] = [d for d in dirs if d not in _BOOK_IGNORED_DIRS and not d.startswith(".")]
+        for name in files:
+            ext = Path(name).suffix.lower()
+            if ext == ".md":
+                md_files += 1
+            elif ext in code_exts:
+                code_files += 1
+    if md_files < 3:
         return False
 
-    code_files = [
-        f for f in _iter_source_files(project_path, _DEFAULT_IGNORES) if not _gitignored(f)
-    ]
     # Also check for src/ or lib/ directories (strong code indicator)
     src_dir = project_path / "src"
     lib_dir = project_path / "lib"
@@ -374,7 +402,7 @@ def _is_book_project(project_path: Path) -> bool:
     if not code_files:
         return True
 
-    return len(md_files) / max(len(code_files), 1) > 3
+    return md_files / code_files > 3
 
 
 def _cmd_build_book(args, project_path: str, force: bool) -> None:

@@ -134,6 +134,7 @@ neuralmind build <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
+| `--content-type` | `auto` | What kind of project to build: `auto` (detect — book mode kicks in when markdown outweighs code ≥3:1, counting both recursively with vendored/state dirs pruned), `book` (force book mode: code scope for the engine, content scope for chapters), `code`, `content` |
 | `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
 | `--redact-secrets` | False | Replace detected credentials with a `[REDACTED:kind]` marker in text entering the index, on all three backends. Equivalent to `NEURALMIND_REDACT_SECRETS=1`. Off by default because redacting costs recall on legitimately secret-shaped identifiers — run `neuralmind scan-for-secrets` first; removing and rotating the credential is the actual fix. |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
@@ -1128,8 +1129,13 @@ NeuralMind doctor — /path/to/project
   [warn] Claude Code hooks: not installed
          -> Install them: neuralmind install-hooks
   [ ok ] Query memory: enabled (logging queries for learning)
-============================================================
+===========================================================
 ```
+
+Scoped builds (book/content/docs) write per-scope stores (`store.code.sqlite`,
+`store.content.sqlite`, …) instead of the default `store.sqlite`. Doctor sums
+the per-scope stores when the default store is empty, so a healthy scoped
+build does not report "no nodes embedded".
 
 JSON output (`--json`) is stable for scripting and agent consumption:
 
@@ -1226,6 +1232,11 @@ writing a throwaway `_content_seed.py` to give the build something to parse.
 `--content-only` skips generating a graph entirely (an *existing* graph is still
 loaded, so code nodes stay in the keyword index) and writes a valid empty IR to
 mark the directory as a project. No seed file.
+
+**Always-excluded directories.** Vendored and state directories
+(`node_modules`, `.venv`, `venv`, `build`, `dist`, `.git`, `.bench-work`,
+`.neuralmind`, cache dirs, and any dot-directory) are never ingested as
+content, regardless of arguments.
 
 **Incremental by default.** Every embedded file's SHA-256 and chunk parameters
 are recorded in `<project>/.neuralmind/content_manifest.json`. A re-run
