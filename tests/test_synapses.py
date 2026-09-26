@@ -98,8 +98,10 @@ def test_repeated_decay_does_not_compound(tmp_path):
     for step in (10, 20, 30, 30, 30):
         many.decay(now=t0 + step * 86400)
 
-    assert abs(dict(many.neighbors("a"))["b"] - expected) < 1e-9
-    assert abs(many.transitions()[0][2] - expected_t) < 1e-9
+    # Relative tolerance: splitting the exponent across ticks rounds
+    # differently per platform's SQLite EXP (~1e-8 relative on Windows).
+    assert dict(many.neighbors("a"))["b"] == pytest.approx(expected, rel=1e-6)
+    assert many.transitions()[0][2] == pytest.approx(expected_t, rel=1e-6)
 
 
 def test_synapse_client_deactivate_decays_touching_edges(tmp_path):
