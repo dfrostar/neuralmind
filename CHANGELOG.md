@@ -1,5 +1,13 @@
 # Changelog
 
+## [4.3.2](https://github.com/dfrostar/neuralmind/compare/v4.3.1...v4.3.2) (2026-09-26)
+
+
+### Documentation
+
+* CLI-Reference --content-type + doctor scoped-store note + ingest-content exclusions; v4.3.1 release notes ([#533](https://github.com/dfrostar/neuralmind/issues/533)) ([72773ae](https://github.com/dfrostar/neuralmind/commit/72773ae0da60a36d34996a72ddfc8d299c61c33e))
+* Mem0/Zep + Codex CLI memory comparisons, fix neuralmind_record_decision MCP tool ([#523](https://github.com/dfrostar/neuralmind/issues/523)) ([3b8a881](https://github.com/dfrostar/neuralmind/commit/3b8a8817a738184a3ad0da801829d937aad12c6d))
+
 ## [4.3.0](https://github.com/dfrostar/neuralmind/compare/v4.2.0...v4.3.0) (2026-09-25)
 
 
