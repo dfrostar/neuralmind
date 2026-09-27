@@ -835,6 +835,11 @@ class SynapseStore:
         EPHEMERAL_HALF_LIFE_DAYS with no LTP exemption. Transitions follow
         the same policy with the same half-lives.
 
+        Each call applies only the decay owed since the later of the row's
+        ``last_activated`` and the previous ``decay()`` tick (``meta.last_decay``),
+        so running decay on every session start doesn't compound: N calls over
+        a span decay a weight exactly as much as one call at the end would.
+
         Returns counts of decayed and pruned for both signals.
         """
         ts = now if now is not None else time.time()
@@ -850,17 +855,22 @@ class SynapseStore:
         with self._connect() as conn:
             conn.execute("BEGIN")
             try:
+                row = conn.execute("SELECT value FROM meta WHERE key = 'last_decay'").fetchone()
+                try:
+                    since = float(row[0]) if row else 0.0
+                except (TypeError, ValueError):
+                    since = 0.0
                 # ephemeral: fast decay, no LTP floor, prune regardless of count.
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ? AND half_life_days IS NULL",
-                    (ephemeral_lambda, ts, EPHEMERAL_NAMESPACE),
+                    (ephemeral_lambda, ts, since, EPHEMERAL_NAMESPACE),
                 )
                 # A3: per-edge learned half-life overrides (ephemeral, rare but allowed).
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ? AND half_life_days IS NOT NULL",
-                    (ts, EPHEMERAL_NAMESPACE),
+                    (ts, since, EPHEMERAL_NAMESPACE),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ?",
@@ -870,25 +880,25 @@ class SynapseStore:
 
                 # shared: sticky decay; LTP floor still honored.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
                     "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NULL",
-                    (LTP_FLOOR, shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (LTP_FLOOR, shared_lambda, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NULL",
-                    (shared_lambda, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (shared_lambda, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 # A3: per-edge learned overrides for shared.
                 conn.execute(
-                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                    "UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
                     "WHERE namespace = ? AND activation_count >= ? AND half_life_days IS NOT NULL",
-                    (LTP_FLOOR, ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (LTP_FLOOR, ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 conn.execute(
-                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ? AND activation_count < ? AND half_life_days IS NOT NULL",
-                    (ts, SHARED_NAMESPACE, LTP_THRESHOLD),
+                    (ts, since, SHARED_NAMESPACE, LTP_THRESHOLD),
                 )
                 cur = conn.execute(
                     "DELETE FROM synapses WHERE namespace = ? AND weight < ? "
@@ -902,25 +912,25 @@ class SynapseStore:
                     ph = ", ".join("?" for _ in chunk)
                     # Namespace default rate (no per-edge override).
                     conn.execute(
-                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
                         f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NULL",
-                        (LTP_FLOOR, default_lambda, ts, *chunk, LTP_THRESHOLD),
+                        (LTP_FLOOR, default_lambda, ts, since, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
-                        f"UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"UPDATE synapses SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                         f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NULL",
-                        (default_lambda, ts, *chunk, LTP_THRESHOLD),
+                        (default_lambda, ts, since, *chunk, LTP_THRESHOLD),
                     )
                     # A3: per-edge learned half-life overrides for non-ephemeral, non-shared namespaces.
                     conn.execute(
-                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0)) "
+                        f"UPDATE synapses SET weight = MAX(?, weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0)) "
                         f"WHERE namespace IN ({ph}) AND activation_count >= ? AND half_life_days IS NOT NULL",
-                        (LTP_FLOOR, ts, *chunk, LTP_THRESHOLD),
+                        (LTP_FLOOR, ts, since, *chunk, LTP_THRESHOLD),
                     )
                     conn.execute(
-                        f"UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"UPDATE synapses SET weight = weight * EXP(-(0.6931471805599453 / half_life_days) * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                         f"WHERE namespace IN ({ph}) AND activation_count < ? AND half_life_days IS NOT NULL",
-                        (ts, *chunk, LTP_THRESHOLD),
+                        (ts, since, *chunk, LTP_THRESHOLD),
                     )
                     cur = conn.execute(
                         f"DELETE FROM synapses WHERE namespace IN ({ph}) AND weight < ? "
@@ -931,22 +941,22 @@ class SynapseStore:
 
                 # transitions: ephemeral + shared (single ns each).
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ?",
-                    (ephemeral_lambda, ts, EPHEMERAL_NAMESPACE),
+                    (ephemeral_lambda, ts, since, EPHEMERAL_NAMESPACE),
                 )
                 conn.execute(
-                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                    "UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                     "WHERE namespace = ?",
-                    (shared_lambda, ts, SHARED_NAMESPACE),
+                    (shared_lambda, ts, since, SHARED_NAMESPACE),
                 )
                 # transitions: default namespaces, chunked updates.
                 for chunk in _chunks(default_nss, DECAY_NAMESPACE_CHUNK):
                     ph = ", ".join("?" for _ in chunk)
                     conn.execute(
-                        f"UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - last_activated)) / 86400.0) "
+                        f"UPDATE synapse_transitions SET weight = weight * EXP(-? * MAX(0.0, (? - MAX(last_activated, ?))) / 86400.0) "
                         f"WHERE namespace IN ({ph})",
-                        (default_lambda, ts, *chunk),
+                        (default_lambda, ts, since, *chunk),
                     )
                 # prune ALL dead transitions (no LTP-gated transitions).
                 cur = conn.execute(
@@ -957,7 +967,7 @@ class SynapseStore:
 
                 conn.execute(
                     "INSERT OR REPLACE INTO meta(key, value) VALUES ('last_decay', ?)",
-                    (str(ts),),
+                    (str(max(ts, since)),),
                 )
                 conn.execute("COMMIT")
             except Exception:
