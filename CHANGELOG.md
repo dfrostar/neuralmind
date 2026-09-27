@@ -1,5 +1,17 @@
 # Changelog
 
+## [4.3.4](https://github.com/dfrostar/neuralmind/compare/v4.3.3...v4.3.4) (2026-09-27)
+
+
+### Bug Fixes
+
+* **synapses:** stop decay() compounding on every call ([#422](https://github.com/dfrostar/neuralmind/issues/422)) ([#536](https://github.com/dfrostar/neuralmind/issues/536)) ([24ee292](https://github.com/dfrostar/neuralmind/commit/24ee2924b9fda60f5a2e16c8a3d0fa7f3f8b758c))
+
+
+### Documentation
+
+* close LLM-disclosure gap in air-gapped/offline-regulated use cases ([#512](https://github.com/dfrostar/neuralmind/issues/512)) ([8ceda53](https://github.com/dfrostar/neuralmind/commit/8ceda538cd117c7dd783863b4c816f88223e802b))
+
 ## [4.3.0](https://github.com/dfrostar/neuralmind/compare/v4.2.0...v4.3.0) (2026-09-25)
 
 
