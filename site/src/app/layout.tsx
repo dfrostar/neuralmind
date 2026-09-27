@@ -3,7 +3,7 @@ import { getLatestRelease } from '@/lib/release';
 import { fontVariables } from '@/lib/fonts';
 
 const SITE_DESCRIPTION =
-    'Codebase memory for Claude Code, Cursor and any MCP agent: 93.75% gold-file recall at 45–261× fewer tokens than pasting every source file. Free, MIT core.';
+    'Codebase memory for Claude Code, Cursor and any MCP agent: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. Free, MIT core.';
 
 export const metadata = {
     title: 'NeuralMind — Codebase Memory for Claude Code & MCP Agents',
@@ -36,7 +36,7 @@ export const metadata = {
     openGraph: {
         title: 'NeuralMind — Your coding agent forgets your codebase. NeuralMind remembers it.',
         description:
-            '93.75% gold-file recall at 45–261× fewer tokens than pasting every source file, on a public 40-query benchmark with every miss published. Local-first, no telemetry, MIT core.',
+            '93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file, on a public 40-query benchmark with every miss published. Local-first, no telemetry, MIT core.',
         url: 'https://neuralmind.uk',
         siteName: 'NeuralMind',
         locale: 'en_US',
@@ -114,11 +114,11 @@ const buildJsonLd = (softwareVersion: string, dateModified: string) => ({
                 'Progressive L0–L3 context disclosure with a hard per-query token budget',
                 'MCP server for Claude Code, Codex, Cursor, Cline, Continue and any MCP-compatible agent',
                 'Claude Code lifecycle hooks: session-start memory, tool-output compression and recovery',
-                'Team memory that travels with git clone, with admin governance and a hash-chained audit log',
+                'Team memory that travels with git clone, with a quality review queue for imports and a hash-chained audit log',
                 'Bundled tree-sitter code graph indexing ten languages',
                 'ChromaDB-free TurboVec retrieval: 4-bit quantized index, 8–16× smaller vectors, parity gated in CI',
                 'Commit-time drift guard, decision memory and stale-decision guard',
-                'Local engine — no telemetry, no repository content transmitted off your machine',
+                'Local engine — by default no telemetry and no repository content transmitted off your machine',
             ],
             offers: [
                 { '@type': 'Offer', name: 'Free', price: '0', priceCurrency: 'USD' },

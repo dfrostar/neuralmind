@@ -25,7 +25,7 @@ const heroStats = [
 const session = [
     { prompt: '$', cmd: 'pip install neuralmind' },
     { prompt: '$', cmd: 'neuralmind build .' },
-    { prompt: '$', cmd: 'neuralmind query "where is auth handled?"' },
+    { prompt: '$', cmd: 'neuralmind query . "where is auth handled?"' },
 ];
 
 export default function Hero() {
@@ -77,7 +77,7 @@ export default function Hero() {
                             Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
                             NeuralMind maps your repo, learns which files belong together as you
                             work, and hands your agent the right code first —{' '}
-                            <span className="text-slate-100 font-medium">93.75% gold-file recall at
+                            <span className="text-slate-100 font-medium">93.75% mean gold-file recall at
                             45–261× fewer tokens</span> than pasting every source file, on a
                             public 40-query benchmark. No telemetry. MIT core.
                         </p>

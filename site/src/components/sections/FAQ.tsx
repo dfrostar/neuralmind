@@ -6,7 +6,7 @@ import SectionHeader from '@/components/ui/SectionHeader';
 const faqs = [
     {
         q: 'Does NeuralMind work with Claude Code, Cursor, Codex and other agents?',
-        a: 'Yes. NeuralMind runs as an MCP server, so any MCP-compatible agent can use it. "neuralmind install-mcp --all" registers it with Claude Code, Cursor, Cline, VS Code and Claude Desktop; Codex, Continue and other clients point their MCP config at "neuralmind-mcp". Claude Code also gets lifecycle hooks — memory at session start, tool-output compression — and there is a CLI and a Python API.',
+        a: 'NeuralMind runs as a standard MCP server, so any MCP-compatible agent can use it. Claude Code is tested end to end and also gets lifecycle hooks — memory at session start, tool-output compression. Cursor, Cline, Continue and Codex connect through the same protocol; the MCP handshake is verified against Codex, but we have not driven those agents end to end in CI, so the README labels them theoretical. "neuralmind install-mcp" registers the server with Claude Code (add --client for Cursor, Cline, VS Code or Claude Desktop), and other clients point their MCP config at "neuralmind-mcp". There is also a CLI and a Python API.',
     },
     {
         q: 'How much does NeuralMind reduce Claude Code token usage?',
@@ -22,7 +22,7 @@ const faqs = [
     },
     {
         q: 'Does any of my code leave my machine?',
-        a: 'NeuralMind itself sends no telemetry and transmits no repository content off your machine — the graph, embeddings and synapse store live in your project directory. Its only default outbound request is a one-time download of a public embedding model on first build, which you can pre-seed for air-gapped installs. What does leave is the context slice your agent sends to its own model provider, which NeuralMind makes smaller but does not control.',
+        a: 'By default, NeuralMind itself sends no telemetry and transmits no repository content off your machine — the graph, embeddings and synapse store live in your project directory. Its only default outbound request downloads a public embedding model on first build (again only if the cached copy is removed), and you can pre-seed it for air-gapped installs. One opt-in feature, off by default, sends README and architecture-doc prose to Anthropic under your own API key. What does leave is the context slice your agent sends to its own model provider, which NeuralMind makes smaller but does not control.',
     },
     {
         q: 'Is NeuralMind free? What does the paid tier buy?',
@@ -30,11 +30,11 @@ const faqs = [
     },
     {
         q: 'How does team memory work?',
-        a: 'Run "neuralmind memory publish" and the project’s learned associations are written to .neuralmind-team-memory.json at the repo root — learned weights, no source code. Commit it, and every teammate’s agent inherits it on the next session or build. A new hire’s agent starts already knowing that the auth handlers go with the JWT utilities, instead of relearning it from scratch.',
+        a: 'Run "neuralmind memory publish" and the project’s learned associations are written to .neuralmind-team-memory.json at the repo root — learned weights, no source code. Commit that file, and every teammate’s agent imports it on the next session or build; each association is quality-scored on the way in, and borderline ones wait in a review queue. A new hire’s agent starts already knowing that the auth handlers go with the JWT utilities, instead of relearning it from scratch.',
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Three places, all published. It misses 4 of the 40 public-benchmark queries — mostly two-file questions where it retrieves one of the two files — and flask is its weakest repo at 85% recall. If all you need is to locate a file, a bare vector index is cheaper. And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
+        a: 'Four places, all published. It misses 4 of the 40 public-benchmark queries — mostly two-file questions where it retrieves one of the two files — and flask is its weakest repo at 85% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'Why not just use Cursor, Windsurf or Aider memory?',

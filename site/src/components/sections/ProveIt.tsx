@@ -27,8 +27,9 @@ export default function ProveIt() {
         <section id="prove-it" className="relative py-16 md:py-32 px-4 md:px-6">
             <div className="max-w-5xl mx-auto">
                 <SectionHeader eyebrow="Don&apos;t take our word for it" title="Prove it on your own repo">
-                    Every number on this site reproduces from a fresh clone or a pip install. No
-                    account, no signup, no hosted service.
+                    Every benchmark on this site reruns from a fresh clone or a pip install — the
+                    one-repo field report excepted, which is reproducible in method only. No account,
+                    no signup, no hosted service.
                 </SectionHeader>
 
                 <div className="grid md:grid-cols-3 gap-4 mb-8">

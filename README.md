@@ -75,7 +75,7 @@ The agent asks a question. NeuralMind retrieves only the relevant slice (~800 to
 | Agent | What You Get | Status |
 |-------|-------------|--------|
 | **Claude Code** | Boots with `SYNAPSE_MEMORY.md`. PostToolUse compression runs automatically. Queries cost ~800 tokens, not ~50,000. | ✅ Tested |
-| **Claude Teams** | `neuralmind memory publish` commits a learned-weights bundle (no source code) that teammates' agents inherit on their next session. | ✅ Tested |
+| **Claude Teams** | `neuralmind memory publish` writes a learned-weights bundle (no source code); commit it and teammates' agents inherit it on their next session. | ✅ Tested |
 | **Cursor** | `neuralmind install-mcp --all` wires any MCP-compatible agent into the same persistent memory. | 🔬 Theoretical |
 | **Cline** | Same MCP integration. | 🔬 Theoretical |
 | **Continue** | Same MCP integration. | 🔬 Theoretical |
@@ -133,34 +133,51 @@ Periodic session digests (every 25 tool calls) capture what was done, key decisi
 neuralmind status .  # shows recent summaries
 ```
 
-### 5. Code graph traversal edges (v3.13.0+)
+### 5. Code graph traversal edges and read dedup (v3.13.0+, not yet wired in)
 
-Files that appear together in query results get **co-access edges** reinforced Hebbian-style. Over time this captures "to understand X, you also need Y" relationships that static analysis misses. Traversal edges decay faster than structural edges (they're noisier) and can be promoted to durable status via the cognition loop.
+The `graph_traversal` (co-access edges between files read together) and
+`read_dedup` (content-hash stubs for re-reads of unchanged files, plus preloading
+of related files) modules ship in the source tree, but nothing in the query path
+or the hooks calls them yet — so they do not affect what your agent sees today.
+They are listed here so the v3.13.0 release notes don't read as a promise the
+running product keeps.
 
-### 6. Read dedup + auto-preload (v3.13.0+)
+### 6. Cognition loop (v3.13.0+)
 
-Repeated reads of unchanged files are replaced with compact stubs (content-hash based). Related files are auto-preloaded on first read, using the code graph's traversal edges. Both are token-saving optimizations that work transparently.
-
-### 7. Cognition loop (v3.13.0+)
-
-Background knowledge consolidation runs periodically (default every hour):
+`neuralmind cognition-loop` runs a knowledge-consolidation pass on demand:
 1. Reinforces co-access edges from recent queries
-2. Decays unused edges (faster for traversal edges)
+2. Decays unused edges
 3. Consolidates knowledge (promotes frequently co-activated clusters to LTP)
-4. Prunes stale data (old summaries, expired read cache, dormant synapses)
+4. Prunes stale data (old summaries, dormant synapses)
 
 ```bash
-neuralmind cognition-loop .  # run manually
-# Or via systemd timer (auto-configured by install-hooks)
+neuralmind cognition-loop .  # run a pass now
+# Nothing schedules it for you — add a cron entry if you want it periodic
 ```
+
+### 7. Decision memory + stale-decision guard (v4.1.0+)
+
+Store architecture decisions with rationale, evidence, affected files and the
+commit they came from (`neuralmind decisions record`), search them
+(`neuralmind decisions query`), and retire one when the code moves on
+(`neuralmind decisions invalidate`). Before your agent edits a file, a
+`PreToolUse` hook surfaces any decision governing it that has been marked stale
+or invalidated. Invalidation is manual today: the engine that would retire
+decisions automatically on commit exists but is not yet wired into the hooks.
 
 ### 8. Finds the right code (not just less of it)
 
 **93.75% mean gold-file recall (85–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
-### 9. Better-grounded answers (not just shorter)
+### 9. Answer grounding vs. naive truncation (currently a loss)
 
-At a *matched* token budget, NeuralMind's selected context carries more of the gold facts than naive truncation. CI gates the delta at **≥ 0**; the measured delta has ranged **+0.013 to +0.143** across runs on the reference fixture, with grounding at 1.00. Same caveat as above — the gate is the guarantee, the magnitude moves.
+At a *matched* token budget, the faithfulness eval asks whether NeuralMind's
+selected context carries more of the gold facts than naive truncation. On the
+~500-line reference fixture, which mixes code with prose chapter summaries,
+truncation currently wins slightly: **0.451 vs 0.505 expected-fact recall, a
+−0.054 delta** at v4.3.4. CI fails the build if the mean delta drops below
+**−0.10**; earlier releases measured +0.013 to +0.143. We publish it as a loss
+rather than drop the eval.
 
 ---
 
@@ -319,11 +336,11 @@ neuralmind benchmark .
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
 - **Tool-output compression + recovery.** PostToolUse hooks compress noisy
-  Bash output to errors + signals, and a recovery cache brings back tool
-  output the context window dropped.
-- **Team memory.** `neuralmind memory publish` commits a learned-weights
-  bundle (no source code) that teammates' agents inherit on their next
-  session — a fresh clone starts with the team's earned intuition.
+  Bash output to errors + signals, and `neuralmind last` recovers the full
+  output the compressor trimmed from a cache written before compression.
+- **Team memory.** `neuralmind memory publish` writes a learned-weights
+  bundle (no source code); commit it and teammates' agents inherit it on
+  their next session — a fresh clone starts with the team's earned intuition.
 - **Commit-time drift guard.** `neuralmind drift` reads your staged diff,
   maps changed lines to graph symbols, and flags one that skips a pattern a
   strong majority of its siblings share — before it ships, not after a

@@ -118,7 +118,7 @@ No NeuralMind gold-file misses on this repo.
 found-rate, 45.0×–260.7× fewer tokens than pasting whole files.** Neither
 number is uniform across repos — that's the honest picture, not a single
 cherry-picked ratio. `flask` is the weakest repo in the corpus at 85% recall;
-every other repo clears 93%.
+every other repo clears 92%.
 
 The mean is **query-weighted**: 37.5 of 40 possible gold-file hits (a two-file
 query that retrieves one of its two gold files scores 0.5). The unweighted

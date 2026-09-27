@@ -20,7 +20,7 @@ const network = [
     },
     {
         what: 'Embedding model, first build',
-        detail: 'A one-time HTTPS download of the public all-MiniLM-L6-v2 model, verified against a pinned SHA-256. It carries none of your data, and pre-seeding the model removes it entirely for air-gapped installs.',
+        detail: 'An HTTPS download of the public all-MiniLM-L6-v2 model, verified against a pinned SHA-256 — on first build, and again only if the cached copy is removed. It carries none of your data, and pre-seeding the model removes it entirely for air-gapped installs.',
     },
     {
         what: 'Opt-in LLM seeding',
@@ -80,8 +80,8 @@ export default async function SecurityPage() {
                         ))}
                     </div>
                     <p className="text-slate-400 text-sm mt-3">
-                        NeuralMind sends no telemetry and transmits no repository content off your
-                        machine. Details:{' '}
+                        By default, NeuralMind sends no telemetry and transmits no repository content
+                        off your machine. Details:{' '}
                         <a href={LLM_DISCLOSURE} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
                             third-party LLM disclosure
                         </a>{' '}

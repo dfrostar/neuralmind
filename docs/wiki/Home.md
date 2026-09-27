@@ -5,21 +5,22 @@
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
-## Why NeuralMind — four data-backed benefits
+## Why NeuralMind — what the data shows, losses included
 
 NeuralMind is more than token reduction. Every claim below ships with a
 committed eval. The first two run on **real, pinned OSS repos** and are fully
 reproducible — `python -m evals.public.run` for the four-repo benchmark,
 `python -m evals.public.competitor` for the `requests`/`click` competitor
 head-to-head. The last two are measured A/Bs on the bundled **reference
-fixture**, so they're real but smaller-scope.
+fixture**, so they're real but smaller-scope — and the last one is currently
+a loss, published as such.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
 | 💸 | **Cheaper context** | **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 2 of 4 and ties exactly on the other 2 | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Competitor head-to-head, **real repos** (`requests`, `click` only — off by default, not yet re-run on the four-repo corpus) |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
-| 🔬 | **Better-grounded answers** | At a *matched* token budget, its context carries more of the gold facts than naive truncation: **delta CI-gated ≥ 0, +0.013 to +0.143 observed**, grounding 1.00 | Faithfulness/parity gate (**reference fixture** — smaller scope) |
+| 🔬 | **Answer grounding vs. naive truncation — a published loss** | At a *matched* token budget, naive truncation currently keeps slightly more gold facts on this prose-heavy fixture: **delta −0.054 at v4.3.4** (earlier releases +0.013 to +0.143). CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
 
 *Honest scope:* the **cost** and **accuracy** rows run on real, pinned OSS repos
 (fully reproducible — see [methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)); the "beats ripgrep" claim is specifically
@@ -40,13 +41,15 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 NeuralMind now remembers *why* code is the way it is, not just where it lives.
 **Decision memory** (v4.1.0) stores architecture decisions with rationale,
 evidence, commit SHA and rejected alternatives — `neuralmind decisions record`,
-`neuralmind decisions query`, `neuralmind decisions audit` — and invalidates them
-automatically when the code they describe changes. The **stale-decision guard**
-(v4.2.0) is a `PreToolUse` hook that warns your agent before it edits a file
-governed by a decision that is no longer active (fail-open; opt out with
-`NEURALMIND_STALE_GUARD=0`). v4.3.0 adds progressive, three-layer decision
-retrieval over MCP; v4.0.0 shipped the context budget, session summaries,
-co-access edges, read dedup and the cognition loop. The public benchmark was
+`neuralmind decisions query`, `neuralmind decisions audit` — and you retire one
+with `neuralmind decisions invalidate` when the code moves on (automatic
+invalidation on commit is built but not yet wired into the hooks). The
+**stale-decision guard** (v4.2.0) is a `PreToolUse` hook that warns your agent
+before it edits a file governed by a decision marked stale or invalidated
+(fail-open; opt out with `NEURALMIND_STALE_GUARD=0`). v4.3.0 adds progressive,
+three-layer decision retrieval over MCP; v4.0.0 shipped the context budget,
+session summaries and the on-demand `neuralmind cognition-loop` (its co-access
+and read-dedup modules are in the tree but not yet wired in). The public benchmark was
 regenerated at v4.3.4 with raw data committed: **93.75% mean gold-file recall
 (85–100% per repo) at 45–261× fewer tokens** than pasting every source file.
 Guide: [Memory Layer](Memory-Layer).

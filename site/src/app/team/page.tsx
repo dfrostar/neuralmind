@@ -8,7 +8,7 @@ export const metadata: Metadata = pageMetadata({
     path: '/team',
     title: 'Team Memory for AI Coding Agents — NeuralMind for Teams',
     description:
-        'Shared codebase memory for Claude Code and MCP agents: it travels with git, admins govern what is shared, every change is hash-chain audited. Free at 1 seat.',
+        'Shared codebase memory for Claude Code and MCP agents: it travels with git, imports pass a review queue, admin changes are hash-chain audited. Free at 1 seat.',
     keywords: [
         'team memory for AI coding agents',
         'shared Claude Code memory',
@@ -30,40 +30,43 @@ const steps = [
     {
         n: '1',
         title: 'Learn locally',
-        body: 'Each developer’s synapse layer learns from their own work — which files get opened, edited and queried together. Personal associations stay on their machine.',
+        body: 'Each developer’s synapse layer learns from their own work — which files get opened, edited and queried together. It stays in the project’s local .neuralmind/ store until someone publishes it.',
     },
     {
         n: '2',
         title: 'Publish through git',
-        body: 'neuralmind memory publish writes the learned weights — never source code — to .neuralmind-team-memory.json at the repo root. It is a file in your repo, so it goes through code review like any other.',
+        body: 'neuralmind memory publish writes the project’s learned associations — weights between files, never source code — to .neuralmind-team-memory.json at the repo root. You commit it like any other file, so it goes through code review.',
     },
     {
         n: '3',
         title: 'Inherit on the next session',
-        body: 'Teammates’ agents import the bundle automatically at session start or build, once per content hash. Imports can only raise a weight and land in a shared namespace that decays, so a stale bundle cannot permanently skew recall.',
+        body: 'Teammates’ agents import the bundle automatically at session start or build, once per content hash. Each association is quality-scored: strong ones enter shared memory, borderline ones wait for review, weak ones are dropped. Shared weights decay, so a stale bundle cannot permanently skew recall.',
     },
 ];
 
+// What governance does today, stated precisely. The review queue gates what an
+// import brings into shared memory. Scope and weight threshold are admin-only,
+// audited policy settings, but `memory publish` does not read them yet, and
+// `team governance remove-edge` records the request without deleting the edge —
+// so this page must not describe either as enforced.
 const governance = [
     {
-        title: 'Publishing scope',
-        body: 'Choose whether learned associations stay personal, go to the shared team graph, or both.',
-        cmd: 'neuralmind team governance set-scope shared --admin you@yourco.com',
-    },
-    {
-        title: 'Weight threshold',
-        body: 'Only associations above a configurable weight graduate to shared memory, so one-off explorations never reach the team graph.',
-        cmd: 'neuralmind team governance set-weight-threshold 0.3 --admin you@yourco.com',
-    },
-    {
-        title: 'Review queue',
-        body: 'Edges waiting to enter shared memory can be reviewed first, then approved or rejected one by one.',
+        title: 'Review queue for imported memory',
+        status: 'Live',
+        body: 'When a teammate’s bundle is imported, every association is quality-scored. Borderline ones wait in a queue until someone approves or rejects them; conflicts with what you already have are resolved by quality, not by whoever published last.',
         cmd: 'neuralmind memory review-list',
     },
     {
-        title: 'Remove shared edges',
-        body: 'Admins can pull any association out of the shared graph. Non-admins get a permission error, and every change is logged.',
-        cmd: 'neuralmind team governance remove-edge <edge-id> --admin you@yourco.com',
+        title: 'Admin-only, audited settings',
+        status: 'Live',
+        body: 'Governance commands require an admin — non-admins get a permission error — and every change is written to the hash-chained audit log with the acting user.',
+        cmd: 'neuralmind team governance status',
+    },
+    {
+        title: 'Publishing scope and weight threshold',
+        status: 'Roadmap',
+        body: 'Admins can record whether associations should publish as personal, shared or both, and the minimum weight for sharing. Today these are audited policy settings; memory publish does not enforce them yet.',
+        cmd: 'neuralmind team governance set-scope shared --admin you@yourco.com',
     },
 ];
 
@@ -77,7 +80,7 @@ const seatCommands = [
 type Cell = string | boolean;
 const comparison: { feature: string; free: Cell; team: Cell; enterprise: Cell }[] = [
     { feature: 'Team memory through git (memory publish)', free: true, team: true, enterprise: true },
-    { feature: 'Governance: scope, threshold, review queue', free: true, team: true, enterprise: true },
+    { feature: 'Import review queue + audited governance settings', free: true, team: true, enterprise: true },
     { feature: 'Hash-chained audit log, verify and export', free: true, team: true, enterprise: true },
     { feature: 'Self-hosted deployment', free: true, team: 'With deployment support', enterprise: true },
     { feature: 'Seats', free: '1', team: '5–50', enterprise: 'Custom' },
@@ -108,8 +111,8 @@ export default async function TeamPage() {
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
                         What one developer&apos;s agent learns about the codebase, every
-                        teammate&apos;s agent inherits — through your git repo, with admin
-                        controls over what gets shared and an audit trail of every change.
+                        teammate&apos;s agent inherits — through your git repo, with a review
+                        queue for what comes in and an audit trail of every admin change.
                     </p>
                     <p className="text-faint text-sm mt-5 max-w-2xl mx-auto">
                         Every feature on this page runs free at 1 seat, so you can evaluate it
@@ -147,15 +150,19 @@ export default async function TeamPage() {
                 {/* Governance */}
                 <section className="max-w-5xl mx-auto mb-20">
                     <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
-                        Governance built in, not bolted on
+                        Governance: what is enforced today
                     </h2>
                     <p className="text-slate-400 mb-8 max-w-3xl leading-relaxed">
-                        Shared memory steers every teammate&apos;s agent, so admins decide what
-                        reaches it.
+                        Shared memory steers every teammate&apos;s agent, so what enters it is
+                        screened and every admin action is on the record. Here is exactly what
+                        runs now and what is still on the roadmap.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {governance.map((g) => (
                             <div key={g.title} className="bg-carbon-card border border-carbon-border rounded-xl p-6 flex flex-col min-w-0">
+                                <span className={`font-mono text-[0.6875rem] uppercase tracking-[0.12em] mb-3 ${g.status === 'Live' ? 'text-proton' : 'text-faint'}`}>
+                                    {g.status}
+                                </span>
                                 <h3 className="text-white font-semibold mb-2">{g.title}</h3>
                                 <p className="text-slate-400 text-sm leading-relaxed mb-4">{g.body}</p>
                                 <div className="mt-auto bg-carbon rounded-lg px-4 py-3 font-mono text-xs text-slate-300 overflow-x-auto">
@@ -175,9 +182,9 @@ export default async function TeamPage() {
                                 An audit trail you can verify
                             </h2>
                             <p className="text-slate-400 text-sm leading-relaxed mb-3">
-                                Every governance change and shared-memory mutation is recorded with the
-                                acting user in an append-only log where each entry carries the SHA-256
-                                of the one before it — so an edited or deleted entry breaks the chain.
+                                Every governance change and admin action is recorded with the acting
+                                user in an append-only log where each entry carries the SHA-256 of the
+                                one before it — so an edited or deleted entry breaks the chain.
                             </p>
                             <p className="text-slate-400 text-sm leading-relaxed">
                                 Query-level events export as JSONL or CEF for your SIEM with{' '}

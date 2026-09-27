@@ -25,7 +25,7 @@ const cards = [
             '93.75% mean gold-file recall across 40 pre-registered queries on four public repos — 85–100% per repo, with every miss published rather than dropped.',
             'Team memory travels with git: a new hire’s agent starts with the associations the team has already earned instead of relearning them.',
             'Read-only dashboard for synapse memory health, ingestion, savings and latency trends — local, no hosted service.',
-            'NeuralMind sends no telemetry and transmits no repository content off your machine. It works with the agents you already run — Claude Code, Codex, Cursor, Cline, any MCP agent. No rip-and-replace.',
+            'By default NeuralMind sends no telemetry and transmits no repository content off your machine. It works with the agents you already run — Claude Code, Codex, Cursor, Cline, any MCP agent. No rip-and-replace.',
         ],
     },
 ];

@@ -96,7 +96,7 @@ committed under
 - **Two repos, off by default.** This eval covers `requests` and `click`
   only, needs an external binary download, and has not been re-verified
   against the four-repo corpus our main benchmark now uses (93.75% mean
-  gold-file recall, 79–100% per repo).
+  gold-file recall, 85–100% per repo).
 
 ## How NeuralMind differs architecturally
 

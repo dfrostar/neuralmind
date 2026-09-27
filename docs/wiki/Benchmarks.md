@@ -15,9 +15,9 @@ in CI.
 > `python -m evals.onboarding.runner --run` (onboarding lift),
 > `python -m evals.parity.run` (backend parity).
 
-## Four data-backed benefits (the short version)
+## What the data shows, losses included (the short version)
 
-NeuralMind is more than token reduction; the numbers below back **four**
+NeuralMind is more than token reduction; the numbers below cover **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
@@ -30,9 +30,10 @@ vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
 how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neutral**
 (reference fixture; +3.5 to +14 points across runs, CI gates the direction);
-**(4) Better-grounded answers** — at a matched budget its context carries more gold
-facts than naive truncation (reference fixture; delta +0.013 to +0.143 across runs,
-CI gates it at ≥ 0, grounding 1.00). We report where NeuralMind *doesn't* win
+**(4) Answer grounding vs. naive truncation — currently a loss** — at a matched
+budget, truncation keeps slightly more gold facts on the prose-heavy reference
+fixture (delta −0.054 at v4.3.4; earlier releases +0.013 to +0.143; CI fails
+below −0.10). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
 cheaper on raw tokens, two repos have gold-file misses — 4 of 40 queries (see
 the public benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
@@ -58,20 +59,22 @@ you avoid.
 
 ## Does the memory make answers *better*, not just shorter?
 
-Yes, and it's measured. The **faithfulness eval** compares NeuralMind's selected
-context against naive truncation **at the same token budget** — the honest
-comparison, not "small context vs the whole repo."
+Not on this measure, right now — and we publish that. The **faithfulness eval**
+compares NeuralMind's selected context against naive truncation **at the same
+token budget** — the honest comparison, not "small context vs the whole repo."
 
-| Metric (built-in backend, gold set) | What CI enforces | Observed across runs |
+| Metric (built-in backend, gold set) | What CI enforces | Measured |
 |---|---|---|
-| Expected-fact recall vs matched-budget naive | delta **≥ 0** | **+0.013 to +0.143** |
-| Grounding (right modules cited) | not gated — saturates on this fixture | 1.000 |
+| Expected-fact recall vs matched-budget naive | mean delta **≥ −0.10** (3 runs) | **−0.054** at v4.3.4 (0.451 vs 0.505); earlier releases +0.013 to +0.143 |
+| Grounding (right modules cited) | not gated | 0.843 at v4.3.4 |
 
-A positive delta means smart selection beats dumb truncation **at equal cost**, and
-that is what CI guarantees. The *size* of the delta is not a fixed property: on a
-~500-line fixture behind an HNSW index it moves between runs, so we publish the
-gate and the observed band rather than a point estimate that goes stale the week
-after it is written.
+A positive delta would mean smart selection beats plain truncation **at equal
+cost**. At v4.3.4 it doesn't: the reference fixture mixes code with prose chapter
+summaries, and on prose a matched-budget truncation can keep more of the expected
+facts — which is why `ci-benchmark.yml` gates at −0.10 rather than 0. The gate
+catches a real regression; it does not guarantee a win. The size of the delta
+moves with retrieval changes, so read the current value from the CI benchmark
+comment on any pull request.
 
 ## The learned memory layer (the differentiator)
 

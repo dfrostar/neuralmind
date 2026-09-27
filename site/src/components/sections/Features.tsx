@@ -22,7 +22,7 @@ const groups: Group[] = [
             {
                 icon: 'synapse',
                 title: 'Hebbian synapse layer',
-                desc: 'Files you open, edit and query together get a weighted edge; unused edges decay. Recall displaces the weakest hits one-for-one, so it never grows the token bill.',
+                desc: 'Files you open, edit and query together get a weighted edge; unused edges decay. Recall displaces the weakest hits one-for-one instead of adding to them, so it is budget-neutral by design.',
                 badge: 'Budget-neutral',
             },
             {
@@ -34,8 +34,8 @@ const groups: Group[] = [
             {
                 icon: 'cognition',
                 title: 'Cognition loop',
-                desc: 'Background consolidation reinforces co-access patterns, decays unused edges, promotes strong clusters and prunes stale synapses while you work.',
-                badge: 'Background',
+                desc: '`neuralmind cognition-loop` consolidates memory on demand: it reinforces co-access patterns, decays unused edges, promotes strong clusters and prunes stale synapses. Schedule it with cron if you want it periodic.',
+                badge: 'Consolidation',
             },
             {
                 icon: 'restore',
@@ -46,13 +46,13 @@ const groups: Group[] = [
             {
                 icon: 'recall',
                 title: 'Decision memory',
-                desc: 'Architecture decisions stored with rationale, evidence, commit SHA and rejected alternatives. Full-text searchable, and invalidated automatically when the code they describe changes.',
+                desc: 'Architecture decisions stored with rationale, evidence, commit SHA, affected files and rejected alternatives — full-text searchable. When the code moves on, `neuralmind decisions invalidate` retires one.',
                 badge: 'Decisions',
             },
             {
                 icon: 'shield-check',
                 title: 'Stale-decision guard',
-                desc: 'Before your agent edits a file, a PreToolUse hook surfaces any decision governing it that is no longer active — so stale memory never silently steers an edit.',
+                desc: 'Before your agent edits a file, a PreToolUse hook surfaces any decision governing it that has been marked stale or invalidated, so a retired decision can’t silently steer the edit.',
                 badge: 'Guardrail',
             },
         ],
@@ -83,14 +83,8 @@ const groups: Group[] = [
             {
                 icon: 'restore',
                 title: 'Tool-output compression & recovery',
-                desc: 'PostToolUse hooks compress noisy Read, Bash and Grep output before the model reads it, and a recovery cache brings back output the context window dropped.',
+                desc: 'PostToolUse hooks compress noisy Read, Bash and Grep output before the model reads it. The full Bash output is cached first, so `neuralmind last` recovers anything the compressor trimmed.',
                 badge: 'Claude Code',
-            },
-            {
-                icon: 'chip',
-                title: 'Read dedup + auto-preload',
-                desc: 'Re-reads of unchanged files become compact stubs, and files that usually travel together are preloaded on first read.',
-                badge: 'Cache',
             },
         ],
     },
@@ -102,7 +96,7 @@ const groups: Group[] = [
             {
                 icon: 'hub',
                 title: 'MCP server for any agent',
-                desc: '`neuralmind install-mcp --all` registers the server with Claude Code, Cursor, Cline, VS Code and Claude Desktop; Codex, Continue and any other MCP client point at `neuralmind-mcp`. One memory, every agent.',
+                desc: '`neuralmind install-mcp` registers the server with Claude Code — or Cursor, Cline, VS Code and Claude Desktop via `--client` — and Codex, Continue or any other MCP client points at `neuralmind-mcp`. One memory, every agent.',
                 badge: 'MCP',
             },
             {
@@ -151,19 +145,19 @@ const groups: Group[] = [
             {
                 icon: 'hub',
                 title: 'Team memory in git',
-                desc: '`neuralmind memory publish` commits a learned-weights bundle (no source code). Teammates inherit it on their next session — a fresh clone starts with the team’s intuition.',
+                desc: '`neuralmind memory publish` writes a learned-weights bundle (no source code) that you commit. Teammates inherit it on their next session — a fresh clone starts with the team’s intuition.',
                 badge: 'git-native',
             },
             {
                 icon: 'key',
                 title: 'Governance & audit log',
-                desc: 'Admins control what reaches shared memory — scope, weight threshold, a review queue. Every change lands in an append-only, hash-chained audit log you can verify and export.',
+                desc: 'Imported team memory passes a quality review queue, and every admin change lands in an append-only, hash-chained audit log you can verify and export. Publish-time scope and threshold enforcement is on the roadmap.',
                 badge: 'Free at 1 seat',
             },
             {
                 icon: 'offline',
                 title: 'Local-first engine',
-                desc: 'NeuralMind sends no telemetry and transmits no repository content off your machine; your agent receives only the slice it asked for. One public model download on first build, pre-seedable for air-gapped installs.',
+                desc: 'By default NeuralMind sends no telemetry and transmits no repository content off your machine; your agent receives only the slice it asked for. One public model download on first build, pre-seedable for air-gapped installs.',
                 badge: 'No telemetry',
             },
             {

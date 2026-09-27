@@ -22,7 +22,7 @@ const steps: { icon: IconName; title: string; desc: string; time: string }[] = [
     {
         icon: 'recall',
         title: 'Remember',
-        desc: 'A Hebbian synapse layer learns which files you use together and recalls them next session — without adding tokens. Commit it with `neuralmind memory publish` and teammates inherit it.',
+        desc: 'A Hebbian synapse layer learns which files you use together and recalls them next session, budget-neutral by design. `neuralmind memory publish` writes it to a file you commit, and teammates inherit it.',
         time: 'Across sessions',
     },
 ];
