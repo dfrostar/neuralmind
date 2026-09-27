@@ -36,13 +36,13 @@ bag of independent work packages that can be split across releases.
 
 ## Phase 0 — Close the remaining residuals (v4.3.x, `fix:`)
 
-What was P0 on 2026-09-15 has mostly shipped: the MCP 2.x crash (`#529`) and the version drift are fixed on `main`. What remains is small.
+What was P0 on 2026-09-15 has mostly shipped: the MCP 2.x crash (`#529`) and the version drift are fixed on `main`. What remained is small and **is implemented in this PR** (status column added).
 
-| WP | Work | Files | Test | ED |
-|----|------|-------|------|----|
-| 0.1 | ~~MCP 2.x shim~~ **shipped** (`list_tools_v2`, `#529`). **Residual:** new `tests/test_mcp_transport.py` that spawns `neuralmind-mcp` over stdio and completes `initialize` + `tools/list` + one `tools/call`, parametrised over the installed SDK; a CI step in `fresh-install` that runs it (today `ci.yml:186` only checks the binary is on `PATH`); a second `fresh-install` leg with `pip install "mcp<2"`; re-instate input validation the 2.x SDK dropped; cap `mcp>=1.28.1,<4`. | `neuralmind/mcp_server.py:1299-1330`, `pyproject.toml:79`, `.github/workflows/ci.yml` | as described | 0.5 |
-| 0.2 | ~~Version single-source~~ **shipped** on `main` (`__init__.py:112-116`, release-please owns the literal). Residual: a unit test asserting `__version__ == pyproject.toml` so it cannot regress. | `tests/test_version.py` (new) | unit | 0.1 |
-| 0.3 | **tree-sitter floor** (still open on v4.3.3: `pyproject.toml:128` says `>=0.21.0`). `tree-sitter>=0.22`, grammar packages `>=0.23`; `functools.lru_cache` on `_load_language`; log the swallowed exception at debug level so a real `TypeError` is no longer reported as "grammar not installed". | `pyproject.toml:128-139`, `neuralmind/graphgen.py:119-165, 205` | existing graphgen tests | 0.25 |
+| WP | Work | Files | Test | ED | Status |
+|----|------|-------|------|----|--------|
+| 0.1 | ~~MCP 2.x shim~~ **shipped** (`list_tools_v2`, `#529`). **Residual:** new `tests/test_mcp_transport.py` that spawns `neuralmind-mcp` over stdio and completes `initialize` + `tools/list` + one `tools/call`, parametrised over the installed SDK; a CI step in `fresh-install` that runs it (today `ci.yml:186` only checks the binary is on `PATH`); a second `fresh-install` leg with `pip install "mcp<2"`; re-instate input validation the 2.x SDK dropped; cap `mcp>=1.28.1,<4`. | `neuralmind/mcp_server.py` (`validate_tool_arguments`), `scripts/mcp_stdio_smoke.py`, `tests/test_mcp_transport.py`, `pyproject.toml`, `.github/workflows/ci.yml` | as described | 0.5 | **done in this PR** — stdlib smoke script runs in every `fresh-install` leg plus a new `mcp<2` leg; pytest wrapper in the main suite; required-key / type / enum validation in `handle_tool_call` |
+| 0.2 | ~~Version single-source~~ **shipped** on `main` (`__init__.py:112-116`, release-please owns the literal). Residual: a unit test asserting `__version__ == pyproject.toml` so it cannot regress. | `tests/test_version.py` (new) | unit | 0.1 | **done in this PR** — also checks `.release-please-manifest.json` and `__version_info__` |
+| 0.3 | **tree-sitter floor** (still open on v4.3.3: `pyproject.toml:128` says `>=0.21.0`). `tree-sitter>=0.22`, grammar packages `>=0.23`; `functools.lru_cache` on `_load_language`; log the swallowed exception at debug level so a real `TypeError` is no longer reported as "grammar not installed". | `pyproject.toml`, `neuralmind/graphgen.py` | existing graphgen tests | 0.25 | **done in this PR** — floors set to `>=0.23.0` for core *and* every grammar (the capsule contract), `_load_language` is `lru_cache`d and logs `ImportError` vs other failures separately |
 
 Release notes should still say plainly that v3.10.0–v4.3.0 installed after
 2026-08-31 may have had a non-starting MCP server and that v4.3.1+ fixes it,
