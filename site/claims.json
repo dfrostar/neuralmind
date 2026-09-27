@@ -81,11 +81,11 @@
       "nodes": 1626
     },
     {
-      "value": 6.2,
-      "context": "Hermetic CI fixture (~500 lines) token reduction. Deliberately a floor of a floor.",
+      "value": 5.1,
+      "context": "Hermetic CI fixture (~500 lines) token reduction as measured at v4.3.4 (self-benchmark Phase 1, posted on every PR by ci-benchmark.yml). Deliberately a floor of a floor. The magnitude moves with retrieval changes — it read 6.2x earlier — and CI gates only the 4.0x floor, so quote it with its release and never as 'CI-gated'.",
       "source": "docs/wiki/Benchmarks.md",
       "reproduce": "python -m tests.benchmark.run",
-      "evidence": "ci-gated"
+      "evidence": "reproducible"
     },
     {
       "value": 4.0,

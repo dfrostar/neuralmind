@@ -329,7 +329,7 @@ A two-phase token optimizer for AI coding agents.
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
 
-Combined effect: **12–50× retrieval token reduction** (6.2× measured in CI on the fixture), offline and model-agnostic.
+Combined effect: **12–50× retrieval token reduction** (5.1× measured in CI on the fixture at v4.3.4), offline and model-agnostic.
 
 ### The core problem
 

@@ -49,7 +49,7 @@ there's little to prune, and it still clears a wide margin.
 
 | What | Measured (CI, 500-line fixture) | On real repos |
 |------|---:|---|
-| Token reduction on code questions | **6.2×** | **12-50×** (more files to prune ⇒ larger ratio) |
+| Token reduction on code questions | **5.1×** (v4.3.4) | **12-50×** (more files to prune ⇒ larger ratio) |
 | Regression floor (CI fails below) | 4.0× | — |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The

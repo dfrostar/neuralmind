@@ -98,7 +98,7 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 | Evidence | Where it's measured | Result |
 |----------|---------------------|--------|
 | **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **45–261× fewer tokens** than pasting every source file, at **93.75% mean gold-file recall** (85–100% per repo) |
-| **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | **6.2×** measured; the build fails below **4.0×** |
+| **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | the build fails below **4.0×**; measured **5.1×** at v4.3.4 |
 | **Field reports** — `neuralmind benchmark .` | real private repos, against the CLI's fixed 50K-token naive estimate | **12–50×** typical range |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
@@ -367,7 +367,7 @@ demand with `python -m evals.public.run`, raw per-query data committed:
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
 - **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the CLI's 50K-token naive estimate
   ([full field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
-- **6.2× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
+- **5.1× token reduction** on the CI fixture at v4.3.4 (500-line, deliberately tiny — the floor of a floor; the build fails below 4.0×).
 - **Retrieval quality (N-15):** graded relevance (0-3), nDCG@5, MRR, recall@k, precision@k + RAGAS faithfulness scoring — 8 CI regression gates, per-shape breakdowns.
 - **Content QA (N-16):** book/markdown content retrieval — 30 queries, 11 chapters, 150K-word corpus. N-15 IR metrics + RAGAS on long-form content. `ingest-content` CLI + `benchmark --content` end-to-end command.
 - Backend parity gate: the built-in tree-sitter backend is held within
