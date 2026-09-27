@@ -1183,6 +1183,53 @@ TOOLS = [
 TOOLS = TOOLS + MEMORY_TOOLS
 
 
+_JSON_SCHEMA_TYPES: dict[str, tuple[type, ...]] = {
+    "string": (str,),
+    "integer": (int,),
+    "number": (int, float),
+    "boolean": (bool,),
+    "array": (list,),
+    "object": (dict,),
+}
+
+
+def validate_tool_arguments(name: str, arguments: Any) -> str | None:
+    """Check ``arguments`` against the tool's declared ``inputSchema``.
+
+    MCP Python SDK 1.x validated call arguments against ``inputSchema`` inside
+    ``@server.call_tool()``; the 2.x constructor-callback API dropped that, so a
+    missing required key reached the handler as a bare ``KeyError`` string.
+    This restores the contract for both SDK lines: required keys, top-level
+    JSON types and ``enum`` membership. Returns a human-readable problem, or
+    ``None`` when the arguments are acceptable. Unknown tools are not this
+    function's concern (``handle_tool_call`` reports them).
+    """
+    schema = next((t.get("inputSchema") for t in TOOLS if t.get("name") == name), None)
+    if not schema:
+        return None
+    if not isinstance(arguments, dict):
+        return "arguments must be a JSON object"
+    missing = [key for key in schema.get("required", []) if key not in arguments]
+    if missing:
+        return "missing required argument(s): " + ", ".join(missing)
+    properties = schema.get("properties", {})
+    for key, value in arguments.items():
+        spec = properties.get(key)
+        if not isinstance(spec, dict) or value is None:
+            continue
+        expected = _JSON_SCHEMA_TYPES.get(str(spec.get("type")))
+        if expected is not None:
+            # bool is an int subclass in Python; JSON Schema keeps them distinct.
+            wrong_type = not isinstance(value, expected) or (
+                isinstance(value, bool) and spec.get("type") in ("integer", "number")
+            )
+            if wrong_type:
+                return f"argument {key!r} must be of type {spec.get('type')}"
+        if "enum" in spec and value not in spec["enum"]:
+            return f"argument {key!r} must be one of {spec['enum']!r}"
+    return None
+
+
 def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     """Handle a tool call and return the result as JSON string."""
     handlers = {
@@ -1276,6 +1323,10 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
 
     if not project_path:
         return json.dumps({"error": "project_path is required", "code": "invalid_request"})
+
+    problem = validate_tool_arguments(name, arguments)
+    if problem:
+        return json.dumps({"error": problem, "code": "invalid_request"})
 
     try:
         security = get_security_manager(project_path)

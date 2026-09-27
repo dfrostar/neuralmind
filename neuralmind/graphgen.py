@@ -32,7 +32,9 @@ Design notes:
 
 from __future__ import annotations
 
+import functools
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -99,6 +101,8 @@ _SUFFIX_LANG: dict[str, str] = {
 
 SUPPORTED_SUFFIXES: frozenset[str] = frozenset(_SUFFIX_LANG)
 
+logger = logging.getLogger(__name__)
+
 # Markdown files become graphify-style ``document`` nodes (the file plus one
 # node per heading). This mirrors graphify's document layer, which the context
 # selector surfaces in L0/L1/L2 — prose that carries query-relevant facts the
@@ -117,10 +121,17 @@ _SCHEMA_SUFFIXES: frozenset[str] = frozenset(
 )
 
 
+@functools.cache
 def _load_language(name: str):
     """Return the tree-sitter ``Language`` for ``name``, or None if its grammar
     package isn't importable. Only Python is a hard dependency; TS/Go grammars
-    are optional and a project is parsed only for the languages present."""
+    are optional and a project is parsed only for the languages present.
+
+    Cached per process: ``language_available()`` and ``_make_parser()`` both
+    call this, and a build used to construct a fresh ``Language`` (and re-import
+    the grammar module) on every call. A failed load is cached too — a grammar
+    does not appear mid-process, and the debug log below says why it failed.
+    """
     from tree_sitter import Language
 
     try:
@@ -164,7 +175,24 @@ def _load_language(name: str):
             import tree_sitter_php as ts
 
             return Language(ts.language_php())
-    except Exception:
+    except ImportError as exc:
+        # The expected case: an optional grammar package isn't installed.
+        logger.debug("tree-sitter grammar for %r is not installed: %s", name, exc)
+        return None
+    except Exception as exc:
+        # Anything else is a real problem (e.g. a core/grammar version mismatch
+        # raising TypeError from ``Language(...)``). Still fail open, but never
+        # silently: ``_make_parser`` would otherwise report this as "grammar is
+        # not installed", which sent more than one user to reinstall a grammar
+        # that was present all along.
+        logger.debug(
+            "tree-sitter grammar for %r failed to load (%s: %s) — check that the "
+            "tree-sitter core and grammar packages are the same major.minor line",
+            name,
+            type(exc).__name__,
+            exc,
+            exc_info=True,
+        )
         return None
     return None
 

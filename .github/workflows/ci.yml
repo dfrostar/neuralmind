@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
 
   fresh-install:
-    name: Fresh Install (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    name: Fresh Install (${{ matrix.os }}, Python ${{ matrix.python-version }}${{ matrix.mcp-spec && format(', mcp{0}', matrix.mcp-spec) || '' }})
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -115,6 +115,13 @@ jobs:
           # handling — tracked as a follow-up.
           - os: macos-latest
             python-version: '3.12'
+          # The MCP server supports both SDK lines (1.x decorators, 2.x
+          # constructor callbacks). The default legs resolve the latest 2.x;
+          # this leg pins the 1.x line so a change that only works on one of
+          # them fails here. See scripts/mcp_stdio_smoke.py.
+          - os: ubuntu-latest
+            python-version: '3.12'
+            mcp-spec: '<2'
     steps:
       - uses: actions/checkout@v7
 
@@ -129,6 +136,10 @@ jobs:
           source .smoke/bin/activate
           pip install --upgrade pip
           pip install .
+          if [ -n "${{ matrix.mcp-spec }}" ]; then
+            pip install "mcp${{ matrix.mcp-spec }}"
+            python -c "import mcp, importlib.metadata as m; print('mcp', m.version('mcp'))"
+          fi
 
       - name: pip check
         run: |
@@ -184,6 +195,15 @@ jobs:
           python -c "import mcp; import mcp.server; import mcp.types"
           python -c "from neuralmind.mcp_server import MCP_AVAILABLE; assert MCP_AVAILABLE, 'MCP SDK not importable from base install'"
           command -v neuralmind-mcp >/dev/null || { echo 'neuralmind-mcp not on PATH'; exit 1; }
+
+      - name: MCP stdio round-trip (initialize / tools/list / tools/call)
+        run: |
+          source .smoke/bin/activate
+          # Importing the module is not starting the server: mcp 2.0.0 removed
+          # the decorator API and `neuralmind-mcp` crashed on every fresh
+          # install for three weeks while the step above stayed green. This
+          # spawns the real entry point and speaks JSON-RPC to it.
+          python scripts/mcp_stdio_smoke.py
 
       - name: CLI smoke test
         run: |
