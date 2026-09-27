@@ -3,25 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, progressive context disclosure for 12-50× token savings, incremental content ingestion for books and docs corpora, and a 100% local ten-language code graph.">
+    <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory with a stale-decision guard, progressive context disclosure (93.75% mean gold-file recall at 45–261× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
     <meta name="keywords" content="NeuralMind, AI coding agent memory, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://docs.neuralmind.uk/about.html">
     <meta property="og:title" content="About NeuralMind — Semantic Code Intelligence with Brain-like Memory">
-    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
+    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta property="og:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta property="og:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
-    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a synapse layer that learns from how you work, 12-50× token savings, 100% local.">
+    <meta name="twitter:description" content="How NeuralMind gives AI coding agents persistent memory: a code graph plus a synapse layer that learns from how you work — 93.75% mean gold-file recall at 45–261× fewer tokens on a public benchmark. Local-first, no telemetry.">
     <meta name="twitter:image" content="https://docs.neuralmind.uk/assets/social-preview.png">
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "TechArticle",
       "headline": "About NeuralMind — Semantic Code Intelligence with Brain-like Memory",
-      "dateModified": "2026-09-10",
+      "dateModified": "2026-09-27",
       "description": "How NeuralMind gives AI coding agents persistent memory: a brain-like synapse layer that learns associations from how you use the codebase, progressive context disclosure for 12-50× token reduction, a bundled tree-sitter code graph indexing ten languages (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP), an Obsidian-style graph view, an MCP server, and a built-in install doctor.",
       "author": { "@type": "Person", "name": "Darren Frost" },
       "publisher": { "@type": "Person", "name": "Darren Frost" },
@@ -35,7 +34,6 @@
         "name": "NeuralMind",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS, Windows",
-        "softwareVersion": "3.10.0",
         "downloadUrl": "https://pypi.org/project/neuralmind/",
         "license": "https://opensource.org/licenses/MIT",
         "isAccessibleForFree": true,
@@ -99,7 +97,7 @@
         <section>
             <h2>Supply chain</h2>
             <p>NeuralMind publishes a CycloneDX JSON SBOM (Software Bill of Materials) for every release, linked from <a href="https://neuralmind.uk/security">neuralmind.uk/security</a> (resolved from the GitHub API at build time, falling back to the last-known release if the API is unavailable). GitHub Release attachment is attempted but best-effort — it commonly fails for release-please-created releases, since published GitHub Releases on this repo are immutable, in which case the site-hosted copy is the reliable source. Use it with Grype, Trivy, Dependency-Track, or any SCA scanner.</p>
-            <p>100% local. No cloud lock-in. No telemetry. MIT-licensed.</p>
+            <p>Local-first. No cloud lock-in. No telemetry. MIT core.</p>
         </section>
     </div>
     <section>
@@ -118,13 +116,14 @@
             <h2>Who it's for — and who it isn't</h2>
             <p><strong>Reach for NeuralMind if</strong> you drive an AI coding agent (Claude Code, Cursor, Cline, Continue, or your own MCP/OpenRouter stack) over a non-trivial codebase, you want one shared memory across those agents, you're watching LLM spend on repo-level questions, or you work in a regulated/air-gapped setting that rules out SaaS code search.</p>
             <p><strong>You probably don't need it if</strong> your repo is under ~5K tokens (just paste it in), you don't use an agent, or you only want inline completions (use Copilot/Cursor directly).</p>
-            <p><strong>Set expectations honestly:</strong> the 12-50× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. ChromaDB is still the default (the slim, ChromaDB-free backend is opt-in while it bakes). It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
+            <p><strong>Set expectations honestly:</strong> the 12-50× token reduction is a real-repo range — CI measures a conservative 6.2× on a tiny fixture, so prove it on your own code. The ChromaDB-free TurboVec backend is the default install on Linux, Apple Silicon and Windows x64, with ChromaDB as the automatic fallback elsewhere. It's a fast-moving, single-maintainer beta with a lot of surface area — pin a version for CI. The compressed backend is approximate, with parity gated on the reference fixture rather than measured at large-repo scale. If those trade-offs are fine, the upside is real and the receipts are in the repo.</p>
         </div>
     </section>
 
     <section>
         <div class="container" id="tier-2-team">
             <h2>New in v1.0.0 — Team tier ships</h2>
+            <p><em>Since updated: every capability below now runs free at 1 seat under a license that auto-issues on first run, with no signup and no expiry. The Team license ($29/user/mo, 5–50 seats, annual) buys seats beyond one, priority support and an annual invoice — see <a href="https://neuralmind.uk/pricing/">pricing</a>. The original v1.0.0 announcement follows.</em></p>
             <p><strong>NeuralMind Team</strong> is the paid tier for engineering teams of 5-50 seats: $29/user/mo, annual contract. It adds four capabilities on top of the MIT core (which remains unchanged):</p>
             <ul>
                 <li><strong>Team memory governance.</strong> Per-repo enable/disable, personal/shared/both publishing scope, edge weight threshold for auto-publish. Admin-only — non-admins get <code>PermissionError</code>. Every config change logged.</li>
@@ -139,7 +138,8 @@
 
     <section>
         <div class="container" id="whats-next">
-            <h2>Where NeuralMind is going next — the eval-first roadmap</h2>
+            <h2>How we got here — the eval-first arc (v0.13 → v0.16)</h2>
+            <p><em>Historical: this arc has shipped (the measure-first harness, the tree-sitter graph backend, host adapters and team memory are all in the product). Current plans live in the <a href="https://github.com/dfrostar/neuralmind/blob/main/ROADMAP.md">roadmap</a>.</em></p>
             <p><strong>A staged plan — the first increment (v0.13.0) has shipped.</strong> After the v0.10→v0.12 ergonomics + diagnostics work, the current arc is about proving and future-proofing the core. The spine is simple: <em>measure, then change, then measure again.</em></p>
             <h3>The arc (v0.13 → v0.16)</h3>
             <ul>
@@ -194,7 +194,23 @@
                     </tr>
                 </tbody>
             </table>
-            <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, 100% local privacy, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+            <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, local-first processing with no telemetry, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v4">
+            <h2>What&rsquo;s New in v4.x &mdash; decision memory, the stale-decision guard, and lean-context modules</h2>
+            <p><strong>v4 teaches NeuralMind to remember <em>why</em> code is the way it is, not just where it lives &mdash; and to warn your agent when that memory has gone stale.</strong></p>
+            <ul>
+                <li><strong>v4.0.0 &mdash; lean-context memory modules.</strong> A hard per-query context budget (L3 &rarr; L2 &rarr; L1 trimming), periodic session summaries your agent can recall, learned co-access edges between files read together, read dedup with an LRU cache, and a background cognition loop that reinforces, decays, promotes and prunes associations.</li>
+                <li><strong>v4.1.0 &mdash; decision memory.</strong> Architecture decisions stored with rationale, evidence, commit SHA and rejected alternatives; full-text searchable and invalidated automatically when the code they describe changes. <code>neuralmind decisions record | query | audit</code>, plus MCP tools.</li>
+                <li><strong>v4.2.0 &mdash; the stale-decision guard.</strong> Before your agent edits a file, a <code>PreToolUse</code> hook surfaces any decision governing it that is no longer active. Fail-open, never blocks an edit, opt out with <code>NEURALMIND_STALE_GUARD=0</code>.</li>
+                <li><strong>v4.3.0 &mdash; progressive decision retrieval.</strong> Three MCP tools let an agent scan compact decision rows first and fetch full records only for the ones it needs, plus session-boundary summary hooks.</li>
+                <li><strong>v4.3.1 &ndash; v4.3.4 &mdash; fixes.</strong> Package-layout code repos are no longer misread as book projects; dot-files such as <code>.env</code> are never ingested; <code>.gitignore</code> patterns follow git&rsquo;s semantics; synapse decay no longer compounds on repeated calls.</li>
+            </ul>
+            <p>The public benchmark was regenerated at v4.3.4 with its raw data committed: <strong>93.75% mean gold-file recall (85&ndash;100% per repo) at 45&ndash;261&times; fewer tokens</strong> than pasting every source file, 4 of 40 queries missed &mdash; <a href="https://neuralmind.uk/benchmark/">see every result</a>.</p>
+            <p><a href="https://github.com/dfrostar/neuralmind/tree/main/docs/releases">Release notes &rarr;</a> &middot; <a href="https://docs.neuralmind.uk/wiki/Memory-Layer.html">Memory layer guide &rarr;</a></p>
         </div>
     </section>
 
@@ -1176,11 +1192,11 @@ $ neuralmind query . "CMMC gap analysis"
 
             <h3>Enterprise Ready</h3>
             <ul>
-                <li>✅ <strong>100% local & offline</strong> — No cloud, no telemetry, no calls home</li>
+                <li>✅ <strong>Local-first, air-gap installable</strong> — No cloud service, no telemetry; one public model download on first build, pre-seedable</li>
                 <li>✅ <strong>NIST AI RMF audit trail</strong> — Full query provenance, compliance reporting</li>
-                <li>✅ <strong>Open source & MIT licensed</strong> — No vendor lock-in, full transparency</li>
-                <li>✅ <strong>Works everywhere</strong> — Claude Code, Cursor, ChatGPT, Gemini, local LLMs</li>
-                <li>✅ <strong>Pluggable backends</strong> — ChromaDB, PostgreSQL, LanceDB</li>
+                <li>✅ <strong>Open source core (MIT)</strong> — No vendor lock-in, full transparency; every feature free at 1 seat</li>
+                <li>✅ <strong>Works with your agents</strong> — Claude Code, Codex, Cursor, Cline, Continue, any MCP client, local LLMs</li>
+                <li>✅ <strong>Two vector backends</strong> — the ChromaDB-free TurboVec default, or ChromaDB</li>
             </ul>
         </div>
     </section>

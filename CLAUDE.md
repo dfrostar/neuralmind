@@ -73,8 +73,12 @@ Rules that follow from it:
   one-repo field report, and a community submission are not the same strength
   of claim, and the site says which is which.
 - **Quote the mean and the range, publish the misses.** Gold-file recall is
-  93.75% mean / 79–100% per repo, not "100%". The docs already report where
+  93.75% mean / 85–100% per repo, not "100%". The docs already report where
   NeuralMind loses; the site must not round that away.
+- **A headline needs its raw data committed.** The public-benchmark figures
+  are recomputed in CI from `bench/public/results.json`; re-running the
+  benchmark means committing that file (`--out bench/public`) and updating
+  `site/claims.json` in the same change.
 - A page that quotes a forbidden phrase in order to *disown* it (the
   effectiveness page's list of overclaims) marks the line
   `claims-guard:allow`.

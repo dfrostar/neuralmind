@@ -7,7 +7,7 @@ const WALKTHROUGH_URL = `${GITHUB_URL}/blob/main/docs/use-cases/measure-memory-a
 const PUBLISHED = '2026-07-20';
 
 export const metadata = {
-    title: 'Field Report: AI Agent Memory Across a Major Refactor — 48.8× Token Reduction | NeuralMind',
+    title: 'Field Report: 48.8× Fewer Tokens Across a Refactor | NeuralMind',
     description:
         'Real-world case study: a ~9,300-node TypeScript SaaS platform rebuilt with NeuralMind watching — 48.8× token reduction, personal synapse edges 36→135. Full numbers, method, and a recipe to measure your own refactor.',
     keywords: [
@@ -72,7 +72,7 @@ const numbers = [
     { metric: 'Shared edge weight', before: '2,774.73', after: '2,924.66', change: '+5.4%', highlight: true },
     { metric: 'Wake-up tokens', before: '—', after: '455', change: '' },
     { metric: 'Avg query tokens', before: '—', after: '1,033', change: '' },
-    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: 'vs loading files naively', highlight: true },
+    { metric: 'Avg token reduction', before: '—', after: '48.8×', change: 'vs the CLI’s 50K-token naive estimate', highlight: true },
     { metric: 'Full --force rebuild', before: '—', after: '326 s (~5.4 min)', change: 'incremental rebuilds ~30 s after' },
 ];
 
@@ -176,7 +176,7 @@ export default function FieldReportPage() {
                         <div className="card rounded-2xl p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Avg token reduction</p>
                             <p className="font-display text-3xl font-bold text-white mb-1">48.8×</p>
-                            <p className="text-slate-400 text-sm">~1,033 tokens/query vs 50K+ naive</p>
+                            <p className="text-slate-400 text-sm">~1,033 tokens/query vs a 50K-token naive estimate</p>
                         </div>
                         <div className="card rounded-2xl p-6">
                             <p className="text-faint text-xs font-semibold uppercase tracking-wider mb-2">Personal synapse edges</p>
@@ -242,8 +242,8 @@ export default function FieldReportPage() {
                     <div className="space-y-4 text-slate-300 leading-relaxed">
                         <p>
                             <strong className="text-white">48.8× token reduction.</strong> After the rebuild, an average
-                            code question cost ~1,033 tokens of context instead of the 50K+ a naive &quot;load the
-                            relevant files&quot; approach would spend. That is one repo&apos;s measured ratio from{' '}
+                            code question cost ~1,033 tokens of context, against the CLI&apos;s 50,000-token estimate
+                            of what a naive &quot;load the relevant files&quot; approach spends. That is one repo&apos;s ratio from{' '}
                             <code className="text-electric-bright bg-carbon px-1.5 py-0.5 rounded text-sm">neuralmind benchmark .</code>,
                             consistent with the 12-50× real-repo range — not a universal guarantee.
                         </p>
@@ -361,6 +361,15 @@ export default function FieldReportPage() {
                             <a href={`${GITHUB_URL}/blob/main/docs/HONEST-ASSESSMENT.md`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
                                 honest assessment
                             </a>.
+                        </p>
+                        <p>
+                            <strong className="text-white">The &quot;naive&quot; side of the ratio is an estimate.</strong>{' '}
+                            <code className="font-mono text-[0.85em] text-slate-300">neuralmind benchmark .</code> divides
+                            a fixed 50,000-token estimate of naive context by the measured tokens per question
+                            (~1,033 here); it does not count this repo&apos;s actual size. The measured half is the
+                            tokens per question. The{' '}
+                            <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
+                            measures against every source file instead.
                         </p>
                         <p>
                             <strong className="text-white">The CI-gated, reproducible numbers</strong> live in{' '}

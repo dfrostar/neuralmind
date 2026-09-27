@@ -16,9 +16,9 @@
 title: NeuralMind
 url: "https://docs.neuralmind.uk"
 description: >-
-  Persistent, 100% local memory for AI coding agents — 12–50× cheaper
-  code questions, a synapse layer that learns your codebase, and a
-  bundled ten-language code graph.
+  Persistent, local-first codebase memory for AI coding agents — a code
+  graph and a synapse layer that learns your codebase, serving compact
+  context to Claude Code, Codex, Cursor and any MCP client.
 
 # These are enabled by default on GitHub Pages; declared explicitly so a
 # local `jekyll build` behaves the same as the Pages build.

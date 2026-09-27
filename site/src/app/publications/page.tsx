@@ -3,7 +3,7 @@ import Footer from '@/components/sections/Footer';
 
 export const metadata = {
     title: 'Research & Publications — NeuralMind',
-    description: 'Research reports and defensive publications from the NeuralMind project. Deep-dive technical reports verified against the live codebase.',
+    description: 'Research reports, setup guides and defensive publications from the NeuralMind project: Hebbian synapse learning, budget-neutral recall, and using NeuralMind with Claude Code and Codex.',
     keywords: [
         'NeuralMind research',
         'defensive publication',
@@ -75,6 +75,13 @@ const publications = [
         type: 'Research Report',
         date: 'July 26, 2026',
         description: 'Deep-dive research report: how to use NeuralMind with Claude Code teams, measure token reduction, and eliminate agent amnesia via committed team memory bundles. Verified against the live codebase. DeepSeek v4 Pro QA-corrected.',
+    },
+    {
+        slug: 'codex-setup',
+        title: 'How to Use NeuralMind with OpenAI Codex: Setup, Token Measurement, Savings',
+        type: 'Guide',
+        date: 'July 26, 2026',
+        description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (or any MCP client), measure L0–L3 token budgets, and verify real dollar savings. Verified against the live codebase.',
     },
     {
         slug: 'quality-weighted-merge',

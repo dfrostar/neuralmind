@@ -5,73 +5,93 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = pageMetadata({
     path: '/measure-your-own',
-    title: 'Measure Your Own — NeuralMind',
+    title: 'Measure AI Agent Token Usage on Your Own Repo — NeuralMind',
     description:
-        'Run the NeuralMind benchmark on your own codebase. One command, ~15 minutes, real numbers. No account, no signup, no cloud. Share your results and we will publish them.',
+        'Measure NeuralMind on your codebase: tokens per question, token reduction and retrieval recall on your own symbols. Three commands, about 15 minutes, no account.',
     keywords: [
+        'measure Claude Code token usage',
         'AI coding agent benchmark',
         'token reduction measurement',
         'codebase context benchmark',
+        'retrieval recall on your repo',
         'NeuralMind benchmark your repo',
-        'AI agent memory measurement',
-        'token cost reduction tool',
-        'code intelligence benchmark',
         'context compression measurement',
     ],
-    ogTitle: 'Measure Your Own — NeuralMind',
+    ogTitle: 'Measure NeuralMind on your own repo',
     ogDescription:
-        'Run the NeuralMind benchmark on your own codebase. One command, ~15 minutes, real numbers. Share your results.',
+        'Three commands, about 15 minutes, on your machine: tokens per question, reduction, and recall on your own symbols. Share the output and we will publish it.',
 });
 
-const steps = [
+// Every command is real and every sample output below is verbatim CLI output
+// (psf/requests v2.32.3, NeuralMind v4.3.4). This page used to describe
+// `neuralmind benchmark .` as comparing against ripgrep and reporting per-query
+// recall, and showed an output format the CLI has never printed. It reports
+// token reduction; recall on your own code comes from `neuralmind probe .`.
+type Step = { step: string; title: string; body: string; code: string[]; output?: string[] };
+
+const steps: Step[] = [
     {
         step: '1',
-        title: 'Clone and install',
-        body: 'Get the source checkout. NeuralMind ships the benchmark harness in the repo, not the PyPI wheel, so you need a clone.',
-        code: ['git clone https://github.com/dfrostar/neuralmind && cd neuralmind', 'pip install -e . tiktoken'],
+        title: 'Install',
+        body: 'Measuring your own repo needs only the PyPI package — no clone. (A source checkout is needed only to rerun the public four-repo benchmark.)',
+        code: ['pip install neuralmind'],
     },
     {
         step: '2',
         title: 'Build your index',
-        body: 'One command indexes your codebase. Tree-sitter parses the structure, TurboVec compresses embeddings 4-bit. Processing runs on your machine.',
-        code: ['neuralmind build .'],
+        body: 'tree-sitter parses the structure and embeddings are computed on your machine. The first build downloads a public embedding model once; after that nothing else is fetched.',
+        code: ['cd /path/to/your-repo', 'neuralmind build .'],
     },
     {
         step: '3',
-        title: 'Run the benchmark',
-        body: 'Compares NeuralMind against full-file context and ripgrep on your own queries. Reports gold-file recall and token cost together.',
-        code: ['neuralmind benchmark .', '# or for JSON output:', 'neuralmind benchmark . --json'],
+        title: 'Measure token reduction',
+        body: 'Runs five generic code questions and reports wake-up tokens, average tokens per question, and the reduction against a fixed 50,000-token estimate of naive context. The estimate does not scale with your repo, so read the ratio as directional — tokens per question is the hard number.',
+        code: ['neuralmind benchmark .', '# machine-readable:', 'neuralmind benchmark . --json'],
+        output: [
+            'Project: requests',
+            'Wake-up tokens: 510',
+            'Avg query tokens: 1185.0',
+            'Avg reduction: 42.3x',
+            'Summary: 42.3x average token reduction',
+        ],
     },
     {
         step: '4',
-        title: 'Read your number',
-        body: 'The output shows: naive tokens, NeuralMind tokens, reduction ratio, and per-query recall. No cherry-picking — every query is reported.',
-        code: null,
+        title: 'Check retrieval on your own code',
+        body: 'Samples symbols from your index, asks for each one by its own description, and reports how often the right file comes back — plus the blind spots it could not find, by name. No labels or setup needed.',
+        code: ['neuralmind probe .'],
+        output: [
+            'Sampled 50 of 801 indexed symbols, retrieval depth k=10',
+            '  answerability  : 84%  (file found in top-10)',
+            '  MRR            : 0.620',
+            '  recall@1/3/5   : 0.460 / 0.780 / 0.820',
+            '  blind spots    : 8',
+        ],
     },
     {
         step: '5',
         title: 'Share your results',
-        body: 'Email hello@neuralmind.uk with your output. We will publish your results (attributed or anonymized, your choice). Help us build the social proof we do not have yet.',
-        code: null,
+        body: 'Emit a schema-ready submission and send it to us, or open a pull request against the community benchmarks. Nothing is uploaded — you choose what to paste, and whether it is attributed or anonymized.',
+        code: ['neuralmind benchmark . --contribute'],
     },
 ];
 
 const whatYouGet = [
     {
-        metric: 'Tokens/query',
-        desc: 'Mean context size in tokens (tiktoken o200k_base). Compare NeuralMind vs naive full-file vs ripgrep.',
+        metric: 'Tokens per question',
+        desc: 'The mean context NeuralMind hands your agent for a code question, from benchmark. The hardest number on this page — it does not depend on any baseline.',
     },
     {
         metric: 'Reduction',
-        desc: 'How many fewer tokens NeuralMind sends vs the naive baseline. 12-50× is the published real-repo range.',
+        desc: 'Naive context divided by NeuralMind’s, against the fixed 50K-token estimate. Published submissions so far run from 46× to 65.6×; the range we quote for real repos is a more conservative 12–50×.',
     },
     {
-        metric: 'Gold-file recall',
-        desc: 'For each query: did the objectively-correct file land in the assembled context? Objective, no LLM judge.',
+        metric: 'Answerability & recall@k',
+        desc: 'From probe: how often the right file is in the top k when you ask for one of your own symbols.',
     },
     {
-        metric: 'MRR',
-        desc: 'Mean reciprocal rank of the gold file. 1.0 = always first; 0.5 = always second.',
+        metric: 'MRR and blind spots',
+        desc: 'Mean reciprocal rank (1.0 means the right file always comes first), and the symbols the index could not retrieve — the list to fix first.',
     },
 ];
 
@@ -79,23 +99,23 @@ export default function MeasureYourOwnPage() {
     return (
         <>
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 md:px-6 py-16">
+            <main className="max-w-4xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{
                         __html: JSON.stringify({
                             '@context': 'https://schema.org',
                             '@type': 'HowTo',
-                            name: 'Measure NeuralMind token reduction on your own codebase',
+                            name: 'Measure NeuralMind on your own codebase',
                             description:
-                                'Step-by-step guide to running the NeuralMind benchmark on your own codebase. Measures token reduction, gold-file recall, and MRR against naive and ripgrep baselines.',
+                                'Install NeuralMind, index your repository, and measure tokens per question, token reduction, and retrieval recall on your own symbols — locally, in about fifteen minutes.',
                             step: steps.map((s) => ({
                                 '@type': 'HowToStep',
                                 position: parseInt(s.step),
                                 name: s.title,
-                                text: s.body,
+                                text: `${s.body} Command: ${s.code.filter((c) => !c.startsWith('#')).join(' && ')}`,
                             })),
-                            tool: [{ '@type': 'HowToTool', name: 'neuralmind CLI' }],
+                            tool: [{ '@type': 'HowToTool', name: 'neuralmind CLI (pip install neuralmind)' }],
                             totalTime: 'PT15M',
                         }),
                     }}
@@ -106,44 +126,25 @@ export default function MeasureYourOwnPage() {
                         <span className="px-3 py-1 rounded-lg bg-proton/10 text-proton text-xs font-mono">
                             ~15 minutes
                         </span>
-                        <span className="text-faint text-sm">No account · no cloud · no telemetry</span>
+                        <span className="text-faint text-sm">No account · runs on your machine · no telemetry</span>
                     </div>
                     <h1 className="font-display text-3xl md:text-[2.75rem] font-bold text-white mb-5 leading-[1.08] tracking-tighter">
-                        Measure your own
+                        Measure it on your own repo
                     </h1>
                     <p className="text-lg text-slate-300 leading-relaxed mb-6">
-                        The number that decides anything for you is the one from your
-                        codebase. Here is how to get it — and why we want you to share it.
+                        The number that decides anything for you is the one from your codebase. Three
+                        commands get it — and we want you to share it, good or bad.
                     </p>
                     <p className="text-slate-400 leading-relaxed">
-                        We do not have testimonials yet. We do not have a video demonstrating a before/after on a real user&rsquo;s
-                        codebase. What we have is a reproducible benchmark that runs locally, on your machine, against your code, in about
-                        fifteen minutes. Run it. Read your own number. If it is good,
+                        We do not have testimonials yet. What we have is a benchmark that runs locally,
+                        against your code, in about fifteen minutes. Run it and read your own number. If
+                        it is good,{' '}
                         <a href="mailto:hello@neuralmind.uk" className="text-electric hover:text-electric-bright transition-colors">
-                            {' '}tell us — we will publish it
+                            tell us — we will publish it
                         </a>
-                        .
+                        . If it is not, tell us that too: we will explain why, or fix it.
                     </p>
                 </header>
-
-                <section className="mb-14">
-                    <h2 className="font-display text-xl font-bold text-white mb-2">The honest pitch</h2>
-                    <div className="rounded-card border border-carbon-line bg-carbon-raised p-6 md:p-7 mb-6">
-                        <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                            Anyone can run a benchmark on fixture data. That is why the public benchmark exists — because you should not
-                            take any vendor&rsquo;s word for it. But a benchmark on your own repository, with your own queries, on your
-                            own machine — that is the only number that actually tells you whether NeuralMind will help your workflow.
-                        </p>
-                        <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                            If you run it and the number is good, we want to publish it. Attributed or anonymized — your choice. We are
-                            building the social proof we currently lack.
-                        </p>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                            If you run it and the number is <em>not</em> good, we want to know that too. Email us the output and we will
-                            tell you why, or fix it. That is the honest deal.
-                        </p>
-                    </div>
-                </section>
 
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-6">Step by step</h2>
@@ -157,36 +158,24 @@ export default function MeasureYourOwnPage() {
                                     <h3 className="font-display text-lg font-bold text-white">{s.title}</h3>
                                 </div>
                                 <p className="text-slate-400 text-sm mb-4">{s.body}</p>
-                                {s.code ? (
-                                    <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto mt-auto">
+                                <div className="mt-auto space-y-2">
+                                    <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto">
                                         {s.code.map((line) => (
-                                            <p key={line} className="whitespace-nowrap">
+                                            <p key={line} className={`whitespace-nowrap ${line.startsWith('#') ? 'text-faint' : ''}`}>
                                                 <span className="text-faint select-none">{line.startsWith('#') ? '' : '$ '}</span>
                                                 {line}
                                             </p>
                                         ))}
                                     </div>
-                                ) : (
-                                    <div className="mt-auto">
-                                        {s.step === '4' && (
-                                            <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 overflow-x-auto">
-                                                <p className="whitespace-pre text-faint">{'# Example output:'}</p>
-                                                <p className="whitespace-pre">{'  Naive:     41,729 tokens/query'}</p>
-                                                <p className="whitespace-pre">{'  NeuralMind:    913 tokens/query'}</p>
-                                                <p className="whitespace-pre">{'  Reduction:   45.7× fewer'}</p>
-                                                <p className="whitespace-pre mt-2 text-faint">{'# This is the requests repo. Your number will differ.'}</p>
-                                            </div>
-                                        )}
-                                        {s.step === '5' && (
-                                            <a
-                                                href="mailto:hello@neuralmind.uk"
-                                                className="text-electric hover:text-electric-bright text-sm font-medium transition-colors"
-                                            >
-                                                Email your output →
-                                            </a>
-                                        )}
-                                    </div>
-                                )}
+                                    {s.output && (
+                                        <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 overflow-x-auto">
+                                            {s.output.map((line) => (
+                                                <p key={line} className="whitespace-pre">{line}</p>
+                                            ))}
+                                            <p className="whitespace-pre mt-2 text-faint">{'# psf/requests v2.32.3 — yours will differ'}</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -194,21 +183,22 @@ export default function MeasureYourOwnPage() {
 
                 <section className="mb-14">
                     <h2 className="font-display text-xl font-bold text-white mb-6">What you get</h2>
-                    <dl className="grid sm:grid-cols-2 gap-4">
+                    <dl className="grid sm:grid-cols-2 border-t border-l border-carbon-border rounded-sm overflow-hidden">
                         {whatYouGet.map((item) => (
                             <div key={item.metric} className="border-b border-r border-carbon-border p-6">
-                                <dt className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint mb-3">
+                                <dt className="font-display text-lg font-semibold tracking-tight text-white mb-2">
                                     {item.metric}
                                 </dt>
-                                <dd>
-                                    <p className="text-white mb-2 leading-none font-display text-lg font-semibold tracking-tight">
-                                        {item.metric}
-                                    </p>
-                                    <p className="text-slate-400 text-sm leading-relaxed">{item.desc}</p>
-                                </dd>
+                                <dd className="text-slate-400 text-sm leading-relaxed">{item.desc}</dd>
                             </div>
                         ))}
                     </dl>
+                    <p className="text-slate-400 text-sm mt-4 leading-relaxed">
+                        Want a baseline that scales with the repo? The{' '}
+                        <a href="/benchmark/" className="text-electric hover:text-electric-bright">public benchmark</a>{' '}
+                        measures against every source file and scores gold-file recall on pre-registered
+                        queries — it needs a source checkout because the harness ships in the repo.
+                    </p>
                 </section>
 
                 <section className="rounded-card panel-accent p-6 md:p-7">
@@ -216,13 +206,14 @@ export default function MeasureYourOwnPage() {
                         Already run it?
                     </h2>
                     <p className="text-slate-400 text-sm leading-relaxed mb-4">
-                        Paste your output to hello@neuralmind.uk. We will publish it on this page (attributed or anonymized, your
-                        choice). The only requirement: the output must be from your own codebase, under your own run. We are building
-                        social proof the honest way — one real number at a time.
+                        Send your output to hello@neuralmind.uk and we will publish it — attributed or
+                        anonymized, your choice. The only requirement: it comes from your own codebase,
+                        under your own run. We are building social proof the honest way, one real number
+                        at a time.
                     </p>
                     <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                         <a
-                            href="mailto:hello@neuralmind.uk"
+                            href="mailto:hello@neuralmind.uk?subject=My%20NeuralMind%20benchmark"
                             className="text-electric hover:text-electric-bright transition-colors"
                         >
                             Share your results →

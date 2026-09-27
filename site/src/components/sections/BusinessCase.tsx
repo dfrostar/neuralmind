@@ -2,6 +2,9 @@
 
 import SectionHeader from '@/components/ui/SectionHeader';
 
+// Dollar figures are modeled in docs/BUSINESS-CASE.md, assumptions published
+// there. Quote its scenarios as written — the "$1,650/mo" that used to sit here
+// was a math error the doc itself corrected on 2026-07-31.
 const cards = [
     {
         audience: 'For the CFO',
@@ -9,20 +12,20 @@ const cards = [
         accent: 'text-proton',
         points: [
             'Token compression ships in the free MIT core — the savings cost nothing, and you can measure them on your own repo in ~15 minutes.',
-            'Modeled at 30 code questions per developer per day, a 50-developer team gets back ~$310/mo on inference alone. The figure barely moves with the exact ratio — 48.8× and 65.6× differ by under 1% of the saving, because both already remove ~98% of the tokens.',
-            'The bigger line is time: ~$1,650/mo per 50-dev team recovered from context-limit thrashing and re-prompting, at a $50/hr fully-loaded rate.',
-            'Recall is a local index lookup, not another model call — nothing in the loop between "I need to know X" and "I know X" waits on an API. That compounds across every developer, every day.',
+            'Modeled at 30 code questions per developer per day, a 50-developer team saves ~$310/mo on inference alone. The figure barely moves with the exact ratio — 48.8× and 65.6× differ by under 1% of the saving, because both already remove ~98% of the retrieval tokens.',
+            'The bigger line is time. In the business case’s worked scenario — 15 developers each losing 15 minutes a day to context-limit thrashing — that is ~$4,125/mo of engineering time at a $50/hr fully-loaded rate, before any LLM savings.',
+            'Recall is a local index lookup, not another model call — nothing in the loop between "I need to know X" and "I know X" waits on an API.',
         ],
     },
     {
         audience: 'For the CTO',
-        title: 'Fewer wrong answers, faster teams',
+        title: 'Fewer wrong turns, faster teams',
         accent: 'text-electric',
         points: [
-            '93.6% gold-file recall across 40 pre-registered queries on four public repos — 85–100% per repo, with every miss published rather than dropped.',
-            'Team dashboard shows synapse memory health, ingestion status, savings, latency trends — all read-only, all local.',
-            'Self-documenting code: DocEvolver finds undocumented methods and evolves JSDoc that actually improves retrieval.',
-            'The engine transmits no repository content and sends no telemetry — verifiable on the wire. Works with the agents you already run: Claude Code, Cursor, Cline, any MCP agent. No rip-and-replace.',
+            '93.75% mean gold-file recall across 40 pre-registered queries on four public repos — 85–100% per repo, with every miss published rather than dropped.',
+            'Team memory travels with git: a new hire’s agent starts with the associations the team has already earned instead of relearning them.',
+            'Read-only dashboard for synapse memory health, ingestion, savings and latency trends — local, no hosted service.',
+            'NeuralMind sends no telemetry and transmits no repository content off your machine. It works with the agents you already run — Claude Code, Codex, Cursor, Cline, any MCP agent. No rip-and-replace.',
         ],
     },
 ];
@@ -32,9 +35,9 @@ export default function BusinessCase() {
         <section id="business-case" className="relative py-16 md:py-32 px-4 md:px-6">
 
             <div className="max-w-5xl mx-auto">
-                <SectionHeader eyebrow="The business case" title="The savings are free. The tier is control.">
-                    Dollar figures below are modeled, with published assumptions — the free
-                    assessment runs the same model in your numbers.
+                <SectionHeader eyebrow="The business case" title="The savings are free. Teams pay for seats and support.">
+                    Every feature runs free at one seat. Dollar figures below are modeled, with
+                    published assumptions — the free assessment runs the same model in your numbers.
                 </SectionHeader>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-10">

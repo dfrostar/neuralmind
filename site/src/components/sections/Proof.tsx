@@ -1,133 +1,99 @@
 import SectionHeader from '@/components/ui/SectionHeader';
 
-const proofItems = [
+// What exists, as evidence. Each item says what strength of claim it is.
+const evidence = [
     {
-        title: 'Reproducible benchmark',
-        status: 'have',
-        desc: '40 pre-registered queries on 4 pinned OSS repos. Gold-file recall 93.6%, token reduction 46-259×. One command reruns it: python -m evals.public.run. Raw data committed in bench/public/results.json.',
+        title: 'Reproducible public benchmark',
+        kind: 'Reproducible',
+        desc: '40 pre-registered queries on 4 pinned OSS repos: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. One command reruns it — python -m evals.public.run — and the raw per-query data is committed.',
         link: '/benchmark/',
         linkText: 'See the benchmark →',
     },
     {
         title: 'CI-gated regression floors',
-        status: 'have',
-        desc: 'Every PR asserts: token reduction ≥ 4.0×, faithfulness delta ≥ 0.0, synapse recall never lowers hit rate. Cannot silently regress. Floors are deliberately conservative — they absorb HNSW jitter on the tiny fixture.',
+        kind: 'CI-gated',
+        desc: 'Every PR asserts: token reduction ≥ 4.0× on the fixture, faithfulness delta ≥ 0.0, and synapse recall never lowers hit rate. The floors are deliberately conservative — they gate direction, not a headline magnitude.',
         link: 'https://github.com/dfrostar/neuralmind/blob/main/.github/workflows/ci-benchmark.yml',
         linkText: 'CI config on GitHub →',
     },
     {
         title: 'Production field report',
-        status: 'have',
-        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase. Anonymized by request. Method, measurement, and before/after data published.',
+        kind: 'Field report',
+        desc: '48.8× token reduction on a ~9,300-node TypeScript SaaS codebase through a major rebuild. One repo, maintainer-measured, anonymized by request — method and before/after data published.',
         link: '/field-reports/measure-memory-across-a-refactor/',
         linkText: 'Read the field report →',
     },
-    {
-        title: 'User testimonials',
-        status: 'missing',
-        desc: 'None yet. If you use NeuralMind and want to share your numbers, email hello@neuralmind.uk — we will publish your results with attribution (or anonymized, your choice).',
-        link: 'mailto:hello@neuralmind.uk',
-        linkText: 'Share your results →',
-    },
-    {
-        title: 'Side-by-side video demo',
-        status: 'missing',
-        desc: 'No video showing naive context dump vs NeuralMind on a real repo. Recording one is on the roadmap. The closest alternative: run the 30-second demo yourself.',
-        link: 'https://github.com/dfrostar/neuralmind#-30-second-proof--see-the-memory-work',
-        linkText: 'Run the 30-second demo →',
-    },
-    {
-        title: 'Before/after screenshots',
-        status: 'missing',
-        desc: 'We have printed terminal output from the demo fixture, but no visual screenshot showing a real codebase context window before and after. This would make the value immediately obvious.',
-        link: 'https://github.com/dfrostar/neuralmind/issues',
-        linkText: 'Want to contribute? →',
-    },
-    {
-        title: 'Named case studies',
-        status: 'missing',
-        desc: 'The one production field report is anonymized. If your team uses NeuralMind and is willing to be named, we will publish a full case study with your codebase size, token numbers, and workflow.',
-        link: 'mailto:hello@neuralmind.uk',
-        linkText: 'Become a case study →',
-    },
-    {
-        title: 'User count / stars as social proof',
-        status: 'partial',
-        desc: 'GitHub stars exist but are not prominently displayed. No "X teams use this" claim because that number is not yet large enough to be meaningful. Honest alternative: publish your own benchmark result below.',
-        link: '/measure-your-own/',
-        linkText: 'Measure your own repo →',
-    },
+];
+
+// What does not exist yet. Stated plainly rather than implied away.
+const gaps = [
+    'Testimonials from users outside the project',
+    'Named case studies — the one field report is anonymized',
+    'A side-by-side video of a real repo, before and after',
+    'Adoption numbers large enough to be meaningful',
 ];
 
 export default function Proof() {
     return (
         <section id="proof" className="relative py-16 md:py-32 px-4 md:px-6">
             <div className="max-w-6xl mx-auto">
-                <SectionHeader eyebrow="Honest about proof" title="What we can prove, and what we can&apos;t">
-                    Every claim on this site reproduces. But reproducibility isn&apos;t social proof — anyone can run
-                    a benchmark on fixture data. Here is exactly what we have evidence for, and what we don&apos;t.
+                <SectionHeader eyebrow="Honest about proof" title="What we can prove, and what we can&apos;t yet">
+                    Reproducibility is not social proof — anyone can benchmark fixture data. So here is
+                    the evidence that exists, labelled by strength, and the evidence that doesn&apos;t.
                 </SectionHeader>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                    {proofItems.map((item) => (
-                        <div
-                            key={item.title}
-                            className={`rounded-card border p-6 md:p-7 ${
-                                item.status === 'have'
-                                    ? 'border-carbon-border bg-carbon-card'
-                                    : item.status === 'partial'
-                                    ? 'border-carbon-border bg-carbon-card'
-                                    : 'border-carbon-line bg-carbon-raised'
-                            }`}
-                        >
-                            <div className="flex items-center gap-3 mb-3">
-                                <span
-                                    className={`w-2.5 h-2.5 rounded-full ${
-                                        item.status === 'have'
-                                            ? 'bg-proton'
-                                            : item.status === 'partial'
-                                            ? 'bg-yellow-500'
-                                            : 'bg-red-400'
-                                    }`}
-                                    aria-hidden="true"
-                                />
-                                <h3 className="font-display text-lg font-bold text-white">{item.title}</h3>
-                            </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                    {evidence.map((item) => (
+                        <div key={item.title} className="rounded-card border border-carbon-border bg-carbon-card p-6 md:p-7 flex flex-col">
+                            <span className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-proton mb-3">
+                                {item.kind}
+                            </span>
+                            <h3 className="font-display text-lg font-bold text-white mb-3">{item.title}</h3>
                             <p className="text-slate-400 text-sm leading-relaxed mb-4">{item.desc}</p>
-                            {item.link && (
-                                <a
-                                    href={item.link}
-                                    className="text-electric hover:text-electric-bright text-sm font-medium transition-colors"
-                                >
-                                    {item.linkText}
-                                </a>
-                            )}
+                            <a
+                                href={item.link}
+                                className="mt-auto text-electric hover:text-electric-bright text-sm font-medium transition-colors"
+                            >
+                                {item.linkText}
+                            </a>
                         </div>
                     ))}
                 </div>
 
-                {/* Brutal honesty box */}
-                <div className="mt-12 rounded-card border border-carbon-line bg-carbon-raised p-6 md:p-8">
-                    <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-3">
-                        The honest summary
-                    </h3>
+                <div className="mt-6 rounded-card border border-carbon-line bg-carbon-raised p-6 md:p-8 grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] gap-6 md:gap-10">
+                    <div>
+                        <h3 className="font-display text-lg font-semibold tracking-tight text-white mb-3">
+                            What we don&apos;t have yet
+                        </h3>
+                        <ul className="space-y-2">
+                            {gaps.map((gap) => (
+                                <li key={gap} className="flex items-start gap-2.5 text-sm text-slate-400">
+                                    <span className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" aria-hidden="true" />
+                                    {gap}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                     <div className="space-y-3 text-slate-400 text-sm leading-relaxed">
                         <p>
-                            NeuralMind works. The benchmark proves it reproducibly on 4 repos with 40 queries. The
-                            field report proves it on a real production codebase at 48.8×. CI gates prove it doesn&apos;t
-                            regress.
-                        </p>
-                        <p>
-                            But we don&apos;t have testimonials. We don&apos;t have a video. We don&apos;t have named case
-                            studies. The biggest missing piece is <span className="text-white font-medium">social proof from real users</span> —
-                            not benchmark numbers.
-                        </p>
-                        <p>
-                            If you&apos;re evaluating NeuralMind, the honest path is:{' '}
-                            <code className="font-mono text-[0.9em] text-slate-300">git clone</code>,{' '}
+                            The biggest missing piece is{' '}
+                            <span className="text-white font-medium">social proof from real users</span>,
+                            not another benchmark. So the honest way to evaluate NeuralMind is to{' '}
+                            <code className="font-mono text-[0.9em] text-slate-300">pip install neuralmind</code>,{' '}
                             <code className="font-mono text-[0.9em] text-slate-300">neuralmind build .</code>,{' '}
-                            <code className="font-mono text-[0.9em] text-slate-300">neuralmind benchmark .</code> —
-                            and read your own number. That&apos;s the proof that actually matters.
+                            <code className="font-mono text-[0.9em] text-slate-300">neuralmind benchmark .</code> — and
+                            read your own number.
+                        </p>
+                        <p>
+                            If you do, send it to{' '}
+                            <a href="mailto:hello@neuralmind.uk" className="text-electric hover:text-electric-bright">
+                                hello@neuralmind.uk
+                            </a>
+                            . We publish results attributed or anonymized — your choice — including the ones
+                            that don&apos;t flatter us.{' '}
+                            <a href="/measure-your-own/" className="text-electric hover:text-electric-bright">
+                                How to measure your own →
+                            </a>
                         </p>
                     </div>
                 </div>

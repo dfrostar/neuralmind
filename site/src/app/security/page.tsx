@@ -6,12 +6,45 @@ import type { Metadata } from 'next';
 
 const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const COMPLIANCE_URL = `${GITHUB_URL}/blob/main/docs/COMPLIANCE-SUMMARY.md`;
+const SECURITY_MD = `${GITHUB_URL}/blob/main/SECURITY.md`;
+const LLM_DISCLOSURE = `${GITHUB_URL}/blob/main/docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`;
+const AIR_GAPPED = 'https://docs.neuralmind.uk/use-cases/air-gapped.html';
+
+// Everything NeuralMind itself puts on the wire. Security reviews ask this
+// first, and the honest answer is short but not "nothing" — the first build
+// downloads a model, so "no network calls" would be false.
+const network = [
+    {
+        what: 'Telemetry',
+        detail: 'None — not opt-in, not anonymous. There is no telemetry mechanism in the product.',
+    },
+    {
+        what: 'Embedding model, first build',
+        detail: 'A one-time HTTPS download of the public all-MiniLM-L6-v2 model, verified against a pinned SHA-256. It carries none of your data, and pre-seeding the model removes it entirely for air-gapped installs.',
+    },
+    {
+        what: 'Opt-in LLM seeding',
+        detail: 'Off by default. Only if you set NEURALMIND_LLM_SEED=1 and provide an Anthropic API key does it send README and architecture-doc prose — never source code — to seed synapse edges.',
+    },
+    {
+        what: 'Your agent’s own traffic',
+        detail: 'The context slice your agent sends to its model provider. NeuralMind makes it smaller; it does not control it.',
+    },
+];
 
 export const metadata: Metadata = pageMetadata({
     path: '/security',
-    title: 'Security — NeuralMind',
+    title: 'Security & Supply Chain — NeuralMind',
     description:
-        'Security and supply-chain posture for NeuralMind: a per-release Software Bill of Materials, source integrity and release verification, vulnerability reporting, NIST AI RMF mapping, SOC 2 status, and the audit trail.',
+        'What NeuralMind sends over the network (no telemetry), a CycloneDX SBOM per release, release integrity checks, vulnerability disclosure and the audit trail.',
+    keywords: [
+        'NeuralMind security',
+        'AI coding tool security review',
+        'CycloneDX SBOM',
+        'no telemetry',
+        'air-gapped AI coding agent',
+        'hash-chained audit log',
+    ],
 });
 
 export default async function SecurityPage() {
@@ -26,13 +59,38 @@ export default async function SecurityPage() {
     return (
         <>
             <Navbar />
-            <main className="max-w-4xl mx-auto px-4 md:px-6 py-16">
+            <main className="max-w-4xl mx-auto px-4 md:px-6 pt-32 pb-16">
                 <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
                     Security Posture
                 </h1>
                 <p className="text-lg text-slate-300 mb-12 max-w-2xl">
-                    Transparent security information for NeuralMind. No uptime theater — just the facts security teams ask about.
+                    The facts a security review asks for, stated plainly: what NeuralMind sends over
+                    the network, what ships in each release, and how to report a vulnerability.
                 </p>
+
+                {/* Network */}
+                <section className="mb-10">
+                    <h2 className="font-display text-2xl font-bold text-white mb-4">What goes over the network</h2>
+                    <div className="bg-carbon-card border border-carbon-border rounded-xl divide-y divide-carbon-border">
+                        {network.map((n) => (
+                            <div key={n.what} className="p-5 grid md:grid-cols-[13rem_1fr] gap-1 md:gap-6">
+                                <p className="text-white font-semibold text-sm">{n.what}</p>
+                                <p className="text-slate-400 text-sm leading-relaxed">{n.detail}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-slate-400 text-sm mt-3">
+                        NeuralMind sends no telemetry and transmits no repository content off your
+                        machine. Details:{' '}
+                        <a href={LLM_DISCLOSURE} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            third-party LLM disclosure
+                        </a>{' '}
+                        ·{' '}
+                        <a href={AIR_GAPPED} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                            running air-gapped
+                        </a>
+                    </p>
+                </section>
 
                 {/* Latest Release */}
                 <section className="mb-10">
@@ -104,11 +162,21 @@ export default async function SecurityPage() {
                         <div className="flex items-center gap-3 mb-3">
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
                                 <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                                No Known Vulnerabilities
+                                No open vulnerability reports
                             </span>
                         </div>
+                        <p className="text-slate-400 text-sm leading-relaxed mb-2">
+                            No externally reported vulnerabilities to date. Issues found internally are
+                            fixed and called out in the release notes, and advisories against
+                            third-party dependencies are tracked with a written, reachability-based
+                            disposition in SECURITY.md.
+                        </p>
                         <p className="text-slate-400 text-sm">
-                            Last report: — (none received to date). Responsible disclosure welcome.
+                            Found something? Responsible disclosure is welcome —{' '}
+                            <a href={SECURITY_MD} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">
+                                see SECURITY.md for how to report it
+                            </a>
+                            .
                         </p>
                     </div>
                 </section>
@@ -148,9 +216,10 @@ export default async function SecurityPage() {
                             Every query is logged with a per-user actor attribution, stored locally in an append-only
                             SHA-256 hash chain. The trail is tamper-evident, searchable, and exportable in JSONL/CEF formats.
                         </p>
-                        <p className="text-slate-400 text-sm">
-                            See <a href={`${GITHUB_URL}/tree/main/docs/releases`} target="_blank" rel="noopener noreferrer" className="text-electric hover:text-electric-bright">all release notes →</a>
-                        </p>
+                        <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-400 overflow-x-auto">
+                            <p><span className="text-faint select-none">$ </span>neuralmind audit verify</p>
+                            <p><span className="text-faint select-none">$ </span>neuralmind audit export --format cef -o audit.cef</p>
+                        </div>
                     </div>
                 </section>
 

@@ -5,7 +5,7 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '3fe5a61';
 
 export const metadata = {
-    title: 'How to Use NeuralMind with OpenAI Codex — Setup, Token Measurement, Savings — NeuralMind',
+    title: 'NeuralMind + OpenAI Codex: MCP Setup & Token Savings Guide',
     description: 'Step-by-step guide: install NeuralMind, register the MCP server with Codex (any MCP client), measure L0-L3 token budgets, run the self-improvement loop, and verify real dollar savings. Verified against the live codebase.',
     keywords: [
         'OpenAI Codex',

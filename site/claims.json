@@ -1,5 +1,5 @@
 {
-  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.6% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
+  "_comment": "Canon for every performance ratio quoted on the marketing site's high-traffic surfaces (homepage sections, page.tsx, layout.tsx metadata + JSON-LD). Same contract as commercial-terms.json: change this file first, then propagate. CI enforces it via tests/test_site_claims.py — a ratio on those surfaces that is not listed here fails the build. This exists because the site drifted: it carried a 65.6x figure attributed to three different repo sizes, a 63.6x typo of the same number, a 0.81s latency with no source in the repo, a '100% gold-file recall' that the current public benchmark contradicts (93.75% mean), and the real name of a private client whose field report the docs deliberately anonymize.",
   "_evidence_levels": {
     "ci-gated": "Recomputed and asserted on every PR. Cannot silently regress.",
     "reproducible": "Not a gate, but any reader can rerun it from a fresh clone and get the same number.",
@@ -8,28 +8,21 @@
   },
   "ratios": [
     {
-      "value": 46,
-      "context": "Low end of 'fewer tokens than pasting whole files', across the 40-query public benchmark (requests, at 45.7x, rounded down).",
+      "value": 45,
+      "context": "Low end of 'fewer tokens than pasting whole files' across the 40-query public benchmark: requests, at 45.0x (also quoted per-repo as 45.0x).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 259,
-      "context": "High end of the same range (rich, at 259.1x, rounded up).",
+      "value": 261,
+      "context": "High end of the same range (rich, at 260.7x, rounded up).",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
     },
     {
-      "value": 45.7,
-      "context": "requests @ 0e322af877 — tokens vs full-file baseline.",
-      "source": "docs/benchmarks/public.md",
-      "reproduce": "python -m evals.public.run",
-      "evidence": "reproducible"
-    },
-    {
-      "value": 107.7,
+      "value": 110.4,
       "context": "click @ 874ca2bc1c — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
@@ -43,8 +36,8 @@
       "evidence": "reproducible"
     },
     {
-      "value": 259.1,
-      "context": "rich @ 7f580bdc70 — tokens vs full-file baseline.",
+      "value": 260.7,
+      "context": "rich @ 7f580bdcf0 — tokens vs full-file baseline.",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible"
@@ -132,11 +125,11 @@
   ],
   "non_ratio_headline_claims": [
     {
-      "claim": "93.6% gold-file recall (mean), 85-100% per repo, 87.5% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
+      "claim": "93.75% gold-file recall (mean over all 40 queries, query-weighted), 85-100% per repo, 90% found-rate, across 40 pre-registered queries on 4 pinned OSS repos",
       "source": "docs/benchmarks/public.md",
       "reproduce": "python -m evals.public.run",
       "evidence": "reproducible",
-      "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.89 / 1.00 / 0.85 / 1.00; flask is the weakest and every miss is published."
+      "note": "Do NOT round this to '100% recall'. Per-repo recall is 0.93 / 1.00 / 0.85 / 1.00 (requests / click / flask / rich); flask is the weakest and every miss (4 of 40) is published. The mean is query-weighted (37.5 of 40 gold-file hits); the unweighted average of the per-repo means is 94.5% and is not the figure we quote. Backed by bench/public/results.json, regenerated 2026-09-27 at v4.3.4 — tests/test_site_claims.py recomputes the mean and per-repo ratios from that file."
     },
     {
       "claim": "Synapse recall never lowers top-k hit rate, at a neutral token budget",
@@ -174,11 +167,15 @@
     },
     {
       "claim": "100% gold-file recall on the public benchmark",
-      "why": "Contradicted by the current public benchmark: 0.96 on requests, 0.79 on click. The 100% figure came from an older, narrower competitor eval that the docs already flag as not re-verified against the expanded corpus."
+      "why": "Contradicted by the current public benchmark: 0.93 on requests, 0.85 on flask. The 100% figure came from an older, narrower competitor eval that the docs already flag as not re-verified against the expanded corpus."
     },
     {
       "claim": "'+6.1 pts' or '+0.143' labelled CI-gated",
       "why": "Both CI gates assert direction only (on >= off, delta >= 0.0), never a magnitude, and both published magnitudes are contradicted by current CI output. Quoting a number as gated when only its sign is gated is the same defect as quoting a number with no measurement at all."
+    },
+    {
+      "claim": "93.6% mean gold-file recall / 5 of 40 misses / 46-259x",
+      "why": "Superseded 2026-09-27. Published 2026-09-16 from a re-run whose raw output was never committed (bench/public/results.json still held an older run), and '93.6%' was the unweighted average of per-repo means labelled as a weighted mean. The committed run at v4.3.4 measures 93.75% (query-weighted), 4 misses, 45-261x."
     }
   ],
   "private_names_never_publish": [

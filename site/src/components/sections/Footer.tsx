@@ -10,15 +10,18 @@ const groups: { heading: string; links: { label: string; href: string }[] }[] = 
         heading: 'Product',
         links: [
             { label: 'Pricing', href: '/pricing' },
+            { label: 'Teams', href: '/team' },
             { label: 'Services', href: '/services' },
-            { label: 'Team', href: '/team' },
             { label: 'Security', href: '/security' },
+            { label: 'Benchmark', href: '/benchmark' },
         ],
     },
     {
         heading: 'Developers',
         links: [
             { label: 'Docs', href: 'https://docs.neuralmind.uk/wiki/Home' },
+            { label: 'Measure your own', href: '/measure-your-own' },
+            { label: 'Research', href: '/publications' },
             { label: 'GitHub', href: 'https://github.com/dfrostar/neuralmind' },
             { label: 'PyPI', href: 'https://pypi.org/project/neuralmind/' },
             { label: 'Release Notes', href: 'https://github.com/dfrostar/neuralmind/tree/main/docs/releases' },
@@ -27,7 +30,7 @@ const groups: { heading: string; links: { label: string; href: string }[] }[] = 
     {
         heading: 'Legal',
         links: [
-            { label: 'License (MIT)', href: 'https://github.com/dfrostar/neuralmind/blob/main/LICENSE' },
+            { label: 'Licensing', href: 'https://github.com/dfrostar/neuralmind/blob/main/LICENSING.md' },
             { label: 'Privacy', href: '/privacy' },
             { label: 'Terms', href: '/terms' },
             { label: 'Contact', href: 'mailto:hello@neuralmind.uk' },
@@ -50,8 +53,8 @@ export default function Footer() {
                             </span>
                         </Link>
                         <p className="text-faint text-sm leading-relaxed max-w-xs">
-                            Persistent memory and semantic code intelligence for AI coding agents.
-                            Local-first, no telemetry.
+                            Persistent codebase memory for AI coding agents — Claude Code, Codex,
+                            Cursor and any MCP client. Local-first, no telemetry.
                         </p>
                     </div>
 
@@ -79,7 +82,10 @@ export default function Footer() {
 
                 <div className="rule mt-12 mb-6" />
 
-                <p className="text-faint text-sm">2025–2026 Darren Frost · MIT License</p>
+                <p className="text-faint text-sm">
+                    © 2025–2026 Cheval-Volant LLC, d/b/a NeuralMind · MIT core, source-available Team
+                    modules
+                </p>
             </div>
         </footer>
     );

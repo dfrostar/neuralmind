@@ -5,13 +5,13 @@ import { pageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = pageMetadata({
     path: '/effectiveness',
-    title: 'Effectiveness — NeuralMind',
+    title: 'NeuralMind Results: Before & After on a Production Repo',
     description:
-        '48.8× token reduction on a real CRM codebase. Personal edges tripled, shared edge weight up 5.4%, 810 architectural communities. Tiered claims, honest scrutiny.',
+        'Field report: 48.8× fewer tokens per question on a ~9,300-node TypeScript codebase, synapse edges 36 → 135 across a rebuild — and what we can’t claim yet.',
 });
 
 const headlineStats = [
-    { label: 'Token Reduction', value: '48.8×', detail: '1,033 vs 50,000+ tokens/query', gradient: true },
+    { label: 'Token Reduction', value: '48.8×', detail: '1,033 tokens/query vs the CLI’s 50K-token naive baseline', gradient: true },
     { label: 'Wake-up Tokens', value: '455', detail: 'Per query, measured', gradient: false },
     { label: 'Personal Edges', value: '+275%', detail: '36 → 135 co-activations', gradient: false },
     { label: 'Communities', value: '810', detail: 'Architectural boundaries', gradient: false },
@@ -52,14 +52,22 @@ export default function EffectivenessPage() {
                 <section className="relative pt-32 pb-16 md:py-40 px-4 md:px-6 overflow-hidden">
                     <div className="max-w-4xl mx-auto text-center">
                         <span className="text-electric text-sm font-semibold tracking-wider uppercase mb-3 block">
-                            Measured, Not Marketed
+                            Field report · one repo · not CI-gated
                         </span>
                         <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white leading-[1.05] mb-6">
-                            Effectiveness on a Real Production Codebase
+                            Before and after on a production codebase
                         </h1>
-                        <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-8 leading-relaxed">
-                            A CRM platform (TypeScript/React/Node) before and after a Phase 4 rebuild.
-                            Every number traces to a <code className="font-mono text-electric text-sm">neuralmind benchmark .</code> command.
+                        <p className="text-base sm:text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-4 leading-relaxed">
+                            A private CRM platform (TypeScript/React/Node), measured before and after a major
+                            rebuild. Every number traces to a CLI command such as{' '}
+                            <code className="font-mono text-electric text-sm">neuralmind benchmark .</code>
+                        </p>
+                        <p className="text-sm text-faint max-w-2xl mx-auto mb-8 leading-relaxed">
+                            One repo, measured by the maintainer — reproducible in method, not in number.
+                            For results anyone can rerun, see{' '}
+                            <a href="/benchmark/" className="text-electric hover:text-electric-bright">the public benchmark</a>;
+                            for the full write-up, the{' '}
+                            <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright">field report</a>.
                         </p>
                     </div>
                 </section>
@@ -158,20 +166,20 @@ export default function EffectivenessPage() {
                     <div className="max-w-5xl mx-auto">
                         <div className="card rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                             <div>
-                                <h3 className="font-display text-2xl font-bold text-white mb-2">See it in 30 seconds</h3>
+                                <h3 className="font-display text-2xl font-bold text-white mb-2">Measure your own</h3>
                                 <p className="text-slate-400 text-sm">
-                                    Clone the repo, run the demo, get numbers on YOUR codebase. Then email the output to{' '}
+                                    Run <code className="font-mono text-electric">neuralmind benchmark .</code> on your
+                                    own codebase — about fifteen minutes, on your machine, with no account. Then
+                                    email the output to{' '}
                                     <a href="mailto:hello@neuralmind.uk" className="text-electric hover:text-electric-bright">hello@neuralmind.uk</a>{' '}
                                     with your team size for a free full spend model.
                                 </p>
                             </div>
                             <a
-                                href="https://github.com/dfrostar/neuralmind#-30-second-proof--see-the-memory-work"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                href="/measure-your-own/"
                                 className="btn-primary text-sm whitespace-nowrap"
                             >
-                                Run the demo
+                                How to measure it
                             </a>
                         </div>
                     </div>

@@ -6,7 +6,11 @@ import Icon from '@/components/ui/Icon';
 // The three assurances were dotted in emerald, amber and blue — three colours
 // carrying no distinction, and amber in particular reads as a warning next to
 // the words "CI-verified". One evidence colour, one meaning.
-const assurances = ['No cloud calls', 'CI-verified', '100% local'];
+//
+// They also used to say "No cloud calls" and "100% local", which the first
+// build contradicts: it downloads a public embedding model. Each of these is
+// true as written.
+const assurances = ['No telemetry', 'Runs on your machine', 'MIT core, free at 1 seat'];
 
 export default function CTA() {
     return (
@@ -17,7 +21,8 @@ export default function CTA() {
                         Stop paying for tokens you don&apos;t use.
                     </h2>
                     <p className="text-slate-400 text-base md:text-lg mb-9 max-w-xl mx-auto leading-relaxed">
-                        One command to install. Seconds to verify. Your agent remembers what matters.
+                        One command to install, one to index, one to measure it on your own repo.
+                        Your agent remembers what matters.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">

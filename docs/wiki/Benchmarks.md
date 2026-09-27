@@ -1,9 +1,11 @@
 # Benchmarks & Results
 
 Everything here is **measured and reproducible** — no hand-picked or hardcoded
-numbers. Every figure is produced by code in the repo and **gated in CI**, so it
-can't silently regress. Where a number is an estimate or a real-repo
-extrapolation, it says so. One labeled exception: the
+numbers. Every figure is produced by code in the repo. The fixture-based
+figures are **gated in CI**, so they can't silently regress; the public
+benchmark on real OSS repos is **reproducible on demand** (deterministic, one
+command, raw data committed) but is not a CI gate. Where a number is an
+estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
 in CI.
@@ -20,9 +22,9 @@ benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
 fixture** (real but smaller-scope): **(1) Cheaper context** — **85–100%
-gold-file recall (93.6% mean, 87.5% found-rate across 40 queries) at 46–259×
-fewer tokens** than pasting files, beating `ripgrep` on both recall and cost
-on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
+gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–261×
+fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
+on recall on two of four (tying on the other two); **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
@@ -32,8 +34,8 @@ how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neut
 facts than naive truncation (reference fixture; delta +0.013 to +0.143 across runs,
 CI gates it at ≥ 0, grounding 1.00). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
-cheaper on raw tokens, two repos have partial gold-file misses (see the public
-benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
+cheaper on raw tokens, two repos have gold-file misses — 4 of 40 queries (see
+the public benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
 retrieval ranking*, not their LLM-agent loop. Full tables and reproduction
 commands below.
 

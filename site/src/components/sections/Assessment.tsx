@@ -15,7 +15,8 @@ export default function Assessment() {
 
             <div className="max-w-3xl mx-auto">
                 <SectionHeader eyebrow="Free assessment" title="See your savings before you spend a dollar">
-                    NeuralMind is open source and free (MIT) — <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">pip install neuralmind</code> and
+                    The core is MIT open source and every feature runs free at one seat —{' '}
+                    <code className="font-mono text-[0.9em] text-electric-bright bg-electric/[0.07] rounded px-1 py-0.5">pip install neuralmind</code> and
                     you have the whole product. For teams evaluating at scale, we run a free
                     AI-spend assessment: measured on your code, modeled in your numbers, no obligation.
                 </SectionHeader>
@@ -49,7 +50,8 @@ export default function Assessment() {
                 </div>
 
                 <p className="text-center text-faint text-sm mt-6">
-                    The software is MIT-licensed and free. Commercial support for deployment and integration is available.
+                    The core is MIT-licensed and free. Fixed-fee help with deployment and rollout is on the{' '}
+                    <a href="/services" className="text-electric hover:text-electric-bright">services page</a>.
                 </p>
             </div>
         </section>

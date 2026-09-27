@@ -24,6 +24,7 @@ on:
   pull_request:
     paths:
       - 'site/**'
+      - 'docs/llms.txt'
       - '.github/workflows/site-build.yml'
       - '.github/workflows/deploy-site.yml'
       - 'scripts/check_site_seo.py'

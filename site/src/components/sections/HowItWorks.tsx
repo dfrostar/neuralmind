@@ -3,26 +3,27 @@
 import Icon, { type IconName } from '@/components/ui/Icon';
 import { withCode } from '@/lib/ticks';
 
-// Copy unchanged. `icon` was ⚡ / 🧠 / 🔮 — a crystal ball for the Hebbian
-// synapse layer, which undersold the one genuinely novel thing in the product.
+// `icon` was ⚡ / 🧠 / 🔮 — a crystal ball for the Hebbian synapse layer, which
+// undersold the one genuinely novel thing in the product. Every command named
+// here exists in neuralmind/cli.py.
 const steps: { icon: IconName; title: string; desc: string; time: string }[] = [
     {
         icon: 'index',
         title: 'Index',
-        desc: 'tree-sitter parses your codebase into a graph — functions, classes, imports, comments. Ten languages, zero config. TurboVec compresses vectors 4-bit.',
+        desc: '`neuralmind build .` parses your codebase into a graph with tree-sitter — functions, classes, imports, call edges. Ten languages, zero config, embedded on your machine.',
         time: '~15 min',
     },
     {
         icon: 'query',
         title: 'Query',
-        desc: 'Your agent asks a question. Progressive L0–L3 disclosure pulls exactly the right amount of context — a local index lookup, not another model call.',
+        desc: 'Your agent asks over MCP or a Claude Code hook. Progressive L0–L3 disclosure returns a project map, the relevant symbols and their call edges — a local index lookup, not another model call.',
         time: 'local lookup',
     },
     {
         icon: 'recall',
         title: 'Remember',
-        desc: 'A Hebbian synapse layer learns co-activations from how you actually use the codebase. Budget-neutral, runs in the background.',
-        time: 'Forever',
+        desc: 'A Hebbian synapse layer learns which files you use together and recalls them next session — without adding tokens. Commit it with `neuralmind memory publish` and teammates inherit it.',
+        time: 'Across sessions',
     },
 ];
 
@@ -37,7 +38,7 @@ export default function HowItWorks() {
                     </h2>
                     <p className="text-slate-400 text-base md:text-lg leading-relaxed">
                         {withCode(
-                            'Three steps, then it runs forever on every git commit via `neuralmind init-hook .`',
+                            'Three steps. After that, `neuralmind init-hook .` keeps the index current on every commit.',
                         )}
                     </p>
                 </header>
@@ -65,7 +66,7 @@ export default function HowItWorks() {
                                 {step.title}
                             </h3>
                             <p className="text-slate-400 leading-relaxed text-[0.9375rem] mb-6">
-                                {step.desc}
+                                {withCode(step.desc)}
                             </p>
 
                             <span className="inline-flex items-center gap-2 font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-faint">

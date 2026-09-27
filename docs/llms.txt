@@ -1,23 +1,36 @@
 # NeuralMind
 
-> Persistent, 100% local memory for AI coding agents. NeuralMind learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter — and compresses tool output before the model reads it. Side effect: 12-50× cheaper code questions, measured by a reproducible public benchmark on real pinned OSS repos. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. MIT-licensed, `pip install neuralmind`.
+> Persistent, local-first codebase memory for AI coding agents. NeuralMind indexes a repository into a code graph, learns which files go together from how you actually work (a Hebbian synapse layer), and serves compact, ranked context to Claude Code, Codex, Cursor, Cline, Continue and any MCP client — so the agent starts each session already knowing where things are. On a reproducible public benchmark it reaches 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file. MIT core, every feature free at 1 seat, `pip install neuralmind`.
 
-Key facts, each backed by a runnable eval (raw traces committed):
+Key facts, each backed by a runnable eval with its data committed:
 
-- Cheaper context: 79–100% gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–257× fewer tokens than pasting files; beats ripgrep on cost on every repo, and on recall beats it on 2 of 4 repos and ties exactly on the other 2 (public benchmark on `requests`, `click`, `flask`, `rich`; `click` is NeuralMind's weakest repo at 0.79 recall). Caveat: a bare vector-RAG baseline ties or beats NeuralMind on recall at fewer tokens — see "Where NeuralMind loses" in docs/benchmarks/public.md.
-- Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (pure retrieval ranking, reproducible).
+- Cheaper context: 85–100% gold-file recall per repo (93.75% mean, 90% found-rate across 40 pre-registered queries) at 45–261× fewer tokens than pasting every source file; beats ripgrep on cost on every repo, and on recall beats it on 2 of 4 repos and ties exactly on the other 2 (public benchmark on `requests`, `click`, `flask`, `rich`; `flask` is NeuralMind's weakest repo at 0.85 recall; 4 of 40 queries missed, every one published). Caveat: a bare vector-RAG baseline matches or beats NeuralMind's recall at fewer tokens on every repo — see "Where NeuralMind loses" in docs/benchmarks/public.md.
+- On private repos, `neuralmind benchmark .` has reported 12–50× fewer tokens per code question, measured against a fixed 50K-token estimate of naive context (field reports — directional, not a guarantee).
+- Finds the right code: MRR 0.96 vs 0.23 for the incumbent codebase-memory-mcp at matched retrieval depth (a separate, off-by-default eval on `requests`/`click` only; pure retrieval ranking, reproducible).
 - Learns how you work: a Hebbian synapse layer lifts top-k retrieval hit-rate, budget-neutral (reference fixture A/B). CI gates the direction (recall-on >= recall-off), not a magnitude; +3.5 to +14 points observed across runs. Reproduce with `python -m tests.benchmark.run`.
 - Better-grounded answers: at a matched token budget its context carries more gold facts than naive truncation. CI gates the delta at >= 0; +0.013 to +0.143 observed across runs (reference fixture).
-- Local-first: the engine transmits no repository content and sends no telemetry; its one outbound request is a one-time public embedding-model download on first build, pre-seedable via NEURALMIND_ONNX_MODEL_DIR (the agent still sends its selected slice to its own model); ChromaDB-free default install on Linux, Apple Silicon (macOS arm64), and Windows x64 (ChromaDB is the automatic fallback on other platforms); NIST AI RMF mapped.
+- Team memory: `neuralmind memory publish` commits learned weights (no source code) that teammates' agents inherit on their next session; admin governance and a hash-chained audit log are included.
+- Local-first: the engine transmits no repository content and sends no telemetry; its one default outbound request is a one-time public embedding-model download on first build, pre-seedable via NEURALMIND_ONNX_MODEL_DIR (the agent still sends its selected slice to its own model); ChromaDB-free default install on Linux, Apple Silicon (macOS arm64), and Windows x64 (ChromaDB is the automatic fallback on other platforms); NIST AI RMF mapped.
 - Indexes ten languages out of the box via bundled tree-sitter (Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, PHP) plus OpenAPI, SQL DDL, and Protocol Buffers schema artifacts.
+- Pricing: MIT core plus source-available Team modules; every feature runs free at 1 seat with no signup and no expiry. NeuralMind Team is $29/user/mo (5–50 seats, annual) for more seats and priority support.
+
+## Product
+
+- [Homepage](https://neuralmind.uk/): what NeuralMind is, how it works, evidence, FAQ
+- [Public benchmark](https://neuralmind.uk/benchmark/): per-repo results, baselines, and every miss
+- [Measure your own repo](https://neuralmind.uk/measure-your-own/): three commands to get your own numbers
+- [Team memory](https://neuralmind.uk/team/): sharing learned memory through git, governance, audit, seats
+- [Pricing](https://neuralmind.uk/pricing/): free at 1 seat; Team $29/user/mo
+- [Security](https://neuralmind.uk/security/): what goes over the network, SBOM, disclosure
 
 ## Docs
 
-- [Homepage](https://docs.neuralmind.uk/): overview, benefits, what's new
+- [Docs home](https://docs.neuralmind.uk/wiki/Home): overview, benefits, what's new
 - [About / how it works](https://docs.neuralmind.uk/about.html): architecture, synapse layer, release history
 - [Installation](https://docs.neuralmind.uk/wiki/Installation.html): pip install, one-command MCP setup for Claude Code, Cursor, Cline, Claude Desktop
 - [CLI reference](https://docs.neuralmind.uk/wiki/CLI-Reference.html): every command and environment variable
 - [Architecture](https://docs.neuralmind.uk/wiki/Architecture.html): progressive L0–L3 context disclosure, graph + vector + BM25 hybrid retrieval
+- [Memory layer](https://docs.neuralmind.uk/wiki/Memory-Layer.html): decision memory and the stale-decision guard
 - [Multi-Project Scoping](https://docs.neuralmind.uk/wiki/Multi-Project-Scoping.html): isolation rules when running NeuralMind on multiple codebases
 - [FAQ](https://docs.neuralmind.uk/wiki/FAQ.html)
 - [Limits and failure modes](https://docs.neuralmind.uk/wiki/Limits-and-Failure-Modes.html): honest scope — where NeuralMind does not win
@@ -26,9 +39,14 @@ Key facts, each backed by a runnable eval (raw traces committed):
 
 - [Public benchmark methodology and results](https://docs.neuralmind.uk/benchmarks/public.md): no-cherry-picking comparison vs full-file paste, ripgrep, vector RAG, and codebase-memory-mcp on pinned OSS repos; objective def-site oracle, no LLM judge
 - [Live benchmark dashboard](https://docs.neuralmind.uk/benchmarks/): charts, per-query traces
+- [Benchmarks & results](https://docs.neuralmind.uk/wiki/Benchmarks.html): CI-gated fixture evals, synapse A/B, faithfulness
 
 ## Comparisons
 
+- [vs Claude Code native memory](https://docs.neuralmind.uk/comparisons/vs-claude-code-native-memory.html)
+- [vs Codex CLI memory](https://docs.neuralmind.uk/comparisons/vs-codex-cli-memory.html)
+- [vs Mem0 and Zep](https://docs.neuralmind.uk/comparisons/vs-mem0-zep.html)
+- [vs codebase-memory-mcp](https://docs.neuralmind.uk/comparisons/vs-codebase-memory-mcp.html)
 - [vs long-context models](https://docs.neuralmind.uk/comparisons/vs-long-context.html)
 - [vs prompt caching](https://docs.neuralmind.uk/comparisons/vs-prompt-caching.html)
 - [vs vanilla RAG](https://docs.neuralmind.uk/comparisons/vs-rag.html)
@@ -43,8 +61,10 @@ Key facts, each backed by a runnable eval (raw traces committed):
 - [Cost optimization](https://docs.neuralmind.uk/use-cases/cost-optimization.html)
 - [Growing monorepo](https://docs.neuralmind.uk/use-cases/growing-monorepo.html)
 - [Offline / regulated environments](https://docs.neuralmind.uk/use-cases/offline-regulated.html)
+- [Run NeuralMind air-gapped](https://docs.neuralmind.uk/use-cases/air-gapped.html)
 - [Team memory across a squad of agents](https://docs.neuralmind.uk/use-cases/multi-agent.html)
 - [Benchmark your own repo](https://docs.neuralmind.uk/use-cases/benchmark-your-repo.html)
+- [Measure memory across a refactor](https://docs.neuralmind.uk/use-cases/measure-memory-across-a-refactor.html)
 
 ## Get it
 

@@ -52,7 +52,7 @@ def render_table(entries: list[dict]) -> str:
         f"_{len(entries)} submission(s). See the [JSON data]"
         f"(docs/community-benchmarks.json) for notes and verification commands, "
         f"or the [interactive dashboard]"
-        f"(https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + "
+        f"(https://docs.neuralmind.uk/benchmarks/) for scatter + "
         f"by-language charts._"
     )
     return "\n".join(lines)

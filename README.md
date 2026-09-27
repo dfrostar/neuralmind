@@ -9,11 +9,14 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Local-First](https://img.shields.io/badge/Local--First-No%20Telemetry-brightgreen.svg)](#-security--compliance)
 
-**Persistent memory and context compression for AI coding agents.**
+**Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue, and any MCP client.**
 
 Your agent learns your codebase the way a senior engineer would — what goes
 together, what you usually touch next — and remembers it across sessions.
-100% local, no telemetry. Side effect: **12–50× cheaper code questions** on real repos, measured in CI on every commit.
+Local-first, no telemetry. Side effect: much cheaper code questions —
+**45–261× fewer tokens than pasting every source file, at 93.75% mean
+gold-file recall**, on a [public 40-query benchmark](https://neuralmind.uk/benchmark/)
+that publishes every miss.
 
 > After install, your agent:
 > - Boots with `SYNAPSE_MEMORY.md` (learned associations, strongest hub files)
@@ -22,8 +25,8 @@ together, what you usually touch next — and remembers it across sessions.
 > - Gets health checks, synapse pruning, audit queries, and code/doc type filtering (v3.1.4+)
 > - Gets a `pre-commit` warning when a change skips a pattern its own peers share — the eleventh handler that forgot the auth check the other ten have (v3.2.0+)
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
-|> - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
-|> - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
+> - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
+> - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
 >
 > **Works with every IDE your team already uses.**
 
@@ -90,12 +93,13 @@ Theoretical = MCP is standard protocol. All MCP-compatible agents should work. W
 
 ## Benefits
 
-### 1. Cheaper context (measured in CI on every commit)
+### 1. Cheaper context
 
-| What | Measured (CI, 500-line fixture) | On real repos |
-|------|---------------------------------|--------------|
-| Token reduction on code questions | **6.1×** | **12–50×** (more files to prune ⇒ larger ratio) |
-| Regression floor (CI fails below) | 4.0× | — |
+| Evidence | Where it's measured | Result |
+|----------|---------------------|--------|
+| **Public benchmark** — reproducible on demand | 40 pre-registered queries on `requests`, `click`, `flask`, `rich` (`python -m evals.public.run`) | **45–261× fewer tokens** than pasting every source file, at **93.75% mean gold-file recall** (85–100% per repo) |
+| **CI regression gate** — every PR | ~500-line fixture (`python -m tests.benchmark.run`) | **6.2×** measured; the build fails below **4.0×** |
+| **Field reports** — `neuralmind benchmark .` | real private repos, against the CLI's fixed 50K-token naive estimate | **12–50×** typical range |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The mechanism is what scales — the bigger the codebase, the more whole-file context you avoid.
 
@@ -152,7 +156,7 @@ neuralmind cognition-loop .  # run manually
 
 ### 8. Finds the right code (not just less of it)
 
-**93.75% mean gold-file recall (79–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
+**93.75% mean gold-file recall (85–100% per repo)** across 40 pre-registered queries on four pinned OSS repos (`requests`, `click`, `flask`, `rich`) — every miss published, not rounded away. Reproducible — `python -m evals.public.run`. A separate, off-by-default eval on `requests`/`click` only put retrieval ranking at MRR 0.96 against the incumbent `codebase-memory-mcp`'s 0.23; that one has not been re-verified against the current four-repo corpus.
 
 ### 9. Better-grounded answers (not just shorter)
 
@@ -239,8 +243,10 @@ shell), so a slow run is never mistaken for a hung one.
 ### Wire up your agent
 
 ```bash
-# Any MCP-compatible agent (Claude Code, Cursor, Cline, Continue, Codex)
+# Claude Code, Cursor, Cline, VS Code, Claude Desktop — registers with every detected client
 neuralmind install-mcp --all
+# Codex, Continue, or any other MCP client: point it at the stdio server
+codex mcp add neuralmind -- neuralmind-mcp
 
 # Claude Code: install lifecycle hooks (SessionStart, UserPromptSubmit, PreCompact, PostToolUse, PreToolUse, Stop, SessionEnd)
 neuralmind install-hooks .
@@ -255,7 +261,7 @@ neuralmind memory publish
 # Measure YOUR repo — not a fixture, not a demo
 neuralmind benchmark .
 
-# Measure against the public benchmark (requests, click)
+# Reproduce the public benchmark (requests, click, flask, rich) — needs a source checkout
 neuralmind benchmark . --public
 
 # Retrieval self-probe: does the index find YOUR symbols?
@@ -286,8 +292,10 @@ Output looks like:
 ```
 
 The fixture is intentionally tiny (~500 lines) — it runs in CI as a
-regression gate. Real repos measure **12–50×** on the same pipeline
-([benchmarks](#-benchmarks) · [measured production results](https://neuralmind.uk/effectiveness/)).
+regression gate. On real repos, `neuralmind benchmark` reports **12–50×**
+against its fixed 50K-token naive estimate, and the public benchmark measures
+**45–261×** against every source file
+([benchmarks](#-benchmarks) · [production field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
 
 Then get your own number:
 
@@ -349,16 +357,17 @@ How it works under the hood: [Architecture](docs/wiki/Architecture.md) ·
 
 ## 📊 Benchmarks
 
-Measured, not marketed — the numbers are produced by CI on every commit
+Measured, not marketed. The fixture numbers are produced by CI on every commit
 (every merged PR carries a sticky benchmark comment) and reproduce locally
-with `python -m tests.benchmark.run`:
+with `python -m tests.benchmark.run`; the public benchmark reproduces on
+demand with `python -m evals.public.run`, raw per-query data committed:
 
-- **79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** on the public benchmark.
+- **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file on the public benchmark — 4 of 40 queries missed, every one published, and a bare vector-RAG baseline matches or beats it on recall at fewer tokens ([where NeuralMind loses](docs/benchmarks/public.md#where-neuralmind-loses)).
 - **Synapse recall A/B:** lifts top-k hit rate at ±0 token cost — +3.5 to +14 points across runs; CI gates the direction, not the magnitude.
 - **Onboarding lift:** lifts top-k module hit-rate from a committed team baseline — +0.9 to +11.6 points across runs (a distinct eval from the synapse recall A/B above — see `evals/onboarding/`).
-- **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query
-  ([full field report](https://neuralmind.uk/effectiveness/)).
-- **6.1× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
+- **Real production rebuild:** 48.8× average reduction, 1,033 tokens/query, against the CLI's 50K-token naive estimate
+  ([full field report](https://neuralmind.uk/field-reports/measure-memory-across-a-refactor/)).
+- **6.2× token reduction** on the CI fixture (500-line, deliberately tiny — the floor of a floor).
 - **Retrieval quality (N-15):** graded relevance (0-3), nDCG@5, MRR, recall@k, precision@k + RAGAS faithfulness scoring — 8 CI regression gates, per-shape breakdowns.
 - **Content QA (N-16):** book/markdown content retrieval — 30 queries, 11 chapters, 150K-word corpus. N-15 IR metrics + RAGAS on long-form content. `ingest-content` CLI + `benchmark --content` end-to-end command.
 - Backend parity gate: the built-in tree-sitter backend is held within
@@ -367,7 +376,7 @@ with `python -m tests.benchmark.run`:
 ![Benchmark chart](docs/images/benchmark_chart.png)
 
 Methodology, gold sets, and community submissions:
-[benchmarks/](benchmarks/) · [public methodology](docs/prd/public-benchmark.md).
+[benchmarks/](benchmarks/) · [public methodology and results](docs/benchmarks/public.md).
 
 <!-- COMMUNITY-BENCHMARKS:START -->
 | Project | Lang | Nodes | Wakeup | Avg Query | Reduction | Model | Submitted |
@@ -376,7 +385,7 @@ Methodology, gold sets, and community submissions:
 | ts-saas-platform (anon) | TypeScript | 9,293 | 455 | 1,033 | **48.8×** | — | [@dfrostar](https://github.com/dfrostar) · 2026-07-20 |
 | project-beta | Python | 1,626 | 412 | 891 | **46.0×** | Claude 3.5 Sonnet | [@dfrostar](https://github.com/dfrostar) · 2025-10-01 |
 
-_3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://dfrostar.github.io/neuralmind/benchmarks/) for scatter + by-language charts._
+_3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes and verification commands, or the [interactive dashboard](https://docs.neuralmind.uk/benchmarks/) for scatter + by-language charts._
 <!-- COMMUNITY-BENCHMARKS:END -->
 
 ---
@@ -394,7 +403,8 @@ _3 submission(s). See the [JSON data](docs/community-benchmarks.json) for notes 
   (never code, never other files) to Anthropic to seed synapse edges. No
   code path ingests video, image, or audio files at all. Full disclosure:
   [`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
-- **CycloneDX SBOM per release**, hash-chained audit log (Team tier), signed
+- **CycloneDX SBOM per release**, hash-chained audit logs (the query trail in
+  the core; the governance trail in the Team modules, free at 1 seat), signed
   licenses (Ed25519), tarball integrity instructions on every release.
 - Live posture page: [neuralmind.uk/security](https://neuralmind.uk/security/) ·
   Policy: [SECURITY.md](SECURITY.md) ·
@@ -434,15 +444,20 @@ maintains a weighted graph of your code and *learns from use* — retrieval is
 spreading activation over structural edges plus Hebbian synapses, disclosed
 progressively so the agent pays only for the depth it needs.
 
-**Does my code leave my machine?** No. The engine is fully local. Your agent
-still talks to its own model — NeuralMind just makes what it sends smaller.
+**Does my code leave my machine?** NeuralMind itself sends no telemetry and
+transmits no repository content off your machine; its only default outbound
+request is a one-time public embedding-model download on first build
+(pre-seedable). Your agent still sends its selected slice to its own model —
+NeuralMind just makes that slice smaller.
 
 **What if it doesn't help on my repo?** Run `neuralmind benchmark .` and
 read the number. If it's not worth it, uninstall — and see the
 [use cases](docs/use-cases/) for guidance on when NeuralMind is the right fit.
 
-**Is the paid tier required?** No. The core is MIT and complete. The Team
-tier adds governance, audit, and seat management for organizations.
+**Is the paid tier required?** No. The core is MIT and complete, and the
+auto-issued free license runs every feature — governance and audit included —
+at 1 seat. The Team tier ($29/user/mo, 5–50 seats) adds seats beyond one,
+priority support, and an annual invoice.
 
 **What about SOC 2?** Our architecture *supports* SOC 2 deployment
 patterns (no repository content transmitted, audit log, RBAC). Certification is on

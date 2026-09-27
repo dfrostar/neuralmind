@@ -11,7 +11,7 @@ actually read. That gap let four different classes of drift ship at once:
   card away from the original,
 - a query-latency number with no measurement behind it anywhere in the repo,
 - a ``100%`` gold-file recall claim the current public benchmark contradicts
-  (93.75% mean; ``click`` is 0.79), and the real name of a private client
+  (93.75% mean; ``flask``, the weakest repo, is 0.85), and the real name of a private client
   whose field report every doc deliberately anonymizes.
 
 So this module enforces three rules:
@@ -78,7 +78,7 @@ RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)\s*×")
 SINGLE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*×")
 
 # "100% recall" in any word order within a short window. The public
-# benchmark's mean is 93.75% and its per-repo floor is 0.79.
+# benchmark's mean is 93.75% and its per-repo floor is 0.85.
 PERFECT_RECALL_RE = re.compile(
     r"100\s*%[^.<>{}]{0,40}?recall|recall[^.<>{}]{0,40}?100\s*%", re.IGNORECASE
 )
@@ -210,7 +210,7 @@ def test_site_does_not_claim_perfect_gold_file_recall() -> None:
                 violations.append(f"{rel}:{lineno}: {line.strip()[:110]}")
     assert not violations, (
         "The site claims 100% gold-file recall. The public benchmark reports "
-        "93.75% mean across 40 queries (0.96 requests / 0.79 click / 0.95 flask "
+        "93.75% mean across 40 queries (0.93 requests / 1.00 click / 0.85 flask "
         "/ 1.00 rich) and publishes every miss — quote the mean and the range:\n  "
         + "\n  ".join(violations)
     )
@@ -371,3 +371,161 @@ def test_attribution_guards_trip_on_the_copy_that_shipped() -> None:
     assert not _claims_ci_gating(
         "'48.8×', detail: '~9,300-node codebase — method reproducible, not CI-gated'"
     )
+
+
+# ---------------------------------------------------------------------------
+# The public benchmark's headline must be recomputable from its committed run.
+#
+# On 2026-09-16 the headline moved to "93.6% mean, 46–259×, 5 misses" from a
+# re-run whose raw output was never committed: bench/public/results.json still
+# held an older run, so the tables could not be checked against the data they
+# cited — and "93.6%" was the unweighted average of the per-repo means,
+# labelled a weighted mean. The ratio guard above could not see any of it,
+# because it only asks whether a quoted ratio is *listed* in the manifest, not
+# whether the manifest agrees with the measurement. These two tests close that
+# gap: regenerate the benchmark and CI makes you update the canon, and vice
+# versa.
+# ---------------------------------------------------------------------------
+
+PUBLIC_RESULTS = REPO_ROOT / "bench" / "public" / "results.json"
+
+# Percentages on a line that talks about recall, e.g. "93.75% gold-file recall"
+# or "value: '93.75%'" beside "label: 'Gold-file recall'".
+RECALL_LINE_RE = re.compile(r"recall", re.IGNORECASE)
+PERCENT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
+# "79–100% per repo" states two percentages; only the second touches the sign.
+PERCENT_RANGE_RE = re.compile(r"(\d+(?:\.\d+)?)\s*[–—-]\s*(\d+(?:\.\d+)?)\s*%")
+
+
+def _public_benchmark() -> dict:
+    """Headline figures recomputed from the committed public-benchmark run."""
+    data = json.loads(PUBLIC_RESULTS.read_text(encoding="utf-8"))
+    hits = found = total = 0.0
+    per_repo_recall: dict[str, float] = {}
+    ratios: dict[str, float] = {}
+    for repo in data["repos"]:
+        nm = repo["summary"].get("neuralmind")
+        full = repo["summary"].get("full-file")
+        if not nm or not full:
+            continue
+        hits += nm["mean_recall"] * nm["n"]
+        found += nm["found_rate"] * nm["n"]
+        total += nm["n"]
+        per_repo_recall[repo["name"]] = nm["mean_recall"]
+        ratios[repo["name"]] = round(full["mean_tokens"] / nm["mean_tokens"], 1)
+    return {
+        # Query-weighted: every one of the 40 queries counts once.
+        "mean": hits / total,
+        "found_rate": found / total,
+        "per_repo_recall": per_repo_recall,
+        "ratios": ratios,
+    }
+
+
+def _pct(value: float) -> str:
+    """0.9375 -> '93.75', 0.85 -> '85', 1.0 -> '100' — how the copy writes them."""
+    return f"{value * 100:.2f}".rstrip("0").rstrip(".")
+
+
+def test_public_benchmark_headline_matches_the_committed_run() -> None:
+    bench = _public_benchmark()
+    headline = next(
+        c["claim"]
+        for c in _claims()["non_ratio_headline_claims"]
+        if c["source"] == "docs/benchmarks/public.md"
+    )
+    lo = min(bench["per_repo_recall"].values())
+    hi = max(bench["per_repo_recall"].values())
+    expected = [
+        f"{_pct(bench['mean'])}% gold-file recall",
+        f"{_pct(lo)}-{_pct(hi)}% per repo",
+        f"{_pct(bench['found_rate'])}% found-rate",
+    ]
+    missing = [e for e in expected if e not in headline]
+    assert not missing, (
+        "site/claims.json's public-benchmark headline disagrees with the run "
+        "committed in bench/public/results.json. Regenerate one from the other "
+        f"(python -m evals.public.run --out bench/public). Expected {missing!r} "
+        f"in: {headline!r}"
+    )
+
+
+def test_public_benchmark_ratios_are_registered_from_the_committed_run() -> None:
+    bench = _public_benchmark()
+    allowed = _allowed_ratios()
+    per_repo = bench["ratios"]
+    # The site quotes the range rounded outward: 45.0x -> "45", 260.7x -> "261".
+    low = float(int(min(per_repo.values())))
+    high = float(-int(-max(per_repo.values()) // 1))
+    needed = {f"{name} ({r:g}×)": r for name, r in per_repo.items()}
+    needed[f"range low end ({low:g}×)"] = low
+    needed[f"range high end ({high:g}×)"] = high
+    missing = [label for label, value in needed.items() if value not in allowed]
+    assert not missing, (
+        "The committed public-benchmark run produces ratios site/claims.json "
+        "does not list — the canon is stale against the data it cites: " + ", ".join(missing)
+    )
+
+
+def _stale_recall_percentages(lines: list[str], allowed: set[str]) -> list[tuple[int, str]]:
+    """(lineno, value) for every percentage on a recall line that isn't canon."""
+    stale: list[tuple[int, str]] = []
+    for index, line in enumerate(lines):
+        if not RECALL_LINE_RE.search(line) or _exempt(lines, index):
+            continue
+        values: list[str] = []
+        rest = line
+        for m in PERCENT_RANGE_RE.finditer(line):
+            values.extend([m.group(1), m.group(2)])
+            rest = rest.replace(m.group(0), " ")
+        values.extend(m.group(1) for m in PERCENT_RE.finditer(rest))
+        stale.extend((index + 1, v) for v in values if v not in allowed)
+    return stale
+
+
+def _canonical_percentages() -> set[str]:
+    bench = _public_benchmark()
+    recalls = bench["per_repo_recall"].values()
+    return {
+        _pct(bench["mean"]),
+        _pct(bench["found_rate"]),
+        _pct(min(recalls)),
+        _pct(max(recalls)),
+    }
+
+
+def test_headline_surfaces_quote_the_current_recall_figures() -> None:
+    """A stale mean or range on the homepage is drift, even if it was once true.
+
+    The 2026-09-16 update changed the hero's mean but left its range at
+    "79–100% per repo" — a figure from the run before — one line away from a
+    BusinessCase card that said "85–100%". Every percentage on a line that
+    talks about recall, on the gated surfaces, must be one of the committed
+    run's figures: the mean, the found-rate, or an end of the per-repo range.
+    """
+    allowed = _canonical_percentages()
+    violations: list[str] = []
+    for path in _site_files(RATIO_GATED):
+        lines = _prose(path).splitlines()
+        for lineno, value in _stale_recall_percentages(lines, allowed):
+            rel = path.relative_to(REPO_ROOT)
+            violations.append(f"{rel}:{lineno}: {value}% (canon: {sorted(allowed)})")
+    assert not violations, (
+        "A headline surface quotes a recall percentage that is not in the "
+        "committed public-benchmark run:\n  " + "\n  ".join(violations)
+    )
+
+
+def test_benchmark_guards_trip_on_the_copy_that_shipped() -> None:
+    allowed = {"93.75", "90", "85", "100"}
+    shipped = [
+        "{ label: 'Gold-file recall', value: '93.6%', evidence: 'mean, 79–100% per repo' },",
+        "'93.6% gold-file recall across 40 pre-registered queries — 85–100% per repo',",
+    ]
+    assert set(_stale_recall_percentages(shipped[:1], allowed)) == {(1, "93.6"), (1, "79")}
+    assert _stale_recall_percentages(shipped[1:], allowed) == [(1, "93.6")]
+    current = "{ label: 'Gold-file recall', value: '93.75%', evidence: 'mean, 85–100% per repo' },"
+    assert _stale_recall_percentages([current], allowed) == []
+    # Lines that don't talk about recall are out of scope ("90% of teams" etc).
+    assert _stale_recall_percentages(["saves 90% of setup time"], {"93.75"}) == []
+    assert _pct(0.9375) == "93.75" and _pct(0.85) == "85" and _pct(1.0) == "100"

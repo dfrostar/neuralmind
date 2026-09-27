@@ -5,9 +5,16 @@ import { pageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = pageMetadata({
     path: '/services',
-    title: 'Services — NeuralMind',
+    title: 'AI Coding Agent Rollout: Assessment & Pilot — NeuralMind',
     description:
-        'Fixed-fee assessment and pilot engagements for engineering teams adopting NeuralMind: measured token-reduction benchmarks on your repos, governance setup, and an honest keep-or-skip recommendation.',
+        'Fixed-fee help rolling out Claude Code and MCP agents with NeuralMind: benchmarks on your repos, governance setup, and an honest keep-or-skip call.',
+    keywords: [
+        'AI coding agent rollout',
+        'Claude Code team rollout',
+        'AI coding assistant assessment',
+        'token cost assessment',
+        'NeuralMind pilot',
+    ],
 });
 
 const offerings = [
@@ -85,7 +92,7 @@ export default function ServicesPage() {
             <main className="pt-32 pb-20 px-4 md:px-6">
                 <section className="max-w-5xl mx-auto text-center mb-16">
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
-                        Services
+                        Roll out AI coding agents on evidence
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto">
                         The software is open source and the savings are free. What we
@@ -182,9 +189,9 @@ export default function ServicesPage() {
                         </h2>
                         <p className="text-slate-400 text-sm leading-relaxed mb-4">
                             Teams adopting AI coding agents under compliance regimes —
-                            including organizations with EU AI Act obligations that
-                            began enforcement in August 2026 — need to show their
-                            tooling is controlled and evidenced, not just useful. A
+                            SOC 2, HIPAA, CMMC, or obligations under the EU AI Act —
+                            need to show their tooling is controlled and evidenced,
+                            not just useful. A
                             NeuralMind engagement documents a deployment that is easy
                             to stand in front of an auditor:
                         </p>
