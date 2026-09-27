@@ -1,10 +1,11 @@
 # Social preview card
 
-Source of truth for the two social preview images:
+Source of truth for the three social preview images:
 
 | Output | Size | Goes to |
 |--------|------|---------|
 | `site/public/social-preview.png` | 2400×1260 | Served at `neuralmind.uk/social-preview.png` (the OG image `site/src/app/layout.tsx` declares). Deploys with the site on push to `main`. |
+| `docs/assets/social-preview.png` | 2400×1260 | Served at `docs.neuralmind.uk/assets/social-preview.png` (the OG image `docs/_layouts/default.html` declares for every docs page). Deploys with the docs site. |
 | `scripts/og-card/github-social-preview.png` | 2560×1280 | Uploaded **manually** at repo Settings → Social preview → Edit. GitHub has no API for this slot, so re-upload after every re-render. |
 
 ## Render

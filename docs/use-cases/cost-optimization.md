@@ -44,15 +44,15 @@ Compare `avg_query_tokens` to your pre-install baseline. This is the **retrieval
 
 ## Step 4 — Measure consumption-side savings (Claude Code)
 
-PostToolUse hooks compress Read/Bash/Grep output. Rough numbers:
+PostToolUse hooks compress Read/Bash/Grep output:
 
-| Tool | Typical reduction |
+| Tool | What the hook keeps |
 |---|---|
-| Read | ~88% (file → skeleton) |
-| Bash | ~91% (errors + tail) |
+| Read | Files of 1,500+ characters → structural skeleton |
+| Bash | Errors and key lines + the tail |
 | Grep | Capped at 25 matches |
 
-Combined retrieval + consumption is typically **5–10× total reduction** vs baseline.
+`neuralmind last` recovers anything a hook trimmed. No benchmark measures the consumption side yet, so report the retrieval number from `neuralmind benchmark .` — don't quote a combined multiplier nobody has measured.
 
 ## Step 5 — Report to stakeholders
 

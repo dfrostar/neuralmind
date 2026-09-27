@@ -1,37 +1,19 @@
 # docs/assets
 
-Static visual assets for the repository (social preview, etc.).
+Static visual assets for the docs site (docs.neuralmind.uk).
 
-## `social-preview.svg` — GitHub Social Preview
+## `social-preview.png` — docs site OG image
 
-The 1280 × 640 image used for GitHub's social preview card (shown on LinkedIn, Twitter/X, Slack, and other link-unfurl surfaces when the repo URL is shared).
+The `og:image` / `twitter:image` that `_layouts/default.html`, `about.html` and
+`benchmarks/index.html` declare, shown when a docs page is shared on LinkedIn,
+X, Slack and other link-unfurl surfaces.
 
-### How to update it
+**Do not edit or hand-make this file.** It is rendered from the same source as
+the marketing site's card and the GitHub social preview —
+[`scripts/og-card/card.html`](../../scripts/og-card/card.html) — by
+`node scripts/og-card/render.mjs`, which refuses to render any number that is
+not in `site/claims.json`. See [`scripts/og-card/README.md`](../../scripts/og-card/README.md).
 
-Edit the SVG directly. Tweak the headline, supported tools, or palette — everything is inline, no external fonts or assets.
-
-### How to upload it
-
-GitHub requires a **PNG** upload (not SVG). Convert once, then drop the PNG into **Settings → General → Social preview**.
-
-**Any of these will work:**
-
-```bash
-# librsvg (fast, good fidelity)
-rsvg-convert -w 1280 -h 640 docs/assets/social-preview.svg -o social-preview.png
-
-# Inkscape (handles any SVG feature)
-inkscape docs/assets/social-preview.svg --export-type=png --export-filename=social-preview.png -w 1280 -h 640
-
-# ImageMagick
-magick -background none -density 144 docs/assets/social-preview.svg -resize 1280x640 social-preview.png
-
-# Or just open the SVG in any browser and "Save as image"
-```
-
-### Design notes
-
-- **Safe zone:** important content is kept inside the center 1100 × 580 region — some unfurl surfaces crop the edges.
-- **Palette:** deep indigo/purple background, cyan → mint accent on the headline number, muted lavender for secondary text.
-- **Typography:** Inter → Segoe UI → system-ui fallback stack. Renders fine with sans-serif fallback if Inter isn't installed locally; install Inter for the best output.
-- **No external references:** fully self-contained, no network fetches at render time.
+The hand-made SVG that used to live here was retired on 2026-09-27: after the
+site's card was made reproducible, this copy kept shipping an unsourced
+"40–70× fewer tokens" and "100% local" on every docs page's link preview.

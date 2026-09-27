@@ -330,9 +330,9 @@ sections.
 A two-phase token optimizer for AI coding agents.
 
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
-- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
+- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
 
-Combined effect: **12–50× retrieval token reduction** (5.1× measured in CI on the fixture at v4.3.4), offline and model-agnostic.
+Measured effect: **45–261× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 93.75% mean gold-file recall; on private repos `neuralmind benchmark .` has reported 12–50× against its fixed 50K-token baseline; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 ### The core problem
 

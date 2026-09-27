@@ -194,7 +194,7 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users: install the PostToolUse compression hooks for an extra 5–10× reduction layer on top:
+Claude Code users: install the PostToolUse compression hooks to shrink `Read`/`Bash`/`Grep` output on top of that (a separate saving this benchmark does not measure):
 
 ```bash
 neuralmind install-hooks .

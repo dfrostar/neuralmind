@@ -92,7 +92,7 @@
             <h3>Hebbian synapse learning</h3>
             <p>Every co-edit, query, and tool call strengthens associations between code nodes. The longer you use NeuralMind on a codebase, the better it gets at predicting what context you need.</p>
             <h3>Tool-output compression</h3>
-            <p>PostToolUse hooks for Claude Code compress Read, Bash, and Grep output before the agent sees it — typically 88–91% smaller.</p>
+            <p>PostToolUse hooks for Claude Code compress Read, Bash, and Grep output before the agent sees it: a large Read becomes a structural skeleton, Bash keeps errors plus the tail, Grep is capped at 25 matches, and <code>neuralmind last</code> recovers anything trimmed. Not yet benchmarked, so no percentage here.</p>
         </section>
         <section>
             <h2>Supply chain</h2>

@@ -246,8 +246,8 @@ Each `SessionStart` re-exports the synapse memory as markdown to:
 
 ## Privacy & Data
 
-✅ **100% Local** — All learning happens on your machine
-✅ **No Telemetry** — Nothing sent to servers
+✅ **Local** — All learning happens on your machine
+✅ **No Telemetry** — No usage data is sent anywhere
 ✅ **User Control** — One-time consent, can disable anytime
 ✅ **Persistent** — Memory stays in your `.neuralmind/` directory
 

@@ -153,7 +153,7 @@ These three technologies are not competing products; they form a unified optimiz
 
 - **For high-volume research and SRE incident debugging:** Deploy Headroom + NeuralMind to maximize the retrieval of vast logs while stabilizing transport costs.
 - **For rapid feature building and MVP development:** Deploy Ponytail + NeuralMind to maintain codebase purity and iterate with minimal boilerplate.
-- **For enterprise-scale agentic fleets:** Deploy the full stack to achieve maximum token efficiency, 100% local privacy, and a traceable technical debt ledger.
+- **For enterprise-scale agentic fleets:** Deploy the full stack to achieve maximum token efficiency, local-first privacy, and a traceable technical debt ledger.
 
 ---
 

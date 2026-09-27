@@ -3,6 +3,7 @@
  *
  * Outputs:
  *   site/public/social-preview.png          2400x1260  (site OG image, 2x of 1200x630)
+ *   docs/assets/social-preview.png          2400x1260  (docs.neuralmind.uk OG image)
  *   scripts/og-card/github-social-preview.png 2560x1280 (upload manually at
  *     GitHub repo Settings -> Social preview; there is no API for that slot)
  *
@@ -29,7 +30,7 @@ const repo = join(here, '..', '..');
 // --- claims gate -----------------------------------------------------------
 // Numbers rendered by card.html. If you change the card's copy, change this
 // list to match — the point is that both must trace to site/claims.json.
-const REQUIRED_CANON = ['93.75', '45', '257'];
+const REQUIRED_CANON = ['93.75', '45', '261'];
 
 const claims = readFileSync(join(repo, 'site', 'claims.json'), 'utf8');
 const card = readFileSync(join(here, 'card.html'), 'utf8');
@@ -74,6 +75,9 @@ function findChrome() {
 // --- render ----------------------------------------------------------------
 const targets = [
   { w: 1200, h: 630, out: join(repo, 'site', 'public', 'social-preview.png') },
+  // The docs site's og:image. It used to be a separate hand-made card that
+  // kept shipping the unsourced "40-70x" after this one was fixed.
+  { w: 1200, h: 630, out: join(repo, 'docs', 'assets', 'social-preview.png') },
   { w: 1280, h: 640, out: join(here, 'github-social-preview.png') },
 ];
 

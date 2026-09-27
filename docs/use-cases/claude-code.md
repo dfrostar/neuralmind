@@ -180,7 +180,7 @@ Tune hook thresholds via env vars — see [PostToolUse Compression](../../README
 
 ## Expected savings
 
-Combined retrieval + consumption reduction is typically **5–10×** vs vanilla Claude Code on the same tasks. Run `neuralmind benchmark . --json` on your repo for a concrete number.
+No benchmark measures the combined retrieval + consumption effect yet, so there is no typical multiplier to quote. Run `neuralmind benchmark . --json` on your repo for the retrieval number; on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), retrieval alone uses 45–261× fewer tokens than pasting every source file.
 
 ## Second screen: see what the agent is looking at (v0.6.0+)
 

@@ -11,7 +11,7 @@ description: "Honest comparison of NeuralMind and Headroom (chopratejas/headroom
 > of those tokens from being fetched in the first place — semantic
 > retrieval answers code questions in ~800 tokens instead of 50,000+
 > (12-50× on the retrieval side in real-repo field reports) — and additionally compresses
-> the tool outputs that do flow (~88–91%), while remembering your codebase
+> the tool outputs that do flow, while remembering your codebase
 > across sessions. They overlap on tool-output compression, and they
 > compose. If you only want compression, Headroom is the more general and
 > more mature tool — use it. Assessed June 2026; both projects move fast,
@@ -52,13 +52,13 @@ answered in ~800 tokens of *retrieved* context instead of the agent
 reading whole files; next session the agent boots already knowing the
 shape of your code. Tool-output compression (the part that overlaps with
 Headroom) is one feature of that pipeline — PostToolUse hooks in Claude
-Code that shrink `Read`/`Bash`/`Grep` output by ~88–91%, with a recovery
+Code that shrink `Read`/`Bash`/`Grep` output (not yet benchmarked), with a recovery
 cache for the dropped middle.
 
 | Dimension | Headroom | NeuralMind |
 |---|---|---|
 | Core mechanism | Compress assembled context in flight | Retrieve less context from a semantic index; remember it across sessions |
-| Compression surface | Tool outputs, logs, RAG chunks, files, conversation history, images — any provider | `Read`/`Bash`/`Grep` outputs in Claude Code (~88–91%) |
+| Compression surface | Tool outputs, logs, RAG chunks, files, conversation history, images — any provider | `Read`/`Bash`/`Grep` outputs in Claude Code (not yet benchmarked) |
 | Conversation-history compression | Yes | No |
 | KV-cache alignment | Yes (CacheAligner) | No |
 | Reversible compression | Yes, generalized (CCR + retrieve tool) | Yes, for its own compressed tool outputs (recovery cache) |

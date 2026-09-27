@@ -288,11 +288,12 @@ neuralmind-mcp . --rbac-enabled \
 
 ### "Does NeuralMind send data to external servers?"
 
-**No.** 
-- ✅ 100% local processing
-- ✅ No cloud APIs
+**Not by default.**
+- ✅ Indexing, embedding, retrieval and synapse learning run on your machine
 - ✅ No telemetry
-- ✅ No repository content transmitted (one first-build model download aside, pre-seedable)
+- ✅ No repository content transmitted by default — the one default outbound request is a public embedding-model download on first build, pre-seedable via `NEURALMIND_ONNX_MODEL_DIR` for air-gapped installs
+- ⚠️ One opt-in feature, off by default: `NEURALMIND_LLM_SEED=1` (plus your own `ANTHROPIC_API_KEY`) sends README and architecture-doc prose to Anthropic to seed doc synapses
+- Your agent still sends the context slice it selects to its own model provider; NeuralMind makes that slice smaller but does not control it
 
 ---
 
@@ -526,10 +527,10 @@ Coming in v1.0 (Q1 2027):
 | Feature | NeuralMind | Cursor |
 |---------|-----------|--------|
 | Works everywhere | ✅ Yes | ❌ Cursor only |
-| 100% offline | ✅ Yes | ❌ Cloud |
-| Token reduction | 5-10× | 2-3× |
-| Cost | Free | Paid (Cursor) |
-| Open source | ✅ Yes | ❌ No |
+| Works offline | ✅ Yes, once the first build has cached the embedding model | ❌ Cloud |
+| Token reduction | Measured: 45–261× vs. pasting every source file ([public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) | Not measured by us |
+| Cost | Free at 1 seat | Paid (Cursor) |
+| Open source | ✅ MIT core | ❌ No |
 
 ---
 
