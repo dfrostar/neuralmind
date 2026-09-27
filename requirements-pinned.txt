@@ -21,7 +21,8 @@ toml==0.10.2
 #   FastMCP validation DoS, Streamable HTTP DoS, DNS-rebinding default.
 # NeuralMind's MCP server supports both the 1.x decorator API and the 2.x
 # constructor callback API, so the pinned version can stay on the current 2.x
-# security line while remaining compatible with older installs too.
+# security line while remaining compatible with older installs too. Both lines
+# are exercised in CI by scripts/mcp_stdio_smoke.py; pyproject caps at <4.
 mcp==2.2.0
 
 # Optional: Development & Testing
