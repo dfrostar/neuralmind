@@ -6,10 +6,32 @@ You work in a regulated industry (healthcare, finance, defense, legal), on an ai
 
 ## Why NeuralMind fits
 
-- **No API calls.** Indexing, embeddings, retrieval — all local.
-- **No cloud account required.** No sign-up, no telemetry, no outbound network.
-- **No code uploaded anywhere.** ChromaDB runs in-process.
+- **No API calls by default.** Indexing, embeddings, retrieval — all
+  local. The one exception is opt-in and documented below.
+- **No cloud account required.** No sign-up, no telemetry, no outbound
+  network in the default configuration.
+- **No code uploaded anywhere by the default path.** ChromaDB runs
+  in-process. The one opt-in LLM path (below) is a narrower but real
+  exception — read it before assuming "never."
 - **Pairs with local LLMs.** Use with Ollama, llama.cpp, vLLM for an end-to-end local stack.
+
+**The one opt-in exception — read the fine print.** Setting both
+`NEURALMIND_LLM_SEED=1` and `ANTHROPIC_API_KEY` reads whatever bytes exist
+at two fixed paths — `README.md` and `docs/architecture.md` relative to
+the project root — and sends up to the first 8,000 characters (combined)
+to Anthropic's API to seed synapse edges. **This is a path-based read, not
+a content classifier:** the code does not verify the file is prose before
+sending it. In the overwhelmingly common case these are ordinary
+documentation files, but a `README.md` that embeds real code snippets,
+API keys in example blocks, or internal architecture detail — or a
+`README.md`/`docs/architecture.md` that is itself a symlink to something
+else — would have that content sent unfiltered. If your policy prohibits
+any client file reaching a third party regardless of its usual contents,
+don't opt in, and audit what's actually at those two paths before you do.
+Both env vars are unset by default; leave them unset and this path never
+runs at all. Fail-open: any error returns `0` and never blocks indexing.
+Full disclosure, code-cited:
+[`docs/compliance/THIRD_PARTY_LLM_DISCLOSURE.md`](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md).
 
 ## Fully local stack
 
@@ -27,20 +49,25 @@ CONTEXT=$(neuralmind query . "how does auth work?")
 echo "$CONTEXT" | ollama run llama3.1:70b "Explain the auth flow"
 ```
 
-Nothing here touches the public internet.
+Nothing in NeuralMind's own build/query runtime touches the public
+internet under the default configuration (`NEURALMIND_LLM_SEED` unset,
+which it is unless you set it) — that's distinct from the setup commands
+above (`pip install`, `ollama pull`), which do need internet access the
+first time you run them, same as installing any package.
 
 ## Compliance-friendly properties
 
 | Property | NeuralMind |
 |---|---|
-| Source code transmitted externally | Never |
+| Source code transmitted externally | Never, under the default configuration (both env vars unset) |
+| Contents of `README.md`/`docs/architecture.md` transmitted externally | Only if you opt in with `NEURALMIND_LLM_SEED=1` + `ANTHROPIC_API_KEY` (both unset by default) — unfiltered, path-based, not verified to be prose-only; see [disclosure](../compliance/THIRD_PARTY_LLM_DISCLOSURE.md) before opting in |
 | Telemetry | None |
 | SaaS dependency | None |
 | Account / login | None |
 | Network required for install | Only to fetch the Python package — mirror it internally if needed |
 | License | MIT (auditable) |
 | Data at rest | `graphify-out/` and `.neuralmind/` inside your project |
-| Data in transit | N/A (no outbound calls) |
+| Data in transit | N/A under default configuration (no outbound calls) |
 
 ## Air-gapped install
 
