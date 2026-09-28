@@ -46,7 +46,7 @@ const faqs = [
     },
     {
         q: 'What is the business case for a team?',
-        a: 'Two lines: the measured token reduction (free — verify it on your own repo in about 15 minutes) and modeled productivity recovery, because engineers stop losing time to context-limit thrashing and re-prompting. The full model and its assumptions are published, and the free assessment runs it in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
+        a: 'Two lines: the measured token reduction (free — verify it on your own repo in about 15 minutes) and time lost to context-limit thrashing and re-prompting, which the business case models but does not measure. The full model and its assumptions are published, and the free assessment measures both in your numbers. If your workload is generation-heavy or prompt caching already covers you, we say so.',
     },
 ];
 

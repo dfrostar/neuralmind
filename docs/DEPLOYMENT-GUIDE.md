@@ -133,7 +133,7 @@ neuralmind-mcp \
 **Installation per developer:**
 ```bash
 pip install neuralmind
-neuralmind install-hooks .  # PostToolUse compression
+neuralmind install-hooks .  # Claude Code: session memory, prompt recall, stale-decision guard
 neuralmind init-hook .       # Auto-rebuild on commits
 ```
 

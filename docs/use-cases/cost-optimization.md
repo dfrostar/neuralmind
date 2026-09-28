@@ -42,17 +42,9 @@ Returns:
 
 Compare `avg_query_tokens` to your pre-install baseline. This is the **retrieval-side** savings.
 
-## Step 4 — Measure consumption-side savings (Claude Code)
+## Step 4 — Don't count tool-output savings (Claude Code)
 
-PostToolUse hooks compress Read/Bash/Grep output:
-
-| Tool | What the hook keeps |
-|---|---|
-| Read | Files of 1,500+ characters → structural skeleton |
-| Bash | Errors and key lines + the tail |
-| Grep | Capped at 25 matches |
-
-`neuralmind last` recovers anything a hook trimmed. No benchmark measures the consumption side yet, so report the retrieval number from `neuralmind benchmark .` — don't quote a combined multiplier nobody has measured.
+NeuralMind no longer compresses Read/Bash/Grep output. Its PostToolUse hooks used to, but Claude Code adds a hook's output next to the tool result rather than replacing it, so [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), the compressed copies added tokens. The hooks now inject nothing, so there is no consumption-side saving to report. Report the retrieval number from `neuralmind benchmark .`.
 
 ## Step 5 — Report to stakeholders
 
@@ -83,10 +75,10 @@ A one-page summary template:
 >
 > - Baseline: `{avg_tokens} × {queries/day} × 30 × ${price}/MTok = ${monthly}`
 > - After NeuralMind: `{new_tokens} × {queries/day} × 30 × ${price}/MTok = ${new_monthly}`
-> - Reduction: **{ratio}×** on retrieval, **{total_ratio}×** combined with PostToolUse hooks
+> - Reduction: **{ratio}×** on retrieval
 > - Setup cost: one-time `neuralmind build` (~minutes)
 > - Ongoing cost: incremental rebuild on git commit (seconds)
-> - Risk: fully local, no new SaaS dependency, MIT-licensed
+> - Risk: local-first, no new SaaS dependency, MIT core
 
 ## Ongoing hygiene
 

@@ -1820,7 +1820,7 @@ neuralmind install-hooks --uninstall --global
 **Bypass temporarily** (switches off every NeuralMind hook action):
 
 ```bash
-NEURALMIND_BYPASS=1 claude-code ...
+NEURALMIND_BYPASS=1 claude   # hooks inherit Claude Code's environment
 ```
 
 ---

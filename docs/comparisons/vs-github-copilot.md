@@ -9,14 +9,14 @@ GitHub Copilot is Microsoft/GitHub's AI pair programmer: inline completions in y
 | Dimension | GitHub Copilot | NeuralMind |
 |---|---|---|
 | Core product | Code completion + chat | Context provider / token optimizer |
-| Hosted | GitHub cloud | Fully local |
+| Hosted | GitHub cloud | Runs on your machine |
 | Indexing | Server-side, GitHub-managed | Local knowledge graph + ChromaDB |
 | Works outside GitHub's editors | Limited | Yes — any MCP agent, any CLI, any LLM |
 | Model choice | GitHub-provided models | Model-agnostic (Claude, GPT, Gemini, local) |
-| Tool-output compression | No | Yes (PostToolUse hooks) |
+| Tool-output compression | No | No (its PostToolUse hooks used to; measured, that added tokens — [benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)) |
 | License | Proprietary, per-seat | MIT, free |
-| Data flow | Code snippets sent to GitHub/OpenAI | NeuralMind makes no calls of its own; you pick the agent's model (incl. local) |
-| Cost scaling | Flat subscription | Flat local cost; API costs drop 12-50× |
+| Data flow | Code snippets sent to GitHub/OpenAI | NeuralMind sends no telemetry and no repository content by default (its one default request is a first-build model download); you pick the agent's model (incl. local) |
+| Cost scaling | Flat subscription | Free locally; shrinks the retrieval slice of your model bill (12-50× in field reports), not the whole bill |
 | Install methods | Editor extension + GitHub sign-in required | `pip` / `pipx` / `uv` / Docker / source — no sign-in, no account |
 
 ## When to pick which
