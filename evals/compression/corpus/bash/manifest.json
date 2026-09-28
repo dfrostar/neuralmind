@@ -1,0 +1,223 @@
+{
+  "_about": "Real command outputs replayed by evals/compression/run.py. Captured with evals/compression/capture_bash.py; cwd labels: repo = this repository, site = its site/ directory, scratch = a temp dir holding the generated inventory module and its tests, anything else = that public-benchmark repo at its pinned commit. must_keep patterns are pre-registered per output type.",
+  "captured_on": "2026-09-28",
+  "tool_versions": {
+    "python": "3.11.15",
+    "pytest": "pytest 9.1.1",
+    "ruff": "ruff 0.15.8",
+    "mypy": "mypy 1.19.1 (compiled: yes)",
+    "node": "v22.22.2",
+    "git": "git version 2.43.0"
+  },
+  "pinned_repos": {
+    "requests": "0e322af87745eff34caffe4df68456ebc20d9068",
+    "click": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
+    "flask": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
+    "rich": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf"
+  },
+  "entries": [
+    {
+      "id": "pytest-verbose-pass",
+      "category": "test run (passing, -v)",
+      "cwd": "repo",
+      "command": "python -m pytest -v -p no:cacheprovider -o addopts= tests/test_compressors.py tests/test_hooks.py tests/test_output_cache.py tests/test_synapses.py",
+      "exit_code": 0,
+      "stdout_file": "pytest-verbose-pass.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "\\d+ passed"
+      ]
+    },
+    {
+      "id": "pytest-quiet-pass",
+      "category": "test run (passing, -q)",
+      "cwd": "repo",
+      "command": "python -m pytest -q -p no:cacheprovider tests/test_compressors.py",
+      "exit_code": 0,
+      "stdout_file": "pytest-quiet-pass.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "\\d+ passed",
+        "\\[\\s*\\d+%\\]"
+      ]
+    },
+    {
+      "id": "pytest-failures",
+      "category": "test run (failing)",
+      "cwd": "scratch",
+      "command": "python -m pytest -p no:cacheprovider test_inventory.py",
+      "exit_code": 1,
+      "stdout_file": "pytest-failures.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^E\\s",
+        "^FAILED ",
+        "\\d+ failed"
+      ]
+    },
+    {
+      "id": "pytest-collect",
+      "category": "test listing",
+      "cwd": "repo",
+      "command": "python -m pytest --collect-only -q -p no:cacheprovider -o addopts= tests/test_compressors.py tests/test_hooks.py tests/test_synapses.py",
+      "exit_code": 0,
+      "stdout_file": "pytest-collect.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "::",
+        "tests? collected"
+      ]
+    },
+    {
+      "id": "ruff-lint",
+      "category": "linter (errors)",
+      "cwd": "click",
+      "command": "ruff check --no-cache --select E,W,F,B,SIM src/click",
+      "exit_code": 1,
+      "stdout_file": "ruff-lint.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^[A-Z]+\\d+ ",
+        "^\\s*--> ",
+        "Found \\d+ errors?"
+      ]
+    },
+    {
+      "id": "mypy-strict",
+      "category": "type checker (errors)",
+      "cwd": "requests",
+      "command": "mypy --strict --no-color-output --no-incremental src/requests",
+      "exit_code": 1,
+      "stdout_file": "mypy-strict.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        ": error: ",
+        "Found \\d+ errors?"
+      ]
+    },
+    {
+      "id": "python-crash",
+      "category": "crash traceback",
+      "cwd": "scratch",
+      "command": "python -c 'import requests; requests.get('\"'\"'http://127.0.0.1:9/health'\"'\"', timeout=2)'",
+      "exit_code": 1,
+      "stdout_file": "python-crash.stdout.txt",
+      "stderr_file": "python-crash.stderr.txt",
+      "must_keep": [
+        "^Traceback",
+        "^[\\w.]+(Error|Exception): "
+      ]
+    },
+    {
+      "id": "pip-list",
+      "category": "package listing",
+      "cwd": "repo",
+      "command": "python -m pip list --disable-pip-version-check",
+      "exit_code": 0,
+      "stdout_file": "pip-list.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^[A-Za-z0-9_.\\-]+\\s+\\d"
+      ]
+    },
+    {
+      "id": "next-build",
+      "category": "build log",
+      "cwd": "site",
+      "command": "npm run build",
+      "exit_code": 0,
+      "stdout_file": "next-build.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^[\u251c\u2514\u250c]\\s",
+        "Compiled successfully|Generating static pages"
+      ]
+    },
+    {
+      "id": "neuralmind-build",
+      "category": "indexer progress log",
+      "cwd": "requests",
+      "command": "neuralmind build src/requests --force",
+      "exit_code": 0,
+      "stdout_file": "neuralmind-build.stdout.txt",
+      "stderr_file": "neuralmind-build.stderr.txt",
+      "must_keep": [
+        "(?i)\\b(nodes?|edges?|built|complete|success)\\b"
+      ]
+    },
+    {
+      "id": "git-log-stat",
+      "category": "git history",
+      "cwd": "repo",
+      "command": "git log --stat -n 12 '--format=commit %H%n%n    %s%n' f69202cd7d990957fadddd71d9e98ca607c17037",
+      "exit_code": 0,
+      "stdout_file": "git-log-stat.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^commit [0-9a-f]{40}",
+        "files? changed"
+      ]
+    },
+    {
+      "id": "git-diff",
+      "category": "diff",
+      "cwd": "repo",
+      "command": "git diff ad49d3ba44bf5c4ea0e8b3d7f03eb975d49b5219 f69202cd7d990957fadddd71d9e98ca607c17037 -- site/src/components/sections/CTA.tsx site/src/components/sections/FAQ.tsx site/src/components/sections/Hero.tsx",
+      "exit_code": 0,
+      "stdout_file": "git-diff.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^@@",
+        "^[+-](?![+-])"
+      ]
+    },
+    {
+      "id": "grep-defs",
+      "category": "search via shell",
+      "cwd": "flask",
+      "command": "grep -rn 'def ' src/flask",
+      "exit_code": 0,
+      "stdout_file": "grep-defs.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^\\S+:\\d+:"
+      ]
+    },
+    {
+      "id": "find-files",
+      "category": "file listing",
+      "cwd": "rich",
+      "command": "find rich -name '*.py' | sort",
+      "exit_code": 0,
+      "stdout_file": "find-files.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "\\.py$"
+      ]
+    },
+    {
+      "id": "cat-source",
+      "category": "file dump",
+      "cwd": "flask",
+      "command": "cat src/flask/app.py",
+      "exit_code": 0,
+      "stdout_file": "cat-source.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^\\s*(async\\s+)?def |^\\s*class "
+      ]
+    },
+    {
+      "id": "ls-long",
+      "category": "directory listing",
+      "cwd": "rich",
+      "command": "ls -la rich",
+      "exit_code": 0,
+      "stdout_file": "ls-long.stdout.txt",
+      "stderr_file": null,
+      "must_keep": [
+        "^[-dl][rwx-]{9}"
+      ]
+    }
+  ]
+}
