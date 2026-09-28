@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.3.5](https://github.com/dfrostar/neuralmind/compare/v4.3.4...v4.3.5) (2026-09-28)
+
+
+### Documentation
+
+* public-surface messaging + SEO overhaul; public benchmark regenerated at v4.3.4 ([#539](https://github.com/dfrostar/neuralmind/issues/539)) ([f69202c](https://github.com/dfrostar/neuralmind/commit/f69202cd7d990957fadddd71d9e98ca607c17037))
+
 ## [4.3.4](https://github.com/dfrostar/neuralmind/compare/v4.3.3...v4.3.4) (2026-09-27)
 
 
