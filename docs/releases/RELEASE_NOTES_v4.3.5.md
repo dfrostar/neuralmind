@@ -58,10 +58,10 @@ to re-run `neuralmind install-hooks`.
 
 - The compressor functions (`compress_bash`, `compress_read`,
   `cap_search_results`, `offload_if_large`) stay in the Python API. The
-  benchmark measures them too: they would cut 66–89% of tokens if they replaced
-  a result, but keep only 6% of a file's source lines and 0% of a diff's
-  changed lines. That is why nothing replaces tool output until a design keeps
-  what the agent needs, measured by the same benchmark.
+  benchmark measures them too: they would cut 66–87% of tokens if they replaced
+  a result, but keep 0% of a file's source lines and 0% of a diff's changed
+  lines. That is why nothing replaces tool output until a design keeps what the
+  agent needs, measured by the same benchmark.
 - `NEURALMIND_BASH_TAIL`, `NEURALMIND_BASH_MAX_CHARS` and `NEURALMIND_BASH_SMALL`
   now only tune those Python functions. `NEURALMIND_BYPASS=1` still switches off
   every NeuralMind hook action.

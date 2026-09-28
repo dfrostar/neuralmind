@@ -167,8 +167,8 @@ protocol does.
 
 Claude Code adds a hook's `additionalContext` next to the tool result rather
 than replacing it, so the copies cost tokens. The hooks now inject nothing. The
-compressors themselves would cut 66–89% if they replaced a result, but they
-keep only 6% of a file's source lines and 0% of a diff's changed lines. CI
+compressors themselves would cut 66–87% if they replaced a result, but they
+keep 0% of a file's source lines and 0% of a diff's changed lines. CI
 recomputes the Bash results on every PR (`tests/test_compression_benchmark.py`).
 
 ## What we *don't* claim

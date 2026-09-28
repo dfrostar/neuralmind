@@ -17,20 +17,22 @@ Reproduce: `python -m evals.compression.run --out bench/compression`. Method and
 
 | Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |
 |---|---:|---:|---:|---:|---|
-| Read (whole file) | 136 (117 over 1,500 chars) | 597,002 | 67,895 | -88.6% | 93% of definitions named, 6% of source lines |
-| Bash | 12 of 16 | 24,858 | 8,397 | -66.2% | 54% of must-keep lines |
+| Read (whole file) | 136 (110 compressed) | 597,002 | 79,008 | -86.8% | 93% of definitions named, 0% of source lines |
+| Bash | 12 of 16 | 24,858 | 8,397 | -66.2% | 53% of must-keep lines |
 | Grep, content mode | 48 | 55,800 | 16,610 | -70.2% | 63% of matches |
 
-Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claude Code may page those): -86.9%.
+`compress_read` returns files under 1,500 characters unchanged and replaces the rest with their skeleton, counted as Read would render it, line numbers included. Source lines kept are whole lines, counted with multiplicity, over the files it compressed.
+
+Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claude Code may page those): -84.7%.
 
 ### Read, per repo
 
 | Repo | Files | Hook responded | Compressor output vs. no hook | Definitions named | Source lines kept |
 |---|---:|---:|---:|---:|---:|
-| click | 16 | 0 | -89.4% | 95% | 4% |
-| flask | 24 | 0 | -86.9% | 97% | 5% |
-| requests | 18 | 0 | -84.1% | 94% | 7% |
-| rich | 78 | 0 | -89.8% | 91% | 7% |
+| click | 16 | 0 | -87.1% | 95% | 0% |
+| flask | 24 | 0 | -85.2% | 97% | 0% |
+| requests | 18 | 0 | -81.8% | 94% | 0% |
+| rich | 78 | 0 | -88.1% | 90% | 0% |
 
 ## Bash, per command
 
@@ -40,13 +42,13 @@ Read, excluding the 3 files whose whole-file result is over 25,000 tokens (Claud
 | `pytest-quiet-pass` (test run (passing, -q)) | 0 | PostToolUse | yes | 8 | 16 (+100.0%) | 8 | 100% |
 | `pytest-failures` (test run (failing)) | 1 | PostToolUseFailure | no | 1,476 | 1,476 (+0.0%) | 429 † | 45% |
 | `pytest-collect` (test listing) | 0 | PostToolUse | yes | 1,651 | 1,827 (+10.7%) | 176 | 7% |
-| `ruff-lint` (linter (errors)) | 1 | PostToolUseFailure | no | 2,622 | 2,622 (+0.0%) | 402 † | 20% |
+| `ruff-lint` (linter (errors)) | 1 | PostToolUseFailure | no | 2,622 | 2,622 (+0.0%) | 402 † | 9% |
 | `mypy-strict` (type checker (errors)) | 1 | PostToolUseFailure | no | 2,581 | 2,581 (+0.0%) | 17,394 † | 100% |
-| `python-crash` (crash traceback) | 1 | PostToolUseFailure | no | 1,044 | 1,044 (+0.0%) | 362 † | 100% |
+| `python-crash` (crash traceback) | 1 | PostToolUseFailure | no | 1,044 | 1,044 (+0.0%) | 362 † | 62% |
 | `pip-list` (package listing) | 0 | PostToolUse | yes | 830 | 1,660 (+100.0%) | 830 | 100% |
 | `next-build` (build log) | 0 | PostToolUse | yes | 647 | 1,294 (+100.0%) | 647 | 100% |
 | `neuralmind-build` (indexer progress log) | 0 | PostToolUse | yes | 461 | 925 (+100.7%) | 464 | 100% |
-| `git-log-stat` (git history) | 0 | PostToolUse | yes | 2,466 | 2,563 (+3.9%) | 97 | 12% |
+| `git-log-stat` (git history) | 0 | PostToolUse | yes | 2,466 | 2,563 (+3.9%) | 97 | 4% |
 | `git-diff` (diff) | 0 | PostToolUse | yes | 3,889 | 4,041 (+3.9%) | 152 | 0% |
 | `grep-defs` (search via shell) | 0 | PostToolUse | yes | 8,804 | 9,398 (+6.7%) | 594 | 6% |
 | `find-files` (file listing) | 0 | PostToolUse | yes | 395 | 790 (+100.0%) | 395 | 100% |

@@ -21,9 +21,9 @@ python -m evals.compression.run --out bench/compression
 ```
 
 The Bash inputs are committed. The Read and Grep inputs are the four
-public-benchmark repos at their pinned commits, cloned on first run. Two
-independent runs, each rebuilding its indexes, agreed on every one of the 248
-calls.
+public-benchmark repos at their pinned commits, cloned on first run. Runs from
+two different checkout directories, each rebuilding its indexes, agreed on
+every one of the 248 calls.
 
 ## What we found in v4.3.4
 
@@ -85,17 +85,19 @@ hook returning `updatedToolOutput` would deliver it, next to what survives.
 
 | Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |
 |---|---:|---:|---:|---:|---|
-| Read (whole file) | 136 (117 over 1,500 chars) | 597,002 | 67,895 | -88.6% | 93% of definitions named, **6% of source lines** |
-| Bash | 12 of 16 | 24,858 | 8,397 | -66.2% | 54% of must-keep lines |
+| Read (whole file) | 136 (110 compressed) | 597,002 | 79,008 | -86.8% | 93% of definitions named, **0% of source lines** |
+| Bash | 12 of 16 | 24,858 | 8,397 | -66.2% | 53% of must-keep lines |
 | Grep, content mode | 48 | 55,800 | 16,610 | -70.2% | 63% of matches |
 
 The reductions are large, and so is what they cost:
 
 - **A Read replaced by its skeleton would leave Claude unable to edit the
-  file.** The skeleton names 93% of the functions and classes, but only 6% of
-  the source lines survive. Claude reads a file to see the code it is about to
-  change. Excluding the three files over 25,000 tokens, which Claude Code may
-  page, the reduction is -86.9%.
+  file.** The skeleton names 93% of the functions and classes, but none of the
+  source lines survive: it lists names, line numbers, docstring summaries and
+  a call graph, not code. Claude reads a file to see the code it is about to
+  change. Files under 1,500 characters stay whole, which is why 26 of the 136
+  aren't compressed. Excluding the three files over 25,000 tokens, which Claude
+  Code may page, the reduction is -84.7%.
 - **Bash output that carries content is cut to almost nothing.** Of the lines
   a reader needs, compression keeps 0% of a `git diff`'s changed lines, 6% of
   `grep -rn` hits, 7% of a test collection and 13% of the definitions in a
@@ -133,7 +135,16 @@ Every sample is one tool call, measured three ways:
   - `additionalContext` is added, with values over 10,000 characters becoming a
     path plus a 2,000-character preview.
   - Stdout that isn't valid JSON has no effect.
-- **Compressor only:** the compressor's output in place of the result.
+- **Compressor only:** the compressor's output in place of the result,
+  rendered as Claude Code renders that tool's result.
+  - `compress_read` gets the file's text, as a hook receives it in
+    `file.content`, and its skeleton is counted with Read's line numbers.
+  - A skeleton names its file by absolute path. The benchmark shows the
+    checkout directory as `/work`, so the counts don't depend on where the
+    repos are cloned.
+  - What survives is counted in whole lines, with multiplicity: a line that
+    appears ten times in the source counts as kept ten times only if the
+    delivered text has it ten times.
 
 Sources:
 

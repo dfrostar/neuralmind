@@ -38,7 +38,7 @@ Returns ~800–1,100 tokens with the right clusters and search hits.
 neuralmind_skeleton(project_path=".", file_path="src/auth/handlers.py")
 ```
 
-Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files that outline is 88.6% smaller than reading the whole file, but it keeps only 6% of the source lines — use it to orient, then `Read` what you're about to edit.
+Returns the function list, rationales, call graph, and cross-file edges. Across the [compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)'s 136 files, replacing each whole-file `Read` with that outline would cut 86.8% of the tokens (files under 1,500 characters stay whole), but the outline repeats none of the source lines — use it to orient, then `Read` what you're about to edit.
 
 **Everything else** (Read, Bash, Grep you don't route through NeuralMind) reaches Claude exactly as the tool returned it. NeuralMind doesn't compress tool output: its hooks used to, and [measured](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md), that added tokens, so they now inject nothing.
 

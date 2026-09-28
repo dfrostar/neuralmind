@@ -25,7 +25,8 @@ from neuralmind import compressors
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RESULTS = REPO_ROOT / "bench" / "compression" / "results.json"
 # The run that measured the hooks as v4.3.4 shipped them — the reason they no
-# longer inject context. It is a fixed record: never regenerated.
+# longer inject context. It is a record of those hooks: regenerate it only
+# from v4.3.4's neuralmind/hooks.py, when the benchmark's method changes.
 V434 = REPO_ROOT / "bench" / "compression" / "results-v4.3.4.json"
 DOC = REPO_ROOT / "docs" / "benchmarks" / "compression.md"
 
@@ -52,9 +53,24 @@ def test_the_compressor_defaults_are_the_ones_measured(committed):
         "bash_small_passthrough": compressors.BASH_SMALL_PASSTHROUGH,
         "bash_tail_lines": compressors.BASH_TAIL_LINES,
         "search_max_matches": compressors.SEARCH_MAX_MATCHES,
-        "read_min_chars": measured["read_min_chars"],
+        "read_min_chars": compressors.READ_MIN_CHARS,
     }
     assert current == measured, f"compressor defaults changed; {REGENERATE}"
+
+
+def test_compress_read_passes_through_what_the_committed_run_says_it_does(committed, monkeypatch):
+    # Which files compress_read leaves alone decides the Read figures, so pin
+    # the committed threshold by behavior as well as by the constant.
+    monkeypatch.delenv("NEURALMIND_BYPASS", raising=False)
+
+    class Index:
+        def skeleton(self, file_path: str) -> str:
+            return "skeleton"
+
+    threshold = committed["meta"]["compressor_thresholds"]["read_min_chars"]
+    below, at = "x" * (threshold - 1), "x" * threshold
+    assert compressors.compress_read("m.py", below, mind=Index()) == below, REGENERATE
+    assert compressors.compress_read("m.py", at, mind=Index()) != at, REGENERATE
 
 
 def test_bash_results_match_what_the_hooks_do_today(committed, tmp_path):

@@ -58,6 +58,7 @@ import shlex
 import statistics
 import sys
 import tempfile
+from collections import Counter
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -86,6 +87,10 @@ GREP_HEAD_LIMIT = 250
 # Claude as a partial first page, so the Read summary also reports the
 # compressor figure without them.
 READ_PAGE_SENSITIVITY = 25_000
+# A skeleton's header names the file by absolute path, so its length would
+# depend on where the repos were checked out. The work directory is shown
+# as this root instead, which keeps results the same on any machine.
+READ_CHECKOUT_ROOT = "/work"
 BENIGN_EXIT_1 = {"grep", "rg", "egrep", "fgrep", "find", "diff", "test", "["}
 
 # Compressor thresholds are module constants read from the environment at
@@ -236,12 +241,20 @@ def apply_response(
 # --------------------------------------------------------------------------
 
 
+def _kept_count(needed: list[str], delivered: list[str]) -> int:
+    """How many of the ``needed`` lines ``delivered`` repeats.
+
+    Whole lines, counted with multiplicity: ten identical lines count as kept
+    only if the delivered text has ten of them too.
+    """
+    return sum((Counter(needed) & Counter(delivered)).values())
+
+
 def _kept_share(needed: list[str], delivered: str) -> float | None:
     """Share of ``needed`` lines that appear verbatim in ``delivered``."""
     if not needed:
         return None
-    lines = set(delivered.splitlines())
-    return sum(1 for ln in needed if ln in lines) / len(needed)
+    return _kept_count(needed, delivered.splitlines()) / len(needed)
 
 
 def _definitions(source: str) -> list[str]:
@@ -263,12 +276,20 @@ def _names_kept(names: list[str], delivered: str) -> float | None:
 
 
 def _source_lines_kept(source: str, delivered: str) -> float | None:
-    """Share of non-blank source lines whose text survives in ``delivered``."""
-    lines = [ln.strip() for ln in source.splitlines() if ln.strip()]
-    if not lines:
+    """Share of non-blank source lines that ``delivered`` repeats, ignoring indentation.
+
+    Lines are compared whole. A line of source text found only inside a
+    longer delivered line doesn't count, or one ``)`` in a skeleton would
+    stand for every closing parenthesis in the file.
+    """
+
+    def lines(text: str) -> list[str]:
+        return [ln.strip() for ln in text.splitlines() if ln.strip()]
+
+    needed = lines(source)
+    if not needed:
         return None
-    body = delivered
-    return sum(1 for ln in lines if ln in body) / len(lines)
+    return _kept_count(needed, lines(delivered)) / len(needed)
 
 
 # --------------------------------------------------------------------------
@@ -364,9 +385,10 @@ def _repo_sources(src: Path) -> list[Path]:
     return sorted(p for p in src.rglob("*.py") if ".neuralmind" not in p.parts)
 
 
-def read_samples(repo: str, src: Path, nm: Any, cwd: Path) -> list[dict[str, Any]]:
+def read_samples(repo: str, src: Path, nm: Any, cwd: Path, work_dir: Path) -> list[dict[str, Any]]:
     from neuralmind.compressors import compress_read
 
+    src, root = src.resolve(), work_dir.resolve()
     rows = []
     for path in _repo_sources(src):
         content = path.read_text(encoding="utf-8")
@@ -391,8 +413,14 @@ def read_samples(repo: str, src: Path, nm: Any, cwd: Path) -> list[dict[str, Any
         response = drive_hook("compress-read", payload)
         result, context = apply_response("Read", baseline, response)
 
-        # The compressor as designed: given the text, with the index loaded.
-        compressed = compress_read(str(path), baseline, mind=nm)
+        # The compressor as designed: given the file's text, as the hook gets
+        # it in file.content, with the index loaded. A hook returning its
+        # output as updatedToolOutput would have Claude Code render it like
+        # any Read result, line numbers included, so that is what's counted.
+        compressed = compress_read(str(path), content, mind=nm).replace(
+            str(path), f"{READ_CHECKOUT_ROOT}/{path.relative_to(root).as_posix()}"
+        )
+        delivered = read_result(compressed)
         defs = _definitions(content)
         rows.append(
             {
@@ -403,11 +431,11 @@ def read_samples(repo: str, src: Path, nm: Any, cwd: Path) -> list[dict[str, Any
                 "baseline_tokens": count_tokens(baseline),
                 "as_shipped_tokens": count_tokens(result) + count_tokens(context),
                 "added_context_tokens": count_tokens(context),
-                "compressor_only_tokens": count_tokens(compressed),
+                "compressor_only_tokens": count_tokens(delivered),
                 "as_shipped_sha256": _digest(result, context),
-                "compressor_only_sha256": _digest(compressed),
+                "compressor_only_sha256": _digest(delivered),
                 "compressor_reachable": True,
-                "compressed": compressed != baseline,
+                "compressed": compressed != content,
                 "definitions": len(defs),
                 "definitions_kept": _names_kept(defs, compressed),
                 "source_lines_kept": _source_lines_kept(content, compressed),
@@ -577,7 +605,7 @@ def run(work_dir: Path, corpus_dir: Path = CORPUS_DIR) -> dict[str, Any]:
                 nm = _build_nm(src)
             if nm is None:
                 raise SystemExit(f"could not build a NeuralMind index for {repo['name']}")
-            rows += read_samples(repo["name"], src, nm, Path(cwd))
+            rows += read_samples(repo["name"], src, nm, Path(cwd), work_dir)
             rows += grep_samples(repo, src, Path(cwd))
 
     by_tool = {tool: [r for r in rows if r["tool"] == tool] for tool in ("Read", "Bash", "Grep")}
@@ -649,8 +677,9 @@ def run(work_dir: Path, corpus_dir: Path = CORPUS_DIR) -> dict[str, Any]:
                 "bash_small_passthrough": compressors.BASH_SMALL_PASSTHROUGH,
                 "bash_tail_lines": compressors.BASH_TAIL_LINES,
                 "search_max_matches": compressors.SEARCH_MAX_MATCHES,
-                "read_min_chars": 1500,
+                "read_min_chars": compressors.READ_MIN_CHARS,
             },
+            "read_checkout_root_shown_as": READ_CHECKOUT_ROOT,
             "pinned_repos": {r["name"]: r["commit"] for r in manifest["repos"]},
             "bash_corpus_sha256": _corpus_digest(corpus_dir),
         },
@@ -721,7 +750,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "| Tool call | Calls a replacing hook could reach | Tokens, no hook | Tokens, compressor output | Change | What survives |",
         "|---|---:|---:|---:|---:|---|",
         (
-            f"| Read (whole file) | {r['compressor_reachable_calls']} ({r['compressed_files']} over 1,500 chars) | "
+            f"| Read (whole file) | {r['compressor_reachable_calls']} ({r['compressed_files']} compressed) | "
             f"{reach_base(reads):,} | {r['compressor_only_tokens']:,} | {_fmt_pct(r['compressor_only_change_pct'])} | "
             f"{_fmt_share(r['definitions_kept_mean'])} of definitions named, "
             f"{_fmt_share(r['source_lines_kept_mean'])} of source lines |"
@@ -736,6 +765,13 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"{g['per_mode']['content']['compressor_only_tokens']:,} | "
             f"{_fmt_pct(g['per_mode']['content']['compressor_only_change_pct'])} | "
             f"{_fmt_share(g['content_mode_matches_kept_mean'])} of matches |"
+        ),
+        "",
+        (
+            f"`compress_read` returns files under {meta['compressor_thresholds']['read_min_chars']:,} characters "
+            "unchanged and replaces the rest with their skeleton, counted as Read would render it, "
+            "line numbers included. Source lines kept are whole lines, counted with multiplicity, "
+            "over the files it compressed."
         ),
         "",
         (

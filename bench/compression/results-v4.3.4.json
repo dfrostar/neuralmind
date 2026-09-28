@@ -24,6 +24,7 @@
       "search_max_matches": 25,
       "read_min_chars": 1500
     },
+    "read_checkout_root_shown_as": "/work",
     "pinned_repos": {
       "requests": "0e322af87745eff34caffe4df68456ebc20d9068",
       "click": "874ca2bc1c30d93a4ac6e36a15ed685eafe89097",
@@ -46,15 +47,15 @@
         "max": 0.0
       },
       "compressor_reachable_calls": 136,
-      "compressor_only_tokens": 67895,
-      "compressor_only_change_pct": -88.6,
+      "compressor_only_tokens": 79008,
+      "compressor_only_change_pct": -86.8,
       "compressor_only_per_call_pct": {
-        "mean": -71.9,
-        "median": -84.3,
+        "mean": -67.5,
+        "median": -82.8,
         "min": -99.8,
         "max": 0.0
       },
-      "compressor_only_change_pct_excluding_large_files": -86.9,
+      "compressor_only_change_pct_excluding_large_files": -84.7,
       "large_files_excluded_from_that_figure": 3,
       "per_repo": {
         "click": {
@@ -70,16 +71,16 @@
             "max": 0.0
           },
           "compressor_reachable_calls": 16,
-          "compressor_only_tokens": 12040,
-          "compressor_only_change_pct": -89.4,
+          "compressor_only_tokens": 14598,
+          "compressor_only_change_pct": -87.1,
           "compressor_only_per_call_pct": {
-            "mean": -85.8,
-            "median": -88.5,
-            "min": -93.4,
-            "max": -66.6
+            "mean": -79.4,
+            "median": -86.3,
+            "min": -92.3,
+            "max": 0.0
           },
-          "definitions_kept_mean": 0.949,
-          "source_lines_kept_mean": 0.035
+          "definitions_kept_mean": 0.946,
+          "source_lines_kept_mean": 0.0
         },
         "flask": {
           "calls": 24,
@@ -94,16 +95,16 @@
             "max": 0.0
           },
           "compressor_reachable_calls": 24,
-          "compressor_only_tokens": 13516,
-          "compressor_only_change_pct": -86.9,
+          "compressor_only_tokens": 15232,
+          "compressor_only_change_pct": -85.2,
           "compressor_only_per_call_pct": {
-            "mean": -76.5,
-            "median": -84.2,
-            "min": -91.4,
+            "mean": -74.8,
+            "median": -82.8,
+            "min": -90.7,
             "max": 0.0
           },
           "definitions_kept_mean": 0.968,
-          "source_lines_kept_mean": 0.052
+          "source_lines_kept_mean": 0.0
         },
         "requests": {
           "calls": 18,
@@ -118,16 +119,16 @@
             "max": 0.0
           },
           "compressor_reachable_calls": 18,
-          "compressor_only_tokens": 9561,
-          "compressor_only_change_pct": -84.1,
+          "compressor_only_tokens": 10930,
+          "compressor_only_change_pct": -81.8,
           "compressor_only_per_call_pct": {
-            "mean": -62.4,
-            "median": -75.9,
-            "min": -93.3,
+            "mean": -57.8,
+            "median": -73.0,
+            "min": -93.5,
             "max": 0.0
           },
-          "definitions_kept_mean": 0.942,
-          "source_lines_kept_mean": 0.066
+          "definitions_kept_mean": 0.938,
+          "source_lines_kept_mean": 0.0
         },
         "rich": {
           "calls": 78,
@@ -142,21 +143,21 @@
             "max": 0.0
           },
           "compressor_reachable_calls": 78,
-          "compressor_only_tokens": 32778,
-          "compressor_only_change_pct": -89.8,
+          "compressor_only_tokens": 38248,
+          "compressor_only_change_pct": -88.1,
           "compressor_only_per_call_pct": {
-            "mean": -69.9,
-            "median": -83.6,
+            "mean": -65.0,
+            "median": -82.8,
             "min": -99.8,
             "max": 0.0
           },
-          "definitions_kept_mean": 0.913,
-          "source_lines_kept_mean": 0.068
+          "definitions_kept_mean": 0.905,
+          "source_lines_kept_mean": 0.0
         }
       },
-      "compressed_files": 117,
-      "definitions_kept_mean": 0.932,
-      "source_lines_kept_mean": 0.06
+      "compressed_files": 110,
+      "definitions_kept_mean": 0.927,
+      "source_lines_kept_mean": 0.0
     },
     "Bash": {
       "calls": 16,
@@ -179,8 +180,8 @@
         "min": -96.1,
         "max": 278.6
       },
-      "must_keep_kept_mean_reachable": 0.536,
-      "must_keep_kept_mean_failures": 0.662
+      "must_keep_kept_mean_reachable": 0.529,
+      "must_keep_kept_mean_failures": 0.541
     },
     "Grep": {
       "calls": 96,
@@ -346,7 +347,7 @@
       "compressor_only_sha256": "7a1122320aa0b70df8d447b4478e87164b9c074d297c938c2920d0a7d16a8d07",
       "compressor_reachable": false,
       "must_keep_lines": 45,
-      "must_keep_kept": 0.2
+      "must_keep_kept": 0.08888888888888889
     },
     {
       "tool": "Bash",
@@ -384,7 +385,7 @@
       "compressor_only_sha256": "2b25366cdd9b1ceb442243c4504ff41435c2fb6b9617792573cc8999f54de477",
       "compressor_reachable": false,
       "must_keep_lines": 8,
-      "must_keep_kept": 1.0
+      "must_keep_kept": 0.625
     },
     {
       "tool": "Bash",
@@ -460,7 +461,7 @@
       "compressor_only_sha256": "bdd30f5fbb4a983e4e07ceadbb95e091f5f232f46196f480e319cc8432aa165c",
       "compressor_reachable": true,
       "must_keep_lines": 24,
-      "must_keep_kept": 0.125
+      "must_keep_kept": 0.041666666666666664
     },
     {
       "tool": "Bash",
@@ -566,14 +567,14 @@
       "baseline_tokens": 1875,
       "as_shipped_tokens": 1875,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 125,
+      "compressor_only_tokens": 121,
       "as_shipped_sha256": "ce352282c5cc06cf1606824318f71f2af67447b7758c2124b586519dc1502929",
-      "compressor_only_sha256": "9f71e7bbddcb66ae1bf590eb730ea2f35a33dbb64969f4ce9912dd291995202d",
+      "compressor_only_sha256": "2817be17fb65fe29bf4dfc3cef5b9bc3514bc1588d4ff703abe021af9094bdc3",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 2,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.046357615894039736
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -602,14 +603,14 @@
       "baseline_tokens": 525,
       "as_shipped_tokens": 525,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 240,
+      "compressor_only_tokens": 525,
       "as_shipped_sha256": "22abba5768224bfb1d61678b4fdd0561ace8173d639848494f232f306e9ce24b",
-      "compressor_only_sha256": "b80b1e986df07ab0553b065d5434a4af7b9debb5cf4d0ef78d33003438010ffe",
+      "compressor_only_sha256": "71b68d178ccf4ffccdd93d0d31ce5680f4339a5f6eddadaccfb37d1340e75c02",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 2,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -620,14 +621,14 @@
       "baseline_tokens": 7999,
       "as_shipped_tokens": 7999,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 771,
+      "compressor_only_tokens": 868,
       "as_shipped_sha256": "9bd0340f98378b7658caa42d016e49ec5dc6618a82244b12b1eac4521948f364",
-      "compressor_only_sha256": "ed21ca8b161bf1eafcc9a14a4d5b415e79932533fc208b2340a8e41d9324a969",
+      "compressor_only_sha256": "4fdcada3df40b71b8c309ffb56adec7cb125eb147fb2b28135b9545f984b4cb5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 22,
       "definitions_kept": 0.9545454545454546,
-      "source_lines_kept": 0.054187192118226604
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -638,14 +639,14 @@
       "baseline_tokens": 2140,
       "as_shipped_tokens": 2140,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 475,
+      "compressor_only_tokens": 519,
       "as_shipped_sha256": "62271ddd49ffe6c1313d2a04c274ecf7dbd93375f30b5da8cdca612916e75ad8",
-      "compressor_only_sha256": "010377cffa2797a771a7b03308a1baa0f4987f4fd355e1f8b0982b1ec7c67215",
+      "compressor_only_sha256": "72b8189859ad769eb6e8212ac29ffc9b4b60506f65b25766e7b79ac75d89a60d",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.20833333333333334
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -656,14 +657,14 @@
       "baseline_tokens": 3360,
       "as_shipped_tokens": 3360,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 376,
+      "compressor_only_tokens": 444,
       "as_shipped_sha256": "4674ab2a6b21f068c1139d868508e2d0805518104d0c920762f85fa3a5c574a9",
-      "compressor_only_sha256": "bb348f8c91d9c392f95928793599384fba119b4c0edb43713e4e97254d964b99",
+      "compressor_only_sha256": "1099ff472e21b7799822a5dd3235eed631f5fb2cfd36aad7bc254d90a2e4d1d1",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 23,
       "definitions_kept": 0.8260869565217391,
-      "source_lines_kept": 0.06
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -692,14 +693,14 @@
       "baseline_tokens": 757,
       "as_shipped_tokens": 757,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 196,
+      "compressor_only_tokens": 225,
       "as_shipped_sha256": "07db5ddb3fb8149db4fce776f09c4c909ad1da206c78429641e6a2672b995a22",
-      "compressor_only_sha256": "20b0d028d9f65ba6990830036ffcbdd5362c8af12daec9e0e9caa2a250dd36bb",
+      "compressor_only_sha256": "03ec46ae36d186d336b450942accc7061ad455204449d5898e8a3533bc2f8e43",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 1,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.025974025974025976
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -710,14 +711,14 @@
       "baseline_tokens": 5849,
       "as_shipped_tokens": 5849,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1531,
+      "compressor_only_tokens": 1763,
       "as_shipped_sha256": "59b96707fb120135f8160fd62e107acb3f0f8e0f843b2a167bb0fb38afde528a",
-      "compressor_only_sha256": "86989f5493bdded008363ddffa429795233e7828e6a3708f4b806fdfcb197f4d",
+      "compressor_only_sha256": "4d86cb6a9cf11b246ba67f3c2141952bdff4634b1d46955f822f18dbf18632bc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 53,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.06651884700665188
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -728,14 +729,14 @@
       "baseline_tokens": 1357,
       "as_shipped_tokens": 1357,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 632,
+      "compressor_only_tokens": 706,
       "as_shipped_sha256": "770194f40a0509344ac040d20f4ebd9d23cb2db1f7423aad4cbe0cd992c1fe56",
-      "compressor_only_sha256": "15cedba3315a74437e81c94e58ba5d567cac9aa7213b80e89f26352868309acc",
+      "compressor_only_sha256": "aca12e86ff11032f089431d443e46ba70a428f38dc234f4da92b1ba57cccbfd7",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 28,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.09782608695652174
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -746,14 +747,14 @@
       "baseline_tokens": 1279,
       "as_shipped_tokens": 1279,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 180,
+      "compressor_only_tokens": 190,
       "as_shipped_sha256": "aca066d3c9b24ce7c55bf6ef71976e9afc96b169df97d45392be13c12e385024",
-      "compressor_only_sha256": "0fcbb930ad45dda4f39c0b63fd4a28c08c04ed626ac1720eedc649d037cd5d4a",
+      "compressor_only_sha256": "6b3bc820dca4db1717a2ad61d63a1b2cce4ee49e0e1c700108c7a8464d2ef896",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.026785714285714284
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -782,14 +783,14 @@
       "baseline_tokens": 10799,
       "as_shipped_tokens": 10799,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1216,
+      "compressor_only_tokens": 1407,
       "as_shipped_sha256": "7f36a1052fe209a23592877428249dbe2df5188381c7db210c43c3f0c9bd390e",
-      "compressor_only_sha256": "d29d897049b464e9c113f5d8bc7c7acdaaf8db4645b76c28f26e3ee4510f0b91",
+      "compressor_only_sha256": "8453cc7b289649e99e8cb7044a6ba4e52f980e9c8202829bf43fd1fc1f041416",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 49,
       "definitions_kept": 0.9795918367346939,
-      "source_lines_kept": 0.06074766355140187
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -818,14 +819,14 @@
       "baseline_tokens": 9032,
       "as_shipped_tokens": 9032,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 988,
+      "compressor_only_tokens": 1104,
       "as_shipped_sha256": "64301aa661987e94afb76d4e39c7da34c96d5e8479434af45c23fd088ad525f2",
-      "compressor_only_sha256": "5972e44814cf2f5c42630cc3a3ba37842d8817cf95edfd9ade269c20b5ca4c97",
+      "compressor_only_sha256": "af5f9d883fb11c019a5dc4f938e5d9a893dd1ce8344f01161bc3efca891439a6",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 30,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.11436950146627566
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -836,14 +837,14 @@
       "baseline_tokens": 1615,
       "as_shipped_tokens": 1615,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 119,
+      "compressor_only_tokens": 115,
       "as_shipped_sha256": "f323f6dcaadfc360c5029c6fd535b19521c39d2fa424d23f28f5964ec03d499a",
-      "compressor_only_sha256": "9bb6f31f8aede90f7ca103872e9d0d81148e1700f25c42c898482941fbb78dff",
+      "compressor_only_sha256": "1e25958e7b333ac08a378014d4f990842bc4975627903fd76d759c8018abea27",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 2,
       "definitions_kept": 0.5,
-      "source_lines_kept": 0.017241379310344827
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -854,14 +855,14 @@
       "baseline_tokens": 1004,
       "as_shipped_tokens": 1004,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 265,
+      "compressor_only_tokens": 315,
       "as_shipped_sha256": "97e6e2df37801f9bf0aaed4ae313a683bed8800e80af4c5e25fe6adbdcbdff37",
-      "compressor_only_sha256": "25b392af3f65e1a82bff1964e66f6fb31643b48407926c7a85bff60b87af64ad",
+      "compressor_only_sha256": "ded4170fea384f67a563df7a65ba840d173631450b54de37ef906f7eaa12a6df",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 16,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.013888888888888888
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -872,14 +873,14 @@
       "baseline_tokens": 11486,
       "as_shipped_tokens": 11486,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1487,
+      "compressor_only_tokens": 1668,
       "as_shipped_sha256": "49f4472fcfe05f0bb94b6c24c13f4604afec3a980d11f5f76005990717251bd9",
-      "compressor_only_sha256": "c556c63ca7a56ea7b079dd45f331e38a6380cc63d7a1f531f0fc238dc9e31926",
+      "compressor_only_sha256": "e1f1866782c9afa09dde482bc3ad2a874b2a74b460c8fca6acf213c8f11499ac",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 43,
       "definitions_kept": 0.9302325581395349,
-      "source_lines_kept": 0.13673232908458866
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Grep",
@@ -1306,9 +1307,9 @@
       "baseline_tokens": 931,
       "as_shipped_tokens": 931,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 108,
+      "compressor_only_tokens": 98,
       "as_shipped_sha256": "bf13006edbc910b72eb3d6110d19b1484da7327c2706e048cfb01906b934c3f4",
-      "compressor_only_sha256": "d8efd7f86c62c240f03809347e6eb9025c8f6c7b438e50cf0f9267dcb7f2d0af",
+      "compressor_only_sha256": "b745f6ce0b43136e93e80fbf2f5369b76ad349256e189d85b0f86f171317861a",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
@@ -1324,14 +1325,14 @@
       "baseline_tokens": 6485,
       "as_shipped_tokens": 6485,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 894,
+      "compressor_only_tokens": 1133,
       "as_shipped_sha256": "de6b17bcea4f7ce9a4cc5df9536a596564705e877ae49ee8b85743c7d4374f63",
-      "compressor_only_sha256": "625f8ef97db01c7a1ae42b69c796d99bd88dfe470a283d42a1170a01b74073e0",
+      "compressor_only_sha256": "402310bfa1d1aa214f2820ab5a308e0ab43eadbaed48e8967f549b306aa4b8d7",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 52,
       "definitions_kept": 0.9038461538461539,
-      "source_lines_kept": 0.026156941649899398
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1342,14 +1343,14 @@
       "baseline_tokens": 7939,
       "as_shipped_tokens": 7939,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 525,
+      "compressor_only_tokens": 654,
       "as_shipped_sha256": "3978c36f5fadd66d3a229499bcfa11becc195527c155f192e60c3556c3a957cb",
-      "compressor_only_sha256": "96f40afa76dc6233b79c65fc35f3ab76f1498804520829961ed0277352467461",
+      "compressor_only_sha256": "870a0f49ad5d48a48578b2af94cb138ba5112108d742658af62880500b4c5759",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 36,
       "definitions_kept": 0.8611111111111112,
-      "source_lines_kept": 0.017741935483870968
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1360,14 +1361,14 @@
       "baseline_tokens": 456,
       "as_shipped_tokens": 456,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 134,
+      "compressor_only_tokens": 456,
       "as_shipped_sha256": "e2f0d5f27b6d97430b75172fab3df28a55c0c8c5c9260d3ae5e2f5ffcabe6f3f",
-      "compressor_only_sha256": "0d99eaabe2ba9b0d6218f7627e81056995d1ff839a3480a810cb73719fc4506d",
+      "compressor_only_sha256": "c7e51f9e03744fb7c4b9601e0481ea566b5a10c70650c5aa5011a776b446b2d8",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 4,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -1378,14 +1379,14 @@
       "baseline_tokens": 2861,
       "as_shipped_tokens": 2861,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 478,
+      "compressor_only_tokens": 627,
       "as_shipped_sha256": "a3dc73ed2c10919775c42ce5d9fa0b775c0ad97e25e2257a0b8dfdbb49f877d3",
-      "compressor_only_sha256": "800343cc50989cfc77b26424cb4ce2ccd4bfce904be34c07449b84d8f02c61fc",
+      "compressor_only_sha256": "892c640b9ae798ef8fa8b36e500494983ef7a9c7974c96b2cbca06cd02e68f16",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 25,
       "definitions_kept": 0.92,
-      "source_lines_kept": 0.03982300884955752
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1396,14 +1397,14 @@
       "baseline_tokens": 36095,
       "as_shipped_tokens": 36095,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 3258,
+      "compressor_only_tokens": 3819,
       "as_shipped_sha256": "d68d0a984d3e74d15fe44dd85638a2a1c61932e6cbec51458f9b1e26b1d217fb",
-      "compressor_only_sha256": "8bc4d1cb77428eebb94f82daf635f077bddfb638551003d2fb2d60bf64949a9f",
+      "compressor_only_sha256": "b639ad367a14444cf1b7084759da6cac34db771369131ba8e239295da5608d3f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 155,
       "definitions_kept": 0.9483870967741935,
-      "source_lines_kept": 0.057924376508447305
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1414,14 +1415,14 @@
       "baseline_tokens": 6398,
       "as_shipped_tokens": 6398,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 579,
+      "compressor_only_tokens": 648,
       "as_shipped_sha256": "2b41abde00d37cbb6c0d55cfac36088474d3955d2d0a6960b39cce3318e12f4d",
-      "compressor_only_sha256": "c5683edd22f0ef387e62659b1d82c403d3d33923d2c0ab29517d0a3a240dca43",
+      "compressor_only_sha256": "897b29c9b65673369ea1290ac9d214bf61dcab4ddb87480aa840400931f78029",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 33,
       "definitions_kept": 0.8787878787878788,
-      "source_lines_kept": 0.058004640371229696
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1432,14 +1433,14 @@
       "baseline_tokens": 3006,
       "as_shipped_tokens": 3006,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 523,
+      "compressor_only_tokens": 617,
       "as_shipped_sha256": "a8c5d28badac5bae5d03a68de0f29f71b5979c2563e28567b7f3cd3b0d4b7151",
-      "compressor_only_sha256": "13951e85e1898724d8b379e245e959920eb1ee305e9fef22d58a2b2cb88dd155",
+      "compressor_only_sha256": "55ce132d7cdfaeb93c22a8684743cfe46edf2a6837b94951e77dab729e1773d5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 28,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04954954954954955
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1450,14 +1451,14 @@
       "baseline_tokens": 3122,
       "as_shipped_tokens": 3122,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 515,
+      "compressor_only_tokens": 584,
       "as_shipped_sha256": "44062fe7d552402ac5ecc7b0358a32ef60858755a56580c61972ba19abc6421c",
-      "compressor_only_sha256": "c979208326e525d747fac8b909994ed23ee918169f868896b7237dd200786ce4",
+      "compressor_only_sha256": "e3cbe3caf75529e7fbd57ba452b152c2ea6060068e11e035dc6593d5eb7af7d7",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 18,
       "definitions_kept": 0.9444444444444444,
-      "source_lines_kept": 0.0642570281124498
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1468,9 +1469,9 @@
       "baseline_tokens": 691,
       "as_shipped_tokens": 691,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 231,
+      "compressor_only_tokens": 247,
       "as_shipped_sha256": "cfaf723f79f6b68b3c86e8137bf223e29a198981d049c93286afcb742e78ae0b",
-      "compressor_only_sha256": "9f7b324804d8e159f0b724f75faa332fb2172395618a2a71284943fdff7e4f8f",
+      "compressor_only_sha256": "747061dcd30acdb0f8009db55384c572c2f10fa4abd1af471dbf57fd2b38d183",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
@@ -1486,14 +1487,14 @@
       "baseline_tokens": 6054,
       "as_shipped_tokens": 6054,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 565,
+      "compressor_only_tokens": 675,
       "as_shipped_sha256": "82ffc3c8ba3c28a6487b5c17c3266d5600344ecdd8202d0dfb37e4fffc3b87ed",
-      "compressor_only_sha256": "53be46b592de5ef60c4d1063530068b84dc069c9f608a638daa2f522cf85ecbb",
+      "compressor_only_sha256": "aef002743b697ace0fc8a81936dab0d2ada92ffe66f18bd602181453e968e9f1",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 25,
       "definitions_kept": 0.96,
-      "source_lines_kept": 0.031746031746031744
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1504,14 +1505,14 @@
       "baseline_tokens": 6139,
       "as_shipped_tokens": 6139,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 930,
+      "compressor_only_tokens": 1082,
       "as_shipped_sha256": "8277b7d27769128d84f2fc5c03700495daaee4243794dd11dca2f10208459eaa",
-      "compressor_only_sha256": "a2f9d0f230dbc6ec6286564087f4b7609d260088758f36add56a05c11a5b67d2",
+      "compressor_only_sha256": "b998f3b3b3f8d6bd028a3da2cd74095148801decd11e75f243d01fd2c0493a41",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 31,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.06183368869936034
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1522,14 +1523,14 @@
       "baseline_tokens": 9244,
       "as_shipped_tokens": 9244,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 624,
+      "compressor_only_tokens": 713,
       "as_shipped_sha256": "79d1d75f820e2fce4680781ee6cf6c7c09965a01dda50d1760a3a2dccc97bbc9",
-      "compressor_only_sha256": "3aae8e6c5293d7197120618fe71861e7f246d6498f8ff2972c881750fc38b06e",
+      "compressor_only_sha256": "c201ffd56a843f4e2fa7cb9afc1b2b5fd5ccdad304ca8c8fa2820737d70570d9",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 18,
       "definitions_kept": 0.9444444444444444,
-      "source_lines_kept": 0.03709428129829984
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1540,14 +1541,14 @@
       "baseline_tokens": 5050,
       "as_shipped_tokens": 5050,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 530,
+      "compressor_only_tokens": 638,
       "as_shipped_sha256": "856f04a0fae1df627f919ec138a269949a02a15e2b0800e031ca77c57f32dd0e",
-      "compressor_only_sha256": "f51629876db6054e9ff1169811bd4e95d6107c26030edbb1fb9643c80d1b27a9",
+      "compressor_only_sha256": "b14d27bff9bc233fe8ccf2dd84d1f9b3f69623c529996f66f48b0ae0bff1973f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 33,
       "definitions_kept": 0.8787878787878788,
-      "source_lines_kept": 0.017587939698492462
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1558,14 +1559,14 @@
       "baseline_tokens": 11922,
       "as_shipped_tokens": 11922,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1374,
+      "compressor_only_tokens": 1709,
       "as_shipped_sha256": "0bb43ad1d949261d868f79b9dbe0dec47640965745c193de857ac15842e90c42",
-      "compressor_only_sha256": "6185d5a56bbe691e8ad8e076599cae66a5e19b4c0d44db084db78fe9fd73dcb6",
+      "compressor_only_sha256": "1af0b8ec16187271016790d38ce27365e1c31c94c51287cf6cdcd7f38db42d81",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 80,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.053488372093023255
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1576,14 +1577,14 @@
       "baseline_tokens": 6905,
       "as_shipped_tokens": 6905,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 772,
+      "compressor_only_tokens": 898,
       "as_shipped_sha256": "33875e48b503b897c8553e9d6c7bfe30f5972ecacfef408cb4d50dccd0638cdf",
-      "compressor_only_sha256": "7115e75655c1751a073c0cb18938e5c3cfce15b5986b176d99cab3337b26ecf3",
+      "compressor_only_sha256": "e8fae3edf08ab8a2003e0fd18bd67c0d9d4ecb2ba3d4c98ccbc280111b94f35b",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 34,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04426559356136821
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Grep",
@@ -1914,14 +1915,14 @@
       "baseline_tokens": 729,
       "as_shipped_tokens": 729,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 115,
+      "compressor_only_tokens": 108,
       "as_shipped_sha256": "9ff97d81e86f1cab4e387fbccb1be78d20c233894cdb12bc22b17131402f15e5",
-      "compressor_only_sha256": "6c6e67e616682d308d441e6928d00b8287eaddcaa0c70c6bb481be5feef519a4",
+      "compressor_only_sha256": "fd9b8e370771dc092d9c1a7921dfffad551d18df539bcb44443c488a6f7fd0a4",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 1,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.018518518518518517
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1950,14 +1951,14 @@
       "baseline_tokens": 17977,
       "as_shipped_tokens": 17977,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1568,
+      "compressor_only_tokens": 1758,
       "as_shipped_sha256": "fe780f784de49269ec3fd5d7ee616e18de49a0cff35ea8e92882f9d3c332327e",
-      "compressor_only_sha256": "d51953f733d1e48b68a9e392a15ccffd8bdd913be37c984bba46fe73205ffa81",
+      "compressor_only_sha256": "a749abb3756bdb59b12608614421ee725c9aee65f8c1f93afa4fb5a82a9bef80",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 36,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04660670482420278
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1968,14 +1969,14 @@
       "baseline_tokens": 1414,
       "as_shipped_tokens": 1414,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 232,
+      "compressor_only_tokens": 237,
       "as_shipped_sha256": "cf8bdc1b4ca0d0ba8afa4cf30f02282042f49511112b4a2ddfca84e9092f9511",
-      "compressor_only_sha256": "79869c50155f19c6ba0b730976db0aa72f518da40ae286c79c6fe9af37e4e7c8",
+      "compressor_only_sha256": "9c87f50678ac0626ad8b347ec800f10aa46d0948938888349be99284b042c0d5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04950495049504951
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -1986,14 +1987,14 @@
       "baseline_tokens": 11949,
       "as_shipped_tokens": 11949,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1062,
+      "compressor_only_tokens": 1226,
       "as_shipped_sha256": "f9249a640cab99bf24262c699fe548ab3b29cccea60b5265ce4eedd1149c21ee",
-      "compressor_only_sha256": "dcbc44f2a7988aced2e3eb9bb6e727276cd67a9c4d8ff4d2b6397b73221e7dd6",
+      "compressor_only_sha256": "319d0992244ac487eebc5e11e8fa2e07b7a72fb1a2aeecd106884a6e77209acc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 42,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.05549263873159683
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2004,14 +2005,14 @@
       "baseline_tokens": 4065,
       "as_shipped_tokens": 4065,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 456,
+      "compressor_only_tokens": 508,
       "as_shipped_sha256": "ec030c81f2e24085d64687897a81aae184b30ec8a2568213805fc2eb7d40a2d4",
-      "compressor_only_sha256": "d0559672524eb13ddb051dcca42858a8a92d483d62ec92392fcfece05ed3791a",
+      "compressor_only_sha256": "a98e57abb134813e16be767c5b7b871348deb6bd77c60f1a1816e03c5a065c54",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 16,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.020833333333333332
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2022,14 +2023,14 @@
       "baseline_tokens": 4798,
       "as_shipped_tokens": 4798,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 742,
+      "compressor_only_tokens": 864,
       "as_shipped_sha256": "8548b68ef600530070518095c633cf03e761362676ac178bae1110405424f255",
-      "compressor_only_sha256": "0cf3324d8d2297faadf2fbc0fd27e65c166bb8bca308dcbef29eeacb1621d3e8",
+      "compressor_only_sha256": "c016277d6dad57785a1accc9701c2c268ab9510750d49ac1381c5e56d638bedb",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 30,
       "definitions_kept": 0.9666666666666667,
-      "source_lines_kept": 0.03724928366762178
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2040,14 +2041,14 @@
       "baseline_tokens": 1944,
       "as_shipped_tokens": 1944,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 306,
+      "compressor_only_tokens": 334,
       "as_shipped_sha256": "609d10d1d0e1513f8cb189dcb8f82b93990243bc2869360e806669a07de1d17a",
-      "compressor_only_sha256": "b40b46c43466d0b24d10a48e1042e82a897de56dd10745aac1bcc348d78893af",
+      "compressor_only_sha256": "bc9a71704b2b4573ff49002aebedbc734a63de94822a7a13afe77f26ba1e54b0",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 11,
       "definitions_kept": 0.9090909090909091,
-      "source_lines_kept": 0.0684931506849315
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2058,14 +2059,14 @@
       "baseline_tokens": 594,
       "as_shipped_tokens": 594,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 170,
+      "compressor_only_tokens": 190,
       "as_shipped_sha256": "34817ec2ba9a9ccd0073fb6b81f412ffd90acc5d0008b26a765e3f7185dfdd44",
-      "compressor_only_sha256": "278f55b317908da38125668354589b4757c5459142de24e0d90ee5563502a0f3",
+      "compressor_only_sha256": "0b6f2e91741586120958d392aa32fc435d4ddcd01171ed8fc77b39e7ff2ebf99",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
       "definitions_kept": null,
-      "source_lines_kept": 0.13953488372093023
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2076,14 +2077,14 @@
       "baseline_tokens": 7299,
       "as_shipped_tokens": 7299,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 625,
+      "compressor_only_tokens": 677,
       "as_shipped_sha256": "470037e48cab08302fff6e770d7a75518300cb10721d8d71f45cbecdf378ef4b",
-      "compressor_only_sha256": "f82156ae6f72082b12af667f23ac60e0e6d05c248c765a96ee23f3fbeee91e32",
+      "compressor_only_sha256": "94d2c56d693b1f4579c7963ee4438377b1d1b834b763dbff1b474142d7e16666",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 17,
       "definitions_kept": 0.8823529411764706,
-      "source_lines_kept": 0.038461538461538464
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2094,14 +2095,14 @@
       "baseline_tokens": 1960,
       "as_shipped_tokens": 1960,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 307,
+      "compressor_only_tokens": 312,
       "as_shipped_sha256": "475a788b67e20d20f8c41f4d082ca11e5bb2cfb16c83677a6c77368347f220c0",
-      "compressor_only_sha256": "ba0c86744b495f62fc326896686734cd0b85bf1d7a6e9aedee53925b381907a8",
+      "compressor_only_sha256": "2822001470687a69b8d86707406bf1dc67a5b0a879d87b84557a7c7bbadae408",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.040983606557377046
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2112,14 +2113,14 @@
       "baseline_tokens": 2522,
       "as_shipped_tokens": 2522,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 524,
+      "compressor_only_tokens": 579,
       "as_shipped_sha256": "b27da4f0853bc1ac77f785834d7b3047295a21c33e79648d3cdb94e7379237ae",
-      "compressor_only_sha256": "5694b5f0042896ddfb34d7845f1d0b4af9d6f9284cd9b23e0bf063bfc9dfb1c0",
+      "compressor_only_sha256": "9d1a2fe10faf45838b8e816ca625c88e223b4ef07841ce3b003406b387f7d0d6",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 13,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.09202453987730061
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2130,14 +2131,14 @@
       "baseline_tokens": 3313,
       "as_shipped_tokens": 3313,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 744,
+      "compressor_only_tokens": 929,
       "as_shipped_sha256": "c18c0025cd2819624557f224feeb040caffcf20927aaf4d356c7f617d061672d",
-      "compressor_only_sha256": "07d4570c6e08eedf428181c4759e6096e464ae950576e8c00e89f95135d8c408",
+      "compressor_only_sha256": "6425bed3524430f92264d05eccb6adbd756c0d37158c29b47dd897a14dddf794",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 44,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.012711864406779662
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2148,14 +2149,14 @@
       "baseline_tokens": 831,
       "as_shipped_tokens": 831,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 240,
+      "compressor_only_tokens": 253,
       "as_shipped_sha256": "463d36ea6be2cd66c066351780cd7a858d5cc06af6e0c1d3e2847b8194edf9f2",
-      "compressor_only_sha256": "7e48ed9f72c9efe5991a7dd49b60cb1c61a6538040d36c87d329417b35c6f626",
+      "compressor_only_sha256": "5ebece9771cee8c91d62d239f8bc278a1fb401be655d0a7bef4d8486d1813dbc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.03636363636363636
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2166,14 +2167,14 @@
       "baseline_tokens": 11456,
       "as_shipped_tokens": 11456,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1200,
+      "compressor_only_tokens": 1355,
       "as_shipped_sha256": "e571b8fa1f6755ca1cf3175e4b6d991d4014acdc0ef2c39ec40fb2d104fad116",
-      "compressor_only_sha256": "bf3a5183af451852a6f33846700eb8f7ccb486168ae6e1d61581989e0084020f",
+      "compressor_only_sha256": "e86da93d1ffa94418302f0f56b2be8d16851bcd901188beae701728c851c2f96",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 35,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04020100502512563
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2184,14 +2185,14 @@
       "baseline_tokens": 7266,
       "as_shipped_tokens": 7266,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1106,
+      "compressor_only_tokens": 1256,
       "as_shipped_sha256": "bce392d285a81fbfe15261a575b6ad7698dc7ac2e988e2bbd11b9c2f5efd9472",
-      "compressor_only_sha256": "f6d05af63ef8d7b221bf2169727dc65bf8c43ae222abae969b6ec85613bdd1cb",
+      "compressor_only_sha256": "24780cd91e73731b5408c50b1866415692814898ccc17f1b10cb57b7c5cd0ec1",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 36,
       "definitions_kept": 0.7222222222222222,
-      "source_lines_kept": 0.04007633587786259
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2202,14 +2203,14 @@
       "baseline_tokens": 9229,
       "as_shipped_tokens": 9229,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1137,
+      "compressor_only_tokens": 1300,
       "as_shipped_sha256": "b2039e6007aeab9310eb5f0a9e73a72b7c983a1a95cb6ed7c8cd0d936cbd7c9d",
-      "compressor_only_sha256": "31dcdc24328ea11bcee7fd27921cdd585460dc5b98b9f16bc3629460827b5d20",
+      "compressor_only_sha256": "3a902e860b464a24771c44af87073e454b6a8006a55be5a11fce4b8edabd6bf2",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 37,
       "definitions_kept": 0.972972972972973,
-      "source_lines_kept": 0.038580246913580245
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2220,14 +2221,14 @@
       "baseline_tokens": 4499,
       "as_shipped_tokens": 4499,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 919,
+      "compressor_only_tokens": 1043,
       "as_shipped_sha256": "cce077665432e8d6cc04f5933e86019b542e33a8bd243114fa9a78a7a75169ee",
-      "compressor_only_sha256": "578b1615fc1f4a281d8c47b8453ec5b0a5dca5f01b06a280eeda98112a73dc60",
+      "compressor_only_sha256": "0393cbdd2a03f120bf4d5c599074d661beb304a9c763705d194ccb844a018a4c",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 29,
       "definitions_kept": 0.9655172413793104,
-      "source_lines_kept": 0.0392156862745098
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2256,14 +2257,14 @@
       "baseline_tokens": 2413,
       "as_shipped_tokens": 2413,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 472,
+      "compressor_only_tokens": 541,
       "as_shipped_sha256": "50ac3f1c9f94183f2d0ab8ba43bfb7dedf9b88ce32211aa81756b1ad54c6b818",
-      "compressor_only_sha256": "63ee39bbdc33fba43ac05cae3484a47ff1abcd9d55455eac523304821634b203",
+      "compressor_only_sha256": "9c40ec648ce3fda019c77ed890475b1b37c94e83191119065920ca122bc54911",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 17,
       "definitions_kept": 0.9411764705882353,
-      "source_lines_kept": 0.057803468208092484
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2274,14 +2275,14 @@
       "baseline_tokens": 3246,
       "as_shipped_tokens": 3246,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 432,
+      "compressor_only_tokens": 492,
       "as_shipped_sha256": "500bd4eedb65b786452f56cef1a8e81609bbaeaa8c3371e18b987b53fd0f88a5",
-      "compressor_only_sha256": "881bf11149f4c9559dddd36fe3a886366defd8dd3dd6a37b9d82297e064b9d29",
+      "compressor_only_sha256": "fb10d324abbf2cdb016cb6836762d203d8d7c692341038465ca89a3b904d33b1",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 15,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.03375527426160337
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2292,14 +2293,14 @@
       "baseline_tokens": 1123,
       "as_shipped_tokens": 1123,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 241,
+      "compressor_only_tokens": 288,
       "as_shipped_sha256": "5e75e0def85dc37a1ee13a3d9b43fb6e53b4fe87d564f6243717e923f426afe4",
-      "compressor_only_sha256": "c2826733cd227874390c3ed9a06974df05685629b11782f27cda6048d13410d0",
+      "compressor_only_sha256": "64892566051239bb60d61f1c21498191404a1c5a607a3741a25ec201506b33f8",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
       "definitions_kept": null,
-      "source_lines_kept": 0.1375
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2310,14 +2311,14 @@
       "baseline_tokens": 2202,
       "as_shipped_tokens": 2202,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 288,
+      "compressor_only_tokens": 314,
       "as_shipped_sha256": "d5b8011918e4f03ba5c7ecdc40702fe2e6720d9cebcfdc32ffc68fbf3a53d0e7",
-      "compressor_only_sha256": "4788bf000d302a75d9946ccd638d6a83650c028dd66800510154b1db271c48ea",
+      "compressor_only_sha256": "1fa368ef6704e28a9ff82a9032047d3bd687050edb4ba011df1cbd0403f0a68f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0410958904109589
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2328,14 +2329,14 @@
       "baseline_tokens": 1873,
       "as_shipped_tokens": 1873,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 396,
+      "compressor_only_tokens": 434,
       "as_shipped_sha256": "ed1cff0117e807a1423fe8284c500272a2fc0ccadce4865ed749868cab95118f",
-      "compressor_only_sha256": "6df3b58cf03f99906e4482a1b4f01c6984ad15615de590fe54d40eeda27f43e1",
+      "compressor_only_sha256": "62813f8da4470715d4e587a02df31aba31ab1acc56ebc2b3b3172298b2c472eb",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 9,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.05384615384615385
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Grep",
@@ -2762,14 +2763,14 @@
       "baseline_tokens": 1982,
       "as_shipped_tokens": 1982,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 324,
+      "compressor_only_tokens": 353,
       "as_shipped_sha256": "9f38dc9ad0b229c20734253bad00dfb0c4aeb476214a56f59a3116db1897393c",
-      "compressor_only_sha256": "27018f5e1529028b9bdf7dc2c8647994bf631972f989504f1654eb9e6189af12",
+      "compressor_only_sha256": "c00235af75800d2f540158cd26974442769dfccf95c753a83efe7f16ddab0131",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.1103448275862069
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2780,14 +2781,14 @@
       "baseline_tokens": 2988,
       "as_shipped_tokens": 2988,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 147,
+      "compressor_only_tokens": 149,
       "as_shipped_sha256": "ae4077c24fe64bb65e44d5c46b01009c614541783c14c71c215e57cb773512ea",
-      "compressor_only_sha256": "95372ba7c1c058c54ccc9cad411b1507fdab5d9954653a55ef86d30524279ba7",
+      "compressor_only_sha256": "20018c15ca9f7c0671e62f745886d93da73af2199a110850edc5c9b6c82cd558",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 0.8,
-      "source_lines_kept": 0.1016949152542373
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2798,14 +2799,14 @@
       "baseline_tokens": 6772,
       "as_shipped_tokens": 6772,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 115,
+      "compressor_only_tokens": 108,
       "as_shipped_sha256": "e383dd9fed698ed5a9969da9dea2fb0d420ceeb303581cfad35ad1fcf6e909d7",
-      "compressor_only_sha256": "3c61bbd9ae19f5ccd8568887b3bb6ddf25abe6108b0f0296ffddb3953647dc5e",
+      "compressor_only_sha256": "42850093131e30a1347628aa12d42e7c30d01536d07768ca7a6d0c33739d6a61",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
       "definitions_kept": null,
-      "source_lines_kept": 0.002207505518763797
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2816,9 +2817,9 @@
       "baseline_tokens": 63881,
       "as_shipped_tokens": 63881,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 114,
+      "compressor_only_tokens": 107,
       "as_shipped_sha256": "dac85ef1e57a28ddd4b6340962e5475e51e4c42f8f4782825530eab04306d6a2",
-      "compressor_only_sha256": "14441d71bcad36b4bc7e2bb6eb561895c3df89d0388e409dfda7ce6154c3c791",
+      "compressor_only_sha256": "4226712905dd2191b9c77d0e7369f8ce9d22201ab9dc34175fc8ce6081bd433b",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
@@ -2852,9 +2853,9 @@
       "baseline_tokens": 855,
       "as_shipped_tokens": 855,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 141,
+      "compressor_only_tokens": 143,
       "as_shipped_sha256": "5382125805deb27ef1884c6efdb6cf788e736859801d28495d85a463ca75df5f",
-      "compressor_only_sha256": "7847519d2019d0619695265436f236931eec412a0ccab5b5113723e172d38c8b",
+      "compressor_only_sha256": "3af4c0d2112da7b5cb3afea6624956d8e89481e4d447eb94038252708e2b1214",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
@@ -2906,14 +2907,14 @@
       "baseline_tokens": 2970,
       "as_shipped_tokens": 2970,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 441,
+      "compressor_only_tokens": 494,
       "as_shipped_sha256": "e5f28309715273dc5ddddf42a27216a71b5f765949db31032ba9692673cb504a",
-      "compressor_only_sha256": "b11eed445d3c8ac0c6557fa12406c626393bfdbb73a809311fb19892e6af88cc",
+      "compressor_only_sha256": "9d6d9bef5dd4957c44b9443d37c7f023a1842b82f9fbacf24283588c60f7f661",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 13,
       "definitions_kept": 0.8461538461538461,
-      "source_lines_kept": 0.0735930735930736
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2924,14 +2925,14 @@
       "baseline_tokens": 997,
       "as_shipped_tokens": 997,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 132,
+      "compressor_only_tokens": 134,
       "as_shipped_sha256": "2a808761091cb8a94a2e2cf9947ff3f1f07c176c76f275a5c0ab094de8ef9904",
-      "compressor_only_sha256": "95168a31a2d236668dd2e941b0b3f2070ab1c617f6b27e404aab9cfa04c9ba5f",
+      "compressor_only_sha256": "5b5f74c5fcef8bc4cec56a46890d7ec299c100c79b0605112ae17a5cba182185",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.024691358024691357
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -2942,14 +2943,14 @@
       "baseline_tokens": 417,
       "as_shipped_tokens": 417,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 174,
+      "compressor_only_tokens": 417,
       "as_shipped_sha256": "e37816f6bfdb08ee2b6758a01980fedbe642dcac77e8b03ebf6dc89e71f11285",
-      "compressor_only_sha256": "ad2a04203d7ee28b98065713288e251de75d6a5279ce19a1dc6f11f4ef45cf3c",
+      "compressor_only_sha256": "111dfd268a9c513fc49bbfc6e531295f6a97e1898c82fd9bb327da7b9e3881c0",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -2960,14 +2961,14 @@
       "baseline_tokens": 597,
       "as_shipped_tokens": 597,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 237,
+      "compressor_only_tokens": 597,
       "as_shipped_sha256": "463a5021af6931006f77488c736c8114bbf447ad868d4c678202bad0b8f9e1b3",
-      "compressor_only_sha256": "171a8212fbc09e65c06632c162e9e5917338f49bae2286d4f3405d5204b99ce0",
+      "compressor_only_sha256": "8e1b23adca467ad3af31afd6688ed3df264cf42252c49b86e61cd4b721605cc8",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 20,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -2978,14 +2979,14 @@
       "baseline_tokens": 3902,
       "as_shipped_tokens": 3902,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 133,
+      "compressor_only_tokens": 132,
       "as_shipped_sha256": "0e5d5db5692c9ca2357238c3f524f7a5e4403b9ac0661b3a3b2609699a4a747f",
-      "compressor_only_sha256": "1607aa041376a5cf501c7598497713947bc09144e3a0d8a4c1a73ca99b9345b8",
+      "compressor_only_sha256": "1f160be10484940eacd288c41ab5956f61589b53dbc77e3f31c5fae494c8449f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
       "definitions_kept": null,
-      "source_lines_kept": 0.029605263157894735
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3014,14 +3015,14 @@
       "baseline_tokens": 1776,
       "as_shipped_tokens": 1776,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 251,
+      "compressor_only_tokens": 262,
       "as_shipped_sha256": "9c02288447133195d0f929699c23bfc12ea770a14c96ea25a890e9d93684cb94",
-      "compressor_only_sha256": "d7829e057f5872af446c0a842ff60ff6b3c015d6debf63dcf2538ef14c1b8ec4",
+      "compressor_only_sha256": "669b82172bae7f4622102aa700f0dc460bc66eec7eb2f3281de1aaa97a4a2510",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 0.8,
-      "source_lines_kept": 0.05970149253731343
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3032,9 +3033,9 @@
       "baseline_tokens": 9144,
       "as_shipped_tokens": 9144,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 114,
+      "compressor_only_tokens": 107,
       "as_shipped_sha256": "f989d7b012a9624321a8b7216916811dff2e330ff3c023cc7c6bd684e9987bae",
-      "compressor_only_sha256": "c74d67b78de1de5d43801f91ea25723e1982fff9987b3cbe8618d527033f32a8",
+      "compressor_only_sha256": "d9c3601d5faf508867877a227bb128525f8c8dab43f7c578a4bb3dd24769c666",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
@@ -3086,14 +3087,14 @@
       "baseline_tokens": 7314,
       "as_shipped_tokens": 7314,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1389,
+      "compressor_only_tokens": 1605,
       "as_shipped_sha256": "8925e874854a83d49ded0b9311dc4d753fe9113d14afd03684fe29e5b97b8d7a",
-      "compressor_only_sha256": "06669025356469028b92de36384bfcb4bece00888ccc76778ac8265b736726f3",
+      "compressor_only_sha256": "84714068b51b612ae033423be0967f84a2d0c25d51395501cea1dd84337bd9f0",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 34,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.13559322033898305
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3104,14 +3105,14 @@
       "baseline_tokens": 626,
       "as_shipped_tokens": 626,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 129,
+      "compressor_only_tokens": 128,
       "as_shipped_sha256": "88e4e2289bea3200704ccd420a8d4689c2967c37663b46c743dd78611f3db292",
-      "compressor_only_sha256": "24c3f75b7ed4781e9cb7afcb10f554e14e3d608ec6c6efd3e68d46f7cb3f852c",
+      "compressor_only_sha256": "1d77ae42a50c769856ea8b33ad16723dc3617d3fcc5a4561db0360b2edc5b7de",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 0.3333333333333333,
-      "source_lines_kept": 0.03571428571428571
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3122,14 +3123,14 @@
       "baseline_tokens": 691,
       "as_shipped_tokens": 691,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 141,
+      "compressor_only_tokens": 134,
       "as_shipped_sha256": "56a0f75d5f8d16aa178a647a1f3b941e97c3898268da8a166687e182143cf0ca",
-      "compressor_only_sha256": "4788e53ac4e96887984bc3ca6d375659f897fe942e4d17442000b474b8fa2fe4",
+      "compressor_only_sha256": "70f658f82e64fc338afd336f0a911652682395f75c10532e391dee1e9227ccf5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 1,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.019230769230769232
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3140,14 +3141,14 @@
       "baseline_tokens": 1032,
       "as_shipped_tokens": 1032,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 199,
+      "compressor_only_tokens": 210,
       "as_shipped_sha256": "897f2631a743c7ec5bc8ec0bfc4e680262ac889cee725613cce0d92a6f088d2a",
-      "compressor_only_sha256": "46635a21a7eaa2b6483707b0fdfa84d54e746c4f53ba94c007965a32ea296678",
+      "compressor_only_sha256": "c2f76fdf4f36dec568b05297fa169416132c4218ea7c6bfe0a6ae2e0920049e8",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 2,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.013157894736842105
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3176,14 +3177,14 @@
       "baseline_tokens": 3147,
       "as_shipped_tokens": 3147,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 284,
+      "compressor_only_tokens": 319,
       "as_shipped_sha256": "a3056268593fa5236b6593793f6938e898dfbd88fc23523406044fe393ecf378",
-      "compressor_only_sha256": "04f8dcb643187850a52adab830e8419528299bf04e800522717d34269151c9cd",
+      "compressor_only_sha256": "81e3dc2c08e0aa3a895ea85a1e3c0d838402e50a065d3976d99dd1222f25aef5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 16,
       "definitions_kept": 0.8125,
-      "source_lines_kept": 0.058394160583941604
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3194,14 +3195,14 @@
       "baseline_tokens": 2419,
       "as_shipped_tokens": 2419,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 308,
+      "compressor_only_tokens": 347,
       "as_shipped_sha256": "f6e9ab8d558e00cf9d9a7b03825822e9464cea86edbb683455541946fd4a17bd",
-      "compressor_only_sha256": "8b858b2a53792760da35ce521ee8850ce1fe8380e166ff1075f8464f6eb8423c",
+      "compressor_only_sha256": "b4d51ad3257936f70885fb517fc5464422ab66e78ccf5533564c3ecdb730135b",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 7,
       "definitions_kept": 0.8571428571428571,
-      "source_lines_kept": 0.07729468599033816
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3212,14 +3213,14 @@
       "baseline_tokens": 1095,
       "as_shipped_tokens": 1095,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 191,
+      "compressor_only_tokens": 205,
       "as_shipped_sha256": "b98b67ef6b77e60f30a95d40aa1445a8f26d62e4b1fea3cb2c3815ba02c79696",
-      "compressor_only_sha256": "59c9a123b03f064b9f6d5c97097b562461735850f0686f3c0c2a7afef255450e",
+      "compressor_only_sha256": "e8aa46f42aa1cf253a8b4ae63f227beeadf5c9fb408e634bf105bd7edf31b846",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.06578947368421052
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3230,14 +3231,14 @@
       "baseline_tokens": 4821,
       "as_shipped_tokens": 4821,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 523,
+      "compressor_only_tokens": 603,
       "as_shipped_sha256": "bad75b71237d364e7789ad87f9eeb99c7b3bd599b988f69e7cbcd578d34d8216",
-      "compressor_only_sha256": "78aca6d4be7bcc648f0b2bef5f3dbb410c960c7591e4edcf2436429844d29727",
+      "compressor_only_sha256": "0815e60eeb4013af394268b54d3f123460688f530f386ed234b7741b15ed01bc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 9,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.11510791366906475
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3248,14 +3249,14 @@
       "baseline_tokens": 1758,
       "as_shipped_tokens": 1758,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 372,
+      "compressor_only_tokens": 397,
       "as_shipped_sha256": "1e656e2b63bc0d05b9eb2ba5337a8c4b21d0d32e66e4e57c44ffe428c864f15b",
-      "compressor_only_sha256": "72680c0c6588bf7b05c320c522319678fe1f0c139d2743c311ca6774adefc444",
+      "compressor_only_sha256": "26162df88ad4b1914efcdcdc132df353a84e146979cb5c72194b51199446ec67",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.10852713178294573
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3266,14 +3267,14 @@
       "baseline_tokens": 7208,
       "as_shipped_tokens": 7208,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 629,
+      "compressor_only_tokens": 744,
       "as_shipped_sha256": "f8dfcfa3f231a610d4dbd4af2658ba91d7e7b47ffaeda2837529c3a6c1d845d8",
-      "compressor_only_sha256": "b8c59ec21942e9643ab38dfc53148fabeebdbb672594925e02cb96e9d7187cdc",
+      "compressor_only_sha256": "739548e0bdd12d9bcf7e0b36c2a4605f9f7a43d16baa71250abd41b65b579362",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 22,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.043875685557586835
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3302,14 +3303,14 @@
       "baseline_tokens": 2076,
       "as_shipped_tokens": 2076,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 182,
+      "compressor_only_tokens": 184,
       "as_shipped_sha256": "4de4c60abfbd3aa95dba489823e791db27cdeaf28ebdb982cdc85950aba5df76",
-      "compressor_only_sha256": "875e68fe1149f8bd502aebf6d7189d9d9e1cdda15a1976e32f38b6b0d50f0b9d",
+      "compressor_only_sha256": "1c2e54d749684b36a743bc16e45ea7e048b6ea1f3cc7ab1956ade3dc457b38c5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 5,
       "definitions_kept": 0.8,
-      "source_lines_kept": 0.05389221556886228
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3320,14 +3321,14 @@
       "baseline_tokens": 30685,
       "as_shipped_tokens": 30685,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 3366,
+      "compressor_only_tokens": 3942,
       "as_shipped_sha256": "232c3ed76f828a69b71f8dc4c127910d3d81aa919e770ebe2a35496ee7d72b84",
-      "compressor_only_sha256": "4ce8de3210bf9097807263e588882a939ff5390d39cf7a338f84816dd502065d",
+      "compressor_only_sha256": "5300641aaef3069fc97da65d8dd918bfb408fabc2dc4023f61f360264f1c5e56",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 130,
       "definitions_kept": 0.9461538461538461,
-      "source_lines_kept": 0.08926204153778171
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3338,14 +3339,14 @@
       "baseline_tokens": 397,
       "as_shipped_tokens": 397,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 161,
+      "compressor_only_tokens": 397,
       "as_shipped_sha256": "d1553c269bd5bac0ea502eefbffcc59bb660d334488150bd7dc39ebbc9171b94",
-      "compressor_only_sha256": "11f1236fcfa696b506a462209e6432dd8530b992c6a36e3d95bdfb4f3cd892c6",
+      "compressor_only_sha256": "10099693b1632ce41998c1ab0670deb774158f8a793a225ddc22fc7e7b7f051f",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 4,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.034482758620689655
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -3356,14 +3357,14 @@
       "baseline_tokens": 1753,
       "as_shipped_tokens": 1753,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 313,
+      "compressor_only_tokens": 375,
       "as_shipped_sha256": "1323ee32cc6206e3c7c7bcc02cc2bcf5368cab0252544d0ed8431a26eb64b22a",
-      "compressor_only_sha256": "c331843b3b0e5345d3069221db64ae640029faade141899818530fe75b0d2ed6",
+      "compressor_only_sha256": "991542b3f084c238053539cd3498a0b52faad0c3b46fbcdd99edbfdab012978f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 20,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.05755395683453238
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3374,14 +3375,14 @@
       "baseline_tokens": 2372,
       "as_shipped_tokens": 2372,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 478,
+      "compressor_only_tokens": 525,
       "as_shipped_sha256": "3d39a884e6c468709fd1417cc03bb8c56d7272449ba0420a9ea56b4ab1757aba",
-      "compressor_only_sha256": "6e00de4c5d6db62eb985b98427d54197a4c2f132b83e3c593f1680e67f20e0a2",
+      "compressor_only_sha256": "fe7127f354d3d81a95f023fde5affc02554f6643dbfce1bab25ecf7949110cfa",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 16,
       "definitions_kept": 0.9375,
-      "source_lines_kept": 0.1712707182320442
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3392,9 +3393,9 @@
       "baseline_tokens": 2603,
       "as_shipped_tokens": 2603,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 114,
+      "compressor_only_tokens": 107,
       "as_shipped_sha256": "b1befaa923fb7dc48d4bd6f4f74b367646cd2dc98706a5279b73ba830c7db781",
-      "compressor_only_sha256": "047112ba0ab706fc6f60e7127fb2d8605f04943bec2544f99ef5e604dd3b1946",
+      "compressor_only_sha256": "3e8375fdb192c13a2d1cd35db4ae0450a3e5ffdad34b9113e1e910a754daf5f3",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 0,
@@ -3428,14 +3429,14 @@
       "baseline_tokens": 911,
       "as_shipped_tokens": 911,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 229,
+      "compressor_only_tokens": 246,
       "as_shipped_sha256": "6a44f6acaa97459d4dd723f687f9c6aed5164cd5b477dcdbfcebe0ea40c99ce3",
-      "compressor_only_sha256": "cddd4b40cb7d3eee00c3b496a3e9321a0d89120ec86b1181895bcbd604686e3c",
+      "compressor_only_sha256": "90d693d6484ca43f628e517c4a3874782c2c49ca717a950aa7fc1651d12a20c7",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 7,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.05714285714285714
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3464,14 +3465,14 @@
       "baseline_tokens": 565,
       "as_shipped_tokens": 565,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 176,
+      "compressor_only_tokens": 187,
       "as_shipped_sha256": "7b97ee12c6abaf934c8160adc4effba2ded9a262adbb07eb74ea82f3f5d9ec98",
-      "compressor_only_sha256": "7fa81f3becd202d4bca3d30f13bea1857c3135e7acf3997610a14040c6840a3c",
+      "compressor_only_sha256": "d6650b6f74ca6b56f9fd86b9b0eb610316faa63b86aa3216d0c75bf101c2588e",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 7,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.02127659574468085
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3482,14 +3483,14 @@
       "baseline_tokens": 929,
       "as_shipped_tokens": 929,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 193,
+      "compressor_only_tokens": 204,
       "as_shipped_sha256": "0564b994accc6ffe555691fd849e5557fae91e2ba165974f7949b5ab1e3ef3c6",
-      "compressor_only_sha256": "1b235d1456a1be2a627c1af619eb004465dca9ef2cc97ce4e5eec17930fe2935",
+      "compressor_only_sha256": "90deb0d84bd5c184b12f09a7915933b2190cd40c675c804bc222405c5a015874",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.056338028169014086
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3500,14 +3501,14 @@
       "baseline_tokens": 4204,
       "as_shipped_tokens": 4204,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 456,
+      "compressor_only_tokens": 528,
       "as_shipped_sha256": "d0ad0b0207948ce782df8a77435b1ad15d4311be05bca9640d2637dddafb639e",
-      "compressor_only_sha256": "bcaa321694dad205d41fea412c47c01c0a1828bec6a5ce2d2f3b4cf7852c8404",
+      "compressor_only_sha256": "6925a142f05636a17012d2f9d859d1319594b41afaab7f5d4694edfa4bf210ef",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 12,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.14361702127659576
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3518,14 +3519,14 @@
       "baseline_tokens": 1528,
       "as_shipped_tokens": 1528,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 193,
+      "compressor_only_tokens": 195,
       "as_shipped_sha256": "f2d1629e7e2b89a2562849d9640576933e09bd7256d3f5bf9a6a088f684a87ec",
-      "compressor_only_sha256": "17c6b7fc4dd5f5614e8ea9c5d54380a96af4be0aa0e78d35f2b81a8834f20449",
+      "compressor_only_sha256": "0a3825166bbc04c7ebf6b94a3e91a75ecb4cdd0db3bbf92d3c8bfe2e9fdcac4c",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 4,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.06504065040650407
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3536,9 +3537,9 @@
       "baseline_tokens": 1116,
       "as_shipped_tokens": 1116,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 241,
+      "compressor_only_tokens": 273,
       "as_shipped_sha256": "ddbe079e9c8fa741217694023076c98f81cbf28498a960a96c2339b86e2cf65c",
-      "compressor_only_sha256": "96bffd99291d40eb28e511340d737106ad528c1ceb3e8f86907f33367fa0c1be",
+      "compressor_only_sha256": "d7b169a86c94e55ee832f01407effdc87f906cca1432489aadf83badac0bbad9",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 9,
@@ -3554,14 +3555,14 @@
       "baseline_tokens": 4434,
       "as_shipped_tokens": 4434,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 806,
+      "compressor_only_tokens": 948,
       "as_shipped_sha256": "2960555d66aff1def719115ff79cfadae5a419e82e98760788463d715b82c5e6",
-      "compressor_only_sha256": "dc2403061b50f4e00173fef47fa05a4f6d622952acae3bc5848f62e2f4503281",
+      "compressor_only_sha256": "00461593fe0d20d60fe83edebbe235887b38cd18fc7a138ab1264848245cd47e",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 36,
       "definitions_kept": 0.9444444444444444,
-      "source_lines_kept": 0.09497206703910614
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3572,14 +3573,14 @@
       "baseline_tokens": 4083,
       "as_shipped_tokens": 4083,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 458,
+      "compressor_only_tokens": 537,
       "as_shipped_sha256": "2b13964f47dadee6dbf3b7adb5ea55609209b79559c4a9b2ca5e1df2582dce25",
-      "compressor_only_sha256": "4a5bfd961054ce6a35797c021b432596b98e28206998f4c067fd1fa53b37ee89",
+      "compressor_only_sha256": "67391599bb665afa2c8aa59f7c50e2ee347d026e0088c74ab0f8b6356c02ffc5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 18,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.04892966360856269
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3590,14 +3591,14 @@
       "baseline_tokens": 1101,
       "as_shipped_tokens": 1101,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 257,
+      "compressor_only_tokens": 268,
       "as_shipped_sha256": "556678f019f99a56aac204d051e31eb4319ae6c4ea435fb738c4dc5b32f20d38",
-      "compressor_only_sha256": "8bb5a8919537ac977bec43b7bcd4790b3b44f5476b3d14b5a316845f75736195",
+      "compressor_only_sha256": "aa93a295a754044d72f288a845fa9ef00d7d11333e21c8b63ac924e4de298e59",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.1368421052631579
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3608,14 +3609,14 @@
       "baseline_tokens": 3498,
       "as_shipped_tokens": 3498,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 300,
+      "compressor_only_tokens": 329,
       "as_shipped_sha256": "33c0bc2ad6dfbcf83fffc181c96d21f162426feba327a3eaf877c00442480896",
-      "compressor_only_sha256": "480c4954a040465ecdb1a7fd66bb0df7ef4951ff712ce5a918523034eaa038c2",
+      "compressor_only_sha256": "f2ba4cc7466a40e1b2347fbe4d699d2c0a767b95c35e151f4d5d4a92c74389e7",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 7,
       "definitions_kept": 0.8571428571428571,
-      "source_lines_kept": 0.08171206225680934
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3626,14 +3627,14 @@
       "baseline_tokens": 8079,
       "as_shipped_tokens": 8079,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1102,
+      "compressor_only_tokens": 1374,
       "as_shipped_sha256": "4fd4dc3e91f76c71c411e4e7b952e04b9bb9ae532083c1983a9e715c35cddbd3",
-      "compressor_only_sha256": "eb4879461a3566c92edf51b2217a960c60cc4880a7a80f5d9b22a74cc49a291b",
+      "compressor_only_sha256": "c8e5f22e23b8c4136da10d8fbd5c85bedb28cc29fe6809de058a733124345e75",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 76,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.05666156202143951
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3644,14 +3645,14 @@
       "baseline_tokens": 2606,
       "as_shipped_tokens": 2606,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 307,
+      "compressor_only_tokens": 347,
       "as_shipped_sha256": "6e8e958aa65490a188223da49642beeea1afce454da58604cb32cfb4c4fd0f75",
-      "compressor_only_sha256": "72123f6c22eadaa65e54d4bf220037eb6b2bc8094b94686e27d9bcec37ba5234",
+      "compressor_only_sha256": "3d15ddb6ebc2490b27b52db3e80111b62a36156a797ca1469f347bf68091dbc8",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 0.75,
-      "source_lines_kept": 0.0784313725490196
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3662,14 +3663,14 @@
       "baseline_tokens": 1547,
       "as_shipped_tokens": 1547,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 385,
+      "compressor_only_tokens": 419,
       "as_shipped_sha256": "d70377dda95bc155b7c9a0c104502e1bdce787cfd7451b08f45ea32b85006226",
-      "compressor_only_sha256": "26241d45a890429115000191fbbb9b1e999a963ab6dceaef544a5545b4b1fe73",
+      "compressor_only_sha256": "1d02e38df47a5b6d65a2830600da00ddef810475ffe23f3327e501b594b70f5a",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.16666666666666666
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3680,14 +3681,14 @@
       "baseline_tokens": 1585,
       "as_shipped_tokens": 1585,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 242,
+      "compressor_only_tokens": 268,
       "as_shipped_sha256": "b137e572310378d3f2423d94d8e603c31fe490f919cc517ade110d8d78fe8b7e",
-      "compressor_only_sha256": "a943b82b949bff749c07c39acbdd243179ceae7de9b5af5cddd0784e07932b97",
+      "compressor_only_sha256": "4ccb466df878166a587acb519a125a80b5ddee64a8fc8ab893f6143438499fe5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 7,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.09917355371900827
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3716,14 +3717,14 @@
       "baseline_tokens": 1101,
       "as_shipped_tokens": 1101,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 171,
+      "compressor_only_tokens": 176,
       "as_shipped_sha256": "8773556bf9de6a4c43ae60da4cf58521135cefba806fcf2cf9c2d886bf0b5871",
-      "compressor_only_sha256": "9fb4f4964c8f4a7fb6ff19e85d4160fc858f132ceda0538a8fc1299bf42333bc",
+      "compressor_only_sha256": "66d46d1d6794009cdd08a04cf6f4e50ca8905a5c491d16bbf0c86203be45442f",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 0.625,
-      "source_lines_kept": 0.04819277108433735
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3734,14 +3735,14 @@
       "baseline_tokens": 3144,
       "as_shipped_tokens": 3144,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 188,
+      "compressor_only_tokens": 199,
       "as_shipped_sha256": "cc95c18453159b3ae5f4c8832dd192610300f40158055c1b7e9a8bf0253a30f8",
-      "compressor_only_sha256": "8b57a2d6d1831637f46d2901e49abfc84d54fc12ab83aee7b14bb328a8a0547e",
+      "compressor_only_sha256": "80266755f9838192321a87d3187acf14592740947df8c566d3330c3589b0ce42",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 8,
       "definitions_kept": 0.875,
-      "source_lines_kept": 0.0711743772241993
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3752,14 +3753,14 @@
       "baseline_tokens": 10710,
       "as_shipped_tokens": 10710,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 947,
+      "compressor_only_tokens": 1127,
       "as_shipped_sha256": "3303f4e537d2b061ea242d2fb1ada687e26d22a297458bb447839a7c4e97b435",
-      "compressor_only_sha256": "6dec4a914b08fd84ec474575c61536cff96f993cfea919176326b8a4f58d952f",
+      "compressor_only_sha256": "721f0747ca9d3268b12210f5c34d80130d3c6dafc9fef25c041731b66c7d8135",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 40,
       "definitions_kept": 0.7,
-      "source_lines_kept": 0.08428246013667426
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3770,14 +3771,14 @@
       "baseline_tokens": 19136,
       "as_shipped_tokens": 19136,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 2246,
+      "compressor_only_tokens": 2710,
       "as_shipped_sha256": "d307a0d0b78271558aeed887ab78f35f7299af758270dda06862dd08dba0608c",
-      "compressor_only_sha256": "e6dcf433efb5d9600a2bdec1ffb8f3125d7a1abd424be74472f83ee1ad131297",
+      "compressor_only_sha256": "5f57ba4f3cf8116b78e35e07d718d5912031ec36b63dda2e620b4701c45ed8dc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 114,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.07479224376731301
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3788,14 +3789,14 @@
       "baseline_tokens": 2542,
       "as_shipped_tokens": 2542,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 330,
+      "compressor_only_tokens": 366,
       "as_shipped_sha256": "a21c98b0bf8d1ab4db4e600e775470f3051974871db375eabdb6f46181138e2a",
-      "compressor_only_sha256": "7705c472be1752da9868495e1b698e0de27c8f1eff85d98f2210163808e66d80",
+      "compressor_only_sha256": "1aa96960a5858bc2a3682d59800b8a63c5b2b81aab0504d772ec93fc49296d83",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 9,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.08762886597938144
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3806,14 +3807,14 @@
       "baseline_tokens": 3625,
       "as_shipped_tokens": 3625,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 785,
+      "compressor_only_tokens": 901,
       "as_shipped_sha256": "78d118f6aced78d0bff7e756cc401ed559c24339bdaf7056ee2361181a72d568",
-      "compressor_only_sha256": "5f43ce9c38245e7576da8876f2aef08a3462da3456a4f1d7eb5e508435a1299c",
+      "compressor_only_sha256": "2087503d0c49edb08fda6744a7adb4c589e901026f635b9505232f6492ce5833",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 25,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.14576271186440679
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3824,14 +3825,14 @@
       "baseline_tokens": 455,
       "as_shipped_tokens": 455,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 171,
+      "compressor_only_tokens": 455,
       "as_shipped_sha256": "9eba571bd74da7fa6f2a18b4a6b99d7be35b16175e6020a0dc3a84b014c0cd29",
-      "compressor_only_sha256": "f36a70ea4493f4405cdfc9054ec2785337a171be6a47acde3adacf1b11fac145",
+      "compressor_only_sha256": "0148d0859be77dce0db4e771a34301e6d5b78b1c20e796d80eab391c033f73b0",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 2,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.0625
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -3860,14 +3861,14 @@
       "baseline_tokens": 1474,
       "as_shipped_tokens": 1474,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 181,
+      "compressor_only_tokens": 201,
       "as_shipped_sha256": "010d69e446c3e5f67288840ca9737f243e8b3e30992c042758edf5d08dc16a1c",
-      "compressor_only_sha256": "f205e29c33a7e3a66d5c4fe739953027e64414e935081d65b14602277df3a0bd",
+      "compressor_only_sha256": "f2b2b431edfac021193ae5af15541ad309e8ee1ea9c1f2a6724b6d3488c83734",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 12,
       "definitions_kept": 0.6666666666666666,
-      "source_lines_kept": 0.008620689655172414
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3878,14 +3879,14 @@
       "baseline_tokens": 1463,
       "as_shipped_tokens": 1463,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 193,
+      "compressor_only_tokens": 213,
       "as_shipped_sha256": "78c3fb38b15c7caf0dd7cfe33080951b414c4780945f98a33d1f038231a89f4c",
-      "compressor_only_sha256": "65935816daba3b9c6b3dc17a8edb287728be53dd768f1246bea98bbf00c534ff",
+      "compressor_only_sha256": "fdc12ac18c5716946af4fa7ba23749e50cd71a060340712cab8563e8bcf64bc1",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.03669724770642202
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3896,14 +3897,14 @@
       "baseline_tokens": 938,
       "as_shipped_tokens": 938,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 138,
+      "compressor_only_tokens": 131,
       "as_shipped_sha256": "12f3ff12b97b49f533811373ad36cdb5c9da6f9e771ae1536e192ae45447783c",
-      "compressor_only_sha256": "1f79bc591f94b15da41d85117e75607bda64bf2e5c6e9d9befc9f69a76887a87",
+      "compressor_only_sha256": "1d3ddd9ce6fff7831e2f47656eb28e39f1b9ec575dea08b86b0514900b2dff13",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 0.3333333333333333,
-      "source_lines_kept": 0.0684931506849315
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3914,14 +3915,14 @@
       "baseline_tokens": 509,
       "as_shipped_tokens": 509,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 157,
+      "compressor_only_tokens": 159,
       "as_shipped_sha256": "61e8fe912b441c9463fc4e08d6dc6127d7bdbb5dcf757a3e27f336db393f96f0",
-      "compressor_only_sha256": "e87aa2865ea70b3eec05d78050dda6c270c7fb0cd8fabfe9f732646bf4af1ad8",
+      "compressor_only_sha256": "59afdf7b819ab1766892cf9c800052baa3018ab5235d7767ffbb033ec5727413",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 3,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.09090909090909091
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3932,14 +3933,14 @@
       "baseline_tokens": 7401,
       "as_shipped_tokens": 7401,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1131,
+      "compressor_only_tokens": 1296,
       "as_shipped_sha256": "76dafbda37e43fabbea71d1bd8405e9ce73e0acdc92bd1cf2f689af652fbe2ef",
-      "compressor_only_sha256": "db836cb75517205c378c7c57ca80ffaa139182e0274e81a0b36bac9abbc3bf4a",
+      "compressor_only_sha256": "1bdeffd3d9224e3ec9e2c540c80745820dba2c83e6c0c7930aaae40588cbb2f4",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 31,
       "definitions_kept": 0.967741935483871,
-      "source_lines_kept": 0.1056
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3950,14 +3951,14 @@
       "baseline_tokens": 1415,
       "as_shipped_tokens": 1415,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 233,
+      "compressor_only_tokens": 241,
       "as_shipped_sha256": "1651c56df349189c76adc3235b57f83f2c6deab3cb284a97a091cd245c64de64",
-      "compressor_only_sha256": "be8e716d9f1d515534dad660130129de0931638ad51ae6c6aba702b1a232a107",
+      "compressor_only_sha256": "4550e37dd1805f0e4ef8990db150ab52f23619b4501cf56595d05844c0dc9098",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.08695652173913043
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3968,14 +3969,14 @@
       "baseline_tokens": 1377,
       "as_shipped_tokens": 1377,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 241,
+      "compressor_only_tokens": 261,
       "as_shipped_sha256": "a497c93c084d1a998b3fba35a745503ecc715536c1f3a0d3587c6c74b5cb8fb0",
-      "compressor_only_sha256": "eb1db33bd0882f87ef53852afe0f8c6ac222992a5e9f3e7f8b8d1688c5b92f1e",
+      "compressor_only_sha256": "3d3cd9fd75889d255b669e0ecef223329063e8d92e2a1667d6f92d352d338353",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 10,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.061946902654867256
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -3986,14 +3987,14 @@
       "baseline_tokens": 8756,
       "as_shipped_tokens": 8756,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1158,
+      "compressor_only_tokens": 1371,
       "as_shipped_sha256": "2332df61208cd6f8974da9133ace4d279001d2b288379f4f63920228fcfff83a",
-      "compressor_only_sha256": "bc777c268e42dde930f1a0a2dd90304edef0984fd3fe769a1e4824f590246033",
+      "compressor_only_sha256": "4b9a10f61fa57960f0750bf8c6a9595a3c698d0a7e27cc9b05cac28436428e71",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 44,
       "definitions_kept": 0.9545454545454546,
-      "source_lines_kept": 0.08739255014326648
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4004,14 +4005,14 @@
       "baseline_tokens": 414,
       "as_shipped_tokens": 414,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 163,
+      "compressor_only_tokens": 414,
       "as_shipped_sha256": "b93f6088d570242288c7bf021759930595cb0cf3f1a8a239cabaadbfb6cc6968",
-      "compressor_only_sha256": "d7e0c9b229e00b6f3c39bc2a5dad289b9b019e6e176c35d14d2a0d6965841571",
+      "compressor_only_sha256": "26f62efac79f5f5f2cd96a4d36169be395e17b35f81b8e239a79c43d068fc104",
       "compressor_reachable": true,
-      "compressed": true,
+      "compressed": false,
       "definitions": 4,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.06451612903225806
+      "source_lines_kept": 1.0
     },
     {
       "tool": "Read",
@@ -4022,14 +4023,14 @@
       "baseline_tokens": 10383,
       "as_shipped_tokens": 10383,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1063,
+      "compressor_only_tokens": 1235,
       "as_shipped_sha256": "f7a9eab375ae70f6a61d3d514d9a5be36188baa6954958a048661cde5c6afc49",
-      "compressor_only_sha256": "55868cdc5552c203195311991a893fb1c73814412a0e7f40a651f25942a0bf37",
+      "compressor_only_sha256": "2ad74a71208cf8114cc9e0ef34af89aa1f38e37dfe5ccc403fb3c45f66ad9271",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 34,
       "definitions_kept": 0.9411764705882353,
-      "source_lines_kept": 0.09495896834701055
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4040,14 +4041,14 @@
       "baseline_tokens": 11454,
       "as_shipped_tokens": 11454,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 812,
+      "compressor_only_tokens": 975,
       "as_shipped_sha256": "61e7f1ee2ca320144c52d077e13be55a0cb5b346e0143a1bb82be67b447ae31f",
-      "compressor_only_sha256": "300ba90c87303790e0b74c8b33d7d05b5698f45e8600c9fab6c6a75619d7b8e2",
+      "compressor_only_sha256": "2bfd0f589f3bb6075ba5055715b6d773204cbfe1afba45c3b47229937e65ffce",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 32,
       "definitions_kept": 0.875,
-      "source_lines_kept": 0.08276643990929705
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4058,14 +4059,14 @@
       "baseline_tokens": 1692,
       "as_shipped_tokens": 1692,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 194,
+      "compressor_only_tokens": 208,
       "as_shipped_sha256": "11f06f7405ded1c7989f66aa2d005a3782e11b31a178f8f3877eadb7ef1da97d",
-      "compressor_only_sha256": "eb10e872d345f2d7022bbab8c127be1e307407a806ca03ff0ac29fcc799c9dbb",
+      "compressor_only_sha256": "2064782acf71e942a826b26ef0a5f25ab15e5f9b14458a9c10d4b7e1ebdcb1b5",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 2,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.11888111888111888
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4076,14 +4077,14 @@
       "baseline_tokens": 15036,
       "as_shipped_tokens": 15036,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 1896,
+      "compressor_only_tokens": 2171,
       "as_shipped_sha256": "9d973c651d2471b111ad631fe759da405b69e01b3b2cf0038c4e07e7c0a1bc44",
-      "compressor_only_sha256": "2f05fe0c4ef08867ed03791c4d450aef748fe59127f5de6446bff983fc3ee61c",
+      "compressor_only_sha256": "37f43dc48adf9ec5bbd1dfa08514a95147783f7fb45f619d2699f52d61ba7841",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 67,
       "definitions_kept": 0.9402985074626866,
-      "source_lines_kept": 0.10996563573883161
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4094,14 +4095,14 @@
       "baseline_tokens": 1226,
       "as_shipped_tokens": 1226,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 359,
+      "compressor_only_tokens": 393,
       "as_shipped_sha256": "5c07e112371bbf8cab61f2ae96afca55992f47405e0145943ab74f3017927669",
-      "compressor_only_sha256": "0657e5bf9d1ea6c3e4a43d786ecd4a6d303a1849430600c1ac26e775095621ff",
+      "compressor_only_sha256": "27e808d5a2f2c456ff95b7b269aa47603f36c5807442e0b3fadcc817577b16fc",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 10,
       "definitions_kept": 1.0,
-      "source_lines_kept": 0.14285714285714285
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4130,14 +4131,14 @@
       "baseline_tokens": 8320,
       "as_shipped_tokens": 8320,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 470,
+      "compressor_only_tokens": 588,
       "as_shipped_sha256": "5d862907d4f33764ab5125582a92f6810f27634a82c02df9ef9e0e4f0a094ba1",
-      "compressor_only_sha256": "b8b77147ddf5d75ec9180052a213b2098bb75c76074ad230b2cf1093cbe9f763",
+      "compressor_only_sha256": "3b622729b2e7d050f3241d9eb490aa35090b5c8a4f027ca8df5e6602b39f3ea8",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 25,
       "definitions_kept": 0.56,
-      "source_lines_kept": 0.06398809523809523
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Read",
@@ -4148,14 +4149,14 @@
       "baseline_tokens": 2791,
       "as_shipped_tokens": 2791,
       "added_context_tokens": 0,
-      "compressor_only_tokens": 199,
+      "compressor_only_tokens": 204,
       "as_shipped_sha256": "31c586e853693ef61408a9620b88ee199f5db7a1260c218aae85293e5cae64d5",
-      "compressor_only_sha256": "7ac7427aca989e1a9eafa6c5689f9cbdb58b9c5f9d9837e6d22a800b176e8e21",
+      "compressor_only_sha256": "7f505edf8cdaf92131f44d2e6073291ee6574ea9dafd1ca8c082a16e9862ce58",
       "compressor_reachable": true,
       "compressed": true,
       "definitions": 6,
       "definitions_kept": 0.8333333333333334,
-      "source_lines_kept": 0.06018518518518518
+      "source_lines_kept": 0.0
     },
     {
       "tool": "Grep",

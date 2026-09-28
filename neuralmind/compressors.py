@@ -34,6 +34,9 @@ BASH_MAX_CHARS = int(os.environ.get("NEURALMIND_BASH_MAX_CHARS", "3000"))
 BASH_SMALL_PASSTHROUGH = int(os.environ.get("NEURALMIND_BASH_SMALL", "500"))
 SEARCH_MAX_MATCHES = int(os.environ.get("NEURALMIND_SEARCH_MAX", "25"))
 OFFLOAD_THRESHOLD = int(os.environ.get("NEURALMIND_OFFLOAD_THRESHOLD", "15000"))
+# Files shorter than this many characters aren't worth compressing:
+# compress_read returns them unchanged.
+READ_MIN_CHARS = 1500
 
 # Pattern to detect error/warning lines — conservative, broad enough for
 # pytest / cargo / ffmpeg / webpack / tsc / npm
@@ -221,8 +224,7 @@ def compress_read(file_path: str, raw_content: str, mind=None) -> str:
     """
     if os.environ.get("NEURALMIND_BYPASS") == "1":
         return raw_content
-    # Files under a certain size aren't worth compressing
-    if len(raw_content) < 1500:
+    if len(raw_content) < READ_MIN_CHARS:
         return raw_content
 
     try:

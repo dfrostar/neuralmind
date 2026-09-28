@@ -188,9 +188,9 @@ copies cost tokens instead of saving them: **+17.5% on Bash calls and +22.1% on
 content-mode Grep**, and the Read hook never saw Claude Code's payload at all
 ([compression benchmark](docs/benchmarks/compression.md)). The hooks now inject
 nothing, so Claude sees exactly the tool result. The compressors themselves
-would cut 66–89%, but a result replaced by one would keep only 6% of a file's
-source lines. So nothing replaces tool output until something keeps what the
-agent needs.
+would cut 66–87%, but a Read replaced by its skeleton would keep none of the
+file's source lines. So nothing replaces tool output until something keeps what
+the agent needs.
 
 ---
 
