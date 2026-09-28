@@ -151,8 +151,12 @@ class TestRunHook:
         exit_code = run_hook(action)
         return exit_code, captured.getvalue()
 
-    def test_compress_bash_emits(self, monkeypatch):
-        # Use a verbose-line payload that exceeds BASH_MAX_CHARS (3000 default)
+    # The tool-output actions inject nothing: Claude Code adds PostToolUse
+    # additionalContext next to the tool result rather than replacing it, so a
+    # compressed copy only added tokens (docs/benchmarks/compression.md).
+
+    def test_compress_bash_injects_nothing(self, monkeypatch, tmp_path):
+        # Over BASH_MAX_CHARS, where the hook used to append its compressed copy.
         verbose_line = "tests/test_module.py::test_function_with_descriptive_name PASSED"
         payload = {
             "tool_name": "Bash",
@@ -160,32 +164,71 @@ class TestRunHook:
             "tool_response": {
                 "stdout": "\n".join([verbose_line] * 100) + "\n===== 100 passed in 3.21s =====",
                 "stderr": "",
-                "exit_code": 0,
+                "interrupted": False,
+                "isImage": False,
             },
+            "cwd": str(tmp_path),
         }
         exit_code, output = self._invoke("compress-bash", payload, monkeypatch)
         assert exit_code == 0
-        # Should have emitted a JSON response (stdout non-empty)
-        assert output.strip()
-        # Decode and verify structure
-        resp = json.loads(output)
-        assert "hookSpecificOutput" in resp
-        ctx = resp["hookSpecificOutput"]["additionalContext"]
-        assert "[neuralmind:" in ctx
-        assert "100 passed" in ctx  # Summary preserved
+        assert output == ""
 
-    def test_cap_search_emits(self, monkeypatch):
+    def test_small_bash_output_is_not_repeated(self, monkeypatch, tmp_path):
+        # Under the threshold the "compressed" copy used to be the whole output
+        # again, doubling what Claude saw.
+        payload = {
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls"},
+            "tool_response": {"stdout": "README.md\nsetup.py\n", "stderr": ""},
+            "cwd": str(tmp_path),
+        }
+        exit_code, output = self._invoke("compress-bash", payload, monkeypatch)
+        assert exit_code == 0
+        assert output == ""
+
+    def test_cap_search_injects_nothing(self, monkeypatch):
         payload = {
             "tool_name": "Grep",
-            "tool_input": {"pattern": "foo"},
+            "tool_input": {"pattern": "foo", "output_mode": "content"},
             "tool_response": {
-                "content": "\n".join(f"match_{i}" for i in range(100)),
+                "mode": "content",
+                "numFiles": 1,
+                "filenames": ["a.py"],
+                "content": "\n".join(f"a.py:{i}:match_{i}" for i in range(100)),
             },
         }
         exit_code, output = self._invoke("cap-search", payload, monkeypatch)
         assert exit_code == 0
-        resp = json.loads(output)
-        assert "capped at 25" in resp["hookSpecificOutput"]["additionalContext"]
+        assert output == ""
+
+    def test_compress_read_injects_nothing(self, monkeypatch, tmp_path):
+        path = tmp_path / "module.py"
+        text = "def f():\n    return 1\n" * 200
+        path.write_text(text)
+        for tool_response in (
+            # Claude Code's shape: the text is under file.content.
+            {
+                "type": "text",
+                "file": {
+                    "filePath": str(path),
+                    "content": text,
+                    "numLines": 400,
+                    "startLine": 1,
+                    "totalLines": 400,
+                },
+            },
+            # The older flat shape the hook was written against.
+            {"content": text},
+        ):
+            payload = {
+                "tool_name": "Read",
+                "tool_input": {"file_path": str(path)},
+                "tool_response": tool_response,
+                "cwd": str(tmp_path),
+            }
+            exit_code, output = self._invoke("compress-read", payload, monkeypatch)
+            assert exit_code == 0
+            assert output == ""
 
     def test_empty_input_noops(self, monkeypatch):
         """Empty stdin should fail-open silently."""
@@ -259,8 +302,8 @@ class TestRunHook:
     def test_compress_bash_populates_recovery_cache(self, monkeypatch, tmp_path):
         """The compress-bash hook stashes raw output to .neuralmind/last_output.json.
 
-        This is what makes `neuralmind last` work — without the side-effect
-        write, agents lose the dropped middle the moment the hook returns.
+        This is what makes `neuralmind last` work: it shows the last command's
+        output again without re-running it.
         """
         from neuralmind.output_cache import read_last_output
 
