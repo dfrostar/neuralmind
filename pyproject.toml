@@ -119,7 +119,7 @@ dependencies = [
     # installation on the 0.x line to paper over a case the code already
     # handles; if a future major breaks something recovery cannot absorb, cap
     # it then, against that evidence.
-    "turbovec>=0.7; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
+    "turbovec>=1.0.0; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "onnxruntime>=1.16; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     "tokenizers>=0.15; (platform_system == 'Linux') or (platform_system == 'Darwin' and platform_machine == 'arm64') or (platform_system == 'Windows' and platform_machine == 'AMD64')",
     # Security floor: 1.22 clears CVE-2021-34141 (GHSA-fpfv-jqm9-f5jm) and
