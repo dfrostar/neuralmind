@@ -70,14 +70,16 @@ Useful variants of #8:
 ## What the numbers say (short version)
 
 Full tables on the [Benchmarks](../docs/wiki/Benchmarks.md) page. Headline:
-**79–100% gold-file recall (93.75% mean) at 45–257× fewer tokens** than pasting
-files on real OSS repos, beating `ripgrep` on cost on every repo and on recall
-on 2 of 4 (tying exactly on the other 2); **+0.143** faithfulness at a matched
-budget; **+6.1 pts** top-k hit-rate from the synapse layer (budget-neutral). We
-also report where NeuralMind **doesn't** win — a well-tuned vector RAG ties or
-beats it on pure findability and is cheaper on raw tokens, `click` is the
-weakest repo in the corpus, and the competitor row is **pure retrieval
-ranking**, not their LLM-agent loop.
+**85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting
+every source file on real OSS repos, beating `ripgrep` on cost on every repo and
+on recall on 2 of 4 (tying exactly on the other 2); a synapse-layer lift in
+top-k hit-rate that CI gates on direction (+3.5 to +14 pts observed across runs,
+budget-neutral). We also report where NeuralMind **doesn't** win — a well-tuned
+vector RAG matches or beats it on pure findability and is cheaper on raw tokens,
+`flask` is the weakest repo in the corpus, at a matched budget naive truncation
+currently keeps slightly more gold facts on the reference fixture (−0.054 at
+v4.3.4), and the competitor row is **pure retrieval ranking**, not their
+LLM-agent loop.
 
 ---
 

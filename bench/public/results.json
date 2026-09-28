@@ -37,17 +37,17 @@
           "n": 14,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 607.4,
+          "mean_tokens": 606.9,
           "median_tokens": 618.0,
           "mean_mrr": 0.9643
         },
         "neuralmind": {
           "n": 14,
-          "mean_recall": 0.9643,
-          "found_rate": 0.9286,
-          "mean_tokens": 930.2,
-          "median_tokens": 919.5,
-          "mean_mrr": 0.9286
+          "mean_recall": 0.9286,
+          "found_rate": 0.8571,
+          "mean_tokens": 927.9,
+          "median_tokens": 934.5,
+          "mean_mrr": 0.9167
         }
       },
       "queries": [
@@ -129,9 +129,9 @@
               ],
               "context_files": [
                 "auth.py",
-                "sessions.py"
+                "exceptions.py"
               ],
-              "tokens": 924,
+              "tokens": 898,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -221,15 +221,14 @@
               ],
               "context_files": [
                 "utils.py",
-                "structures.py",
-                "cookies.py",
-                "models.py"
+                "exceptions.py",
+                "structures.py"
               ],
-              "tokens": 1025,
+              "tokens": 1000,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 0.3333
             }
           }
         },
@@ -313,7 +312,7 @@
                 "sessions.py",
                 "cookies.py"
               ],
-              "tokens": 852,
+              "tokens": 863,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -384,7 +383,7 @@
               "context_files": [
                 "exceptions.py"
               ],
-              "tokens": 373,
+              "tokens": 392,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -399,7 +398,7 @@
               "context_files": [
                 "exceptions.py"
               ],
-              "tokens": 736,
+              "tokens": 706,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -487,7 +486,7 @@
                 "adapters.py",
                 "sessions.py"
               ],
-              "tokens": 958,
+              "tokens": 957,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -559,7 +558,7 @@
                 "cookies.py",
                 "utils.py"
               ],
-              "tokens": 568,
+              "tokens": 569,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -665,7 +664,7 @@
                 "sessions.py",
                 "adapters.py"
               ],
-              "tokens": 1114,
+              "tokens": 1079,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -736,10 +735,9 @@
               "context_files": [
                 "api.py",
                 "sessions.py",
-                "_internal_utils.py",
                 "hooks.py"
               ],
-              "tokens": 829,
+              "tokens": 768,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -752,9 +750,11 @@
                 "api.py"
               ],
               "context_files": [
-                "api.py"
+                "api.py",
+                "exceptions.py",
+                "sessions.py"
               ],
-              "tokens": 733,
+              "tokens": 994,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -824,8 +824,8 @@
               ],
               "context_files": [
                 "status_codes.py",
-                "models.py",
                 "cookies.py",
+                "models.py",
                 "utils.py"
               ],
               "tokens": 756,
@@ -841,14 +841,15 @@
                 "status_codes.py"
               ],
               "context_files": [
+                "exceptions.py",
                 "status_codes.py",
-                "models.py"
+                "cookies.py"
               ],
-              "tokens": 1166,
+              "tokens": 1080,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -929,15 +930,15 @@
                 "utils.py"
               ],
               "context_files": [
-                "models.py",
                 "utils.py",
-                "_internal_utils.py"
+                "exceptions.py",
+                "models.py"
               ],
-              "tokens": 915,
+              "tokens": 882,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 1.0
             }
           }
         },
@@ -1006,8 +1007,8 @@
               ],
               "context_files": [
                 "sessions.py",
-                "cookies.py",
-                "adapters.py"
+                "adapters.py",
+                "cookies.py"
               ],
               "tokens": 594,
               "recall": 1.0,
@@ -1023,11 +1024,11 @@
                 "adapters.py"
               ],
               "context_files": [
-                "adapters.py",
                 "sessions.py",
-                "utils.py"
+                "exceptions.py",
+                "adapters.py"
               ],
-              "tokens": 975,
+              "tokens": 1103,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1102,7 +1103,7 @@
                 "cookies.py",
                 "models.py"
               ],
-              "tokens": 671,
+              "tokens": 705,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1117,9 +1118,10 @@
               ],
               "context_files": [
                 "cookies.py",
+                "exceptions.py",
                 "models.py"
               ],
-              "tokens": 972,
+              "tokens": 968,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1208,13 +1210,12 @@
                 "auth.py"
               ],
               "context_files": [
-                "sessions.py",
-                "auth.py"
+                "sessions.py"
               ],
-              "tokens": 840,
-              "recall": 1.0,
-              "found": true,
-              "recall_at_5": 1.0,
+              "tokens": 869,
+              "recall": 0.5,
+              "found": false,
+              "recall_at_5": 0.5,
               "reciprocal_rank": 1.0
             }
           }
@@ -1301,9 +1302,10 @@
                 "status_codes.py"
               ],
               "context_files": [
-                "models.py"
+                "models.py",
+                "exceptions.py"
               ],
-              "tokens": 901,
+              "tokens": 679,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
@@ -1314,6 +1316,22 @@
       ],
       "losses": [
         {
+          "query_id": "xfile-redirect-auth",
+          "backend": "neuralmind",
+          "gold_files": [
+            "sessions.py",
+            "auth.py"
+          ],
+          "context_files": [
+            "sessions.py"
+          ],
+          "tokens": 869,
+          "recall": 0.5,
+          "found": false,
+          "recall_at_5": 0.5,
+          "reciprocal_rank": 1.0
+        },
+        {
           "query_id": "xfile-status-codes",
           "backend": "neuralmind",
           "gold_files": [
@@ -1321,9 +1339,10 @@
             "status_codes.py"
           ],
           "context_files": [
-            "models.py"
+            "models.py",
+            "exceptions.py"
           ],
-          "tokens": 901,
+          "tokens": 679,
           "recall": 0.5,
           "found": false,
           "recall_at_5": 0.5,
@@ -1359,17 +1378,17 @@
           "n": 7,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 634.3,
-          "median_tokens": 587,
-          "mean_mrr": 0.6667
+          "mean_tokens": 636,
+          "median_tokens": 609,
+          "mean_mrr": 0.5952
         },
         "neuralmind": {
           "n": 7,
-          "mean_recall": 0.7857,
-          "found_rate": 0.7143,
-          "mean_tokens": 788.4,
-          "median_tokens": 781,
-          "mean_mrr": 0.5238
+          "mean_recall": 1.0,
+          "found_rate": 1.0,
+          "mean_tokens": 711.3,
+          "median_tokens": 748,
+          "mean_mrr": 0.5952
         }
       },
       "queries": [
@@ -1432,15 +1451,15 @@
                 "core.py"
               ],
               "context_files": [
-                "core.py",
                 "shell_completion.py",
+                "core.py",
                 "testing.py"
               ],
               "tokens": 712,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -1450,14 +1469,14 @@
               ],
               "context_files": [
                 "shell_completion.py",
-                "testing.py",
-                "core.py"
+                "core.py",
+                "testing.py"
               ],
-              "tokens": 727,
+              "tokens": 748,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -1611,9 +1630,10 @@
               "context_files": [
                 "decorators.py",
                 "core.py",
-                "formatting.py"
+                "formatting.py",
+                "_textwrap.py"
               ],
-              "tokens": 531,
+              "tokens": 532,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1626,11 +1646,11 @@
                 "formatting.py"
               ],
               "context_files": [
-                "core.py",
                 "decorators.py",
+                "core.py",
                 "formatting.py"
               ],
-              "tokens": 862,
+              "tokens": 813,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1718,13 +1738,13 @@
               "context_files": [
                 "termui.py",
                 "_termui_impl.py",
-                "core.py"
+                "utils.py"
               ],
-              "tokens": 758,
-              "recall": 0.0,
-              "found": false,
-              "recall_at_5": 0.0,
-              "reciprocal_rank": 0.0
+              "tokens": 577,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
+              "reciprocal_rank": 0.3333
             }
           }
         },
@@ -1805,9 +1825,9 @@
               ],
               "context_files": [
                 "termui.py",
-                "parser.py"
+                "_termui_impl.py"
               ],
-              "tokens": 781,
+              "tokens": 577,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1877,10 +1897,9 @@
                 "core.py",
                 "types.py",
                 "formatting.py",
-                "utils.py",
-                "parser.py"
+                "utils.py"
               ],
-              "tokens": 692,
+              "tokens": 681,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1895,9 +1914,9 @@
               "context_files": [
                 "core.py",
                 "types.py",
-                "termui.py"
+                "formatting.py"
               ],
-              "tokens": 846,
+              "tokens": 770,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1971,7 +1990,7 @@
                 "core.py",
                 "formatting.py"
               ],
-              "tokens": 587,
+              "tokens": 609,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -1986,53 +2005,19 @@
               ],
               "context_files": [
                 "decorators.py",
-                "core.py"
+                "core.py",
+                "formatting.py"
               ],
-              "tokens": 871,
-              "recall": 0.5,
-              "found": false,
-              "recall_at_5": 0.5,
+              "tokens": 820,
+              "recall": 1.0,
+              "found": true,
+              "recall_at_5": 1.0,
               "reciprocal_rank": 0.5
             }
           }
         }
       ],
-      "losses": [
-        {
-          "query_id": "echo-util",
-          "backend": "neuralmind",
-          "gold_files": [
-            "utils.py"
-          ],
-          "context_files": [
-            "termui.py",
-            "_termui_impl.py",
-            "core.py"
-          ],
-          "tokens": 758,
-          "recall": 0.0,
-          "found": false,
-          "recall_at_5": 0.0,
-          "reciprocal_rank": 0.0
-        },
-        {
-          "query_id": "xfile-command-help",
-          "backend": "neuralmind",
-          "gold_files": [
-            "core.py",
-            "formatting.py"
-          ],
-          "context_files": [
-            "decorators.py",
-            "core.py"
-          ],
-          "tokens": 871,
-          "recall": 0.5,
-          "found": false,
-          "recall_at_5": 0.5,
-          "reciprocal_rank": 0.5
-        }
-      ]
+      "losses": []
     },
     {
       "name": "flask",
@@ -2062,17 +2047,17 @@
           "n": 10,
           "mean_recall": 0.95,
           "found_rate": 0.9,
-          "mean_tokens": 687.1,
-          "median_tokens": 706.5,
-          "mean_mrr": 0.7333
+          "mean_tokens": 676.7,
+          "median_tokens": 703.0,
+          "mean_mrr": 0.7
         },
         "neuralmind": {
           "n": 10,
-          "mean_recall": 0.95,
-          "found_rate": 0.9,
-          "mean_tokens": 772.5,
-          "median_tokens": 767.0,
-          "mean_mrr": 0.7833
+          "mean_recall": 0.85,
+          "found_rate": 0.8,
+          "mean_tokens": 723.2,
+          "median_tokens": 744.0,
+          "mean_mrr": 0.6333
         }
       },
       "queries": [
@@ -2157,9 +2142,10 @@
                 "app.py"
               ],
               "context_files": [
-                "app.py"
+                "app.py",
+                "README.md"
               ],
-              "tokens": 655,
+              "tokens": 569,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2232,16 +2218,17 @@
               ],
               "context_files": [
                 "cli.py",
-                "blueprints.py",
                 "app.py",
+                "blueprints.py",
                 "views.py",
-                "scaffold.py"
+                "scaffold.py",
+                "typing.py"
               ],
-              "tokens": 703,
+              "tokens": 636,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 0.3333
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -2251,14 +2238,15 @@
               ],
               "context_files": [
                 "cli.py",
-                "blueprints.py",
-                "app.py"
+                "README.md",
+                "app.py",
+                "blueprints.py"
               ],
-              "tokens": 886,
+              "tokens": 748,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 0.25
             }
           }
         },
@@ -2329,10 +2317,9 @@
                 "config.py",
                 "ctx.py",
                 "sessions.py",
-                "cli.py",
-                "templating.py"
+                "cli.py"
               ],
-              "tokens": 651,
+              "tokens": 637,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2345,15 +2332,15 @@
                 "config.py"
               ],
               "context_files": [
-                "templating.py",
                 "config.py",
-                "__init__.py"
+                "README.md",
+                "ctx.py"
               ],
-              "tokens": 779,
+              "tokens": 774,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 1.0
             }
           }
         },
@@ -2437,14 +2424,15 @@
                 "ctx.py"
               ],
               "context_files": [
-                "ctx.py",
-                "app.py"
+                "app.py",
+                "README.md",
+                "ctx.py"
               ],
-              "tokens": 746,
+              "tokens": 730,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.3333
             }
           }
         },
@@ -2531,9 +2519,10 @@
               ],
               "context_files": [
                 "views.py",
-                "scaffold.py"
+                "README.md",
+                "app.py"
               ],
-              "tokens": 860,
+              "tokens": 784,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2623,13 +2612,14 @@
               ],
               "context_files": [
                 "app.py",
-                "wrappers.py"
+                "README.md",
+                "helpers.py"
               ],
-              "tokens": 787,
-              "recall": 1.0,
-              "found": true,
-              "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "tokens": 784,
+              "recall": 0.0,
+              "found": false,
+              "recall_at_5": 0.0,
+              "reciprocal_rank": 0.0
             }
           }
         },
@@ -2715,10 +2705,11 @@
               ],
               "context_files": [
                 "cli.py",
-                "testing.py",
-                "app.py"
+                "README.md",
+                "app.py",
+                "testing.py"
               ],
-              "tokens": 755,
+              "tokens": 740,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2807,9 +2798,10 @@
               ],
               "context_files": [
                 "sessions.py",
+                "README.md",
                 "tag.py"
               ],
-              "tokens": 683,
+              "tokens": 685,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -2882,17 +2874,16 @@
               ],
               "context_files": [
                 "app.py",
-                "helpers.py",
                 "scaffold.py",
+                "helpers.py",
                 "wrappers.py",
-                "blueprints.py",
-                "cli.py"
+                "blueprints.py"
               ],
-              "tokens": 710,
+              "tokens": 769,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 0.3333
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -2902,15 +2893,15 @@
               ],
               "context_files": [
                 "app.py",
+                "README.md",
                 "scaffold.py",
-                "helpers.py",
-                "blueprints.py"
+                "helpers.py"
               ],
-              "tokens": 901,
+              "tokens": 763,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.25
             }
           }
         },
@@ -2984,7 +2975,7 @@
                 "views.py",
                 "app.py"
               ],
-              "tokens": 493,
+              "tokens": 411,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
@@ -2998,19 +2989,37 @@
                 "ctx.py"
               ],
               "context_files": [
+                "README.md",
                 "app.py",
                 "views.py"
               ],
-              "tokens": 673,
+              "tokens": 655,
               "recall": 0.5,
               "found": false,
               "recall_at_5": 0.5,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         }
       ],
       "losses": [
+        {
+          "query_id": "request-wrapper",
+          "backend": "neuralmind",
+          "gold_files": [
+            "wrappers.py"
+          ],
+          "context_files": [
+            "app.py",
+            "README.md",
+            "helpers.py"
+          ],
+          "tokens": 784,
+          "recall": 0.0,
+          "found": false,
+          "recall_at_5": 0.0,
+          "reciprocal_rank": 0.0
+        },
         {
           "query_id": "xfile-dispatch-context",
           "backend": "neuralmind",
@@ -3019,14 +3028,15 @@
             "ctx.py"
           ],
           "context_files": [
+            "README.md",
             "app.py",
             "views.py"
           ],
-          "tokens": 673,
+          "tokens": 655,
           "recall": 0.5,
           "found": false,
           "recall_at_5": 0.5,
-          "reciprocal_rank": 1.0
+          "reciprocal_rank": 0.5
         }
       ]
     },
@@ -3058,17 +3068,17 @@
           "n": 9,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 677.3,
+          "mean_tokens": 669.2,
           "median_tokens": 708,
-          "mean_mrr": 0.9444
+          "mean_mrr": 0.8889
         },
         "neuralmind": {
           "n": 9,
           "mean_recall": 1.0,
           "found_rate": 1.0,
-          "mean_tokens": 905.4,
-          "median_tokens": 903,
-          "mean_mrr": 0.7963
+          "mean_tokens": 891.9,
+          "median_tokens": 914,
+          "mean_mrr": 0.7778
         }
       },
       "queries": [
@@ -3210,11 +3220,9 @@
                 "console.py"
               ],
               "context_files": [
-                "console.py",
-                "__init__.py",
-                "pretty.py"
+                "console.py"
               ],
-              "tokens": 991,
+              "tokens": 804,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3361,14 +3369,13 @@
               ],
               "context_files": [
                 "columns.py",
-                "layout.py",
                 "table.py"
               ],
-              "tokens": 999,
+              "tokens": 914,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -3494,12 +3501,11 @@
               ],
               "context_files": [
                 "text.py",
-                "padding.py",
                 "style.py",
-                "syntax.py",
-                "segment.py"
+                "padding.py",
+                "syntax.py"
               ],
-              "tokens": 880,
+              "tokens": 826,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3513,9 +3519,10 @@
               ],
               "context_files": [
                 "text.py",
-                "style.py"
+                "style.py",
+                "padding.py"
               ],
-              "tokens": 895,
+              "tokens": 926,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3798,14 +3805,14 @@
                 "color.py"
               ],
               "context_files": [
-                "color.py",
-                "color_triplet.py"
+                "color_triplet.py",
+                "color.py"
               ],
               "tokens": 490,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             },
             "neuralmind": {
               "backend": "neuralmind",
@@ -3814,14 +3821,14 @@
                 "color.py"
               ],
               "context_files": [
-                "color.py",
-                "color_triplet.py"
+                "color_triplet.py",
+                "color.py"
               ],
-              "tokens": 697,
+              "tokens": 764,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -3950,7 +3957,7 @@
                 "highlighter.py",
                 "markdown.py"
               ],
-              "tokens": 448,
+              "tokens": 429,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
@@ -3963,15 +3970,15 @@
                 "syntax.py"
               ],
               "context_files": [
-                "syntax.py",
                 "highlighter.py",
-                "live.py"
+                "syntax.py",
+                "markdown.py"
               ],
-              "tokens": 878,
+              "tokens": 973,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -4112,13 +4119,14 @@
                 "progress.py"
               ],
               "context_files": [
+                "progress_bar.py",
                 "progress.py"
               ],
-              "tokens": 895,
+              "tokens": 875,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 1.0
+              "reciprocal_rank": 0.5
             }
           }
         },
@@ -4245,8 +4253,8 @@
               "context_files": [
                 "markdown.py",
                 "text.py",
-                "screen.py",
-                "console.py"
+                "console.py",
+                "screen.py"
               ],
               "tokens": 608,
               "recall": 1.0,
@@ -4261,15 +4269,14 @@
                 "markdown.py"
               ],
               "context_files": [
-                "screen.py",
                 "markdown.py",
-                "__init__.py"
+                "text.py"
               ],
-              "tokens": 903,
+              "tokens": 820,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.5
+              "reciprocal_rank": 1.0
             }
           }
         },
@@ -4399,8 +4406,8 @@
               "context_files": [
                 "console.py",
                 "table.py",
-                "segment.py",
                 "layout.py",
+                "segment.py",
                 "text.py"
               ],
               "tokens": 800,
@@ -4417,16 +4424,15 @@
                 "table.py"
               ],
               "context_files": [
-                "segment.py",
-                "text.py",
+                "console.py",
                 "table.py",
-                "console.py"
+                "layout.py"
               ],
-              "tokens": 962,
+              "tokens": 1022,
               "recall": 1.0,
               "found": true,
               "recall_at_5": 1.0,
-              "reciprocal_rank": 0.3333
+              "reciprocal_rank": 1.0
             }
           }
         }

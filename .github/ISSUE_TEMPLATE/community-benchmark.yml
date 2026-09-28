@@ -16,7 +16,7 @@ body:
 
         That command prints your numbers (ratio, tokens per query, estimated monthly savings) *and* a ready-to-paste JSON blob. Copy the values from the JSON into the fields below — most are 1:1.
 
-        **Privacy:** Your code never leaves your machine. You're submitting *numbers*, not source. NeuralMind never uploads anything automatically — you choose if and when to submit.
+        **Privacy:** The benchmark runs locally and you submit *numbers*, not source. NeuralMind never uploads anything automatically — you choose if and when to submit, and what goes in the fields below.
 
         A maintainer will convert this issue into a PR adding your entry to
         [`docs/community-benchmarks.json`](https://github.com/dfrostar/neuralmind/blob/main/docs/community-benchmarks.json).

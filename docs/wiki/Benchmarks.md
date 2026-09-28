@@ -1,9 +1,11 @@
 # Benchmarks & Results
 
 Everything here is **measured and reproducible** — no hand-picked or hardcoded
-numbers. Every figure is produced by code in the repo and **gated in CI**, so it
-can't silently regress. Where a number is an estimate or a real-repo
-extrapolation, it says so. One labeled exception: the
+numbers. Every figure is produced by code in the repo. The fixture-based
+figures are **gated in CI**, so they can't silently regress; the public
+benchmark on real OSS repos is **reproducible on demand** (deterministic, one
+command, raw data committed) but is not a CI gate. Where a number is an
+estimate or a real-repo extrapolation, it says so. One labeled exception: the
 [field report](#field-report-a-real-world-rebuild-not-ci-gated) below is a
 one-repo, maintainer-measured case study — reproducible in method, not gated
 in CI.
@@ -13,27 +15,28 @@ in CI.
 > `python -m evals.onboarding.runner --run` (onboarding lift),
 > `python -m evals.parity.run` (backend parity).
 
-## Four data-backed benefits (the short version)
+## What the data shows, losses included (the short version)
 
-NeuralMind is more than token reduction; the numbers below back **four**
+NeuralMind is more than token reduction; the numbers below cover **four**
 benefits. Two run on **real, pinned OSS repos** (`requests`, `click`, `flask`,
 `rich`) and are fully reproducible — `python -m evals.public.run`
 ([methodology](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md)) — and two are committed A/Bs on the bundled **reference
 fixture** (real but smaller-scope): **(1) Cheaper context** — **85–100%
-gold-file recall (93.6% mean, 87.5% found-rate across 40 queries) at 46–259×
-fewer tokens** than pasting files, beating `ripgrep` on both recall and cost
-on every repo; **(2) Finds the right code** — 100% gold-file recall, **MRR
+gold-file recall (93.75% mean, 90% found-rate across 40 queries) at 45–261×
+fewer tokens** than pasting files, beating `ripgrep` on cost on every repo and
+on recall on two of four (tying on the other two); **(2) Finds the right code** — 100% gold-file recall, **MRR
 0.96**, beating the incumbent `codebase-memory-mcp` on retrieval ranking (0.96
 vs 0.23) — a separate, off-by-default eval on `requests`/`click` only, not yet
 re-verified against the current `flask`/`rich`-expanded corpus; **(3) Learns
 how you work** — the Hebbian synapse layer lifts top-k hit-rate, **budget-neutral**
 (reference fixture; +3.5 to +14 points across runs, CI gates the direction);
-**(4) Better-grounded answers** — at a matched budget its context carries more gold
-facts than naive truncation (reference fixture; delta +0.013 to +0.143 across runs,
-CI gates it at ≥ 0, grounding 1.00). We report where NeuralMind *doesn't* win
+**(4) Answer grounding vs. naive truncation — currently a loss** — at a matched
+budget, truncation keeps slightly more gold facts on the prose-heavy reference
+fixture (delta −0.054 at v4.3.4; earlier releases +0.013 to +0.143; CI fails
+below −0.10). We report where NeuralMind *doesn't* win
 too — a well-tuned vector RAG ties or beats it on pure findability and is
-cheaper on raw tokens, two repos have partial gold-file misses (see the public
-benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
+cheaper on raw tokens, two repos have gold-file misses — 4 of 40 queries (see
+the public benchmark's "Where NeuralMind loses" section), and the competitor row is *pure
 retrieval ranking*, not their LLM-agent loop. Full tables and reproduction
 commands below.
 
@@ -47,7 +50,7 @@ there's little to prune, and it still clears a wide margin.
 
 | What | Measured (CI, 500-line fixture) | On real repos |
 |------|---:|---|
-| Token reduction on code questions | **6.2×** | **12-50×** (more files to prune ⇒ larger ratio) |
+| Token reduction on code questions | **5.1×** (v4.3.4) | **12-50×** (more files to prune ⇒ larger ratio) |
 | Regression floor (CI fails below) | 4.0× | — |
 
 The fixture number is the *floor of a floor*: small repo, conservative gate. The
@@ -56,20 +59,22 @@ you avoid.
 
 ## Does the memory make answers *better*, not just shorter?
 
-Yes, and it's measured. The **faithfulness eval** compares NeuralMind's selected
-context against naive truncation **at the same token budget** — the honest
-comparison, not "small context vs the whole repo."
+Not on this measure, right now — and we publish that. The **faithfulness eval**
+compares NeuralMind's selected context against naive truncation **at the same
+token budget** — the honest comparison, not "small context vs the whole repo."
 
-| Metric (built-in backend, gold set) | What CI enforces | Observed across runs |
+| Metric (built-in backend, gold set) | What CI enforces | Measured |
 |---|---|---|
-| Expected-fact recall vs matched-budget naive | delta **≥ 0** | **+0.013 to +0.143** |
-| Grounding (right modules cited) | not gated — saturates on this fixture | 1.000 |
+| Expected-fact recall vs matched-budget naive | mean delta **≥ −0.10** (3 runs) | **−0.054** at v4.3.4 (0.451 vs 0.505); earlier releases +0.013 to +0.143 |
+| Grounding (right modules cited) | not gated | 0.843 at v4.3.4 |
 
-A positive delta means smart selection beats dumb truncation **at equal cost**, and
-that is what CI guarantees. The *size* of the delta is not a fixed property: on a
-~500-line fixture behind an HNSW index it moves between runs, so we publish the
-gate and the observed band rather than a point estimate that goes stale the week
-after it is written.
+A positive delta would mean smart selection beats plain truncation **at equal
+cost**. At v4.3.4 it doesn't: the reference fixture mixes code with prose chapter
+summaries, and on prose a matched-budget truncation can keep more of the expected
+facts — which is why `ci-benchmark.yml` gates at −0.10 rather than 0. The gate
+catches a real regression; it does not guarantee a win. The size of the delta
+moves with retrieval changes, so read the current value from the CI benchmark
+comment on any pull request.
 
 ## The learned memory layer (the differentiator)
 

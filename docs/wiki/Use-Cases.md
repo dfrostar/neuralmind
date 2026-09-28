@@ -11,7 +11,7 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 | [Claude Code user](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/claude-code.md) | You use Claude Code daily | Two-phase optimization: retrieval + PostToolUse compression |
 | [Cost optimization](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/cost-optimization.md) | You need to reduce and *report* LLM spend | Baseline → measure → stakeholder-ready report |
 | [Any LLM (ChatGPT / Gemini / local)](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/any-llm.md) | You use a non-MCP chat or mixed models | Copy-paste + CLI-piped context into any model |
-| [Offline / regulated work](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | 100% local, zero telemetry, compliance properties table |
+| [Offline / regulated work](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/offline-regulated.md) | You're on air-gapped or regulated systems | Local-first, no telemetry, compliance properties table |
 | [Growing monorepo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/growing-monorepo.md) | Your codebase grows fast and drifts often | Three freshness strategies + large-repo tuning |
 | [Slim & sovereign: ChromaDB-free local stack](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/chromadb-free-local.md) | Security-sensitive teams, tiny-footprint installs (v0.21.0+) | Embed + search with zero ChromaDB — smaller deps, 8–16× smaller index, fewer advisories |
 | [Team memory via CI auto-index *(v0.38.0+)*](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ci-auto-index.md) | You want every developer's NeuralMind index to stay fresh automatically | On-push GitHub Action rebuilds incrementally + commits shared team memory bundle |
@@ -22,9 +22,9 @@ Canonical pages live at [docs/use-cases/](https://github.com/dfrostar/neuralmind
 
 | If your goal is… | Do this | Expected outcome |
 |---|---|---|
-| **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | 5–10× total reduction vs baseline agent |
+| **Cut LLM spend** on code Q&A | `install-hooks` + use `query` for questions | Fewer tokens per code question — measure yours with `neuralmind benchmark .` |
 | **Faster, more grounded** agent responses | `wakeup` at session start → `query` / `skeleton` during | Fewer hallucinations; less re-exploration |
-| **Keep all code local** | Default install — no extra config | 100% offline; nothing leaves the machine |
+| **Keep all code local** | Default install — no extra config | No telemetry; no repository content transmitted by default; works offline after the first build |
 | **Work across Claude + GPT + Gemini** | Build once, pipe output into any model | Model-agnostic |
 | **Make retrieval adapt** to your team's patterns | Enable memory + `install-hooks` (+ optional `neuralmind watch .`) + `neuralmind_feedback` MCP tool | The synapse layer learns from usage automatically; positive/negative feedback sharpens associations |
 | **Measure savings** for a stakeholder | `neuralmind benchmark . --json` | Per-query tokens, reduction ratios |

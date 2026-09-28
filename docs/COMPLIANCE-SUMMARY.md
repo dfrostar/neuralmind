@@ -40,7 +40,7 @@ The four NIST AI RMF functions and the evidence NeuralMind provides for each:
 
 ### MEASURE — performance, quality
 
-- **Token reduction** measured per query (the headline 12-50× claim); benchmark CI-verified at every commit (`tests/benchmark/`)
+- **Token reduction** measured per query — the 12-50× real-repo range comes from field reports (`neuralmind benchmark`); CI verifies a conservative floor on a fixture at every commit (`tests/benchmark/`), and the public benchmark reproduces on demand (`python -m evals.public.run`)
 - **Index quality metrics** — top-k retrieval hit rate, escalation rate, faithfulness eval framework scaffolded
 - **Query latency** logged for every retrieval — performance regressions visible in `audit-report` output
 
@@ -139,8 +139,8 @@ Choose the strictest your operational needs allow — all four use the same Neur
 | "No outbound network at runtime" | `ss -tnp \| grep python` while running `neuralmind query` — no connections |
 | "Audit trail captures every query" | `cat .neuralmind/audit_events.jsonl` after a session |
 | "SBOM covers the full dep tree" | Run `syft .` on a local install, diff against the released SBOM |
-| "100% local processing" | Pull internet, `neuralmind build && neuralmind query .` still works |
-| "MIT licensed, full source" | `https://github.com/dfrostar/neuralmind` — every file readable |
+| "Local processing" | After one build has cached the embedding model (or with `NEURALMIND_ONNX_MODEL_DIR` pre-seeded), disconnect the network: `neuralmind build . && neuralmind query . "where is auth handled?"` still works |
+| "MIT core, source-available Team modules" | `LICENSING.md` draws the boundary; every file is readable at `https://github.com/dfrostar/neuralmind` |
 | "Container image is non-root" | `docker run --rm --entrypoint id ghcr.io/dfrostar/neuralmind:latest` |
 
 ---

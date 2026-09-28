@@ -10,11 +10,11 @@ Sourcegraph Cody is a code AI assistant backed by Sourcegraph's server-side code
 |---|---|---|
 | Deployment | SaaS or self-hosted Sourcegraph server | Local CLI/MCP, no server |
 | Index scope | Cross-repo, organization-wide | Single repo, per-project |
-| Hosting | Requires Sourcegraph infra | Pure local, offline |
-| Data flow | Code may be sent to Sourcegraph or your Sourcegraph instance | Nothing leaves the machine |
+| Hosting | Requires Sourcegraph infra | Local; works offline after the first build |
+| Data flow | Code may be sent to Sourcegraph or your Sourcegraph instance | No telemetry and no repository content sent by default (your agent still sends the slice it selects to its own model) |
 | Agent coverage | Cody clients (VS Code/JetBrains) | Any MCP-compatible agent or plain CLI |
 | Tool-output compression | No | Yes (PostToolUse hooks) |
-| License | Proprietary (open-core) | MIT |
+| License | Proprietary (open-core) | MIT core, source-available Team modules |
 | Best fit | Large orgs with many repos | Individual developers + single-repo teams |
 | Install methods | Sourcegraph server + Cody editor extension | `pip` / `pipx` / `uv` / Docker / source — no server to run |
 

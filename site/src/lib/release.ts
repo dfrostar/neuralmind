@@ -8,7 +8,7 @@ export const PYPI_PROJECT_URL = 'https://pypi.org/project/neuralmind/';
 // Fallback used only if the GitHub API is unreachable at build time, so pages
 // still render with a sane version instead of breaking the build. Keep this
 // pointed at the newest known release; the live value is fetched below.
-const FALLBACK = { tag: 'v1.9.1', date: '2026-07-28' };
+const FALLBACK = { tag: 'v4.3.4', date: '2026-09-27' };
 
 export interface LatestRelease {
     tag: string; // e.g. "v1.9.1"

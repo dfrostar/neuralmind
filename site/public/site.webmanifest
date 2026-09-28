@@ -1,7 +1,7 @@
 {
   "name": "NeuralMind",
   "short_name": "NeuralMind",
-  "description": "Persistent memory for AI coding agents. 100% local. 12-50× token reduction.",
+  "description": "Persistent codebase memory for Claude Code, Cursor and any MCP agent. Local-first, no telemetry, MIT core.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c0c0c",

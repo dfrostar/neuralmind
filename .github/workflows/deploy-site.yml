@@ -22,6 +22,8 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      # Served verbatim at https://neuralmind.uk/llms.txt (site/src/app/llms.txt).
+      - 'docs/llms.txt'
       - '.github/workflows/deploy-site.yml'
   release:
     types: [published]

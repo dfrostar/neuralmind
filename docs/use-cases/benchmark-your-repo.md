@@ -1,6 +1,6 @@
 # Does NeuralMind actually work on *your* codebase?
 
-Don't take our word for it. The self-benchmarking suite proves the 12-50× claim on a committed fixture in CI — but your codebase isn't our fixture. The only way to know what NeuralMind does for *you* is to run it on *your* code.
+Don't take our word for it. CI gates a conservative token-reduction floor on a small committed fixture, and the public benchmark measures 45–261× on four pinned OSS repos — but your codebase isn't any of those. The only way to know what NeuralMind does for *you* is to run it on *your* code.
 
 This walkthrough gets you from zero to a real before/after number on your repository in **under 5 minutes**, with no commitment beyond a pip install.
 
@@ -194,7 +194,7 @@ neuralmind query . "How does authentication work?"
 neuralmind skeleton src/auth/handlers.py
 ```
 
-Claude Code users: install the PostToolUse compression hooks for an extra 5–10× reduction layer on top:
+Claude Code users: install the PostToolUse compression hooks to shrink `Read`/`Bash`/`Grep` output on top of that (a separate saving this benchmark does not measure):
 
 ```bash
 neuralmind install-hooks .

@@ -287,8 +287,8 @@ is **$4,125/month in lost engineering time** before any LLM cost.
 (15 devs × 15 min/day × 22 days × $50/hr = $4,125 — the earlier
 $1,650 figure was a math error, corrected 2026-07-31.)
 
-**With NeuralMind:** `install-hooks` auto-compresses Read/Bash/Grep
-output by ~88–91%. Context-limit failures drop to ~zero. LLM bill
+**With NeuralMind:** `install-hooks` auto-compresses large Read/Bash/Grep
+output (the per-tool reduction is not benchmarked yet). Context-limit failures drop to ~zero. LLM bill
 drops 1.5–3× alongside.
 
 **Combined value:** $4,125 productivity recovery + $200–400 LLM

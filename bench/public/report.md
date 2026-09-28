@@ -15,16 +15,17 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 41729 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 26543  (1.6× fewer) | 0.60 |
-| `embedding-rag` | 1.00 | 100% | 607  (68.7× fewer) | 0.96 |
-| `neuralmind` | 0.96 | 93% | 930  (44.9× fewer) | 0.93 |
+| `embedding-rag` | 1.00 | 100% | 607  (68.8× fewer) | 0.96 |
+| `neuralmind` | 0.93 | 86% | 928  (45.0× fewer) | 0.92 |
 
-**Headline:** NeuralMind reaches **96% gold-file recall** at **44.9× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **93% gold-file recall** at **45.0× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 ### Where NeuralMind loses
 
 | query | gold | retrieved files |
 |---|---|---|
-| `xfile-status-codes` | models.py, status_codes.py | models.py |
+| `xfile-redirect-auth` | sessions.py, auth.py | sessions.py |
+| `xfile-status-codes` | models.py, status_codes.py | models.py, exceptions.py |
 
 ## click  `@874ca2bc1c`
 
@@ -34,17 +35,12 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 78514 | 1.00 |
 | `ripgrep` | 0.79 | 71% | 45059  (1.7× fewer) | 0.60 |
-| `embedding-rag` | 1.00 | 100% | 634  (123.8× fewer) | 0.67 |
-| `neuralmind` | 0.79 | 71% | 788  (99.6× fewer) | 0.52 |
+| `embedding-rag` | 1.00 | 100% | 636  (123.4× fewer) | 0.60 |
+| `neuralmind` | 1.00 | 100% | 711  (110.4× fewer) | 0.60 |
 
-**Headline:** NeuralMind reaches **79% gold-file recall** at **99.6× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **110.4× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
-### Where NeuralMind loses
-
-| query | gold | retrieved files |
-|---|---|---|
-| `echo-util` | utils.py | termui.py, _termui_impl.py, core.py |
-| `xfile-command-help` | core.py, formatting.py | decorators.py, core.py |
+_No NeuralMind gold-file misses on this repo._
 
 ## flask  `@c12a5d874c`
 
@@ -54,16 +50,17 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 59013 | 1.00 |
 | `ripgrep` | 0.85 | 80% | 26891  (2.2× fewer) | 0.65 |
-| `embedding-rag` | 0.95 | 90% | 687  (85.9× fewer) | 0.73 |
-| `neuralmind` | 0.95 | 90% | 772  (76.4× fewer) | 0.78 |
+| `embedding-rag` | 0.95 | 90% | 677  (87.2× fewer) | 0.70 |
+| `neuralmind` | 0.85 | 80% | 723  (81.6× fewer) | 0.63 |
 
-**Headline:** NeuralMind reaches **95% gold-file recall** at **76.4× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **85% gold-file recall** at **81.6× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 ### Where NeuralMind loses
 
 | query | gold | retrieved files |
 |---|---|---|
-| `xfile-dispatch-context` | app.py, ctx.py | app.py, views.py |
+| `request-wrapper` | wrappers.py | app.py, README.md, helpers.py |
+| `xfile-dispatch-context` | app.py, ctx.py | README.md, app.py, views.py |
 
 ## rich  `@7f580bdcf0`
 
@@ -73,9 +70,9 @@ Cost (context tokens) vs. correctness (**gold-file recall**, the objective def-s
 |---|---:|---:|---:|---:|
 | `full-file` | 1.00 | 100% | 232483 | 1.00 |
 | `ripgrep` | 1.00 | 100% | 43437  (5.4× fewer) | 0.75 |
-| `embedding-rag` | 1.00 | 100% | 677  (343.2× fewer) | 0.94 |
-| `neuralmind` | 1.00 | 100% | 905  (256.8× fewer) | 0.80 |
+| `embedding-rag` | 1.00 | 100% | 669  (347.4× fewer) | 0.89 |
+| `neuralmind` | 1.00 | 100% | 892  (260.7× fewer) | 0.78 |
 
-**Headline:** NeuralMind reaches **100% gold-file recall** at **256.8× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
+**Headline:** NeuralMind reaches **100% gold-file recall** at **260.7× fewer tokens** than pasting every file (which is recall 1.0 by definition, at full cost).
 
 _No NeuralMind gold-file misses on this repo._

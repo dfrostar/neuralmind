@@ -16,14 +16,15 @@ type NavItem = { href: string; label: string; hint?: string };
 const productLinks: NavItem[] = [
     { href: '/#how-it-works', label: 'How it works', hint: 'Index, query, remember' },
     { href: '/#features', label: 'Features', hint: 'The full capability list' },
-    { href: '/#benchmarks', label: 'Benchmarks', hint: 'What CI measures, and how' },
-    { href: '/effectiveness', label: 'Effectiveness', hint: 'Before / after, misses included' },
+    { href: '/benchmark', label: 'Benchmark', hint: '40 public queries, every miss published' },
+    { href: '/effectiveness', label: 'Field report', hint: 'One production repo, before and after' },
 ];
 
 const resourceLinks: NavItem[] = [
     { href: '/publications', label: 'Research', hint: 'Write-ups and methodology' },
     { href: '/measure-your-own', label: 'Measure Your Own', hint: 'Run the benchmark on your repo' },
     { href: '/#assessment', label: 'Assessment', hint: 'Free spend analysis' },
+    { href: '/security', label: 'Security', hint: 'SBOM, integrity, disclosure' },
     { href: '/#faq', label: 'FAQ', hint: 'Common questions' },
     { href: 'https://docs.neuralmind.uk/wiki/Home', label: 'Docs', hint: 'CLI and wiki' },
 ];

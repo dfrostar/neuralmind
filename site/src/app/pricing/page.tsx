@@ -6,9 +6,16 @@ import { pageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = pageMetadata({
     path: '/pricing',
-    title: 'Pricing — NeuralMind',
+    title: 'NeuralMind Pricing — Free MIT Core, Team $29/user/mo',
     description:
-        'NeuralMind is MIT-licensed open source with every feature free at 1 seat. The Team tier licenses seats beyond one (5-50) with priority support; Enterprise adds custom SLAs.',
+        'Every NeuralMind feature is free at 1 seat — no signup, no expiry. Team is $29/user/mo (5–50 seats, annual) for more seats and priority support.',
+    keywords: [
+        'NeuralMind pricing',
+        'Claude Code memory pricing',
+        'AI coding agent memory free',
+        'MCP server pricing',
+        'team memory for AI agents',
+    ],
 });
 
 const tiers = [
@@ -19,12 +26,12 @@ const tiers = [
         description:
             'MIT core plus every tier2 feature at 1 seat — governance, audit, self-hosted. Nothing is gated.',
         features: [
-            'MIT OSS — full source code',
+            'MIT core — full source on GitHub',
             '1-seat license, auto-issued, never expires',
             'Personal memory graph',
             'L0–L3 progressive disclosure',
             'Governance, audit & self-hosted at 1 seat',
-            'Community support (Discord/GitHub)',
+            'Community support (GitHub)',
         ],
         cta: 'pip install neuralmind',
         ctaHref: 'https://pypi.org/project/neuralmind/',
@@ -75,10 +82,24 @@ const faqs = [
         a: '$29 per user per month on an annual contract, 5-50 seats, invoiced — contact hello@neuralmind.uk to start. There is no self-serve checkout. Seats are reassignable as your team changes.',
     },
     {
+        q: 'Is there a free trial?',
+        a: 'There is no trial because there is nothing to unlock: the free 1-seat license never expires and runs every feature. Evaluate NeuralMind on one repo for as long as you like, then contact hello@neuralmind.uk when your team needs more seats.',
+    },
+    {
         q: 'Where is my team data stored?',
-        a: 'All synapse data is stored locally. Team memory bundles publish and import through your own git repository — no relay, no server of ours in the path. Enterprise is air-gap installable in your infrastructure. We never train on your code.',
+        a: 'On your machines. The index and synapse data live in each project directory, and team memory bundles publish and import through your own git repository — no relay, no server of ours in the path. Every tier is air-gap installable. We never see your code, so we never train on it.',
     },
 ];
+
+const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: { '@type': 'Answer', text: faq.a },
+    })),
+};
 
 export default async function PricingPage() {
     const rel = await getLatestRelease();
@@ -88,15 +109,19 @@ export default async function PricingPage() {
         <>
             <Navbar />
             <main className="pt-32 pb-20 px-4 md:px-6">
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+                />
                 <section className="max-w-5xl mx-auto text-center mb-16">
                     <h1 className="font-display text-4xl md:text-5xl font-bold text-white mb-4">
                         Pricing
                     </h1>
                     <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-                        NeuralMind&apos;s core engine ({version}) is MIT-licensed open source —
-                        free forever, including governance, audit, and self-hosted at
-                        1 seat. The Team tier licenses seats beyond one; Enterprise
-                        adds custom SLAs and onboarding.
+                        NeuralMind&apos;s core engine ({version}) is MIT-licensed open source, and
+                        every feature — governance, audit and self-hosted included — is free at
+                        1 seat, forever. You pay for seats beyond one and for support, not for
+                        features.
                     </p>
                 </section>
 

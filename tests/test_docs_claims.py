@@ -68,6 +68,13 @@ PUBLISHED_GLOBS = (
     # index — read by models in other people's runtimes, where no CI of ours
     # can reach it. Same argument as docs/llms.txt above.
     "skills/*/SKILL.md",
+    # The docs-site layout renders its footer on every docs.neuralmind.uk page,
+    # and it carried "100% local · 12-50× token reduction" long after the pages
+    # themselves were corrected, because no guard read the template.
+    "docs/_layouts/*.html",
+    # GitHub issue forms are public copy too: the community-benchmark form told
+    # contributors their "code never leaves your machine".
+    ".github/ISSUE_TEMPLATE/*.yml",
 )
 
 # A post may legitimately *quote* a forbidden phrase in order to correct it —
@@ -117,7 +124,9 @@ FORBIDDEN = [
         "Absolute claim — reword to NeuralMind's own local processing.",
     ),
     (
-        re.compile(r"\bnothing\s+leaves?\s+your\b", re.IGNORECASE),
+        # "the" as well as "your": "Nothing leaves the machine" shipped in a
+        # comparison table while this pattern only knew the second person.
+        re.compile(r"\bnothing\s+leaves?\s+(your|the)\b", re.IGNORECASE),
         (
             "Absolute privacy claim about the whole workflow — inaccurate. "
             "Scope the claim to NeuralMind's own behavior."
@@ -219,7 +228,7 @@ SUPERSEDED_FIGURES = [
     ),
 ]
 
-# The public benchmark's mean is 93.75% and its per-repo floor is 0.79. A bare
+# The public benchmark's mean is 93.75% and its per-repo floor is 0.85. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
 PERFECT_RECALL_RE = re.compile(
@@ -297,6 +306,8 @@ def test_guard_actually_matches_a_known_bad_phrase() -> None:
     assert any(p.search(bad) for p, _ in FORBIDDEN)
     # The variant that shipped on llms.txt while the narrower pattern watched.
     assert any(p.search("100% local: no code leaves the machine") for p, _ in FORBIDDEN)
+    # The comparison-table variant, in the third person.
+    assert any(p.search("| Nothing leaves the machine |") for p, _ in FORBIDDEN)
     # The phrase this guard itself used to prescribe, false since the embedder
     # started fetching its own model. Both spellings that shipped.
     assert any(p.search("NeuralMind makes no network calls of its own") for p, _ in FORBIDDEN)
@@ -368,7 +379,7 @@ def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:
             violations.append(f"{rel}:{index + 1}: {raw.strip()[:110]}")
     assert not violations, (
         "A published surface claims 100% gold-file recall. The public benchmark "
-        "reports 93.75% mean across 40 queries (0.96 / 0.79 / 0.95 / 1.00) and "
+        "reports 93.75% mean across 40 queries (0.93 / 1.00 / 0.85 / 1.00) and "
         "publishes every miss:\n  " + "\n  ".join(violations)
     )
 

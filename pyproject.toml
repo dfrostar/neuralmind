@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "neuralmind"
 version = "4.3.4"
-description = "Persistent memory for AI coding agents. Your agent learns your codebase the way a senior engineer would — what files go together, what you usually edit next, what patterns matter. Works with Claude Code, Cursor, Cline, Continue, and any MCP-compatible agent. 100% local. Side effect: 12-50× cheaper code questions."
+description = "Persistent codebase memory for AI coding agents — Claude Code, Codex, Cursor, Cline, Continue and any MCP client. Learns which files go together from how you work and serves compact, ranked context: 45-261× fewer tokens than pasting every source file, at 93.75% mean gold-file recall on a public benchmark. Local-first, no telemetry."
 readme = "README.md"
 license = "MIT AND LicenseRef-NeuralMind-Commercial"
 authors = [
@@ -18,6 +18,10 @@ keywords = [
     "ai-coding-agent",
     "agent-memory",
     "persistent-memory",
+    "codebase-memory",
+    "claude-code-memory",
+    "mcp-memory",
+    "context-engineering",
     "context-compression",
     "token-reduction",
     "semantic-code-search",

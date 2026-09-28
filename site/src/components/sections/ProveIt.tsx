@@ -1,4 +1,5 @@
 import SectionHeader from '@/components/ui/SectionHeader';
+import { withCode } from '@/lib/ticks';
 
 const steps = [
     {
@@ -10,13 +11,13 @@ const steps = [
     {
         step: '2',
         title: 'Then measure YOUR codebase',
-        body: 'The fixture is tiny (~500 lines, ~5.5×). Real repos consistently hit 12–50× on the same pipeline — run the benchmark on your own code and read your own number. A maintainer field report on a ~9,300-node private TypeScript codebase measured 48.8×.',
+        body: 'No clone needed: install from PyPI and point it at your repo. The fixture above is tiny (~500 lines, ~5.5×); on real repos `neuralmind benchmark` has reported 12–50× against its fixed 50K-token naive baseline — a maintainer field report on a ~9,300-node private TypeScript codebase measured 48.8×. Read your own number.',
         code: ['pip install neuralmind', 'cd /path/to/your-repo', 'neuralmind build .', 'neuralmind benchmark .'],
     },
     {
         step: '3',
         title: 'Verify what you installed',
-        body: 'Check the SBOM, release integrity, and audit trail on the security page — and the full production before/after data on the effectiveness page.',
+        body: 'Check the SBOM, release integrity and disclosure policy on the security page — and the one-repo production field report, before/after numbers included.',
         code: null,
     },
 ];
@@ -25,8 +26,10 @@ export default function ProveIt() {
     return (
         <section id="prove-it" className="relative py-16 md:py-32 px-4 md:px-6">
             <div className="max-w-5xl mx-auto">
-                <SectionHeader eyebrow="Don&apos;t take our word for it" title="Prove it in 5 minutes">
-                    Every claim on this site reproduces from a fresh clone. No account, no signup, no cloud.
+                <SectionHeader eyebrow="Don&apos;t take our word for it" title="Prove it on your own repo">
+                    Every benchmark on this site reruns from a fresh clone or a pip install — the
+                    one-repo field report excepted, which is reproducible in method only. No account,
+                    no signup, no hosted service.
                 </SectionHeader>
 
                 <div className="grid md:grid-cols-3 gap-4 mb-8">
@@ -38,7 +41,7 @@ export default function ProveIt() {
                                 </span>
                                 <h3 className="font-display text-lg font-bold text-white">{s.title}</h3>
                             </div>
-                            <p className="text-slate-400 text-sm mb-4">{s.body}</p>
+                            <p className="text-slate-400 text-sm mb-4">{withCode(s.body)}</p>
                             {s.code ? (
                                 <div className="bg-carbon rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto mt-auto">
                                     {s.code.map((line) => (
@@ -53,8 +56,8 @@ export default function ProveIt() {
                                     <a href="/security" className="text-electric hover:text-electric-bright text-sm font-medium transition-colors">
                                         Security posture: SBOM &amp; integrity →
                                     </a>
-                                    <a href="/effectiveness" className="text-electric hover:text-electric-bright text-sm font-medium transition-colors">
-                                        Measured production results →
+                                    <a href="/field-reports/measure-memory-across-a-refactor/" className="text-electric hover:text-electric-bright text-sm font-medium transition-colors">
+                                        Production field report →
                                     </a>
                                 </div>
                             )}
@@ -74,8 +77,8 @@ export default function ProveIt() {
                     </div>
                     <p className="text-faint text-xs mt-3">
                         Small fixture, small multiplier — by design. It runs in CI on every commit as a regression
-                        gate. The 12–50× headline comes from real repos; your own number is one{' '}
-                        <code className="font-mono text-electric">neuralmind benchmark .</code> away.
+                        gate. Real repos have more to prune, so the ratio grows with the codebase; your own number
+                        is one <code className="font-mono text-electric">neuralmind benchmark .</code> away.
                     </p>
                 </div>
             </div>

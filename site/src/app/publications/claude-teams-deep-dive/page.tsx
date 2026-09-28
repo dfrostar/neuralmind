@@ -5,7 +5,7 @@ const GITHUB_URL = 'https://github.com/dfrostar/neuralmind';
 const POST_COMMIT = '3fe5a61';
 
 export const metadata = {
-    title: 'NeuralMind + Claude Teams: Procedures, Token Measurement, and Amnesia Prevention — NeuralMind',
+    title: 'Claude Code Teams: Shared Memory & Token Savings — NeuralMind',
     description: 'Deep-dive research report: how to use NeuralMind with Claude Code teams, measure token reduction, and eliminate agent amnesia via committed team memory bundles. Verified against the live codebase.',
     keywords: [
         'Claude Code team memory',

@@ -22,9 +22,9 @@
 **NeuralMind is a two-phase token optimizer for AI coding agents.**
 
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context per code question, instead of loading 50,000+ tokens of raw source. Works with Claude, GPT-4, Gemini, and local models.
-- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — typically 88–91% smaller.
+- **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
 
-Combined effect: **5–10× total reduction** vs baseline agent usage. 100% local, offline, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
+Measured effect: on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md) the retrieval phase uses **45–261× fewer tokens than pasting every source file**, at 93.75% mean gold-file recall — measure your own repo with `neuralmind benchmark .`. Local-first, works offline after the first build, model-agnostic. See [Use Cases](Use-Cases) for persona-matched walkthroughs.
 
 ### The Core Problem
 
@@ -492,9 +492,8 @@ points to top-k hit rate while the synapse layer alone moves it (+3.5 to
 the synapse layer learns from your usage. Inspect what's been learned with
 `neuralmind stats .` or `neuralmind memory inspect .`. See the
 [Learning Guide](Learning-Guide) for details.
-- Better relevance = smaller context needed = more token savings
 
-**Privacy**: 100% local analysis. No data sent anywhere. Patterns file is just JSON in your project.
+**Privacy**: synapse learning runs on your machine and sends no telemetry; the learned weights live in `.neuralmind/synapses.db` inside your project.
 
 #### `neuralmind benchmark`
 

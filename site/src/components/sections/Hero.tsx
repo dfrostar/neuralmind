@@ -14,10 +14,10 @@ const tags = ['Claude Code', 'Codex', 'Cursor', 'Cline', 'Continue', 'MCP'];
 // The site's own rule is that a CI gate and a per-repo mean are not the same
 // strength of claim, so the hero should not render them identically.
 const heroStats = [
-    { label: 'Gold-file recall', value: '93.6%', evidence: 'mean, 79–100% per repo', figure: true },
-    { label: 'vs. pasting files', value: '46–259×', evidence: 'fewer tokens', figure: true },
-    { label: 'Pre-registered queries', value: '40', evidence: 'four public repos', figure: true },
-    { label: 'Free tier', value: 'Auto-provisioned', evidence: 'no signup', figure: false },
+    { label: 'Gold-file recall', value: '93.75%', evidence: 'mean; 85–100% per repo', figure: true },
+    { label: 'Fewer tokens', value: '45–261×', evidence: 'than pasting every source file', figure: true },
+    { label: 'Pre-registered queries', value: '40', evidence: '4 public repos, every miss published', figure: true },
+    { label: 'Every feature, 1 seat', value: 'Free', evidence: 'MIT core, no signup, never expires', figure: false },
 ];
 
 // Real commands, verified against neuralmind/cli.py. Nothing here prints
@@ -25,7 +25,7 @@ const heroStats = [
 const session = [
     { prompt: '$', cmd: 'pip install neuralmind' },
     { prompt: '$', cmd: 'neuralmind build .' },
-    { prompt: '$', cmd: 'neuralmind query "where is auth handled?"' },
+    { prompt: '$', cmd: 'neuralmind query . "where is auth handled?"' },
 ];
 
 export default function Hero() {
@@ -69,15 +69,17 @@ export default function Hero() {
                         </div>
 
                         <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.04] tracking-tightest mb-6">
-                            Your team uses Claude Code?{' '}
-                            <span className="gradient-text">Now it remembers your codebase.</span>
+                            Your coding agent forgets your codebase.{' '}
+                            <span className="gradient-text">NeuralMind remembers it.</span>
                         </h1>
 
                         <p className="text-slate-400 text-base sm:text-lg leading-relaxed max-w-xl mb-9">
-                            Persistent neural memory for AI agents. Your agent opens the right file
-                            first — <span className="text-slate-100 font-medium">93.6% gold-file recall across 40
-                            pre-registered queries on four public repos</span>, at 46–259× fewer tokens than
-                            pasting those files in. Local-first, no telemetry.
+                            Local-first memory for Claude Code, Codex, Cursor and any MCP agent.
+                            NeuralMind maps your repo, learns which files belong together as you
+                            work, and hands your agent the right code first —{' '}
+                            <span className="text-slate-100 font-medium">93.75% mean gold-file recall at
+                            45–261× fewer tokens</span> than pasting every source file, on a
+                            public 40-query benchmark. No telemetry. MIT core.
                         </p>
 
                         <div className="flex flex-wrap items-center gap-3">
