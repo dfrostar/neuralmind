@@ -35,8 +35,10 @@ Method, per-command results and raw data:
 
 - `neuralmind _hook compress-read`, `compress-bash`, `cap-search` and `offload`
   return nothing. Claude sees exactly the tool result.
-- The Bash hook still writes each command's raw output to
-  `.neuralmind/last_output.json`, so `neuralmind last` works as before.
+- The Bash hook still writes the latest successful command's output,
+  credentials redacted, to `.neuralmind/last_output.json`, so `neuralmind last`
+  works as before. A failing command fires `PostToolUseFailure`, so its output
+  never reached this hook, then or now.
 - Every other hook is unchanged: session memory (SessionStart), prompt-time
   recall (UserPromptSubmit), the stale-decision guard (PreToolUse), reuse
   feedback (PostToolUse on Edit/Write), and the session digest (Stop,

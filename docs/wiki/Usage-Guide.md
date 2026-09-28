@@ -322,7 +322,7 @@ real time, as it works.
 
 ```bash
 # Terminal A — your normal Claude Code (or Cursor, OpenClaw, etc.) session
-claude-code   # work as usual
+claude        # work as usual
 
 # Terminal B — the live graph view
 neuralmind serve .

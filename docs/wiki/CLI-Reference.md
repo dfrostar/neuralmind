@@ -1703,9 +1703,12 @@ Print the most recent Bash output the PostToolUse hook cached, so it can
 be read again without re-running the command.
 
 Every time the `compress-bash` hook fires (after each successful Bash call),
-it stashes the raw stdout/stderr to
+it stashes the stdout/stderr, credentials redacted, to
 `<project>/.neuralmind/last_output.json` (single-slot, 2 MB cap,
-atomic temp-file + rename writes). `neuralmind last` surfaces it. Despite
+atomic temp-file + rename writes). `neuralmind last` surfaces it. A call
+Claude Code reports as failed (a non-zero exit, other than exit 1 from
+`grep`, `find`, `diff` and a few others) fires `PostToolUseFailure`
+instead, so its output isn't cached. Despite
 its name, the hook no longer returns compressed output to Claude
 ([why](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)), so this is the output Claude already saw.
 

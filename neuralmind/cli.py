@@ -4691,10 +4691,11 @@ def cmd_ci_check(args):
 def cmd_last(args):
     """Print the most recent cached bash output (see it again without re-running).
 
-    NeuralMind's Bash PostToolUse hook stashes each command's raw
-    stdout/stderr to ``.neuralmind/last_output.json``. This command prints
-    that cache, so the last output can be read again without re-running an
-    expensive command.
+    NeuralMind's Bash PostToolUse hook stashes the stdout/stderr of each Bash
+    call Claude Code reports as successful to ``.neuralmind/last_output.json``.
+    A failing call fires PostToolUseFailure instead, so it isn't cached. This
+    command prints that cache, so the last output can be read again without
+    re-running an expensive command.
 
     Credentials are redacted on the way into the cache, so a value shown
     as ``[REDACTED:<kind>]`` here was never written to disk. The header
@@ -6826,7 +6827,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     demo_p.set_defaults(func=cmd_demo)
 
-    # last command — the cached raw output of the most recent Bash call
+    # last command — the cached output of the most recent successful Bash call
     last_p = subparsers.add_parser(
         "last",
         help="Print the last bash output the PostToolUse hook cached "

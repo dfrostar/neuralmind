@@ -201,6 +201,21 @@ class TestRunHook:
         assert exit_code == 0
         assert output == ""
 
+    def test_offload_injects_nothing(self, monkeypatch):
+        # The opt-in offload action used to point Claude at a temp file
+        # holding any output over the offload threshold; it now returns
+        # nothing, whichever key the output arrives under.
+        big = "x" * 50_000
+        for tool_response in ({"output": big}, {"content": big}):
+            payload = {
+                "tool_name": "Bash",
+                "tool_input": {"command": "cat big.json"},
+                "tool_response": tool_response,
+            }
+            exit_code, output = self._invoke("offload", payload, monkeypatch)
+            assert exit_code == 0
+            assert output == ""
+
     def test_compress_read_injects_nothing(self, monkeypatch, tmp_path):
         path = tmp_path / "module.py"
         text = "def f():\n    return 1\n" * 200

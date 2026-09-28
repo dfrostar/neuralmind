@@ -49,7 +49,7 @@ HOOK_VERSION = "4"
 def _hook_block() -> dict:
     """Return the canonical neuralmind hook block.
 
-    PostToolUse: Read/Bash/Grep matchers (Bash caches raw output for
+    PostToolUse: Read/Bash/Grep matchers (Bash caches successful output for
         `neuralmind last`; none of them injects context — see run_hook).
     SessionStart: warm the synapse store and run a decay tick.
     UserPromptSubmit: inject spreading-activation neighbors as context.
@@ -314,9 +314,11 @@ def run_hook(action: str) -> int:
         exit_code = int(tool_response.get("exit_code") or tool_response.get("returncode") or 0)
         if not (stdout or stderr):
             return 0
-        # Stash the raw output so `neuralmind last` can show the last
-        # command's output again without re-running it. Fail open: a cache
-        # write failure must never break the hook.
+        # Stash the output (credential-redacted by write_last_output) so
+        # `neuralmind last` can show it again without re-running the command.
+        # Only successful calls get here: a failing one fires
+        # PostToolUseFailure. Fail open: a cache write failure must never
+        # break the hook.
         try:
             from .output_cache import write_last_output
 

@@ -348,8 +348,10 @@ neuralmind benchmark .
   you work.
 - **Session memory.** `SYNAPSE_MEMORY.md` is exported for Claude Code so
   every session boots already knowing the hub files and learned associations.
-- **`neuralmind last`.** The Bash hook caches each command's raw output, so
-  the last one can be printed again without re-running the command.
+- **`neuralmind last`.** The Bash hook caches the latest successful command's
+  output, credentials redacted, so it can be printed again without re-running
+  the command. A failing command fires a different hook event and isn't
+  cached.
 - **Team memory.** `neuralmind memory publish` writes a learned-weights
   bundle (no source code); commit it and teammates' agents inherit it on
   their next session — a fresh clone starts with the team's earned intuition.

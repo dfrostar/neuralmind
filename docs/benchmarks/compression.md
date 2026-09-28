@@ -72,8 +72,9 @@ lines it added the first 25 lines again (+10.4% to +96.2% per call).
 
 **They inject nothing, so Claude sees exactly the tool result: +0.0% for Read,
 Bash and Grep alike.** The Read, Bash and Grep hooks stay registered. The Bash
-hook still caches each command's raw output, so `neuralmind last` can show it
-again without re-running the command. None of them returns context anymore.
+hook still caches the latest successful command's output, credentials
+redacted, so `neuralmind last` can show it again without re-running the
+command. None of them returns context anymore.
 That removes the overhead above with no reinstall. Shrinking a tool result for
 real takes `updatedToolOutput`, and the retention figures below are why that
 isn't a drop-in switch.

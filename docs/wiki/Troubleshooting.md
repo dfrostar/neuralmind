@@ -360,7 +360,7 @@ If the block is present but the benchmark still looks off, open an issue with th
 
 ### PostToolUse scope — what NeuralMind's hooks do with tool output
 
-Nothing, deliberately. Through v4.3.4 the `Read`, `Bash` and `Grep` hooks handed Claude compressed copies of tool output. Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens, and they now inject nothing ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The `Bash` hook still caches each command's raw output for `neuralmind last`, and the `Edit`/`Write` hooks feed reuse feedback into the synapse layer. Responses from third-party MCP servers were never touched — NeuralMind's installed block doesn't subscribe to `mcp__<server>__<tool>` patterns. If one of those servers is dominating your token bill, that is a separate problem from what `install-hooks` solves.
+Nothing, deliberately. Through v4.3.4 the `Read`, `Bash` and `Grep` hooks handed Claude compressed copies of tool output. Claude Code adds a hook's context next to the tool result rather than replacing it, so the copies cost tokens, and they now inject nothing ([compression benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/compression.md)). The `Bash` hook still caches the latest successful command's output, credentials redacted, for `neuralmind last`, and the `Edit`/`Write` hooks feed reuse feedback into the synapse layer. Responses from third-party MCP servers were never touched — NeuralMind's installed block doesn't subscribe to `mcp__<server>__<tool>` patterns. If one of those servers is dominating your token bill, that is a separate problem from what `install-hooks` solves.
 
 ---
 
