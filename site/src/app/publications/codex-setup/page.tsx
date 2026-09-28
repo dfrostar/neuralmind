@@ -342,7 +342,7 @@ export default function PublicationPage() {
                             </table>
                         </div>
                         <p>
-                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex users get the retrieval-stage savings; Claude Code users add PostToolUse hook compression on top.
+                            <strong className="text-white">Bottom line:</strong> The 12-50× figure is real at the retrieval stage — NeuralMind replaces a 50K-token file dump with ~800 tokens of targeted context. Total end-to-end reduction varies by workflow (how many Read/Bash calls, query volume, codebase shape). Codex and Claude Code users get the same retrieval-stage savings: the Claude Code hooks add no compression on top (see the correction above).
                         </p>
                     </div>
                 </section>

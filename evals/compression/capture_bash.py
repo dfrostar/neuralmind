@@ -366,9 +366,11 @@ def _scrub(text: str, prefixes: list[tuple[str, str]]) -> str:
     return text
 
 
-def _version(argv: list[str]) -> str:
+def _version(argv: list[str], env: dict[str, str]) -> str:
+    # Same environment as the captured commands, so PATH resolves the same
+    # binary that produced the output.
     try:
-        out = subprocess.run(argv, capture_output=True, text=True, timeout=60)
+        out = subprocess.run(argv, capture_output=True, text=True, timeout=60, env=env)
         return (out.stdout or out.stderr).strip().splitlines()[0]
     except (OSError, subprocess.SubprocessError, IndexError):
         return "unavailable"
@@ -471,11 +473,11 @@ def capture(work_dir: Path, out_dir: Path = CORPUS_DIR) -> dict[str, Any]:
         "captured_on": date.today().isoformat(),
         "tool_versions": {
             "python": platform.python_version(),
-            "pytest": _version([py, "-m", "pytest", "--version"]),
-            "ruff": _version(["ruff", "--version"]),
-            "mypy": _version(["mypy", "--version"]),
-            "node": _version(["node", "--version"]),
-            "git": _version(["git", "--version"]),
+            "pytest": _version([py, "-m", "pytest", "--version"], env),
+            "ruff": _version(["ruff", "--version"], env),
+            "mypy": _version(["mypy", "--version"], env),
+            "node": _version(["node", "--version"], env),
+            "git": _version(["git", "--version"], env),
         },
         "pinned_repos": {r["name"]: r["commit"] for r in manifest["repos"]},
         "entries": rows,

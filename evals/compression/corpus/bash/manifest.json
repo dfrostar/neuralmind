@@ -4,7 +4,7 @@
   "tool_versions": {
     "python": "3.11.15",
     "pytest": "pytest 9.1.1",
-    "ruff": "ruff 0.15.8",
+    "ruff": "ruff 0.16.9",
     "mypy": "mypy 1.19.1 (compiled: yes)",
     "node": "v22.22.2",
     "git": "git version 2.43.0"

@@ -31,7 +31,7 @@
       "flask": "c12a5d874c5a014495eb2db8a73f40037bc813ac",
       "rich": "7f580bdcf07a3b269a0e786b6a3aa9c804f393cf"
     },
-    "bash_corpus_sha256": "3aaa16063d05dcd73574da425ef060837d2d54cbc5b1c8809bc5b7f25b472ec5"
+    "bash_corpus_sha256": "f4df5c452d83bae8edc9a6360227c7e6fbafc8b07605d3a83cf5a60cd8900bbe"
   },
   "summary": {
     "Read": {

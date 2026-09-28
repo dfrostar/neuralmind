@@ -1076,7 +1076,6 @@ $ neuralmind query . "CMMC gap analysis"
             <h3>What ships</h3>
             <ul>
                 <li><strong>GHCR auto-build.</strong> Every tagged release publishes <code>ghcr.io/dfrostar/neuralmind:vX.Y.Z</code> and <code>:latest</code>, multi-platform (<code>linux/amd64</code> + <code>linux/arm64</code>), non-root runtime, transitive deps pre-wheeled. <code>:latest</code> only moves for stable tags — pre-release tags like <code>v1.0.0-rc1</code> are excluded from the floating tag.</li>
-                - **Phase 2 — Output Compression:** PostToolUse hooks compress Read, Bash, and Grep output 88–91% smaller before agents see it.
                 <li><strong>Air-gapped install walkthrough</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/air-gapped.md">docs/use-cases/air-gapped.md</a>) — bundle-and-sneakernet for environments with no outbound network at install time.</li>
                 <li><strong>Compliance one-pager</strong> (<a href="https://github.com/dfrostar/neuralmind/blob/main/docs/COMPLIANCE-SUMMARY.md">docs/COMPLIANCE-SUMMARY.md</a>) — NIST AI RMF + SOC 2 + GDPR claims consolidated for procurement review, with a "how to verify yourself" command for every claim.</li>
             </ul>
@@ -1184,11 +1183,10 @@ $ neuralmind query . "CMMC gap analysis"
     <section>
         <div class="container">
             <h2>How We Solve It</h2>
-            <h3>Four-Phase Architecture</h3>
-            <p><strong>Phase 1 — Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
-            <p><strong>Phase 2 — Output compression (withdrawn):</strong> PostToolUse hooks were meant to shrink Read, Bash and Grep output. Measured against Claude Code&rsquo;s hook protocol, they added tokens instead, so they no longer inject anything (<a href="https://docs.neuralmind.uk/benchmarks/compression.html">compression benchmark</a>).</p>
-            <p><strong>Phase 3 — Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
-            <p><strong>Phase 4 — Graph View <em>(v0.5.4, made live in v0.6.0)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. <strong>v0.6.0 adds a live activity feed</strong> — synapse and file events pulse on the canvas in real time, with a cross-process JSONL bridge that lets Claude Code, Cursor, OpenClaw, and Hermes-Agent all feed the same canvas. The brain stops being a black box — you can finally watch what it's learning, live.</p>
+            <h3>Three-Part Architecture</h3>
+            <p><strong>Smart Retrieval:</strong> Instead of loading entire files, NeuralMind uses a 4-layer semantic index to surface only the ~800 tokens of code your question actually needs.</p>
+            <p><strong>Brain-like Memory <em>(v0.4.0)</em>:</strong> A second brain runs alongside the LLM — a persistent weighted graph that learns associations between code nodes from how the agent and the codebase actually interact. Stronger connections form between code that gets used together, weaker ones decay, and the agent's prompts trigger spreading-activation recall over the learned graph.</p>
+            <p><strong>Graph View <em>(v0.5.4, made live in v0.6.0)</em>:</strong> <code>neuralmind serve</code> renders the whole system as an Obsidian-style force-directed graph in the browser. Structural edges, the learned synapse overlay, backlinks, a semantic quick-switcher, and one-click open-in-editor. <strong>v0.6.0 adds a live activity feed</strong> — synapse and file events pulse on the canvas in real time, with a cross-process JSONL bridge that lets Claude Code, Cursor, OpenClaw, and Hermes-Agent all feed the same canvas. The brain stops being a black box — you can finally watch what it's learning, live.</p>
             <p><strong>Result:</strong> 12-50× per-query token reduction (50K+ tokens of raw source compressed into ~800 tokens of structured context) and 12–50% bill drops on real codebases. Retrieval that gets sharper the longer the system runs on a codebase.</p>
 
             <h3>Enterprise Ready</h3>
