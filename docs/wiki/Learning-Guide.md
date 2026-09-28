@@ -208,7 +208,7 @@ Five activation paths, all of which strengthen pairwise edges between
 co-active nodes (Hebbian: "nodes that fire together wire together"):
 
 1. **Every `mind.query()`** — top search hits + loaded communities reinforce.
-2. **`PostToolUse` hook** — when the agent reads/runs/searches code together.
+2. **`PostToolUse` hook on Edit/Write** — when the agent's new code reuses existing symbols, their edges are reinforced (reuse feedback).
 3. **`UserPromptSubmit` hook** — current prompt's neighbors get an activation pulse.
 4. **`SessionStart` hook** — runs decay so weights age between sessions, then exports memory.
 5. **`neuralmind watch` daemon** — debounces file edits into co-activation batches; co-edited files wire together.
