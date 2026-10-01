@@ -144,19 +144,28 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
     }
 
 
-def tool_query(project_path: str, question: str, include_relevance: bool = False) -> dict[str, Any]:
+def tool_query(
+    project_path: str,
+    question: str,
+    include_relevance: bool = False,
+    learn: bool | None = None,
+) -> dict[str, Any]:
     """Get optimized context for a specific question.
 
     When ``include_relevance`` is set, attach a structured relevance sidecar
     (per-file, per-node score / synapse-boost / recall + line spans) so a
     downstream compressor can protect the load-bearing spans instead of
     shrinking them away. Off by default to keep responses small.
+
+    ``learn=False`` makes the call read-only: nothing is reinforced or logged
+    and the synapse database is opened read-only (see ``neuralmind.learning``).
     """
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         raise ValueError(hint)
-    mind = get_mind(project_path)
-    result = mind.query(question)
+    # A read-only call must not build an index on first use either.
+    mind = get_mind(project_path, auto_build=learn is not False)
+    result = mind.query(question, learn=learn)
     out: dict[str, Any] = {
         "context": result.context,
         "tokens": result.budget.total,
@@ -172,13 +181,15 @@ def tool_query(project_path: str, question: str, include_relevance: bool = False
     return out
 
 
-def tool_search(project_path: str, query: str, n: int = 10) -> list[dict[str, Any]]:
-    """Direct semantic search for code entities."""
+def tool_search(
+    project_path: str, query: str, n: int = 10, learn: bool | None = None
+) -> list[dict[str, Any]]:
+    """Direct semantic search for code entities. ``learn=False``: read-only."""
     hint = _unindexed_relative_path_hint(project_path)
     if hint:
         raise ValueError(hint)
-    mind = get_mind(project_path)
-    results = mind.search(query, n=n)
+    mind = get_mind(project_path, auto_build=learn is not False)
+    results = mind.search(query, n=n, learn=learn)
     return [
         {
             "id": r.get("id"),
@@ -791,6 +802,13 @@ TOOLS = [
                     "score / synapse-boost / recall + line spans) so a downstream compressor "
                     "can protect the load-bearing spans. Default false.",
                 },
+                "learn": {
+                    "type": "boolean",
+                    "description": "false = read-only: synapse recall still shapes the "
+                    "result, but nothing is reinforced or logged and the synapse database "
+                    "is opened read-only. Use for evals and benchmarks. Default true "
+                    "(unless the server runs with NEURALMIND_NO_LEARN=1).",
+                },
             },
             "required": ["project_path", "question"],
         },
@@ -810,6 +828,13 @@ TOOLS = [
                     "type": "integer",
                     "description": "Number of results to return (default: 10)",
                     "default": 10,
+                },
+                "learn": {
+                    "type": "boolean",
+                    "description": "false = read-only: synapse recall still shapes the "
+                    "result, but nothing is reinforced or logged and the synapse database "
+                    "is opened read-only. Use for evals and benchmarks. Default true "
+                    "(unless the server runs with NEURALMIND_NO_LEARN=1).",
                 },
             },
             "required": ["project_path", "query"],
@@ -1273,10 +1298,13 @@ def handle_tool_call(name: str, arguments: dict[str, Any]) -> str:
     handlers = {
         "neuralmind_wakeup": lambda args: tool_wakeup(args["project_path"]),
         "neuralmind_query": lambda args: tool_query(
-            args["project_path"], args["question"], args.get("include_relevance", False)
+            args["project_path"],
+            args["question"],
+            args.get("include_relevance", False),
+            learn=args.get("learn"),
         ),
         "neuralmind_search": lambda args: tool_search(
-            args["project_path"], args["query"], args.get("n", 10)
+            args["project_path"], args["query"], args.get("n", 10), learn=args.get("learn")
         ),
         "neuralmind_build": lambda args: tool_build(args["project_path"], args.get("force", False)),
         "neuralmind_stats": lambda args: tool_stats(args["project_path"]),

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="How NeuralMind works: a Hebbian synapse layer that learns your codebase from real usage, a structural code graph that answers what calls a symbol and what a change touches (blast radius), a commit-time drift check that flags code diverging from its own patterns, decision provenance that recalls why code is the way it is from git history, decision memory with a stale-decision guard, progressive context disclosure (93.75% mean gold-file recall at 45–261× fewer tokens on the public benchmark), incremental content ingestion for books and docs corpora, and a local-first ten-language code graph.">
-    <meta name="keywords" content="NeuralMind, AI coding agent memory, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
+    <meta name="keywords" content="NeuralMind, AI coding agent memory, retrieval eval, gitignore-aware indexing, read-only queries, index freshness, stale index detection, code graph regeneration, code drift detection, pattern drift, agentic drift, doc-evolver, jsdoc-optimization, Hebbian learning, synapse layer, semantic code search, structural code search, call graph, blast radius, decision provenance, commit rationale, code rationale, context compression, token optimization, MCP server, Claude Code, tree-sitter code graph, team memory, branch-isolated memory, content ingestion, incremental indexing, markdown corpus search, local-first, open source">
     <title>About NeuralMind - Semantic Code Intelligence with Brain-like Memory</title>
     <link rel="canonical" href="https://docs.neuralmind.uk/about.html">
     <meta property="og:type" content="article">
@@ -195,6 +195,22 @@
                 </tbody>
             </table>
             <p>For enterprise-scale agentic fleets, the full stack delivers maximum token efficiency, local-first processing with no telemetry, and a traceable technical debt ledger. <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/comparisons/context-engineering-stack.md">Read the full comparative guide →</a></p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container" id="whats-new-v450">
+            <h2>What&rsquo;s New in v4.5.0 &mdash; numbers measured on your project</h2>
+            <p><strong>Three commands printed three unrelated reduction ratios against three baselines, and running an eval weekly trained the synapse layer on its own test.</strong> v4.5.0 makes every number NeuralMind prints about a project measured on that project, and comparable from run to run.</p>
+            <h3>What&rsquo;s new</h3>
+            <ul>
+                <li><strong><code>neuralmind eval .</code></strong> &mdash; hit@1, hit@5 and MRR against the questions and gold files you commit in <code>.neuralmind.eval.yaml</code>, with a run history (<code>--report</code>) and drafted questions (<code>--suggest</code>)</li>
+                <li><strong>Read-only queries</strong> &mdash; <code>query --no-learn</code>, MCP <code>learn: false</code> and <code>NEURALMIND_NO_LEARN=1</code> read the learned layer without writing to it; <code>benchmark</code>, <code>probe</code> and <code>eval</code> are read-only by default</li>
+                <li><strong>One measured baseline</strong> &mdash; <code>benchmark</code>, <code>savings</code>, <code>cost</code> and <code>build --dry-run</code> divide by the token count of the files the index covers, not a fixed 50K estimate (<code>--naive-50k</code> keeps the old number)</li>
+                <li><strong><code>.gitignore</code> honoured</strong> &mdash; the index covers what git covers, including tracked files that match an ignore rule; <code>.neuralmindignore</code> uses gitignore semantics</li>
+                <li><strong>Stable probe sampling</strong> &mdash; an unchanged symbol stays in the sample across rebuilds, and <code>--baseline</code> compares only the symbols both runs sampled</li>
+            </ul>
+            <p>Full details: <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.5.0.md">v4.5.0 release notes</a> &nbsp;|&nbsp; <a href="https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-retrieval-on-your-repo.md">Measure retrieval on your own repo &rarr;</a></p>
         </div>
     </section>
 

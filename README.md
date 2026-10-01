@@ -27,7 +27,8 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
-> - **New in v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
+> - **New in v4.5.0:** numbers measured on your project. `neuralmind eval .` scores retrieval against the questions and gold files in your `.neuralmind.eval.yaml` (hit@1 / hit@5 / MRR, with a history); every reduction ratio divides by the measured size of your code instead of a fixed 50K guess; queries can be read-only (`--no-learn`, MCP `learn: false`, `NEURALMIND_NO_LEARN=1`) so evals never train on their own test; and the index covers what git covers — `.gitignore` is honoured ([release notes](docs/releases/RELEASE_NOTES_v4.5.0.md))
+> - **v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
 >
 > **Works with every IDE your team already uses.**
 
@@ -257,6 +258,19 @@ Your agent sees it too: its first `neuralmind_wakeup` starts with
 `Index is stale: … Run neuralmind build . --regenerate-graph.` whenever the graph
 lags. Pin the graph source with `graph_source: auto | builtin | graphify` in
 `.neuralmind.yaml`. Walkthrough: [Recover from a stale code graph](docs/use-cases/recover-from-a-stale-graph.md).
+
+### Measure it on your own questions *(v4.5.0+)*
+
+```bash
+neuralmind eval . --suggest --write   # draft .neuralmind.eval.yaml: questions + the file that answers each
+neuralmind eval .                     # hit@1 / hit@5 / MRR, read-only — never trains on its own test
+neuralmind eval . --report            # the run history as a markdown table
+```
+
+Every reduction ratio (`benchmark`, `savings`, `cost`, `build --dry-run`) now
+divides by the measured token count of the files the index covers, and the
+index covers what git covers. Walkthrough:
+[Measure retrieval on your own repo](docs/use-cases/measure-retrieval-on-your-repo.md).
 
 ### Index prose, not just code *(v3.4.0+)*
 

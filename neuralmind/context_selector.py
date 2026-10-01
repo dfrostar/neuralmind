@@ -352,6 +352,10 @@ class ContextSelector:
         self.synapse_recall_detailed = None
         self._synapse_store: Any = None  # For synapse-seeded expansion
         self._structural_index: Any = None  # For dependency graph expansion
+        # The reduction ratio's denominator: the measured token count of the
+        # indexed files, set by NeuralMind from neuralmind.baseline. None
+        # falls back to the fixed 50,000-token estimate.
+        self.baseline_tokens: int | None = None
 
         # Optional structural recall, injected by NeuralMind.build().
         # Signature: (seed_node_ids: list[str]) -> list[tuple[node_id, weight]].
@@ -1324,7 +1328,8 @@ class ContextSelector:
             except Exception:
                 logger.debug("source-file pass failed", exc_info=True)
 
-        store = getattr(self, "_synapse_store", None)
+        provider = getattr(self, "synapse_store_provider", None)
+        store = provider() if callable(provider) else getattr(self, "_synapse_store", None)
         if store is not None and self.synapse_recall is not None:
             try:
                 from .retrieval_enhancement import synapse_seeded_expansion
@@ -1919,7 +1924,7 @@ class ContextSelector:
         include_l1: bool = True,
         include_l2: bool = True,
         include_l3: bool = True,
-        full_codebase_tokens: int = 50000,  # Estimated full codebase size
+        full_codebase_tokens: int | None = None,
     ) -> ContextResult:
         """
         Get optimized context for a query with massive token reduction.
@@ -1930,11 +1935,16 @@ class ContextSelector:
             include_l1: Include summary layer
             include_l2: Include on-demand context
             include_l3: Include search results
-            full_codebase_tokens: Estimated tokens if loading full codebase
+            full_codebase_tokens: Tokens of the whole codebase — the reduction
+                ratio's denominator. Defaults to :attr:`baseline_tokens` (the
+                measured size of the indexed files, see ``neuralmind.baseline``),
+                else the fixed 50,000-token estimate.
 
         Returns:
             ContextResult with optimized context and token budget
         """
+        if full_codebase_tokens is None:
+            full_codebase_tokens = self.baseline_tokens or 50000
         budget = TokenBudget()
         context_parts = []
         layers_used = []

@@ -36,6 +36,20 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.5.0 — Numbers measured on your project (October 2026)
+
+`neuralmind eval .` scores retrieval against questions and gold files you commit
+in `.neuralmind.eval.yaml` — hit@1, hit@5, MRR, context tokens — and records
+every run with its commit and version (`eval --report`). Measurement never
+trains: `query --no-learn`, MCP `learn: false` and `NEURALMIND_NO_LEARN=1` read
+the learned layer without writing to it, and `benchmark`, `probe` and `eval` are
+read-only by default. Every reduction ratio now divides by the measured token
+count of the files the index covers instead of a fixed 50K estimate, `probe`
+samples stably across rebuilds, and the index covers what git covers —
+`.gitignore` is honoured, including tracked files that match an ignore rule.
+Walkthrough: [Measure retrieval on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/measure-retrieval-on-your-repo.md) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.5.0.md).
+
 ### v4.4.0 — The index is never silently out of step with the code (October 2026)
 
 A code graph that lags the code still "works" — it answers from code that no
@@ -347,7 +361,7 @@ A two-phase token optimizer for AI coding agents.
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
 
-Measured effect: **45–261× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 93.75% mean gold-file recall; on private repos `neuralmind benchmark .` has reported 12–50× against its fixed 50K-token baseline; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+Measured effect: **45–261× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 93.75% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 ### The core problem
 

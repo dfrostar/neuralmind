@@ -361,24 +361,49 @@ class SynapseStore:
     :mod:`neuralmind.namespaces`); the store itself is git-agnostic.
     """
 
-    def __init__(self, db_path: str | Path | None = None, namespace: str | None = None):
+    def __init__(
+        self,
+        db_path: str | Path | None = None,
+        namespace: str | None = None,
+        *,
+        read_only: bool = False,
+    ):
         """Create a SynapseStore.
 
         Args:
             db_path: Path to the SQLite DB file (or None for default).
             namespace: Optional namespace for the synapse store.
+            read_only: Open every connection with SQLite's ``mode=ro`` and skip
+                schema setup, so nothing — not even a bug in a read path — can
+                write to the learned layer. Used by read-only queries
+                (``learn=False`` / ``NEURALMIND_NO_LEARN=1``). The database
+                must already exist.
         """
         self.db_path = Path(db_path)
         self.namespace = normalize_namespace(namespace) if namespace else DEFAULT_NAMESPACE
+        self.read_only = read_only
+        if read_only:
+            if not self.db_path.exists():
+                raise FileNotFoundError(f"no synapse database at {self.db_path}")
+            return
         ensure_parent_dir(self.db_path)
         self._init_schema()
 
     @contextmanager
     def _connect(self):
-        conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
+        if self.read_only:
+            conn = sqlite3.connect(
+                self.db_path.resolve().as_uri() + "?mode=ro",
+                uri=True,
+                timeout=30.0,
+                isolation_level=None,
+            )
+        else:
+            conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
         try:
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")
+            if not self.read_only:
+                conn.execute("PRAGMA journal_mode=WAL")
+                conn.execute("PRAGMA synchronous=NORMAL")
             yield conn
         finally:
             conn.close()

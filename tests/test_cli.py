@@ -847,7 +847,13 @@ class TestCLIBenchmark:
         assert "avg_reduction_ratio" in data
 
     def test_cmd_benchmark_reduction_ratio_valid(self, temp_project, capsys):
-        """Test cmd_benchmark reports valid reduction ratios > 1.0."""
+        """cmd_benchmark's ratio divides by the baseline it names.
+
+        Since v4.5.0 the default baseline is the measured token count of the
+        indexed files, which for this stub fixture is a few dozen tokens — so
+        the honest ratio is below 1. The pre-v4.5.0 guarantee (> 1.0 against
+        the fixed 50K estimate) is checked with --naive-50k below.
+        """
         from neuralmind.cli import cmd_benchmark, cmd_build
 
         # Build first
@@ -875,7 +881,18 @@ class TestCLIBenchmark:
         assert json_start is not None, f"No JSON found in output: {captured.out}"
         json_text = "\n".join(lines[json_start:])
         data = json.loads(json_text)
-        assert data["avg_reduction_ratio"] > 1.0
+        assert data["baseline"]["source"] == "measured"
+        assert data["estimated_full_codebase_tokens"] == data["baseline"]["tokens"]
+        assert data["avg_reduction_ratio"] == pytest.approx(
+            data["baseline"]["tokens"] / data["avg_query_tokens"], abs=0.1
+        )
+
+        args.naive_50k = True
+        cmd_benchmark(args)
+        out = capsys.readouterr().out
+        naive = json.loads(out[out.index("{") :])
+        assert naive["baseline"]["source"] == "naive-50k"
+        assert naive["avg_reduction_ratio"] > 1.0
 
 
 class TestCLISkeleton:

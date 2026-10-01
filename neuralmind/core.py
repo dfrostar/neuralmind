@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import threading
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -205,6 +206,11 @@ class NeuralMind:
         self.enable_synapses = enable_synapses
         self._synapses: SynapseStore | None = None
         self._synapses_lock = threading.Lock()
+        # Read-only queries (learn=False / NEURALMIND_NO_LEARN=1) read the
+        # learned layer through a mode=ro store. The flag is per thread so a
+        # read-only eval never silences a concurrent learning query.
+        self._read_only_local = threading.local()
+        self._read_only_synapses: SynapseStore | None = None
         self._synapse_client: SynapseClient | None = None
         self._dynamics: SynapseDynamics | None = None
         self._query_handler: QueryHandler | None = None
@@ -281,6 +287,8 @@ class NeuralMind:
         """
         if not self.enable_synapses:
             return None
+        if self._reading_only():
+            return self._read_only_store()
         namespace = self.memory_namespace
         store = self._synapses
         if store is None or getattr(store, "namespace", namespace) != namespace:
@@ -290,6 +298,37 @@ class NeuralMind:
                     store = SynapseStore(default_db_path(self.project_path), namespace=namespace)
                     self._synapses = store
         return store
+
+    def _reading_only(self) -> bool:
+        """True inside a read-only query, or process-wide via NEURALMIND_NO_LEARN=1."""
+        from .learning import learning_disabled
+
+        return learning_disabled() or bool(getattr(self._read_only_local, "depth", 0))
+
+    def _read_only_store(self) -> SynapseStore | None:
+        """The synapse store opened ``mode=ro``; None before anything was learned."""
+        namespace = self.memory_namespace
+        store = self._read_only_synapses
+        if store is None or store.namespace != namespace:
+            try:
+                store = SynapseStore(
+                    default_db_path(self.project_path), namespace=namespace, read_only=True
+                )
+            except (FileNotFoundError, OSError):
+                return None
+            store._embedder = self.embedder  # type: ignore[attr-defined]
+            self._read_only_synapses = store
+        return store
+
+    @contextmanager
+    def _read_only(self):
+        """Within this block, synapse reads go through the read-only store."""
+        local = self._read_only_local
+        local.depth = getattr(local, "depth", 0) + 1
+        try:
+            yield
+        finally:
+            local.depth -= 1
 
     @property
     def synapse_client(self) -> SynapseClient:
@@ -552,6 +591,7 @@ class NeuralMind:
             }
         self._point_embedder_at(graph_path)
         self._notify(self._graph_line(graph_info))
+        gitignore_notice = self._maybe_announce_gitignore(graph_info)
 
         # Freshness: compare the graph with the files on disk, both ways,
         # before spending time embedding it. Never silent when it isn't OK.
@@ -635,6 +675,18 @@ class NeuralMind:
         # Purge vectors for nodes that left the graph, so search can't return
         # code that no longer exists. Every build, not only --force.
         purge = self._purge_orphans(prune=prune)
+
+        # Measure the baseline every reduction ratio divides: the tokens of
+        # the files this index covers (see neuralmind.baseline).
+        from . import baseline as baseline_mod
+
+        try:
+            measured_baseline = baseline_mod.measure_graph_files(
+                self.project_path, getattr(self.embedder, "graph", None) or {}
+            )
+            baseline_mod.save(self.project_path, measured_baseline)
+        except Exception:  # pragma: no cover - a ratio's denominator never blocks a build
+            measured_baseline = None
 
         self._init_query_state()
 
@@ -739,9 +791,14 @@ class NeuralMind:
         }
         if purge.get("skipped_orphans"):
             self._build_stats["orphans_kept"] = purge["skipped_orphans"]
+        if measured_baseline:
+            self._build_stats["baseline_tokens"] = measured_baseline["tokens"]
         if freshness is not None:
             self._build_stats["freshness"] = freshness.to_dict()
-        self._record_build_status({"graph": self._build_stats["graph"]})
+        status_updates: dict = {"graph": self._build_stats["graph"]}
+        if gitignore_notice:
+            status_updates["gitignore_notice"] = True
+        self._record_build_status(status_updates)
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -766,6 +823,37 @@ class NeuralMind:
             details=audit_details,
         )
         return self._build_stats
+
+    def _maybe_announce_gitignore(self, info: dict) -> bool:
+        """Say once what honoring ``.gitignore`` keeps out of the index.
+
+        v4.5.0 started indexing only what git covers, which changes results
+        for existing projects. The first build of a built-in graph prints the
+        counts and how to opt out; ``build_status.json`` records that it was
+        shown. Returns True when the notice is settled (shown, or nothing to
+        show) so the build can record it.
+        """
+        if info.get("kind") != "built-in":
+            return False
+        if self._read_build_status().get("gitignore_notice"):
+            return False
+        config = getattr(self, "_neuralmind_config", None)
+        if config is not None and not config.respect_gitignore:
+            return True
+        from . import graphgen
+        from .ignore import summarize_exclusions
+
+        try:
+            excluded = graphgen.gitignore_exclusions(self.project_path)
+        except Exception:
+            return False
+        if excluded:
+            self._notify(
+                f"Honoring .gitignore (new in v4.5.0): {summarize_exclusions(excluded)} kept "
+                "out of the index. Set respect_gitignore: false in .neuralmind.yaml to index "
+                "them, or list paths under include_ignored."
+            )
+        return True
 
     def _graph_line(self, info: dict) -> str:
         """``Graph: .neuralmind/graph.json (built-in, incremental, 8,351 nodes)``"""
@@ -864,12 +952,24 @@ class NeuralMind:
             l2_recall_k=self._tuned_l2_recall_k(),
             project_kind=self.project_kind,
         )
+        # Reduction ratios divide by the measured size of the indexed files
+        # (neuralmind.baseline) — the same baseline benchmark, savings and
+        # cost use — or the labelled 50K estimate before anything is measured.
+        try:
+            from . import baseline as baseline_mod
+
+            self.selector.baseline_tokens = int(baseline_mod.resolve(self.project_path)["tokens"])
+        except Exception:
+            self.selector.baseline_tokens = None
         # Let L3 retrieval consult the live synapse graph (seed-based spread,
         # no extra embedder round trip — the seeds are hits already fetched).
         self.selector.synapse_recall = self._recall_for_selection
         # Traced queries use the detailed variant so the PRD 3 trace can show
         # which memory namespace drove each boost (PRD 4).
         self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
+        # Synapse-seeded expansion asks for the store on each query, so a
+        # read-only query gets the mode=ro store rather than the writable one.
+        self.selector.synapse_store_provider = lambda: self.synapses
         # Pass the synapse store directly for synapse-seeded expansion
         if self.synapses is not None:
             self.selector._synapse_store = self.synapses
@@ -1594,6 +1694,14 @@ class NeuralMind:
 
         root = self.project_path.resolve()
         indexable = graphgen.SUPPORTED_SUFFIXES | graphgen._DOC_SUFFIXES
+        # Files the full build would index (.gitignore, .neuralmindignore and
+        # the default ignores applied), so an edit to an excluded file can't
+        # slip it back into the graph.
+        allowed = {
+            f.relative_to(root).as_posix()
+            for f in graphgen._iter_files(root, graphgen._DEFAULT_IGNORES, indexable)
+        }
+        known = {n.get("source_file") for n in graph.get("nodes", [])}
         changed: list[str] = []
         removed: list[str] = []
         for p in paths:
@@ -1606,7 +1714,10 @@ class NeuralMind:
                 continue
             if ap.suffix not in indexable:
                 continue
-            (changed if ap.exists() else removed).append(rel)
+            if ap.exists() and rel in allowed:
+                changed.append(rel)
+            elif rel in known or not ap.exists():
+                removed.append(rel)
 
         if not changed and not removed:
             return {"success": True, "files_reparsed": 0, "reason": "no indexable files"}
@@ -1702,6 +1813,15 @@ class NeuralMind:
             return {"success": True, "loaded": True}
         if self._load_existing_index():
             return {"success": True, "loaded": True}
+        from .learning import learning_disabled
+
+        if learning_disabled():
+            # NEURALMIND_NO_LEARN=1 promises nothing is written; a build writes
+            # the graph, the vectors and structural synapses.
+            return {
+                "success": False,
+                "error": "no index, and NEURALMIND_NO_LEARN=1 forbids building one",
+            }
         return self.build()
 
     def _load_existing_index(self) -> bool:
@@ -1773,6 +1893,7 @@ class NeuralMind:
         trace_verbose: bool = False,
         query_type: str = "auto",
         context_budget: int | None = None,
+        learn: bool | None = None,
     ) -> ContextResult:
         """
         Get optimized context for answering a question.
@@ -1790,11 +1911,41 @@ class NeuralMind:
             context_budget: Optional token budget. If provided, the assembled
                 context is trimmed to fit within this budget by removing
                 lower-priority layers (L3 → L2 → L1). L0 identity is never trimmed.
+            learn: False makes the query read-only: synapse recall still boosts
+                results (so the context is what a normal query would get), but
+                nothing is reinforced or logged, and the synapse database is
+                opened ``mode=ro``. None (default) learns unless
+                ``NEURALMIND_NO_LEARN=1``. Evals and benchmarks pass False so
+                they never train on their own test.
 
         Returns:
             ContextResult with relevant context and token budget
         """
-        self._ensure_built()
+        from .learning import should_learn
+
+        if not should_learn(learn):
+            with self._read_only():
+                return self._run_query(
+                    question, trace, trace_verbose, query_type, context_budget, learn=False
+                )
+        return self._run_query(
+            question, trace, trace_verbose, query_type, context_budget, learn=True
+        )
+
+    def _run_query(
+        self,
+        question: str,
+        trace: bool,
+        trace_verbose: bool,
+        query_type: str,
+        context_budget: int | None,
+        *,
+        learn: bool,
+    ) -> ContextResult:
+        if learn:
+            self._ensure_built()
+        else:
+            self._ensure_loaded_read_only()
 
         # Route prose/mixed projects through MedicalRetriever.
         # ContextSelector remains the code path (unchanged).
@@ -1812,9 +1963,12 @@ class NeuralMind:
             highlights = self._build_hybrid_highlights(question, result.top_search_hits)
             if highlights:
                 result.context = f"{highlights}\n\n{result.context}"
-        log_query_event(self.project_path, question, result)
-        self._record_recent_query(question, result)
-        self._reinforce_from_query(question, result)
+        if learn:
+            log_query_event(self.project_path, question, result)
+            self._record_recent_query(question, result)
+            self._reinforce_from_query(question, result)
+        # The audit trail records every query, read-only or not: it is the
+        # compliance record of what was asked, not part of the learned layer.
         self._emit_audit(
             category="audit",
             action="query",
@@ -1825,9 +1979,25 @@ class NeuralMind:
                 "tokens": result.budget.total,
                 "search_hits": result.search_hits,
                 "hybrid_context": self.hybrid_context,
+                "learn": learn,
             },
         )
         return result
+
+    def _ensure_loaded_read_only(self) -> None:
+        """Load the existing index for a read-only query; never build.
+
+        A read-only query must not write anything a build would (graph,
+        vectors, structural synapses), so a project with no index is an error
+        here rather than a first-run build.
+        """
+        if self._built and self.selector is not None:
+            return
+        if not self._load_existing_index():
+            raise GraphNotBuiltError(
+                f"No index for {self.project_path}. Read-only queries never build — "
+                f"run `neuralmind build {self.project_path}` first."
+            )
 
     RECENT_QUERIES_FILENAME = "recent_queries.jsonl"
     RECENT_QUERIES_MAX = 100
@@ -1944,26 +2114,34 @@ class NeuralMind:
         self._ensure_built()
         return querying.skeleton(self, file_path)
 
-    def search(self, query: str, n: int = 10, **filters) -> list[dict]:
+    def search(self, query: str, n: int = 10, learn: bool | None = None, **filters) -> list[dict]:
         """
         Direct semantic search without context formatting.
 
         Args:
             query: Search query
             n: Number of results
+            learn: False runs read-only (never builds; see :meth:`query`).
+                Search itself reinforces nothing either way.
             **filters: Optional filters (file_type, community)
 
         Returns:
             List of matching nodes with scores
         """
-        self._ensure_built()
+        from .learning import should_learn
+
+        learning = should_learn(learn)
+        if learning:
+            self._ensure_built()
+        else:
+            self._ensure_loaded_read_only()
         results = self.embedder.search(query, n=n, **filters)
         self._emit_audit(
             category="audit",
             action="search",
             status="success",
             target=self.project_path.name,
-            details={"query": query, "results": len(results)},
+            details={"query": query, "results": len(results), "learn": learning},
         )
         return results
 
@@ -2248,27 +2426,47 @@ class NeuralMind:
             "count": len(dependents),
         }
 
-    def benchmark(self, sample_queries: list[str] = None) -> dict:
+    def benchmark(self, sample_queries: list[str] = None, *, naive_50k: bool = False) -> dict:
         """
         Run a benchmark to measure token reduction.
 
         Args:
-            sample_queries: Optional list of queries to test.
-                           If None, uses default queries.
+            sample_queries: Optional list of queries to test. If None, uses the
+                questions in the project's ``.neuralmind.eval.yaml`` when there
+                is one, else five generic questions.
+            naive_50k: Divide by the fixed 50,000-token estimate instead of the
+                measured token count of the indexed files (for comparison with
+                pre-v4.5.0 numbers).
 
         Returns:
-            Benchmark results with average reduction ratio
+            Benchmark results with average reduction ratio, and the baseline
+            it was computed against (``baseline``).
         """
-        self._ensure_built()
+        from . import baseline as baseline_mod
 
+        self._ensure_built()
+        base = baseline_mod.resolve(self.project_path, naive_50k=naive_50k)
+
+        question_source = "argument"
         if sample_queries is None:
-            sample_queries = [
-                "How does authentication work?",
-                "What are the main API endpoints?",
-                "How is the database structured?",
-                "What frontend components exist?",
-                "How are errors handled?",
-            ]
+            from .project_eval import load_questions
+
+            try:
+                project_questions = load_questions(self.project_path)
+            except Exception:
+                project_questions = []
+            if project_questions:
+                sample_queries = [q.q for q in project_questions]
+                question_source = "project eval"
+            else:
+                question_source = "generic"
+                sample_queries = [
+                    "How does authentication work?",
+                    "What are the main API endpoints?",
+                    "How is the database structured?",
+                    "What frontend components exist?",
+                    "How are errors handled?",
+                ]
 
         results = []
 
@@ -2279,19 +2477,20 @@ class NeuralMind:
                 "type": "wakeup",
                 "query": None,
                 "tokens": wakeup.budget.total,
-                "reduction": wakeup.reduction_ratio,
+                "reduction": baseline_mod.ratio(base["tokens"], wakeup.budget.total),
             }
         )
 
-        # Query benchmarks
+        # Query benchmarks — read-only: a benchmark measures retrieval, and
+        # must not train the synapse layer it is measuring.
         for q in sample_queries:
-            result = self.query(q)
+            result = self.query(q, learn=False)
             results.append(
                 {
                     "type": "query",
                     "query": q,
                     "tokens": result.budget.total,
-                    "reduction": result.reduction_ratio,
+                    "reduction": baseline_mod.ratio(base["tokens"], result.budget.total),
                     "layers": result.layers_used,
                 }
             )
@@ -2306,9 +2505,11 @@ class NeuralMind:
             "wakeup_tokens": wakeup.budget.total,
             "avg_query_tokens": round(avg_tokens, 1),
             "avg_reduction_ratio": round(avg_reduction, 1),
-            "estimated_full_codebase_tokens": 50000,
+            "estimated_full_codebase_tokens": base["tokens"],
+            "baseline": base,
+            "questions": question_source,
             "results": results,
-            "summary": f"{avg_reduction:.1f}x average token reduction",
+            "summary": (f"{avg_reduction:.1f}x average token reduction vs {base['label']}"),
         }
 
     def retrieval_probe(
