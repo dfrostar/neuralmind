@@ -136,10 +136,10 @@ def test_spend_keeps_hits_no_pass_vacated():
 # --------------------------------------------------------------------------- #
 def test_mentions_find_paths_and_identifiers():
     paths, idents = l3_slots.mentions(
-        "The loop lives in `tools/feedback.py`; see `collect_cohort()` and RetryPolicy."
+        "The rule lives in `app/billing.py`; see `apply_discount()` and RetryPolicy."
     )
-    assert paths == ["tools/feedback.py"]
-    assert "collect_cohort" in idents and "RetryPolicy" in idents
+    assert paths == ["app/billing.py"]
+    assert "apply_discount" in idents and "RetryPolicy" in idents
 
 
 def test_doc_hit_hands_off_to_the_code_it_names(tmp_path, monkeypatch):
@@ -223,13 +223,13 @@ def test_hub_dampening_lets_a_refill_take_the_slot(tmp_path, monkeypatch):
 # --------------------------------------------------------------------------- #
 # Item 4: intent
 # --------------------------------------------------------------------------- #
-# The shapes of the four misses that started spec 7 (paraphrased): each asks
-# how the project behaves, so the implementation should outrank the docs.
+# Question shapes the old classifier sent to the docs: each asks how the
+# project behaves, so the implementation should outrank the docs.
 REGRESSION_SHAPES = [
-    "How does the reconciler pick which past orders belong to a cohort?",
-    "Where is the confirmation email sent when an order ships?",
-    "Which payment provider is tried first, and what is the fallback?",
-    "How does the scheduler avoid repeating the same layout across pages?",
+    "How does the session pick which adapter sends a request?",
+    "Where is the redirect followed after a POST?",
+    "Which hook runs before a request is sent?",
+    "How does the cache avoid storing the same response twice?",
 ]
 
 
@@ -284,13 +284,13 @@ def test_code_bm25_indexes_symbols_and_docstrings(tmp_path):
     (tmp_path / ".neuralmind").mkdir()
     catalog = l3_slots.NodeCatalog(
         [
-            node("p", "app/comments.py", label="post_pinned_comment()"),
+            node("p", "app/billing.py", label="apply_discount()"),
             node("r", "app/comments.py", "rationale", label="Pin the creator's comment."),
             node("d", "docs/x.md", "document", label="Comments"),
         ]
     )
     idx = l3_slots.code_bm25_index(tmp_path, catalog)
-    ids = [r["id"] for r in idx.search("pinned comment", top_k=5)]
+    ids = [r["id"] for r in idx.search("apply discount", top_k=5)]
     assert ids[0] == "p"
     assert "d" not in ids  # docs stay in the document index
 
@@ -298,12 +298,12 @@ def test_code_bm25_indexes_symbols_and_docstrings(tmp_path):
 def test_code_bm25_joins_the_fusion_only_when_flagged(tmp_path, monkeypatch):
     (tmp_path / ".neuralmind").mkdir()
     ranked = [hit("doc", "docs/a.md", 0.9, "document"), hit("x", "app/x.py", 0.8)]
-    nodes = [node("p", "app/comments.py", label="post_pinned_comment()")]
+    nodes = [node("p", "app/billing.py", label="apply_discount()")]
     sel = ContextSelector(StubEmbedder(tmp_path, ranked, nodes), str(tmp_path))
-    assert "p" not in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    assert "p" not in [h["id"] for h in sel._fetch_search("apply discount", 4)]
     monkeypatch.setenv("NEURALMIND_BM25_CODE", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked, nodes), str(tmp_path))
-    assert "p" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    assert "p" in [h["id"] for h in sel._fetch_search("apply discount", 4)]
 
 
 # --------------------------------------------------------------------------- #
@@ -313,32 +313,32 @@ def test_unified_bm25_holds_docs_and_code(tmp_path):
     (tmp_path / ".neuralmind").mkdir()
     catalog = l3_slots.NodeCatalog(
         [
-            node("p", "app/comments.py", label="post_pinned_comment()"),
-            node("d", "docs/x.md", "document", label="Comments", document="pinned comment flow"),
+            node("p", "app/billing.py", label="apply_discount()"),
+            node("d", "docs/x.md", "document", label="Discounts", document="discount rules"),
         ]
     )
     assert l3_slots.unified_bm25_index(tmp_path, catalog) is None  # a query never builds it
     idx = l3_slots.unified_bm25_index(tmp_path, catalog, rebuild=True)
-    ids = {r["id"] for r in idx.search("pinned comment", top_k=5)}
+    ids = {r["id"] for r in idx.search("apply discount", top_k=5)}
     assert ids == {"p", "d"}
 
 
 def test_unified_bm25_replaces_the_docs_only_list(tmp_path, monkeypatch):
     (tmp_path / ".neuralmind").mkdir()
     ranked = [hit("v", "app/v.py", 0.9)]
-    nodes = [node("p", "app/comments.py", label="post_pinned_comment()")]
+    nodes = [node("p", "app/billing.py", label="apply_discount()")]
     emb = StubEmbedder(tmp_path, ranked, nodes)
     emb.bm25_search = lambda q, n=10: [hit("docs-only", "docs/x.md", 1.0, "document")]
     # No unified index written yet (an index built before v4.6): the old list.
     sel = ContextSelector(emb, str(tmp_path))
-    assert "docs-only" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    assert "docs-only" in [h["id"] for h in sel._fetch_search("apply discount", 4)]
     l3_slots.unified_bm25_index(tmp_path, l3_slots.NodeCatalog(nodes), rebuild=True)
     sel = ContextSelector(emb, str(tmp_path))
-    ids = [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    ids = [h["id"] for h in sel._fetch_search("apply discount", 4)]
     assert "p" in ids and "docs-only" not in ids
     monkeypatch.setenv("NEURALMIND_BM25_UNIFIED", "0")  # v4.5 behaviour on request
     sel = ContextSelector(emb, str(tmp_path))
-    assert "docs-only" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    assert "docs-only" in [h["id"] for h in sel._fetch_search("apply discount", 4)]
 
 
 def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatch):
@@ -346,9 +346,9 @@ def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatc
     ranked.append(hit("impl", "app/orders.py", 0.8))
     monkeypatch.setenv("NEURALMIND_INTENT_RULES", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
-    sel.get_l3_search("How does the reconciler pick which orders belong to a cohort?")
+    sel.get_l3_search(REGRESSION_SHAPES[0])
     assert "app/orders.py" not in files_of(sel)  # intent alone only re-orders the top four
     monkeypatch.setenv("NEURALMIND_INTENT_POOL", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
-    sel.get_l3_search("How does the reconciler pick which orders belong to a cohort?")
+    sel.get_l3_search(REGRESSION_SHAPES[0])
     assert files_of(sel)[0] == "app/orders.py"

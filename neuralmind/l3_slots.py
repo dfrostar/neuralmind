@@ -10,7 +10,7 @@ is behind its own flag, and kept on by default only if the multi-repo eval
 * ``NEURALMIND_L3_PER_FILE=2`` — **diversify by file.** At most N hits per
   file, refilled from the next-best candidates of the same search.
 * ``NEURALMIND_DOC_HANDOFF=1`` — **doc-to-code hand-off.** A doc hit that
-  names a code file or symbol (``tools/feedback.py``, ``collect_cohort()``)
+  names a code file or symbol (``app/billing.py``, ``apply_discount()``)
   brings that file's best-matching symbol into contention.
 * ``NEURALMIND_HUB_DAMPEN=1`` — **hub dampening.** Files that turn up in more
   than ~15% of answers are down-weighted by their inverse document
