@@ -103,6 +103,20 @@ class TestGitignoreInGitRepo:
 
         assert _indexed(tmp_path) == ["pkg/a.py"]
 
+    def test_project_in_a_dir_the_enclosing_repo_ignores(self, tmp_path):
+        # A scratch dir or vendored checkout the outer repo ignores: git lists
+        # nothing under it, so the project's own .gitignore decides instead.
+        from neuralmind import ignore
+
+        _write_files(tmp_path, ["outer.py", "scratch/app/a.py", "scratch/app/skip.py"])
+        (tmp_path / ".gitignore").write_text("scratch/\n", "utf-8")
+        (tmp_path / "scratch" / "app" / ".gitignore").write_text("skip.py\n", "utf-8")
+        _git_repo(tmp_path)
+        project = tmp_path / "scratch" / "app"
+
+        assert ignore.git_visible_files(project) is None
+        assert _indexed(project) == ["a.py"]
+
     def test_walk_order_matches_the_directory_walk(self, tmp_path):
         from neuralmind import graphgen
 

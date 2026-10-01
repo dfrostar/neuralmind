@@ -196,6 +196,11 @@ def git_visible_files(root: str | Path) -> set[str] | None:
     listed = _git_lines(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
     if listed is None:
         return None
+    if not listed and _root_is_ignored(root):
+        # The project sits in a directory the enclosing repository ignores (a
+        # scratch dir, a vendored checkout). That repository's rules say
+        # nothing about this project, so walk it with its own .gitignore.
+        return None
     tracked_ignored = (
         _git_lines(root, "ls-files", "-z", "--cached", "--ignored", "--exclude-standard") or []
     )
@@ -213,6 +218,19 @@ def git_visible_files(root: str | Path) -> set[str] | None:
             inner = _git_lines(full, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
             files.update(f"{p}/{q}" for q in inner or [] if (full / q).is_file())
     return files
+
+
+def _root_is_ignored(root: Path) -> bool:
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(root), "check-ignore", "-q", "."],
+            capture_output=True,
+            timeout=_GIT_TIMEOUT_S,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0
 
 
 def is_git_repo(root: str | Path) -> bool:

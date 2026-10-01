@@ -180,8 +180,9 @@ The index covers what git covers. Inside a git repo the file list comes from
 `git ls-files --cached --others --exclude-standard` — nested `.gitignore`,
 `.git/info/exclude` and the global excludes apply exactly as in git — minus
 tracked files that match an ignore rule (force-added copies under an ignored
-directory). Outside git, the top-level `.gitignore` is applied with the same
-pattern rules. `.neuralmindignore` narrows further and, since v4.5.0, uses
+directory). Outside git, or when the project sits in a directory an enclosing
+repository ignores (a scratch dir, a vendored checkout), the project's own
+top-level `.gitignore` is applied with the same pattern rules. `.neuralmindignore` narrows further and, since v4.5.0, uses
 gitignore semantics too (`!` negation, `/` anchoring, `**`; `*` doesn't cross
 `/`). The first build after upgrading prints what was excluded, once.
 
