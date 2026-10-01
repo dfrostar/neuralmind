@@ -314,7 +314,7 @@ class NeuralMind:
                 store = SynapseStore(
                     default_db_path(self.project_path), namespace=namespace, read_only=True
                 )
-            except (FileNotFoundError, OSError):
+            except (FileNotFoundError, OSError, ValueError):
                 return None
             store._embedder = self.embedder  # type: ignore[attr-defined]
             self._read_only_synapses = store

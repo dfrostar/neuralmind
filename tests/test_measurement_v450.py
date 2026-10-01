@@ -314,6 +314,20 @@ class TestReadOnlyQueries:
         with pytest.raises(sqlite3.OperationalError):
             store.set_meta("x", "y")
 
+    def test_read_only_store_only_opens_neuralmind_state(self, learned_project, tmp_path):
+        import shutil
+
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        stray = tmp_path / "elsewhere" / "synapses.db"
+        stray.parent.mkdir()
+        shutil.copy(default_db_path(learned_project), stray)
+        with pytest.raises(ValueError, match=r"\.neuralmind"):
+            SynapseStore(stray, read_only=True)
+        escape = learned_project / ".neuralmind" / ".." / "synapses.db"
+        with pytest.raises(ValueError):
+            SynapseStore(escape, read_only=True)
+
     def test_read_only_query_never_builds(self, tmp_path, builtin_available):
         from neuralmind.core import GraphNotBuiltError
 

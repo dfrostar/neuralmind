@@ -22,10 +22,9 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from .paths import canonical_artifact
+from .paths import baseline_path
 
 NAIVE_BASELINE_TOKENS = 50_000
-BASELINE_FILENAME = "baseline.json"
 
 NAIVE_LABEL = "fixed 50K-token naive estimate (--naive-50k)"
 
@@ -67,7 +66,7 @@ def measure_graph_files(project: str | Path, graph: dict) -> dict:
 
 
 def save(project: str | Path, measured: dict) -> None:
-    path = canonical_artifact(project, BASELINE_FILENAME)
+    path = baseline_path(project)
     if not path.parent.exists():
         return
     try:
@@ -79,7 +78,7 @@ def save(project: str | Path, measured: dict) -> None:
 def load(project: str | Path) -> dict | None:
     """The cached measurement from the last build, or None."""
     try:
-        data = json.loads(canonical_artifact(project, BASELINE_FILENAME).read_text("utf-8"))
+        data = json.loads(baseline_path(project).read_text("utf-8"))
     except (OSError, ValueError):
         return None
     if not isinstance(data, dict) or int(data.get("tokens", 0) or 0) <= 0:

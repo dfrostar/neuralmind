@@ -54,13 +54,14 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sqlite3
 import time
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
 
-from .state_dir import ensure_parent_dir
+from .state_dir import STATE_DIR_NAME, ensure_parent_dir
 
 LEARNING_RATE = 0.30
 WEIGHT_CAP = 1.0
@@ -379,13 +380,14 @@ class SynapseStore:
                 (``learn=False`` / ``NEURALMIND_NO_LEARN=1``). The database
                 must already exist.
         """
-        self.db_path = Path(db_path)
         self.namespace = normalize_namespace(namespace) if namespace else DEFAULT_NAMESPACE
         self.read_only = read_only
         if read_only:
+            self.db_path = _state_database(db_path)
             if not self.db_path.exists():
                 raise FileNotFoundError(f"no synapse database at {self.db_path}")
             return
+        self.db_path = Path(db_path)
         ensure_parent_dir(self.db_path)
         self._init_schema()
 
@@ -393,7 +395,7 @@ class SynapseStore:
     def _connect(self):
         if self.read_only:
             conn = sqlite3.connect(
-                self.db_path.resolve().as_uri() + "?mode=ro",
+                self.db_path.as_uri() + "?mode=ro",
                 uri=True,
                 timeout=30.0,
                 isolation_level=None,
@@ -2453,6 +2455,21 @@ class SynapseStore:
 
 def _empty_namespace_stats() -> dict:
     return {"edges": 0, "weight": 0.0, "transitions": 0, "transition_weight": 0.0, "nodes": 0}
+
+
+def _state_database(db_path: str | Path) -> Path:
+    """Resolve ``db_path`` and require it to sit directly in a ``.neuralmind/`` dir.
+
+    The path derives from a caller-supplied project path (a CLI argument, or
+    an MCP tool input an agent chose). Read-only queries only ever open
+    NeuralMind's own state, so the read is pinned to a ``.neuralmind``
+    directory rather than trusting the caller.
+    """
+    full = os.path.realpath(db_path)
+    state = os.path.dirname(full)
+    if os.path.basename(state) != STATE_DIR_NAME or not full.startswith(state + os.sep):
+        raise ValueError(f"read-only synapse store must live in {STATE_DIR_NAME}/: {full}")
+    return Path(full)
 
 
 def default_db_path(project_path: str | Path) -> Path:
