@@ -1,7 +1,7 @@
 <!-- neuralmind:example-file — annotations here are syntax examples, not evidence. -->
 # 🧠 NeuralMind Wiki
 
-**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server and Claude Code hooks — for Claude Code, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 93.75% mean gold-file recall at 45–261× fewer tokens than pasting every source file.
+**Persistent, local-first codebase memory for AI coding agents.** A semantic code graph + a synapse layer that learns how you work + an MCP server and Claude Code hooks — for Claude Code, Codex, Cursor, Cline, Continue, and any MCP client. On the public benchmark: 95% mean gold-file recall at 46–263× fewer tokens than pasting every source file.
 
 Welcome — this wiki is the in-depth reference. For the fastest orientation, use the two pages at the top of Quick Links.
 
@@ -17,7 +17,7 @@ a loss, published as such.
 
 | | Benefit | Measured result | Where it's measured |
 |---|---|---|---|
-| 💸 | **Cheaper context** | **85–100% gold-file recall (93.75% mean) at 45–261× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 2 of 4 and ties exactly on the other 2 | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
+| 💸 | **Cheaper context** | **85.71–100% gold-file recall (95% mean) at 46–263× fewer tokens** than pasting every source file — beats `ripgrep` on cost on every repo, and on recall beats it on 3 of 4 and ties exactly on the fourth | Public benchmark, **real OSS repos** (`requests`, `click`, `flask`, `rich`) |
 | 🎯 | **Finds the *right* code, not just less of it** | **100% gold-file recall, MRR 0.96** — ranks the correct file at the top; beats the incumbent `codebase-memory-mcp` on retrieval ranking (0.96 vs 0.23) | Competitor head-to-head, **real repos** (`requests`, `click` only — off by default, not yet re-run on the four-repo corpus) |
 | 🧠 | **Learns how you work** | A Hebbian *synapse* layer that learns co-edited files lifts top-k retrieval hit-rate — **+3.5 to +14 points across runs**, CI-gated on direction — **budget-neutral** (no extra tokens) | Synapse A/B eval (**reference fixture** — smaller scope) |
 | 🔬 | **Answer grounding vs. naive truncation — a published loss** | At a *matched* token budget, naive truncation currently keeps slightly more gold facts on this prose-heavy fixture: **delta −0.054 at v4.3.4** (earlier releases +0.013 to +0.143). CI fails the build below **−0.10** | Faithfulness gate (**reference fixture** — smaller scope) |
@@ -35,6 +35,27 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 **[Benchmarks](Benchmarks)** page.
 
 ## What's New
+
+### v4.6.0 — One keyword index for docs and code, measured before it shipped (October 2026)
+
+The default backend's BM25 keyword index held only documents, so on "how does X
+work" questions a doc kept taking the L3 slot the implementation should have
+had. v4.6.0 indexes every node — doc text, symbol names, file paths,
+docstrings — in one BM25 index, on by default (`NEURALMIND_BM25_UNIFIED=0`
+restores v4.5.0). It was the one change of six that passed a keep rule fixed in
+advance, on 30 questions per repo across six repos — pre-registered and
+committed for the five public repos, plus a private 383-file repository
+(`python -m evals.retrieval.run`; reproducible on demand, not a CI gate): mean
+hit@5 **72.8% → 79.4%**, MRR 0.589 →
+0.654, public-benchmark gold-file recall 93.75% → 95%, tokens +1.1%. Published
+losses: `requests` drops one question, `rich`'s MRR falls 0.71 → 0.60, `click`
+gains a public-benchmark miss, and a private 383-file repository reaches
+73% / 0.60 against a target of 80% / 0.65 — not met. The other five changes
+ship off by default behind flags, and `neuralmind query --explain` now prints
+the query intent L3 ranked with. Run `neuralmind build` once after upgrading.
+Walkthrough: [A/B-test a ranking change on your own repo](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/ab-test-a-ranking-change.md) ·
+[eval results](Benchmarks#retrieval-eval-v460) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.6.0.md).
 
 ### v4.5.0 — Numbers measured on your project (October 2026)
 
@@ -80,7 +101,8 @@ three-layer decision retrieval over MCP; v4.0.0 shipped the context budget,
 session summaries and the on-demand `neuralmind cognition-loop` (its co-access
 and read-dedup modules are in the tree but not yet wired in). The public benchmark was
 regenerated at v4.3.4 with raw data committed: **93.75% mean gold-file recall
-(85–100% per repo) at 45–261× fewer tokens** than pasting every source file.
+(85–100% per repo) at 45–261× fewer tokens** than pasting every source file
+(superseded at v4.6.0: 95%, 46–263×).
 Guide: [Memory Layer](Memory-Layer).
 
 ### N-16 — Content QA System: Book/Markdown Retrieval (August 2026)
@@ -361,7 +383,7 @@ A two-phase token optimizer for AI coding agents.
 - **Phase 1 — Retrieval.** A 4-layer progressive-disclosure index surfaces ~800 tokens of structured context for any code question, instead of loading 50,000+ tokens of raw source.
 - **Phase 2 — Consumption.** PostToolUse hooks (Claude Code) compress `Read`, `Bash`, and `Grep` output **before the agent sees it** — a large `Read` becomes a structural skeleton, `Bash` keeps errors plus the tail, `Grep` is capped at 25 matches, and `neuralmind last` recovers anything trimmed. No benchmark measures this phase yet, so we don't quote a percentage for it.
 
-Measured effect: **45–261× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 93.75% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
+Measured effect: **46–263× fewer retrieval tokens than pasting every source file** on the [public benchmark](https://github.com/dfrostar/neuralmind/blob/main/docs/benchmarks/public.md), at 95% mean gold-file recall; on private repos `neuralmind benchmark .` reported 12–50× against its fixed 50K-token baseline before v4.5.0, which now divides by the measured size of the repo instead; 5.1× on the tiny CI fixture at v4.3.4 (CI fails below 4.0×). Works offline after the first build; model-agnostic.
 
 ### The core problem
 

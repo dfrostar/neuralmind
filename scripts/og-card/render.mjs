@@ -30,7 +30,7 @@ const repo = join(here, '..', '..');
 // --- claims gate -----------------------------------------------------------
 // Numbers rendered by card.html. If you change the card's copy, change this
 // list to match — the point is that both must trace to site/claims.json.
-const REQUIRED_CANON = ['93.75', '45', '261'];
+const REQUIRED_CANON = ['95', '46', '263'];
 
 const claims = readFileSync(join(repo, 'site', 'claims.json'), 'utf8');
 const card = readFileSync(join(here, 'card.html'), 'utf8');

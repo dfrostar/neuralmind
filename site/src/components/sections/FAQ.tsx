@@ -10,7 +10,7 @@ const faqs = [
     },
     {
         q: 'How much does NeuralMind reduce Claude Code token usage?',
-        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 45–261× smaller than pasting every source file, at 93.75% mean gold-file recall. On private repos, "neuralmind benchmark ." has reported 12–50× against its fixed 50K-token naive baseline. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly.',
+        a: 'It depends on your repo, so measure it. On the public benchmark — 40 pre-registered queries on requests, click, flask and rich — NeuralMind’s context was 46–263× smaller than pasting every source file, at 95% mean gold-file recall. On private repos, "neuralmind benchmark ." has reported 12–50× against its fixed 50K-token naive baseline. That is the retrieval slice of your bill; end-to-end savings are smaller, because generation, conversation history and tool output cost tokens too — the published business case models that honestly.',
     },
     {
         q: 'How is this different from RAG or a vector database?',
@@ -34,7 +34,7 @@ const faqs = [
     },
     {
         q: 'Where does NeuralMind lose?',
-        a: 'Four places, all published. It misses 4 of the 40 public-benchmark queries — mostly two-file questions where it retrieves one of the two files — and flask is its weakest repo at 85% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
+        a: 'Four places, all published. It misses 3 of the 40 public-benchmark queries — two are two-file questions where it retrieves one of the two files, and one is a click query it misses outright, which makes click its weakest repo at 85.71% recall. If all you need is to locate a file, a bare vector index is cheaper. On the CI fixture, naive truncation at the same token budget currently keeps slightly more gold facts than NeuralMind’s context (−0.054). And the synapse layer needs real use to learn: a fresh install has no learned associations yet.',
     },
     {
         q: 'Why not just use Cursor, Windsurf or Aider memory?',

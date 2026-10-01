@@ -228,7 +228,7 @@ SUPERSEDED_FIGURES = [
     ),
 ]
 
-# The public benchmark's mean is 93.75% and its per-repo floor is 0.85. A bare
+# The public benchmark's mean is 95% and its per-repo floor is 85.71%. A bare
 # "100% gold-file recall" shipped in the README for weeks while the same file's
 # later section correctly reported the range.
 PERFECT_RECALL_RE = re.compile(
@@ -249,7 +249,7 @@ _RANGE_RES = (
 
 # "100% gold-file recall" is accurate for the disclosed, off-by-default
 # competitor eval, which runs on `requests`/`click` only. The defect is
-# attaching it to the 4-repo public benchmark, whose mean is 93.75%. Lines that
+# attaching it to the 4-repo public benchmark, whose mean is 95%. Lines that
 # name the competitor comparison within a short window are making the narrower,
 # true claim.
 COMPETITOR_SCOPE_RE = re.compile(r"codebase-memory-mcp|competitor", re.IGNORECASE)
@@ -379,7 +379,7 @@ def test_published_surfaces_do_not_claim_perfect_gold_file_recall() -> None:
             violations.append(f"{rel}:{index + 1}: {raw.strip()[:110]}")
     assert not violations, (
         "A published surface claims 100% gold-file recall. The public benchmark "
-        "reports 93.75% mean across 40 queries (0.93 / 1.00 / 0.85 / 1.00) and "
+        "reports 95% mean across 40 queries (0.96 / 0.86 / 0.95 / 1.00) and "
         "publishes every miss:\n  " + "\n  ".join(violations)
     )
 
