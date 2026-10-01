@@ -131,6 +131,10 @@ def prepare(work: Path, only: set[str] | None, private: Path | None) -> list[dic
         )
     if not only or "neuralmind" in only:
         root = _copy_git_visible(REPO_ROOT, work / "neuralmind")
+        # This repo's .neuralmindignore drops every markdown file. Spec 7 is
+        # about docs competing with code for L3 slots, and six of its
+        # questions are answered by a doc, so the eval indexes the docs.
+        (root / ".neuralmindignore").unlink(missing_ok=True)
         repos.append(
             {"name": "neuralmind", "root": root, "questions": QUESTIONS / "neuralmind.eval.yaml"}
         )
