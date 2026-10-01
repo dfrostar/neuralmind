@@ -46,6 +46,8 @@ FLAGS = (
     "NEURALMIND_BM25_CODE",
     "NEURALMIND_BM25",
     "NEURALMIND_INTENT_RULES",
+    "NEURALMIND_BM25_UNIFIED",
+    "NEURALMIND_INTENT_POOL",
 )
 
 # One configuration per work item, the all-on combination, and the BM25-off
@@ -58,6 +60,14 @@ CONFIGS: dict[str, dict[str, str]] = {
     "code_bm25": {"NEURALMIND_BM25_CODE": "1"},
     "bm25_off": {"NEURALMIND_BM25": "0"},
     "intent": {"NEURALMIND_INTENT_RULES": "1"},
+    # Round 2, designed after round 1's results (see bench/retrieval/report.md):
+    "bm25_unified": {"NEURALMIND_BM25_UNIFIED": "1"},
+    "intent_pool": {"NEURALMIND_INTENT_RULES": "1", "NEURALMIND_INTENT_POOL": "1"},
+    "unified_intent_pool": {
+        "NEURALMIND_BM25_UNIFIED": "1",
+        "NEURALMIND_INTENT_RULES": "1",
+        "NEURALMIND_INTENT_POOL": "1",
+    },
     "all": {
         "NEURALMIND_L3_PER_FILE": "2",
         "NEURALMIND_DOC_HANDOFF": "1",

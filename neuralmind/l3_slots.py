@@ -39,6 +39,8 @@ PER_FILE_ENV = "NEURALMIND_L3_PER_FILE"
 HANDOFF_ENV = "NEURALMIND_DOC_HANDOFF"
 HUB_ENV = "NEURALMIND_HUB_DAMPEN"
 CODE_BM25_ENV = "NEURALMIND_BM25_CODE"
+UNIFIED_BM25_ENV = "NEURALMIND_BM25_UNIFIED"
+INTENT_POOL_ENV = "NEURALMIND_INTENT_POOL"
 
 # A file counts as a hub above this share of answers.
 HUB_SHARE = 0.15
@@ -52,6 +54,7 @@ HUB_LOG_WINDOW = 200
 HUB_PROBES = 60
 HUB_STATS_FILE = "hub_stats.json"
 CODE_BM25_FILE = "bm25_code_index.json"
+UNIFIED_BM25_FILE = "bm25_unified_index.json"
 
 # A hand-off candidate ranks just below the doc hit that named it.
 HANDOFF_FACTOR = 0.9
@@ -101,8 +104,21 @@ def code_bm25_enabled() -> bool:
     return _on(CODE_BM25_ENV)
 
 
+def unified_bm25_enabled() -> bool:
+    return _on(UNIFIED_BM25_ENV)
+
+
+def intent_pool_enabled() -> bool:
+    return _on(INTENT_POOL_ENV)
+
+
 def any_slot_pass_enabled() -> bool:
-    return bool(per_file_cap()) or handoff_enabled() or hub_dampening_enabled()
+    return (
+        bool(per_file_cap())
+        or handoff_enabled()
+        or hub_dampening_enabled()
+        or intent_pool_enabled()
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -513,11 +529,10 @@ def code_bm25_text(node: dict) -> str:
     return f"{label} {_bare_name(label)} {sf}"
 
 
-def code_bm25_index(project: Path, catalog: NodeCatalog | None):
-    """BM25 over code symbols and docstrings, cached per index build."""
+def _cached_bm25(project: Path, filename: str, build):
     from .bm25 import BM25Index
 
-    cache = Path(project) / ".neuralmind" / CODE_BM25_FILE
+    cache = Path(project) / ".neuralmind" / filename
     stamp_file = cache.with_suffix(".stamp")
     stamp = _index_stamp(project)
     try:
@@ -525,19 +540,12 @@ def code_bm25_index(project: Path, catalog: NodeCatalog | None):
             return BM25Index.load(cache)
     except OSError:
         pass
-    if catalog is None:
+    docs = build()
+    if not docs:
         return None
-    ids, texts, metas = [], [], []
-    for node in catalog.by_id.values():
-        if node["metadata"].get("file_type") not in ("code", "rationale"):
-            continue
-        ids.append(node["id"])
-        texts.append(code_bm25_text(node))
-        metas.append(node["metadata"])
-    if not ids:
-        return None
+    ids, texts, metas = zip(*docs, strict=True)
     idx = BM25Index()
-    idx.add_documents(ids, texts, metas)
+    idx.add_documents(list(ids), list(texts), list(metas))
     idx.build()
     try:
         if cache.parent.exists():
@@ -546,3 +554,43 @@ def code_bm25_index(project: Path, catalog: NodeCatalog | None):
     except OSError:
         pass
     return idx
+
+
+def code_bm25_index(project: Path, catalog: NodeCatalog | None):
+    """BM25 over code symbols and docstrings only, cached per index build."""
+
+    def build():
+        if catalog is None:
+            return []
+        return [
+            (n["id"], code_bm25_text(n), n["metadata"])
+            for n in catalog.by_id.values()
+            if n["metadata"].get("file_type") in ("code", "rationale")
+        ]
+
+    return _cached_bm25(project, CODE_BM25_FILE, build)
+
+
+def unified_bm25_index(project: Path, catalog: NodeCatalog | None):
+    """One BM25 index over every node: doc text, symbol names, docstrings.
+
+    The turbovec backend's own BM25 index holds only documents, so in the
+    hybrid fusion docs get a keyword signal code never can. (The ChromaDB
+    backend's index already holds every node.) Here docs and code compete
+    for the same terms in one index.
+    """
+
+    def build():
+        if catalog is None:
+            return []
+        out = []
+        for n in catalog.by_id.values():
+            meta = n["metadata"]
+            if meta.get("file_type") in ("code", "rationale"):
+                text = code_bm25_text(n)
+            else:
+                text = f"{meta.get('label', '')} {n.get('document', '')}"
+            out.append((n["id"], text, meta))
+        return out
+
+    return _cached_bm25(project, UNIFIED_BM25_FILE, build)

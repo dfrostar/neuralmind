@@ -617,6 +617,10 @@ class ContextSelector:
         else:
             # Code branch: standard RRF merge (default behavior)
             bm25_search = getattr(self.embedder, "bm25_search", None)
+            # One index over docs and code instead of the backend's docs-only
+            # one (v4.6.0, NEURALMIND_BM25_UNIFIED=1).
+            if l3_slots.unified_bm25_enabled():
+                bm25_search = self._unified_bm25_search
             if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
                 kw_results = bm25_search(query, n=fetch_n)
                 if kw_results and isinstance(kw_results, list):
@@ -1581,6 +1585,11 @@ class ContextSelector:
                 originals += l3_slots.handoff_candidates(ranked[:n], query, self._node_catalog())
         except Exception:
             logger.debug("L3 slot passes failed", exc_info=True)
+        if l3_slots.intent_pool_enabled():
+            # Intent ranks the whole candidate pool (NEURALMIND_INTENT_POOL=1):
+            # a code hit at rank 6 can outrank a doc that only made the top
+            # four on raw similarity.
+            return l3_slots.allocate(originals + refill, n, l3_slots.per_file_cap())
         return l3_slots.spend(originals, refill, n, l3_slots.per_file_cap())
 
     def _code_bm25_search(self, query: str, n: int) -> list[dict]:
@@ -1589,7 +1598,18 @@ class ContextSelector:
             self._code_bm25 = (
                 l3_slots.code_bm25_index(self.project_path, self._node_catalog()) or False
             )
-        idx = self._code_bm25
+        return self._bm25_hits(self._code_bm25, query, n)
+
+    def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:
+        """Docs + code BM25 (``NEURALMIND_BM25_UNIFIED=1``); [] when unavailable."""
+        if getattr(self, "_unified_bm25", None) is None:
+            self._unified_bm25 = (
+                l3_slots.unified_bm25_index(self.project_path, self._node_catalog()) or False
+            )
+        return self._bm25_hits(self._unified_bm25, query, n)
+
+    @staticmethod
+    def _bm25_hits(idx, query: str, n: int) -> list[dict]:
         if not idx:
             return []
         out = []

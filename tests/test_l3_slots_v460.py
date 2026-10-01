@@ -301,3 +301,44 @@ def test_code_bm25_joins_the_fusion_only_when_flagged(tmp_path, monkeypatch):
     monkeypatch.setenv("NEURALMIND_BM25_CODE", "1")
     sel = ContextSelector(StubEmbedder(tmp_path, ranked, nodes), str(tmp_path))
     assert "p" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+
+
+# --------------------------------------------------------------------------- #
+# Round-2 variants
+# --------------------------------------------------------------------------- #
+def test_unified_bm25_holds_docs_and_code(tmp_path):
+    (tmp_path / ".neuralmind").mkdir()
+    catalog = l3_slots.NodeCatalog(
+        [
+            node("p", "app/comments.py", label="post_pinned_comment()"),
+            node("d", "docs/x.md", "document", label="Comments", document="pinned comment flow"),
+        ]
+    )
+    idx = l3_slots.unified_bm25_index(tmp_path, catalog)
+    ids = {r["id"] for r in idx.search("pinned comment", top_k=5)}
+    assert ids == {"p", "d"}
+
+
+def test_unified_bm25_replaces_the_docs_only_list(tmp_path, monkeypatch):
+    (tmp_path / ".neuralmind").mkdir()
+    ranked = [hit("v", "app/v.py", 0.9)]
+    nodes = [node("p", "app/comments.py", label="post_pinned_comment()")]
+    emb = StubEmbedder(tmp_path, ranked, nodes)
+    emb.bm25_search = lambda q, n=10: [hit("docs-only", "docs/x.md", 1.0, "document")]
+    monkeypatch.setenv("NEURALMIND_BM25_UNIFIED", "1")
+    sel = ContextSelector(emb, str(tmp_path))
+    ids = [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    assert "p" in ids and "docs-only" not in ids
+
+
+def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatch):
+    ranked = [hit(f"doc{i}", f"docs/{i}.md", 0.9 - i / 100, "document") for i in range(4)]
+    ranked.append(hit("impl", "app/orders.py", 0.8))
+    monkeypatch.setenv("NEURALMIND_INTENT_RULES", "1")
+    sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
+    sel.get_l3_search("How does the reconciler pick which orders belong to a cohort?")
+    assert "app/orders.py" not in files_of(sel)  # intent alone only re-orders the top four
+    monkeypatch.setenv("NEURALMIND_INTENT_POOL", "1")
+    sel = ContextSelector(StubEmbedder(tmp_path, ranked), str(tmp_path))
+    sel.get_l3_search("How does the reconciler pick which orders belong to a cohort?")
+    assert files_of(sel)[0] == "app/orders.py"
