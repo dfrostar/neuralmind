@@ -1250,8 +1250,8 @@ baseline:
 ```yaml
 - q: How are refunds issued when an order is cancelled?
   gold: [app/refunds.py]
-- q: Where is the invoice email sent after checkout?
-  gold: app/invoices.py
+- q: Which module validates a coupon code?
+  gold: app/coupons.py
 ```
 
 `neuralmind eval .` runs each question **read-only** (`learn=False` — the eval

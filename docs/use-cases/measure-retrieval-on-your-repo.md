@@ -29,10 +29,10 @@ ask it, and fix any gold file that isn't the one that answers it:
 ```yaml
 - q: How are refunds issued when an order is cancelled?
   gold: [app/refunds.py]
-- q: Where do we send the invoice email after checkout?
-  gold: [app/invoices.py]
-- q: Which payment provider runs first, and what's the fallback?
-  gold: [app/payments.py]
+- q: Which module validates a coupon code?
+  gold: [app/coupons.py]
+- q: How is shipping cost calculated for international orders?
+  gold: [app/shipping.py]
 ```
 
 Commit the file. A shared question set is a shared baseline: everyone's runs
