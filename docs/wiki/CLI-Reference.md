@@ -1248,10 +1248,10 @@ Put the questions your team actually asks, with the file that answers each, in
 baseline:
 
 ```yaml
-- q: How does the feedback loop pick which past videos belong to a niche?
-  gold: [tools/feedback_loop.py]
-- q: Where is the pinned creator comment posted on upload?
-  gold: tools/upload.py
+- q: How are refunds issued when an order is cancelled?
+  gold: [app/refunds.py]
+- q: Where is the invoice email sent after checkout?
+  gold: app/invoices.py
 ```
 
 `neuralmind eval .` runs each question **read-only** (`learn=False` — the eval

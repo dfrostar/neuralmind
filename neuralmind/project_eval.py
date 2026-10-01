@@ -3,8 +3,8 @@
 ``neuralmind eval .`` reads ``.neuralmind.eval.yaml`` at the project root — a
 list of questions, each with the file(s) that answer it::
 
-    - q: How does the feedback loop pick which past videos belong to a niche?
-      gold: [tools/feedback_loop.py]
+    - q: How are refunds issued when an order is cancelled?
+      gold: [app/refunds.py]
 
 For each question it runs a **read-only** query (``learn=False``: the eval
 never trains the synapse layer it measures), ranks the files the answer drew

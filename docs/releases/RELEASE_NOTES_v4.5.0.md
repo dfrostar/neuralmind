@@ -77,8 +77,8 @@ Write the questions your team actually asks, with the file that answers each,
 in `.neuralmind.eval.yaml` at the repo root, and commit it:
 
 ```yaml
-- q: How does the feedback loop pick which past videos belong to a niche?
-  gold: [tools/feedback_loop.py]
+- q: How are refunds issued when an order is cancelled?
+  gold: [app/refunds.py]
 ```
 
 ```bash

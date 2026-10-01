@@ -27,12 +27,12 @@ with the defining file as gold. Rewrite each question the way a teammate would
 ask it, and fix any gold file that isn't the one that answers it:
 
 ```yaml
-- q: How does the feedback loop pick which past videos belong to a niche?
-  gold: [tools/feedback_loop.py]
-- q: Where do we post the pinned creator comment after an upload?
-  gold: [tools/upload.py]
-- q: Which research provider runs first, and what's the fallback?
-  gold: [tools/research.py]
+- q: How are refunds issued when an order is cancelled?
+  gold: [app/refunds.py]
+- q: Where do we send the invoice email after checkout?
+  gold: [app/invoices.py]
+- q: Which payment provider runs first, and what's the fallback?
+  gold: [app/payments.py]
 ```
 
 Commit the file. A shared question set is a shared baseline: everyone's runs
