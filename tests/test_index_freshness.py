@@ -101,6 +101,9 @@ def _git(root: Path, *args: str) -> str:
 
 needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git not installed")
 
+# '\\' in a node path only means "built on another OS" on a POSIX host.
+POSIX = os.sep == "/"
+
 
 def _mind(root: Path, **kwargs):
     from neuralmind.core import NeuralMind
@@ -127,17 +130,20 @@ class TestFreshnessReport:
 
         report = graph_freshness(tmp_path)
 
-        assert report.status == FAIL
+        assert report.status == FAIL  # 3 of 9 files missing: over the 10% bar
         assert report.source == "graphify"
         assert report.missing_from_graph == sorted(new)
         assert report.gone_from_disk == []  # '\\' paths normalise onto the tree
-        assert report.foreign_separators == 12
-        assert report.foreign_separator_files == 6
         text = report.render()
         for rel in new:
             assert rel in text
-        assert "12 node paths (6 files) use '\\' separators" in text
         assert "--regenerate-graph" in text
+        if POSIX:
+            assert report.foreign_separators == 12
+            assert report.foreign_separator_files == 6
+            assert "12 node paths (6 files) use '\\' separators" in text
+        else:  # '\\' is the native separator on Windows, not a foreign one
+            assert report.foreign_separators == 0
 
     def test_doctor_fails_and_names_the_modules(self, tmp_path):
         from neuralmind import doctor
@@ -152,7 +158,7 @@ class TestFreshnessReport:
         assert check.status == doctor.FAIL
         for rel in new:
             assert rel in check.detail
-        assert "separators" in check.detail
+        assert ("separators" in check.detail) is POSIX
         assert "--regenerate-graph" in check.fix
 
     def test_built_in_graph_one_file_edited_warns(self, tmp_path):
@@ -252,6 +258,37 @@ class TestFreshnessWithGit:
         assert report.changed_since_graph == ["b.py", "c.py"]
         assert report.status == WARN
         assert "2 commits behind HEAD" in report.header()
+
+    def test_project_in_a_subdirectory_of_a_larger_repo(self, tmp_path):
+        """Paths and commit counts are the project's, not the whole repo's."""
+        project = tmp_path / "services" / "api"
+        project.mkdir(parents=True)
+        _write_files(project, ["a.py", "b.py"])
+        _write_graphify(project, _graphify_graph(["a.py", "b.py"]))
+        _write_files(tmp_path, ["other/x.py"])
+        _git(tmp_path, "init", "-q")
+        _git(tmp_path, "add", "-A")
+        _git(tmp_path, "commit", "-q", "-m", "graph")
+        (project / "a.py").write_text("def a_fn():\n    return 5\n", encoding="utf-8")
+        _git(tmp_path, "commit", "-qam", "edit a")
+        (tmp_path / "other" / "x.py").write_text("X = 1\n", encoding="utf-8")
+        _git(tmp_path, "commit", "-qam", "unrelated")
+
+        report = graph_freshness(project)
+        assert report.changed_method == "git"
+        assert report.changed_since_graph == ["a.py"]
+        assert report.graph_age_commits == 1  # the unrelated commit doesn't count
+
+    def test_no_git_process_outside_a_repository(self, tmp_path, monkeypatch):
+        _write_files(tmp_path, ["a.py"])
+        _write_graphify(tmp_path, _graphify_graph(["a.py"]))
+        calls: list[tuple] = []
+        monkeypatch.setattr(freshness, "_git", lambda *a: calls.append(a))
+        if any((p / ".git").exists() for p in (tmp_path, *tmp_path.parents)):
+            pytest.skip("temp dir is inside a git work tree")
+
+        assert graph_freshness(tmp_path).status == OK
+        assert calls == []
 
     def test_fresh_clone_mtimes_never_count(self, tmp_path):
         src = tmp_path / "src"
@@ -805,7 +842,7 @@ def test_stale_committed_graphify_graph_end_to_end(tmp_path, monkeypatch):
     assert check.status == doctor.FAIL
     for rel in added:
         assert rel in check.detail
-    assert "separators" in check.detail
+    assert ("separators" in check.detail) is POSIX
     assert "1 commit behind HEAD" in check.detail
 
     # doctor's index check builds its own NeuralMind: give it the fake embedder.

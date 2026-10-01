@@ -284,8 +284,26 @@ def indexable_files(root: Path, suffixes: frozenset[str], config=None) -> list[s
     return sorted(f.relative_to(root).as_posix() for f in files)
 
 
+def _inside_git_work_tree(root: Path) -> bool:
+    """Cheap pre-check before spawning git: a ``.git`` in ``root`` or above.
+
+    Spawning a process costs tens of milliseconds (more on Windows), and most
+    projects a check runs against in tests and scratch dirs aren't
+    repositories. ``GIT_DIR`` in the environment means git may work without a
+    ``.git`` entry, so it always gets asked then.
+    """
+    if os.environ.get("GIT_DIR"):
+        return True
+    for directory in (root, *root.parents):
+        if (directory / ".git").exists():
+            return True
+    return False
+
+
 def _graph_git_state(root: Path, graph_path: Path) -> dict | None:
     """Commit info for a graph file tracked in git, or None when untracked."""
+    if not _inside_git_work_tree(root):
+        return None
     try:
         rel = graph_path.resolve().relative_to(root).as_posix()
     except (ValueError, OSError):
@@ -304,9 +322,12 @@ def _changed_via_git(root: Path, state: dict, known: set[str]) -> list[str]:
     """Files the graph knows that differ from the commit that last wrote it.
 
     ``git diff <commit>`` compares that commit with the working tree, so it
-    covers later commits and uncommitted edits in one call.
+    covers later commits and uncommitted edits in one call. ``--relative``
+    with the ``.`` pathspec limits it to the project and prints paths relative
+    to it, so a project in a subdirectory of a larger repository compares
+    like with like (and doesn't diff the whole repository).
     """
-    out = _git(root, "diff", "--name-only", state["commit"], "--")
+    out = _git(root, "diff", "--name-only", "--relative", state["commit"], "--", ".")
     if out is None:
         return []
     changed = {line.strip() for line in out.splitlines() if line.strip()}
@@ -440,7 +461,9 @@ def graph_freshness(
         if state["shallow"]:
             report.age_note = "age unknown: shallow clone"
         else:
-            count = _git(root, "rev-list", "--count", f"{state['commit']}..HEAD")
+            # Commits touching the project since the graph changed — for a
+            # project in a subdirectory, not every commit in the repository.
+            count = _git(root, "rev-list", "--count", f"{state['commit']}..HEAD", "--", ".")
             try:
                 report.graph_age_commits = int((count or "").strip())
             except ValueError:
