@@ -22,6 +22,8 @@ FLAGS = (
     "NEURALMIND_BM25_CODE",
     "NEURALMIND_INTENT_RULES",
     "NEURALMIND_BM25",
+    "NEURALMIND_BM25_UNIFIED",
+    "NEURALMIND_INTENT_POOL",
 )
 
 
@@ -102,6 +104,7 @@ def test_flags_off_by_default():
     assert l3_slots.per_file_cap() == 0
     assert not l3_slots.any_slot_pass_enabled()
     assert not l3_slots.code_bm25_enabled()
+    assert l3_slots.unified_bm25_enabled()  # the one item the eval kept (v4.6.0)
 
 
 # --------------------------------------------------------------------------- #
@@ -314,7 +317,8 @@ def test_unified_bm25_holds_docs_and_code(tmp_path):
             node("d", "docs/x.md", "document", label="Comments", document="pinned comment flow"),
         ]
     )
-    idx = l3_slots.unified_bm25_index(tmp_path, catalog)
+    assert l3_slots.unified_bm25_index(tmp_path, catalog) is None  # a query never builds it
+    idx = l3_slots.unified_bm25_index(tmp_path, catalog, rebuild=True)
     ids = {r["id"] for r in idx.search("pinned comment", top_k=5)}
     assert ids == {"p", "d"}
 
@@ -325,10 +329,16 @@ def test_unified_bm25_replaces_the_docs_only_list(tmp_path, monkeypatch):
     nodes = [node("p", "app/comments.py", label="post_pinned_comment()")]
     emb = StubEmbedder(tmp_path, ranked, nodes)
     emb.bm25_search = lambda q, n=10: [hit("docs-only", "docs/x.md", 1.0, "document")]
-    monkeypatch.setenv("NEURALMIND_BM25_UNIFIED", "1")
+    # No unified index written yet (an index built before v4.6): the old list.
+    sel = ContextSelector(emb, str(tmp_path))
+    assert "docs-only" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
+    l3_slots.unified_bm25_index(tmp_path, l3_slots.NodeCatalog(nodes), rebuild=True)
     sel = ContextSelector(emb, str(tmp_path))
     ids = [h["id"] for h in sel._fetch_search("pinned comment", 4)]
     assert "p" in ids and "docs-only" not in ids
+    monkeypatch.setenv("NEURALMIND_BM25_UNIFIED", "0")  # v4.5 behaviour on request
+    sel = ContextSelector(emb, str(tmp_path))
+    assert "docs-only" in [h["id"] for h in sel._fetch_search("pinned comment", 4)]
 
 
 def test_intent_pool_promotes_a_code_hit_below_the_top_four(tmp_path, monkeypatch):

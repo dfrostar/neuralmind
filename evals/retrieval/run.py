@@ -54,6 +54,9 @@ FLAGS = (
 # comparison spec 7 item 5 asks for before building anything new.
 CONFIGS: dict[str, dict[str, str]] = {
     "baseline": {},
+    # v4.5.0's keyword index (turbovec: docs only), for the record after the
+    # unified index became the default in v4.6.0.
+    "v45_bm25": {"NEURALMIND_BM25_UNIFIED": "0"},
     "per_file": {"NEURALMIND_L3_PER_FILE": "2"},
     "handoff": {"NEURALMIND_DOC_HANDOFF": "1"},
     "hub": {"NEURALMIND_HUB_DAMPEN": "1"},

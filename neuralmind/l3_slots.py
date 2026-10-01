@@ -105,7 +105,8 @@ def code_bm25_enabled() -> bool:
 
 
 def unified_bm25_enabled() -> bool:
-    return _on(UNIFIED_BM25_ENV)
+    """On by default since v4.6.0; ``NEURALMIND_BM25_UNIFIED=0`` restores v4.5."""
+    return os.environ.get(UNIFIED_BM25_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
 
 
 def intent_pool_enabled() -> bool:
@@ -435,7 +436,19 @@ class HubStats:
 
 
 def _index_stamp(project: Path) -> str:
-    """Changes whenever the index is rebuilt (mtime of the build record)."""
+    """Changes whenever the index is rebuilt.
+
+    ``build`` writes an ``index_generation`` into ``build_status.json``; older
+    indexes fall back to file mtimes.
+    """
+    try:
+        status = json.loads(
+            (Path(project) / ".neuralmind" / "build_status.json").read_text(encoding="utf-8")
+        )
+        if status.get("index_generation"):
+            return f"generation:{status['index_generation']}"
+    except (OSError, ValueError, AttributeError):
+        pass
     for name in ("build_status.json", "graph.json"):
         p = Path(project) / ".neuralmind" / name
         try:
@@ -529,7 +542,8 @@ def code_bm25_text(node: dict) -> str:
     return f"{label} {_bare_name(label)} {sf}"
 
 
-def _cached_bm25(project: Path, filename: str, build):
+def _cached_bm25(project: Path, filename: str, build, *, rebuild: bool = True):
+    """The cached index if it matches this build; else build it (``rebuild``) or None."""
     from .bm25 import BM25Index
 
     cache = Path(project) / ".neuralmind" / filename
@@ -538,8 +552,10 @@ def _cached_bm25(project: Path, filename: str, build):
     try:
         if cache.exists() and stamp_file.read_text(encoding="utf-8") == stamp:
             return BM25Index.load(cache)
-    except OSError:
+    except (OSError, ValueError):
         pass
+    if not rebuild:
+        return None
     docs = build()
     if not docs:
         return None
@@ -571,13 +587,16 @@ def code_bm25_index(project: Path, catalog: NodeCatalog | None):
     return _cached_bm25(project, CODE_BM25_FILE, build)
 
 
-def unified_bm25_index(project: Path, catalog: NodeCatalog | None):
+def unified_bm25_index(project: Path, catalog: NodeCatalog | None, *, rebuild: bool = False):
     """One BM25 index over every node: doc text, symbol names, docstrings.
 
     The turbovec backend's own BM25 index holds only documents, so in the
     hybrid fusion docs get a keyword signal code never can. (The ChromaDB
     backend's index already holds every node.) Here docs and code compete
     for the same terms in one index.
+
+    ``build`` writes it (``rebuild=True``); a query only loads it, and an
+    index built before v4.6.0 has none until the next build.
     """
 
     def build():
@@ -593,4 +612,4 @@ def unified_bm25_index(project: Path, catalog: NodeCatalog | None):
             out.append((n["id"], text, meta))
         return out
 
-    return _cached_bm25(project, UNIFIED_BM25_FILE, build)
+    return _cached_bm25(project, UNIFIED_BM25_FILE, build, rebuild=rebuild)

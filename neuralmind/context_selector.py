@@ -617,9 +617,11 @@ class ContextSelector:
         else:
             # Code branch: standard RRF merge (default behavior)
             bm25_search = getattr(self.embedder, "bm25_search", None)
-            # One index over docs and code instead of the backend's docs-only
-            # one (v4.6.0, NEURALMIND_BM25_UNIFIED=1).
-            if l3_slots.unified_bm25_enabled():
+            # One BM25 index over docs and code instead of the turbovec
+            # backend's docs-only one (v4.6.0, on by default;
+            # NEURALMIND_BM25_UNIFIED=0 restores v4.5). Written by build; an
+            # index built before v4.6.0 keeps the old list until rebuilt.
+            if l3_slots.unified_bm25_enabled() and self._unified_index():
                 bm25_search = self._unified_bm25_search
             if callable(bm25_search) and os.environ.get("NEURALMIND_BM25") != "0":
                 kw_results = bm25_search(query, n=fetch_n)
@@ -1600,13 +1602,15 @@ class ContextSelector:
             )
         return self._bm25_hits(self._code_bm25, query, n)
 
-    def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:
-        """Docs + code BM25 (``NEURALMIND_BM25_UNIFIED=1``); [] when unavailable."""
+    def _unified_index(self):
+        """The build's docs + code BM25 index, loaded once; False when absent."""
         if getattr(self, "_unified_bm25", None) is None:
-            self._unified_bm25 = (
-                l3_slots.unified_bm25_index(self.project_path, self._node_catalog()) or False
-            )
-        return self._bm25_hits(self._unified_bm25, query, n)
+            self._unified_bm25 = l3_slots.unified_bm25_index(self.project_path, None) or False
+        return self._unified_bm25
+
+    def _unified_bm25_search(self, query: str, n: int = 10) -> list[dict]:
+        """Docs + code BM25 (on by default); [] when the build wrote none."""
+        return self._bm25_hits(self._unified_index(), query, n)
 
     @staticmethod
     def _bm25_hits(idx, query: str, n: int) -> list[dict]:
