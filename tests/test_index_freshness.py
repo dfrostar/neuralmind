@@ -823,7 +823,7 @@ def test_stale_committed_graphify_graph_end_to_end(tmp_path, monkeypatch):
     from neuralmind import doctor
     from neuralmind.backend_manager import BackendManager
 
-    original = ["tools/feedback_loop.py", "tools/research.py", "lib/cache.py"]
+    original = ["app/orders.py", "app/billing.py", "lib/cache.py"]
     _write_files(tmp_path, original + ["examples/demo/render.py"])
     _write_graphify(tmp_path, _graphify_graph(original + ["examples/demo/render.py"], windows=True))
     (tmp_path / ".gitignore").write_text("projects/\n.neuralmind/\n", encoding="utf-8")
@@ -831,7 +831,7 @@ def test_stale_committed_graphify_graph_end_to_end(tmp_path, monkeypatch):
     _git(tmp_path, "add", "-A")
     _git(tmp_path, "commit", "-q", "-m", "graph built on windows")
 
-    added = ["tools/exemplar_rag.py", "tools/upload.py", "lib/ascii.py"]
+    added = ["app/refunds.py", "app/invoices.py", "lib/retry.py"]
     _write_files(tmp_path, added)
     _write_files(tmp_path, ["projects/demo/render.py"])
     _git(tmp_path, "add", "-A")
