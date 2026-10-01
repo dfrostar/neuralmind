@@ -194,6 +194,13 @@ class NeuralMind:
         self._built = False
         self._build_stats: dict = {}
 
+        # Build notices (graph source, freshness, purge warnings). They go to
+        # notice_stream — stderr unless a caller sets it — never stdout by
+        # default, which the MCP server uses for JSON-RPC.
+        self.notice_stream = None
+        self._notices: list[str] = []
+        self._graph_info: dict | None = None
+
         # Associative synapse layer (lazy: only created when first used)
         self.enable_synapses = enable_synapses
         self._synapses: SynapseStore | None = None
@@ -491,32 +498,102 @@ class NeuralMind:
         except Exception:
             return None
 
-    def build(self, force: bool = False) -> dict:
+    def build(
+        self,
+        force: bool = False,
+        *,
+        regenerate_graph: bool = False,
+        strict: bool = False,
+        prune: bool = False,
+    ) -> dict:
         """
         Build or update the neural knowledge base.
 
-        Loads graph.json, generates embeddings, and prepares for queries.
+        Resolves which graph.json to use (generating the built-in one when
+        that's the source), checks it against the files on disk, embeds its
+        nodes, removes vectors for nodes no longer in the graph, and prepares
+        for queries.
 
         Args:
             force: If True, regenerate all embeddings even if unchanged
+            regenerate_graph: Always rebuild ``.neuralmind/graph.json`` with
+                the built-in tree-sitter backend, whatever graph exists.
+            strict: Stop before embedding (``exit_code`` 3) when the graph
+                FAILs the freshness check.
+            prune: Purge orphaned vectors even past the 50% safety valve.
 
         Returns:
-            Build statistics including nodes processed and time taken
+            Build statistics including nodes processed and time taken. Also
+            ``graph`` (which graph was used), ``freshness`` (the freshness
+            report) and ``notices`` (every notice the build printed).
         """
         start_time = datetime.now()
+        self._notices = []
 
         # Load .neuralmind.yaml config
         from neuralmind.neuralmind_config import NeuralmindConfig
 
         self._neuralmind_config = NeuralmindConfig.load(self.project_path)
 
-        # Built-in backend: when there's no graphify output yet, generate a
-        # graphify-compatible graph.json from a tree-sitter parse so that
-        # `pip install neuralmind && neuralmind build` works with no separate
-        # graphify install. A pre-existing graphify graph always takes priority.
-        self._maybe_generate_builtin_graph(force=force)
+        # Pick the graph source and, when it's ours, (re)generate it from a
+        # tree-sitter parse so `pip install neuralmind && neuralmind build`
+        # works with no separate graphify install.
+        graph_info = self._resolve_graph(regenerate=regenerate_graph)
+        graph_path = Path(graph_info["path"])
+        self._graph_info = graph_info
+        if graph_info.get("error"):
+            self._notify(f"Graph: {self._display_path(graph_path)} — {graph_info['error']}")
+            return {
+                "success": False,
+                "error": graph_info["error"],
+                "graph": self._graph_info_for_result(graph_info),
+                "notices": list(self._notices),
+                "duration_seconds": 0,
+            }
+        self._point_embedder_at(graph_path)
+        self._notify(self._graph_line(graph_info))
+
+        # Freshness: compare the graph with the files on disk, both ways,
+        # before spending time embedding it. Never silent when it isn't OK.
+        from .freshness import FAIL as FRESHNESS_FAIL
+        from .freshness import OK as FRESHNESS_OK
+        from .freshness import graph_freshness
+
+        freshness = None
+        try:
+            freshness = graph_freshness(self.project_path, graph_path)
+        except Exception:  # pragma: no cover - diagnostic must never block a build
+            freshness = None
+        if freshness is not None and freshness.status != FRESHNESS_OK:
+            self._notify(freshness.render(str(self.project_path)))
+            if strict and freshness.status == FRESHNESS_FAIL:
+                return {
+                    "success": False,
+                    "exit_code": 3,
+                    "error": "code graph failed the freshness check (--strict)",
+                    "graph": self._graph_info_for_result(graph_info),
+                    "freshness": freshness.to_dict(),
+                    "notices": list(self._notices),
+                    "duration_seconds": round((datetime.now() - start_time).total_seconds(), 2),
+                }
+
+        # The embedder prefers .neuralmind/index_ir.json when it's newer than
+        # graph.json. The IR is derived from whichever graph the last build
+        # used, so after a source switch (e.g. back to an older graphify graph)
+        # it would replay the previous graph. Drop it; this build rewrites it.
+        previous_graph = (self._read_build_status().get("graph") or {}).get("path")
+        current_graph = self._graph_info_for_result(graph_info)["path"]
+        if previous_graph and previous_graph != current_graph:
+            for derived in (self.ir_path, self.ir_meta_path):
+                try:
+                    derived.unlink()
+                except OSError:
+                    pass
 
         # Load graph
+        self.embedder.graph = {}
+        self.embedder.nodes = []
+        self.embedder.edges = []
         if not self.embedder.load_graph():
             self._emit_audit(
                 category="backend",
@@ -555,72 +632,11 @@ class NeuralMind:
         # Embed nodes
         embed_stats = self.embedder.embed_nodes(force=force)
 
-        # Detect project_kind (prose vs code) from the loaded graph
-        # before creating the selector so it can use the right strategy.
-        graph = getattr(self.embedder, "graph", None)
-        if graph:
-            # The graph structure has a top-level "graph" key that contains the project_kind
-            self.project_kind = graph.get("graph", {}).get("project_kind", "code")
-        else:
-            self.project_kind = "code"
+        # Purge vectors for nodes that left the graph, so search can't return
+        # code that no longer exists. Every build, not only --force.
+        purge = self._purge_orphans(prune=prune)
 
-        # If config explicitly sets mode, honor it
-        if self._neuralmind_config.mode != "auto":
-            self.project_kind = self._neuralmind_config.mode
-
-        # Initialize selector. When the selector auto-tuner is enabled
-        # (NEURALMIND_SELECTOR_AUTOTUNE=1), read its persisted L2 recall depth
-        # from the synapse meta table once, here, and thread it through to the
-        # selector — never per get_query_context call, since the value changes
-        # at most once per session (the SessionStart tuner tick). Default-off:
-        # with the flag unset we don't touch the store and the selector keeps
-        # its hard-coded default, so behavior is byte-identical.
-        self.selector = ContextSelector(
-            self.embedder,
-            str(self.project_path),
-            l2_recall_k=self._tuned_l2_recall_k(),
-            project_kind=self.project_kind,
-        )
-        # Let L3 retrieval consult the live synapse graph (seed-based spread,
-        # no extra embedder round trip — the seeds are hits already fetched).
-        self.selector.synapse_recall = self._recall_for_selection
-        # Traced queries use the detailed variant so the PRD 3 trace can show
-        # which memory namespace drove each boost (PRD 4).
-        self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
-        # Pass the synapse store directly for synapse-seeded expansion
-        if self.synapses is not None:
-            self.selector._synapse_store = self.synapses
-            # Also pass the embedder so synapse-seeded expansion can fetch node data
-            self.synapses._embedder = self.embedder
-        # Pass the structural index for dependency graph expansion
-        if hasattr(self, "_structural_index") and self._structural_index is not None:
-            self.selector._structural_index = self._structural_index
-
-        # Structural edge index — precise, day-one code wiring (calls/inherits/
-        # imports) from graph.json, built from the edges the embedder already
-        # loaded. It powers the always-on structural query surface
-        # (structural_neighbors / blast_radius / the CLI + MCP tools). Kill
-        # switch: NEURALMIND_STRUCTURAL=0 skips it entirely.
-        #
-        # Folding structural neighbors into L3 retrieval is a *separate*,
-        # opt-in switch (NEURALMIND_STRUCTURAL_RECALL=1). It interacts with the
-        # tuned synapse reranker — on some graphs the structural signal is
-        # strong enough to saturate top-k recall and crowd out the learned
-        # signal — so default retrieval stays byte-identical and the synapse
-        # layer's measured lift is preserved. The query tools carry the
-        # headline value with zero retrieval risk.
-        if os.environ.get("NEURALMIND_STRUCTURAL") != "0":
-            self._structural_index = StructuralIndex(
-                hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50)
-            )
-            self._structural_index.build_from_edges(
-                getattr(self.embedder, "edges", None) or [],
-                min_confidence=_env_float("NEURALMIND_STRUCTURAL_MIN_CONFIDENCE", 0.0),
-            )
-            if os.environ.get("NEURALMIND_STRUCTURAL_RECALL") == "1":
-                self.selector.structural_recall = self._structural_for_selection
-        else:
-            self._structural_index = None
+        self._init_query_state()
 
         # Persist structural edges to the synapse store so they survive
         # rebuilds (the in-memory StructuralIndex is lost on process exit).
@@ -714,10 +730,18 @@ class NeuralMind:
             "nodes_added": embed_stats.get("added", 0),
             "nodes_updated": embed_stats.get("updated", 0),
             "nodes_skipped": embed_stats.get("skipped", 0),
+            "nodes_removed": purge.get("removed", 0),
             "db_path": final_stats.get("db_path", ""),
             "duration_seconds": round(duration, 2),
             "built_at": datetime.now().isoformat(),
+            "graph": self._graph_info_for_result(graph_info),
+            "notices": list(self._notices),
         }
+        if purge.get("skipped_orphans"):
+            self._build_stats["orphans_kept"] = purge["skipped_orphans"]
+        if freshness is not None:
+            self._build_stats["freshness"] = freshness.to_dict()
+        self._record_build_status({"graph": self._build_stats["graph"]})
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -742,6 +766,144 @@ class NeuralMind:
             details=audit_details,
         )
         return self._build_stats
+
+    def _graph_line(self, info: dict) -> str:
+        """``Graph: .neuralmind/graph.json (built-in, incremental, 8,351 nodes)``"""
+        kind = info.get("kind", "unknown")
+        action = info.get("action", "")
+        bits = [kind]
+        if action:
+            bits.append(action)
+        if info.get("nodes"):
+            bits.append(f"{info['nodes']:,} nodes")
+        return f"Graph: {self._display_path(Path(info['path']))} ({', '.join(bits)})"
+
+    def _graph_info_for_result(self, info: dict) -> dict:
+        out = {
+            "path": self._display_path(Path(info["path"])),
+            "kind": info.get("kind", "unknown"),
+            "action": info.get("action", ""),
+            "nodes": info.get("nodes", 0),
+        }
+        if info.get("replaced"):
+            out["replaced"] = info["replaced"]
+        return out
+
+    def _purge_orphans(self, prune: bool = False) -> dict:
+        """Delete stored vectors whose node left the graph.
+
+        Only vectors this build's graph would have written are candidates —
+        content ingested with ``ingest``/``ingest-content`` lives in the same
+        store without being in the graph and is never touched. When the
+        orphans exceed half the store the graph has probably shrunk by mistake
+        (wrong path, empty parse), so the purge is skipped with a warning
+        unless ``prune`` is set.
+        """
+        finder = getattr(self.embedder, "orphaned_node_ids", None)
+        deleter = getattr(self.embedder, "delete_nodes", None)
+        if not callable(finder) or not callable(deleter):
+            return {"removed": 0}
+        try:
+            orphans, stored = finder()
+        except Exception:
+            return {"removed": 0}
+        if not orphans:
+            return {"removed": 0}
+        if stored and len(orphans) > 0.5 * stored and not prune:
+            self._notify(
+                f"[neuralmind] {len(orphans):,} of {stored:,} stored vectors are not in the "
+                "graph — more than half the store, so they were kept. If the graph source "
+                "changed on purpose (or the graph really shrank), rerun with --prune to "
+                "remove them; otherwise check the graph path."
+            )
+            return {"removed": 0, "skipped_orphans": len(orphans)}
+        try:
+            removed = int(deleter(sorted(orphans)) or 0)
+        except Exception:
+            removed = 0
+        return {"removed": removed}
+
+    def _init_query_state(self) -> None:
+        """Set up everything a query needs from the loaded graph.
+
+        Shared by ``build()`` and the read-only load path, so a query against
+        an existing index sees exactly what it would after a build — without
+        regenerating the graph or touching the vector store.
+        """
+        # Detect project_kind (prose vs code) from the loaded graph
+        # before creating the selector so it can use the right strategy.
+        graph = getattr(self.embedder, "graph", None)
+        if graph:
+            # The graph structure has a top-level "graph" key that contains the project_kind
+            graph_meta = graph.get("graph", {})
+            self.project_kind = (
+                graph_meta.get("project_kind", "code") if isinstance(graph_meta, dict) else "code"
+            )
+        else:
+            self.project_kind = "code"
+
+        # If config explicitly sets mode, honor it
+        config = getattr(self, "_neuralmind_config", None)
+        if config is None:
+            from neuralmind.neuralmind_config import NeuralmindConfig
+
+            config = self._neuralmind_config = NeuralmindConfig.load(self.project_path)
+        if config.mode != "auto":
+            self.project_kind = config.mode
+
+        # Initialize selector. When the selector auto-tuner is enabled
+        # (NEURALMIND_SELECTOR_AUTOTUNE=1), read its persisted L2 recall depth
+        # from the synapse meta table once, here, and thread it through to the
+        # selector — never per get_query_context call, since the value changes
+        # at most once per session (the SessionStart tuner tick). Default-off:
+        # with the flag unset we don't touch the store and the selector keeps
+        # its hard-coded default, so behavior is byte-identical.
+        self.selector = ContextSelector(
+            self.embedder,
+            str(self.project_path),
+            l2_recall_k=self._tuned_l2_recall_k(),
+            project_kind=self.project_kind,
+        )
+        # Let L3 retrieval consult the live synapse graph (seed-based spread,
+        # no extra embedder round trip — the seeds are hits already fetched).
+        self.selector.synapse_recall = self._recall_for_selection
+        # Traced queries use the detailed variant so the PRD 3 trace can show
+        # which memory namespace drove each boost (PRD 4).
+        self.selector.synapse_recall_detailed = self._recall_for_selection_detailed
+        # Pass the synapse store directly for synapse-seeded expansion
+        if self.synapses is not None:
+            self.selector._synapse_store = self.synapses
+            # Also pass the embedder so synapse-seeded expansion can fetch node data
+            self.synapses._embedder = self.embedder
+        # Pass the structural index for dependency graph expansion
+        if hasattr(self, "_structural_index") and self._structural_index is not None:
+            self.selector._structural_index = self._structural_index
+
+        # Structural edge index — precise, day-one code wiring (calls/inherits/
+        # imports) from graph.json, built from the edges the embedder already
+        # loaded. It powers the always-on structural query surface
+        # (structural_neighbors / blast_radius / the CLI + MCP tools). Kill
+        # switch: NEURALMIND_STRUCTURAL=0 skips it entirely.
+        #
+        # Folding structural neighbors into L3 retrieval is a *separate*,
+        # opt-in switch (NEURALMIND_STRUCTURAL_RECALL=1). It interacts with the
+        # tuned synapse reranker — on some graphs the structural signal is
+        # strong enough to saturate top-k recall and crowd out the learned
+        # signal — so default retrieval stays byte-identical and the synapse
+        # layer's measured lift is preserved. The query tools carry the
+        # headline value with zero retrieval risk.
+        if os.environ.get("NEURALMIND_STRUCTURAL") != "0":
+            self._structural_index = StructuralIndex(
+                hub_degree=_env_int("NEURALMIND_STRUCTURAL_HUB_DEGREE", 50)
+            )
+            self._structural_index.build_from_edges(
+                getattr(self.embedder, "edges", None) or [],
+                min_confidence=_env_float("NEURALMIND_STRUCTURAL_MIN_CONFIDENCE", 0.0),
+            )
+            if os.environ.get("NEURALMIND_STRUCTURAL_RECALL") == "1":
+                self.selector.structural_recall = self._structural_for_selection
+        else:
+            self._structural_index = None
 
     # ----------------------------------------------------------------- #
     # Canonical IR (PRD 1)
@@ -1025,7 +1187,7 @@ class NeuralMind:
             if store is not None:
                 summary = maybe_import_team_memory(self.project_path, store)
                 if summary and summary.get("synapses"):
-                    print(
+                    self._notify(
                         f"[neuralmind] inherited team memory → +{summary['synapses']} shared "
                         f"synapses, +{summary['transitions']} transitions "
                         "(set NEURALMIND_TEAM_MEMORY=0 to disable)"
@@ -1051,7 +1213,7 @@ class NeuralMind:
             if tuner.should_run():
                 result = tuner.run_generation()
                 if result is not None and result.promoted:
-                    print(
+                    self._notify(
                         f"[neuralmind] tuner promoted new config "
                         f"(fitness {result.best_fitness:.4f})"
                     )
@@ -1109,49 +1271,79 @@ class NeuralMind:
             file=sys.stderr,
         )
 
-    def _maybe_generate_builtin_graph(self, force: bool = False) -> None:
-        """Generate ``.neuralmind/graph.json`` with the built-in tree-sitter
-        backend when there's no graphify output to consume.
+    # ----------------------------------------------------------------- #
+    # Build notices
+    # ----------------------------------------------------------------- #
+    def _notify(self, message: str) -> None:
+        """Report a build notice without touching stdout.
 
-        A graphify-produced graph always wins: we only generate when none
-        exists, or — on ``force`` — when the existing graph is one *we* wrote
-        (never clobber a real graphify build). Silently no-ops when tree-sitter
-        isn't importable, leaving the existing "no graph" path to advise the user.
-
-        On subsequent builds with an existing built-in graph, we still call
-        ``graphgen.build_graph()`` so that added/changed files are picked up
-        incrementally — ``graphgen`` reuses unchanged nodes/edges by content
-        hash and only re-extracts what changed plus transitive importers.
+        Notices go to :attr:`notice_stream` — stderr unless a caller (the
+        ``build`` CLI) points it at stdout — and are kept on the build result
+        under ``notices``. Never stdout by default: the MCP server speaks
+        JSON-RPC on stdout, and a stray line there corrupts the stream.
         """
         import sys
 
-        graph_path = graph_json_path(self.project_path)
-        if graph_path.exists():
-            # Check if the existing graph was generated by us (built-in backend)
-            # vs. a real graphify build. Never clobber a real graphify build.
-            try:
-                existing = json.loads(graph_path.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                existing = {}
-            if "neuralmind.graphgen" not in str(existing.get("generated_by", "")):
-                return  # graphify graph — never clobber
+        self._notices.append(message)
+        stream = self.notice_stream if self.notice_stream is not None else sys.stderr
+        try:
+            print(message, file=stream)
+        except Exception:
+            pass
 
+    def _read_build_status(self) -> dict:
+        path = paths_mod.canonical_artifact(self.project_path, "build_status.json")
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def _record_build_status(self, updates: dict) -> None:
+        """Merge ``updates`` into ``.neuralmind/build_status.json``."""
+        path = paths_mod.canonical_artifact(self.project_path, "build_status.json")
+        if not path.parent.exists():
+            return
+        status = self._read_build_status()
+        status.update(updates)
+        try:
+            path.write_text(json.dumps(status, indent=2), encoding="utf-8")
+        except OSError:
+            pass
+
+    # ----------------------------------------------------------------- #
+    # Graph source (which graph.json the index is built from)
+    # ----------------------------------------------------------------- #
+    def _display_path(self, path: Path) -> str:
+        try:
+            return path.relative_to(self.project_path).as_posix()
+        except ValueError:
+            return str(path)
+
+    def _generate_builtin_graph(self) -> dict | None:
+        """Write ``.neuralmind/graph.json`` from the built-in tree-sitter backend.
+
+        ``graphgen`` reuses unchanged nodes/edges by content hash and only
+        re-extracts what changed plus transitive importers, so calling this on
+        every build is cheap. Returns the graph, or None when tree-sitter isn't
+        importable, the parse failed, or the project has nothing to index.
+        """
         from . import graphgen
 
         if not graphgen.is_available():
-            return
+            return None
         try:
             graph = graphgen.build_graph(self.project_path)
         except Exception as exc:  # pragma: no cover - defensive
-            print(f"[neuralmind] built-in graph backend failed: {exc}", file=sys.stderr)
-            return
+            self._notify(f"[neuralmind] built-in graph backend failed: {exc}")
+            return None
 
         # Only materialize a graph when there's real content to index. An empty
         # project keeps falling through to the existing "no graph" guidance
         # rather than producing a 0-node index that silently "succeeds".
         # Books are document-only (markdown chapters, reports) — accept any node.
         if not graph.get("nodes"):
-            return
+            return None
 
         # Optional SCIP precision pass: when NEURALMIND_PRECISION is set and a
         # *.scip index is present, replace the heuristic calls/inherits edges
@@ -1161,7 +1353,7 @@ class NeuralMind:
 
         graph, pstats = precision.maybe_refine(self.project_path, graph)
         if pstats is not None:
-            print(
+            self._notify(
                 "[neuralmind] SCIP precision pass: "
                 f"+{pstats.calls_added} calls, +{pstats.inherits_added} inherits "
                 f"(replaced {pstats.heuristic_calls_removed} heuristic calls, "
@@ -1169,12 +1361,205 @@ class NeuralMind:
                 f"{pstats.documents} document(s))"
             )
 
-        out_dir = paths_mod.canonical_artifact(self.project_path)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        graph_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
-        print(
-            f"[neuralmind] generated code graph via the built-in tree-sitter backend → {graph_path}"
-        )
+        out_path = paths_mod.canonical_artifact(self.project_path, "graph.json")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(graph, indent=2), encoding="utf-8")
+        return graph
+
+    def _point_embedder_at(self, graph_path: Path) -> None:
+        """Make the embedder read ``graph_path`` (it caches its path at init)."""
+        try:
+            self.embedder.graph_path = graph_path
+        except (AttributeError, TypeError):
+            pass  # backends that resolve the path on every read
+
+    def _resolve_graph(self, regenerate: bool = False) -> dict:
+        """Decide which graph.json this build uses, generating it when ours.
+
+        Honors ``graph_source`` in ``.neuralmind.yaml``:
+
+        * ``auto`` — the canonical built-in graph when present, else a
+          graphify graph. A graphify graph that FAILs the freshness check is
+          replaced by a built-in graph (``graphify-out/`` is never written).
+          If the previous build used the built-in graph and it has since
+          disappeared, the build stops rather than silently falling back to
+          a graphify graph.
+        * ``builtin`` — always the tree-sitter graph; ``graphify-out/`` is
+          never read.
+        * ``graphify`` — only ``graphify-out/graph.json``; an error if absent.
+
+        ``regenerate`` (``build --regenerate-graph``) always runs the
+        tree-sitter backend. Returns ``{"path", "kind", "action", "nodes"}``
+        plus ``"error"`` when the build can't proceed.
+        """
+        from .freshness import FAIL as FRESHNESS_FAIL
+        from .freshness import graph_freshness, graph_source_kind
+
+        setting = paths_mod.graph_source_setting(self.project_path)
+        canonical = paths_mod.graph_json_path(self.project_path, "builtin")
+        legacy = paths_mod.graph_json_path(self.project_path, "graphify")
+        legacy_rel = self._display_path(legacy)
+        canonical_rel = self._display_path(canonical)
+
+        def _legacy_label() -> str:
+            try:
+                g = json.loads(legacy.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                return "unreadable"
+            report = graph_freshness(self.project_path, legacy)
+            kind = graph_source_kind(g if isinstance(g, dict) else {}, legacy)
+            if report is not None and report.graph_date:
+                return f"{kind}, {report.graph_date}"
+            return kind
+
+        def _builtin(action: str) -> dict:
+            graph = self._generate_builtin_graph()
+            if graph is None:
+                if canonical.exists() and action != "regenerated":
+                    nodes = self._count_nodes(canonical)
+                    return {
+                        "path": canonical,
+                        "kind": "built-in",
+                        "action": "existing",
+                        "nodes": nodes,
+                    }
+                return {
+                    "path": canonical,
+                    "kind": "built-in",
+                    "action": action,
+                    "nodes": 0,
+                    "error": (
+                        "the built-in graph backend needs tree-sitter and at least one "
+                        "indexable file — pip install tree-sitter tree-sitter-python"
+                    ),
+                }
+            return {
+                "path": canonical,
+                "kind": "built-in",
+                "action": action,
+                "nodes": len(graph.get("nodes", [])),
+            }
+
+        if regenerate:
+            if setting == "graphify":
+                return {
+                    "path": legacy,
+                    "kind": "graphify",
+                    "action": "read-only",
+                    "nodes": 0,
+                    "error": (
+                        "--regenerate-graph builds the tree-sitter graph, but "
+                        ".neuralmind.yaml sets graph_source: graphify. Set it to auto "
+                        "or builtin first."
+                    ),
+                }
+            ignored = _legacy_label() if legacy.exists() else ""
+            info = _builtin("regenerated")
+            if "error" not in info:
+                note = f"Graph source: built-in (tree-sitter), {info['nodes']:,} nodes."
+                if ignored:
+                    note += f" Ignoring {legacy_rel} ({ignored})."
+                self._notify(note)
+            return info
+
+        if setting == "graphify":
+            if not legacy.exists():
+                return {
+                    "path": legacy,
+                    "kind": "graphify",
+                    "action": "read-only",
+                    "nodes": 0,
+                    "error": (
+                        f"graph_source: graphify is set, but {legacy_rel} doesn't exist. "
+                        "Run graphify, or set graph_source: auto in .neuralmind.yaml."
+                    ),
+                }
+            return {
+                "path": legacy,
+                "kind": "graphify",
+                "action": "read-only",
+                "nodes": self._count_nodes(legacy),
+            }
+
+        if setting == "builtin":
+            return _builtin("incremental" if canonical.exists() else "generated")
+
+        # --- auto ---------------------------------------------------------
+        if canonical.exists():
+            try:
+                existing = json.loads(canonical.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                existing = {}
+            if "neuralmind.graphgen" not in str(existing.get("generated_by", "")):
+                # A graph someone else wrote into .neuralmind/ — never clobber.
+                return {
+                    "path": canonical,
+                    "kind": graph_source_kind(existing, canonical),
+                    "action": "read-only",
+                    "nodes": len(existing.get("nodes", []) or []),
+                }
+            return _builtin("incremental")
+
+        if not legacy.exists():
+            return _builtin("generated")
+
+        # Only a graphify graph is present.
+        previous = self._read_build_status().get("graph") or {}
+        if previous.get("kind") == "built-in":
+            return {
+                "path": legacy,
+                "kind": "graphify",
+                "action": "read-only",
+                "nodes": 0,
+                "error": (
+                    f"the last build used the built-in graph at {canonical_rel}, which "
+                    f"is gone; only {legacy_rel} ({_legacy_label()}) remains. NeuralMind "
+                    "won't switch graph source silently. Run `neuralmind build "
+                    f"{self.project_path} --regenerate-graph` to rebuild the built-in "
+                    "graph, or set graph_source: graphify in .neuralmind.yaml to use the "
+                    "graphify graph."
+                ),
+            }
+
+        report = graph_freshness(self.project_path, legacy)
+        from . import graphgen
+
+        # Swap only when there's code on disk to parse: a graph whose files
+        # are simply absent (a sparse checkout, a graph-only fixture) would be
+        # replaced by an empty graph, which is worse than the warning.
+        if (
+            report is not None
+            and report.status == FRESHNESS_FAIL
+            and report.indexable_count > 0
+            and graphgen.is_available()
+        ):
+            self._notify(
+                f"{legacy_rel} failed the freshness check, so this build uses the built-in graph:"
+            )
+            self._notify(report.render(str(self.project_path)))
+            info = _builtin("generated")
+            if "error" not in info:
+                self._notify(
+                    f"Graph source: built-in (tree-sitter), {info['nodes']:,} nodes. "
+                    f"{legacy_rel} is left untouched; set graph_source: graphify in "
+                    ".neuralmind.yaml to keep using it."
+                )
+                info["replaced"] = report.to_dict()
+            return info
+
+        return {
+            "path": legacy,
+            "kind": "graphify",
+            "action": "read-only",
+            "nodes": report.node_count if report is not None else self._count_nodes(legacy),
+        }
+
+    @staticmethod
+    def _count_nodes(graph_path: Path) -> int:
+        try:
+            return len(json.loads(graph_path.read_text(encoding="utf-8")).get("nodes", []) or [])
+        except (OSError, ValueError, AttributeError):
+            return 0
 
     def update_files(self, paths) -> dict:
         """Incrementally re-index only the given changed files (built-in graph).
@@ -1267,31 +1652,95 @@ class NeuralMind:
             self.selector._l1_cache = None
 
     def _ensure_built(self):
-        """Ensure the system is built before queries.
+        """Make the index ready for a query without rebuilding it.
+
+        Read paths (query, search, wakeup, the MCP tools) load an existing
+        index as it stands: no graph regeneration, no embedding pass, no
+        output. Only a project with no index at all is built here — the
+        first-run convenience — and that build's notices go to stderr.
+        A stale index is reported by the freshness check (``doctor``,
+        ``health``, the MCP wakeup header), never silently rebuilt.
 
         Raises GraphNotBuiltError with an actionable message when the build
         can't produce a usable selector — almost always a missing code
         graph on a fresh project.
         """
-        if not self._built or self.selector is None:
-            result = self.build()
-            if self.selector is None:
-                ir_path = self.project_path / ".neuralmind" / "index_ir.json"
-                graph_path = graph_json_path(self.project_path)
-                if not ir_path.exists() and not graph_path.exists():
-                    raise GraphNotBuiltError(
-                        f"No code graph found at {ir_path} or {graph_path}.\n"
-                        f"NeuralMind builds one automatically with its bundled "
-                        f"tree-sitter backend — install the parser if it's missing:\n"
-                        f"  pip install tree-sitter tree-sitter-python\n"
-                        f"  neuralmind build {self.project_path}\n"
-                        f"(Or generate it with graphify: `graphify update {self.project_path}.`)"
-                    )
+        if self._built and self.selector is not None:
+            return
+        if self._load_existing_index():
+            return
+        result = self.build()
+        if self.selector is None:
+            ir_path = self.project_path / ".neuralmind" / "index_ir.json"
+            graph_path = graph_json_path(self.project_path)
+            if not ir_path.exists() and not graph_path.exists():
                 raise GraphNotBuiltError(
-                    result.get("error", "Failed to build the NeuralMind index.")
-                    if isinstance(result, dict)
-                    else "Failed to build the NeuralMind index."
+                    f"No code graph found at {ir_path} or {graph_path}.\n"
+                    f"NeuralMind builds one automatically with its bundled "
+                    f"tree-sitter backend — install the parser if it's missing:\n"
+                    f"  pip install tree-sitter tree-sitter-python\n"
+                    f"  neuralmind build {self.project_path}\n"
+                    f"(Or generate it with graphify: `graphify update {self.project_path}.`)"
                 )
+            raise GraphNotBuiltError(
+                result.get("error", "Failed to build the NeuralMind index.")
+                if isinstance(result, dict)
+                else "Failed to build the NeuralMind index."
+            )
+
+    def ensure_ready(self) -> dict:
+        """Load the existing index for reading, or build one if there is none.
+
+        What read commands and long-lived servers call instead of
+        :meth:`build`: an index that's already built is loaded as it stands
+        (no graph regeneration, no embedding pass, no output), so a stale
+        index is reported by the freshness check rather than silently
+        rebuilt. Returns ``{"success": True, "loaded": True}`` for a load,
+        or the build result.
+        """
+        if self._built and self.selector is not None:
+            return {"success": True, "loaded": True}
+        if self._load_existing_index():
+            return {"success": True, "loaded": True}
+        return self.build()
+
+    def _load_existing_index(self) -> bool:
+        """Load an already-built index for querying. False when there is none.
+
+        Reads the graph the embedder points at and checks the vector store has
+        rows; never writes anything. Prints one stderr line only if loading
+        takes over two seconds.
+        """
+        import sys
+
+        try:
+            total = int((self.embedder.get_stats() or {}).get("total_nodes", 0) or 0)
+        except Exception:
+            return False
+        if total <= 0:
+            return False
+
+        def _slow_notice() -> None:
+            try:
+                print(f"Loading index ({total:,} nodes)...", file=sys.stderr)
+            except Exception:
+                pass
+
+        timer = threading.Timer(2.0, _slow_notice)
+        timer.daemon = True
+        timer.start()
+        try:
+            if not getattr(self.embedder, "nodes", None):
+                if not self.embedder.load_graph():
+                    return False
+            self._init_query_state()
+        except Exception:
+            self.selector = None
+            return False
+        finally:
+            timer.cancel()
+        self._built = True
+        return True
 
     def wakeup(self) -> ContextResult:
         """
@@ -2003,12 +2452,13 @@ def create_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
 
     Args:
         project_path: Path to project root
-        auto_build: If True, automatically build embeddings
+        auto_build: If True, load the existing index — or build one when
+            the project has none. An existing index is never rebuilt here.
 
     Returns:
         Configured NeuralMind instance
     """
     mind = NeuralMind(project_path)
     if auto_build:
-        mind.build()
+        mind.ensure_ready()
     return mind

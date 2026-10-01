@@ -5,9 +5,15 @@ and systemd ExecStartPre. Returns index age, node count, last build
 time, and disk usage.
 
 Exit codes:
-    0 = healthy (index exists, < 24h old)
-    1 = stale (index exists, >= 24h old)
+    0 = healthy (index exists and the code graph matches the files on disk)
+    1 = stale (the freshness check WARNs or FAILs: files missing from the
+        graph, deleted files still indexed, files changed since the graph,
+        or a graph built on another OS)
     2 = no index
+
+Index age is still reported, but it no longer decides staleness: a
+day-old index of unchanged code is current, and an hour-old index that
+misses new files is not.
 """
 
 from __future__ import annotations
@@ -50,8 +56,20 @@ def cmd_health(args) -> None:
     if not last_build:
         last_build = ir_path.stat().st_mtime
 
+    try:
+        last_build = float(last_build)
+    except (TypeError, ValueError):
+        last_build = ir_path.stat().st_mtime
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
-    is_stale = age_hours >= 24
+
+    freshness = None
+    try:
+        from neuralmind.freshness import graph_freshness
+
+        freshness = graph_freshness(project_path)
+    except Exception:
+        freshness = None
+    is_stale = freshness is not None and freshness.status != "ok"
 
     # Node count (IR stores nodes as a list under "nodes")
     node_count = ir_meta.get("node_count", len(ir_meta.get("nodes", [])))
@@ -83,6 +101,7 @@ def cmd_health(args) -> None:
             "age_hours": round(age_hours, 1),
             "stale": is_stale,
         },
+        "freshness": freshness.to_dict() if freshness is not None else None,
         "disk_usage_mb": round(disk_mb, 2),
         "synapse_edges": synapse_count,
     }
@@ -92,7 +111,9 @@ def cmd_health(args) -> None:
     else:
         status_icon = "🟢" if not is_stale else "🟡"
         print(f"{status_icon} NeuralMind Health — {project_path.name}")
-        print(f"  Status:       {'healthy' if not is_stale else 'stale (index >= 24h old)'}")
+        print(
+            f"  Status:       {'healthy' if not is_stale else 'stale (graph out of step with the code)'}"
+        )
         print(f"  Nodes:        {node_count}")
         print(
             f"  Last build:    {time.strftime('%Y-%m-%d %H:%M', time.localtime(last_build)) if last_build else 'unknown'}"
@@ -100,7 +121,8 @@ def cmd_health(args) -> None:
         print(f"  Index age:    {age_hours:.1f} hours")
         print(f"  Synapse edges: {synapse_count}")
         print(f"  Disk usage:   {disk_mb:.1f} MB")
-        if is_stale:
-            print(f"\n  💡 Rebuild: neuralmind build {project_path}")
+        if is_stale and freshness is not None:
+            print()
+            print("  " + freshness.render(str(project_path), indent="    ").replace("\n", "\n  "))
 
     sys.exit(1 if is_stale else 0)

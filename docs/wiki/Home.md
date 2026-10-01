@@ -36,6 +36,21 @@ their LLM-agent loop. Full numbers and reproduction commands on the
 
 ## What's New
 
+### v4.4.0 — The index is never silently out of step with the code (October 2026)
+
+A code graph that lags the code still "works" — it answers from code that no
+longer exists. v4.4.0 makes that impossible to miss: `neuralmind doctor`,
+`neuralmind health`, `neuralmind build` and the agent's first MCP wakeup compare
+the graph with the files on disk in both directions, whatever tool built it
+(new files the graph lacks, deleted files it still serves, a graph built on
+another OS, files changed since — from `git diff` for a committed graph).
+`neuralmind build . --regenerate-graph` escapes a stale graphify graph,
+`graph_source: auto | builtin | graphify` pins the choice, every build purges
+vectors for nodes that left the graph, and read commands load the index without
+rebuilding it or printing a line. Walkthrough:
+[Recover from a stale code graph](https://github.com/dfrostar/neuralmind/blob/main/docs/use-cases/recover-from-a-stale-graph.md) ·
+[release notes](https://github.com/dfrostar/neuralmind/blob/main/docs/releases/RELEASE_NOTES_v4.4.0.md).
+
 ### v4.x — Decision memory and the stale-decision guard (September 2026)
 
 NeuralMind now remembers *why* code is the way it is, not just where it lives.

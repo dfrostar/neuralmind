@@ -59,6 +59,9 @@ keywords = [
     "content-ingestion",
     "incremental-indexing",
     "markdown-corpus-search",
+    "index-freshness",
+    "stale-index-detection",
+    "graph-regeneration",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

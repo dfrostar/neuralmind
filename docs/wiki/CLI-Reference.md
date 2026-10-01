@@ -137,16 +137,41 @@ neuralmind build <project_path> [OPTIONS]
 | `--content-type` | `auto` | What kind of project to build: `auto` (detect — book mode kicks in when markdown outweighs code ≥3:1, counting both recursively with vendored/state dirs pruned), `book` (force book mode: code scope for the engine, content scope for chapters), `code`, `content` |
 | `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
 | `--redact-secrets` | False | Replace detected credentials with a `[REDACTED:kind]` marker in text entering the index, on all three backends. Equivalent to `NEURALMIND_REDACT_SECRETS=1`. Off by default because redacting costs recall on legitimately secret-shaped identifiers — run `neuralmind scan-for-secrets` first; removing and rotating the credential is the actual fix. |
+| `--regenerate-graph` | False | Always rebuild `.neuralmind/graph.json` with the built-in tree-sitter backend, whatever graph exists — the way out of a stale graphify graph. `graphify-out/` is never written (v4.4.0+) |
+| `--strict` | False | Exit `3` before embedding when the code graph FAILs the freshness check (v4.4.0+) |
+| `--prune` | False | Remove orphaned vectors even when they are more than half the store; otherwise they're kept with a warning as a safety valve against a graph that shrank by mistake (v4.4.0+) |
 | `--json`, `-j` | False | Emit structured JSON output (for `--dry-run`) |
 
 #### Output
 
-Displays build statistics including:
+The first line names the graph the build used (v4.4.0+):
+
+```
+Graph: .neuralmind/graph.json (built-in, incremental, 8,351 nodes)
+Graph: graphify-out/graph.json (graphify, read-only, 3,197 nodes)
+```
+
+When the graph isn't in step with the files on disk, the freshness report
+follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 - Number of nodes processed
-- Number of nodes embedded (new/changed)
-- Number of nodes skipped (unchanged)
+- Delta: new / updated / skipped / **removed** — `removed` counts vectors purged
+  because their node left the graph (v4.4.0+)
 - Number of communities indexed
 - Build time elapsed
+
+#### Graph source *(v4.4.0+)*
+
+`graph_source` in `.neuralmind.yaml` picks which graph the index is built from:
+
+| Value | Behaviour |
+|---|---|
+| `auto` (default) | `.neuralmind/graph.json` when present, else `graphify-out/graph.json`. A graphify graph that FAILs the freshness check is replaced by a built-in graph at build time (when there is code on disk to parse), and the build prints why |
+| `builtin` | Always the tree-sitter graph; `graphify-out/` is never read |
+| `graphify` | Only `graphify-out/graph.json`; the build fails if it's missing |
+
+NeuralMind never switches source silently: if the previous build used the
+built-in graph and it has gone, the build stops and asks for
+`--regenerate-graph` or `graph_source: graphify`.
 
 #### Examples
 
@@ -156,6 +181,12 @@ neuralmind build /path/to/project
 
 # Force complete rebuild
 neuralmind build /path/to/project --force
+
+# Replace a stale graphify graph with the built-in one (v4.4.0+)
+neuralmind build /path/to/project --regenerate-graph
+
+# CI: stop with exit 3 if the code graph is out of step with the code
+neuralmind build /path/to/project --strict
 
 # Estimate token savings without building (Gap 1: 1-click setup)
 neuralmind build /path/to/project --dry-run
@@ -170,17 +201,17 @@ neuralmind build /path/to/project --dry-run
 #### Prerequisites
 
 **As of v0.15.0, none beyond `pip install neuralmind`.** When no
-`graphify-out/graph.json` exists, `build` auto-generates one with the bundled
-**tree-sitter backend** (`neuralmind/graphgen.py`) and prints:
+`graphify-out/graph.json` exists, `build` auto-generates `.neuralmind/graph.json`
+with the bundled **tree-sitter backend** (`neuralmind/graphgen.py`) and prints:
 
 ```
-[neuralmind] generated code graph via the built-in tree-sitter backend → graphify-out/graph.json
+Graph: .neuralmind/graph.json (built-in, generated, 1,240 nodes)
 ```
 
 Backend precedence:
 1. A real **graphify** graph always takes priority where present (`graphify update /path/to/project`).
 2. Otherwise the **built-in tree-sitter backend** generates the graph. It indexes **Python, TypeScript, Go, Rust, Java, C, C++, C#, Ruby, and PHP** (`.py`, `.ts`/`.tsx`, `.go`, `.rs`, `.java`, `.c`/`.h`, `.cpp`/`.cc`/`.cxx`/`.hpp`/`.hh`/`.hxx`, `.cs`, `.rb`, `.php`) out of the box (Java added in v0.28.0; C and C++ in v0.32.0; C# in v0.35.0; Ruby in v0.36.0; PHP in v0.37.0); more grammars register behind the `SUPPORTED_SUFFIXES` seam. A mixed-language repo is indexed in one pass. **Schema artifacts** (v0.40.0+) are indexed alongside code as `document` nodes: **OpenAPI/AsyncAPI specs** (`.yaml`/`.yml` with an `openapi`/`asyncapi`/`swagger` key) emit nodes per path+method, schema component, and channel; **SQL DDL** (`.sql`) emits one node per `CREATE` object; **Protocol Buffers** (`.proto`) emit nodes per `message`, `service`, `rpc`, and `enum`. Plain YAML config files are silently skipped.
-3. `--force` only regenerates graphs *we* wrote — it never clobbers a graphify build.
+3. `--force` re-embeds; it never touches the graph source. `--regenerate-graph` (v4.4.0+) replaces a graphify graph with a built-in one in `.neuralmind/`, leaving `graphify-out/` untouched, and `graph_source` (above) pins the choice.
 4. An empty/non-code project writes no graph, so you still get the "no graph" guidance rather than a silent 0-node success.
 5. **Optional precision (v0.17.0+):** set `NEURALMIND_PRECISION=1` and place a `*.scip` index (from `scip-python`/`scip-typescript`/`scip-go`) in the project root to replace the built-in backend's heuristic `calls`/`inherits` edges with compiler-accurate ones for the files the index covers. Off by default.
 6. **Secret redaction (opt-in):** `--redact-secrets` (or `NEURALMIND_REDACT_SECRETS=1`) replaces detected credentials with `[REDACTED:<kind>]` in **embedded text** — document chunks and node descriptions — on all three backends. Off by default, because redacting costs recall on legitimately secret-shaped identifiers.
@@ -1131,6 +1162,29 @@ NeuralMind doctor — /path/to/project
   [ ok ] Query memory: enabled (logging queries for learning)
 ===========================================================
 ```
+
+**Code graph freshness (v4.4.0+).** The *Code graph* check compares the graph
+with the files on disk in both directions, whatever tool produced it — graphify
+graphs carry no `embedded_at`, so before v4.4.0 they passed unexamined:
+
+```
+  [FAIL] Code graph: graphify-out/graph.json (graphify, 2026-04-22, 214 commits behind HEAD), 3,197 nodes
+         51 files on disk not in graph (lib/render/overlay.tsx, scripts/collect_stats.py, ...)
+         3,176 node paths (319 files) use '\' separators (built on Windows)
+         -> neuralmind build . --regenerate-graph
+```
+
+FAIL when files missing from the graph plus files gone from disk exceed 10% of
+indexable files, or any node path uses `\` on a POSIX host; WARN for smaller
+drift or files changed since the graph was built (from `git diff` for a
+committed graph, so checkout mtimes never count); OK otherwise. On a shallow
+clone the graph's age is reported as unknown.
+
+**Semantic index vs graph (v4.4.0+).** Stored vectors are compared with the
+graph's nodes: equal is OK; vectors whose node left the graph FAIL
+(`2,879 vectors not in graph (stale results possible)`) because search can still
+return them — `neuralmind build` purges them; graph nodes without a vector WARN.
+Content ingested with `ingest` / `ingest-content` isn't counted as extra.
 
 Scoped builds (book/content/docs) write per-scope stores (`store.code.sqlite`,
 `store.content.sqlite`, …) instead of the default `store.sqlite`. Doctor sums
@@ -2492,14 +2546,18 @@ Check NeuralMind health status.
 
 #### Output
 
-Health status: healthy, stale (index ≥24h old), or no index.
+Health status: healthy, stale, or no index. Since v4.4.0 "stale" means the code
+graph is out of step with the files on disk (the same freshness check
+[`doctor`](#doctor-v0120) runs), not "older than 24 hours": a day-old index of
+unchanged code is healthy, and an hour-old one that misses new files is not.
+`--json` includes the full `freshness` report.
 
 #### Exit Codes
 
 | Code | Meaning |
 |------|---------|
-| 0 | Healthy |
-| 1 | Stale (index ≥24h old) |
+| 0 | Healthy — the graph matches the files on disk |
+| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, or a graph built on another OS |
 | 2 | No index |
 
 #### Examples
@@ -2937,7 +2995,7 @@ renewed — issue a new one.
 | `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
 | `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
 | `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
-| `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`). Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one — so this is for golden-output tests and log-sensitive CI jobs. |
+| `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`), `build` included. Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one for `ingest-content` — so this is for golden-output tests and log-sensitive CI jobs. Since v4.4.0 the `build` embedding bar shows only on a terminal, and read commands (`query`, `search`, `wakeup`, the MCP tools) print nothing on success. |
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |
 | `NEURALMIND_DOC_BOOST` | `2.0` | *(v3.9.0+)* Score multiplier applied to doc hits when a query is classified `docs` (code hits are multiplied by `0.7`). |

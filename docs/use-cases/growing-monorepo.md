@@ -12,6 +12,14 @@ The NeuralMind index is built from `graphify-out/graph.json`. If the graph isn't
 - New code doesn't appear in search results.
 - Cluster summaries describe an older architecture.
 
+**v4.4.0+: you no longer have to notice.** `neuralmind doctor .` and
+`neuralmind health .` compare the graph with the files on disk in both
+directions — new files the graph lacks, deleted files it still serves, files
+changed since it was built — and your agent's first `neuralmind_wakeup` call
+starts with `Index is stale: …` when they disagree. Each build also purges
+vectors for nodes that left the graph. See
+[Recover from a stale code graph](./recover-from-a-stale-graph.md).
+
 ## Three ways to keep it fresh
 
 ### 1. Git post-commit hook (recommended)
@@ -37,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install neuralmind
-      - run: neuralmind build .
+      - run: neuralmind build . --strict   # exits 3 if the code graph fails the freshness check
       - run: neuralmind wakeup . > AI_CONTEXT.md
       - uses: actions/upload-artifact@v4
         with: { name: ai-context, path: AI_CONTEXT.md }

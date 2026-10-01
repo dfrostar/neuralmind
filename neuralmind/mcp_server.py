@@ -69,7 +69,10 @@ def get_mind(project_path: str, auto_build: bool = True) -> NeuralMind:
     if abs_path not in _mind_cache:
         _mind_cache[abs_path] = NeuralMind(abs_path)
         if auto_build:
-            _mind_cache[abs_path].build()
+            # Load the existing index as it stands; build only when there is
+            # none. Never a rebuild on a read, and nothing on stdout (the
+            # JSON-RPC channel).
+            _mind_cache[abs_path].ensure_ready()
     return _mind_cache[abs_path]
 
 
@@ -107,6 +110,19 @@ def _unindexed_relative_path_hint(project_path: str) -> str | None:
     )
 
 
+def _freshness_line(project_path: str) -> str:
+    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises."""
+    try:
+        from neuralmind.freshness import graph_freshness
+
+        report = graph_freshness(project_path)
+    except Exception:
+        return ""
+    if report is None or report.ok:
+        return ""
+    return report.one_line(str(Path(project_path).resolve()))
+
+
 def tool_wakeup(project_path: str) -> dict[str, Any]:
     """Get wake-up context for starting a conversation."""
     hint = _unindexed_relative_path_hint(project_path)
@@ -114,8 +130,14 @@ def tool_wakeup(project_path: str) -> dict[str, Any]:
         raise ValueError(hint)
     mind = get_mind(project_path)
     result = mind.wakeup()
+    # The agent's first call is where it learns the index can't be trusted:
+    # one line, prefixed, only when the graph isn't in step with the code.
+    context = result.context
+    stale_line = _freshness_line(project_path)
+    if stale_line:
+        context = f"{stale_line}\n\n{context}"
     return {
-        "context": result.context,
+        "context": context,
         "tokens": result.budget.total,
         "reduction_ratio": round(result.reduction_ratio, 1),
         "layers": result.layers_used,
@@ -216,7 +238,22 @@ def tool_health(project_path: str) -> dict[str, Any]:
         ir_meta = {}
 
     last_build = ir_meta.get("built_at", 0) or ir_path.stat().st_mtime
+    try:
+        last_build = float(last_build)
+    except (TypeError, ValueError):
+        last_build = ir_path.stat().st_mtime
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
+
+    # Staleness = the code graph out of step with the files on disk (same rule
+    # as `neuralmind health`), not the index's age.
+    freshness = None
+    try:
+        from neuralmind.freshness import graph_freshness
+
+        freshness = graph_freshness(project_path)
+    except Exception:
+        freshness = None
+    stale = freshness is not None and freshness.status != "ok"
 
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
 
@@ -231,9 +268,10 @@ def tool_health(project_path: str) -> dict[str, Any]:
             pass
 
     return {
-        "status": "stale" if age_hours >= 24 else "healthy",
-        "healthy": age_hours < 24,
-        "exit_code": 1 if age_hours >= 24 else 0,
+        "status": "stale" if stale else "healthy",
+        "healthy": not stale,
+        "exit_code": 1 if stale else 0,
+        "freshness": freshness.to_dict() if freshness is not None else None,
         "index_age_hours": round(age_hours, 1),
         "node_count": ir_meta.get("node_count", len(ir_meta.get("nodes", []))),
         "disk_mb": round(disk_mb, 2),

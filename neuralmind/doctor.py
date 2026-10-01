@@ -48,6 +48,13 @@ class Check:
 
 
 def _check_graph(project: Path) -> Check:
+    """Is there a code graph, and does it match the files on disk?
+
+    Delegates to :func:`neuralmind.freshness.graph_freshness`, which compares
+    the graph with the working tree in both directions whatever tool made it
+    — graphify graphs never carry ``embedded_at``, so a per-node timestamp
+    check would pass them unexamined.
+    """
     graph = graph_json_path(project)
     if not graph.exists():
         return Check(
@@ -59,50 +66,40 @@ def _check_graph(project: Path) -> Check:
     try:
         g = json.loads(graph.read_text(encoding="utf-8"))
         nodes = len(g.get("nodes", []))
-        stale = 0
-        orphaned = 0
-        embedded_count = 0
-        for node in g.get("nodes", []):
-            eh = node.get("embedded_at")
-            if eh:
-                embedded_count += 1
-            sf = node.get("source_file", "")
-            if not sf:
-                continue
-            if eh and not (project / sf).exists():
-                orphaned += 1
-            elif eh:
-                try:
-                    from datetime import datetime
-
-                    file_mtime = (project / sf).stat().st_mtime
-                    emb_time = datetime.fromisoformat(eh).timestamp()
-                    if file_mtime > emb_time:
-                        stale += 1
-                except Exception:
-                    pass
     except Exception as e:  # corrupt / truncated graph.json
         return Check(
             "Code graph",
             FAIL,
             f"unreadable ({e})",
-            fix=f"Regenerate it: neuralmind build {project}",
+            fix=f"Regenerate it: neuralmind build {project} --regenerate-graph",
         )
 
-    details = f"{nodes} nodes at {graph}"
-    fixes = []
-    if orphaned > 0:
-        details += f" ({orphaned} orphaned — source file deleted)"
-        fixes.append(f"Rebuild: neuralmind build {project}")
-    if stale > 0:
-        details += f" ({stale} stale — file changed after embedding)"
-        fixes.append("Rebuild: neuralmind build")
+    from .freshness import graph_freshness
 
-    status = FAIL if orphaned > 0 else (WARN if stale > 0 else OK)
-    fix_str = "; ".join(fixes) if fixes else ""
-    if not fix_str and embedded_count == 0 and nodes > 0:
-        fix_str = "Graph not yet embedded — run neuralmind build"
-    return Check("Code graph", status, details, fix=fix_str)
+    try:
+        report = graph_freshness(project, graph)
+    except Exception as e:  # pragma: no cover - diagnostic only
+        return Check("Code graph", WARN, f"{nodes} nodes at {graph} (freshness check failed: {e})")
+    if report is None:
+        return Check("Code graph", OK, f"{nodes} nodes at {graph}")
+    detail = f"{report.header()}, {nodes:,} nodes"
+    problems = report.problem_lines()
+    if problems:
+        detail += "\n         " + "\n         ".join(problems)
+    return Check("Code graph", report.status, detail, fix=report.fix_command(str(project)))
+
+
+def _graph_node_ids(project: Path) -> set[str] | None:
+    """Ids a build of the current graph would embed, or None if unreadable."""
+    try:
+        g = json.loads(graph_json_path(project).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return {
+        str(n.get("id", n.get("label", "")))
+        for n in g.get("nodes", []) or []
+        if isinstance(n, dict) and n.get("id", n.get("label", ""))
+    }
 
 
 def _check_index(project: Path) -> Check:
@@ -147,7 +144,7 @@ def _check_index(project: Path) -> Check:
                 if con is not None:
                     con.close()
     if total > 0:
-        return Check("Semantic index", OK, f"{total} nodes embedded ({backend} backend)")
+        return _compare_index_with_graph(project, mind, total, backend)
     # No nodes at canonical path — is a legacy graphify-out/ index orphaned?
     legacy_note = ""
     try:
@@ -171,6 +168,68 @@ def _check_index(project: Path) -> Check:
         f"no nodes embedded ({backend} backend){legacy_note}",
         fix="Build it: neuralmind build",
     )
+
+
+def _compare_index_with_graph(project: Path, mind, total: int, backend: str) -> Check:
+    """Vector store vs graph: equal is OK, extra vectors FAIL, missing WARN.
+
+    Extra vectors are nodes that left the graph but can still be returned by
+    search. Content ingested with ``ingest``/``ingest-content`` lives in the
+    store without being in the graph and isn't counted as extra.
+    """
+    graph_ids = _graph_node_ids(project)
+    if graph_ids is None:
+        return Check("Semantic index", OK, f"{total} nodes embedded ({backend} backend)")
+    orphans: set[str] = set()
+    finder = getattr(mind.embedder, "orphaned_node_ids", None)
+    if callable(finder):
+        try:
+            if not getattr(mind.embedder, "nodes", None):
+                mind.embedder.load_graph()
+            orphans, _ = finder()
+        except Exception:
+            orphans = set()
+    if orphans:
+        return Check(
+            "Semantic index",
+            FAIL,
+            f"{len(orphans):,} vectors not in graph (stale results possible); "
+            f"{total:,} stored, graph has {len(graph_ids):,} nodes ({backend} backend)",
+            fix=f"Rebuild to purge them: neuralmind build {project}",
+        )
+    embedded = _count_embedded(mind, graph_ids)
+    if embedded is not None and embedded < len(graph_ids):
+        missing = len(graph_ids) - embedded
+        return Check(
+            "Semantic index",
+            WARN,
+            f"{missing:,} graph nodes not yet embedded; {total:,} stored, graph has "
+            f"{len(graph_ids):,} nodes ({backend} backend)",
+            fix=f"Embed them: neuralmind build {project}",
+        )
+    return Check(
+        "Semantic index",
+        OK,
+        f"{total:,} nodes embedded, matching the graph's {len(graph_ids):,} ({backend} backend)",
+    )
+
+
+def _count_embedded(mind, graph_ids: set[str]) -> int | None:
+    """How many graph node ids have a stored vector, or None if unknown."""
+    embedder = mind.embedder
+    conn = getattr(embedder, "_conn", None)
+    try:
+        if conn is not None:
+            rows = conn.execute("SELECT node_id FROM nodes").fetchall()
+            stored = {str(r[0]) for r in rows}
+        else:
+            stored = set(embedder.collection.get(include=[]).get("ids") or [])
+    except Exception:
+        return None
+    scope_ok = getattr(embedder, "_node_matches_scope", None)
+    if callable(scope_ok) and getattr(embedder, "_scope", "all") != "all":
+        return None  # a scoped store holds a subset by design
+    return len(stored & graph_ids)
 
 
 def _check_synapses(project: Path) -> Check:
