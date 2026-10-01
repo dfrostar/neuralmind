@@ -124,14 +124,23 @@ def _copy_git_visible(src: Path, dest: Path) -> Path:
     return dest
 
 
-def prepare(work: Path, only: set[str] | None, private: Path | None) -> list[dict[str, Any]]:
-    """[{name, root, questions_path}] for every repo to evaluate."""
+def prepare(
+    work: Path, only: set[str] | None, private: Path | None, fresh: bool = True
+) -> list[dict[str, Any]]:
+    """[{name, root, questions_path}] for every repo to evaluate.
+
+    With ``fresh`` (the default), each pinned clone's ``.neuralmind/`` is
+    removed so the index is rebuilt from nothing: any learned state (synapses
+    from a learning query) would otherwise change what the baseline returns.
+    """
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     repos: list[dict[str, Any]] = []
     for repo in manifest["repos"]:
         if only and repo["name"] not in only:
             continue
         root = _pinned_clone(work, repo)
+        if fresh:
+            shutil.rmtree(root / ".neuralmind", ignore_errors=True)
         repos.append(
             {
                 "name": repo["name"],
@@ -196,12 +205,32 @@ def eval_config(root: Path, questions_path: Path, env: dict[str, str]) -> dict[s
     }
 
 
-def public_benchmark(work: Path, env: dict[str, str]) -> float | None:
+def _fresh_public_workdir(work: Path, config: str) -> Path:
+    """A clean copy of the pinned clones for one public-benchmark run.
+
+    ``evals.public`` queries with learning on, so it trains the index it runs
+    against. Each configuration gets its own copy (no ``.neuralmind/``), so no
+    run sees the synapses an earlier one learned — and the eval's own
+    indexes are never touched.
+    """
+    dest = work / "public-runs" / config
+    shutil.rmtree(dest, ignore_errors=True)
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    for repo in manifest["repos"]:
+        src = work / repo["name"]
+        if not (src / ".git").exists():
+            _pinned_clone(work, repo)
+        shutil.copytree(src, dest / repo["name"], ignore=shutil.ignore_patterns(".neuralmind"))
+    return dest
+
+
+def public_benchmark(work: Path, config: str, env: dict[str, str]) -> float | None:
     """Query-weighted gold-file recall of the neuralmind backend under ``env``."""
     run_env = {k: v for k, v in os.environ.items() if k not in FLAGS}
     run_env.update(env)
+    run_dir = _fresh_public_workdir(work, config)
     proc = subprocess.run(
-        [sys.executable, "-m", "evals.public.run", "--json", "--work-dir", str(work)],
+        [sys.executable, "-m", "evals.public.run", "--json", "--work-dir", str(run_dir)],
         cwd=REPO_ROOT,
         env=run_env,
         capture_output=True,
@@ -259,7 +288,12 @@ def gate(results: dict[str, dict[str, dict]], config: str) -> dict[str, Any]:
     }
 
 
-def render(results: dict, gates: list[dict], public: dict[str, float | None]) -> str:
+def render(
+    results: dict,
+    gates: list[dict],
+    public: dict[str, float | None],
+    repeat: dict[str, bool] | None = None,
+) -> str:
     configs = list(next(iter(results.values())).keys()) if results else []
     lines = ["# Retrieval eval — spec 7 work items", ""]
     lines.append("hit@5 / MRR / avg tokens per repo and configuration (30 questions each).")
@@ -299,6 +333,20 @@ def render(results: dict, gates: list[dict], public: dict[str, float | None]) ->
     if base_pub is not None:
         lines.append("")
         lines.append(f"Public benchmark baseline recall: {base_pub:.2%}.")
+    if repeat:
+        same = [r for r, ok in repeat.items() if ok]
+        differ = [r for r, ok in repeat.items() if not ok]
+        lines.append("")
+        if differ:
+            lines.append(
+                f"**Baseline did not reproduce** on {', '.join(differ)}: a second baseline run "
+                "after every configuration returned different ranks. Treat deltas there as noise."
+            )
+        else:
+            lines.append(
+                f"Baseline reproduced exactly on all {len(same)} repos (re-run after every "
+                "configuration): the deltas above are the flags, not state left behind."
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -323,8 +371,9 @@ def main(argv: list[str] | None = None) -> int:
     if "baseline" not in configs:
         configs.insert(0, "baseline")
 
-    repos = prepare(work, only, private)
+    repos = prepare(work, only, private, fresh=not args.no_build)
     results: dict[str, dict[str, dict]] = {}
+    repeat: dict[str, bool] = {}
     for repo in repos:
         if not args.no_build:
             secs = build(repo["root"])
@@ -338,15 +387,19 @@ def main(argv: list[str] | None = None) -> int:
                 f"MRR {r['mrr']:.2f}  tokens {r['avg_tokens']:,.0f}",
                 file=sys.stderr,
             )
+        # Determinism check: the baseline again, after every configuration ran.
+        again = eval_config(repo["root"], repo["questions"], CONFIGS["baseline"])
+        repeat[repo["name"]] = again["ranks"] == results[repo["name"]]["baseline"]["ranks"]
+        print(f"[{repo['name']}] baseline reproduced: {repeat[repo['name']]}", file=sys.stderr)
 
     gates = [gate(results, c) for c in configs if c != "baseline"]
     public: dict[str, float | None] = {}
     if args.public_benchmark:
         for config in configs:
-            public[config] = public_benchmark(work, CONFIGS[config])
+            public[config] = public_benchmark(work, config, CONFIGS[config])
             print(f"[public] {config:<10} recall {public[config]}", file=sys.stderr)
 
-    report = render(results, gates, public)
+    report = render(results, gates, public, repeat)
     print(report)
     if args.out:
         out = Path(args.out)
@@ -356,7 +409,13 @@ def main(argv: list[str] | None = None) -> int:
             if repo == "private":
                 for r in by_config.values():
                     r.pop("ranks", None)
-        payload = {"configs": CONFIGS, "results": results, "gates": gates, "public": public}
+        payload = {
+            "configs": CONFIGS,
+            "results": results,
+            "gates": gates,
+            "public": public,
+            "baseline_reproduced": repeat,
+        }
         (out / "results.json").write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         (out / "report.md").write_text(report, encoding="utf-8")
         print(f"wrote {out / 'results.json'} and {out / 'report.md'}", file=sys.stderr)
