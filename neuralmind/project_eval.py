@@ -285,10 +285,12 @@ def render_summary(report: EvalReport, show_questions: bool = False) -> str:
     lines = [
         f"NeuralMind eval — {report.project} ({report.n_questions} questions, read-only)",
         f"  hit@1 {_pct(report.hit_at_1)} · hit@5 {_pct(report.hit_at_5)} · MRR {report.mrr:.2f}",
-        f"  avg context {report.avg_context_tokens:,.0f} tokens · "
-        f"{report.ratio_vs_gold:.1f}× vs gold files · "
-        f"{report.ratio_vs_indexed:,.1f}× vs all indexed files "
-        f"({report.baseline_tokens:,} tokens, {report.baseline_source})",
+        (
+            f"  avg context {report.avg_context_tokens:,.0f} tokens · "
+            f"{report.ratio_vs_gold:.1f}× vs gold files · "
+            f"{report.ratio_vs_indexed:,.1f}× vs all indexed files "
+            f"({report.baseline_tokens:,} tokens, {report.baseline_source})"
+        ),
     ]
     if show_questions:
         lines.append("")
@@ -307,10 +309,14 @@ def render_report(rows: list[dict[str, Any]], last_run: dict[str, Any] | None = 
     if not rows:
         return "No eval runs recorded yet. Run `neuralmind eval .` first."
     out = [
-        "| Date | Commit | NeuralMind | Nodes | Questions | hit@1 | hit@5 | MRR "
-        "| Avg tokens | × vs gold | × vs indexed |",
-        "|------|--------|-----------|------:|----------:|------:|------:|----:"
-        "|-----------:|----------:|-------------:|",
+        (
+            "| Date | Commit | NeuralMind | Nodes | Questions | hit@1 | hit@5 | MRR "
+            "| Avg tokens | × vs gold | × vs indexed |"
+        ),
+        (
+            "|------|--------|-----------|------:|----------:|------:|------:|----:"
+            "|-----------:|----------:|-------------:|"
+        ),
     ]
     for row in rows:
         out.append(
