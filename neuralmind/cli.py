@@ -863,6 +863,13 @@ def _print_explain(result) -> None:
     if result.layers_used:
         print(f"  Layers activated : {', '.join(result.layers_used)}")
 
+    # The intent L3 ranked with: code questions boost implementation hits,
+    # docs questions boost markdown (v4.6.0).
+    intent = getattr(result, "intent", "")
+    if intent:
+        how = getattr(result, "intent_source", "")
+        print(f"  Query intent     : {intent}" + (f" (by {how})" if how else ""))
+
     # Communities loaded
     if result.communities_loaded:
         print(f"  Communities loaded: {result.communities_loaded}")
@@ -873,8 +880,9 @@ def _print_explain(result) -> None:
     if hits:
         print(f"  Top search hits (L3, {len(hits)} nodes):")
         for h in hits[:5]:
-            label = h.get("label") or h.get("id", "?")
-            src = h.get("source_file", "")
+            meta = h.get("metadata") or {}
+            label = h.get("label") or meta.get("label") or h.get("id", "?")
+            src = h.get("source_file") or meta.get("source_file", "")
             score = h.get("score", 0.0)
             src_str = f"  ({src})" if src else ""
             print(f"    {score:.3f}  {label}{src_str}")
