@@ -103,6 +103,28 @@ class TestGitignoreInGitRepo:
 
         assert _indexed(tmp_path) == ["pkg/a.py"]
 
+    def test_deleted_tracked_file_leaves_the_listing(self, tmp_path):
+        _write_files(tmp_path, ["a.py", "b.py"])
+        _git_repo(tmp_path)
+        _git(tmp_path, "add", "-A")
+        _git(tmp_path, "commit", "-qm", "init")
+        (tmp_path / "b.py").unlink()  # still in git's index, gone from disk
+
+        assert _indexed(tmp_path) == ["a.py"]
+
+    def test_submodule_and_nested_repo_files_are_listed_by_their_own_git(self, tmp_path):
+        _write_files(tmp_path, ["a.py", "sub/s.py", "sub/skip.py", "nested/n.py", "nested/skip.py"])
+        for inner in ("sub", "nested"):
+            (tmp_path / inner / ".gitignore").write_text("skip.py\n", "utf-8")
+            _git_repo(tmp_path / inner)
+        _git(tmp_path / "sub", "add", "-A")
+        _git(tmp_path / "sub", "commit", "-qm", "sub")
+        _git_repo(tmp_path)
+        _git(tmp_path, "add", "a.py", "sub")  # sub becomes a gitlink; nested stays untracked
+        _git(tmp_path, "commit", "-qm", "init")
+
+        assert _indexed(tmp_path) == ["a.py", "nested/n.py", "sub/s.py"]
+
     def test_project_in_a_dir_the_enclosing_repo_ignores(self, tmp_path):
         # A scratch dir or vendored checkout the outer repo ignores: git lists
         # nothing under it, so the project's own .gitignore decides instead.
@@ -126,23 +148,37 @@ class TestGitignoreInGitRepo:
         plain = graphgen._walk_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes, ())
         assert graphgen._iter_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes) == plain
 
-    def test_listing_is_no_slower_than_the_walk(self, tmp_path):
+    @pytest.mark.slow
+    @pytest.mark.parametrize("tracked", [False, True], ids=["untracked", "tracked"])
+    def test_listing_is_no_slower_than_the_walk(self, tmp_path, tracked):
+        """Spec 4: on a 10K-file repo the git listing is no slower than v4.3.5's walk."""
         from neuralmind import graphgen
 
-        _write_files(tmp_path, [f"pkg{i // 100}/m{i}.py" for i in range(2000)])
+        _write_files(tmp_path, [f"pkg{i // 100}/m{i}.py" for i in range(10_000)])
         _git_repo(tmp_path)
+        if tracked:
+            _git(tmp_path, "add", "-A")
         suffixes = graphgen.SUPPORTED_SUFFIXES
-        graphgen._iter_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes)  # warm
 
-        start = time.perf_counter()
-        graphgen._walk_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes, ())
-        walk = time.perf_counter() - start
-        start = time.perf_counter()
-        files = graphgen._iter_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes)
-        listing = time.perf_counter() - start
+        def best_of_3(fn) -> tuple[float, list]:
+            fn()  # warm the page cache and git's index
+            times, result = [], None
+            for _ in range(3):
+                start = time.perf_counter()
+                result = fn()
+                times.append(time.perf_counter() - start)
+            return min(times), result
 
-        assert len(files) == 2000
-        assert listing <= walk * 2 + 0.25, f"git listing {listing:.3f}s vs walk {walk:.3f}s"
+        walk, plain = best_of_3(
+            lambda: graphgen._walk_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes, ())
+        )
+        listing, files = best_of_3(
+            lambda: graphgen._iter_files(tmp_path, graphgen._DEFAULT_IGNORES, suffixes)
+        )
+
+        assert files == plain and len(files) == 10_000
+        # A 10% margin absorbs timer noise; locally the listing runs ~25% faster.
+        assert listing <= walk * 1.1, f"git listing {listing:.3f}s vs walk {walk:.3f}s"
 
 
 class TestGitignoreOutsideGit:
@@ -272,6 +308,18 @@ class TestReadOnlyQueries:
         mind.benchmark()
         mind.retrieval_probe(sample_size=3)
         assert _db_state(learned_project) == before
+
+    def test_probe_and_benchmark_never_build_a_built_index(self, learned_project, monkeypatch):
+        from neuralmind import graphgen
+        from neuralmind.core import NeuralMind
+
+        calls: list[str] = []
+        monkeypatch.setattr(graphgen, "build_graph", lambda *a, **k: calls.append("graphgen"))
+        monkeypatch.setattr(NeuralMind, "build", lambda self, *a, **k: calls.append("build"))
+        mind = _mind(learned_project)
+        mind.benchmark()
+        mind.retrieval_probe(sample_size=3)
+        assert calls == []
 
     def test_env_switch(self, learned_project, monkeypatch):
         monkeypatch.setenv("NEURALMIND_NO_LEARN", "1")

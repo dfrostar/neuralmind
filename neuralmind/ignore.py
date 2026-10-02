@@ -193,7 +193,12 @@ def git_visible_files(root: str | Path) -> set[str] | None:
     root = Path(root)
     if not inside_git_work_tree(root):
         return None
-    listed = _git_lines(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+    # ``--stage`` prefixes each tracked entry with its mode, so submodules
+    # (mode 160000) are known without a stat per file; untracked entries come
+    # through bare, and an untracked nested repository as ``dir/``.
+    listed = _git_lines(
+        root, "ls-files", "-z", "--stage", "--cached", "--others", "--exclude-standard"
+    )
     if listed is None:
         return None
     if not listed and _root_is_ignored(root):
@@ -201,23 +206,38 @@ def git_visible_files(root: str | Path) -> set[str] | None:
         # scratch dir, a vendored checkout). That repository's rules say
         # nothing about this project, so walk it with its own .gitignore.
         return None
-    tracked_ignored = (
+    excluded = set(
         _git_lines(root, "ls-files", "-z", "--cached", "--ignored", "--exclude-standard") or []
     )
-    excluded = set(tracked_ignored)
+    # Index entries whose file is gone from disk.
+    excluded.update(_git_lines(root, "ls-files", "-z", "--deleted") or [])
     files: set[str] = set()
-    for p in listed:
+    repos: list[str] = []
+    for entry in listed:
+        staged = _STAGE_ENTRY.match(entry)
+        if staged:
+            path = entry[staged.end() :]
+            if staged.group(1) == "160000":
+                repos.append(path)
+            elif path not in excluded:
+                files.add(path)
+        elif entry.endswith("/"):
+            repos.append(entry.rstrip("/"))
+        elif entry not in excluded:
+            files.add(entry)
+    for p in repos:
         if p in excluded:
             continue
+        # A submodule or nested repository: git lists the gitlink, not its
+        # files. Ask its own git so its .gitignore applies as well.
         full = root / p
-        if full.is_file():
-            files.add(p)
-        elif full.is_dir():
-            # A submodule: git lists the gitlink, not its files. Ask the
-            # submodule's own git so its .gitignore applies as well.
-            inner = _git_lines(full, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-            files.update(f"{p}/{q}" for q in inner or [] if (full / q).is_file())
+        inner = _git_lines(full, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
+        files.update(f"{p}/{q}" for q in inner or [] if (full / q).is_file())
     return files
+
+
+# ``<mode> <object> <stage>\t<path>`` as ``git ls-files --stage`` prints it.
+_STAGE_ENTRY = re.compile(r"([0-7]{6}) [0-9a-f]{40,64} [0-3]\t")
 
 
 def _root_is_ignored(root: Path) -> bool:
