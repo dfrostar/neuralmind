@@ -2,8 +2,10 @@
 
 Paste everything below the line into a new Claude Code session opened in a local
 clone of `dfrostar/neuralmind`. The prompt is self-contained. The spec documents
-it refers to are on the branch `claude/clever-sagan-m9475i` until that PR merges,
-and on `main` after it does.
+it refers to were added by https://github.com/dfrostar/neuralmind/pull/552. They
+are on `main` once that PR merges. Until then, read them with
+`git fetch origin claude/clever-sagan-m9475i && git show origin/claude/clever-sagan-m9475i:docs/specs/LOCAL-API-SPEC.md`
+(and the same for `LOCAL-API-PR1-SCOPE.md`).
 
 ---
 
@@ -179,4 +181,4 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
 - any deviation from the scope document, and why;
 - test and lint results;
 - the PR link;
-- anything in the spec that turned out to be wrong when it met the code (fix the spec in the same PR when it is).
+- anything in the spec that turned out to be wrong when it met the code. If #552 has merged, fix the spec in your PR; otherwise list the corrections in your report.
