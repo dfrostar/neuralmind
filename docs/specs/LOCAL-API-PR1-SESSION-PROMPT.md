@@ -1,9 +1,15 @@
 # Session prompt: implement Local API PR 1 (`/v1` daemon API)
 
 Paste everything below the line into a new Claude Code session opened in a local
-clone of `dfrostar/neuralmind`. The prompt is self-contained. The spec documents
-it refers to were added by https://github.com/dfrostar/neuralmind/pull/552. They
-are on `main` once that PR merges. Until then, read them with
+clone of `dfrostar/neuralmind`. The prompt is self-contained.
+
+The spec documents it refers to were added to `main` by
+https://github.com/dfrostar/neuralmind/pull/552. A follow-up PR from the branch
+`claude/clever-sagan-m9475i` revised them with a mem0 gap analysis.
+
+If `docs/specs/LOCAL-API-SPEC.md` on your `main` has no §4.1 ("What else to
+borrow from mem0"), that revision hasn't merged yet. Read the revised docs from
+the branch instead:
 `git fetch origin claude/clever-sagan-m9475i && git show origin/claude/clever-sagan-m9475i:docs/specs/LOCAL-API-SPEC.md`
 (and the same for `LOCAL-API-PR1-SCOPE.md`).
 
@@ -85,6 +91,10 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
    - Projects: `GET|POST /v1/projects`, `GET /v1/projects/{id}`.
    - Index, under `/v1/projects/{id}/`: `build` (202 + `Location: /v1/jobs/{jid}`, or `wait=true` for 200), `query` (passes `query_type` and `context_budget` through; maps `TokenBudget` to `tokens.{total,l0,l1,l2,l3}`), `search`, `wakeup`, `stats`, `savings`, `validate`.
    - Memories, under `/v1/projects/{id}/memories`: create (201 + `Location`), list (`status=ALL` maps to `None`, `file=` repeatable, cursor paging), `POST …/search` (limit at most 25, `view=full|compact`), get, `PATCH`, `POST …/{mid}/invalidate`, `POST …/{mid}/restore`, `DELETE` (204).
+   - **Three mem0-derived additions** (spec §4.1 G3–G5; details in spec §5.3):
+     - `possible_duplicates` on the create response: advisory, up to 3 ACTIVE matches by title that share a file.
+     - `score` on each search result.
+     - The `tag`, `type`, `author`, `created_after`, `created_before` and `min_confidence` filters on list and search, combined with AND.
    - Jobs: `GET /v1/jobs`, `GET /v1/jobs/{jid}`, with ISO-8601 UTC times.
 3. **Memory rules:**
    - `commit_sha` defaults to `git rev-parse HEAD` in a git repository, otherwise `""`.
@@ -93,6 +103,8 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
    - A duplicate client `id` returns 409.
    - **Read back after create**; if the record is missing, return 500.
    - **Check existence before invalidate and restore** (404).
+   - **Duplicate hints.** After the write, call `query(title, limit=5, status="ACTIVE", with_scores=True)`, drop the new record, keep only matches that share a file (when the new record has files), and return at most 3. Never block or merge.
+   - **Search filters.** Ask the store for `min(limit × 4, 100)` results, filter, then trim to `limit`. `min_confidence` maps to the store's existing `min_score` parameter, which filters on confidence.
 4. **`daemon.py`:**
    - Add `do_PATCH` and `do_DELETE`.
    - Cap the body at `NEURALMIND_API_MAX_BODY_BYTES` (default 1 MiB; 413), for all routes.
@@ -115,7 +127,8 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
    - `test_api_v1_routing.py`
    - `test_api_v1_projects.py`
    - `test_api_v1_index.py`
-   - `test_api_v1_memories.py`
+   - `test_api_v1_memories.py`: includes duplicate hints, each filter, and score ordering
+   - `test_memory_store_scores.py`: `with_scores=True` keeps the default order, and the default return type is unchanged
    - `test_api_v1_openapi.py`: snapshot equality and route ↔ path parity
    - `test_client.py`: includes a subprocess check that the import is lightweight
    - `test_daemon_bind_guard.py`
@@ -139,7 +152,8 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
 - edit `CHANGELOG.md`, or bump versions in `pyproject.toml` / `.release-please-manifest.json` (release-please owns them);
 - import `neuralmind.tier2` from core code (license boundary);
 - add runtime dependencies;
-- touch hooks, `core.py` or the stores beyond the two normaliser moves.
+- touch hooks, `core.py` or the stores, beyond the two normaliser moves and **one** backward-compatible store change: `DecisionStore.query(…, with_scores=False)`, which returns `(record, -bm25)` pairs when `True`;
+- start PR M (spec §4.2): no schema changes, history table, embeddings, `review_by`, or `agent`/`session_id` fields. That is a separate PR.
 
 **Don't fix the unrelated bugs from spec §12** (memory_search "all", `InvalidationEngine` `event.id`, `GraphNotBuiltError` → `security_denied`, compose restart loop, the dead `memory/cli.py`, the `always-on.md` port). Mention them in the PR body as follow-ups.
 
@@ -151,7 +165,7 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
 
 **Docs CLI guard.** `tests/test_docs_cli_paths.py` checks that every `neuralmind <cmd> <sub>` written in the docs exists in the parser. Don't document commands that don't exist.
 
-**Scope.** If the change grows well past ~1,600 lines (excluding docs and the snapshot), stop and cut `PATCH`/`restore`/`DELETE` into a follow-up PR 1b rather than widening.
+**Scope.** If the change grows well past ~1,800 lines (excluding docs and the snapshot), stop and cut `PATCH`/`restore`/`DELETE` into a follow-up PR 1b rather than widening.
 
 ## 4. Suggested order
 
@@ -181,4 +195,4 @@ shapes), §5.4 (locking) and §6.1 (loopback security) closely. In summary:
 - any deviation from the scope document, and why;
 - test and lint results;
 - the PR link;
-- anything in the spec that turned out to be wrong when it met the code. If #552 has merged, fix the spec in your PR; otherwise list the corrections in your report.
+- anything in the spec that turned out to be wrong when it met the code. If the spec revision has merged (see the note above), fix the spec in your PR; otherwise list the corrections in your report.

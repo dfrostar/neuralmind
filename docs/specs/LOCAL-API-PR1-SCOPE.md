@@ -4,8 +4,8 @@
 **Baseline:** v4.3.5 (`main` @ `39617aa`)
 **Suggested PR title:** `feat(daemon): versioned /v1 local API with project registry, decision-memory endpoints and Python client`
 **Release effect:** `feat:` makes release-please open a minor release. Don't bump versions by hand.
-**Estimate:** about 2.5–3.5 engineer-days. The expected size is about 1,200–1,600 changed lines, not counting docs and the OpenAPI snapshot.
-**Cut line:** if the PR grows well past that, move `PATCH`, `restore` and `DELETE` for memories into a follow-up "PR 1b". Keep create, list, search, get and invalidate in PR 1, because they are the mem0-parity core.
+**Estimate:** about 3–4 engineer-days. The expected size is about 1,300–1,800 changed lines, not counting docs and the OpenAPI snapshot. This includes three small mem0-derived additions (spec §4.1 G3–G5): relevance scores, richer filters, and duplicate hints on create.
+**Cut line:** if the PR grows well past that, move `PATCH`, `restore` and `DELETE` for memories into a follow-up "PR 1b". Keep create, list, search, get and invalidate in PR 1, together with scores, filters and duplicate hints, because they are the mem0-parity core.
 
 ---
 
@@ -46,7 +46,7 @@ They can also drive the same calls with `curl` against a documented, versioned c
 | `handlers/meta.py` | `GET /v1`, `GET /v1/health`, `GET /v1/status`, `GET /v1/openapi.json`, `POST /v1/admin/shutdown` |
 | `handlers/projects.py` | `GET /v1/projects`, `POST /v1/projects`, `GET /v1/projects/{id}` |
 | `handlers/index.py` | `build`, `query`, `search`, `wakeup`, `stats`, `savings`, `validate`. These call `ctx.registry` under `lock_for(...)` exactly as today's `_query`/`_search`/`_stats`/`_build` do (`daemon.py:427-488`). `query` passes `query_type` and `context_budget` through to `NeuralMind.query`. |
-| `handlers/memories.py` | Create, list, search, get, patch, invalidate, restore, delete, all on `DecisionStore(project_root)`, with **no project RLock** (§5.4). Follow the create, invalidate and restore rules in §5.3 exactly: commit defaults to HEAD; files normalised to project-relative paths; strict 422s; read-back after write; existence checked before invalidate. |
+| `handlers/memories.py` | Create, list, search, get, patch, invalidate, restore, delete, all on `DecisionStore(project_root)`, with **no project RLock** (§5.4). Follow the create, list, search, invalidate and restore rules in §5.3 exactly: commit defaults to HEAD; files normalised to project-relative paths; strict 422s; read-back after write; existence checked before invalidate. Also implements the three mem0-derived items: `possible_duplicates` on create (G3), `score` on search results (G4), and the `tag`, `type`, `author`, `created_after`, `created_before` and `min_confidence` filters on list and search (G5). |
 | `handlers/jobs.py` | `GET /v1/jobs`, `GET /v1/jobs/{jid}` |
 | `openapi.py` | `build_openapi() -> dict` assembles an OpenAPI 3.1 document from `ROUTES` and each model's `model_json_schema()` (components, bearer security scheme, the error envelope as a shared response). `python -m neuralmind.api_v1.openapi --write docs/api/openapi-v1.json` regenerates the committed snapshot. **No new CLI subcommand**, which keeps `tests/test_docs_cli_paths.py` simple. |
 
@@ -81,7 +81,7 @@ As described in §7.1:
 - `NeuralMindClient(base_url=None, token=None, *, timeout=30.0)`. With no arguments it uses `NEURALMIND_API_URL` / `NEURALMIND_API_TOKEN`, then the discovery file.
 - `.project(path_or_id)` returns a `ProjectClient`. It accepts a path (it `POST`s `/v1/projects` and caches the id) or an id.
 - `ProjectClient` methods: `.build(force=False, wait=False)`, `.query(question, *, query_type="auto", context_budget=None, trace=False)`, `.search(query, n=10)`, `.wakeup()`, `.stats()`, `.savings(...)`.
-- `ProjectClient.memories` methods: `.add(title, rationale, *, files=None, commit_sha=None, decision_type="ARCHITECTURE", confidence=1.0, evidence=None, rejected=None, tags=None, id=None)`, `.list(status="ACTIVE", files=None, limit=50)` (follows cursors), `.search(query, limit=10, status="ACTIVE")`, `.get(id)`, `.update(id, **fields)`, `.invalidate(id, reason)`, `.restore(id, commit_sha=None)`, `.delete(id)`.
+- `ProjectClient.memories` methods: `.add(title, rationale, *, files=None, commit_sha=None, decision_type="ARCHITECTURE", confidence=1.0, evidence=None, rejected=None, tags=None, id=None)`, `.list(status="ACTIVE", files=None, tags=None, type=None, author=None, created_after=None, created_before=None, min_confidence=None, limit=50)` (follows cursors), `.search(query, limit=10, status="ACTIVE", **same_filters)` (each result carries `.score`), `.add(...)` (the returned object exposes `.possible_duplicates`), `.get(id)`, `.update(id, **fields)`, `.invalidate(id, reason)`, `.restore(id, commit_sha=None)`, `.delete(id)`.
 - `NeuralMindClient` also has `.jobs.get(id)` and `.jobs.wait(id, timeout=600)`.
 - Return types are frozen dataclasses with `.raw`.
 - Errors are `NeuralMindAPIError` and its subclasses.
@@ -92,6 +92,11 @@ As described in §7.1:
 
 - `mcp_server.tool_search` uses `api_v1.shapes.search_hit`. Behaviour must not change; existing MCP tests cover it.
 - `memory/mcp_tools._compact_row` delegates to `api_v1.shapes.compact_memory_row`.
+- **The one store change: `DecisionStore.query(…, with_scores: bool = False)`** in `neuralmind/memory/store.py`.
+  - When it is `True`, the method returns `list[tuple[DecisionRecord, float | None]]`. The score is `-bm25(decisions_fts)`, so higher is better; the LIKE fallback returns `None`.
+  - The default return type and behaviour are unchanged, so every existing caller and test is untouched.
+  - Add the score column to the FTS `SELECT` (`store.py:750-758`) only when `with_scores` is `True`.
+  - This is the only store change in PR 1. Schema changes belong to PR M (spec §4.2).
 
 ### 2.6 OpenAPI snapshot
 
@@ -109,7 +114,8 @@ All new tests follow `tests/test_daemon.py`: a `FakeMind` injected through `Proj
 | `tests/test_api_v1_routing.py` | Template matching, 404 for unknown routes, 405 with `Allow`, 415 without JSON content type, 413 over the cap, 422 envelope shape, header-only auth (`?token=` gives 401 on `/v1` but still works on legacy routes), Host check gives 403, `X-Request-Id` echoed and generated, 500 envelope (with `details.exception` in loopback mode) |
 | `tests/test_api_v1_projects.py` | Deterministic ids; idempotent register (201, then 200); the denylist (`/`, `/etc`, `$HOME`, `~/.ssh`) and non-directories rejected with 422; persistence across a server restart; `GET` on an unknown id gives `project_not_found` |
 | `tests/test_api_v1_index.py` | Build returns 202 then the job completes, and `wait=true` returns 200; query maps the `TokenBudget` fields to `tokens.l0..l3`; `query_type` and `context_budget` reach `FakeMind.query`; search returns the MCP hit shape; wakeup, stats, savings and validate are reachable; per-project lock reuse (two concurrent queries on a cold project build once) |
-| `tests/test_api_v1_memories.py` | Create: 201 with `Location`; HEAD default for `commit_sha` in a temp git repo and `""` outside one; path normalisation; a path outside the project gives 422; a bad `decision_type` gives 422; a duplicate `id` gives 409; a simulated store failure on read-back gives 500. List with status filters and `file=` filters, plus cursor paging. Search (`ALL` really returns every status; compact view). Get, patch, invalidate (unknown id gives 404), restore (unknown id gives 404), delete (204, then 404). |
+| `tests/test_api_v1_memories.py` | **Create:** 201 with `Location`; HEAD default for `commit_sha` in a temp git repo and `""` outside one; path normalisation; a path outside the project gives 422; a bad `decision_type` gives 422; a duplicate `id` gives 409; a simulated store failure on read-back gives 500. **Duplicate hints:** a second decision with a similar title on the same file lists the first in `possible_duplicates`; one on an unrelated file doesn't; the new record never lists itself. **List:** status filters, `file=` filters, each G5 filter alone and combined, cursor paging after filtering. **Search:** `ALL` really returns every status; compact view; `score` present and non-increasing down the list; filters applied without returning more than `limit`. **Other routes:** get, patch, invalidate (unknown id gives 404), restore (unknown id gives 404), delete (204, then 404). |
+| `tests/test_memory_store_scores.py` | `DecisionStore.query(with_scores=True)` returns `(record, score)` pairs in the same order as the default call; the default call's return type is unchanged; the LIKE fallback (FTS forced off) returns `None` scores |
 | `tests/test_api_v1_openapi.py` | The generated document equals the committed snapshot; every `Route` appears, and every OpenAPI path maps back to a `Route`; every route has a response model; the structure is OpenAPI 3.1 (`openapi`, `info`, `paths`, `components.securitySchemes`). No new validator dependency. |
 | `tests/test_client.py` | End-to-end through `NeuralMindClient` against a running test daemon; error subclasses map from status and code; `NEURALMIND_API_URL` / `NEURALMIND_API_TOKEN` override discovery; **lightweight import**: in a subprocess, `import neuralmind.client`, then assert `neuralmind.core`, `onnxruntime`, `chromadb`, `turbovec` and `pydantic` are absent from `sys.modules` |
 | `tests/test_daemon_bind_guard.py` | `create_server(host="0.0.0.0")` raises; `main(["--host", "0.0.0.0"])` exits 2; `127.0.0.1`, `::1` and `localhost` are accepted |
@@ -181,7 +187,9 @@ Mention only what PR 1 ships. Server mode, Docker and `/activity` are not shippe
 - Moving the CLI to `/v1`, and legacy `Deprecation` headers (PR 2)
 - `/v1/events`, dashboard consolidation, Docker and compose fixes (PR 3)
 - MCP Streamable HTTP (PR 4)
-- TypeScript client (PR 5)
+- TypeScript client and framework adapters (PR 5)
+- Memory upgrades (PR M, spec §4.2): schema v2, change history, semantic and hybrid decision search, `review_by`, `agent` and `session_id`, decision feedback, and evidence and tags in FTS
+- Memory batch and export routes (PR 2)
 - Auto-spawn, idle TTL, moving the daemon port off 8787, and `/_internal/hook/*` (performance plan, WP 2.4)
 - The side findings in §12. File them as separate fixes.
 
