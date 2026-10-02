@@ -352,7 +352,7 @@ def _listing_to_paths(
         # file's path too, so one check per file is enough.
         if _is_ignored(rel, extra_ignores):
             continue
-        out.append((tuple(rel.split("/")), parent / name))
+        out.append((tuple(rel.split("/")), parent.joinpath(name)))
     # Same order as the directory walk: per-level name order.
     out.sort(key=lambda item: item[0])
     return [p for _, p in out]
