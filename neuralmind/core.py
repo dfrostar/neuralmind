@@ -1354,6 +1354,7 @@ class NeuralMind:
         # rather than producing a 0-node index that silently "succeeds".
         # Books are document-only (markdown chapters, reports) — accept any node.
         if not graph.get("nodes"):
+            self._builtin_graph_empty = True
             return None
 
         # Optional SCIP precision pass: when NEURALMIND_PRECISION is set and a
@@ -1424,8 +1425,24 @@ class NeuralMind:
             return kind
 
         def _builtin(action: str) -> dict:
+            self._builtin_graph_empty = False
             graph = self._generate_builtin_graph()
             if graph is None:
+                if canonical.exists() and self._builtin_graph_empty:
+                    # Every indexable file is gone: the previous graph now
+                    # describes deleted code, and reusing it would keep
+                    # serving it. Stop rather than call that index current.
+                    return {
+                        "path": canonical,
+                        "kind": "built-in",
+                        "action": action,
+                        "nodes": 0,
+                        "error": (
+                            "the project has no indexable files left, so "
+                            f"{self._display_path(canonical)} describes code that no longer "
+                            "exists. Add source files, or delete .neuralmind/ to drop the index."
+                        ),
+                    }
                 if canonical.exists() and action != "regenerated":
                     nodes = self._count_nodes(canonical)
                     return {

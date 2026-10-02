@@ -111,16 +111,29 @@ def _unindexed_relative_path_hint(project_path: str) -> str | None:
 
 
 def _freshness_line(project_path: str) -> str:
-    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises."""
+    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises.
+
+    An index with no readable graph to check it against gets a line too: the
+    read path can still answer from it, but nothing confirms it matches the
+    code.
+    """
+    resolved = str(Path(project_path).resolve())
     try:
         from neuralmind.freshness import graph_freshness
 
         report = graph_freshness(project_path, check_index=True)
     except Exception:
+        report = None
+    if report is None:
+        if (Path(project_path) / ".neuralmind" / "index_ir.json").exists():
+            return (
+                "Index is unverified: no readable code graph to check it against. "
+                f"Run neuralmind build {resolved}."
+            )
         return ""
-    if report is None or report.ok:
+    if report.ok:
         return ""
-    return report.one_line(str(Path(project_path).resolve()))
+    return report.one_line(resolved)
 
 
 def tool_wakeup(project_path: str) -> dict[str, Any]:

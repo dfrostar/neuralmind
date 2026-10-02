@@ -272,10 +272,14 @@ def _indexable_suffixes(source: str, graph_suffixes: set[str], config) -> frozen
 
     For the built-in graph: every code language whose grammar is installed,
     plus markdown, SQL and Protobuf — the files graphgen always turns into
-    nodes. For any other producer we can't know its language list, so only
-    suffixes the graph already contains count: a graphify graph that never
-    indexed markdown isn't "missing" every README. YAML is left to
-    :data:`_CONTENT_GATED_SUFFIXES`.
+    nodes. A graphify graph parses the same tree-sitter languages, so every
+    installed code language counts for it too (a Python-only graph still
+    notices new TypeScript); markdown and schema files count only when the
+    graph already holds some, so a graphify graph that never indexed markdown
+    isn't "missing" every README. For any other producer only suffixes the
+    graph contains count — or, when it names no files at all, the code
+    languages, so an empty graph over a code tree isn't reported current.
+    YAML is left to :data:`_CONTENT_GATED_SUFFIXES`.
     """
     from . import graphgen
 
@@ -293,7 +297,10 @@ def _indexable_suffixes(source: str, graph_suffixes: set[str], config) -> frozen
     if source == "built-in":
         return frozenset(code | docs | schema)
     known = set(graphgen.SUPPORTED_SUFFIXES) | docs | schema
-    return frozenset(graph_suffixes & known)
+    held = graph_suffixes & known
+    if source == "graphify":
+        return frozenset(code | (held & (docs | schema)))
+    return frozenset(held or code)
 
 
 # Schema suffixes whose files become nodes only when their content qualifies

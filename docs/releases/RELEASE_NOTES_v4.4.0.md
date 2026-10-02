@@ -95,7 +95,9 @@ Where it shows up:
 
 - At the end of every build, vectors whose node left the graph are deleted —
   from the vector index **and** the BM25 keyword index, on both the turbovec
-  and ChromaDB backends, per scope for scoped stores.
+  and ChromaDB backends. Turbovec's scoped stores are each compared with the
+  graph nodes in their scope; the ChromaDB backend keeps one unscoped
+  collection, compared with the whole graph.
 - Content ingested with `ingest` / `ingest-content` lives in the same store
   without being in the graph and is **never** a purge candidate.
 - The build summary shows it: `Delta: +12 new, ~4 updated, =8,320 skipped, -2,879 removed`.

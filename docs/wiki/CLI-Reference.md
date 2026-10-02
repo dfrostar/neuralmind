@@ -1193,7 +1193,10 @@ Content ingested with `ingest` / `ingest-content` isn't counted as extra.
 Scoped builds (book/content/docs) write per-scope stores (`store.code.sqlite`,
 `store.content.sqlite`, …) instead of the default `store.sqlite`. Doctor sums
 the per-scope stores when the default store is empty, so a healthy scoped
-build does not report "no nodes embedded".
+build does not report "no nodes embedded", and compares each store with the
+graph nodes in its scope. When more than half the stored vectors are orphans,
+the build's safety valve keeps them, so the fix doctor prints is
+`neuralmind build . --prune`.
 
 JSON output (`--json`) is stable for scripting and agent consumption:
 

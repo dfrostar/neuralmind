@@ -223,6 +223,25 @@ class TestFreshnessReport:
 
         assert graph_freshness(tmp_path).status == OK
 
+    def test_graphify_graph_notices_a_new_language(self, tmp_path):
+        from neuralmind import graphgen
+
+        if not graphgen.language_available("typescript"):
+            pytest.skip("typescript grammar not installed")
+        _write_files(tmp_path, ["a.py"])
+        (tmp_path / "web.ts").write_text("export const x = 1;\n", encoding="utf-8")
+        _write_graphify(tmp_path, _graphify_graph(["a.py"]))  # Python only
+        assert graph_freshness(tmp_path).missing_from_graph == ["web.ts"]
+
+    def test_unknown_producer_with_no_file_paths_is_not_current(self, tmp_path):
+        _write_files(tmp_path, ["a.py"])
+        gpath = tmp_path / ".neuralmind" / "graph.json"
+        gpath.parent.mkdir()
+        gpath.write_text(
+            json.dumps({"generated_by": "sometool", "nodes": [{"id": "x"}]}), encoding="utf-8"
+        )
+        assert graph_freshness(tmp_path).missing_from_graph == ["a.py"]
+
     def test_no_graph_returns_none(self, tmp_path):
         assert graph_freshness(tmp_path) is None
 
@@ -389,6 +408,14 @@ class TestMcpWakeupLine:
         _write_files(tmp_path, ["a.py"])
         _write_graphify(tmp_path, _graphify_graph(["a.py"]))
         assert _freshness_line(str(tmp_path)) == ""
+
+    def test_index_without_a_graph_is_unverified(self, tmp_path):
+        from neuralmind.mcp_server import _freshness_line
+
+        _write_files(tmp_path, ["a.py"])
+        (tmp_path / ".neuralmind").mkdir()
+        (tmp_path / ".neuralmind" / "index_ir.json").write_text("{}", encoding="utf-8")
+        assert _freshness_line(str(tmp_path)).startswith("Index is unverified:")
 
 
 @pytest.mark.usefixtures("builtin_available")
@@ -628,6 +655,15 @@ class TestGraphSourceBuild:
         assert "graph_source: graphify" in result["error"]
         assert not (tmp_path / ".neuralmind" / "graph.json").exists()
 
+    def test_build_stops_when_every_indexable_file_is_gone(self, tmp_path):
+        _write_files(tmp_path, ["a.py"])
+        assert _mind(tmp_path).build()["success"]
+        (tmp_path / "a.py").unlink()
+
+        result = _mind(tmp_path).build()
+        assert result["success"] is False
+        assert "no indexable files left" in result["error"]
+
     def test_no_silent_fallback_after_canonical_graph_is_deleted(self, tmp_path):
         rels = ["a.py", "b.py"]
         _write_files(tmp_path, rels)
@@ -741,6 +777,24 @@ def _nodes(ids: list[str]) -> dict:
     }
 
 
+def test_book_build_forwards_graph_flags_and_strict_stops_it(tmp_path, monkeypatch):
+    from neuralmind import cli
+
+    seen: dict = {}
+
+    def failing_code_build(args) -> None:
+        seen.update(vars(args))
+        raise SystemExit(3)  # the code graph FAILs under --strict
+
+    monkeypatch.setattr(cli, "cmd_build", failing_code_build)
+    args = SimpleNamespace(regenerate_graph=True, strict=True, prune=True, redact_secrets=False)
+    with pytest.raises(SystemExit) as exc:
+        cli._cmd_build_book(args, str(tmp_path), False)  # no graph yet: regenerate builds it
+    assert exc.value.code == 3
+    assert seen["scope"] == "code"
+    assert (seen["regenerate_graph"], seen["strict"], seen["prune"]) == (True, True, True)
+
+
 class TestOrphanPurge:
     def _graph(self, root: Path, ids: list[str]) -> None:
         _write_files(root, [f"f/{i}.py" for i in ids])
@@ -815,6 +869,29 @@ class TestOrphanPurge:
         check = doctor._check_index(tmp_path)
         assert check.status == doctor.FAIL
         assert check.detail.startswith("10 vectors not in graph")
+        assert "--prune" not in check.fix  # 10 of 20: a plain build purges them
+
+    def test_doctor_says_prune_when_the_safety_valve_would_keep_orphans(self, tmp_path):
+        from neuralmind import doctor
+
+        a = [f"n{i}" for i in range(100)]
+        self._graph(tmp_path, a)
+        _mind(tmp_path).build()
+        self._graph(tmp_path, a[:40])  # shrinks by 60%: the build keeps them
+        assert _mind(tmp_path).build()["orphans_kept"] == 60
+
+        check = doctor._check_index(tmp_path)
+        assert check.status == doctor.FAIL
+        assert check.fix.endswith("--prune")
+
+    def test_doctor_compares_a_scoped_store_with_its_scope(self, tmp_path):
+        from neuralmind import doctor
+
+        self._graph(tmp_path, [f"n{i}" for i in range(10)])
+        assert _mind(tmp_path, scope="code").build()["success"]
+
+        check = doctor._check_index(tmp_path)
+        assert check.status == doctor.OK, check.detail
 
     def test_doctor_ok_when_store_matches_graph(self, tmp_path):
         from neuralmind import doctor
