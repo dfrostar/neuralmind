@@ -154,19 +154,45 @@ def matches(rel_path: str, patterns: tuple[str, ...] | list[str]) -> bool:
 # git-backed listing
 # --------------------------------------------------------------------------- #
 def _git_lines(root: Path, *args: str) -> list[str] | None:
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(root), *args],
-            capture_output=True,
-            timeout=_GIT_TIMEOUT_S,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if proc.returncode != 0:
-        return None
-    out = proc.stdout.decode("utf-8", errors="surrogateescape")
-    return [p for p in out.split("\0") if p]
+    return _git_lines_many(root, args)[0]
+
+
+def _git_lines_many(root: Path, *commands: tuple[str, ...]) -> list[list[str] | None]:
+    """Run read-only git commands side by side; one ``-z`` path list (or None) each.
+
+    On a large index each ``git ls-files`` spends most of its time in lstat
+    calls, so the listing's commands run at once instead of one after another.
+    """
+    procs: list[subprocess.Popen | None] = []
+    for args in commands:
+        try:
+            procs.append(
+                subprocess.Popen(
+                    ["git", "-C", str(root), *args],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                )
+            )
+        except OSError:
+            procs.append(None)
+    results: list[list[str] | None] = []
+    for proc in procs:
+        if proc is None:
+            results.append(None)
+            continue
+        try:
+            out, _ = proc.communicate(timeout=_GIT_TIMEOUT_S)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            results.append(None)
+            continue
+        if proc.returncode != 0:
+            results.append(None)
+            continue
+        text = out.decode("utf-8", errors="surrogateescape")
+        results.append([p for p in text.split("\0") if p])
+    return results
 
 
 def inside_git_work_tree(root: str | Path) -> bool:
@@ -196,8 +222,11 @@ def git_visible_files(root: str | Path) -> set[str] | None:
     # ``--stage`` prefixes each tracked entry with its mode, so submodules
     # (mode 160000) are known without a stat per file; untracked entries come
     # through bare, and an untracked nested repository as ``dir/``.
-    listed = _git_lines(
-        root, "ls-files", "-z", "--stage", "--cached", "--others", "--exclude-standard"
+    listed, tracked_ignored, deleted = _git_lines_many(
+        root,
+        ("ls-files", "-z", "--stage", "--cached", "--others", "--exclude-standard"),
+        ("ls-files", "-z", "--cached", "--ignored", "--exclude-standard"),
+        ("ls-files", "-z", "--deleted"),  # index entries whose file is gone from disk
     )
     if listed is None:
         return None
@@ -206,11 +235,7 @@ def git_visible_files(root: str | Path) -> set[str] | None:
         # scratch dir, a vendored checkout). That repository's rules say
         # nothing about this project, so walk it with its own .gitignore.
         return None
-    excluded = set(
-        _git_lines(root, "ls-files", "-z", "--cached", "--ignored", "--exclude-standard") or []
-    )
-    # Index entries whose file is gone from disk.
-    excluded.update(_git_lines(root, "ls-files", "-z", "--deleted") or [])
+    excluded = set(tracked_ignored or []) | set(deleted or [])
     files: set[str] = set()
     repos: list[str] = []
     for entry in listed:
