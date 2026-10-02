@@ -802,6 +802,137 @@ def test_embedding_progress_is_silent_when_not_a_tty(tmp_path, capfd, monkeypatc
     assert "Embedding" not in capfd.readouterr().err
 
 
+def test_embedding_progress_shows_on_a_tty(tmp_path, capfd, monkeypatch):
+    from neuralmind import turbovec_backend
+    from neuralmind.turbovec_backend import TurboVecEmbedder
+
+    monkeypatch.delenv("NEURALMIND_NO_PROGRESS", raising=False)
+    monkeypatch.setattr(turbovec_backend, "stream_is_tty", lambda stream: True)
+    _write_graphify(tmp_path, _nodes([f"n{i}" for i in range(20)]))
+    be = TurboVecEmbedder(str(tmp_path), db_path=str(tmp_path / "tv"), embed_fn=_fake_embed)
+    be.embed_nodes()
+    out, err = capfd.readouterr()
+    assert "Embedding" in err
+    assert "Embedding" not in out
+
+
+# The MCP server runs in a child process, so the fake embedder goes in by
+# patching the backend's default before ``main()`` starts.
+_MCP_BOOT = """
+import hashlib
+import neuralmind.turbovec_backend as tb
+
+def fake(texts):
+    out = []
+    for t in texts:
+        v = [0.0] * 384
+        for tok in t.lower().split():
+            v[int.from_bytes(hashlib.md5(tok.encode()).digest()[:4], "little") % 384] += 1.0
+        out.append(v)
+    return out
+
+tb._default_embed_fn = lambda: fake
+from neuralmind.mcp_server import main
+main()
+"""
+
+
+@pytest.mark.integration
+@pytest.mark.usefixtures("builtin_available")
+def test_mcp_stdio_first_query_writes_only_jsonrpc_to_stdout(tmp_path):
+    """The first query builds the index; none of that may reach the JSON-RPC stdout."""
+    import queue
+    import sys
+    import threading
+
+    pytest.importorskip("mcp")
+    project = tmp_path / "proj"
+    _write_files(project, ["a.py", "b.py"])
+    env = {**os.environ, "NEURALMIND_ORT_THREADS": "1", "PYTHONUNBUFFERED": "1"}
+    env.pop("NEURALMIND_NO_PROGRESS", None)
+    proc = subprocess.Popen(
+        [sys.executable, "-c", _MCP_BOOT],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+        env=env,
+    )
+    lines: queue.Queue[str | None] = queue.Queue()
+    seen: list[str] = []
+
+    def read() -> None:
+        for line in proc.stdout:
+            lines.put(line)
+        lines.put(None)
+
+    threading.Thread(target=read, daemon=True).start()
+
+    def send(message: dict) -> None:
+        proc.stdin.write(json.dumps(message) + "\n")
+        proc.stdin.flush()
+
+    def recv(expect_id: int) -> dict:
+        while True:
+            line = lines.get(timeout=120)
+            assert line is not None, f"server exited early: {proc.stderr.read()[-2000:]}"
+            seen.append(line)
+            if not line.strip():
+                continue
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError:
+                pytest.fail(f"non-JSON line on the MCP stdout: {line!r}")
+            if message.get("id") == expect_id:
+                return message
+
+    try:
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "stdout-test", "version": "0"},
+                },
+            }
+        )
+        recv(1)
+        send({"jsonrpc": "2.0", "method": "notifications/initialized"})
+        send(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "neuralmind_query",
+                    "arguments": {"project_path": str(project), "question": "what does a_fn do"},
+                },
+            }
+        )
+        reply = recv(2)
+    finally:
+        proc.stdin.close()
+        try:
+            proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    while (line := lines.get(timeout=10)) is not None:
+        seen.append(line)
+    stderr = proc.stderr.read()
+
+    payload = json.loads(reply["result"]["content"][0]["text"])
+    assert "error" not in payload, payload
+    assert (project / ".neuralmind" / "graph.json").exists()  # the query built it
+    assert "Graph: .neuralmind/graph.json" in stderr  # build notices went to stderr
+    for line in seen:
+        if line.strip():
+            assert json.loads(line).get("jsonrpc") == "2.0", line
+
+
 def test_freshness_module_has_no_side_effects(tmp_path):
     _write_files(tmp_path, ["a.py"])
     _write_graphify(tmp_path, _graphify_graph(["a.py"]))
