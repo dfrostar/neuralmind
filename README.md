@@ -27,6 +27,7 @@ that publishes every miss.
 > - Gets compliance annotations it can actually trust — a version string or an SVG path is no longer reported as a SOC 2 control (v3.3.0+)
 > - Searches your prose too: `ingest-content` indexes a book or docs tree into its own project, re-embeds only what changed, and shows a progress bar with an ETA while it works (v3.4.0+)
 > - Thinks with your brain, not just your code: 6 SOTA synaptic learning techniques (STC, SAMPL, resource STDP, FOK, lateral inhibition, replay) plus intent-aware ranking that reads "how does X implement Y" as a question about code, and ranks implementation above docstrings for it (v3.9.0+)
+> - **New in v4.4.0:** never answers from a stale index without saying so. `doctor`, `health`, `build` and the agent's first `neuralmind_wakeup` compare the code graph with the files on disk; `Index is stale: 51 files missing from graph…` arrives before any answer does. `build --regenerate-graph` escapes an old graphify graph, every build purges vectors for code that no longer exists, and queries load the index without rebuilding it or printing a line ([release notes](docs/releases/RELEASE_NOTES_v4.4.0.md))
 >
 > **Works with every IDE your team already uses.**
 
@@ -237,8 +238,25 @@ neuralmind query . "How does authentication work?"  # ~800 tokens, not 50,000
 neuralmind install-hooks .  # Claude Code: automatic PostToolUse compression
 neuralmind serve .          # Obsidian-style graph view in your browser
 neuralmind savings . --cost # measured token savings, priced for your model
-neuralmind doctor           # verify the install end to end
+neuralmind doctor           # verify the install end to end — incl. graph vs files on disk
 ```
+
+### Is the index in step with the code? *(v4.4.0+)*
+
+A code graph that lags the code still "works" — it just answers from code that
+no longer exists. NeuralMind now checks, both ways, whatever tool built the graph:
+
+```bash
+neuralmind doctor .                     # [FAIL] Code graph: ... 51 files on disk not in graph
+neuralmind health .                     # exit 1 when the graph and the code disagree
+neuralmind build . --regenerate-graph   # replace a stale graphify graph with the built-in one
+neuralmind build . --strict             # CI: exit 3 instead of embedding a failing graph
+```
+
+Your agent sees it too: its first `neuralmind_wakeup` starts with
+`Index is stale: … Run neuralmind build . --regenerate-graph.` whenever the graph
+lags. Pin the graph source with `graph_source: auto | builtin | graphify` in
+`.neuralmind.yaml`. Walkthrough: [Recover from a stale code graph](docs/use-cases/recover-from-a-stale-graph.md).
 
 ### Index prose, not just code *(v3.4.0+)*
 

@@ -46,7 +46,7 @@ import numpy as np
 
 from .embedding_backend import EmbeddingBackend
 from .paths import graph_json_path, vector_db_path
-from .progress import ProgressReporter
+from .progress import ProgressReporter, stream_is_tty
 from .secret_scan import redact_if_enabled
 
 logger = logging.getLogger(__name__)
@@ -842,7 +842,14 @@ class TurboVecEmbedder(EmbeddingBackend):
 
         total_nodes = len(self.nodes)
         scope_filtered = 0
-        with ProgressReporter(total_nodes, label="Embedding") as bar:
+        # A bar on an interactive terminal only: piped or captured (scripts,
+        # hooks, the MCP server), a build prints just its summary.
+        show_bar = (
+            total_nodes > 0
+            and os.environ.get("NEURALMIND_NO_PROGRESS") != "1"
+            and stream_is_tty(sys.stderr)
+        )
+        with ProgressReporter(total_nodes, label="Embedding", enabled=show_bar) as bar:
             for node in self.nodes:
                 node_id = str(node.get("id", node.get("label", "")))
                 if not node_id:
@@ -1307,6 +1314,38 @@ class TurboVecEmbedder(EmbeddingBackend):
                 }
             )
         return out
+
+    def orphaned_node_ids(self) -> tuple[set[str], int]:
+        """Stored ids written from a graph that the loaded graph no longer has.
+
+        Returns ``(orphans, stored_total)`` for this store (a scoped store is
+        compared with the graph nodes in its scope). Only rows ``embed_nodes``
+        wrote are candidates: an ``Entity: ...`` document built from a graph
+        node, or a prose graph node's ``prose_meta``. Rows from
+        ``embed_content`` (ingested docs, compliance practices) are never
+        reported.
+        """
+        graph_ids = {
+            str(n.get("id", n.get("label", "")))
+            for n in (self.nodes or [])
+            if n.get("id", n.get("label", "")) and self._node_matches_scope(n)
+        }
+        try:
+            cols = {row[1] for row in self._conn.execute("PRAGMA table_info(nodes)").fetchall()}
+            prose_expr = "prose_meta IS NOT NULL" if "prose_meta" in cols else "0"
+            rows = self._conn.execute(
+                "SELECT node_id, "
+                f"(document LIKE 'Entity: %' OR {prose_expr}) AS from_graph, "
+                "COALESCE(content_category, '') AS cc FROM nodes"
+            ).fetchall()
+        except Exception:
+            return set(), 0
+        orphans = {
+            str(r["node_id"])
+            for r in rows
+            if r["node_id"] not in graph_ids and r["from_graph"] and not r["cc"]
+        }
+        return orphans, len(rows)
 
     def delete_nodes(self, node_ids) -> int:
         ids = [str(i) for i in node_ids]

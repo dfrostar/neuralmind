@@ -390,7 +390,7 @@ class GraphEmbedder(EmbeddingBackend):
         if batch_ids:
             self.collection.upsert(ids=batch_ids, documents=batch_docs, metadatas=batch_metas)
 
-        print(f"Embedding complete: {stats}")
+        logger.info("Embedding complete: %s", stats)
         self.build_bm25_index()
         return stats
 
@@ -724,7 +724,11 @@ class GraphEmbedder(EmbeddingBackend):
 
     def delete_nodes(self, node_ids) -> int:
         """Delete embeddings for the given node ids (e.g. symbols removed by an
-        incremental update). Returns the number requested; best-effort."""
+        incremental update). Returns the number requested; best-effort.
+
+        The BM25 keyword index is rebuilt afterwards so keyword search can't
+        return a deleted node either.
+        """
         ids = [str(i) for i in node_ids]
         if not ids:
             return 0
@@ -732,7 +736,44 @@ class GraphEmbedder(EmbeddingBackend):
             self.collection.delete(ids=ids)
         except Exception:
             return 0
+        try:
+            self.build_bm25_index()
+        except Exception:
+            pass
         return len(ids)
+
+    def orphaned_node_ids(self) -> tuple[set[str], int]:
+        """Stored ids written from a graph that the loaded graph no longer has.
+
+        Returns ``(orphans, stored_total)``. Only rows ``embed_nodes`` wrote are
+        candidates: their document is the ``Entity: ...`` text built from a
+        graph node. Rows from ``embed_content`` (ingested docs, compliance
+        practices) hold their own content text and a content category, and
+        are never reported.
+        """
+        graph_ids = {
+            str(n.get("id", n.get("label", "")))
+            for n in (self.nodes or [])
+            if n.get("id", n.get("label", ""))
+        }
+        try:
+            result = self.collection.get(include=["metadatas", "documents"])
+        except Exception:
+            return set(), 0
+        ids = result.get("ids") or []
+        metas = result.get("metadatas") or []
+        docs = result.get("documents") or []
+        orphans: set[str] = set()
+        for i, nid in enumerate(ids):
+            if nid in graph_ids:
+                continue
+            doc = docs[i] if i < len(docs) else ""
+            meta = metas[i] if i < len(metas) and isinstance(metas[i], dict) else {}
+            if meta.get("content_category") or meta.get("practice_id"):
+                continue
+            if isinstance(doc, str) and doc.startswith("Entity: "):
+                orphans.add(nid)
+        return orphans, len(ids)
 
     def clear(self) -> None:
         """Clear all embeddings from the collection."""

@@ -253,17 +253,30 @@ def _save_build_stats(project_path: str, result: dict) -> None:
     if not state_dir.exists():
         return
     status_path = state_dir / "build_status.json"
-    status = {
-        "project": result.get("project"),
-        "nodes_total": result.get("nodes_total"),
-        "nodes_added": result.get("nodes_added", 0),
-        "nodes_updated": result.get("nodes_updated", 0),
-        "nodes_skipped": result.get("nodes_skipped", 0),
-        "communities": result.get("communities"),
-        "duration_seconds": result.get("duration_seconds"),
-        "backend": result.get("backend"),
-        "built_at": datetime.now().isoformat(),
-    }
+    # Merge rather than overwrite: the build itself records which graph it
+    # used ("graph"), which the next build reads to refuse a silent switch.
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        if not isinstance(status, dict):
+            status = {}
+    except (OSError, ValueError):
+        status = {}
+    status.update(
+        {
+            "project": result.get("project"),
+            "nodes_total": result.get("nodes_total"),
+            "nodes_added": result.get("nodes_added", 0),
+            "nodes_updated": result.get("nodes_updated", 0),
+            "nodes_skipped": result.get("nodes_skipped", 0),
+            "nodes_removed": result.get("nodes_removed", 0),
+            "communities": result.get("communities"),
+            "duration_seconds": result.get("duration_seconds"),
+            "backend": result.get("backend"),
+            "built_at": datetime.now().isoformat(),
+        }
+    )
+    if result.get("graph"):
+        status["graph"] = result["graph"]
     try:
         status_path.write_text(json.dumps(status, indent=2), encoding="utf-8")
     except OSError:
@@ -433,7 +446,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
     print("   Scope: code... ", end="", flush=True)
     graph_path = graph_json_path(path)
-    if graph_path.exists():
+    regenerate = getattr(args, "regenerate_graph", False) is True
+    strict = getattr(args, "strict", False) is True
+    if graph_path.exists() or regenerate:
         code_args = argparse.Namespace(
             project_path=project_path,
             force=force,
@@ -441,6 +456,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             content_type="code",
             bootstrap=None,
             redact_secrets=getattr(args, "redact_secrets", False),
+            regenerate_graph=regenerate,
+            strict=strict,
+            prune=getattr(args, "prune", False) is True,
             dry_run=False,
             json=False,
         )
@@ -454,6 +472,10 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
         except SystemExit as e:
             if e.code != 0:
                 print(f"failed (exit {e.code})")
+                if strict:
+                    # --strict is a CI gate: a failing code graph fails the
+                    # whole book build, before the content scope is embedded.
+                    raise
             else:
                 print("done")
     else:
@@ -550,8 +572,15 @@ def cmd_build_status(args):
     added = status.get("nodes_added", 0)
     updated = status.get("nodes_updated", 0)
     skipped = status.get("nodes_skipped", 0)
-    if added or updated or skipped:
-        print(f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped")
+    removed = status.get("nodes_removed", 0)
+    if added or updated or skipped or removed:
+        print(
+            f"  Delta:         +{added} new, ~{updated} updated, ={skipped} skipped, "
+            f"-{removed} removed"
+        )
+    graph = status.get("graph")
+    if isinstance(graph, dict) and graph.get("path"):
+        print(f"  Graph:         {graph['path']} ({graph.get('kind', 'unknown')})")
     print(f"  Communities:   {status.get('communities', 'unknown')}")
     print(f"  Duration:      {status.get('duration_seconds', 'unknown')}s")
     print(f"  Backend:       {status.get('backend', 'unknown')}")
@@ -697,7 +726,15 @@ def cmd_build(args):
     # Wire --bootstrap into the NeuralMind instance
     if getattr(args, "bootstrap", None):
         mind._bootstrap_bundle_path = args.bootstrap
-    result = mind.build(force=force)
+    # Build notices (the graph source line, freshness report, purge
+    # warnings) belong in the build's own output.
+    mind.notice_stream = sys.stdout
+    result = mind.build(
+        force=force,
+        regenerate_graph=getattr(args, "regenerate_graph", False) is True,
+        strict=getattr(args, "strict", False) is True,
+        prune=getattr(args, "prune", False) is True,
+    )
     if result.get("success"):
         print("Build successful!")
         print(f"   Project: {result.get('project')}")
@@ -709,8 +746,12 @@ def cmd_build(args):
         added = result.get("nodes_added", 0)
         updated = result.get("nodes_updated", 0)
         skipped = result.get("nodes_skipped", 0)
-        if added or updated or skipped:
-            print(f"   Delta: +{added} new, ~{updated} updated, ={skipped} skipped")
+        removed = result.get("nodes_removed", 0)
+        if added or updated or skipped or removed:
+            print(
+                f"   Delta: +{added:,} new, ~{updated:,} updated, ={skipped:,} skipped, "
+                f"-{removed:,} removed"
+            )
         ir_meta = result.get("ir")
         if isinstance(ir_meta, dict) and "ir_version" in ir_meta:
             val = ir_meta.get("validation", {})
@@ -719,7 +760,7 @@ def cmd_build(args):
         print(f"   Duration: {result.get('duration_seconds')}s")
     else:
         print(f"Build failed: {result.get('error', 'Unknown error')}")
-        sys.exit(1)
+        sys.exit(int(result.get("exit_code", 1) or 1))
 
     # Save build stats to ir_meta.json for build-status / status commands
     _save_build_stats(project_path, result)
@@ -5553,6 +5594,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Scrub detected credentials from text before it enters the index "
         "(equivalent to NEURALMIND_REDACT_SECRETS=1). Run `neuralmind "
         "scan-for-secrets` first to find and remove them at the source.",
+    )
+    build_p.add_argument(
+        "--regenerate-graph",
+        dest="regenerate_graph",
+        action="store_true",
+        help="Always rebuild .neuralmind/graph.json with the built-in tree-sitter "
+        "backend, whatever graph exists (the way out of a stale graphify graph).",
+    )
+    build_p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 3 before embedding when the code graph fails the freshness check.",
+    )
+    build_p.add_argument(
+        "--prune",
+        action="store_true",
+        help="Remove orphaned vectors even when they are more than half the store "
+        "(normally kept as a safety valve against a graph that shrank by mistake).",
     )
     build_p.add_argument("--json", "-j", action="store_true")
     build_p.add_argument(

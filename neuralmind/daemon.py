@@ -196,7 +196,12 @@ class ProjectRegistry:
         mind = self.get(key)
         with self.lock_for(key):
             if key not in self._built:
-                if hasattr(mind, "build"):
+                # Load an existing index as it stands; build only when the
+                # project has none.
+                ensure = getattr(mind, "ensure_ready", None)
+                if callable(ensure):
+                    ensure()
+                elif hasattr(mind, "build"):
                     mind.build()
                 self._built.add(key)
         return mind

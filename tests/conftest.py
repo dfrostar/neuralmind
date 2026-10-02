@@ -130,6 +130,15 @@ def temp_project(sample_graph: dict[str, Any]) -> Generator[Path, None, None]:
         graphify_out = project_path / "graphify-out"
         graphify_out.mkdir(parents=True)
 
+        # The source files the graph describes, so the graph is in step with
+        # the tree (the freshness check compares the two). Written before the
+        # graph so no file is newer than it.
+        for node in sample_graph.get("nodes", []):
+            rel = node.get("source_file")
+            if rel and not (project_path / rel).exists():
+                (project_path / rel).parent.mkdir(parents=True, exist_ok=True)
+                (project_path / rel).write_text(f"# {rel}\n", encoding="utf-8")
+
         # Write graph.json
         graph_path = graphify_out / "graph.json"
         with open(graph_path, "w") as f:
