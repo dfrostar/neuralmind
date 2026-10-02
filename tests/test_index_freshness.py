@@ -223,6 +223,25 @@ class TestFreshnessReport:
 
         assert graph_freshness(tmp_path).status == OK
 
+    def test_graphify_graph_notices_a_new_language(self, tmp_path):
+        from neuralmind import graphgen
+
+        if not graphgen.language_available("typescript"):
+            pytest.skip("typescript grammar not installed")
+        _write_files(tmp_path, ["a.py"])
+        (tmp_path / "web.ts").write_text("export const x = 1;\n", encoding="utf-8")
+        _write_graphify(tmp_path, _graphify_graph(["a.py"]))  # Python only
+        assert graph_freshness(tmp_path).missing_from_graph == ["web.ts"]
+
+    def test_unknown_producer_with_no_file_paths_is_not_current(self, tmp_path):
+        _write_files(tmp_path, ["a.py"])
+        gpath = tmp_path / ".neuralmind" / "graph.json"
+        gpath.parent.mkdir()
+        gpath.write_text(
+            json.dumps({"generated_by": "sometool", "nodes": [{"id": "x"}]}), encoding="utf-8"
+        )
+        assert graph_freshness(tmp_path).missing_from_graph == ["a.py"]
+
     def test_no_graph_returns_none(self, tmp_path):
         assert graph_freshness(tmp_path) is None
 
@@ -359,6 +378,19 @@ class TestHealth:
         assert data["status"] == "stale"
         assert data["freshness"]["missing_from_graph"] == ["b.py"]
 
+    def test_no_graph_to_check_is_unknown_never_healthy(self, tmp_path, capsys):
+        from neuralmind.mcp_server import tool_health
+
+        _write_files(tmp_path, ["a.py"])
+        self._index(tmp_path)  # an index, but no graph.json to compare it with
+
+        code, data = self._run(tmp_path, capsys)
+        assert code == 1
+        assert data["status"] == "unknown"
+        assert data["healthy"] is False
+        mcp = tool_health(str(tmp_path))
+        assert (mcp["status"], mcp["healthy"], mcp["exit_code"]) == ("unknown", False, 1)
+
 
 class TestMcpWakeupLine:
     def test_stale_graph_prefixes_one_line(self, tmp_path):
@@ -376,6 +408,102 @@ class TestMcpWakeupLine:
         _write_files(tmp_path, ["a.py"])
         _write_graphify(tmp_path, _graphify_graph(["a.py"]))
         assert _freshness_line(str(tmp_path)) == ""
+
+    def test_index_without_a_graph_is_unverified(self, tmp_path):
+        from neuralmind.mcp_server import _freshness_line
+
+        _write_files(tmp_path, ["a.py"])
+        (tmp_path / ".neuralmind").mkdir()
+        (tmp_path / ".neuralmind" / "index_ir.json").write_text("{}", encoding="utf-8")
+        assert _freshness_line(str(tmp_path)).startswith("Index is unverified:")
+
+
+@pytest.mark.usefixtures("builtin_available")
+class TestIndexMatchesGraph:
+    """A graph regenerated after the build (graphify update, a pull) is reported."""
+
+    def _built(self, root: Path) -> Path:
+        _write_files(root, ["a.py", "b.py"])
+        assert _mind(root).build()["success"]
+        return root / ".neuralmind" / "graph.json"
+
+    def test_graph_changed_after_build_fails_with_build_as_the_fix(self, tmp_path):
+        graph_path = self._built(tmp_path)
+        assert graph_freshness(tmp_path, check_index=True).status == OK
+
+        graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        graph["nodes"].append({"id": "extra", "label": "extra", "source_file": "a.py"})
+        graph_path.write_text(json.dumps(graph), encoding="utf-8")
+        _bump_mtime(graph_path)
+
+        report = graph_freshness(tmp_path, check_index=True)
+        assert report.index_mismatch == "the graph changed after the last build"
+        assert report.status == FAIL
+        assert report.fix_command(".") == "neuralmind build ."
+        assert "graph changed since the last build" in report.one_line()
+        # Build-time checks don't ask: the build is about to re-embed.
+        assert graph_freshness(tmp_path).index_mismatch == ""
+
+    def test_read_path_reports_the_mismatch_once_and_still_answers(self, tmp_path):
+        graph_path = self._built(tmp_path)
+        graph = json.loads(graph_path.read_text(encoding="utf-8"))
+        graph["nodes"].append({"id": "extra", "label": "extra", "source_file": "a.py"})
+        graph_path.write_text(json.dumps(graph), encoding="utf-8")
+        _bump_mtime(graph_path)
+
+        mind = _mind(tmp_path)
+        mind.query("what does a_fn do")
+        assert "Index out of step: the graph changed after the last build" in (
+            mind.notice_stream.getvalue()
+        )
+
+        assert _mind(tmp_path).build()["success"]
+        rebuilt = _mind(tmp_path)
+        rebuilt.query("what does a_fn do")
+        assert rebuilt.notice_stream.getvalue() == ""
+
+    def test_same_bytes_with_a_new_mtime_is_not_a_mismatch(self, tmp_path):
+        graph_path = self._built(tmp_path)
+        graph_path.write_bytes(graph_path.read_bytes())  # a fresh clone or checkout
+        _bump_mtime(graph_path)
+        assert graph_freshness(tmp_path, check_index=True).index_mismatch == ""
+
+
+@pytest.mark.usefixtures("builtin_available")
+class TestSchemaFilesInFreshness:
+    """SQL, Protobuf and OpenAPI files are indexed, so their drift counts too."""
+
+    def test_schema_edits_and_additions_are_reported(self, tmp_path):
+        _write_files(tmp_path, ["a.py"])
+        (tmp_path / "db").mkdir()
+        sql = tmp_path / "db" / "schema.sql"
+        sql.write_text("CREATE TABLE orders (id INT);\n", encoding="utf-8")
+        spec = tmp_path / "api.yaml"
+        spec.write_text(
+            json.dumps({"openapi": "3.0.0", "info": {"title": "t"}, "paths": {"/a": {}}}),
+            encoding="utf-8",
+        )
+        (tmp_path / "ci.yml").write_text("on: push\n", encoding="utf-8")  # not a spec
+        assert _mind(tmp_path).build()["success"]
+
+        fresh = graph_freshness(tmp_path)
+        assert fresh.status == OK  # ci.yml isn't a node, so it isn't "missing"
+
+        sql.write_text("CREATE TABLE orders (id INT, total INT);\n", encoding="utf-8")
+        spec.write_text(
+            json.dumps({"openapi": "3.0.0", "info": {"title": "t"}, "paths": {"/b": {}}}),
+            encoding="utf-8",
+        )
+        for path in (sql, spec):
+            _bump_mtime(path, 60)
+        (tmp_path / "db" / "events.proto").write_text(
+            'syntax = "proto3";\nmessage Event { string id = 1; }\n', encoding="utf-8"
+        )
+
+        report = graph_freshness(tmp_path)
+        assert report.changed_since_graph == ["api.yaml", "db/schema.sql"]
+        assert report.missing_from_graph == ["db/events.proto"]
+        assert "ci.yml" not in report.missing_from_graph
 
 
 # --------------------------------------------------------------------------- #
@@ -527,6 +655,15 @@ class TestGraphSourceBuild:
         assert "graph_source: graphify" in result["error"]
         assert not (tmp_path / ".neuralmind" / "graph.json").exists()
 
+    def test_build_stops_when_every_indexable_file_is_gone(self, tmp_path):
+        _write_files(tmp_path, ["a.py"])
+        assert _mind(tmp_path).build()["success"]
+        (tmp_path / "a.py").unlink()
+
+        result = _mind(tmp_path).build()
+        assert result["success"] is False
+        assert "no indexable files left" in result["error"]
+
     def test_no_silent_fallback_after_canonical_graph_is_deleted(self, tmp_path):
         rels = ["a.py", "b.py"]
         _write_files(tmp_path, rels)
@@ -640,6 +777,24 @@ def _nodes(ids: list[str]) -> dict:
     }
 
 
+def test_book_build_forwards_graph_flags_and_strict_stops_it(tmp_path, monkeypatch):
+    from neuralmind import cli
+
+    seen: dict = {}
+
+    def failing_code_build(args) -> None:
+        seen.update(vars(args))
+        raise SystemExit(3)  # the code graph FAILs under --strict
+
+    monkeypatch.setattr(cli, "cmd_build", failing_code_build)
+    args = SimpleNamespace(regenerate_graph=True, strict=True, prune=True, redact_secrets=False)
+    with pytest.raises(SystemExit) as exc:
+        cli._cmd_build_book(args, str(tmp_path), False)  # no graph yet: regenerate builds it
+    assert exc.value.code == 3
+    assert seen["scope"] == "code"
+    assert (seen["regenerate_graph"], seen["strict"], seen["prune"]) == (True, True, True)
+
+
 class TestOrphanPurge:
     def _graph(self, root: Path, ids: list[str]) -> None:
         _write_files(root, [f"f/{i}.py" for i in ids])
@@ -714,6 +869,29 @@ class TestOrphanPurge:
         check = doctor._check_index(tmp_path)
         assert check.status == doctor.FAIL
         assert check.detail.startswith("10 vectors not in graph")
+        assert "--prune" not in check.fix  # 10 of 20: a plain build purges them
+
+    def test_doctor_says_prune_when_the_safety_valve_would_keep_orphans(self, tmp_path):
+        from neuralmind import doctor
+
+        a = [f"n{i}" for i in range(100)]
+        self._graph(tmp_path, a)
+        _mind(tmp_path).build()
+        self._graph(tmp_path, a[:40])  # shrinks by 60%: the build keeps them
+        assert _mind(tmp_path).build()["orphans_kept"] == 60
+
+        check = doctor._check_index(tmp_path)
+        assert check.status == doctor.FAIL
+        assert check.fix.endswith("--prune")
+
+    def test_doctor_compares_a_scoped_store_with_its_scope(self, tmp_path):
+        from neuralmind import doctor
+
+        self._graph(tmp_path, [f"n{i}" for i in range(10)])
+        assert _mind(tmp_path, scope="code").build()["success"]
+
+        check = doctor._check_index(tmp_path)
+        assert check.status == doctor.OK, check.detail
 
     def test_doctor_ok_when_store_matches_graph(self, tmp_path):
         from neuralmind import doctor

@@ -77,7 +77,7 @@ def _check_graph(project: Path) -> Check:
     from .freshness import graph_freshness
 
     try:
-        report = graph_freshness(project, graph)
+        report = graph_freshness(project, graph, check_index=True)
     except Exception as e:  # pragma: no cover - diagnostic only
         return Check("Code graph", WARN, f"{nodes} nodes at {graph} (freshness check failed: {e})")
     if report is None:
@@ -117,6 +117,7 @@ def _check_index(project: Path) -> Check:
             fix="Build it: neuralmind build",
         )
     total = int(stats.get("total_nodes", 0) or 0)
+    scopes: list[str] = []
     if total == 0:
         # Book-mode / scoped builds write store.<scope>.sqlite (code/content/
         # docs) instead of the default-scope store.sqlite read above. Per-scope
@@ -130,6 +131,7 @@ def _check_index(project: Path) -> Check:
 
         tv_dir = Path(vector_db_path(project, "turbovec"))
         for store_file in sorted(tv_dir.glob("store.*.sqlite")):
+            scopes.append(store_file.name[len("store.") : -len(".sqlite")])
             con = None
             try:
                 # as_uri() percent-encodes and uses forward slashes, so the
@@ -144,7 +146,15 @@ def _check_index(project: Path) -> Check:
                 if con is not None:
                     con.close()
     if total > 0:
-        return _compare_index_with_graph(project, mind, total, backend)
+        minds = [mind]
+        if scopes:
+            # Compare each scoped store with its own slice of the graph; the
+            # default embedder above reads the (empty) all-scope store.
+            try:
+                minds = [NeuralMind(str(project), scope=scope) for scope in scopes]
+            except Exception:
+                minds = []
+        return _compare_index_with_graph(project, minds, total, backend)
     # No nodes at canonical path — is a legacy graphify-out/ index orphaned?
     legacy_note = ""
     try:
@@ -170,36 +180,57 @@ def _check_index(project: Path) -> Check:
     )
 
 
-def _compare_index_with_graph(project: Path, mind, total: int, backend: str) -> Check:
+def _compare_index_with_graph(project: Path, minds: list, total: int, backend: str) -> Check:
     """Vector store vs graph: equal is OK, extra vectors FAIL, missing WARN.
 
     Extra vectors are nodes that left the graph but can still be returned by
     search. Content ingested with ``ingest``/``ingest-content`` lives in the
-    store without being in the graph and isn't counted as extra.
+    store without being in the graph and isn't counted as extra. ``minds``
+    holds one instance per store: the all-scope store, or each scoped store
+    of a book/scoped build, each compared with the graph nodes in its scope.
     """
     graph_ids = _graph_node_ids(project)
-    if graph_ids is None:
+    if graph_ids is None or not minds:
         return Check("Semantic index", OK, f"{total} nodes embedded ({backend} backend)")
     orphans: set[str] = set()
-    finder = getattr(mind.embedder, "orphaned_node_ids", None)
-    if callable(finder):
+    stored_total = 0
+    expected: set[str] = set()
+    stored: set[str] = set()
+    counted = True
+    for mind in minds:
+        embedder = mind.embedder
         try:
-            if not getattr(mind.embedder, "nodes", None):
-                mind.embedder.load_graph()
-            orphans, _ = finder()
+            if not getattr(embedder, "nodes", None):
+                embedder.load_graph()
         except Exception:
-            orphans = set()
+            pass
+        finder = getattr(embedder, "orphaned_node_ids", None)
+        if callable(finder):
+            try:
+                found, in_store = finder()
+                orphans |= found
+                stored_total += in_store
+            except Exception:
+                pass
+        ids = _stored_ids(embedder)
+        if ids is None:
+            counted = False
+            continue
+        stored |= ids
+        expected |= _scope_graph_ids(embedder, graph_ids)
     if orphans:
+        # Past half the store the build's safety valve keeps orphans, so a
+        # plain build can't clear them: say --prune.
+        prune = " --prune" if stored_total and len(orphans) > 0.5 * stored_total else ""
         return Check(
             "Semantic index",
             FAIL,
             f"{len(orphans):,} vectors not in graph (stale results possible); "
             f"{total:,} stored, graph has {len(graph_ids):,} nodes ({backend} backend)",
-            fix=f"Rebuild to purge them: neuralmind build {project}",
+            fix=f"Rebuild to purge them: neuralmind build {project}{prune}",
         )
-    embedded = _count_embedded(mind, graph_ids)
-    if embedded is not None and embedded < len(graph_ids):
-        missing = len(graph_ids) - embedded
+    missing = len(expected - stored) if counted else 0
+    if missing:
         return Check(
             "Semantic index",
             WARN,
@@ -214,22 +245,30 @@ def _compare_index_with_graph(project: Path, mind, total: int, backend: str) -> 
     )
 
 
-def _count_embedded(mind, graph_ids: set[str]) -> int | None:
-    """How many graph node ids have a stored vector, or None if unknown."""
-    embedder = mind.embedder
+def _stored_ids(embedder) -> set[str] | None:
+    """Node ids with a stored vector in this embedder's store, or None if unknown."""
     conn = getattr(embedder, "_conn", None)
     try:
         if conn is not None:
-            rows = conn.execute("SELECT node_id FROM nodes").fetchall()
-            stored = {str(r[0]) for r in rows}
-        else:
-            stored = set(embedder.collection.get(include=[]).get("ids") or [])
+            return {str(r[0]) for r in conn.execute("SELECT node_id FROM nodes").fetchall()}
+        return set(embedder.collection.get(include=[]).get("ids") or [])
     except Exception:
         return None
-    scope_ok = getattr(embedder, "_node_matches_scope", None)
-    if callable(scope_ok) and getattr(embedder, "_scope", "all") != "all":
-        return None  # a scoped store holds a subset by design
-    return len(stored & graph_ids)
+
+
+def _scope_graph_ids(embedder, graph_ids: set[str]) -> set[str]:
+    """The graph node ids this store is meant to hold (its scope's slice)."""
+    in_scope = getattr(embedder, "_node_matches_scope", None)
+    if not callable(in_scope) or getattr(embedder, "_scope", "all") == "all":
+        return set(graph_ids)
+    out: set[str] = set()
+    for node in getattr(embedder, "nodes", None) or []:
+        if not isinstance(node, dict):
+            continue
+        node_id = str(node.get("id", node.get("label", "")))
+        if node_id in graph_ids and in_scope(node):
+            out.add(node_id)
+    return out
 
 
 def _check_synapses(project: Path) -> Check:

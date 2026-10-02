@@ -477,7 +477,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
     # 1. Build code scope (engine code) — skip if no graph.json (pure content book)
     print("   Scope: code... ", end="", flush=True)
     graph_path = graph_json_path(path)
-    if graph_path.exists():
+    regenerate = getattr(args, "regenerate_graph", False) is True
+    strict = getattr(args, "strict", False) is True
+    if graph_path.exists() or regenerate:
         code_args = argparse.Namespace(
             project_path=project_path,
             force=force,
@@ -485,6 +487,9 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
             content_type="code",
             bootstrap=None,
             redact_secrets=getattr(args, "redact_secrets", False),
+            regenerate_graph=regenerate,
+            strict=strict,
+            prune=getattr(args, "prune", False) is True,
             dry_run=False,
             json=False,
         )
@@ -498,6 +503,10 @@ def _cmd_build_book(args, project_path: str, force: bool) -> None:
         except SystemExit as e:
             if e.code != 0:
                 print(f"failed (exit {e.code})")
+                if strict:
+                    # --strict is a CI gate: a failing code graph fails the
+                    # whole book build, before the content scope is embedded.
+                    raise
             else:
                 print("done")
     else:
