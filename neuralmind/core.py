@@ -795,8 +795,15 @@ class NeuralMind:
             self._build_stats["baseline_tokens"] = measured_baseline["tokens"]
         if freshness is not None:
             self._build_stats["freshness"] = freshness.to_dict()
+        # The graph this index was embedded from, so read paths can tell when
+        # it has been regenerated since (graphify update, a pull) without a build.
+        from .freshness import graph_fingerprint
+
         status_updates: dict = {
-            "graph": self._build_stats["graph"],
+            "graph": {
+                **self._build_stats["graph"],
+                "fingerprint": graph_fingerprint(graph_info["path"]),
+            },
             # Stamps caches derived from this index (the unified BM25 index).
             "index_generation": self._build_stats["built_at"],
         }
@@ -1464,6 +1471,7 @@ class NeuralMind:
         # rather than producing a 0-node index that silently "succeeds".
         # Books are document-only (markdown chapters, reports) — accept any node.
         if not graph.get("nodes"):
+            self._builtin_graph_empty = True
             return None
 
         # Optional SCIP precision pass: when NEURALMIND_PRECISION is set and a
@@ -1534,8 +1542,24 @@ class NeuralMind:
             return kind
 
         def _builtin(action: str) -> dict:
+            self._builtin_graph_empty = False
             graph = self._generate_builtin_graph()
             if graph is None:
+                if canonical.exists() and self._builtin_graph_empty:
+                    # Every indexable file is gone: the previous graph now
+                    # describes deleted code, and reusing it would keep
+                    # serving it. Stop rather than call that index current.
+                    return {
+                        "path": canonical,
+                        "kind": "built-in",
+                        "action": action,
+                        "nodes": 0,
+                        "error": (
+                            "the project has no indexable files left, so "
+                            f"{self._display_path(canonical)} describes code that no longer "
+                            "exists. Add source files, or delete .neuralmind/ to drop the index."
+                        ),
+                    }
                 if canonical.exists() and action != "regenerated":
                     nodes = self._count_nodes(canonical)
                     return {
@@ -1881,7 +1905,27 @@ class NeuralMind:
         finally:
             timer.cancel()
         self._built = True
+        self._report_graph_mismatch()
         return True
+
+    def _report_graph_mismatch(self) -> None:
+        """One notice when the graph changed after the build that embedded it.
+
+        Read paths never rebuild, so the stored vectors keep describing the
+        old graph until ``neuralmind build`` runs: new nodes can't be found
+        and removed ones still come back. Silent when they match.
+        """
+        try:
+            from .freshness import index_graph_mismatch
+
+            reason = index_graph_mismatch(self.project_path)
+        except Exception:
+            return
+        if reason:
+            self._notify(
+                f"[neuralmind] Index out of step: {reason}, so queries use the vectors "
+                f"of the previous build. Run: neuralmind build {self.project_path}"
+            )
 
     def wakeup(self) -> ContextResult:
         """

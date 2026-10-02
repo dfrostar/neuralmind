@@ -62,14 +62,17 @@ def cmd_health(args) -> None:
         last_build = ir_path.stat().st_mtime
     age_hours = (time.time() - last_build) / 3600 if last_build else float("inf")
 
+    # No report (no graph to compare, or the check failed) is "unknown", never
+    # healthy: nothing confirmed the index matches the code.
     freshness = None
     try:
         from neuralmind.freshness import graph_freshness
 
-        freshness = graph_freshness(project_path)
+        freshness = graph_freshness(project_path, check_index=True)
     except Exception:
         freshness = None
-    is_stale = freshness is not None and freshness.status != "ok"
+    unknown = freshness is None
+    is_stale = unknown or freshness.status != "ok"
 
     # Node count (IR stores nodes as a list under "nodes")
     node_count = ir_meta.get("node_count", len(ir_meta.get("nodes", [])))
@@ -91,7 +94,7 @@ def cmd_health(args) -> None:
             pass
 
     result = {
-        "status": "stale" if is_stale else "healthy",
+        "status": "unknown" if unknown else ("stale" if is_stale else "healthy"),
         "healthy": not is_stale,
         "exit_code": 1 if is_stale else 0,
         "index": {
@@ -110,10 +113,14 @@ def cmd_health(args) -> None:
         print(json.dumps(result, indent=2, default=str))
     else:
         status_icon = "🟢" if not is_stale else "🟡"
+        if unknown:
+            status_text = "unknown (no readable code graph to check the index against)"
+        elif is_stale:
+            status_text = "stale (graph out of step with the code)"
+        else:
+            status_text = "healthy"
         print(f"{status_icon} NeuralMind Health — {project_path.name}")
-        print(
-            f"  Status:       {'healthy' if not is_stale else 'stale (graph out of step with the code)'}"
-        )
+        print(f"  Status:       {status_text}")
         print(f"  Nodes:        {node_count}")
         print(
             f"  Last build:    {time.strftime('%Y-%m-%d %H:%M', time.localtime(last_build)) if last_build else 'unknown'}"

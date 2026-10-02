@@ -111,16 +111,29 @@ def _unindexed_relative_path_hint(project_path: str) -> str | None:
 
 
 def _freshness_line(project_path: str) -> str:
-    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises."""
+    """``Index is stale: ...`` when the graph isn't OK, else ``""``. Never raises.
+
+    An index with no readable graph to check it against gets a line too: the
+    read path can still answer from it, but nothing confirms it matches the
+    code.
+    """
+    resolved = str(Path(project_path).resolve())
     try:
         from neuralmind.freshness import graph_freshness
 
-        report = graph_freshness(project_path)
+        report = graph_freshness(project_path, check_index=True)
     except Exception:
+        report = None
+    if report is None:
+        if (Path(project_path) / ".neuralmind" / "index_ir.json").exists():
+            return (
+                "Index is unverified: no readable code graph to check it against. "
+                f"Run neuralmind build {resolved}."
+            )
         return ""
-    if report is None or report.ok:
+    if report.ok:
         return ""
-    return report.one_line(str(Path(project_path).resolve()))
+    return report.one_line(resolved)
 
 
 def tool_wakeup(project_path: str) -> dict[str, Any]:
@@ -257,14 +270,17 @@ def tool_health(project_path: str) -> dict[str, Any]:
 
     # Staleness = the code graph out of step with the files on disk (same rule
     # as `neuralmind health`), not the index's age.
+    # No report (no graph to compare, or the check failed) is "unknown", never
+    # healthy: nothing confirmed the index matches the code.
     freshness = None
     try:
         from neuralmind.freshness import graph_freshness
 
-        freshness = graph_freshness(project_path)
+        freshness = graph_freshness(project_path, check_index=True)
     except Exception:
         freshness = None
-    stale = freshness is not None and freshness.status != "ok"
+    unknown = freshness is None
+    stale = unknown or freshness.status != "ok"
 
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
 
@@ -279,7 +295,7 @@ def tool_health(project_path: str) -> dict[str, Any]:
             pass
 
     return {
-        "status": "stale" if stale else "healthy",
+        "status": "unknown" if unknown else ("stale" if stale else "healthy"),
         "healthy": not stale,
         "exit_code": 1 if stale else 0,
         "freshness": freshness.to_dict() if freshness is not None else None,
