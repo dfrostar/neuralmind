@@ -115,7 +115,7 @@ def _freshness_line(project_path: str) -> str:
     try:
         from neuralmind.freshness import graph_freshness
 
-        report = graph_freshness(project_path)
+        report = graph_freshness(project_path, check_index=True)
     except Exception:
         return ""
     if report is None or report.ok:
@@ -246,14 +246,17 @@ def tool_health(project_path: str) -> dict[str, Any]:
 
     # Staleness = the code graph out of step with the files on disk (same rule
     # as `neuralmind health`), not the index's age.
+    # No report (no graph to compare, or the check failed) is "unknown", never
+    # healthy: nothing confirmed the index matches the code.
     freshness = None
     try:
         from neuralmind.freshness import graph_freshness
 
-        freshness = graph_freshness(project_path)
+        freshness = graph_freshness(project_path, check_index=True)
     except Exception:
         freshness = None
-    stale = freshness is not None and freshness.status != "ok"
+    unknown = freshness is None
+    stale = unknown or freshness.status != "ok"
 
     disk_mb = sum(f.stat().st_size for f in nm_dir.rglob("*") if f.is_file()) / (1024 * 1024)
 
@@ -268,7 +271,7 @@ def tool_health(project_path: str) -> dict[str, Any]:
             pass
 
     return {
-        "status": "stale" if stale else "healthy",
+        "status": "unknown" if unknown else ("stale" if stale else "healthy"),
         "healthy": not stale,
         "exit_code": 1 if stale else 0,
         "freshness": freshness.to_dict() if freshness is not None else None,

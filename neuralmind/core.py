@@ -741,7 +741,18 @@ class NeuralMind:
             self._build_stats["orphans_kept"] = purge["skipped_orphans"]
         if freshness is not None:
             self._build_stats["freshness"] = freshness.to_dict()
-        self._record_build_status({"graph": self._build_stats["graph"]})
+        # The graph this index was embedded from, so read paths can tell when
+        # it has been regenerated since (graphify update, a pull) without a build.
+        from .freshness import graph_fingerprint
+
+        self._record_build_status(
+            {
+                "graph": {
+                    **self._build_stats["graph"],
+                    "fingerprint": graph_fingerprint(graph_info["path"]),
+                }
+            }
+        )
         if _structural_edge_count:
             self._build_stats["structural_edges"] = _structural_edge_count
         if _structural_synapse_count:
@@ -1740,7 +1751,27 @@ class NeuralMind:
         finally:
             timer.cancel()
         self._built = True
+        self._report_graph_mismatch()
         return True
+
+    def _report_graph_mismatch(self) -> None:
+        """One notice when the graph changed after the build that embedded it.
+
+        Read paths never rebuild, so the stored vectors keep describing the
+        old graph until ``neuralmind build`` runs: new nodes can't be found
+        and removed ones still come back. Silent when they match.
+        """
+        try:
+            from .freshness import index_graph_mismatch
+
+            reason = index_graph_mismatch(self.project_path)
+        except Exception:
+            return
+        if reason:
+            self._notify(
+                f"[neuralmind] Index out of step: {reason}, so queries use the vectors "
+                f"of the previous build. Run: neuralmind build {self.project_path}"
+            )
 
     def wakeup(self) -> ContextResult:
         """

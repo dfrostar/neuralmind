@@ -77,7 +77,7 @@ def _check_graph(project: Path) -> Check:
     from .freshness import graph_freshness
 
     try:
-        report = graph_freshness(project, graph)
+        report = graph_freshness(project, graph, check_index=True)
     except Exception as e:  # pragma: no cover - diagnostic only
         return Check("Code graph", WARN, f"{nodes} nodes at {graph} (freshness check failed: {e})")
     if report is None:

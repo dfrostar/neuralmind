@@ -89,7 +89,7 @@ on a `Graph:` line, and `neuralmind build-status` shows it afterwards.
 ## 4. Gate it in CI
 
 ```bash
-neuralmind health .            # 0 = in step, 1 = out of step, 2 = no index
+neuralmind health .            # 0 = in step, 1 = out of step (or nothing to check), 2 = no index
 neuralmind build . --strict    # exits 3 before embedding when the graph FAILs
 ```
 

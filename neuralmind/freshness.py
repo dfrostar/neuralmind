@@ -26,14 +26,21 @@ What it reports:
 * ``graph_age_commits`` — commits since the graph last changed, when the
   graph is tracked; ``None`` on a shallow clone, where the history needed to
   count them isn't there.
+* ``index_mismatch`` (``check_index=True`` only) — the graph changed after
+  the last build (``graphify update``, a pull, a hand edit), so the stored
+  vectors still describe the old one: new nodes can't be found and removed
+  ones still come back. The build records which graph it embedded, with a
+  fingerprint, in ``build_status.json``.
 
-Status: FAIL when missing + gone exceed 10% of indexable files or any node
-path uses foreign separators; WARN when either list is non-empty or files
-changed since the graph; OK otherwise.
+Status: FAIL when missing + gone exceed 10% of indexable files, any node
+path uses foreign separators, or the index was built from another graph;
+WARN when either list is non-empty or files changed since the graph; OK
+otherwise.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -75,6 +82,7 @@ class FreshnessReport:
     changed_method: str = ""  # "git" | "mtime" | "hash" | ""
     graph_age_commits: int | None = None
     age_note: str = ""  # why graph_age_commits is None, when it is
+    index_mismatch: str = ""  # why the vectors don't match this graph, when they don't
     project: Path | None = None
 
     @property
@@ -131,12 +139,23 @@ class FreshnessReport:
                 f"{'s' if len(self.changed_since_graph) != 1 else ''} changed since the graph "
                 f"was built{_examples(self.changed_since_graph)}"
             )
+        if self.index_mismatch:
+            lines.append(f"{self.index_mismatch}: the stored vectors still describe the old graph")
         return lines
+
+    def _graph_drifted(self) -> bool:
+        return bool(
+            self.missing_from_graph
+            or self.gone_from_disk
+            or self.foreign_separators
+            or self.changed_since_graph
+        )
 
     def fix_command(self, project_arg: str = ".") -> str:
         if self.status == OK:
             return ""
-        if self.source == "built-in":
+        if self.source == "built-in" or not self._graph_drifted():
+            # The graph is current; only the vectors lag it.
             return f"neuralmind build {project_arg}"
         return f"neuralmind build {project_arg} --regenerate-graph"
 
@@ -162,6 +181,8 @@ class FreshnessReport:
             parts.append("graph built on another OS")
         if self.changed_since_graph:
             parts.append(f"{len(self.changed_since_graph):,} files changed since the graph")
+        if self.index_mismatch:
+            parts.append("graph changed since the last build")
         what = "; ".join(parts) or "graph out of date"
         return f"Index is stale: {what}. Run {self.fix_command(project_arg)}."
 
@@ -181,6 +202,7 @@ class FreshnessReport:
             "changed_method": self.changed_method,
             "graph_age_commits": self.graph_age_commits,
             "age_note": self.age_note,
+            "index_mismatch": self.index_mismatch,
         }
 
 
@@ -249,10 +271,11 @@ def _indexable_suffixes(source: str, graph_suffixes: set[str], config) -> frozen
     """Suffixes whose files the graph is expected to cover.
 
     For the built-in graph: every code language whose grammar is installed,
-    plus markdown — the files graphgen turns into nodes. For any other
-    producer we can't know its language list, so only suffixes the graph
-    already contains count: a graphify graph that never indexed markdown
-    isn't "missing" every README.
+    plus markdown, SQL and Protobuf — the files graphgen always turns into
+    nodes. For any other producer we can't know its language list, so only
+    suffixes the graph already contains count: a graphify graph that never
+    indexed markdown isn't "missing" every README. YAML is left to
+    :data:`_CONTENT_GATED_SUFFIXES`.
     """
     from . import graphgen
 
@@ -264,12 +287,21 @@ def _indexable_suffixes(source: str, graph_suffixes: set[str], config) -> frozen
         except Exception:
             continue
     docs = set(graphgen._DOC_SUFFIXES)
+    schema = set(graphgen._SCHEMA_SUFFIXES) - _CONTENT_GATED_SUFFIXES
     if getattr(config, "mode", "auto") == "prose":
         code = set()
     if source == "built-in":
-        return frozenset(code | docs)
-    known = set(graphgen.SUPPORTED_SUFFIXES) | docs
+        return frozenset(code | docs | schema)
+    known = set(graphgen.SUPPORTED_SUFFIXES) | docs | schema
     return frozenset(graph_suffixes & known)
+
+
+# Schema suffixes whose files become nodes only when their content qualifies
+# (a YAML file only if it's an OpenAPI/AsyncAPI spec). Counting every one on
+# disk would report each CI config as missing, so only those the graph
+# already holds are compared: their edits and deletions are caught, a new
+# spec added since the build isn't.
+_CONTENT_GATED_SUFFIXES = frozenset({".yaml", ".yml"})
 
 
 def indexable_files(root: Path, suffixes: frozenset[str], config=None) -> list[str]:
@@ -388,12 +420,16 @@ def _changed_via_mtime(root: Path, graph_path: Path, known: set[str]) -> tuple[l
 # Public API
 # --------------------------------------------------------------------------- #
 def graph_freshness(
-    project: str | Path, graph_path: str | Path | None = None
+    project: str | Path, graph_path: str | Path | None = None, *, check_index: bool = False
 ) -> FreshnessReport | None:
     """Compare the project's code graph with the files on disk.
 
+    With ``check_index`` (the read-side checks: ``doctor``, ``health``, the
+    MCP wakeup) it also checks the vector index was built from this graph as
+    it is now. Build-time callers leave it off: the build re-embeds anyway.
+
     Returns None when there is no graph to compare (nothing built yet), or
-    when the graph can't be read — the callers already report those cases.
+    when the graph can't be read.
     """
     root = Path(project).resolve()
     gpath = Path(graph_path) if graph_path is not None else graph_json_path(root)
@@ -436,6 +472,9 @@ def graph_freshness(
     graph_suffixes = {PurePosixPath(p).suffix for p in graph_files}
     suffixes = _indexable_suffixes(source, graph_suffixes, config)
     on_disk = set(indexable_files(root, suffixes, config))
+    gated = {p for p in graph_files if PurePosixPath(p).suffix in _CONTENT_GATED_SUFFIXES}
+    if gated:
+        on_disk |= gated & set(indexable_files(root, _CONTENT_GATED_SUFFIXES, config))
 
     missing = sorted(on_disk - graph_files)
     gone = sorted(p for p in graph_files if not (root / p).exists())
@@ -484,15 +523,66 @@ def graph_freshness(
             except OSError:
                 pass
 
+    if check_index:
+        report.index_mismatch = index_graph_mismatch(root, gpath)
     report.status = classify(report)
     return report
+
+
+def graph_fingerprint(path: str | Path) -> dict | None:
+    """Size, mtime and content hash of a graph file, as a build records it."""
+    path = Path(path)
+    try:
+        st = path.stat()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+    return {"size": st.st_size, "mtime_ns": st.st_mtime_ns, "sha256": digest}
+
+
+def index_graph_mismatch(project: str | Path, graph_path: str | Path | None = None) -> str:
+    """Why the vector index wasn't built from the graph as it is now, or ``""``.
+
+    Compares the graph the read path would load with the one the last build
+    recorded in ``build_status.json``. Size and mtime settle it when they
+    match; otherwise the content hash does, so a fresh clone (new mtimes,
+    same bytes) isn't reported. Indexes built before the fingerprint was
+    recorded report nothing.
+    """
+    root = Path(project).resolve()
+    gpath = Path(graph_path) if graph_path is not None else graph_json_path(root)
+    try:
+        status = json.loads((root / CANONICAL_DIR / "build_status.json").read_text("utf-8"))
+        record = status.get("graph") or {}
+        recorded = record.get("fingerprint") or {}
+        recorded_sha = recorded.get("sha256")
+    except (OSError, ValueError, AttributeError):
+        return ""
+    if not recorded_sha:
+        return ""
+    built_from = Path(str(record.get("path") or ""))
+    if not built_from.is_absolute():
+        built_from = root / built_from
+    try:
+        same_file = built_from.resolve() == gpath.resolve()
+        st = gpath.stat()
+    except OSError:
+        return ""
+    if not same_file:
+        return f"the index was built from {record.get('path')}"
+    if st.st_size == recorded.get("size") and st.st_mtime_ns == recorded.get("mtime_ns"):
+        return ""
+    current = graph_fingerprint(gpath)
+    if current is None or current["sha256"] == recorded_sha:
+        return ""
+    return "the graph changed after the last build"
 
 
 def classify(report: FreshnessReport) -> str:
     """Status for a report, per the thresholds in the module docstring."""
     drift = len(report.missing_from_graph) + len(report.gone_from_disk)
     denominator = max(report.indexable_count, 1)
-    if report.foreign_separators or drift / denominator > FAIL_DRIFT_RATIO:
+    if report.foreign_separators or report.index_mismatch or drift / denominator > FAIL_DRIFT_RATIO:
         return FAIL
     if drift or report.changed_since_graph:
         return WARN

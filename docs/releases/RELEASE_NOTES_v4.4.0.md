@@ -35,10 +35,17 @@ can't be brought in step automatically, it says so — in `doctor`, `health`,
   clone stamps every file with the clone time), or from mtimes confirmed by
   content hash for the untracked built-in graph;
 - **commits since the graph changed** — reported as *unknown* on a shallow
-  clone instead of a misleading "0 behind".
+  clone instead of a misleading "0 behind";
+- **a graph changed after the last build** (`doctor`, `health` and the MCP
+  wakeup) — `graphify update` or a pull without `neuralmind build` leaves the
+  stored vectors describing the old graph. Each build records a fingerprint of
+  the graph it embedded; a query on such an index still answers, with one
+  stderr notice.
 
-FAIL when missing + gone exceed 10% of indexable files or any path uses
-foreign separators; WARN for anything smaller; OK otherwise. It is stat calls
+SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML counts once
+the graph holds it. FAIL when missing + gone exceed 10% of indexable files,
+any path uses foreign separators, or the graph changed after the last build;
+WARN for anything smaller; OK otherwise. It is stat calls
 and a few git plumbing commands — no parsing — about 80 ms on a 600-file repo.
 
 ```
@@ -53,8 +60,9 @@ Where it shows up:
 - **`neuralmind doctor`** — the *Code graph* check is now this report.
 - **`neuralmind health`** — exit `1` now means the freshness check WARNs or
   FAILs; it used to mean "index ≥ 24 h old", which flagged a current index
-  every morning and passed a stale one built an hour ago. `0` OK, `2` no
-  index, unchanged.
+  every morning and passed a stale one built an hour ago. An index with no
+  readable graph to check reports `unknown` and exits `1`, never `0`. `0` OK,
+  `2` no index, unchanged.
 - **`neuralmind build`** — runs the check before embedding and prints the
   report when it isn't OK. `--strict` exits `3` before embedding on FAIL.
 - **MCP `neuralmind_wakeup`** — prefixes one line when the graph isn't OK, so

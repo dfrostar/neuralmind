@@ -1175,10 +1175,14 @@ graphs carry no `embedded_at`, so before v4.4.0 they passed unexamined:
 ```
 
 FAIL when files missing from the graph plus files gone from disk exceed 10% of
-indexable files, or any node path uses `\` on a POSIX host; WARN for smaller
-drift or files changed since the graph was built (from `git diff` for a
-committed graph, so checkout mtimes never count); OK otherwise. On a shallow
-clone the graph's age is reported as unknown.
+indexable files, any node path uses `\` on a POSIX host, or the graph changed
+after the last build (`graphify update` or a pull without `neuralmind build`:
+the stored vectors still describe the old graph, so the fix is a plain
+`neuralmind build`); WARN for smaller drift or files changed since the graph
+was built (from `git diff` for a committed graph, so checkout mtimes never
+count); OK otherwise. On a shallow clone the graph's age is reported as
+unknown. SQL and Protobuf files count like code; an OpenAPI/AsyncAPI YAML
+counts once the graph holds it (other YAML never becomes a node).
 
 **Semantic index vs graph (v4.4.0+).** Stored vectors are compared with the
 graph's nodes: equal is OK; vectors whose node left the graph FAIL
@@ -2546,18 +2550,19 @@ Check NeuralMind health status.
 
 #### Output
 
-Health status: healthy, stale, or no index. Since v4.4.0 "stale" means the code
-graph is out of step with the files on disk (the same freshness check
+Health status: healthy, stale, unknown, or no index. Since v4.4.0 "stale" means
+the code graph is out of step with the files on disk (the same freshness check
 [`doctor`](#doctor-v0120) runs), not "older than 24 hours": a day-old index of
 unchanged code is healthy, and an hour-old one that misses new files is not.
-`--json` includes the full `freshness` report.
+"Unknown" means there is an index but no readable graph to check it against;
+it exits `1`, never `0`. `--json` includes the full `freshness` report.
 
 #### Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Healthy — the graph matches the files on disk |
-| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, or a graph built on another OS |
+| 1 | Stale — files missing from the graph, deleted files still indexed, files changed since the graph, a graph built on another OS, or a graph changed after the last build — or unknown: no readable graph to check the index against |
 | 2 | No index |
 
 #### Examples
