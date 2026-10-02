@@ -333,17 +333,26 @@ def _listing_to_paths(
 ) -> list[Path]:
     """Filter a git listing with the same rules as :func:`_walk_files`."""
     out: list[tuple[tuple[str, ...], Path]] = []
+    # Directory decisions and Paths are made once per directory, not per file:
+    # a 10K-file listing must stay no slower than the walk it replaces.
+    parents: dict[str, Path | None] = {}
     for rel in listing:
-        parts = tuple(rel.split("/"))
-        if not parts or Path(parts[-1]).suffix not in suffixes:
+        head, _, name = rel.rpartition("/")
+        dot = name.rfind(".")  # Path(name).suffix, without building a Path
+        if dot <= 0 or name[dot:] not in suffixes:
             continue
-        if any(part in ignores or part.startswith(".") for part in parts[:-1]):
+        if head not in parents:
+            dirs = head.split("/") if head else []
+            skip = any(part in ignores or part.startswith(".") for part in dirs)
+            parents[head] = None if skip else (root / head if head else root)
+        parent = parents[head]
+        if parent is None:
             continue
         # Directory-level .neuralmindignore patterns (``docs/``) match the
         # file's path too, so one check per file is enough.
         if _is_ignored(rel, extra_ignores):
             continue
-        out.append((parts, root / rel))
+        out.append((tuple(rel.split("/")), parent / name))
     # Same order as the directory walk: per-level name order.
     out.sort(key=lambda item: item[0])
     return [p for _, p in out]
