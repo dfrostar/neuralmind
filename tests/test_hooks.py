@@ -245,6 +245,71 @@ class TestRunHook:
             assert exit_code == 0
             assert output == ""
 
+    @staticmethod
+    def _read_payload(path: Path, cwd: Path, text: str = "x = 1\n") -> dict:
+        lines = len(text.splitlines())
+        return {
+            "hook_event_name": "PostToolUse",
+            "tool_name": "Read",
+            "tool_input": {"file_path": str(path)},
+            "tool_response": {
+                "type": "text",
+                "file": {
+                    "filePath": str(path),
+                    "content": text,
+                    "numLines": lines,
+                    "startLine": 1,
+                    "totalLines": lines,
+                },
+            },
+            "cwd": str(cwd),
+        }
+
+    def test_compress_read_records_transitions_from_claude_codes_payload(
+        self, monkeypatch, tmp_path
+    ):
+        # Claude Code nests a Read's text under file.content. The hook used to
+        # look only for top-level keys, so real Reads never recorded a step.
+        from neuralmind.namespaces import resolve_namespace
+        from neuralmind.synapses import SynapseStore, default_db_path
+
+        first, second = tmp_path / "a.py", tmp_path / "b.py"
+        for path in (first, second):
+            self._invoke("compress-read", self._read_payload(path, tmp_path), monkeypatch)
+
+        store = SynapseStore(
+            default_db_path(str(tmp_path)), namespace=resolve_namespace(str(tmp_path))
+        )
+        edges = {(f, t) for f, t, _w, _c in store.transitions()}
+        assert (str(first), str(second)) in edges
+
+    def test_compress_read_records_only_text_reads_of_the_codebase(self, monkeypatch, tmp_path):
+        import neuralmind.hooks as hooks_mod
+
+        calls = []
+        monkeypatch.setattr(hooks_mod, "_record_tool_transition", lambda *a: calls.append(a))
+        image = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": str(tmp_path / "logo.png")},
+            "tool_response": {"type": "image", "file": {"base64": "iVBOR", "type": "image/png"}},
+            "cwd": str(tmp_path),
+        }
+        kept_output = tmp_path / ".neuralmind" / "bash_outputs" / "0123456789abcdef.txt"
+        for payload in (image, self._read_payload(kept_output, tmp_path)):
+            exit_code, output = self._invoke("compress-read", payload, monkeypatch)
+            assert (exit_code, output) == (0, "")
+        assert calls == []
+
+        # The flat shape older callers send still counts.
+        legacy = {
+            "tool_name": "Read",
+            "tool_input": {"file_path": "src/app.py"},
+            "tool_response": {"content": "x = 1\n"},
+            "cwd": "/proj",
+        }
+        self._invoke("compress-read", legacy, monkeypatch)
+        assert calls == [("/proj", "src/app.py")]
+
     def test_empty_input_noops(self, monkeypatch):
         """Empty stdin should fail-open silently."""
         monkeypatch.setattr(sys, "stdin", io.StringIO(""))

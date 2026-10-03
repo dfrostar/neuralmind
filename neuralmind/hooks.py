@@ -295,13 +295,11 @@ def run_hook(action: str) -> int:
     # benchmark measures before anything ships.
     if action == "compress-read":
         file_path = tool_input.get("file_path") or tool_input.get("path") or ""
-        content = (
-            tool_response.get("content")
-            or tool_response.get("output")
-            or tool_response.get("text")
-            or ""
-        )
-        if not (file_path and content):
+        if not (file_path and _read_text(tool_response)):
+            return 0
+        # NeuralMind's own state isn't part of the codebase: reading a full
+        # Bash output kept under .neuralmind/ is not a step between files.
+        if ".neuralmind" in Path(file_path).parts:
             return 0
         # Phase 1 SOTA 3.2.3: track PostToolUse transitions for Read operations
         cwd = payload.get("cwd") or os.getcwd()
@@ -640,6 +638,24 @@ def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> N
             mind.record_edit_activity(file_path, new_code)
     except Exception:
         return
+
+
+def _read_text(tool_response: dict) -> str:
+    """The text a Read returned, or '' for an image, PDF or notebook read.
+
+    Claude Code's Read output nests a text file under ``file.content``. The
+    flat ``content``/``output``/``text`` keys are the shape this hook was
+    first written against, and still what older callers send.
+    """
+    file = tool_response.get("file")
+    content = file.get("content") if isinstance(file, dict) else None
+    if isinstance(content, str):
+        return content
+    for key in ("content", "output", "text"):
+        value = tool_response.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return ""
 
 
 def _record_tool_transition(project_path: str, file_path: str) -> None:
