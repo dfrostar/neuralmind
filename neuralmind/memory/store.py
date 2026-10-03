@@ -75,6 +75,30 @@ VALID_STATUSES: frozenset[str] = frozenset(
 DEFAULT_DECISION_TYPE = "ARCHITECTURE"
 DEFAULT_STATUS = "ACTIVE"
 
+# The status-filter word that means "every status". Callers (the CLI's
+# ``--status ALL``, MCP's ``status: "all"``) pass it as a string; the store
+# itself spells "every status" as ``None``.
+STATUS_FILTER_ALL = "ALL"
+
+
+def normalize_status_filter(status: str | None) -> str | None:
+    """Turn a caller's status filter into the store's form.
+
+    Case-insensitive. ``None``, an empty string and ``"all"`` mean every
+    status and return ``None``; a valid status returns its canonical
+    upper-case spelling. Anything else raises ``ValueError`` — an unknown
+    filter used to reach SQL as-is and silently match nothing.
+    """
+    if status is None:
+        return None
+    value = str(status).strip().upper()
+    if not value or value == STATUS_FILTER_ALL:
+        return None
+    if value not in VALID_STATUSES:
+        valid = ", ".join([*sorted(VALID_STATUSES), STATUS_FILTER_ALL])
+        raise ValueError(f"unknown status filter {status!r}; expected one of {valid}")
+    return value
+
 
 class DecisionRecord(BaseModel):
     """One persisted architectural decision.
@@ -669,23 +693,27 @@ class DecisionStore:
         self,
         text: str,
         limit: int = 5,
-        status: str = "ACTIVE",
+        status: str | None = "ACTIVE",
         min_score: float = 0.0,
     ) -> list[DecisionRecord]:
         """Search decisions by full-text query.
 
         Uses FTS5 when available (relevance-ranked via bm25()), falling back
         to a LIKE scan otherwise. By default only ACTIVE decisions are
-        returned; pass ``status=None`` to include all statuses.
+        returned; pass ``status=None`` (or ``"ALL"``) to include all statuses.
 
         Args:
             text: Search query (title + rationale are searched).
             limit: Maximum records to return.
-            status: Filter by status ("ACTIVE", "STALE", "INVALIDATED"),
-                or None to include all.
+            status: Filter by status ("ACTIVE", "STALE", "INVALIDATED",
+                case-insensitive), or None / "ALL" to include all.
             min_score: Minimum confidence threshold (0.0–1.0). Records below
                 this confidence are excluded.
+
+        Raises:
+            ValueError: ``status`` is not a known status or "ALL".
         """
+        status = normalize_status_filter(status)
         if not text or not text.strip():
             return []
 
@@ -850,12 +878,17 @@ class DecisionStore:
         Unlike ``audit()``, this returns every decision (including healthy ACTIVE ones).
 
         Args:
-            status: Optional status filter ("ACTIVE", "STALE", "INVALIDATED").
-                If None, returns decisions of all statuses.
+            status: Optional status filter ("ACTIVE", "STALE", "INVALIDATED",
+                case-insensitive). If None or "ALL", returns decisions of all
+                statuses.
 
         Returns:
             All matching decisions ordered by created_at DESC.
+
+        Raises:
+            ValueError: ``status`` is not a known status or "ALL".
         """
+        status = normalize_status_filter(status)
         try:
             with self._connect() as conn:
                 if status is not None:

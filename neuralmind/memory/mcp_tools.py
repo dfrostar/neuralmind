@@ -6,7 +6,7 @@ NeuralMind MCP server by providing a TOOLS list and handle_tool_call()
 function that follows the same pattern as ``neuralmind.mcp_server``.
 
 Tools:
-- neuralmind_query_decisions: Search decisions by natural language
+- neuralmind_query_decisions: Search decisions by keyword
 - neuralmind_audit_decisions: List all decisions with status
 - neuralmind_record_decision: Store a new architecture decision
 - neuralmind_invalidate_decision: Mark a decision as stale/invalid
@@ -41,14 +41,14 @@ def get_decision_store(project_path: str) -> DecisionStore:
 
 
 def tool_query_decisions(project_path: str, query: str, limit: int = 5) -> dict[str, Any]:
-    """Search project decisions by natural language.
+    """Search project decisions by keyword (titles and rationales).
 
     Uses FTS5 when available (relevance-ranked via bm25), falling back to
     a LIKE scan otherwise.  By default only ACTIVE decisions are returned.
 
     Args:
         project_path: Path to the project root directory.
-        query: Natural language search query (searches title + rationale).
+        query: Keywords to match (title + rationale are searched).
         limit: Maximum number of results to return (default: 5).
 
     Returns:
@@ -204,9 +204,13 @@ def tool_memory_search(
 
     Args:
         project_path: Path to the project root directory.
-        query: Natural language query (title + rationale are searched).
+        query: Keywords to match (title + rationale are searched).
         limit: Maximum rows to return (default: 10, capped at 25).
-        status: Filter by status ("ACTIVE" default; None = all).
+        status: Filter by status, case-insensitive: "ACTIVE" (default),
+            "STALE", "INVALIDATED", or "ALL" / None for every status.
+
+    Raises:
+        ValueError: ``status`` is not a known status or "ALL".
 
     Returns:
         Dict with ``query``, ``count``, ``results`` (compact rows), and
@@ -330,8 +334,9 @@ TOOLS: list[dict[str, Any]] = [
     {
         "name": "neuralmind_query_decisions",
         "description": (
-            "Search project decisions by natural language. Returns top "
-            "matching decisions with scores, commit SHAs, and file references."
+            "Search project decisions by keyword over titles and rationales. "
+            "Returns the top matching decisions with confidence, commit SHAs, "
+            "and file references."
         ),
         "inputSchema": {
             "type": "object",
@@ -342,7 +347,11 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "query": {
                     "type": "string",
-                    "description": "Natural language search query",
+                    "description": (
+                        "Keywords matched against decision titles and rationales "
+                        "(prefix match; every word must appear, so pass a few "
+                        "distinctive words rather than a sentence)"
+                    ),
                 },
                 "limit": {
                     "type": "integer",
@@ -468,7 +477,11 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "query": {
                     "type": "string",
-                    "description": "Natural language search query",
+                    "description": (
+                        "Keywords matched against decision titles and rationales "
+                        "(prefix match; every word must appear, so pass a few "
+                        "distinctive words rather than a sentence)"
+                    ),
                 },
                 "limit": {
                     "type": "integer",
@@ -477,7 +490,10 @@ TOOLS: list[dict[str, Any]] = [
                 },
                 "status": {
                     "type": "string",
-                    "description": "Filter: ACTIVE (default), STALE, INVALIDATED, or all",
+                    "description": (
+                        "Filter: ACTIVE (default), STALE, INVALIDATED, or ALL for "
+                        "every status. Case-insensitive."
+                    ),
                 },
             },
             "required": ["project_path", "query"],

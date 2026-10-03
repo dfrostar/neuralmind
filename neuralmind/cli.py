@@ -3007,13 +3007,12 @@ def cmd_decisions_record(args):
 
 
 def cmd_decisions_query(args):
-    """Search decisions by natural language."""
+    """Search decisions by keyword (titles and rationales)."""
     store = _get_decisions_store(args.project_path)
-    status = None if args.status == "ALL" else args.status
     results = store.query(
         text=args.query,
         limit=args.limit,
-        status=status,
+        status=args.status,
     )
     if args.json:
         import json
@@ -6592,10 +6591,18 @@ def build_parser() -> argparse.ArgumentParser:
     d_record.add_argument("project_path", nargs="?", default=".")
     d_record.set_defaults(func=cmd_decisions_record)
 
-    d_query = decisions_sub.add_parser("query", help="Search decisions by natural language")
-    d_query.add_argument("query", help="Search query")
+    d_query = decisions_sub.add_parser(
+        "query", help="Search decisions by keyword (titles and rationales)"
+    )
+    d_query.add_argument("query", help="Keywords to match")
     d_query.add_argument("--limit", "-n", type=int, default=5)
-    d_query.add_argument("--status", default="ACTIVE", help="ACTIVE/STALE/ALL")
+    d_query.add_argument(
+        "--status",
+        default="ACTIVE",
+        type=str.upper,
+        choices=["ACTIVE", "STALE", "INVALIDATED", "ALL"],
+        help="Status filter, case-insensitive (default: ACTIVE)",
+    )
     d_query.add_argument("--json", "-j", action="store_true")
     d_query.add_argument("project_path", nargs="?", default=".")
     d_query.set_defaults(func=cmd_decisions_query)

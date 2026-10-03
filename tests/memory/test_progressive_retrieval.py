@@ -78,6 +78,62 @@ class TestLayer1Search:
         assert result["results"] == []
 
 
+class TestLayer1StatusFilter:
+    """Side finding 1: ``status: "all"`` reached SQL as-is and matched nothing."""
+
+    def _seed_statuses(self, project_path):
+        store = DecisionStore(str(project_path))
+        ids = {}
+        for status in ("ACTIVE", "STALE", "INVALIDATED"):
+            rec = store.record(
+                title=f"Pick queue backend {status.lower()}",
+                rationale="Queue backend choice.",
+                commit_sha="abc0000",
+            )
+            ids[status] = rec.id
+        store.update_status(ids["STALE"], "STALE")
+        store.invalidate(ids["INVALIDATED"], reason="superseded")
+        return ids
+
+    def _search(self, project_path, **args):
+        return json.loads(
+            handle_tool_call(
+                "neuralmind_memory_search",
+                {"project_path": str(project_path), "query": "queue backend", **args},
+            )
+        )
+
+    def test_default_is_active_only(self, tmp_path):
+        ids = self._seed_statuses(tmp_path)
+        out = self._search(tmp_path)
+        assert [r["id"] for r in out["results"]] == [ids["ACTIVE"]]
+
+    def test_all_returns_every_status(self, tmp_path):
+        self._seed_statuses(tmp_path)
+        for word in ("all", "ALL"):
+            out = self._search(tmp_path, status=word)
+            assert out["count"] == 3, word
+            assert {r["status"] for r in out["results"]} == {"ACTIVE", "STALE", "INVALIDATED"}
+
+    def test_lowercase_status_matches(self, tmp_path):
+        ids = self._seed_statuses(tmp_path)
+        out = self._search(tmp_path, status="invalidated")
+        assert [r["id"] for r in out["results"]] == [ids["INVALIDATED"]]
+
+    def test_unknown_status_is_an_error_not_an_empty_result(self, tmp_path):
+        self._seed_statuses(tmp_path)
+        out = self._search(tmp_path, status="archived")
+        assert "results" not in out
+        assert "unknown status filter" in out["error"]
+        assert "ALL" in out["error"]
+
+    def test_schema_advertises_all(self):
+        tool = next(t for t in TOOLS if t["name"] == "neuralmind_memory_search")
+        description = tool["inputSchema"]["properties"]["status"]["description"]
+        for word in ("ACTIVE", "STALE", "INVALIDATED", "ALL"):
+            assert word in description
+
+
 class TestLayer2Timeline:
     def test_timeline_by_id_returns_neighbors(self, tmp_path):
         ids = _seed(tmp_path, 5)

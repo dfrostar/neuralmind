@@ -12,6 +12,7 @@ from neuralmind.memory.store import (
     SCHEMA_VERSION,
     STALE_DAYS,
     DecisionStore,
+    normalize_status_filter,
 )
 
 
@@ -302,3 +303,65 @@ class TestFailOpenLogging:
             f"Silent except-pass blocks found in memory/: {offenders}. "
             "Fail-open paths must log (see 066a48b)."
         )
+
+
+# --------------------------------------------------------------------------- #
+# Status filter normalisation (side finding 1: "all" used to match nothing)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (None, None),
+        ("", None),
+        ("all", None),
+        ("ALL", None),
+        (" All ", None),
+        ("active", "ACTIVE"),
+        ("Stale", "STALE"),
+        ("INVALIDATED", "INVALIDATED"),
+    ],
+)
+def test_normalize_status_filter(raw, expected):
+    assert normalize_status_filter(raw) == expected
+
+
+def test_normalize_status_filter_rejects_unknown():
+    with pytest.raises(ValueError, match="ACTIVE, INVALIDATED, STALE, ALL"):
+        normalize_status_filter("archived")
+
+
+def _one_of_each_status(store):
+    active = _record(store, title="Status sweep alpha")
+    stale = _record(store, title="Status sweep beta")
+    gone = _record(store, title="Status sweep gamma")
+    store.update_status(stale.id, "STALE")
+    store.invalidate(gone.id, reason="superseded")
+    return active, stale, gone
+
+
+@pytest.mark.parametrize("word", ["all", "ALL", "All"])
+def test_query_status_all_word_includes_every_status(store, word):
+    _one_of_each_status(store)
+    hits = store.query("Status sweep", limit=10, status=word)
+    assert sorted(d.status for d in hits) == ["ACTIVE", "INVALIDATED", "STALE"]
+
+
+def test_query_status_is_case_insensitive(store):
+    _, stale, _ = _one_of_each_status(store)
+    assert [d.id for d in store.query("Status sweep", status="stale")] == [stale.id]
+
+
+def test_query_unknown_status_raises_instead_of_returning_nothing(store):
+    _one_of_each_status(store)
+    with pytest.raises(ValueError, match="unknown status filter"):
+        store.query("Status sweep", status="archived")
+
+
+def test_list_all_accepts_all_word_and_lowercase(store):
+    _, _, gone = _one_of_each_status(store)
+    assert len(store.list_all(status="all")) == 3
+    assert [d.id for d in store.list_all(status="invalidated")] == [gone.id]
+    with pytest.raises(ValueError):
+        store.list_all(status="archived")
