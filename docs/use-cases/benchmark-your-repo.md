@@ -6,7 +6,7 @@ This walkthrough gets you from zero to a real before/after number on your reposi
 
 ## What you'll have at the end
 
-- A measured **reduction ratio** on your actual code (typical: 30–80×)
+- A measured **reduction ratio** on your actual code, divided by the measured size of your code (v4.5.0+)
 - A **retrieval-quality score** (recall@k / MRR / answerability) on your own code, plus a list of any symbols the index can't find — via `neuralmind probe`
 - An **estimated monthly savings** in dollars, at your query volume and your model's pricing
 - A **JSON blob** you can share with your team (or contribute back to the public community benchmarks — your choice, zero telemetry)
@@ -56,11 +56,20 @@ Output (your numbers will vary):
 
 ```
 Project: your-project
+Baseline: measured: 41,000 tokens in 120 indexed files
+Questions: generic
 Wake-up tokens: 412
 Avg query tokens: 891
 Avg reduction: 46.0x
-Summary: NeuralMind query returns 46x less context than loading files naively
+Summary: 46.0x average token reduction vs measured: 41,000 tokens in 120 indexed files
 ```
+
+**The baseline line matters (v4.5.0+).** The ratio divides by the measured token
+count of every file the index covers, so it scales with your repo: a large repo
+reports a larger ratio than a small one for the same context size. Before
+v4.5.0 every repo was divided by a fixed 50,000-token guess; pass `--naive-50k`
+to reproduce those numbers. "Questions" reads `project eval` when the repo has
+a `.neuralmind.eval.yaml` — see [Step 3d](#step-3d--score-it-against-your-own-questions-neuralmind-eval).
 
 **What those numbers mean for you:**
 
@@ -68,7 +77,7 @@ Summary: NeuralMind query returns 46x less context than loading files naively
 |---|---|
 | **Wake-up tokens** | Cost of one "orient the agent" call at session start. ~400 tokens = ~$0.0012 on Claude Sonnet. |
 | **Avg query tokens** | Cost of one code question (across NeuralMind's default 5-query sample). ~900 tokens = ~$0.0027 per question. |
-| **Avg reduction** | How many times smaller NeuralMind's context is vs loading whole files. 46× means your bill drops by ~97.8% per query. |
+| **Avg reduction** | How many times smaller NeuralMind's context is than every indexed file put together (the measured baseline). 46× means a query costs ~2.2% of pasting the whole codebase. |
 
 ## Step 3b — Verify retrieval quality (v0.38.0+)
 
@@ -170,6 +179,23 @@ per-repo recall or MRR floor. Unlike `neuralmind benchmark --quality` (which
 scores ranking against the project's *golden* fixtures and is a contributor/CI
 self-test), `probe` needs no labels and runs on **any** repo.
 
+
+## Step 3d — Score it against your own questions (`neuralmind eval`)
+
+Probe tests symbols against their own docstrings. The strongest test is the
+questions your team actually asks, with the file that answers each (v4.5.0+):
+
+```bash
+neuralmind eval . --suggest --write   # draft .neuralmind.eval.yaml from docstrings + README
+# edit the questions and gold files, commit the file
+neuralmind eval .                     # hit@1 / hit@5 / MRR, read-only
+neuralmind eval . --report            # the history, as a markdown table
+```
+
+The eval never trains the synapse layer it measures, and each run is recorded
+with its commit and NeuralMind version so you can see a refactor or an upgrade
+move the numbers. Walkthrough:
+[Measure retrieval on your own repo](./measure-retrieval-on-your-repo.md).
 
 ## Step 4 — Translate to real money
 

@@ -123,6 +123,14 @@ def graph_json_path(project_path: str | Path, graph_source: str | None = None) -
     return canonical
 
 
+def baseline_path(project_path: str | Path) -> Path:
+    """Return the path to ``baseline.json`` (always canonical)."""
+    base = _resolve_base(project_path)
+    return _validated_artifact(
+        base, Path(os.path.normpath(os.path.join(base, CANONICAL_DIR, "baseline.json")))
+    )
+
+
 def ir_path(project_path: str | Path) -> Path:
     """Return the path to ``index_ir.json`` (always canonical)."""
     return canonical_artifact(project_path, "index_ir.json")

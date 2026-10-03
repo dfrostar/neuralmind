@@ -428,6 +428,17 @@ def run_hook(action: str) -> int:
         # learned associations as a markdown memory file so Claude Code's
         # auto-memory system picks it up on this very session.
         cwd = payload.get("cwd") or os.getcwd()
+        if _learning_disabled():
+            # NEURALMIND_NO_LEARN=1: no decay, no imports, no namespace
+            # clears — only the read-only memory export.
+            if os.environ.get("NEURALMIND_SYNAPSE_EXPORT") != "0":
+                try:
+                    from .synapse_memory import export_synapse_memory
+
+                    export_synapse_memory(cwd)
+                except Exception:
+                    pass
+            return 0
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -510,6 +521,8 @@ def run_hook(action: str) -> int:
         # normalize any runaway hub nodes — keeps retrieval balanced
         # across sessions.
         cwd = payload.get("cwd") or os.getcwd()
+        if _learning_disabled():
+            return 0
         store = _open_synapses(cwd)
         if store is None:
             return 0
@@ -615,16 +628,25 @@ def _decisions_for_prompt(project_path: str, prompt: str) -> str:
         return ""
 
 
+def _learning_disabled() -> bool:
+    from .learning import learning_disabled
+
+    return learning_disabled()
+
+
 def _record_edit_activity(project_path: str, file_path: str, new_code: str) -> None:
     """Run reuse-vs-rewrite feedback for an Edit/Write, fail-open.
 
     Instantiating NeuralMind loads the graph; we suppress any incidental
     embedder chatter so the hook's stdout stays clean (this branch emits
     nothing), and swallow every error — a feedback miss must never disrupt
-    the agent's tool flow.
+    the agent's tool flow. Skipped under NEURALMIND_NO_LEARN=1.
     """
     import contextlib
     import io
+
+    if _learning_disabled():
+        return
 
     try:
         from .core import NeuralMind
@@ -641,8 +663,11 @@ def _record_tool_transition(project_path: str, file_path: str) -> None:
 
     Tracks which file the agent worked on before editing this file, so the
     synapse_transitions table accumulates real usage sequences (Phase 1 SOTA 3.2.3).
-    Fail-open — never disrupts the agent's tool flow.
+    Fail-open — never disrupts the agent's tool flow. Skipped under
+    NEURALMIND_NO_LEARN=1.
     """
+    if _learning_disabled():
+        return
 
     try:
         from .namespaces import resolve_namespace

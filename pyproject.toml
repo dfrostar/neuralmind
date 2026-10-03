@@ -62,6 +62,9 @@ keywords = [
     "index-freshness",
     "stale-index-detection",
     "graph-regeneration",
+    "retrieval-eval",
+    "gitignore-aware-indexing",
+    "read-only-queries",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",

@@ -135,7 +135,8 @@ neuralmind build <project_path> [OPTIONS]
 |--------|---------|-------------|
 | `--force`, `-f` | False | Force re-embedding of all nodes, even if unchanged |
 | `--content-type` | `auto` | What kind of project to build: `auto` (detect — book mode kicks in when markdown outweighs code ≥3:1, counting both recursively with vendored/state dirs pruned), `book` (force book mode: code scope for the engine, content scope for chapters), `code`, `content` |
-| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+) |
+| `--dry-run` | False | Scan the project and estimate token savings **without** building the index (v0.39.0+). Since v4.5.0 it scans the files a build would index (`.gitignore` applied), reports `Excluded by .gitignore: ~N nodes in M files (dir/ count, …)`, and divides by the **measured** token count of those files |
+| `--naive-50k` | False | *(v4.5.0+)* With `--dry-run`, divide by the fixed 50,000-token estimate instead |
 | `--redact-secrets` | False | Replace detected credentials with a `[REDACTED:kind]` marker in text entering the index, on all three backends. Equivalent to `NEURALMIND_REDACT_SECRETS=1`. Off by default because redacting costs recall on legitimately secret-shaped identifiers — run `neuralmind scan-for-secrets` first; removing and rotating the credential is the actual fix. |
 | `--regenerate-graph` | False | Always rebuild `.neuralmind/graph.json` with the built-in tree-sitter backend, whatever graph exists — the way out of a stale graphify graph. `graphify-out/` is never written (v4.4.0+) |
 | `--strict` | False | Exit `3` before embedding when the code graph FAILs the freshness check (v4.4.0+) |
@@ -172,6 +173,28 @@ follows (see [`doctor`](#doctor-v0120)). Then the build statistics:
 NeuralMind never switches source silently: if the previous build used the
 built-in graph and it has gone, the build stops and asks for
 `--regenerate-graph` or `graph_source: graphify`.
+
+#### What gets indexed: `.gitignore` *(v4.5.0+)*
+
+The index covers what git covers. Inside a git repo the file list comes from
+`git ls-files --cached --others --exclude-standard` — nested `.gitignore`,
+`.git/info/exclude` and the global excludes apply exactly as in git — minus
+tracked files that match an ignore rule (force-added copies under an ignored
+directory). Outside git, or when the project sits in a directory an enclosing
+repository ignores (a scratch dir, a vendored checkout), the project's own
+top-level `.gitignore` is applied with the same pattern rules. `.neuralmindignore` narrows further and, since v4.5.0, uses
+gitignore semantics too (`!` negation, `/` anchoring, `**`; `*` doesn't cross
+`/`). The first build after upgrading prints what was excluded, once.
+
+```yaml
+# .neuralmind.yaml
+respect_gitignore: false   # index ignored files again (v4.4 behaviour)
+include_ignored:           # or pull specific ignored paths back in
+  - "generated/api/**"
+```
+
+Git can't re-include a file under an excluded *directory*: to ignore a directory
+except one file, write `projects/*` then `!projects/keep.py`, not `projects/`.
 
 #### Examples
 
@@ -338,6 +361,7 @@ Results are tagged with source project and deduplicated by ID.
 | `--mode` | `default` | *(v3.8.0+)* `default` uses the context selector against one scope; `unified` searches the content scope and the code scope together and merges results — for a project that mixes prose (via `ingest-content`) and code |
 | `--scope-bias` | `balanced` | *(v3.8.0+)* With `--mode=unified`: `content`, `code`, or `balanced` — weights which scope's hits rank higher in the merged results |
 | `--chapter` | None | *(v3.8.0+)* With `--mode=unified`: filter results to a specific chapter tag, e.g. `--chapter="Chapter 2 — The Corner Pub"` |
+| `--no-learn` | False | *(v4.5.0+)* Read-only query: synapse recall still shapes the context (you get exactly what a normal query returns), but nothing is reinforced, no query log is written, and the synapse database is opened read-only (`mode=ro`). Never builds — on an unbuilt project it says so. For evals, benchmarks and CI; same as `NEURALMIND_NO_LEARN=1` |
 
 #### Unified search mode *(v3.8.0+)*
 
@@ -618,6 +642,7 @@ neuralmind benchmark <project_path> [OPTIONS]
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--json`, `-j` | False | Output results as JSON |
+| `--naive-50k` | False | *(v4.5.0+)* Divide by the fixed 50,000-token estimate instead of the measured token count of the indexed files — for comparison with pre-v4.5.0 numbers |
 | `--quality` | False | *(v0.23.0+)* Quality-eval mode — see below |
 | `--suite` | (all) | *(v0.23.0+)* With `--quality`, run one suite: `python` / `typescript` / `go` |
 | `--baseline` | — | *(v0.23.0+)* With `--quality`, a saved suite JSON to compare against (reports metric deltas) |
@@ -630,10 +655,10 @@ neuralmind benchmark <project_path> [OPTIONS]
 #### Output
 
 Comprehensive benchmark report including:
-- Token counts for each query type
-- Reduction ratios
-- Query latencies
-- Comparison with full codebase size
+- **The baseline it divides by** *(v4.5.0+)* — `Baseline: measured: 1,117,552 tokens in 341 indexed files`: the token count of every file the index covers, measured at build. Before v4.5.0 every ratio divided by a fixed 50,000-token guess whatever the repo's size; `--naive-50k` reproduces those numbers, and `--contribute` keeps using it so the community table stays comparable
+- **Which questions it asked** — the ones in `.neuralmind.eval.yaml` when the project has one (see [`eval`](#eval-v0140)), else five generic questions
+- Token counts and reduction ratios for each query
+- Benchmark queries are read-only (v4.5.0+): they never train the synapse layer
 
 #### Examples
 
@@ -857,8 +882,8 @@ measures whether the right node still surfaces as the index grows. It is
 |--------|---------|-------------|
 | `--sample-size` | 50 | How many indexed symbols to probe (`0` = all) |
 | `--k` | 10 | Retrieval depth — a symbol's file must surface in the top-k |
-| `--seed` | 0 | Sampling seed; same seed = same sample, for stable/comparable runs |
-| `--baseline` | — | A saved probe JSON to compare against (reports recall/MRR deltas) |
+| `--seed` | 0 | Sampling seed. *(v4.5.0+)* Symbols are ranked by a hash of (seed, node id) and the lowest `--sample-size` kept, so an unchanged symbol stays in the sample across rebuilds — two runs either side of a 5% index change share ≥ 90% of their sample |
+| `--baseline` | — | A saved probe JSON to compare against. *(v4.5.0+)* Compares only the symbols both runs sampled, and reports how many were added or dropped, so an index change can't pass for a quality change |
 | `--json`, `-j` | False | Output the full report (including every blind spot) as JSON |
 
 #### Examples
@@ -1213,26 +1238,77 @@ JSON output (`--json`) is stable for scripting and agent consumption:
 
 ---
 
-### eval *(v0.14.0+)*
+### eval *(v0.14.0+; project eval v4.5.0+)*
 
-Run the **faithfulness eval**: does NeuralMind's selected context contain
-more gold facts than a *matched-budget* naive baseline? It self-evaluates
-against the committed reference fixture + gold-fact set (which ship with the
-source repository), so — like `neuralmind benchmark` — it's a quality
-self-test, not a per-repo command.
+Score retrieval on **this project** against gold answers you write — or, with
+`--suite`, run a built-in self-test.
 
 ```bash
-neuralmind eval [project_path] [--json] [--selfcheck] [--onboarding]
+neuralmind eval [project_path] [--report] [--show-questions] [--suggest [--write]] [--json]
+neuralmind eval --suite faithfulness|onboarding [project_path] [--selfcheck] [--json]
 ```
 
-**Arguments:**
+#### Project eval *(v4.5.0+)*
+
+Put the questions your team actually asks, with the file that answers each, in
+`.neuralmind.eval.yaml` at the repo root — and commit it, so the team shares one
+baseline:
+
+```yaml
+- q: How are refunds issued when an order is cancelled?
+  gold: [app/refunds.py]
+- q: Which module validates a coupon code?
+  gold: app/coupons.py
+```
+
+`neuralmind eval .` runs each question **read-only** (`learn=False` — the eval
+never trains the synapse layer it measures), ranks the files the answer drew on
+by their best hit score (the same relevance sidecar as `query --relevance`), and
+reports:
+
+| Metric | Meaning |
+|---|---|
+| hit@1 / hit@5 | a gold file is the top file / in the top five |
+| MRR | mean of 1 / rank of the first gold file (0 when missed) |
+| avg context tokens | what the agent would receive per question |
+| × vs gold files | gold-file tokens ÷ context tokens — what a perfect retriever would load |
+| × vs indexed files | measured baseline ÷ context tokens (see [`benchmark`](#benchmark)) |
+
+Each run appends date, commit, NeuralMind version, node count and the metrics to
+`.neuralmind/eval_history.jsonl` (machine-specific, untracked).
+
+| Option | Description |
+|--------|-------------|
+| `--report` | Print the history as a markdown table — the format to paste into issues |
+| `--show-questions` | Include each question, its gold file, its rank and the top files. Off by default so questions naming internal code stay out of pasted reports |
+| `--suggest` | Draft questions from module docstrings and README `##` headings, with the defining file as gold, for you to edit. `--write` saves them to `.neuralmind.eval.yaml` (never overwrites); `--count N` sets how many |
+| `--questions FILE` | Read questions from another file |
+| `--no-history` | Don't append this run to the history |
+| `--json`, `-j` | Emit the report as JSON |
+
+```bash
+neuralmind eval . --suggest --write   # draft, then edit .neuralmind.eval.yaml
+neuralmind eval .                     # → hit@1 40% · hit@5 60% · MRR 0.50 (illustrative)
+neuralmind eval . --report            # history table
+```
+
+#### Built-in suites (`--suite`)
+
+The **faithfulness eval**: does NeuralMind's selected context contain more gold
+facts than a *matched-budget* naive baseline? It self-evaluates against the
+committed reference fixture + gold-fact set (which ship with the source
+repository), so it's a quality self-test, not a per-repo command. Before v4.5.0
+this was what `neuralmind eval [project_path]` ran; it is now
+`--suite faithfulness`, and a bare `neuralmind eval` (no project, no project-eval
+flags), `--selfcheck` and `--onboarding` still select it.
 
 | Argument | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `project_path` | No | the gold-set fixture | Project to evaluate |
+| `--suite` | No | — | `faithfulness` or `onboarding` |
+| `project_path` | No | the gold-set fixture | With a suite: the project to run it on |
 | `--json`, `-j` | No | `false` | Emit the report as JSON |
 | `--selfcheck` | No | `false` | Validate the gold set + offline scorer only (no retrieval deps) |
-| `--onboarding` | No | `false` | Run the **onboarding-lift** eval instead — committed team memory vs a cold agent (see `evals/onboarding/`) |
+| `--onboarding` | No | `false` | Same as `--suite onboarding` — committed team memory vs a cold agent (see `evals/onboarding/`) |
 
 **What it reports:** the **faithfulness delta** — mean expected-fact recall of
 NeuralMind's context minus the naive baseline's, at a matched per-query token
@@ -2417,6 +2493,12 @@ neuralmind savings [project_path] [OPTIONS]
 | `--cost` | False | *(v0.45.0+)* Also show estimated **dollar** savings, priced on input tokens ($/MTok) |
 | `--model` | `claude-opus-4-8` | *(v0.45.0+)* Pricing model for `--cost` — choices come from the built-in input-price table (Claude / GPT / Gemini) |
 | `--queries-per-day` | 100 | *(v0.45.0+)* Assumed daily query volume behind the `--cost` daily/monthly projection |
+| `--naive-50k` | False | *(v4.5.0+)* Price "without NeuralMind" at the fixed 50,000 tokens/query instead of the measured token count of the indexed files |
+
+Since v4.5.0 the per-query "without NeuralMind" cost is the **measured** token
+count of the files the index covers (cached at build), labelled in the output;
+`--global` spans many projects and keeps the fixed estimate. Read-only queries
+(evals, benchmarks) aren't usage and aren't counted.
 
 #### Examples
 
@@ -2511,7 +2593,7 @@ Run diagnostic checks on the index.
 
 ### eval *(v0.14.0+)*
 
-Evaluate retrieval quality.
+Evaluate retrieval quality — see [eval](#eval-v0140-project-eval-v450) above.
 
 ### feedback good/bad *(v3.1.4+)*
 
@@ -3003,6 +3085,7 @@ renewed — issue a new one.
 | `NEURALMIND_CHUNK_SIZE` | `500` | *(v3.4.0+)* Default max characters per chunk for `ingest-content`, so a corpus's chunking doesn't have to be retyped on every run. `--chunk-size` overrides it. A malformed value warns and falls back to the default rather than failing the ingest. |
 | `NEURALMIND_OVERLAP` | `50` | *(v3.4.0+)* Default character overlap between chunks for `ingest-content`. `--overlap` overrides it. Must be less than the chunk size — the chunker cannot make progress otherwise, so the command exits `2` with the offending pair named. |
 | `NEURALMIND_INGEST_TIMEOUT` | `0` | *(v3.4.0+)* Default `--timeout` for `ingest-content`, in seconds; `0` means unlimited. On expiry the run stops between files, writes the manifest for what it indexed, and exits `1` — the next run resumes rather than restarting the corpus. |
+| `NEURALMIND_NO_LEARN` | unset | *(v4.5.0+)* Set to `1` to make every query in the process read-only — CLI, MCP server and hooks. Synapse recall still shapes results, but nothing is reinforced or logged, the synapse database is opened read-only, hooks skip edit/transition learning and decay, and nothing builds an index. For eval harnesses and CI. Per call: `query --no-learn`, MCP `learn: false` |
 | `NEURALMIND_NO_PROGRESS` | unset | *(v3.4.0+)* Set to `1` to suppress progress output everywhere (same as `--no-progress`), `build` included. Progress is TTY-aware already — an in-place bar on a terminal, plain milestone lines off one for `ingest-content` — so this is for golden-output tests and log-sensitive CI jobs. Since v4.4.0 the `build` embedding bar shows only on a terminal, and read commands (`query`, `search`, `wakeup`, the MCP tools) print nothing on success. |
 | `NEURALMIND_INTENT_THRESHOLD` | `0.6` | *(v3.9.0+)* Margin the intent classifier needs before it calls a query `code` or `docs` rather than `hybrid`: one side's keyword score must exceed the other's by this fraction. Raise it to send more queries down the neutral `hybrid` path. |
 | `NEURALMIND_CODE_BOOST` | `3.0` | *(v3.9.0+)* Score multiplier applied to code hits when a query is classified `code` (doc hits are multiplied by `0.5`). Re-ranks the hits retrieval already returned; it does not add any. |

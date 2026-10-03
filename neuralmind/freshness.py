@@ -324,19 +324,10 @@ def indexable_files(root: Path, suffixes: frozenset[str], config=None) -> list[s
 
 
 def _inside_git_work_tree(root: Path) -> bool:
-    """Cheap pre-check before spawning git: a ``.git`` in ``root`` or above.
+    """No git process unless there's a repository to ask (see neuralmind.ignore)."""
+    from .ignore import inside_git_work_tree
 
-    Spawning a process costs tens of milliseconds (more on Windows), and most
-    projects a check runs against in tests and scratch dirs aren't
-    repositories. ``GIT_DIR`` in the environment means git may work without a
-    ``.git`` entry, so it always gets asked then.
-    """
-    if os.environ.get("GIT_DIR"):
-        return True
-    for directory in (root, *root.parents):
-        if (directory / ".git").exists():
-            return True
-    return False
+    return inside_git_work_tree(root)
 
 
 def _graph_git_state(root: Path, graph_path: Path) -> dict | None:
